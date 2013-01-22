@@ -59,7 +59,7 @@ contains
 
 ! ************************************************************************** !
 !
-! RichardsAuxCreate: Allocate and initialize auxilliary object
+! RichardsAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -101,7 +101,7 @@ end function RichardsAuxCreate
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarInit: Initialize auxilliary object
+! RichardsAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -136,7 +136,7 @@ end subroutine RichardsAuxVarInit
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarCopy: Copies an auxilliary variable
+! RichardsAuxVarCopy: Copies an auxiliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -171,7 +171,7 @@ end subroutine RichardsAuxVarCopy
   
 ! ************************************************************************** !
 !
-! RichardsAuxVarCompute: Computes auxilliary variables for each grid cell
+! RichardsAuxVarCompute: Computes auxiliary variables for each grid cell
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
@@ -350,7 +350,7 @@ end subroutine RichardsAuxVarCompute
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a richards auxilliary object
+! AuxVarDestroy: Deallocates a richards auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -365,7 +365,7 @@ end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsAuxDestroy: Deallocates a richards auxilliary object
+! RichardsAuxDestroy: Deallocates a richards auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

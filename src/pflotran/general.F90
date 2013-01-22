@@ -42,7 +42,7 @@ contains
 ! ************************************************************************** !
 subroutine GeneralTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Level_module
@@ -91,7 +91,7 @@ end subroutine GeneralTimeCut
 ! ************************************************************************** !
 subroutine GeneralTimeCutPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -135,7 +135,7 @@ end subroutine GeneralTimeCutPatch
 ! ************************************************************************** !
 subroutine GeneralSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -161,14 +161,14 @@ end subroutine GeneralSetup
 
 ! ************************************************************************** !
 !
-! GeneralSetupPatch: Creates arrays for auxilliary variables
+! GeneralSetupPatch: Creates arrays for auxiliary variables
 ! author: Glenn Hammond
 ! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -285,7 +285,7 @@ end subroutine GeneralSetupPatch
 ! ************************************************************************** !
 subroutine GeneralComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -321,7 +321,7 @@ end subroutine GeneralComputeMassBalance
 ! ************************************************************************** !
 subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -378,7 +378,7 @@ end subroutine GeneralComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine GeneralZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -413,7 +413,7 @@ end subroutine GeneralZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine GeneralUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -443,7 +443,7 @@ end subroutine GeneralUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! GeneralUpdateAuxVars: Updates the auxilliary variables associated with 
+! GeneralUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the General problem
 ! author: Glenn Hammond
 ! date: 03/10/11
@@ -451,7 +451,7 @@ end subroutine GeneralUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine GeneralUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -477,7 +477,7 @@ end subroutine GeneralUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! GeneralUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! GeneralUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the General problem
 ! author: Glenn Hammond
 ! date: 03/10/11
@@ -485,7 +485,7 @@ end subroutine GeneralUpdateAuxVars
 ! ************************************************************************** !
 subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -609,7 +609,7 @@ end subroutine GeneralUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine GeneralInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -629,7 +629,7 @@ end subroutine GeneralInitializeTimestep
 ! ************************************************************************** !
 subroutine GeneralUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -680,7 +680,7 @@ end subroutine GeneralUpdateSolution
 ! ************************************************************************** !
 subroutine GeneralUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -732,7 +732,7 @@ end subroutine GeneralUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine GeneralUpdateFixedAccum(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -766,7 +766,7 @@ end subroutine GeneralUpdateFixedAccum
 ! ************************************************************************** !
 subroutine GeneralUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -852,7 +852,7 @@ end subroutine GeneralUpdateFixedAccumPatch
 ! ************************************************************************** !
 subroutine GeneralNumericalJacTest(xx,realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -935,7 +935,7 @@ end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarPerturb: Calculates auxilliary variables for perturbed system
+! GeneralAuxVarPerturb: Calculates auxiliary variables for perturbed system
 ! author: Glenn Hammond
 ! date: 03/09/11
 !
@@ -1741,7 +1741,7 @@ end subroutine GeneralSrcSink
 ! ************************************************************************** !
 subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Patch_module
   use Level_module
@@ -1835,7 +1835,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2076,7 +2076,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2210,7 +2210,7 @@ end subroutine GeneralResidualPatch2
 ! ************************************************************************** !
 subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Grid_module
@@ -2320,7 +2320,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -2565,7 +2565,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -2705,7 +2705,7 @@ end subroutine GeneralJacobianPatch2
 ! ************************************************************************** !
 subroutine GeneralCreateZeroArray(patch,option)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2781,7 +2781,7 @@ end subroutine GeneralCreateZeroArray
 ! ************************************************************************** !
 subroutine GeneralMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   
@@ -2929,7 +2929,7 @@ end subroutine GeneralUpdateState
 ! ************************************************************************** !
 function GeneralGetTecplotHeader(realization,icolumn)
   
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
     
@@ -3054,7 +3054,7 @@ end function GeneralGetTecplotHeader
 ! ************************************************************************** !
 subroutine GeneralDestroy(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -3087,7 +3087,7 @@ end subroutine GeneralDestroy
 ! ************************************************************************** !
 subroutine GeneralDestroyPatch(realization)
 
-  use Realization_module
+  use Realization_class
 
   implicit none
 

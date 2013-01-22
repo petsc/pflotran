@@ -20,6 +20,7 @@ module Database_Aux_module
             BasisSubSpeciesinMineralRxn, &
             DatabaseRxnCreate, &
             DatabaseRxnCreateFromRxnString, &
+            DatabaseCheckLegitimateLogKs, &
             DatabaseRxnDestroy
             
 contains
@@ -58,8 +59,12 @@ end function DatabaseRxnCreate
 ! date: 10/30/12
 !
 ! ************************************************************************** !
-function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
-                                        primary_species_names,option)
+function DatabaseRxnCreateFromRxnString(reaction_string, &
+                                        naqcomp, aq_offset, &
+                                        primary_aq_species_names, &
+                                        nimcomp, im_offset, &
+                                        primary_im_species_names, &
+                                        option)
 
   use Option_module
   use String_module
@@ -68,8 +73,12 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: reaction_string
-  PetscInt :: ncomp
-  character(len=MAXWORDLENGTH) :: primary_species_names(ncomp)
+  PetscInt :: naqcomp ! mobile aqueoues species
+  PetscInt :: aq_offset ! offset for aqueous species
+  character(len=MAXWORDLENGTH) :: primary_aq_species_names(naqcomp)
+  PetscInt :: nimcomp ! immobile primary speces (e.g. biomass)
+  PetscInt :: im_offset ! offset for aqueous species
+  character(len=MAXWORDLENGTH) :: primary_im_species_names(nimcomp)
   type(option_type) :: option
     
   type(database_rxn_type), pointer :: DatabaseRxnCreateFromRxnString
@@ -169,16 +178,28 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
             dbaserxn%stoich(icount) = -1.d0
           endif
 
-          ! set the primary species id
+          ! set the primary aqueous species id
           found = PETSC_FALSE
-          do i = 1, ncomp
-            if (StringCompare(word,primary_species_names(i), &
+          do i = 1, naqcomp
+            if (StringCompare(word,primary_aq_species_names(i), &
                               MAXWORDLENGTH)) then
-              dbaserxn%spec_ids(icount) = i
+              dbaserxn%spec_ids(icount) = i + aq_offset
               found = PETSC_TRUE
               exit      
             endif
           enddo
+          ! set the primary immobile species id
+          if (.not.found) then
+            do i = 1, nimcomp
+              if (StringCompare(word,primary_im_species_names(i), &
+                                MAXWORDLENGTH)) then
+                dbaserxn%spec_ids(icount) = i + im_offset
+                found = PETSC_TRUE
+                exit      
+              endif
+            enddo
+          endif
+          
           ! check water
           word2 = 'H2O'
           if (StringCompareIgnoreCase(word,word2)) then
@@ -235,35 +256,6 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
   DatabaseRxnCreateFromRxnString => dbaserxn
   
 end function DatabaseRxnCreateFromRxnString
-
-! ************************************************************************** !
-!
-! DatabaseRxnDestroy: Deallocates a database reaction
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
-subroutine DatabaseRxnDestroy(dbaserxn)
-
-  implicit none
-    
-  type(database_rxn_type), pointer :: dbaserxn
-
-  if (.not.associated(dbaserxn)) return
-  
-  if (associated(dbaserxn%spec_name)) deallocate(dbaserxn%spec_name)
-  nullify(dbaserxn%spec_name)
-  if (associated(dbaserxn%spec_ids)) deallocate(dbaserxn%spec_ids)
-  nullify(dbaserxn%spec_ids)
-  if (associated(dbaserxn%stoich)) deallocate(dbaserxn%stoich)
-  nullify(dbaserxn%stoich)
-  if (associated(dbaserxn%logK)) deallocate(dbaserxn%logK)
-  nullify(dbaserxn%logK)
-
-  deallocate(dbaserxn)  
-  nullify(dbaserxn)
-
-end subroutine DatabaseRxnDestroy
 
 ! ************************************************************************** !
 !
@@ -532,5 +524,83 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
   mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
 
 end subroutine BasisSubSpeciesInMineralRxn
+
+! ************************************************************************** !
+!
+! DatabaseCheckLegitimateLogKs: Checks whether legitimate log Ks exist for
+!                               all database temperatures if running 
+!                               non-isothermal
+! author: Glenn Hammond
+! date: 01/07/13
+!
+! ************************************************************************** !
+function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
+                                      option)
+
+  use Option_module
+  
+  implicit none
+    
+  type(database_rxn_type), pointer :: dbaserxn
+  character(len=MAXWORDLENGTH) :: species_name
+  PetscReal :: temperatures(:)
+  type(option_type) :: option
+
+  PetscBool :: DatabaseCheckLegitimateLogKs
+  
+  PetscInt :: itemp
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  
+  DatabaseCheckLegitimateLogKs = PETSC_TRUE
+
+  if (.not.associated(dbaserxn) .or. option%use_isothermal) return
+  
+  string = ''
+  do itemp = 1, size(dbaserxn%logK)
+    if (dabs(dbaserxn%logK(itemp) - 500.) < 1.d-10) then
+      write(word,'(f5.1)') temperatures(itemp)
+      string = trim(string) // ' ' // word
+      DatabaseCheckLegitimateLogKs = PETSC_FALSE
+    endif
+  enddo
+  
+  if (.not.DatabaseCheckLegitimateLogKs) then
+    option%io_buffer = 'Undefined log Ks for temperatures (' // &
+                       trim(adjustl(string)) // ') for species "' // &
+                       trim(species_name) // '" in database.'
+    call printWrnMsg(option)
+  endif
+  
+end function DatabaseCheckLegitimateLogKs
+
+! ************************************************************************** !
+!
+! DatabaseRxnDestroy: Deallocates a database reaction
+! author: Glenn Hammond
+! date: 05/29/08
+!
+! ************************************************************************** !
+subroutine DatabaseRxnDestroy(dbaserxn)
+
+  implicit none
+    
+  type(database_rxn_type), pointer :: dbaserxn
+
+  if (.not.associated(dbaserxn)) return
+  
+  if (associated(dbaserxn%spec_name)) deallocate(dbaserxn%spec_name)
+  nullify(dbaserxn%spec_name)
+  if (associated(dbaserxn%spec_ids)) deallocate(dbaserxn%spec_ids)
+  nullify(dbaserxn%spec_ids)
+  if (associated(dbaserxn%stoich)) deallocate(dbaserxn%stoich)
+  nullify(dbaserxn%stoich)
+  if (associated(dbaserxn%logK)) deallocate(dbaserxn%logK)
+  nullify(dbaserxn%logK)
+
+  deallocate(dbaserxn)  
+  nullify(dbaserxn)
+
+end subroutine DatabaseRxnDestroy
 
 end module Database_Aux_module

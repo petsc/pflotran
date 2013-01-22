@@ -3,7 +3,7 @@ module Coupler_module
   use Condition_module
   use Connection_module
   use Region_module
-  use Auxilliary_module
+  use Auxiliary_module
  
   implicit none
 
@@ -23,8 +23,8 @@ module Coupler_module
     PetscInt :: itran_condition                         ! id of condition in condition array/list
     PetscInt :: iregion                                 ! id of region in region array/list
     PetscInt :: iface                                   ! for structured grids only
-    PetscInt, pointer :: flow_aux_int_var(:,:)          ! auxilliary array for integer value
-    PetscReal, pointer :: flow_aux_real_var(:,:)        ! auxilliary array for real values
+    PetscInt, pointer :: flow_aux_int_var(:,:)          ! auxiliary array for integer value
+    PetscReal, pointer :: flow_aux_real_var(:,:)        ! auxiliary array for real values
     type(flow_condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
     type(tran_condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list

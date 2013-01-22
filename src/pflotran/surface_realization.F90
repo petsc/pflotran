@@ -1,7 +1,9 @@
 #ifdef SURFACE_FLOW
 
-module Surface_Realization_module
+module Surface_Realization_class
 
+  use Realization_Base_class
+  
   use Condition_module
   use Debug_module
   use Discretization_module
@@ -15,6 +17,7 @@ module Surface_Realization_module
   use Waypoint_module
   use Dataset_Aux_module
   use Reaction_Aux_module
+  use Output_Aux_module
   
   implicit none
   
@@ -25,18 +28,8 @@ private
 
   PetscReal, parameter :: eps       = 1.D-8
 
-  type, public :: surface_realization_type
+  type, public, extends(realization_base_type) :: surface_realization_type
 
-    PetscInt :: id
-    
-    type(discretization_type), pointer :: discretization
-    type(level_list_type),pointer      :: level_list
-    type(patch_type), pointer          :: patch
-
-    type(option_type), pointer         :: option
-    type(input_type), pointer          :: input
-    type(flow_debug_type), pointer     :: debug
-    type(output_option_type), pointer  :: output_option
     type(waypoint_list_type), pointer  :: waypoints
     
     type(surface_field_type), pointer                 :: surf_field
@@ -53,6 +46,7 @@ private
     
     PetscReal :: dt_max
     PetscReal :: dt_min
+    PetscReal :: dt_coupling
     
     PetscInt :: iter_count
     PetscBool :: first_time
@@ -74,12 +68,18 @@ private
             SurfaceRealizationInitAllCouplerAuxVars, &
             SurfaceRealizationProcessMatProp, &
             SurfaceRealizationUpdate, &
-            SurfaceRealizationGetDataset, &
             SurfaceRealizationCreateSurfaceSubsurfaceVec, &
             SurfaceRealizationUpdateSubsurfaceBC, &
             SurfaceRealizationUpdateSurfaceBC, &
             SurfaceRealizationComputeSurfaceSubsurfFlux
 
+  !TODO(intel)
+!  public :: SurfaceRealizationGetDataset     
+  
+!  interface SurfaceRealizationGetDataset
+!    module procedure :: RealizationGetDataset ! from Realization_Base_class
+!  end interface
+  
 contains
 
 ! ************************************************************************** !
@@ -99,7 +99,7 @@ function SurfaceRealizationCreate(option)
   type(surface_realization_type),pointer :: surf_realization
   
   allocate(surf_realization)
-  surf_realization%discretization => DiscretizationCreate()
+  call RealizationBaseInit(surf_realization,option)
   surf_realization%option => option
   nullify(surf_realization%input)
 
@@ -124,6 +124,7 @@ function SurfaceRealizationCreate(option)
   surf_realization%iter_count = 0
   surf_realization%dt_min = 1.d0
   surf_realization%dt_max = 1.d0
+  surf_realization%dt_coupling = 0.d0
   
   surf_realization%first_time = PETSC_TRUE
   SurfaceRealizationCreate => surf_realization
@@ -711,7 +712,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -995,7 +996,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   use String_module
   use Unstructured_Grid_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Surface_Field_module
@@ -1134,7 +1135,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   end select
   call VecScatterDestroy(scatter,ierr)
 
-!#if UGRID_DEBUG
+#if UGRID_DEBUG
   if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
   if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
@@ -1142,12 +1143,12 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call VecView(corr_dest_ids_vec,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-!#endif
+#endif
 
   call VecDestroy(corr_dest_ids_vec,ierr)
   if(option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
 
-!#if UGRID_DEBUG
+#if UGRID_DEBUG
   if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
   if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
@@ -1155,7 +1156,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call VecScatterView(dm_ptr%ugdm%scatter_bet_grids,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-!#endif
+#endif
 
 end subroutine SurfaceRealizationMapSurfSubsurfaceGrid
 
@@ -1216,6 +1217,7 @@ subroutine SurfaceRealizationUpdate(surf_realization)
 
 end subroutine SurfaceRealizationUpdate
 
+#if 0
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar and isubvar from surface
 !! realization.
@@ -1246,7 +1248,7 @@ subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubva
                        vec,ivar,isubvar,isubvar1)
 
 end subroutine SurfaceRealizationGetDataset
-
+#endif
 
 ! ************************************************************************** !
 !> This routine prescribes the strength of source/sink between surface and
@@ -1264,7 +1266,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1350,7 +1352,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
 
   if(.not.coupler_found) then
     option%io_buffer = 'Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_bc.'
+      'boundary condition named from_surface_ss.'
     call printErrMsg(option)
   endif
   
@@ -1380,7 +1382,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1673,7 +1675,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1738,8 +1740,10 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   PetscReal :: dvis_dp
   PetscReal :: dvis_dt
   PetscReal :: v_darcy
+  PetscReal :: v_darcy_max
     
   PetscBool :: coupler_found = PETSC_FALSE
+  PetscBool :: v_darcy_limit
 
   patch      => realization%patch
   surf_patch => surf_realization%patch
@@ -1761,6 +1765,8 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   ! Update the surface BC
   coupler_list => surf_patch%source_sinks
   coupler => coupler_list%first
+  v_darcy_max=0.d0
+  v_darcy_limit=PETSC_FALSE
 
   do
     if (.not.associated(coupler)) exit
@@ -1775,7 +1781,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
       endif
       
       do local_id=1,surf_grid%nlmax
-        press_surf=hw_p(local_id)*(-option%gravity(3))*rho + option%reference_pressure
+        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*rho + option%reference_pressure
         dphi = press_sub_p(local_id) - press_surf
         if (dphi<0.d0 .and. press_surf - option%reference_pressure<eps) then
           dphi= 0.d0
@@ -1802,14 +1808,18 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
         call VISW(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
-        if (v_darcy<0.d0) then
+        if (v_darcy<=0.d0) then
           ! Flow is happening from surface to subsurface
           if ( abs(v_darcy) > hw_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = -hw_p(local_id)/option%surf_flow_dt
+            v_darcy = hw_p(local_id)/option%surf_flow_dt
+            v_darcy_limit=PETSC_TRUE
           endif
+        else
+          ! Exfiltration is occuring
         endif
         vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
+        if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
       enddo
 
     endif
@@ -1841,7 +1851,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1910,12 +1920,12 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
 
   if(.not.coupler_found) then
     option%io_buffer = 'Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_bc.'
+      'boundary condition named from_surface_ss.'
     call printErrMsg(option)
   endif
 
 end subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec
 
-end module Surface_Realization_module
+end module Surface_Realization_class
 
 #endif

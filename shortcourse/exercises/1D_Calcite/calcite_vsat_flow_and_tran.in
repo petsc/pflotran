@@ -26,7 +26,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite
-      RATE_CONSTANT 1.d-6
+      RATE_CONSTANT 1.d-6 mol/m^2-sec
     /
   /
   DATABASE ../../../database/hanford.dat
@@ -122,7 +122,7 @@ REGION bottom
 END
 
 :=========================== flow conditions ==================================
-FLOW_CONDITION initial
+FLOW_CONDITION initial_pressure
   TYPE
     PRESSURE hydrostatic
   /
@@ -138,33 +138,33 @@ FLOW_CONDITION recharge
 END
 
 :=========================== transport conditions =============================
-TRANSPORT_CONDITION initial
+TRANSPORT_CONDITION background_conc
   TYPE zero_gradient
   CONSTRAINT_LIST
-    0.d0 initial
+    0.d0 initial_constraint
   /
 END
 
-TRANSPORT_CONDITION inlet
+TRANSPORT_CONDITION inlet_conc
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
-    0.d0 inlet
+    0.d0 inlet_constraint
   /
 END
 
 :=========================== constraints ======================================
-CONSTRAINT initial
+CONSTRAINT initial_constraint
   CONCENTRATIONS
     H+     1.d-8      F
     HCO3-  1.d-3      G  CO2(g)
     Ca++   5.d-4      M  Calcite
   /
   MINERALS
-    Calcite 1.d-5 1.d0
+    Calcite 1.d-5 1.d0 m^2/m^3
   /
 END
 
-CONSTRAINT inlet
+CONSTRAINT inlet_constraint
   CONCENTRATIONS
     H+     5.         P
     HCO3-  1.d-3      T 
@@ -175,20 +175,20 @@ END
 :=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
+  FLOW_CONDITION initial_pressure
+  TRANSPORT_CONDITION background_conc
   REGION all
 END
 
 BOUNDARY_CONDITION outlet
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
+  FLOW_CONDITION initial_pressure
+  TRANSPORT_CONDITION background_conc
   REGION bottom
 END
 
 BOUNDARY_CONDITION inlet
   FLOW_CONDITION recharge
-  TRANSPORT_CONDITION inlet
+  TRANSPORT_CONDITION inlet_conc
   REGION top
 END
 

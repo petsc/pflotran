@@ -1,4 +1,6 @@
-module Realization_module
+module Realization_class
+  
+  use Realization_Base_class
 
   use Option_module
   use Output_Aux_module
@@ -7,9 +9,6 @@ module Realization_module
   use Condition_module
   use Constraint_module
   use Material_module
-#ifdef SUBCONTINUUM_MODEL
-  use Subcontinuum_module
-#endif
   use Saturation_Function_module
   use Dataset_Aux_module
   use Fluid_module
@@ -30,36 +29,15 @@ module Realization_module
 private
 
 #include "definitions.h"
-  type, public :: realization_type
-
-    PetscInt :: id
-    type(discretization_type), pointer :: discretization
-    type(level_list_type), pointer :: level_list
-    type(patch_type), pointer :: patch
-      ! This is simply used to point to the patch associated with the current 
-      ! level.  In other words: Never trust this!
-
-    type(option_type), pointer :: option
-
-    type(input_type), pointer :: input
-    type(field_type), pointer :: field
-    type(flow_debug_type), pointer :: debug
-    type(output_option_type), pointer :: output_option
+  type, public, extends(realization_base_type) :: realization_type
 
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: flow_conditions
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
     
-    type(reaction_type), pointer :: reaction
-    
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
-#ifdef SUBCONTINUUM_MODEL
-    type(subcontinuum_property_type), pointer :: subcontinuum_properties
-    type(subcontinuum_property_ptr_type), pointer ::  &
-                               subcontinuum_property_array(:)
-#endif
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
@@ -91,13 +69,12 @@ private
             RealizationAddObservation, &
             RealizUpdateUniformVelocity, &
             RealizationRevertFlowParameters, &
-            RealizationGetDataset, &
-            RealizGetDatasetValueAtCell, &
-            RealizationSetDataset, &
+!            RealizationGetDataset, &
+!            RealizGetDatasetValueAtCell, &
+!            RealizationSetDataset, &
             RealizationPrintCouplers, &
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
-            RealProcessSubcontinuumProp, &
             RealProcessFluidProperties, &
             RealizationUpdateProperties, &
             RealizationCountCells, &
@@ -106,7 +83,11 @@ private
             RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep
- 
+
+  !TODO(intel)
+  ! public from Realization_Base_class
+  !public :: RealizationGetDataset
+
 contains
   
 ! ************************************************************************** !
@@ -148,18 +129,7 @@ function RealizationCreate2(option)
   type(realization_type), pointer :: realization
   
   allocate(realization)
-  realization%discretization => DiscretizationCreate()
-  if (associated(option)) then
-    realization%option => option
-  else
-    realization%option => OptionCreate()
-  endif
-  nullify(realization%input)
-  realization%field => FieldCreate()
-  realization%debug => DebugCreateFlow()
-  realization%output_option => OutputOptionCreate()
-
-  realization%level_list => LevelCreateList()
+  call RealizationBaseInit(realization,option)
 
   allocate(realization%regions)
   call RegionInitList(realization%regions)
@@ -173,10 +143,6 @@ function RealizationCreate2(option)
 
   nullify(realization%material_properties)
   nullify(realization%material_property_array)
-#ifdef SUBCONTINUUM_MODEL
-  nullify(realization%subcontinuum_properties)
-  nullify(realization%subcontinuum_property_array)
-#endif
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
@@ -184,10 +150,6 @@ function RealizationCreate2(option)
   nullify(realization%datasets)
   nullify(realization%velocity_dataset)
   
-  nullify(realization%reaction)
-
-  nullify(realization%patch)
-  nullify(realization%level_list)
   nullify(realization%waypoints)
 
   RealizationCreate2 => realization
@@ -213,6 +175,9 @@ subroutine RealizationCreateDiscretization(realization)
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(realization_type) :: realization
   
   type(discretization_type), pointer :: discretization
@@ -226,8 +191,8 @@ subroutine RealizationCreateDiscretization(realization)
   PetscOffset :: i_da
   PetscReal, pointer :: real_tmp(:)
   type(dm_ptr_type), pointer :: dm_ptr
-
-
+  Vec :: is_bnd_vec
+  PetscInt :: ivar
 
   option => realization%option
   field => realization%field
@@ -392,7 +357,14 @@ subroutine RealizationCreateDiscretization(realization)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
-      if (discretization%lsm_flux_method) call GridComputeNeighbors(grid,option)
+      if (discretization%lsm_flux_method) then
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                          is_bnd_vec)
+        call GridComputeNeighbors(grid,field%work_loc,option)
+        call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
+        call GridSaveBoundaryCellInfo(discretization%grid,is_bnd_vec,option)
+        call VecDestroy(is_bnd_vec,ierr)
+      endif
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -471,6 +443,19 @@ subroutine RealizationCreateDiscretization(realization)
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
+
+  ! Allocate vectors to hold temporally average output quantites
+  if(realization%output_option%aveg_output_variable_list%nvars>0) then
+
+    field%nvars = realization%output_option%aveg_output_variable_list%nvars
+    allocate(field%avg_vars_vec(field%nvars))
+
+    do ivar=1,field%nvars
+      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                         field%avg_vars_vec(ivar))
+      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
+    enddo
+  endif
        
 
 end subroutine RealizationCreateDiscretization
@@ -781,7 +766,7 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationProcessConditions: Sets up auxilliary data associated with 
+! RealizationProcessConditions: Sets up auxiliary data associated with 
 !                               conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -809,7 +794,7 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxilliary arrays
+!                               and saturation function, auxiliary arrays
 !                               and datasets
 ! author: Glenn Hammond
 ! date: 01/21/09, 01/12/11
@@ -887,72 +872,6 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
   
 end subroutine RealProcessMatPropAndSatFunc
-
-
-! *********************************************************************** !
-!
-! RealProcessSubcontinuumProp: Sets up linkeage between material properties
-!                         and subcontinuum properties and auxilliary arrays
-! author: Jitendra Kumar 
-! date: 10/07/2010 
-!
-! *********************************************************************** !
-subroutine RealProcessSubcontinuumProp(realization)
-
-  use String_module
-  
-  implicit none
-  type(realization_type) :: realization
-#ifdef SUBCONTINUUM_MODEL 
-  
-  PetscBool :: found
-  PetscInt :: i
-  type(option_type), pointer :: option
-  type(material_property_type), pointer :: cur_material_property
-  type(subcontinuum_property_type), pointer :: cur_subcontinuum_property
-  
-  option => realization%option
-  
-  ! organize lists
-  call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array)
-  call SubcontinuumPropConvertListToArray(realization%subcontinuum_properties, &
-                                     realization%subcontinuum_properties_array, &
-                                     option) 
-    
-  cur_material_property => realization%material_properties                            
-  do                                      
-    if (.not.associated(cur_material_property)) exit
-    found = PETSC_FALSE
-    cur_subcontinuum_property => realization%subcontinuum_properties
-    do 
-      if (.not.associated(cur_subcontinuum_property)) exit
-      do i=1,cur_material_property%subcontinuum_type_count
-        if (StringCompare(cur_material_property%subcontinuum_type_name(i), &
-                        cur_subcontinuum_property%name,MAXWORDLENGTH)) then
-          found = PETSC_TRUE
-          cur_material_property%subcontinuum_property_id(i) = &
-            cur_subcontinuum_property%id
-          exit
-        endif
-        ! START TODO(jitu): check if this error check block is at right place. might have
-        ! to push it to upper do loop: Jitu 10/07/2010 
-        if (.not.found) then
-          option%io_buffer = 'Saturation function "' // &
-               trim(cur_material_property%subcontinuum_type_name(i)) // &
-               '" in material property "' // &
-               trim(cur_material_property%name) // &
-               '" not found among available subcontinuum types.'
-          call printErrMsg(realization%option)    
-        endif
-        ! END TODO(jitu)
-      enddo  
-      cur_subcontinuum_property => cur_subcontinuum_property%next
-    enddo
-    cur_material_property => cur_material_property%next
-  enddo
-#endif 
-end subroutine RealProcessSubcontinuumProp
 
 ! ************************************************************************** !
 !
@@ -1085,7 +1004,7 @@ end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
 !
-! RealProcessTranConditions: Sets up auxilliary data associated with 
+! RealProcessTranConditions: Sets up auxiliary data associated with 
 !                            transport conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -1143,6 +1062,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
+                                   cur_constraint%biomass, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -1166,6 +1086,7 @@ subroutine RealProcessTranConditions(realization)
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
+            cur_constraint_coupler%biomass => cur_constraint%biomass
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1399,7 +1320,7 @@ end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08
@@ -1661,6 +1582,7 @@ subroutine RealizationAddWaypointsToList(realization)
 
 end subroutine RealizationAddWaypointsToList
 
+#if 0
 ! ************************************************************************** !
 !
 ! RealizationGetDataset: Extracts variables indexed by ivar and isubvar from a 
@@ -1745,6 +1667,8 @@ subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
                        vec,vec_format,ivar,isubvar)
 
 end subroutine RealizationSetDataset
+
+#endif
 
 ! ************************************************************************** !
 !
@@ -2452,4 +2376,4 @@ subroutine RealizationDestroy(realization)
   
 end subroutine RealizationDestroy
 
-end module Realization_module
+end module Realization_class

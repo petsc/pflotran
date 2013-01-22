@@ -37,18 +37,6 @@ module Option_module
     PetscMPIInt :: ioread_group_id, iowrite_group_id
 #endif
 
-#ifdef VAMSI_HDF5_READ
-    MPI_Comm :: read_group, readers
-    PetscMPIInt :: read_grp_size, read_grp_rank, readers_size, readers_rank 
-    PetscMPIInt :: rcolor, rkey, reader_color, reader_key
-#endif
-
-#ifdef VAMSI_HDF5_WRITE    
-    MPI_Comm :: write_group, writers
-    PetscMPIInt:: write_grp_size, write_grp_rank, writers_size, writers_rank
-    PetscMPIInt :: wcolor, wkey, writer_color, writer_key
-#endif  
-
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_out
@@ -73,6 +61,8 @@ module Option_module
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
     PetscReal :: surf_flow_time, surf_flow_dt
+    PetscReal :: surf_subsurf_coupling_time
+    PetscReal :: surf_subsurf_coupling_flow_dt
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -190,9 +180,6 @@ module Option_module
     PetscBool :: ani_relative_permeability
     
     PetscBool :: use_upwinding
-
-    PetscInt :: chunk_size
-    PetscInt :: num_threads
     
     PetscBool :: out_of_table
 
@@ -310,32 +297,6 @@ subroutine OptionInitAll(option)
   option%hdf5_read_group_size = 0
   option%hdf5_write_group_size = 0
 
-#ifdef VAMSI_HDF5_READ
-  option%read_group = 0
-  option%readers = 0
-  option%read_grp_size = 0
-  option%read_grp_rank = 0
-  option%readers_size = 0
-  option%readers_rank = 0
-  option%rcolor = 0
-  option%rkey = 0
-  option%reader_color = 0
-  option%reader_key = 0
-#endif
-  
-#ifdef VAMSI_HDF5_WRITE
-  option%write_group = 0
-  option%writers = 0
-  option%write_grp_size = 0
-  option%write_grp_rank = 0
-  option%writers_size = 0
-  option%writers_rank = 0
-  option%wcolor = 0
-  option%wkey = 0
-  option%writer_color = 0
-  option%writer_key = 0
-#endif
-
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
@@ -349,9 +310,6 @@ subroutine OptionInitAll(option)
 
   option%use_upwinding = PETSC_TRUE
 
-  option%chunk_size = 8
-  option%num_threads = 1
-  
   option%out_of_table = PETSC_FALSE
  
   call OptionInitRealization(option)
@@ -396,6 +354,8 @@ subroutine OptionInitRealization(option)
    option%surface_flow_formulation = KINEMATIC_WAVE
    option%surf_flow_dt = 0.d0
    option%surf_flow_time =0.d0
+   option%surf_subsurf_coupling_time = 0.d0
+   option%surf_subsurf_coupling_flow_dt = 0.d0
 #endif
 
   option%tranmode = ""

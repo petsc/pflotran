@@ -40,7 +40,7 @@
 program pflotran
   
   use Simulation_module
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Option_module
   use Input_module
@@ -207,5 +207,6 @@ program pflotran
   call OptionDestroy(option)
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)
+  call exit(86)
 
 end program pflotran

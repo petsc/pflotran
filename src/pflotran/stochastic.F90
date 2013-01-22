@@ -137,7 +137,7 @@ end subroutine StochasticInit
 subroutine StochasticRun(stochastic,option)
 
   use Simulation_module
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Option_module
   use Init_module

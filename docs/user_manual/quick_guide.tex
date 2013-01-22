@@ -7,11 +7,16 @@
 \usepackage{deflist}
 %\usepackage{fancyheadings}
 \usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage{color}
+\usepackage[table]{xcolor}
+
+\usepackage{fancybox}
+
 \usepackage{tabularx}
 \usepackage{verbatim}
 \usepackage{moreverb}
 \usepackage{float}
-\usepackage{fancybox}
 \usepackage{graphicx}
 \usepackage{longtable}
 \usepackage{subfigure}
@@ -19,15 +24,18 @@
 \usepackage{fancybox}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{colortbl}
-\usepackage{color}
-\usepackage[table]{xcolor}
 %\usepackage{toc_entr}
-\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
 
 \definecolor{lightgray}{gray}{0.9}
 \definecolor{lightblue}{rgb}{0.93,0.95,1.0}
+\definecolor{lightteal}{rgb}{0.95, 1.38, 1.39}
 
+%\usepackage[framemethod=tikz,outerlinewidth=2,outerlinecolor=blue,backgroundcolor=lightblue]{mdframed}
+\usepackage[framemethod=tikz,outerlinewidth=2,outerlinecolor=teal,backgroundcolor=lightteal]{mdframed}
+
+%\usepackage[tikz]{bclogo}
+
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
 
 \textwidth 6.5in
 \textheight 9.5in
@@ -40,15 +48,15 @@
 \headheight 0.25in
 \lhead{\sl PFLOTRAN: Quick Reference User Guide}
 \chead{\sl DRAFT}
-%\chead{\rm - \thepage\ -}
+\chead{\S\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
 %\rhead{DRAFT \qquad \qquad \ \today}
 \rhead{\today}
 %\rfoot{\today--[\thepage]}
 \rfoot{}
-\cfoot{\rm - \thepage\ -}
+\cfoot{\rm < \thepage\ >}
 %\cfoot{}
 %\footrulewidth 0.4pt
-\newcommand\keyend{{(., \, /, \, END)}}
+\newcommand\keyend{{(END \, / \, .)}}
 \newcommand\return{{\hfill$\hookrightarrow$}}
 \newcommand\returnb{{\hfill$\nearrow$}}
 %\newcommand\return{{\hfill\bf RETURN}}
@@ -102,7 +110,7 @@
 \renewcommand{\P}{{{\mathcal P}}}
 \newcommand{\Q}{{\mathcal Q}}
 \newcommand{\R}{{{\mathcal R}}}
-\renewcommand{\S}{{\mathcal S}}
+\newcommand{\mcS}{{\mathcal S}}
 \newcommand{\T}{{\mathcal T}}
 \newcommand{\W}{{\mathcal W}}
 \newcommand{\X}{{\mathcal X}}
@@ -209,10 +217,12 @@
 
 \thispagestyle{empty}
 
-\renewcommand{\theequation}{\arabic{equation}}
+%\renewcommand{\theequation}{\arabic{equation}}
 %\renewcommand{\thetable}{{\protect\bf\arabic{table}}}
 %\renewcommand{\thefigure}{{\protect\bf\arabic{figure}}}
 %\renewcommand{\thepage}{\roman{page}}
+
+\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
 
 \setlongtables
 
@@ -309,6 +319,8 @@ endorse the viewpoint of a publication or guarantee its technical correctness.
 PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and laptops (Hammond et al., 2011). Parallelization is achieved through domain decomposition using the PETSc (Port\-a\-ble Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
 
 \section{Governing Equations}
+
+\setcounter{equation}{0}
 
 \subsection{Mode: {\tt RICHARDS}}
 
@@ -1018,22 +1030,22 @@ where the product index $i$ generally runs over both primary and secondary speci
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
-\EQ\label{por}
+\EQ\label{porosity}
 \varphi \eq 1-\sum_m\varphi_m,
 \EN
-\EQ
+\EQ\label{permeability}
 k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
 \EN
-\EQ
+\EQ\label{tortuosity}
 \tau \eq \tau_0 \left(\frac{\varphi}{\varphi_0}\right)^b,
 \EN
 and
-\EQ
-a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n,
+\EQ\label{surface_area_vf}
+a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'},
 \EN
 where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$.
 
-In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{por} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
+In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{porosity} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
 \begin{subequations}
 \BA
 \varphi_m &\eq (1-\varphi) \frac{x_m \overline V_m}{\sum_{m'} x_{m'} \overline V_{m'}},\\
@@ -1170,9 +1182,9 @@ and for $j=l$
 
 Surface complexation reactions are assumed to have the form
 \EQ\label{srfrxn}
-\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \S_{i\a},
+\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \mcS_{i\a},
 \EN
-for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$.
+for the $i$th surface complex $>\!\!\mcS_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$.
 As follows from the corresponding mass action equation the equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
 \EQ
 S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
@@ -1237,6 +1249,41 @@ The total sorbed concentrations are obtained from the equations
 \frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
 \EN
 
+\subsubsection{Sorption Isotherm}
+
+A sorption isotherm $S_j$ may be specified for any primary species $\A_j$. 
+The following transport equation is solved 
+\EQ
+\frac{\p}{\p t} \varphi s C_j + \bnabla\cdot\bF_j \eq -\frac{\p S_j}{\p t},
+\EN
+with $C_j \eq \rho_w m_j$ and $\rho_w$ refers to the density of pure water.
+Three distinct models are available for the sorption isotherm $S_j$:
+\begin{itemize}
+\item linear $K_D$ model
+\EQ\label{linkd}
+S_j \eq K_j^D \gamma_j m_j,
+\EN
+with activity coefficient $\gamma_j$ and molality $m_j$,
+\item Langmuir isotherm:
+\EQ\label{Langmuir}
+S_j \eq \frac{K_j^L b_j^L \gamma_j m_j}{(1+K_j^L \gamma_j m_j)},
+\EN
+with Langmuir coefficients $K_j^L$ and $b_j^L$, and
+\item Freundlich isotherm:
+\EQ\label{Freundlich}
+S_j \eq K_j^F \big(\gamma_j m_j\big)^{(1/n_j^F)},
+\EN
+with coefficients $K_j^F$ and $n_j^F$.
+\end{itemize}
+The linear $K_D$ model results in the retardation factor $\R_j$ given by
+\EQ
+\R_j \eq 1 + \frac{\gamma_j K_j^D}{\varphi s \rho_w}.
+\EN
+In terms of the retardation the transport equation becomes
+\EQ
+\frac{\p}{\p t} \big(\R_j\varphi s \rho_w m_j\big) + \bnabla\cdot\bF_j \eq 0.
+\EN
+
 \subsubsection{Colloid-Facilitated Transport}
 
 Colloid-facilitated transport is implemented into PFLOTRAN based on surface complexation reactions. Competition between mobile and immobile colloids and stationary mineral surfaces is taken into account. Colloid filtration processes are not currently implemented into PFLOTRAN. 
@@ -1271,14 +1318,47 @@ I_k^m \eq k_k\big(S_k^m - S_{km}^{\rm eq}\big),
 \EN
 with rate constant $k_k$ and where $S_{km}^{\rm eq}$ is a known function of the solute concentrations. In this case, Eqn.\eqref{mobile} must be added to the primary species transport equations. Further reduction of the transport equations for the case where a flux term is present in the kinetic equation is not possible in general for complex flux terms.
 
-\subsection{Solute Age}
+\subsection{Tracer Mean Age}
 
 PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for the mean age given by
 \EQ
 \frac{\p}{\p t} \varphi s AC + \bnabla\cdot\Big(\bq AC - \varphi s D \bnabla (AC)\Big) \eq \varphi s C,
 \EN
-where $A$ denotes the mean age of the solute with concentration $C$. Other quantities appearing in the age equation are identical to the solute transport equation for a partially saturated porous medium with saturation state $s$. The age and solute transport equations are solved simultaneously.
+where $A$ denotes the mean age of the tracer with concentration $C$. Other quantities appearing in the age equation are identical to the tracer transport equation for a partially saturated porous medium with saturation state $s$. The age and tracer transport equations are solved simultaneously for the age-concentration $\alpha = A C$ and tracer concentration $C$. The age-concentration $\a$ satisfies the usual advection-diffusion-dispersion equation with a source term on the right-hand side.
 
+The mean tracer is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age} together with {\tt Tracer} to the list of primary species
+%\newpage
+\begin{verbatim}
+  PRIMARY_SPECIES
+    Tracer
+    Tracer_Age
+  /
+\end{verbatim}
+including sorption through a constant $K_d$ model if desired
+\begin{verbatim}
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+      Tracer_Age
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+and specifying these species in the initial and boundary {\tt CONSTRAINT} condition as e.g.:
+\begin{verbatim}
+CONSTRAINT initial
+  CONCENTRATIONS
+    Tracer     1.e-8        F
+    Tracer_Age 1.e-16       F
+  /
+/
+\end{verbatim}
+Output is given in terms of $\alpha$ and $C$ from which the mean age $A$ can be obtained as $A\eq\alpha/C$. 
 
 \subsection{Thermodynamic Database}
 
@@ -1327,6 +1407,8 @@ Surface Complexes: & $>$name, nspec, $\nu$, $>$site,
 \end{table}
 
 \section{Method of Solution}
+
+\setcounter{equation}{0}
 
 The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, \ldots) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
 Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
@@ -1432,6 +1514,8 @@ Thus for $R=1$, $C^{t+\Delta t}=C^*$ and the solution advances unretarded. As $R
 
 \section{Code Structure}
 
+\setcounter{equation}{0}
+
 A flow diagram of the PFLOTRAN code structure is shown in Figure~\ref{fdiag}.
 
 \begin{figure}[h]\centering
@@ -1455,6 +1539,8 @@ Flow diagram definitions:
 In order to facilitate code development and better preserve the extensibility and modularity of the code, an object-oriented coding paradigm is employed within PFLOTRAN.  In comparison to traditional procedural paradigms, the object-oriented programming paradigm facilitates code modification and reuse.  Within the context of PFLOTRAN, the utilization of this paradigm greatly accelerates the incorporation of new flow and transport modes through the extension of existing algorithms.  The compartmentalization of methods, processes and data enables the spawning of multi-realization simulations, each of which can be simultaneously run in parallel (i.e. each realization of the multi-realization simulation can be run in parallel utilizing multiple processor cores).
 
 \section{Installation}
+
+\setcounter{equation}{0}
 
 It should be possible to build and run PFLOTRAN on essentially any system with 
 modern C and Fortran (95 standard or later) compilers and an available 
@@ -1719,8 +1805,8 @@ A number of command line options are available:
 
 \begin{tabular}{ll}
 {\tt -pflotranin} <input file name> & specify an input file [Default: {\tt pflotran.in}]\\
+{\tt -file\_prefix} <output file name> & specify an output file [Default: {\tt pflotran.out, \,\ldots}]\\
 {\tt -screen\_output off} & turn off screen output\\
-{\tt -file\_output} <output file name> & specify an output file [Default: {\tt pflotran.out}]\\
 %{\tt -v} &\\
 {\tt -multisimulation} & run multiple input files in one run\\
 {\tt -stochastic} & Monte Carlo multiple realization run\\
@@ -2119,7 +2205,12 @@ The default restart frequency is 30.
 
 \newpage
 
+\include{regression-tests}
+
+\newpage
 \section{Creating the Input File: PFLOTRAN Keywords}
+
+\setcounter{equation}{0}
 
 The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
 
@@ -2246,9 +2337,9 @@ Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
 : == debugging ================================================================\\
 :\hyperlink{target_dbg}{\bf DEBUG}\\
 %\hypertarget{target_key}{\bf DEBUG}\\
-:MATVIEW\_JACOBIAN\\
-:VECVIEW\_RESIDUAL\\
-:VECVIEW\_SOLUTION\\
+:  MATVIEW\_JACOBIAN\\
+:  VECVIEW\_RESIDUAL\\
+:  VECVIEW\_SOLUTION\\
 :/
 
 \noindent
@@ -2260,23 +2351,23 @@ Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \hyperlink{target_chem}{\bf CHEMISTRY}\\
 OPERATOR\_SPLIT\\
 PRIMARY\_SPECIES\\
-Ca++\\
-H+\\
-CO2(aq)\\
-Tracer\\
+  Ca++\\
+  H+\\
+  CO2(aq)\\
+  Tracer\\
 /\\
 SECONDARY\_SPECIES\\
-OH-\\
-HCO3$-$\\
-CO3$-$$-$\\
-CaHCO3+\\
-CaCO3(aq)\\
+  OH-\\
+  HCO3$-$\\
+  CO3$-$$-$\\
+  CaHCO3+\\
+  CaCO3(aq)\\
 /\\
 GAS\_SPECIES\\
-CO2(g)\\
+  CO2(g)\\
 /\\
 MINERALS\\
-Calcite\\
+  Calcite\\
 /\\
 :\\
 MINERAL\_KINETICS\\
@@ -2587,7 +2678,11 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 
 \bigskip
 
+\newpage
+\begin{mdframed}
+
 {\noindent\bf Examples:}
+
 \begin{verbatim}
 BOUNDARY_CONDITION river
   FLOW_CONDITION river_stage
@@ -2601,6 +2696,8 @@ BOUNDARY_CONDITION recharge
   REGION ground_surface
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -2648,12 +2745,16 @@ A file named {\tt restart.chk} will also be written when PFLOTRAN properly termi
 
 \bigskip
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 CHECKPOINT 1000
 
 CHECKPOINT 5
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -2676,10 +2777,6 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [CHEMISTRY] ~
 
 \begin{deflist}{000}
-
-\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
-
-~\\
 
 \item [PRIMARY\_SPECIES] ~
 \item {\tt Name}
@@ -2728,8 +2825,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
 \item [AFFINITY\_POWER] \ {\tt Value} [---]
 \item [TEMPKINS\_CONSTANT] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
 
@@ -2805,7 +2902,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[SITE] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[COMPLEXES] ~
 \begin{deflist}{000}
-\item[\tt Complex Name]
+\item[\tt Surface\_Complex Name]
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2823,11 +2920,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item [EQUILIBRIUM]
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
-\item [CEC] {\tt Value}[mol/m$^3$]
+\item [CEC] {\tt Value} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
-\item[\tt Name] $K$
+\item[\tt Name]  \ \ \ {\tt Selectivity\_Coefficient}
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2837,13 +2934,36 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 ~\\
 
-\item[DISTRIBUTION\_COEF] \ (not implemented)
+%\begin{deflist}{000}
+\item [ISOTHERM\_REACTIONS] ~
+
+\begin{deflist}{000}
+\item [Species\_Name] ~
+
+\begin{deflist}{000}
+\item [TYPE] LINEAR, \ LANGMUIR, \ FREUNDLICH
+\item [DISTRIBUTION\_COEF, KD] \ {\tt Value} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
+\item [LANGMUIR\_B] \ {\tt Value} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
+\item [FREUNDLICH\_N] \ {\tt Value} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
+\end{deflist}
+\item [\keyend] ~
+
+\end{deflist}
+
+\item [\keyend] ~
+
+~\\
+
 \item[JUMPSTART\_KINETIC\_SORPTION]
 \item[NO\_CHECKPOINT\_KINETIC\_SORPTION]
 \item[NO\_RESTART\_KINETIC\_SORPTION]
 \end{deflist}
 
 \item [\keyend]
+
+~\\
+
+\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
 
 ~\\
 
@@ -2855,12 +2975,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
 \item[NO\_BDOT]
-\item[UPDATE\_POROSITY] {\tt Value}
-\item[UPDATE\_TORTUOSITY] {\tt Value}
-\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity.)
-\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \\
+\item[UPDATE\_POROSITY] {\tt Value} \ \ \ [see Eqn.\eqref{porosity}]
+\item[UPDATE\_TORTUOSITY] {\tt Value} \ \ \ [see Eqn.\eqref{tortuosity}]
+\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
+\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
-\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \\
+\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
 \item[MINIMUM\_POROSITY] {\tt Value}
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
@@ -2914,10 +3034,38 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \midrule
 \bf Gas\_Species & List of gas species.\\
 \midrule
+\bf Sorption & Surface complexation, ion exchange and specified isotherm.\\
+\end{tabularx}
+
+\begin{mdframed}
+
+\begin{verbatim}
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+      Tracer_Age
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+\end{mdframed}
+
+\end{center}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\midrule
 \bf Output &
 To print secondary aqueous complex concentrations, either add the names of the secondary species of interest or the keyword ``SECONDARY\_SPECIES'' for all secondary species to the CHEMISTRY OUTPUT card:
 \end{tabularx}
 \end{center}
+
+\begin{mdframed}
 
 \begin{verbatim}
 CHEMISTRY
@@ -2943,12 +3091,15 @@ REDOX_SPECIES
   Ethanol(aq)
 /
 \end{verbatim}
+\end{mdframed}
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & By default, if ALL or MINERALS are listed under CHEMISTRY OUTPUT, the volume fractions and rates of kinetic minerals are printed.  To print out the saturation indices of minerals listed under the MINERAL keyword, add the name of the mineral to the OUTPUT specification.  In other words, if the following appears in the input deck:
 \end{tabularx}
 \end{center}
+
+\begin{mdframed}
 
 \begin{verbatim}
 CHEMISTRY
@@ -2970,6 +3121,8 @@ CHEMISTRY
   ...
 END
 \end{verbatim}
+\end{mdframed}
+
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
@@ -2982,6 +3135,8 @@ END
 \end{center}
 
 \bigskip
+
+\begin{mdframed}
 
 \noindent
 {\bf Examples:}
@@ -3020,6 +3175,7 @@ MINERAL_KINETICS
   /
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3041,11 +3197,14 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 
 \noindent {\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent
 {\bf Example:}
 \begin{verbatim}
 COMPUTE_STATISTICS
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3100,6 +3259,8 @@ SC, \ CONSTRAINT\_SUPERCRIT\_CO2 & --Supercritical CO$_2$ EOS\\
 Z, \ CHG & --Charge balance
 \end{tabular}
 
+\begin{mdframed}
+
 \noindent
 {\bf Example:}
 \begin{verbatim}
@@ -3131,6 +3292,9 @@ CONSTRAINT initial
   /
 END
 \end{verbatim}
+
+\end{mdframed}
+
 
 \hyperlink{target_key}{\return}
 
@@ -3182,6 +3346,8 @@ VIEW\_JACOBIAN\_DETAILED]
 
 \bigskip
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 DEBUG
@@ -3189,6 +3355,7 @@ DEBUG
   PRINT_JACOBIAN
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3332,6 +3499,8 @@ IPHASE & Phases present & CO$_2$ concentration\\
 
 \bigskip
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 FLOW_CONDITION initial
@@ -3376,6 +3545,7 @@ FLOW_CONDITION East
   PRESSURE 101325.d0
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3405,6 +3575,8 @@ D_m(T) \eq D_m^\circ\exp\Big[\frac{A_D}{R}\Big(\frac{1}{T_0} -\frac{1}{T}\Big)\B
 \EN
 where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 25$\degc\ and $A_D$ denotes the diffusion activation energy.
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 FLUID_PROPERTY
@@ -3412,6 +3584,7 @@ FLUID_PROPERTY
   DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 /
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3483,6 +3656,8 @@ FLUID_PROPERTY
 \end{description}
 \end{description}
 
+\begin{mdframed}
+
 \noindent
 {\bf Format of unstructured grid file:}
 
@@ -3507,6 +3682,9 @@ Implicitly defined grid:
 ! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
 ! -----------------------------------------------------------------
 \end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
 
 Explicitly defined grid:
   
@@ -3537,6 +3715,9 @@ Explicitly defined grid:
 ! id_up_M id_dn_M x_M y_M z_M area_M
 ! -----------------------------------------------------------------
 \end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
 
 \noindent
 {\bf Examples:}
@@ -3562,6 +3743,7 @@ GRID
   /
 END
 \end{verbatim}
+\end{mdframed}
 
 \noindent
 By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-independent fashion and, as a result, the grid spacing may be changed by modifying the keyword {\tt NXYZ} only.
@@ -3594,6 +3776,8 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 
 \begin{verbatim}
@@ -3606,6 +3790,7 @@ INITIAL_CONDITION
   REGION all
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3762,6 +3947,8 @@ END
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 MATERIAL_PROPERTY  Hanford
@@ -3795,6 +3982,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 %\hyperlink{target_key}{\hfill$\hookrightarrow$}
@@ -3815,6 +4003,8 @@ END
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 :          dpmax dtmax dsmax dcmax
@@ -3823,6 +4013,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 /
 /
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3872,10 +4063,13 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 \end{tabularx}
 %\end{center}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 MODE THC
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3980,6 +4174,8 @@ The user must specify either a region or boundary condition to which the observa
 \item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodal) temperatures.
 \end{description}
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 OBSERVATION
@@ -3991,6 +4187,7 @@ OBSERVATION
 BOUNDARY_CONDITION river
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4080,6 +4277,8 @@ MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes.
 \end{tabularx}
 \end{center}
 
+\begin{mdframed}
+
 \noindent {\bf Examples:}
 
 \begin{verbatim}
@@ -4095,6 +4294,7 @@ OUTPUT
   MASS_BALANCE
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4124,14 +4324,19 @@ END
 \begin{deflist}{0000}
 \item[PROC] <int int int> 
 \item[Description:] The number of processor to be employed in each direction $x$, $y$, and $z$ (structured grids only). Default: let PETSc decide. {\em Warning: the product of the integers must be equal to the number of processor employed.}
-\item[Examples:] ~
+\end{deflist}
+
+\begin{mdframed}
+
+\noindent {\bf Examples:}
 
 {\tt PROC 100 10 10} \ \ \ \ \ ! 10,000 processes
 
 {\tt PROC 2 2 2} \ \ \ \ \ ! 2$\times$2$\times$2 decomposition
 
 {\tt PROC 1 1 8} \ \ \ \ ! Force decomposition in z direction only (1$\times$1$\times$8 decomposition).
-\end{deflist}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4177,6 +4382,8 @@ region\_name contains a list of grid cells corresponding to a region.
 \item [Keyword FACE] Defines the face of the grid cell to which boundary conditions are connected where face\_name is one of WEST, EAST, NORTH, SOUTH, BOTTOM, TOP (structured grids only).
 \item [Keyword END] Ends the region entry (can be one of . \ END).
 \end{description}
+
+\begin{mdframed}
 
 {\noindent\bf
 Examples:}
@@ -4224,6 +4431,8 @@ REGION west_boundary
 END
 \end{verbatim}
 
+\end{mdframed}
+
 \hyperlink{target_key}{\return}
 
 %========================================================================
@@ -4254,6 +4463,8 @@ The RESTART card defines a checkpoint file from which the current simulation sho
 {\noindent\bf
 Examples:}
 
+\begin{mdframed}
+
 \begin{verbatim}
 : restart the simulation from the end of the previous simulation, /
   but set the time back to 0.
@@ -4266,6 +4477,8 @@ RESTART restart.chk 0.d0 y
 RESTART pflotran.chk3000
 
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4297,6 +4510,8 @@ RESTART pflotran.chk3000
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 SATURATION_FUNCTION sf1
@@ -4309,6 +4524,8 @@ SATURATION_FUNCTION sf1
   POWER 1.d0
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4328,6 +4545,8 @@ END
 \item[(., /, END)]
 \end{deflist}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 SOURCE_SINK Well_2-9_1
@@ -4336,6 +4555,8 @@ SOURCE_SINK Well_2-9_1
   REGION Well_2-9_1
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4382,6 +4603,8 @@ END
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 TIME
@@ -4402,6 +4625,9 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 10. y at 11. y
 END
 \end{verbatim}
+
+\end{mdframed}
+
 \hyperlink{target_key}{\return}
 
 %================================================================
@@ -4463,6 +4689,8 @@ END
 \end{deflist}
 
 \noindent{\bf Explanation:}
+
+\begin{mdframed}
 
 \noindent{\bf Example:}
 
@@ -4537,6 +4765,8 @@ CONSTRAINT initial
 END
 \end{verbatim}
 
+\end{mdframed}
+
 \hyperlink{target_key}{\return}
 
 %========================================================================
@@ -4556,10 +4786,14 @@ END
 
 \noindent{\bf Explanation:} Set uniform velocity for transport mode.
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4611,6 +4845,8 @@ UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 VELOCITY_DATASET
@@ -4626,6 +4862,8 @@ VELOCITY_DATASET
   /
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4643,7 +4881,11 @@ END
 
 \noindent{\bf Explanation:} Specifies a wall clock time at which the simulation will shut down gracefully generating a restart file, if specified. The option is especially useful when there is an upper limit on wall clock time that can be requested (e.g. on a supercomputer) and it is not certain if the run will be completed within that time.
 
+\begin{mdframed}
+
 \noindent{\bf Example:} {\tt WALLCLOCK\_STOP 9.5 h}
+
+\end{mdframed}
 
 %========================================================================
 
@@ -4652,9 +4894,13 @@ END
 %========================================================================
 %========================================================================
 \newpage
+
+
 \section{Example Input Files}
 
 \subsection{Richards Equation}
+
+\begin{mdframed}
 
 \footnotesize
 \begin{verbatim}
@@ -4965,9 +5211,13 @@ END
 
 \end{verbatim}
 
+\end{mdframed}
+
 \normalsize
 
 \subsection{Carbon Sequestration Problem with Reaction with Calcite}
+
+\begin{mdframed}
 
 \footnotesize
 \begin{verbatim}
@@ -5195,6 +5445,8 @@ STRATA
 END
 
 \end{verbatim}
+
+\end{mdframed}
 
 \normalsize
 

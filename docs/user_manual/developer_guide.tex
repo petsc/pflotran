@@ -1,0 +1,1628 @@
+\documentclass[12pt]{article}
+\usepackage{times}
+%\usepackage{palatino}
+%\usepackage{fourier}  % Looks nice but isn't present in many LaTeX distros.
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsbsy,amssymb}
+%\usepackage{deflist}
+%\usepackage{fancyheadings}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{verbatim}
+\usepackage{moreverb}
+\usepackage{float}
+\usepackage{fancybox}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{subfigure}
+%\usepackage{ssss}
+\usepackage{fancybox}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{color}
+\usepackage[table]{xcolor}
+%\usepackage{toc_entr}
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
+
+\definecolor{lightgray}{gray}{0.9}
+\definecolor{lightblue}{rgb}{0.93,0.95,1.0}
+
+
+\textwidth 6.5in
+\textheight 9.5in
+\topmargin -1.0in
+%\topmargin -3.280cm
+\newlength{\boxwidth}
+\setlength{\boxwidth}{5.8in}
+\oddsidemargin 0.in
+\evensidemargin 0.in
+\headheight 0.25in
+\lhead{\sl PFLOTRAN Developer Guide}
+\chead{\sl DRAFT}
+\chead{\S\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
+%\rhead{DRAFT \qquad \qquad \ \today}
+\rhead{\today}
+%\rfoot{\today--[\thepage]}
+\rfoot{}
+\cfoot{\rm < \thepage\ >}
+%\cfoot{}
+%\footrulewidth 0.4pt
+\newcommand\keyend{{(END \, / \, .)}}
+\newcommand\return{{\hfill$\hookrightarrow$}}
+\newcommand\returnb{{\hfill$\nearrow$}}
+%\newcommand\return{{\hfill\bf RETURN}}
+
+\newcommand{\negsp}{\vspace{-4mm}}
+\newcommand\secsp{\vspace{-3 mm}}
+\newcommand\secspb{\vspace{-2 mm}}
+\newcommand\subsecsp{\vspace{-0.0 mm}}
+\newcommand\pflotran{{\bf\sl PFLOTRAN}}
+\newcommand\pflow{{\bf\sl PFLOW}}
+\newcommand\ptran{{\bf\sl PTRAN}}
+\renewcommand{\baselinestretch}{1.01}
+%\setlength{\baselineskip}{13pt}
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\BS#1\ES{\begin{split}#1\end{split}}
+%\newcommand{\EQ}{\begin{equation}}
+%\newcommand{\EN}{\end{equation}}
+\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\degc}{$^\circ$C}
+\newcommand{\eq}{\ =\ }
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\eqr}{{\rm le}}
+\newcommand{\equ}{{\rm eq}}
+\newcommand{\kin}{{\rm kin}}
+\newcommand{\rdx}{{\rm rdx}}
+\newcommand{\ind}{{\rm id}}
+\newcommand{\dep}{{\rm dp}}
+\newcommand{\e}{{\rm{e}}}
+\newcommand{\erf}{{\rm{erf}}}
+\newcommand{\erfc}{{\rm{erfc}}}
+\renewcommand{\sc}{{\rm sc}}
+\newcommand{\sign}{{\rm{sign}}}
+\newcommand{\p}{{\partial}}
+\newcommand{\im}{{\rm im}}
+\newcommand{\m}{{\rm m}}
+\newcommand{\A}{{\mathcal A}}
+\newcommand{\B}{{\mathcal B}}
+\newcommand{\C}{{\mathcal C}}
+\newcommand{\D}{{\mathcal D}}
+\newcommand{\E}{{\mathcal E}}
+\newcommand{\F}{{\mathcal F}}
+\newcommand{\G}{{\mathcal G}}
+\newcommand{\J}{{\mathcal J}}
+\newcommand{\jo}{{j_o}}
+\newcommand{\M}{{\mathcal M}}
+\newcommand{\N}{{\mathcal N}}
+\newcommand{\mO}{{\mathcal O}}
+\renewcommand{\P}{{{\mathcal P}}}
+\newcommand{\Q}{{\mathcal Q}}
+\newcommand{\R}{{{\mathcal R}}}
+\newcommand{\mcS}{{\mathcal S}}
+\newcommand{\T}{{\mathcal T}}
+\newcommand{\W}{{\mathcal W}}
+\newcommand{\X}{{\mathcal X}}
+\newcommand{\Y}{{\mathcal Y}}
+\newcommand{\Z}{{\mathcal Z}}
+\newcommand{\rev}{{\rm rev}}
+\newcommand{\irr}{{\rm irr}}
+\renewcommand{\a}{{\alpha}}
+\newcommand{\abar}{{\bar \alpha}}
+\renewcommand{\b}{{\beta}}
+\renewcommand{\c}{{\rm CO_2}}
+\newcommand{\w}{{\rm H_2O}}
+\newcommand{\air}{{\rm N_2}}
+\newcommand{\pe}{{\rm Pe}}
+\newcommand{\da}{{\rm Da}}
+\renewcommand{\k}{{\dot R}^0}
+\renewcommand{\L}{\widehat{\mathcal L}}
+\renewcommand{\bar}{\overline}
+\newcommand{\dsty}{{\displaystyle}}
+\newcommand{\diff}{{\mathcal D}}
+\newcommand{\surf}{\equiv \!\!\!}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\bA}{\boldsymbol{A}}
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\bB}{\boldsymbol{B}}
+\newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bD}{\boldsymbol{D}}
+\newcommand{\bE}{\boldsymbol{E}}
+\newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bJ}{\boldsymbol{J}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bM}{\boldsymbol{M}}
+\newcommand{\bg}{\boldsymbol{g}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bzero}{\boldsymbol{0}}
+\newcommand{\arrows}{~\rightleftharpoons~}
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
+\newcommand{\CA}{C_{\rm A}}
+\newcommand{\CB}{C_{\rm B}}
+\newcommand{\CC}{C_{\rm C}}
+\newcommand{\CAB}{C_{\rm AB}}
+\newcommand{\CBC}{C_{\rm BC}}
+\newcommand{\RA}{\R_{\rm A}}
+\newcommand{\RB}{\R_{\rm B}}
+\newcommand{\RC}{\R_{\rm C}}
+\newcommand{\RAB}{\R_{\rm AB}}
+\newcommand{\RBC}{\R_{\rm BC}}
+%\newcommand{\kdsc}{K^{DS}}
+%\newcommand{\kdec}{K^{DE}}
+%\newcommand{\kdsm}{\overline K^{DS}}
+%\newcommand{\kdem}{\overline K^{DE}}
+\newcommand{\kdsc}{K^{sc}}
+\newcommand{\kdec}{K^{ec}}
+\newcommand{\kdsm}{K^{sm}}
+\newcommand{\kdem}{K^{em}}
+\newcommand{\csm}{S}
+\renewcommand{\csc}{S}
+\newcommand{\cem}{\E}
+\newcommand{\cec}{\E}
+\renewcommand{\min}{{\rm min}}
+\newcommand{\coll}{{\rm coll}}
+\newcommand{\ex}{{\rm ex}}
+\newcommand{\srf}{{\rm srf}}
+\def\dbar{{\mkern2mu\mathchar'26\mkern-11mu\mathrm{d}}}
+
+\newcounter{saveeqn}%
+\newcommand{\alpheqn}{\setcounter{saveeqn}{\value{equation}}%
+\stepcounter{saveeqn}\setcounter{equation}{0}%
+\renewcommand{\theequation}
+      {\mbox{\arabic{saveeqn}\alph{equation}}}}%
+\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
+\renewcommand{\theequation}{\arabic{equation}}}%
+
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+\renewcommand{\listfigurename}{{LIST OF FIGURES}}
+\renewcommand{\listtablename}{{LIST OF TABLES}}
+
+\renewcommand{\arraystretch}{1.3}
+
+\setlength{\parindent}{0.3125in}
+\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+
+\pagestyle{fancy}
+%\pagestyle{empty}
+
+\thispagestyle{empty}
+
+%\renewcommand{\theequation}{\arabic{equation}}
+%\renewcommand{\thetable}{{\protect\bf\arabic{table}}}
+%\renewcommand{\thefigure}{{\protect\bf\arabic{figure}}}
+%\renewcommand{\thepage}{\roman{page}}
+
+\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
+
+\setlongtables
+
+\begin{document}
+
+%begin title page
+\begin{comment}
+\noindent
+{\large\sffamily LA-UR-06-7048}
+
+\medskip
+
+\noindent
+\scriptsize
+{\em Approved for public release;}\\
+{\em distribution is unlimited.}
+\end{comment}
+
+\normalsize
+
+\bc
+\begin{tabular}{r|l}
+~ & ~\\
+%{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 1.0 (LA-CC 06-093)}\\
+{\em Title:} & {\sl PFLOTRAN Developer Guide: PFLOTRAN 2.0 (LA-CC-09-047)}\\
+~ & {\sl Multiphase-Multicomponent-Multiscale Massively Parallel} \\
+~ & {\sl Reactive Transport Code}\\
+~ & ~\\
+~ & ~\\
+{\em Author(s):} & Peter C. Lichtner (peter.lichtner@gmail.com)\\
+~  & Glenn Hammond (glenn.hammond@pnnl.gov)\\
+~ & ~\\
+~ & ~\\
+{\em Contacts:}  & Richard Mills (rmills@ornl.gov)\\
+~ & Chuan Lu (Chuan.Lu@inl.gov)\\
+%~ & %David Moulton (moulton@lanl.gov)\\
+%~ & Bobby Philip (bphilip@lanl.gov)\\
+~ & Satish Karra (satkarra@lanl.gov)\\
+~ & Jitendra Kumar (jitu1503@gmail.com)\\
+%~ & Barry Smith (bsmith@anl.gov)\\
+~ & \\%Albert Valocchi (clu@lanl.gov)\\
+~ & ~\\
+%{\em Submitted to:} & \\
+~ & ~\\
+{\em Date:} & \today \\
+~ & ~\\
+~ & ~\\
+~ & {\bf \large Work in Progress}\\
+~ & ~\\
+\end{tabular}
+\ec
+
+\vfill
+
+\begin{comment}
+\noindent
+{\Huge\sffamily Los Alamos}
+
+\vspace{-8pt}
+
+\noindent
+{\sffamily NATIONAL LABORATORY}
+
+\vspace{-6pt}
+
+\noindent
+\scriptsize
+Los Alamos National Laboratory, an affirmative action/equal opportunity employer, is operated by the Los Alamos National Security, LLC
+for the National Nuclear Security Administration of the U.S. Department of Energy under contract DE-AC52-06NA25396. By acceptance
+of this article, the publisher recognizes that the U.S. Government retains a nonexclusive, royalty-free license to publish or reproduce the
+published form of this contribution, or to allow others to do so, for U.S. Government purposes. Los Alamos National Laboratory requests
+that the publisher identify this article as work performed under the auspices of the U.S. Department of Energy. Los Alamos National
+Laboratory strongly supports academic freedom and a researcher�s right to publish; as an institution, however, the Laboratory does not
+endorse the viewpoint of a publication or guarantee its technical correctness.
+
+\hfill Form 836 (7/06)
+\end{comment}
+
+\normalsize
+
+\clearpage
+
+\tableofcontents
+%\clearpage
+
+%\listoffigures
+
+%\listoftables
+
+\clearpage
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Introduction}
+
+The Developer Guide provides an overview of the structure of PFLOTRAN and implementation of the various flow modes and reactive transport in PFLOTRAN.
+
+PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and laptops (Hammond et al., 2011). Parallelization is achieved through domain decomposition using the PETSc (Port\-a\-ble Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{PFLOTRAN Structure: Object Oriented Fortran 90}
+
+PFLOTRAN is written in object oriented Fortran 90 with 2003 extensions. 
+In order to facilitate code development and better preserve the extensibility and modularity of the code, an object-oriented coding paradigm is employed within PFLOTRAN. In comparison to traditional procedural paradigms, the object-oriented programming paradigm facilitates code modification and reuse. Within the context of PFLOTRAN, the utilization of this paradigm greatly accelerates the incorporation of new flow and transport modes through the extension of existing algorithms.  The compartmentalization of methods, processes and data enables the spawning of multi-realization simulations, each of which can be simultaneously run in parallel (i.e. each realization of the multi-realization simulation can be run in parallel utilizing multiple processor cores).
+An overview of the structure of PFLOTRAN is shown in Figure~\ref{fchart}.
+
+Flow diagram definitions:
+\begin{enumerate}
+\item {\bf Multi-Realization Simulation} object: Highest level data structure providing all information for running simulations composed of multiple realizations
+\item {\bf Simulation} object: Data structure providing all information for running a single simulation
+\item {\bf Timestepper} object: Pointer to Newton-Krylov solver and tolerances associated with time stepping
+\item {\bf Solver} object: Pointer to nonlinear Newton and linear Krylov solvers (PETSc) along with associated convergence criteria
+\item {\bf Realization} object: Pointer to all discretization and field variables associated with a single realization of a simulation
+\item {\bf Level} object: Pointer to discretization and field variables associated with a single level of grid refinement within a realization
+\item {\bf Patch} object: Pointer to discretization and field variables associated with a subset of grid cells within a level
+\item {\bf Auxiliary Data} object: Pointer to auxiliary data within a realization/patch
+\end{enumerate}
+
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.8\textwidth]{./figs/multi-realization_flowchart}
+
+\vspace{3mm}
+
+\caption{PFLOTRAN flow chart.}
+\label{fchart}
+\end{figure}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Finite Volume Discretization}
+
+\subsection{Structured Grids}
+
+\subsection{Unstructured Grids}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Method of Solution}
+
+The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, \ldots) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
+Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
+
+\subsection{Fully Implicit}
+
+In a fully implicit formulation the nonlinear equations for the residual function $\bR$ given by
+\EQ
+\bR(\bx) \eq \bzero,
+\EN
+are solved using an iterative solver based on the Newton-Raphson equations
+\EQ
+\bJ^{(i)} \delta\!\bx^{(i+1)} \eq -\bR^{(i)},
+\EN
+at the $i$th iteration. Iteration stops when
+\EQ
+\left|\bR^{(i+1)}\right| < \epsilon,
+\EN
+or if
+\EQ
+\big|\delta\!\bx^{(i+1)}\big| < \delta.
+\EN
+However, the latter criteria does not necessarily guarantee that the residual equations are satisfied.
+The solution is updated from the relation
+\EQ
+\bx^{(i+1)} \eq \bx^{(i)} + \delta\!\bx^{(i+1)}.
+\EN
+For the logarithm of the concentration with $\bx=\ln\by$,
+the solution is updated according to the equation
+\EQ
+\by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\!\ln\by^{(i+1)}}.
+\EN
+
+
+\subsection{Operator Splitting}
+
+Operator splitting involves splitting the reactive transport equations into a nonreactive part and a part incorporating reactions. This is accomplished by writing Eqns.\eqref{rteqn} as the two coupled equations
+\EQ
+\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \eq Q_j,
+\EN
+and
+\EQ
+\frac{d}{d t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) \eq - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
+\EN
+The first set of equations are linear in $\Psi_j$ (for species-independent diffusion coeffients) and solved over over a time step $\Delta t$ resulting in $\Psi_j^*$. The result for $\Psi_j^*$ is inverted to give the concentrations $C_j^*$ by solving the equations
+\EQ
+\Psi_j^* \eq C_j^* + \sum_i \nu_{ji} C_i^*,
+\EN
+where the secondary species concentrations $C_i^*$ are nonlinear functions of the primary species concentrations $C_j^*$. With this result the second set of equations are solved implicitly for $C_j$ at $t+\Delta t$ using $\Psi_j^*$ for the starting value at time $t$.
+
+\subsubsection{Constant $K_d$}
+
+As a simple example of operator splitting consider a single component system with retardation described by a constant $K_d$. According to this model the sorbed concentration $S$ is related to the aqueous concentration by the linear equation
+\EQ\label{skd}
+S \eq K_d C.
+\EN
+The governing equation is given by
+\EQ
+\frac{\p}{\p t} \varphi C + \bnabla\cdot\big(\bq C -\varphi D \bnabla C\big) \eq -\frac{\p S}{\p t}.
+\EN
+If $C(x,\,t;\, \bq,\,D)$ is the solution to the case with no retardation (i.e. $K_d=0$), then $C(x,\,t;\, \bq/R,\,D/R)$ is the solution with retardation $(K_d>0)$,
+with
+\EQ
+R = 1+\frac{1}{\varphi}K_d.
+\EN
+Thus propagation of a front is retarded by the retardation factor $R$.
+
+In operator splitting form this equation becomes
+\EQ
+\frac{\p}{\p t} \varphi C + \bnabla\cdot\big(\bq C -\varphi D \bnabla C\big) \eq 0,
+\EN
+and
+\EQ
+\frac{d}{d t} \varphi C \eq -\frac{d S}{d t}.
+\EN
+The solution to the latter equation is given by
+\EQ
+\varphi C^{t+\Delta t} - \varphi C^* \eq -\big(S^{t+\Delta t} - S^t\big),
+\EN
+where $C^*$ is the solution to the nonreactive transport equation. Using Eqn.\eqref{skd}, this result can be written as
+\EQ
+C^{t+\Delta t} \eq \frac{1}{R} C^* + \left(1-\frac{1}{R}\right) C^t.
+\EN
+Thus for $R=1$, $C^{t+\Delta t}=C^*$ and the solution advances unretarded. As $R\rightarrow\infty$, $C^{t+\Delta t} \rightarrow C^t$ and the front is fully retarded.
+
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Richards Equation}
+
+The {\tt RICHARDS} Mode as implemented in PFLOTRAN applies to single phase, variably saturated, isothermal systems. 
+
+\subsection{Governing Equations}
+
+The governing mass conservation equation for Richards equation is given by
+\EQ
+\frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
+\EN
+and
+\EQ
+\bq = -\frac{kk_r(s)}{\mu}\bnabla\left(P-W_w\rho g z\right).
+\EN
+Here, $\varphi$ denotes porosity [-], 
+$s$ saturation [m$^3$m$^{-3}$], 
+$\rho$ water density [kmol m$^{-3}$], 
+$\bq$ Darcy flux [m s$^{-1}$], 
+$k$ intrinsic permeability [m$^2$], 
+$k_r$ relative permeability [-], 
+$\mu$ viscosity [Pa s], 
+$P$ pressure [Pa], 
+$W_w$ formula weight of water [kg kmol$^{-1}$], 
+$g$ gravity [m s$^{-2}$], and 
+$z$ the vertical component of the position vector [m].  
+Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The source/sink term $Q_w$ [kmol m$^{-3}$ s$^{-1}$] has the form
+\EQ
+Q_w \eq \frac{q_M}{W_w} \delta(\br-\br_{ss}),
+\EN
+where $q_M$ denotes a mass rate in kg/m$^{3}$/s, and $\br_{ss}$ denotes the location of the source/sink.
+
+\subsubsection{Capillary Pressure Relations}
+
+Capillary pressure is related to saturation by various 
+phenomenological relations, one of which is the van Genuchten 
+(1980) relation 
+\EQ\label{seff}
+s_e \eq \left[1+\left( \frac{p_c}{p_c^0} \right)^n 
+\right]^{-m}, 
+\EN 
+where $p_c$ represents the capillary pressure [Pa], and the effective saturation $s_e$ is defined by 
+\EQ 
+s_e \eq \frac{s - s_r}{s_0 - s_r}, 
+\EN 
+where $s_r$ denotes the residual saturation, and $s_0$ denotes 
+the maximum saturation. 
+The inverse relation is given by
+\EQ
+p_c \eq p_c^0 \left(s_e^{-1/m}-1\right)^{1/n}.
+\EN
+The quantities $m$, $n$ and $p_c^0$ are impirical constants determined by fitting to experimental data.
+
+\paragraph{Brooks-Corey Saturation Function} 
+
+The Brooks-Corey saturation function is a limiting form of the van Genuchten relation for $p_c/p_c^0 \gg 1$, with the form
+\EQ
+s_e \eq \left(\frac{p_c}{p_c^0}\right)^{-\lambda},
+\EN
+with $\lambda=mn$ and inverse relation
+\EQ
+p_c \eq p_c^0 s_e^{-1/\lambda}.
+\EN
+
+\paragraph{Relative Permeability}
+
+Two forms of the relative permeability function are implemented based on the Mualem and Burdine formulations.
+The quantity $n$ is related to $m$ by 
+the expression 
+\EQ\label{lambda_mualem} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}, 
+\EN 
+for the Mualem formulation and by
+\EQ\label{lambda_burdine} 
+m \eq 1-\frac{2}{n}, \ \ \ \ \ n \eq \frac{2}{1-m}, 
+\EN 
+for the Burdine formulation.
+
+For the Mualem relative permeability function based on the van Genuchten saturation function is given by the expression 
+\EQ\label{krl_mualem} 
+k_{r} \eq \sqrt{s_e} \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \right\}^2. 
+\EN 
+%and for the gas phase by 
+%\EQ 
+%k_{rg} \eq 1 - k_{rl}. 
+%\EN 
+
+The Mualem relative permeability function based on the Brooks-Corey saturation function is defined by 
+\BA
+k_r &\eq \big(s_e\big)^{5/2+2/\lambda},\\
+&\eq \big(p_c/p_c^0\big)^{-(5\lambda/2+2)}.
+\EA
+
+For the Burdine relative permeability function based on the van Genuchten saturation function is given by the expression
+\EQ\label{krl_burdine} 
+k_{r} \eq s_e^2 \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \right\}. 
+\EN 
+The Burdine relative permeability function based on the Brooks-Corey saturation function has the form
+\BA
+k_r &\eq \big(s_e\big)^{2+3/\lambda},\\
+&\eq \left(\frac{p_c}{p_c^0}\right)^{-(2+3\lambda)}.
+\EA
+
+\begin{comment}
+\subsubsection{Linear} 
+ 
+The linear relation is defined by 
+\EQ\label{linear} 
+k_{rl} \eq s_*, \ \ \ k_{rg} \eq 1-k_{rl}, \ \ \ s_* \eq \frac{s_l 
+- s_l^r}{1-s_l^r}. 
+\EN 
+\end{comment}
+
+\subsubsection{Smoothing}
+
+At the end points of the saturation and relative permeability functions it is sometimes necessary to smooth the functions in order for the Newton-Raphson equations to converge. This is accomplished using a third order polynomial interpolation by matching the values of the function to be fit (capillary pressure or relative permeability), and imposing zero slope at the fully saturated end point and matching the derivative at a chosen variably saturated point that is close to fully saturated. The resulting equations for coefficients $a_i$, $i=0-3$, are given by
+\begin{subequations}
+\BA
+a_0 + a_1 x_1 + a_2 x_1^2 + a_3 x_1^3 &\eq f_1,\\
+a_0 + a_1 x_2 + a_2 x_2^2 + a_3 x_2^3 &\eq f_1,\\
+a_1 x_1 + a_2 x_1^2 + a_3 x_1^3 &\eq f_1',\\
+a_1 x_2 + a_2 x_2^2 + a_3 x_2^3 &\eq f_2',
+\EA
+\end{subequations}
+for chosen points $x_1$ and $x_2$. In matrix form these equations become
+\EQ
+\begin{bmatrix}
+1 & x_1 & x_1^2 & x_1^3\\
+1 & x_2 & x_2^2 & x_2^3\\
+0 & 1 & 2x_1 & 3x_1^2\\
+0 & 1 & 2x_2 & 3x_2^2
+\end{bmatrix}
+\begin{bmatrix}
+a_0\\
+a_1\\
+a_2\\
+a_3
+\end{bmatrix}
+\eq
+\begin{bmatrix}
+f_1\\
+f_2\\
+f_1'\\
+f_2'
+\end{bmatrix}.
+\EN
+The conditions imposed on the smoothing equations for capillary pressure $f=s_e(p_c)$ are 
+$x_1=2 p_c^0$, $x_2=p_c^0/2$, $f_1 = (s_e)_1$, $f_2 = 1$, $f_1' = (s_e')_1$, $f_2' = 0$.
+For relative permeability $f=k_r(s_e)$, $x_1 = 1$, $x_2 = 0.99$, $f_1 = 1$, $f_2 = (k_r)_2$, $f_1' = 0$, $f_2' = (k_r')_2$. 
+
+\begin{comment}
+\subsection{Kelvin's Equations for Vapor Pressure Lowering} 
+ 
+Vapor pressure lowering resulting from capillary suction is 
+described by Kelvin's equation 
+\EQ\label{vplwr} 
+P_v \eq P_{\rm sat}(T) \e^{-P_c/n_l RT}, 
+\EN 
+where $P_v$ represents the vapor pressure, $P_{\rm sat}$ the 
+saturation pressure of pure water, $T$ denotes the absolute 
+temperature and $R$ denotes the gas constant. Note that the density 
+of the liquid phase, $n_l$, is represented on a molar basis. 
+\end{comment}
+
+\subsection{Finite Volume Discretization}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Supercritical CO$_2$}
+
+The two-phase system involving supercritical CO$_2$ and brine is implemented in the MPHASE and FLASH modes. The MPHASE mode employes variable switching; whereas the FLASH mode is based on a persistent set of independent variables. Both modes provide for non-isothermal systems.
+
+\subsection{Governing Equations}
+
+
+Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
+\begin{subequations}
+\BA\label{mass_conservation_equation}
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\eta_\a^{} X_i^\a \bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\eta_\a^{} X_i^\a 
+ - \varphi s_\a^{} D_\a^{} \eta_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
+\EA
+for the $i$th component, and
+\BA\label{energy_equation}
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\eta_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a\eta_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
+\EA
+\end{subequations}
+for energy. 
+In these equations $\a$ designates a fluid phase ($\a=\textrm{H}_\textrm{2}$O, supercritical CO$_\textrm{2}$) at temperature $T$ and pressure $P_\a$ with the sums over all fluid phases present in the system, and source/sink terms $Q_i$ and $Q_e$ described in more detail below. 
+Species are designated by the subscript $i$ 
+($i\!=\!\textrm{H}_\textrm{2}\textrm{O}$, $\textrm{CO}_\textrm{2}$); 
+$\varphi$ denotes the porosity of the porous medium; 
+$s_\a$ denotes the phase saturation state; 
+$X_i^\a$ denotes the mole fraction of species $i$ ($\sum_i X_i^\alpha=1$); 
+$\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
+$\bq_\a$ denotes the Darcy flow rate for phase $\a$ defined by
+\EQ
+\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-\rho_\a g \bz\big),
+\EN
+where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The mass density $\rho_\a$ is related to the molar density by the expression
+\EQ
+\rho_\a = W_\a \eta_\a, 
+\EN
+where the formula weight $W_\a$ is a function of composition according to the relation
+\EQ
+W_\a \eq \frac{\rho_\a}{\eta_\a} \eq \sum_i W_i^{} X_i^\a.
+\EN
+The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat capacity, and thermal conductivity of the porous rock. 
+
+\subsubsection{Source/Sink Terms}
+
+The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat, respectively, for various well models. Several different well models are available. The simplest is a volume or mass rate injection/production well given by
+\begin{subequations}
+\BA
+Q_i &\eq \sum_n\sum_\a q_\a^V \eta_\a X_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a \frac{\eta_\a}{\rho_\a} q_\a^M X_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{n}),
+\EA
+\end{subequations}
+where $q_\a^V$, $q_\a^M$ refer to volume and mass rates with units m$^3$/s, kg/s, respectively, related by
+\EQ
+q_\a^M \eq \rho_\a q_\a^V.
+\EN
+The position vector $\br_{n}$ refers to the location of the $n$th source/sink.
+
+A less simplistic approach is to specify the bottom well pressure to regulate the flow rate in the well. In this approach the mass flow rate is determined from the expression
+\EQ
+q_\a^M \eq \Gamma \rho_\a \frac{k_\a}{\mu_\a} \big(p_\a-p_\a^{\rm bw}\big),
+\EN
+with bottom well pressure $p_\a^{\rm bw}$, and where $\Gamma$ denotes the well factor (production index) given by
+\EQ
+\Gamma \eq \frac{2\pi k \Delta z}{\ln\big(r_e/r_w\big) +  \sigma -1/2}.
+\EN
+In this expression $k$ denotes the permeability of the porous medium, $\Delta z$ refers to the layer thickness, $r_e$ denotes the grid block radius, $r_w$ denotes the well radius, and $\sigma$ refers to the skin thickness factor. For a rectangular grid block of area $A=\Delta x \Delta y$, $r_e$ can be obtained from the relation
+\EQ
+r_e \eq \sqrt{A/\pi}.
+\EN
+See Peaceman (1977) and Coats and Ramesh (1982) for more details.
+
+\subsubsection{Variable Switching}
+
+In PFLOTRAN a variable switching approach is used to account for phase changes enforcing local equilibrium. According to the Gibbs phase rule there are a total of $N_C\!+\!1$ degrees of freedom where $N_C$ denotes the number of independent components. This can be seen by noting that the
+intensive
+degrees of freedom are equal to $N_{\rm int}\!=\!N_C \!-\! N_P \!+\!2$, where $N_P$ denotes the number of phases. The 
+extensive
+degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number of degrees of freedom $N_{\rm dof}\!=\!N_{\rm int}\!+\!N_{\rm ext}\!=\!N_C\!+\!1$, independent of the number of phases $N_P$ in the system.
+Primary variables for liquid, gas and two-phase systems are listed in Table~\ref{tvar}.
+The conditions for phase changes to occur are considered in detail below.
+
+\begin{table}\centering
+\caption{Choice of primary variables.}\label{tvar}
+
+\vspace{3mm}
+
+\begin{tabular}{lccc}
+\toprule
+State & $X_1$ & $X_2$ & $X_3$\\
+\midrule
+liquid & $p_l$ & $T$ & $X_\c^l$\\
+gas & $p_g$ & $T$ & $X_\c^g$\\
+two-phase & $p_g$ & $T$ & $s_g$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{description}
+\item[Gas: $(p_g,\,T,\,X_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$] ~
+
+\noindent
+
+\EQ
+X_\c^g \leq 1-\dfrac{P_{\rm sat}(T)}{p_g}, \ \text{or equivalently:} \ X_\w^g \geq \dfrac{P_{\rm sat}(T)}{p_g},
+\EN
+
+\item[Liquid: $(p_l,\,T,\,X_\c^l)$ $\rightarrow$ Two-phase: $(p_g,\,T,\,s_g^{})$] ~
+
+\EQ
+X_\c^l \geq x_\c^{eq},
+\EN
+
+\item[Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$ Liquid $(p_l,\,T,\,X_\c^l)$] ~
+
+\EQ
+s_g \leq 0,
+\EN
+
+\item[Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$  Gas $(p_g,\,T,\,X_\c^g)$] ~
+
+\EQ
+s_g \geq 1.
+\EN
+\end{description}
+
+The equilibrium mole fraction $x_\c^{eq}$ is given by
+\EQ
+x_\c^{eq} \eq \frac{m_\c}{W_\w^{-1} + m_\c +  \sum_{l\ne \w,\,\c} m_l},
+\EN
+where the molality at equilibrium is given by
+\EQ
+m_\c^{eq} \eq \left(1-\dfrac{P_{\rm sat}(T)}{P}\right)\frac{\phi_\c P}{K_\c \gamma_\c},
+\EN
+where it is assumed that 
+\EQ
+y_\c^{} \eq 1-\dfrac{P_{\rm sat}(T)}{P}.
+\EN
+
+Equilibrium in a two-phase $\w$-$\c$ system is defined as the equality of chemical potentials between the two phases as expressed by the relation
+\EQ
+f_\c^{} \eq y_\c^{}\phi_\c^{} P_g^{} \eq K_\c^{} \big(\gamma_\c^{} m_\c^{}\big),
+\EN
+where
+\EQ
+y_\c^{} \eq X_\c^g, \ \ \ \ x_\c^{} \eq X_\c^l,
+\EN
+\EQ
+X_\w^g \eq \frac{P_{\rm sat}(T)}{P_g},
+\EN
+\EQ
+y_\c^{} \eq 1-X_\w^g \eq 1-\frac{P_{\rm sat}(T)}{P_g},
+\EN
+From these equations a Henry coefficient-like relation can be written as
+\EQ
+y_\c^{} \eq \widetilde K_\c^{} x_\c^{},
+\EN
+where
+\EQ
+\widetilde K_\c^{} \eq\frac{\gamma_\c^{} K_\c^{}}{\phi_\c^{} P_g}\frac{m_\c}{x_\c}.
+\EN
+
+A phase change to single liquid or gas phase occurs if $s_g \leq 0$ or $s_g\geq 1$, respectively.
+
+Conversion relations between mole fraction $(x_i)$, mass fraction $(w_i)$ and molality $(m_i)$ are as follows:
+
+\noindent
+Molality--mole fraction:
+\EQ
+m_i \eq \frac{n_i}{M_\w} \eq \frac{n_i}{W_\w n_\w} \eq \frac{x_i}{W_\w x_\w} \eq \frac{x_i}{W_\w \big(1-\sum_{l\ne\w} x_l\big)}
+\EN
+Mole fraction--molality:
+\EQ
+x_i \eq \frac{n_i}{N} \eq \frac{n_i}{M_\w}\frac{M_\w}{N} \eq \frac{m_i}{\sum m_l} \eq \frac{W_\w m_i}{1+W_\w\sum_{l\ne\w} m_l}
+\EN
+Mole fraction--mass fraction:
+\EQ
+x_i \eq \frac{n_i}{N} \eq \frac{W_i^{-1} W_i n_i}{\sum W_l^{-1} W_l n_l} \eq \frac{W_i^{-1} w_i}{\sum W_l^{-1} w_l}
+\EN
+Mass fraction--mole fraction:
+\EQ
+w_i \eq \frac{M_i}{M} \eq \frac{W_i n_i}{\sum W_l n_l} \eq \frac{W_i x_i}{\sum W_l x_l}
+\EN
+
+\subsection{Finite Volume Discretization}
+
+\subsection{EOS}
+
+\begin{comment}
+\subsubsection{Supercritical CO$_2$}
+
+Span-Wagner EOS for supercritical CO$_2$
+
+Range of application
+
+Units
+
+Lookup Table Generation
+
+\subsubsection{Solubility of CO$_2$ in Brine}
+
+Duan-Sun (2003)
+
+\subsubsection{Mixture Density for CO$_2$-Brine}
+
+Duan et al. (2008)
+
+\subsection{Independent and Dependent Variables}
+
+\subsection{Variable Switching}
+
+subroutine MphaseVarSwitchPatch
+
+current independent variables stored in Vec xx: xx\_p pointer to xx
+
+  call GridVecGetArrayF90(grid,xx, xx\_p, ierr)
+
+dof\_offset=(local\_id-1)* option\%nflowdof
+
+    P = xx\_p(dof\_offset+1)
+    T = xx\_p(dof\_offset+2)
+
+
+
+liquid: xmol(2) = xx\_p(dof\_offset+3)
+sat(1) = 1.D0; sat(2) = 0.D0
+
+gas: xmol(4) = xx\_p(dof\_offset+3)
+sat(1) = 0.d0; sat(2) = 1.D0
+
+2ph: sg = xx\_p(dof\_offset+3)
+xmol(3) = yh2o\_in\_co2; xmol(4) = 1.D0-xmol(3)
+
+store molar density locally:
+    den(1:option%nphase) = patch%aux\%Mphase\%aux\_vars(ghosted\_id)\%aux\_var\_elem(0)\%den(1:option\%nphase)
+
+    iipha=iphase\_loc\_p(ghosted\_id)
+
+xmol(1): $X_w^l$
+xmol(2): $X_c^l$
+xmol(3): $X_w^g$
+xmol(4): $X_c^g$
+
+pure CO$_2$ properties:
+dg
+fg
+hg
+eng
+xphi
+
+water saturation pressure Psat(T)
+
+CO2 solubility in NaCl brine: Henry\_duan\_sun: mco2
+
+Check for phase change:
+
+liquid -> 2ph
+
+xmol(2) >= xco2eq
+xx\_p(dof\_offset+3) = sg\_guess
+
+gas -> 2ph
+
+xmol(4) <= 1-Psat(T)/Pg (xmol(3) >= Psat(T)/Pg)
+xx\_p(dof\_offset+3) = sg\_guess
+
+2ph -> liquid
+
+sg <= 0
+
+2ph -> gas
+
+sg >= 1
+
+\end{comment}
+
+\subsection{FLASH Method}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{TH}
+
+{\tt TH} Mode applies to single phase, variably saturated, nonisothermal systems
+with incorporation of density variations coupled to fluid flow. The TH equations may be coupled to the reactive transport mode (see section \ref{sec:chem}).
+The governing equations for mass and energy are given by
+\EQ\label{masseqn}
+\frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
+\EN
+and
+\EQ
+\frac{\p}{\p t}\left(\varphi s\rho U + (1-\varphi) c_p T\right) + \bnabla\cdot\left(\rho\bq H -\kappa \bnabla T\right) = Q_e,
+\EN
+with the Darcy flow velocity $\bq$ given by
+\EQ
+\bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
+\EN
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantity $\kappa$ denotes the thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
+\EQ
+U \eq H -\frac{P}{\rho}.
+\EN
+Nonreactive solute transport equations representing e.g. NaCl have the form
+\EQ
+\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\Big(\bq \rho x_i -\varphi D \rho\bnabla x_i\Big) \eq Q_i,
+\EN
+with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.\eqref{masseqn} with
+\EQ
+Q_w \eq \sum_i Q_i.
+\EN
+Additional constitutive relations are needed to close the set of governing equations.
+ 
+%\subsubsection{Thermal Conductivity} 
+ 
+Thermal conductivity is determined from the equation (Somerton et al., 1974)  
+\EQ\label{cond1} 
+\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+\EN 
+where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
+
+
+\subsection{Finite Volume Discretization}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{THC: Air-Water System (under development)}
+
+\subsection{Governing Equations}
+
+
+The {\tt Air-Water} mode involves two phase liquid water-gas flow coupled to the reactive transport mode. Mass conservation equations have the form
+\EQ
+\frac{\p}{\p t} \varphi \Big(s_l^{} \rho_l^{} x_i^l + s_g^{} \rho_g^{} x_i^g \Big) + \bnabla\cdot\Big(\bq_l^{} \rho_l^{} x_i^l + \bq_g \rho_g^{} x_i^g -\varphi s_l^{} D_l^{} \rho_l^{} \bnabla x_i^l -\varphi s_g^{} D_g^{} \rho_g^{} \bnabla x_i^g \Big) \eq Q_i^{},
+\EN
+for liquid and gas saturation $s_{l,\,g}^{}$, density $\rho_{l,\,g}^{}$, diffusivity $D_{l,\,g}^{}$, Darcy velocity $\bq_{l,\,g}^{}$ and mole fraction $x_i^{l,\,g}$.
+The energy conservation equation can be written in the form
+\EQ
+\sum_{\a=l,\,g}\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \Big((1-\varphi)\rho_r C_p T \big) - \bnabla\cdot (\kappa\bnabla T)\Big) \eq Q,
+\EN
+as the sum of contributions from liquid and gas fluid phases and rock,
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, rock heat capacity $C_p$ and thermal conductivity $\kappa$. Note that
+\EQ
+U_\a \eq H_\a -\frac{P_\a}{\rho_\a}.
+\EN
+
+ 
+Thermal conductivity $\kappa$ is determined from the equation (Somerton et 
+al., 1974)  
+\EQ\label{cond} 
+\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+\EN 
+where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
+
+
+\subsection{Finite Volume Discretization}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{THMC}
+
+\subsection{Governing Equations}
+
+\subsection{Finite Volume Discretization}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Reactive Transport}
+\label{sec:chem}
+
+\subsection{Governing Equations}
+
+
+The governing mass conservation equations for the geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
+\EQ\label{rteqn}
+\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\nabla\cdot\sum_\a\bOmega_j^\a 
+\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
+\EN
+and
+\EQ
+\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\EN
+for minerals with molar volume $\overline V_m$, mineral reaction rate $I_m$ and mineral volume fraction $\varphi_m$ referenced to an REV. 
+Sums over $\a$ in Eqn.\eqref{rteqn} are over all fluid phases in the system. The quantity $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
+\EQ
+\Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a.
+\EN
+In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen. The secondary species concentrations $C_i^\a$ are obtained from mass action equations corresponding to equilibrium conditions of the reactions
+\EQ
+\sum_j\nu_{ji}^\a\A_j^l \arrows \A_i^\a,
+\EN
+yielding
+\EQ
+C_i^\a \eq \frac{K_i^\a}{\gamma_i^\a} \prod_j \Big(\gamma_j^l C_j^l\Big)^{\nu_{ji}^\a},
+\EN
+with equilibrium constant $K_i^\a$, and activity coefficients $\gamma_k^\a$.
+The total flux $\bOmega_j^\a$ for species-independent diffusion is given by
+\EQ
+\bOmega_j^\a \eq \big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a.
+\EN
+The diffusion/dispersion coefficient $\bD_\a$ may be different for different phases, e.g. an aqueous electrolyte solution or gas phase, but is assumed to be species independent. Dispersivity currently must be described through a diagonal dispersion tensor. The Darcy velocity $\bq_\a$ for phase $\a$ is given by
+\EQ
+\bq_a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(p_\a -\rho_\a g z\big),
+\EN
+with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$. The diffusivity/dispersivity tensor $\bD_\a$ is the sum of contributions from molecular diffusion and dispersion which for an isotropic medium has the form
+\EQ
+\bD_\a \eq %\varphi s 
+%\Big(
+\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v},
+%\Big),
+\EN
+with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. Currently, only longitudinal dispersion is implemented in PFLOTRAN.
+
+The porosity may be calculated from the mineral volume fractions according to the relation
+\EQ
+\varphi \eq 1 - \sum_m \varphi_m. 
+\EN
+
+The temperature dependence of the diffusion coefficient is defined through the relation
+\EQ
+D_m(T) \eq D_m^\circ\exp\left[\frac{A_D}{R}\left(\frac{1}{T_0}-\frac{1}{T}\right)\right],
+\EN
+with diffusion activation energy $A_D$ in kJ/mol. The quantity $D_m^\circ$ denotes the diffusion coefficient at the reference temperature $T_0$ taken as 25\degc\ and the quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K).
+The temperature $T$ is in Kelvin.
+
+The quantity $Q_j$ denotes a source/sink term 
+\EQ
+Q_j \eq \sum_n\frac{q_M}{\rho}\Psi_j \delta(\br-\br_{n}),
+\EN
+where $q_M$ denotes a mass rate in units of kg/s, $\rho$ denotes the fluid density in kg/m$^3$, and $\br_{n}$ refers to the location of the $n$th source/sink. The quantity $S_j$ represents the sorbed concentration of the $j$th primary species considered in more detail in the next section.
+
+Molality $m_i$ and molarity $C_i$ are related by the density of water $\rho_w$
+\EQ
+C_i \eq \rho_w m_i,
+\EN
+The activity of water is calculated from the approximate relation
+\EQ
+a_{\rm H_2O}^{} \eq 1 - 0.017 \sum_i m_i.
+\EN
+
+\subsubsection{Mineral Precipitation and Dissolution}
+
+The reaction rate $I_m$ is based on transition state theory with the form
+\EQ\label{Im}
+I_m \eq -a_m\left(\sum_l k_{ml}(T) \P_{ml}\right) \Big(1-K_m Q_m\Big),
+\EN
+where the sum over $l$ represents contributions from parallel reaction mechanisms such as pH dependence etc., and where $K_m$ denotes the equilibrium constant, $a_m$ refers to the specific mineral surface area, and the ion activity product $Q_m$ is defined as
+\EQ
+Q_m \eq \prod_j \big(\gamma_j m_j\big)^{\nu_{jm}},
+\EN
+with molality $m_j$. The rate constant $k_{ml}$ is a function of temperature given by the Arrhenius relation
+\EQ
+k_{ml} (T) \eq k_{ml}^0 \exp\left[\frac{E_{ml}}{R}\Big(\frac{1}{T_0}-\frac{1}{T}\Big)\right],
+\EN
+where $k_{ml}^0$ refers to the rate constant at the reference temperature $T_0$ taken as 25\degc, with $T$ in units of Kelvin, $E_{ml}$ denotes the activation energy (kJ/mol),
+and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction with the form
+\EQ\label{prefactor}
+\P_{ml} \eq \prod_i\dfrac{\big(\gamma_i m_i\big)^{\a_{il}^m}}{1+K_{ml}\big(\gamma_i m_i\big)^{\b_{il}^m} },
+\EN
+where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
+The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
+
+Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
+\EQ\label{porosity}
+\varphi \eq 1-\sum_m\varphi_m,
+\EN
+\EQ\label{permeability}
+k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
+\EN
+\EQ\label{tortuosity}
+\tau \eq \tau_0 \left(\frac{\varphi}{\varphi_0}\right)^b,
+\EN
+and
+\EQ\label{surface_area_vf}
+a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'},
+\EN
+where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$.
+
+In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{porosity} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
+\begin{subequations}
+\BA
+\varphi_m &\eq (1-\varphi) \frac{x_m \overline V_m}{\sum_{m'} x_{m'} \overline V_{m'}},\\
+&\eq (1-\varphi) \frac{y_m^{} \rho_m^{-1}}{\sum_{m'} y_{m'}^{} \rho_{m'}^{-1}},
+\EA
+\end{subequations}
+where
+\EQ
+\rho_m^{} \eq W_m^{} \overline V_m^{-1}.
+\EN
+In these relations $W_m$ refers to the formula weight and $\overline V_m$ the molar volume of the $m$th mineral. The solid molar density $\eta_s$ is given by
+\EQ
+\eta_s \eq \frac{1}{\sum_m x_m \overline V_m},
+\EN
+which is related to the mass density $\rho_s$ by
+\EQ
+\rho_s \eq W \eta_s,
+\EN
+with the mean molecular weight $W$ equal to
+\EQ
+W \eq \sum_m x_m W_m \eq \frac{1}{\sum_m W_m^{-1} y_m^{}}.
+\EN
+Mass and mole fractions are related by the expression
+\EQ
+W_m x_m \eq W y_m.
+\EN
+
+\subsubsection{Sorption}
+
+Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surface complexation reactions for both equilibrium and multirate formulations.
+
+\paragraph{Ion Exchange}
+
+Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
+\EQ
+\omega_\a \eq \frac{N_{\rm site}}{V} \eq \frac{N_{\rm site}}{M_s} \frac{M_s}{V_s} \frac{V_s}{V} \eq Q_\a \rho_s (1-\phi).
+\EN
+The cation exchange capacity associated with the $m$th mineral is defined on a molar basis as
+\EQ
+\omega_m^{\rm CEC} \eq \frac{N_m}{V} \eq \frac{N_m}{M_m} \frac{M_m}{V_m} \frac{V_m}{V} \eq Q_m^{\rm CEC} \rho_m \phi_m.
+\EN
+
+In PFLOTRAN ion exchange reactions are expressed in the form
+\EQ\label{ex1}
+z_i \A_j + z_j X_{z_i}^\a\A_i \arrows z_j \A_i + z_i X_{z_j}^\a\A_j,
+\EN
+with valencies $z_j$, $z_i$ of cations $\A_j$ and $\A_i$, respectively. The reference cation is denoted by $\A_j$ and $\A_i, \,i\!\ne\! j$ represents all other cations. 
+The corresponding mass action equation is given by
+\EQ\label{ionexmassact}
+K_{ji}^\a \eq \frac{(k_j^\a)^{z_i}}{(k_i^\a)^{z_j}} \eq \left(\frac{X_j^\a}{a_j}\right)^{z_i} \left(\frac{a_i}{X_i^\a}\right)^{z_j}.
+\EN
+Using the Gaines-Thomas convention, the equivalent fractions $X_k^\a$ are defined by
+\EQ
+X_k^\a = \frac{z_k S_k^\a}{\displaystyle\sum_l z_l S_l^\a} = \frac{z_k}{\omega_\a}S_k^\a,
+\EN
+with 
+\EQ
+\sum_k X_k^\a = 1.
+\EN
+The site concentration $\omega_\a$ is defined by
+\EQ
+\omega_\a = \sum_k z_k S_k^\a,
+\EN
+where $\omega_\a$ is related to the cation exchange capacity $Q_\a$ (CEC) by the expression
+\EQ
+\omega_\a = (1-\varphi) \rho_s \, Q_\a,
+\EN
+with solid density $\rho_s$ and porosity $\varphi$. 
+
+An alternative form of reactions \ref{ex1} often found in the literature is
+\EQ\label{rxn2}
+\frac{1}{z_j} \A_j + \frac{1}{z_i} X_{z_i}^\a\A_i \arrows \frac{1}{z_i} \A_i + \frac{1}{z_j} X_{z_j}^\a\A_j,
+\EN
+obtained by dividing reaction \ref{ex1} through by the product $z_i z_j$.  In addition the reaction may be written in reverse order.
+The mass action equations corresponding to reactions \ref{rxn2} have the form
+\EQ
+{K'}_{ji}^\a \eq \frac{({k'}_j^\a)^{1/z_j}}{({k'}_i^\a)^{1/z_i}} \eq \left(\frac{X_j^\a}{a_j}\right)^{1/z_j} \left(\frac{a_i}{X_i^\a}\right)^{1/z_i}.
+\EN
+The selectivity coefficients corresponding to the two forms are related by the expression
+\EQ
+K_{ji}^\a \eq \left({K'}_{ji}^\a\right)^{z_i z_j},
+\EN
+and similarly for $k_i^\a$, $k_j^\a$. When comparing with other formulations it is important that the user determine which form of the ion exchange reactions are being used and make the appropriate transformations.
+
+For equivalent exchange $(z_j\!=\!z_i\!=\!z)$, an explicit expression exists for the sorbed concentrations given by
+\EQ
+S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j^\a \gamma_j m_j^{}}{\displaystyle\sum_l k_l^\a \gamma_l m_l^{}},
+\EN
+where $m_k$ denotes the $k$th cation molality. This expression follows directly from the mass action equations and conservation of exchange sites.
+
+In the more general case $(z_i\ne z_j)$ it is necessary to solve the nonlinear equation
+\EQ
+X_j^\a + \sum_{i\ne j} X_i^\a \eq 1,
+\EN
+for the reference cation mole fraction $X_j$. 
+From the mass action equation Eqn.\eqref{ionexmassact}
+it follows that
+\EQ
+X_i^\a\eq k_i^\a a_i\left(\frac{X_j^\a}{k_j^\a a_j}\right)^{z_i/z_j}.
+\EN
+Defining the function
+\EQ
+f(X_j^\a) \eq X_j^\a + \sum_{i\ne j}X_i^\a(X_j^\a)-1,
+\EN
+its derivative is given by
+\EQ
+\frac{df}{dX_j^\a} \eq 1 - \frac{1}{z_jX_j^\a}\sum_{i\ne j} z_i k_i^\a a_i \left(\frac{X_j^\a}{k_j^\a a_j}\right)^{z_i/z_j}.
+\EN
+The reference mole fraction is then obtained by Newton-Raphson iteration
+\EQ
+(X_j^\a)^{k+1} \eq (X_j^\a)^k -\dfrac{f[(X_j^\a)^k]}{\dfrac{df[(X_j^\a)^k]}{dX_j^\a}}.
+\EN
+
+The sorbed concentration for the $j$th cation appearing in the accumulation term is given by
+\EQ
+S_j^\a \eq \frac{\omega_\a}{z_j} X_j^\a,
+\EN
+with the derivatives for $j\ne l$
+\begin{subequations}
+\BA
+\dfrac{\p S_j^\a}{\p m_l} &\eq -\frac{\omega_\a}{m_l} \dfrac{X_j^\a X_l^\a}{\displaystyle\sum_l z_l X_l^\a},\\
+&\eq -\frac{1}{m_l} \dfrac{z_jz_lS_j^\a S_l^\a}{\displaystyle\sum_l z_l^2 S_l^\a},
+\EA
+\end{subequations}
+and for $j=l$
+\begin{subequations}
+\BA
+\dfrac{\p S_j^\a}{\p m_j} &\eq \frac{\omega_\a X_j^\a}{z_j m_j} \left(1-\dfrac{z_j X_j^\a}{\displaystyle\sum_{l} z_{l} X_{l}^\a}\right),\\
+&\eq \frac{S_j^\a}{m_j} \left(1-\dfrac{z_j^2 S_j^\a}{\displaystyle\sum_{l} z_{l}^2 S_{l}^\a}\right).
+\EA
+\end{subequations}
+
+\paragraph{Surface Complexation}
+
+Surface complexation reactions are assumed to have the form
+\EQ\label{srfrxn}
+\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \mcS_{i\a},
+\EN
+for the $i$th surface complex $>\!\!\mcS_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$.
+As follows from the corresponding mass action equation the equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
+\EQ
+S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
+\EN
+and the empty site concentration by
+\EQ
+S_\a^{\rm eq}\eq\frac{\omega_\a}{1+\sum_l K_lQ_l},
+\EN
+where the ion activity product $Q_i$ is defined by
+\EQ
+Q_i\eq\prod_j\big(\gamma_jC_j\big)^{\nu_{ji}}.
+\EN
+The site concentration $\omega_\a$ satisfies the relation
+\EQ\label{totsite}
+\omega_\a \eq S_\a + \sum_i S_{i\a},
+\EN
+and is constant.
+The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
+\EQ\label{qeq}
+S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
+\EN
+
+\paragraph{Multirate Sorption}
+
+In the multirate model the rates of sorption reactions are described through a kinetic relation given by
+\EQ\label{sorbed}
+\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
+\EN
+for surface complexes, and
+\BA\label{fsite}
+\frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
+&\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
+\EA
+for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration. For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. 
+With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\wp(\a)$, such that
+\EQ
+\int_0^\infty \wp(k_\a)dk_\a \eq 1.
+\EN
+The fraction of sites $f_\a$ belonging to site $\a$ is determined from the relation
+\EQ
+f_\a \eq \int_{k_\a-\Delta k_\a/2}^{k_\a+\Delta k_\a/2} \wp(k_\a)dk_\a \simeq \wp(k_\a)\Delta k_\a,
+\EN
+with the property that
+\EQ
+\sum_\a f_\a =1.
+\EN
+Given that the total site concentration is $\omega$, then the site concentration $\omega_\a$ associated with site $\a$ is equal to
+\EQ
+\omega_\a \eq f_\a \omega.
+\EN
+
+An alternative form of these equations is obtained by introducing the total sorbed concentration for the $j$th primary species for each site defined as
+\EQ
+S_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
+\EN
+Then the transport equations become
+\EQ\label{totj}
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}S_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
+\EN
+The total sorbed concentrations are obtained from the equations
+\EQ\label{sja}
+\frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
+\EN
+
+\subsubsection{Sorption Isotherm}
+
+A sorption isotherm $S_j$ may be specified for any primary species $\A_j$. 
+The following transport equation is solved 
+\EQ
+\frac{\p}{\p t} \varphi s C_j + \bnabla\cdot\bF_j \eq -\frac{\p S_j}{\p t},
+\EN
+with $C_j \eq \rho_w m_j$ and $\rho_w$ refers to the density of pure water.
+Three distinct models are available for the sorption isotherm $S_j$:
+\begin{itemize}
+\item linear $K_D$ model
+\EQ\label{linkd}
+S_j \eq K_j^D \gamma_j m_j,
+\EN
+with activity coefficient $\gamma_j$ and molality $m_j$,
+\item Langmuir isotherm:
+\EQ\label{Langmuir}
+S_j \eq \frac{K_j^L b_j^L \gamma_j m_j}{(1+K_j^L \gamma_j m_j)},
+\EN
+with Langmuir coefficients $K_j^L$ and $b_j^L$, and
+\item Freundlich isotherm:
+\EQ\label{Freundlich}
+S_j \eq K_j^F \big(\gamma_j m_j\big)^{(1/n_j^F)},
+\EN
+with coefficients $K_j^F$ and $n_j^F$.
+\end{itemize}
+The linear $K_D$ model results in the retardation factor $\R_j$ given by
+\EQ
+\R_j \eq 1 + \frac{\gamma_j K_j^D}{\varphi s \rho_w}.
+\EN
+In terms of the retardation the transport equation becomes
+\EQ
+\frac{\p}{\p t} \big(\R_j\varphi s \rho_w m_j\big) + \bnabla\cdot\bF_j \eq 0.
+\EN
+
+\subsubsection{Colloid-Facilitated Transport}
+
+Colloid-facilitated transport is implemented into PFLOTRAN based on surface complexation reactions. Competition between mobile and immobile colloids and stationary mineral surfaces is taken into account. Colloid filtration processes are not currently implemented into PFLOTRAN. 
+A colloid is treated as a solid particle suspended in solution or attached to a mineral surface. Colloids may be generated through nucleation of minerals in solution, although this effect is not included currently in the code.
+
+Three separate reactions may take place involving competition between mobile and immobile colloids and mineral surfaces
+\BA
+>\!X_k^\m + \sum_j\nu_{jk}\A_j &\arrows >\!S_k^\m,\\
+>\!X_k^\im + \sum_j\nu_{jk}\A_j &\arrows >\!S_k^\im,\\
+>\!X_k^s + \sum_j\nu_{jk}\A_j &\arrows >\!S_k^s,
+\EA
+with corresponding reaction rates $I_k^\m$, $I_k^\im$, and $I_k^s$, where the superscripts $s$, $m$, and $im$ denote mineral surfaces, and mobile and immobile colloids, respectively. In addition, reaction with minerals $\M_s$ may occur according to the reaction
+\EQ
+\sum_j\nu_{js}\A_j \arrows \M_s.
+\EN
+The transport equations for primary species, mobile and immobile colloids, read
+\BA
+\frac{\p}{\p t} \varphi s_l \Psi_j^l + \bnabla\cdot\bOmega_j^l &\eq -\sum_k\nu_{jk}\big(I_k^\m + I_k^\im + \sum_s I_k^s\big) - \sum_s \nu_{js} I_s,\label{rateform}\\
+\frac{\p}{\p t} \varphi s_l S_k^\m + \bnabla\cdot\bq_c S_k^\m & \eq I_k^\m,\label{mobile}\\
+\frac{\p}{\p t} S_k^\im & \eq I_k^\im,\label{immobile}\\
+\frac{\p}{\p t} S_k^s & \eq I_k^s,\label{solid}
+\EA
+where $\bq_c$ denotes the colloid Darcy velocity which may be greater than the fluid velocity $\bq$.
+For conditions of local equilibrium the sorption reaction rates may be eliminated and replaced by algebraic sorption isotherms to yield
+\EQ\label{eqform}
+\frac{\p}{\p t}\Big[ \varphi s_l \Psi_j^l + \sum_k \nu_{jk} \big(\varphi s_l S_k^\m + S_k^\im + \sum_s S_k^s\big) \Big] + \bnabla\cdot\Big(\bOmega_j^l + \bq_c \sum_k \nu_{jk} S_k^\m\Big) \eq - \sum_s \nu_{js} I_s.
+\EN
+
+In the kinetic case either form of the primary species transport equations given by Eqn.\eqref{rateform} or \eqref{eqform} can be used provided it is coupled with the appropriate kinetic equations Eqns.\eqref{mobile}--\eqref{solid}. The mobile case leads to additional equations that must be solved simultaneously with the primary species equations. A typical expression for $I_k^m$ might be
+\EQ
+I_k^m \eq k_k\big(S_k^m - S_{km}^{\rm eq}\big),
+\EN
+with rate constant $k_k$ and where $S_{km}^{\rm eq}$ is a known function of the solute concentrations. In this case, Eqn.\eqref{mobile} must be added to the primary species transport equations. Further reduction of the transport equations for the case where a flux term is present in the kinetic equation is not possible in general for complex flux terms.
+
+
+\subsection{Thermodynamic Database}
+
+PFLOTRAN reads thermodynamic data from a database that may be customized by the user. Reactions included in the database consist of aqueous complexation, mineral precipitation and dissolution, gaseous reactions, and surface complexation. Ion exchange reactions and their selectivity coefficients are entered directly from the input file. 
+A standard database supplied with the code is referred to as {\tt hanford.dat} and is found in the {\tt ./database} directory in the PFLOTRAN mercurial repository. This database is an ascii text file that can be edited by any editor and is equivalent to the EQ3/6 database:
+\begin{verbatim}
+data0.com.V8.R6
+CII: GEMBOCHS.V2-EQ8-data0.com.V8.R6
+THERMODYNAMIC DATABASE
+generated by GEMBOCHS.V2-Jewel.src.R5 03-dec-1996 14:19:25
+\end{verbatim}
+The database provides equilibrium constants in the form of log $K$ values at a specified set of temperatures listed in the top line of the database. A least squares fit is used to interpolate the log $K$ values between the database temperatures using a Maier-Kelly expansion of the form
+\EQ\label{mk}
+\log K \eq c_{-1} \ln T + c_0 + c_1 T + \frac{c_2}{T} + \frac{c_3}{T^2},
+\EN
+with fit coefficients $c_i$. 
+The thermodynamic database stores all chemical reaction properties (equilibrium constant $\log K_r$, reaction stoichiometry $\nu_{ir}$, species valence $z_i$, Debye parameter $a_i$, mineral molar volume $\overline V_m$, and formula weight $w_i$) used in PFLOTRAN. The database is divided into 5 blocks as listed in Table~\ref{tdatabase}, consisting of
+database primary species, aqueous complex reactions, gaseous reactions, mineral reactions, and surface complexation reactions. 
+Each block is terminated by a line beginning with {\tt 'null'}. 
+The quantity $N_{\rm temp}$ refers to the number of temperatures at which log $K$ values are stored in the database.
+In the {\tt hanford.dat} database $N_{\rm temp}=8$ with equilibrium constants stored at the temperatures: 0, 25, 60, 100, 150, 200, 250, and 300\degc. The pressure is assumed to lie along the saturation curve of pure water for temperatures above 25\degc\ and is equal to 1 bar at lower temperatures.
+Reactions in the database are assumed to be written in the canonical form
+\EQ
+\A_r \arrows \sum_{i=1}^{\rm nspec} \nu_{ir}\A_i,
+\EN
+for species $\A_r$, where {\tt nspec} refers to the number of aqueous or gaseous species $\A_i$ on the right-hand side of the reaction. 
+Redox reactions in the standard database {\tt hanford.dat} are usually written in terms of O$_{2(g)}$.
+Complexation reactions involving redox sensitive species are written in such a manner as to preserve the redox state.
+
+
+\begin{table}[h]\centering
+\caption{Format of thermodynamic database.}\label{tdatabase}
+\vspace{3mm}
+%\footnotesize
+\begin{tabular}{ll}
+\hline
+Primary Species: & name, $a_0$, $z$, $w$\\
+Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $a_0$, $z$, $w$\\
+Gaseous Species: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $w$ \\
+Minerals: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $w$\\
+Surface Complexes: & $>$name, nspec, $\nu$, $>$site, 
+($\nu$(n), name($n$), $n$=1, nspec-1), \\
+&\hspace{3in} log$K$(1:$N_{\rm temp}$), $z$, $w$\\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Finite Volume Discretization}
+
+\subsubsection{Multirate Sorption}
+
+The residual function incorporating the multirate sorption model can be further simplified by solving analytically the finite difference form of kinetic sorption equations. This is possible when these equations are linear in the sorbed concentration $S_{j\a}$ and because they do not contain a flux term. Thus discretizing Eqn.\eqref{sja} in time using the fully implicit backward Euler method gives
+\EQ
+\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq k_\a \big(f_\a S_{j\a}^{\rm eq} - S_{j\a}^{t+\Delta t}\big).
+\EN
+Solving for $S_{j\a}^{t+\Delta t}$ yields
+\EQ\label{sjadt}
+S_{j\a}^{t+\Delta t} \eq \frac{S_{j\a}^t + k_\a \Delta t f_\a S_j^{\rm eq}}{1+k_\a\Delta t}.
+\EN
+From this expression the reaction rate can be calculated as
+\EQ
+\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq \frac{k_\a}{1+k_\a\Delta t} \big(f_\a S_{j\a}^{\rm eq} - S_{j\a}^t\big).
+\EN
+The right-hand side of this equation is a known function of the solute concentration and thus by substituting into Eqn.\eqref{totj} eliminates the appearance of the unknown sorbed concentration. Once the transport equations are solved over a time step, the sorbed concentrations can be computed from Eqn.\eqref{sjadt}.
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Multiple Interacting Continua}
+
+\subsection{Governing Equations: Thermal Conduction}
+
+A thermal conduction model employing a multiple continuum model has been added to MPHASE and THC. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
+\begin{subequations}
+\BA\label{pricont}
+&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T_\a\big)_n^{k+1} - \big(\rho_r C_r T_\a\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
+&\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}^\a}{d_n+d_{n'}}\big(T_{\a n} - T_{\a n'}\big) \Big] A_{nn'}^\a \nonumber\\
+&\qquad + \sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n}-T_{\b M}\big) A_{nM}^\b \eq 0,
+\EA
+where $v_n$ denotes the fracture volume, and
+\BA
+\Big(\big(\rho_r C_r T_\b\big)_m^{k+1} - \big(\rho_r C_r T_\b\big)_m^{k}\Big) \frac{v_m}{\Delta t} &+ \sum_{m'} \frac{\kappa_{mm'}^\b}{d_m+d_{m'}}\big(T_{\b m} - T_{\b m'}\big) A_{mm'}^\b \nonumber\\
+&+ \delta_{mM}^{}\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_{\a n} - T_{\b M}\big) A_{nM}^\b \eq 0,
+\EA
+\end{subequations}
+for the $m$th matrix node with volume $v_m$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $\b$ in Eqn.\eqref{pricont}.
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.5]{./figs/mincl}
+\parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}\label{fminc}}
+\end{figure}
+
+Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
+\EQ
+\kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
+\EN
+
+The fracture volume $v_n$ is related to the REV volume $V_n$ by
+\EQ
+\epsilon \eq \frac{v_n}{V_n}.
+\EN
+According to the geometry in Figure~\ref{fminc} assuming a 3D orthogonal set of fractures,
+\EQ
+V_n \eq (d+2\delta)^3,
+\EN
+and
+\EQ
+v_n \eq (d+2\delta)^3 - d^3,
+\EN
+giving
+\begin{subequations}
+\BA
+\epsilon &\eq 1-\frac{d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
+& ~\simeq~ \frac{6\delta}{d}.
+\EA
+\end{subequations}
+The fracture aperture $2\delta$ is found to be in terms of $\epsilon$ and $d$
+\EQ
+2\delta \eq d \left(\frac{1}{(1-\epsilon)^{1/3}} -1\right).
+\EN
+A list of different sub-continua geometries and parameters implemented in PFLOTRAN is given in Table~\ref{tdcdmgeom}. Different independent and dependent parameters for the nested cube geometry are listed in Table~\ref{tnestedcube}.
+The interfacial area $A_{nn'}^\a$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
+
+In the case of nested cubes there are four possible parameters $(\epsilon, \, 2\delta, \, l_m,\, l_f)$, where $l_m$ denotes the matrix block size and $l_f$ refers to the fracture spacing, two of which are independent.
+
+The fracture-matrix interfacial area $A_{nM}$ per unit volume is equal to
+\EQ
+A_{nM}^\b \eq \frac{\N_\b}{V} A_\b^0,
+\EN
+where the number density $\N_\b/V$ of secondary continua of type $\b$ is equal to
+\EQ
+\frac{\N_\b}{V} \eq \frac{1}{V} \frac{V_\b}{V_\b^0} \eq \frac{\epsilon_\b}{V_\b^0},
+\EN
+and $A_\b^0$ and $V_\b^0$ refer to the area and volume of each geometric type as listed in Table~\ref{tdcdm}.
+\begin{table}\centering
+\caption{DCDM geometric parameters.}\label{tdcdmgeom}
+\vspace{3mm}
+\begin{tabular}{lcc}
+\toprule
+Geometry & Area $A_\b^0$ & Volume $V_\b^0$\\
+\midrule
+Slab & $A$ & $A l$ \\
+Nested Cubes & $6d^2$ & $d^3$\\
+Nested Spheres & $4 \pi R^2$ & $\frac{4}{3}\pi R^3$\\
+\bottomrule
+\end{tabular}
+\end{table}
+The primary-secondary coupling term can then be written in the form
+\EQ
+\sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) A_{nM}^\b \eq V_n
+\sum_\b\frac{\epsilon_\b\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) \frac{A_\b^0}{V_\b^0}.
+\EN
+
+\begin{table}\centering
+\caption{Independent and dependent nested cube parameters.}
+\label{tnestedcube}
+\vspace{3mm}
+\begin{tabular}{lccc}
+\toprule
+\multicolumn{2}{c}{Independent} & \multicolumn{2}{c}{Dependent}\\
+\midrule
+$\epsilon$ & $l_f$ & $2\delta = l_f - l_m$ & $l_m = l_f(1-\epsilon)^{1/3}$\\
+$\epsilon$ & $l_m$ & $2\delta = l_f - l_m$ & $l_f = l_m(1-\epsilon)^{-1/3}$\\
+$2\delta$ & $l_f$ & $\epsilon = 1-(l_m/l_f)^3$ & $l_m = l_f - 2\delta$\\
+$2\delta$ & $l_m$ & $\epsilon = 1-(l_m/_f)^3$ & $l_f = l_m + 2\delta$\\
+$2\delta$ & $\epsilon$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon)^{1/3}}-1\Big)^{-1}$ & $l_m = l-2\delta$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In terms of partial differential equations the heat conservation equations may be written as
+\begin{subequations}
+\EQ
+\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] + \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
+%\epsilon
+\kappa_f\bnabla T_f\Big) \eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
+\EN
+and
+\EQ
+\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
+\EN
+for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. The boundary condition 
+\EQ
+T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
+\EN
+\end{subequations}
+between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer boundary of the matrix.
+
+%The fracture thermal conductivity is defined as
+%\EQ
+%\kappa_f \eq \epsilon^{-1}\kappa.
+%\EN
+
+\subsection{Finite Volume Discretization}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Age Equation}
+
+PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for the mean age given by
+\EQ
+\frac{\p}{\p t} \varphi s \R AC + \bnabla\cdot\Big(\bq AC - \varphi s D \bnabla (AC)\Big) \eq \varphi s C,
+\EN
+where $A$ denotes the mean age of the tracer with concentration $C$. Other quantities appearing in the age equation are identical to the tracer transport equation for a partially saturated porous medium with saturation state $s$; specifically $\R$ denotes a retardation factor based on a constant $K_d$ formulation. The age and tracer transport equations are solved simultaneously for the age-concentration $\alpha = A C$ and tracer concentration $C$. The age-concentration $\a$ satisfies the usual advection-diffusion-dispersion equation with a source term on the right-hand side.
+
+The mean tracer is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age} together with {\tt Tracer} to the list of primary species
+%\newpage
+\begin{verbatim}
+  PRIMARY_SPECIES
+    Tracer
+    Tracer_Age
+  /
+\end{verbatim}
+including sorption through a constant $K_d$ model
+\begin{verbatim}
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+      Tracer_Age
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+and specifying these species in the initial and boundary {\tt CONSTRAINT} condition as e.g.:
+\begin{verbatim}
+CONSTRAINT initial
+  CONCENTRATIONS
+    Tracer     1.e-8        F
+    Tracer_Age 1.e-16       F
+  /
+/
+\end{verbatim}
+Output is given in terms of $\alpha$ and $C$ from which the mean age $A$ can be obtained as $A\eq\alpha/C$. 
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{Surface Flow}
+
+\subsection{Governing Equations}
+
+\subsection{Discretization}
+
+%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+\section{References}
+
+\begin{description}
+\item Balay et al., 1997
+
+\item Duan et al. (2008)
+
+\item Duan and Sun (2003)
+
+\item Goode (1996)
+
+\item Hammond and Lichtner (2010)
+
+\item Span and Wagner (1996)
+
+\end{description}
+
+\end{document}

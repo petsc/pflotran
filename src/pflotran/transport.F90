@@ -391,16 +391,16 @@ subroutine TFlux(rt_parameter, &
   iphase = 1
   ndof = rt_parameter%naqcomp
   
+  Res = 0.d0
+  
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
 
-
-
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
       Res(idof) = &
        ! conc_mob = mol/L water
         coef_up(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)+ &
@@ -472,6 +472,9 @@ subroutine TFlux_CD(rt_parameter, &
   iphase = 1
   ndof = rt_parameter%naqcomp
   
+  Res_1 = 0.d0
+  Res_2 = 0.d0
+  
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
   Res_1(1:ndof) = coef_11(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
@@ -481,7 +484,7 @@ subroutine TFlux_CD(rt_parameter, &
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
        ! conc_mob = mol/L water
       Res_1(idof) = coef_11(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)+ &
                     coef_12(iphase)*rt_aux_var_dn%colloid%conc_mob(icoll)
@@ -557,24 +560,29 @@ subroutine TFluxDerivative(rt_parameter, &
  
   iphase = 1
   
-  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water)
+  !       = kg water/sec
   istart = 1
   iendaq = rt_parameter%naqcomp
+  J_up = 0.d0
+  J_dn = 0.d0
   if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-    J_up(istart:iendaq,istart:iendaq) = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-    J_dn(istart:iendaq,istart:iendaq) = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+    J_up(istart:iendaq,istart:iendaq) = &
+      rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
+    J_dn(istart:iendaq,istart:iendaq) = &
+      rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
   else  
-    J_up = 0.d0
-    J_dn = 0.d0
     do icomp = istart, iendaq
-      J_up(icomp,icomp) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
-      J_dn(icomp,icomp) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
+      J_up(icomp,icomp) = coef_up(iphase)* &
+                          global_aux_var_up%den_kg(iphase)*1.d-3
+      J_dn(icomp,icomp) = coef_dn(iphase)* &
+                          global_aux_var_dn%den_kg(iphase)*1.d-3
     enddo
   endif
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
       J_up(idof,idof) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_dn(idof,idof) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
     enddo
@@ -662,16 +670,16 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   istart = 1
   iendaq = rt_parameter%naqcomp
+  J_11 = 0.d0
+  J_12 = 0.d0
+  J_21 = 0.d0
+  J_22 = 0.d0
   if (associated(rt_aux_var_dn%aqueous%dtotal)) then
     J_11(istart:iendaq,istart:iendaq) = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_11(iphase)
     J_12(istart:iendaq,istart:iendaq) = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_12(iphase)
     J_21(istart:iendaq,istart:iendaq) = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_21(iphase)
     J_22(istart:iendaq,istart:iendaq) = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_22(iphase)
   else  
-    J_11 = 0.d0
-    J_12 = 0.d0
-    J_21 = 0.d0
-    J_22 = 0.d0
     do icomp = istart, iendaq
       J_11(icomp,icomp) = coef_11(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_12(icomp,icomp) = coef_12(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
@@ -682,7 +690,7 @@ subroutine TFluxDerivative_CD(rt_parameter, &
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
       J_11(idof,idof) = coef_11(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_12(idof,idof) = coef_12(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
       J_21(idof,idof) = coef_21(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
@@ -956,9 +964,7 @@ end subroutine TSrcSinkCoef
 subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     total_up2,rt_aux_var_up, & 
                     rt_aux_var_dn,total_dn2, & 
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif
                     option,flux)
 
   use Option_module
@@ -971,9 +977,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
   PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
   type(option_type) :: option
   PetscReal :: flux(rt_parameter%ncomp)
-#ifdef FORTRAN_2003_COMPLIANT  
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
-#endif
   PetscReal :: dist(-1:3)    ! list of distance vectors, size(-1:3,num_connections) where
                             !   -1 = fraction upwind
                             !   0 = magnitude of distance 
@@ -985,6 +989,8 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
   
   ndof = rt_parameter%naqcomp
 
+  flux = 0.d0
+  
   ! flux should be in mol/sec
   
   do iphase = 1, option%nphase
@@ -993,7 +999,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
     velocity_area = velocity(iphase)*area*1000.d0
     if (velocity_area >= 0.d0) then
       ! mol/sec = L/sec * mol/L
-      flux = velocity_area*rt_aux_var_up%total(:,iphase)
+      flux = velocity_area*rt_aux_var_up%total(1:rt_parameter%naqcomp,iphase)
       if (associated(total_up2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1007,17 +1013,13 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
           endif
           ! mol/sec = L/sec * mol/L
           correction = 0.5d0*velocity_area*(1.d0-nu)* &
-#ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
-#else
-                       TFluxLimiter(theta)* &
-#endif
                        dc
           flux(idof) = flux(idof) + correction
         enddo
       endif
     else
-      flux = velocity_area*rt_aux_var_dn%total(:,iphase)
+      flux = velocity_area*rt_aux_var_dn%total(1:rt_parameter%naqcomp,iphase)
       if (associated(total_dn2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1030,11 +1032,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     dc
           endif
           correction = 0.5d0*velocity_area*(1.d0+nu)* &
-#ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
-#else
-                       TFluxLimiter(theta)* &
-#endif
                        dc
           flux(idof) = flux(idof) + correction
         enddo
