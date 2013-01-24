@@ -1862,28 +1862,41 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif
       
   if (reaction%update_permeability) then
+    call GridVecGetArrayF90(grid,field%porosity0,porosity0_p,ierr)
+    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
     call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
     call GridVecGetArrayF90(grid,field%perm_zz_loc,perm_zz_loc_p,ierr)
     call GridVecGetArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
-    call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+!   call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      scale = vec_p(local_id)** &
-              material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
+      if (porosity_loc_p(ghosted_id) >= material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por) then
+        scale = ((porosity_loc_p(ghosted_id)-material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por) &
+        /(porosity0_p(local_id)-material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por))** &
+        material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
+        if (scale < material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac) &
+          scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
+      else
+        scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
+      endif
+!     scale = vec_p(local_id)** &
+!             material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
       perm_xx_loc_p(ghosted_id) = perm0_xx_p(local_id)*scale
       perm_yy_loc_p(ghosted_id) = perm0_yy_p(local_id)*scale
       perm_zz_loc_p(ghosted_id) = perm0_zz_p(local_id)*scale
     enddo
+    call GridVecRestoreArrayF90(grid,field%porosity0,porosity0_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm_zz_loc,perm_zz_loc_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+!   call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
     call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
                                     field%perm_xx_loc,ONEDOF)

@@ -650,6 +650,10 @@ end subroutine DiscretizationRead
 ! ************************************************************************** !
 !
 ! DiscretizationCreateDMs: creates distributed, parallel meshes/grids
+! If there are multiple degrees of freedom per grid cell, this will call 
+! DiscretizationCreateDM() multiple times to create the DMs corresponding 
+! to one degree of freedom grid cell and those corresponding to multiple 
+! degrees of freedom per cell.
 ! author: Glenn Hammond
 ! date: 02/08/08
 !
