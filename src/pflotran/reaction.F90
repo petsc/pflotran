@@ -56,7 +56,8 @@ module Reaction_module
             RTAccumulationDerivative, &
             RTPrintAuxVar, &
             ReactionInterpolateLogK_hpt, &
-            ReactionInitializeLogK_hpt
+            ReactionInitializeLogK_hpt, &
+            RUpdateSolution
 
 contains
 
@@ -5033,6 +5034,99 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
   call printMsg(option)
 
 end subroutine RCalculateCompression
+
+
+! ************************************************************************** !
+!
+! RUpdateSolution: Updates secondary variables such as mineral vol frac, etc.
+! author: Glenn Hammond
+! date: 01/24/13
+!
+! ************************************************************************** !
+subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: imnrl, iaqspec, ncomp, icomp
+  PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
+  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  
+  ! update mineral volume fractions
+  if (reaction%mineral%nkinmnrl > 0) then
+    do imnrl = 1, reaction%mineral%nkinmnrl
+      ! rate = mol/m^3/sec
+      ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
+      !                                mol_vol (m^3 mnrl/mol mnrl)
+      rt_auxvar%mnrl_volfrac(imnrl) = &
+        rt_auxvar%mnrl_volfrac(imnrl) + &
+        rt_auxvar%mnrl_rate(imnrl)* &
+        reaction%mineral%kinmnrl_molar_vol(imnrl)* &
+        option%tran_dt
+      if (rt_auxvar%mnrl_volfrac(imnrl) < 0.d0) &
+        rt_auxvar%mnrl_volfrac(imnrl) = 0.d0
+
+#ifdef CHUAN_CO2
+      if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
+        ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
+        do iaqspec=1, ncomp  
+          icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
+          if (icomp == realization%reaction%species_idx%co2_aq_id) then
+            global_auxvar%reaction_rate(2) &
+              = global_auxvar%reaction_rate(2)& 
+              + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
+              * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
+          else if (icomp == reaction%species_idx%h2o_aq_id) then
+            global_auxvar%reaction_rate(1) &
+              = global_auxvar%reaction_rate(1)& 
+              + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
+              * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
+          endif
+        enddo 
+      endif   
+#endif
+    enddo
+  endif
+
+  ! update multirate sorption concentrations 
+! WARNING: below assumes site concentration multiplicative factor
+  if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then 
+    do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+      do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+        kdt = reaction%surface_complexation%kinmr_rate(irate,irxn) * &
+              option%tran_dt 
+        one_plus_kdt = 1.d0 + kdt 
+        k_over_one_plus_kdt = &
+          reaction%surface_complexation%kinmr_rate(irate,irxn)/one_plus_kdt
+        rt_auxvar%kinmr_total_sorb(:,irate,irxn) = & 
+          (rt_auxvar%kinmr_total_sorb(:,irate,irxn) + & 
+          kdt * reaction%surface_complexation%kinmr_frac(irate,irxn) * &
+          rt_auxvar%kinmr_total_sorb(:,0,irxn))/one_plus_kdt
+      enddo
+    enddo
+  endif
+
+  ! update kinetic sorption concentrations
+  if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
+    do ikinrxn = 1, reaction%surface_complexation%nkinsrfcplxrxn
+      irxn = reaction%surface_complexation%&
+                kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+      ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
+      do k = 1, ncplx ! ncplx in rxn
+        icplx = reaction%surface_complexation%srfcplxrxn_to_complex(k,irxn)
+        rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn) = &
+          rt_auxvar%kinsrfcplx_conc_kp1(icplx,ikinrxn)
+      enddo
+    enddo
+  endif  
+
+end subroutine RUpdateSolution
 
 ! ************************************************************************** !
 !

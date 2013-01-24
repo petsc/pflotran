@@ -769,9 +769,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
-  PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
-  PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
-  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscInt :: ghosted_id, local_id
   PetscReal :: conc, max_conc, min_conc
   PetscErrorCode :: ierr
   PetscReal :: sec_diffusion_coefficient
@@ -812,6 +810,15 @@ subroutine RTUpdateSolutionPatch(realization)
 #endif
 
   if (.not.option%init_stage) then
+
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+      call RUpdateSolution(rt_aux_vars(ghosted_id), &
+                           global_aux_vars(ghosted_id),reaction,option)
+    enddo
+  
+#if 0  
     ! update mineral volume fractions
     if (reaction%mineral%nkinmnrl > 0) then
     
@@ -892,6 +899,7 @@ subroutine RTUpdateSolutionPatch(realization)
         enddo
       enddo
     endif
+#endif    
     
     ! update secondary continuum variables
     if (option%use_mc) then
