@@ -811,6 +811,10 @@ subroutine RTUpdateSolutionPatch(realization)
 
   if (.not.option%init_stage) then
 
+    ! update mineral volume fractions, multirate sorption concentrations, 
+    ! kinetic sorption concentration etc.  These updates must take place
+    ! within reaction so that auxiliary variables are updated when only
+    ! run in reaction mode.
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -818,89 +822,6 @@ subroutine RTUpdateSolutionPatch(realization)
                            global_aux_vars(ghosted_id),reaction,option)
     enddo
   
-#if 0  
-    ! update mineral volume fractions
-    if (reaction%mineral%nkinmnrl > 0) then
-    
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        if (patch%imat(ghosted_id) <= 0) cycle         
-        do imnrl = 1, reaction%mineral%nkinmnrl
-          ! rate = mol/m^3/sec
-          ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
-          !                                mol_vol (m^3 mnrl/mol mnrl)
-          rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
-            rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
-            rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-            reaction%mineral%kinmnrl_molar_vol(imnrl)* &
-            option%tran_dt
-          if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
-            rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
-
-#ifdef CHUAN_CO2
-          if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
-            ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
-            do iaqspec=1, ncomp  
-              icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
-              if (icomp == realization%reaction%species_idx%co2_aq_id) then
-                global_aux_vars(ghosted_id)%reaction_rate(2) &
-                  = global_aux_vars(ghosted_id)%reaction_rate(2)& 
-                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
-              else if (icomp == reaction%species_idx%h2o_aq_id) then
-                global_aux_vars(ghosted_id)%reaction_rate(1) &
-                  = global_aux_vars(ghosted_id)%reaction_rate(1)& 
-                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
-              endif
-            enddo 
-          endif   
-#endif
-
-        enddo
-      enddo
-    endif
-  
-
-    ! update multirate sorption concentrations 
-  ! WARNING: below assumes site concentration multiplicative factor
-    if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then 
-      do ghosted_id = 1, grid%ngmax 
-        if (patch%imat(ghosted_id) <= 0) cycle
-        do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
-          do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
-            kdt = reaction%surface_complexation%kinmr_rate(irate,irxn) * &
-                  option%tran_dt 
-            one_plus_kdt = 1.d0 + kdt 
-            k_over_one_plus_kdt = &
-              reaction%surface_complexation%kinmr_rate(irate,irxn)/one_plus_kdt
-            rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) = & 
-              (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) + & 
-              kdt * reaction%surface_complexation%kinmr_frac(irate,irxn) * &
-              rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,0,irxn))/one_plus_kdt
-          enddo
-        enddo
-      enddo 
-    endif
-
-    ! update kinetic sorption concentrations
-    if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-      do ghosted_id = 1, grid%ngmax 
-        if (patch%imat(ghosted_id) <= 0) cycle
-        do ikinrxn = 1, reaction%surface_complexation%nkinsrfcplxrxn
-          irxn = reaction%surface_complexation%&
-                   kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
-          ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
-          do k = 1, ncplx ! ncplx in rxn
-            icplx = reaction%surface_complexation%srfcplxrxn_to_complex(k,irxn)
-            rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx,ikinrxn) = &
-              rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx,ikinrxn)
-          enddo
-        enddo
-      enddo
-    endif
-#endif    
-    
     ! update secondary continuum variables
     if (option%use_mc) then
       do ghosted_id = 1, grid%ngmax
