@@ -875,10 +875,10 @@ subroutine Init(simulation)
            'Porosity',OUTPUT_GENERIC,'-',POROSITY)  
   endif
   if (realization%output_option%print_permeability) then
-    ! add porosity to header
+    ! add permeability to header
     call OutputVariableAddToList( &
            realization%output_option%output_variable_list, &
-           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)  
+           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
   endif
 
   ! write material ids

@@ -57,7 +57,7 @@
 %\cfoot{}
 %\footrulewidth 0.4pt
 \newcommand\keyend{{(END \, / \, .)}}
-\newcommand\return{{\hfill$\hookrightarrow$}}
+\newcommand\return{{\hfill$\hookrightarrow$} Return to Keyword List}
 \newcommand\returnb{{\hfill$\nearrow$}}
 %\newcommand\return{{\hfill\bf RETURN}}
 
@@ -1498,6 +1498,25 @@ where $v_n$ denotes the fracture volume, and
 \end{subequations}
 for the $m$th matrix node with volume $v_m$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. More than one type of matrix geometry is included in the above equations as indicated by the sum over $\b$ in Eqn.\eqref{pricont}.
 
+For better convergence uniform logarithmic spacing is used for the matrix nodes
+\begin{subequations}\label{eqnloggrid}
+\EQ
+\Delta \xi_m \eq \rho \,\Delta \xi_{m-1},
+\EN
+specifying $\Delta\xi_M$ and $l_M$ for the outer most matrix node and matrix block size, respectively. The factor $\rho$ is determined from the constraint
+\EQ
+l_M \eq 2\sum_{m=1}^{M} \Delta \xi_m,
+\EN
+which requires that $\rho$ satisfy the equation
+\EQ
+\frac{l_M}{2\Delta \xi_1} \eq \frac{\rho^M-1}{\rho-1},
+\EN
+with the inner and outer grid spacing related by
+\EQ
+\Delta\xi_M \eq \rho^{M-1} \Delta \xi_1.
+\EN
+\end{subequations}
+
 \begin{figure}[h]\centering
 \includegraphics[scale=0.5]{./figs/mincl}
 \parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}\label{fminc}}
@@ -2093,7 +2112,7 @@ In a fully implicit formulation the nonlinear equations for the residual functio
 \EN
 are solved using an iterative solver based on the Newton-Raphson equations
 \EQ
-\bJ^{(i)} \delta\!\bx^{(i+1)} \eq -\bR^{(i)},
+\bJ^{(i)} \delta\bx^{(i+1)} \eq -\bR^{(i)},
 \EN
 at the $i$th iteration. Iteration stops when
 \EQ
@@ -2101,17 +2120,17 @@ at the $i$th iteration. Iteration stops when
 \EN
 or if
 \EQ
-\big|\delta\!\bx^{(i+1)}\big| < \delta.
+\big|\delta\bx^{(i+1)}\big| < \delta.
 \EN
 However, the latter criteria does not necessarily guarantee that the residual equations are satisfied.
 The solution is updated from the relation
 \EQ
-\bx^{(i+1)} \eq \bx^{(i)} + \delta\!\bx^{(i+1)}.
+\bx^{(i+1)} \eq \bx^{(i)} + \delta\bx^{(i+1)}.
 \EN
 For the logarithm of the concentration with $\bx=\ln\by$,
 the solution is updated according to the equation
 \EQ
-\by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\!\ln\by^{(i+1)}}.
+\by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\ln\by^{(i+1)}}.
 \EN
 
 \subsubsection{Multirate Sorption}
@@ -3939,6 +3958,8 @@ END
 \item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
 \item[TYPE] \ {\tt <char>} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
+\item[LOG\_GRID\_SPACING] \ Toggle to use logarithmic grid spacing in secondary continua
+\item[OUTER\_SPACING] \ {\tt <float>} [m] \ Outer matrix node grid spacing for logarithmic grid \ (see Eqns.\eqref{eqnloggrid})
 \item[LENGTH] \ {\tt <float>} [m] \ length of SLAB type
 \item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type
 \item[MATRIX\_BLOCK\_SIZE] \ {\tt <float>} [m] \ matrix block size for NESTED\_CUBES type
@@ -4095,7 +4116,7 @@ specified under the MATERIAL\_PROPERTY keyword.
 
 \begin{tabularx}{\linewidth}{lX}
 %\toprule[1.5pt]
-\bf MULTIPLE\_CONTINUUM & Activate multiple continuum model for heat equation. 
+\bf MULTIPLE\_CONTINUUM & Activate multiple continuum model for heat and single solute transport equation. 
 \end{tabularx}
 
 \hyperlink{target_key}{\return}
