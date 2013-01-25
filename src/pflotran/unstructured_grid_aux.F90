@@ -863,7 +863,10 @@ subroutine UGridPartition(ugrid,option, &
 
   ! petsc will call parmetis to calculate the graph/dual
 #if defined(PETSC_HAVE_PARMETIS)
-  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+  if (.not.associated(ugrid%explicit_grid)) then
+    write(*,*),'call MatMeshToGraph'
+    call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+  endif
 #else
   option%io_buffer = 'Must compile with Parmetis in order to use unstructured grids.'
   call printErrMsg(option)
