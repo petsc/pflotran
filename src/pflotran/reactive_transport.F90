@@ -941,6 +941,11 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     if (option%use_mc) then
       vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
     endif
+
+    if (.not.option%use_isothermal) then
+      call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                     PETSC_FALSE,option)
+    endif
     
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
@@ -3019,6 +3024,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       iendall = offset + reaction%ncomp
       Res = 0.d0
       Jup = 0.d0
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                       PETSC_FALSE,option)
+      endif      
       call RReaction(Res,Jup,PETSC_FALSE,rt_aux_vars(ghosted_id), &
                      global_aux_vars(ghosted_id), &
                      porosity_loc_p(ghosted_id), &
@@ -3591,6 +3600,10 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
       Res = 0.d0
       Jup = 0.d0
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                       PETSC_FALSE,option)
+      endif      
       call RReactionDerivative(Res,Jup,rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
                                porosity_loc_p(ghosted_id), &
@@ -3770,7 +3783,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
           xx_loc_p(istartcoll:iendcoll)* &
           patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
-      
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(patch%aux%Global%aux_vars(ghosted_id), &
+                                       reaction,PETSC_FALSE, &
+                                       option)
+      endif
       if (compute_activity_coefs) then
         call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
                                    patch%aux%Global%aux_vars(ghosted_id), &
@@ -3897,6 +3914,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               xxbc(istartcoll_loc:iendcoll_loc)* &
               patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
           endif
+          if (.not.option%use_isothermal) then
+            call RUpdateTempDependentCoefs(patch%aux%Global%aux_vars_bc(ghosted_id), &
+                                           reaction,PETSC_FALSE, &
+                                           option)
+          endif          
           if (compute_activity_coefs) then
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
                                         patch%aux%Global%aux_vars_bc(sum_connection), &

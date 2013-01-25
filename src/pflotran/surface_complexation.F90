@@ -457,17 +457,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     nullify(colloid_matrix_block_ptr)
     nullify(colloid_array_ptr)
   endif
-  
-#ifdef TEMP_DEPENDENT_LOGK
-  !TODO(geh): move this outside so it is called only once per cell
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                 surface_complexation%srfcplx_logK, &
-                                 global_auxvar%temp(iphase), &
-                                 surface_complexation%nsrfcplx)
-  endif
-! surface reaction in hpt option not functional yet .Chuan 12/29/11 
-#endif  
 
   ! Surface Complexation
   do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
@@ -523,19 +512,6 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
 
   nullify(null_array_ptr)
   nullify(null_matrix_block)
-  
-#ifdef TEMP_DEPENDENT_LOGK
-!TODO(geh): move this outside the surface complexation routines so that 
-!           coefficients/equilibrium constants are calculated only once
-!           instead of over and over.
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                 surface_complexation%srfcplx_logK, &
-                                 global_auxvar%temp(iphase), &
-                                 surface_complexation%nsrfcplx)
-! surface reaction in hpt option not functional yet .Chuan 12/29/11 
-  endif
-#endif  
 
   ! Surface Complexation
   do ikinmrrxn = 1, surface_complexation%nkinmrsrfcplxrxn
@@ -600,21 +576,6 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
   nullify(null_array_ptr)
   nullify(null_matrix_block)
-  
-#ifdef NEW_SRFCPLX_RXN    
-  ln_conc = log(rt_auxvar%pri_molal)
-  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-#endif
-  
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                 surface_complexation%srfcplx_logK, &
-                                 global_auxvar%temp(iphase), &
-                                 surface_complexation%nsrfcplx)
-! surface reaction in hpt option not functional yet .Chuan 12/29/11 
-  endif
-#endif  
 
   ! only zero out the zero index.  The other indices hold values from 
   ! the previous time step

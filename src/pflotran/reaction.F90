@@ -57,7 +57,8 @@ module Reaction_module
             RTPrintAuxVar, &
             ReactionInterpolateLogK_hpt, &
             ReactionInitializeLogK_hpt, &
-            RUpdateSolution
+            RUpdateSolution, &
+            RUpdateTempDependentCoefs
 
 contains
 
@@ -1203,70 +1204,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     return
   endif
   
-#ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    if (.not.reaction%use_geothermal_hpt)then
-      if (associated(reaction%eqcplx_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                     global_auxvar%temp(iphase),reaction%neqcplx)
-      endif
-      if (associated(reaction%eqgas_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                     global_auxvar%temp(iphase),reaction%ngas)
-      endif
-      if (associated(surface_complexation%srfcplx_logKcoef)) then
-        call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                     surface_complexation%srfcplx_logK, &
-                                     global_auxvar%temp(iphase), &
-                                     surface_complexation%nsrfcplx)
-      endif
-      if (associated(mineral_reaction%kinmnrl_logKcoef)) then
-        call ReactionInterpolateLogK(mineral_reaction%kinmnrl_logKcoef, &
-                                     mineral_reaction%kinmnrl_logK, &
-                                     global_auxvar%temp(iphase), &
-                                     mineral_reaction%nkinmnrl)
-      endif
-      if (associated(mineral_reaction%mnrl_logKcoef)) then
-        call ReactionInterpolateLogK(mineral_reaction%mnrl_logKcoef, &
-                                     mineral_reaction%mnrl_logK, &
-                                     global_auxvar%temp(iphase), &
-                                     mineral_reaction%nmnrl)
-      endif
-    else 
-      if (associated(reaction%eqcplx_logKcoef)) then
-          call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
-                                       reaction%neqcplx)
-        endif
-        if (associated(reaction%eqgas_logKcoef)) then
-          call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
-                                       reaction%ngas)
-        endif
-        if (associated(surface_complexation%srfcplx_logKcoef)) then
-          call ReactionInterpolateLogK_hpt(surface_complexation%srfcplx_logKcoef, &
-                                           surface_complexation%srfcplx_logK, &
-                                           global_auxvar%temp(iphase), &
-                                           global_auxvar%pres(iphase), &
-                                           surface_complexation%nsrfcplx)
-        endif
-        if (associated(mineral_reaction%kinmnrl_logKcoef)) then
-          call ReactionInterpolateLogK_hpt(mineral_reaction%kinmnrl_logKcoef, &
-                                           mineral_reaction%kinmnrl_logK, &
-                                           global_auxvar%temp(iphase), &
-                                           global_auxvar%pres(iphase), &
-                                           mineral_reaction%nkinmnrl)
-        endif
-        if (associated(mineral_reaction%mnrl_logKcoef)) then
-          call ReactionInterpolateLogK_hpt(mineral_reaction%mnrl_logKcoef, &
-                                           mineral_reaction%mnrl_logK, &
-                                           global_auxvar%temp(iphase), &
-                                           global_auxvar%pres(iphase), &
-                                           mineral_reaction%nmnrl)
-        endif
-    endif
+    call RUpdateTempDependentCoefs(global_auxvar,reaction,PETSC_TRUE,option)
   endif
-#endif  
   
   if (use_prev_soln_as_guess) then
     free_conc = rt_auxvar%pri_molal
@@ -1963,17 +1903,10 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
   else
 
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    if (.not.reaction%use_geothermal_hpt)then
-      if (associated(reaction%eqcplx_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                     global_auxvar%temp(iphase),reaction%neqcplx)
-      endif
-      if (associated(reaction%eqgas_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                     global_auxvar%temp(iphase),reaction%ngas)
+    if (.not.option%use_isothermal) then
+      call RUpdateTempDependentCoefs(global_auxvar,reaction,PETSC_TRUE,option)
 #ifdef CHUAN_CO2
+      if (associated(reaction%eqgas_logKcoef)) then
         do i = 1, reaction%naqcomp
           if (aq_species_constraint%constraint_type(i) == &
               CONSTRAINT_SUPERCRIT_CO2) then
@@ -1983,80 +1916,17 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
             endif
           endif
         enddo
+      endif
 #endif                                     
-      endif
-      if (associated(surface_complexation%srfcplx_logKcoef)) then
-        call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                     surface_complexation%srfcplx_logK, &
-                                     global_auxvar%temp(iphase), &
-                                     surface_complexation%nsrfcplx)
-      endif
-      if (associated(mineral_reaction%kinmnrl_logKcoef)) then
-        call ReactionInterpolateLogK(mineral_reaction%kinmnrl_logKcoef, &
-                                     mineral_reaction%kinmnrl_logK, &
-                                     global_auxvar%temp(iphase), &
-                                     mineral_reaction%nkinmnrl)
-      endif
-      if (associated(mineral_reaction%mnrl_logKcoef)) then
-        call ReactionInterpolateLogK(mineral_reaction%mnrl_logKcoef, &
-                                     mineral_reaction%mnrl_logK, &
-                                     global_auxvar%temp(iphase), &
-                                     mineral_reaction%nmnrl)
-      endif
-    else 
-      if (associated(reaction%eqcplx_logKcoef)) then
-        call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
-                                     reaction%neqcplx)
-      endif
-      if (associated(reaction%eqgas_logKcoef)) then
-        call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
-                                     reaction%ngas)
-#ifdef CHUAN_CO2
-        do i = 1, reaction%naqcomp
-          if (aq_species_constraint%constraint_type(i) == &
-              CONSTRAINT_SUPERCRIT_CO2) then
-            igas = aq_species_constraint%constraint_spec_id(i)
-            if (abs(reaction%species_idx%co2_gas_id) == igas) then
-!             reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
-              reaction%eqgas_logK(igas) = global_auxvar%scco2_eq_logK
-            endif
-          endif
-        enddo
-#endif
-      endif
-      if (associated(surface_complexation%srfcplx_logKcoef)) then
-        call ReactionInterpolateLogK_hpt(surface_complexation%srfcplx_logKcoef, &
-                                         surface_complexation%srfcplx_logK, &
-                                         global_auxvar%temp(iphase), &
-                                         global_auxvar%pres(iphase), &
-                                         surface_complexation%nsrfcplx)
-      endif
-      if (associated(mineral_reaction%kinmnrl_logKcoef)) then
-        call ReactionInterpolateLogK_hpt(mineral_reaction%kinmnrl_logKcoef, &
-                                         mineral_reaction%kinmnrl_logK, &
-                                         global_auxvar%temp(iphase), &
-                                         global_auxvar%pres(iphase), &
-                                         mineral_reaction%nkinmnrl)
-      endif
-      if (associated(mineral_reaction%mnrl_logKcoef)) then
-        call ReactionInterpolateLogK_hpt(mineral_reaction%mnrl_logKcoef, &
-                                         mineral_reaction%mnrl_logK, &
-                                         global_auxvar%temp(iphase), &
-                                         global_auxvar%pres(iphase), &
-                                         mineral_reaction%nmnrl)
-      endif
     endif
-  endif
-#endif  
   
 
-    200 format('')
-    201 format(a20,i5)
-    202 format(a20,f10.2)
-    203 format(a20,f8.4)
-    204 format(a20,es12.4)
+200 format('')
+201 format(a20,i5)
+202 format(a20,f10.2)
+203 format(a20,f8.4)
+204 format(a20,es12.4)
+
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
       constraint_coupler%num_iterations
@@ -2700,16 +2570,6 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     ln_conc = log(rt_auxvar%pri_molal)
     ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef, &
-      reaction%eqsrfcplx_logK, &
-      global_auxvar%temp(iphase),reaction%neqsrfcplx)
-! surface reaction in hpt option not functional yet .Chuan 12/29/11          
-
-  endif
-#endif  
-
   do irxn = 1, reaction%neqsrfcplxrxn
   
     ncplx = reaction%srfcplxrxn_to_complex(0,irxn)
@@ -3174,6 +3034,10 @@ subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
     rt_auxvar%immobile(1:reaction%nimcomp)  = &
       tran_xx_p(immobile_start:immobile_end)
   endif
+  
+  if (.not.option%use_isothermal) then
+    call RUpdateTempDependentCoefs(global_auxvar,reaction,PETSC_FALSE,option)
+  endif
 
   ! still need code to overwrite other phases
   call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
@@ -3383,6 +3247,9 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   if (.not.option%numerical_derivatives_rxn) then ! analytical derivative
   !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
+    call RReaction(Res,Jac,compute_derivative,rt_auxvar, &
+                   global_auxvar,porosity,volume,reaction,option)  
+#if 0    
     if (reaction%mineral%nkinmnrl > 0) then
       call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -3407,6 +3274,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       call RSandbox(Res,Jac,compute_derivative,rt_auxvar, &
                     global_auxvar,porosity,volume,reaction,option)
     endif
+#endif    
 
     ! add new reactions here and in RReaction
 
@@ -3548,19 +3416,6 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
 
     ln_conc = log(rt_auxvar%pri_molal)
     ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-  
-#ifdef TEMP_DEPENDENT_LOGK
-    if (.not.option%use_isothermal) then
-      if (.not.reaction%use_geothermal_hpt)then
-        call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                               global_auxvar%temp(1),reaction%neqcplx)
-      else
-        print *,'Activity:', global_auxvar%pres(1)
-        call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                               global_auxvar%temp(1),global_auxvar%pres(1),reaction%neqcplx)
-      endif
-    endif 
-#endif  
   
   ! compute primary species contribution to ionic strength
     fpri = 0.d0
@@ -3810,20 +3665,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   do icomp = 1, reaction%naqcomp
     rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
-  
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
-    if (.not.reaction%use_geothermal_hpt)then
-      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqcplx)
-    else
-     !  print *,'Rtotal:: P:', global_auxvar%pres(:),' T:',  global_auxvar%temp(:)
-       call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                 global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
-                                 reaction%neqcplx)
-    endif
-  endif
-#endif    
+   
   do icplx = 1, reaction%neqcplx ! for each secondary species
     ! compute secondary species concentration
     lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
@@ -3873,19 +3715,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #ifdef CHUAN_CO2
 
   iphase = 2           
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal .and. reaction%ngas > 0) then
-    if (.not.reaction%use_geothermal_hpt)then
-      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                 global_auxvar%temp(1),reaction%ngas)
-    else
-      print *,'Rtotal2:: ', global_auxvar%pres(1)
-      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                 global_auxvar%temp(1),global_auxvar%pres(1),&
-                                 reaction%ngas)
-    endif
-  endif  
-#endif  
 
   if (iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0
@@ -4715,10 +4544,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
   type(reactive_transport_auxvar_type) :: rt_auxvar_pert
 #endif
 
-  ! any changes to the below must also be updated in 
-  ! Reaction.F90:RReactionDerivative()
-  
-!already set  rt_auxvar%pri_molal = x
+  !already set  rt_auxvar%pri_molal = x
   call RTotal(rt_auxvar,global_auxvar,reaction,option)
   if (reaction%neqsorb > 0) then
     call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
@@ -5127,6 +4953,87 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
   endif  
 
 end subroutine RUpdateSolution
+
+! ************************************************************************** !
+!
+! RUpdateTempDependentCoefs: Updates temperature dependent coefficients for
+!                            anisothermal simulations
+! author: Glenn Hammond
+! date: 01/25/13
+!
+! ************************************************************************** !
+subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
+                                     update_mnrl,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(global_auxvar_type) :: global_auxvar  
+  type(reaction_type) :: reaction
+  PetscBool :: update_mnrl
+  type(option_type) :: option
+  
+  PetscReal :: temp
+  PetscReal :: pres
+  
+  PetscInt, parameter :: iphase = 1
+  
+  if (.not.reaction%use_geothermal_hpt)then
+    temp = global_auxvar%temp(iphase)
+    pres = 0.d0
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef, &
+                                    reaction%eqcplx_logK, &
+                                    temp, &
+                                    reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqgas_logKcoef, &
+                                    reaction%eqgas_logK, &
+                                    temp, &
+                                    reaction%ngas)
+    endif
+    call MineralUpdateTempDepCoefs(temp,pres,reaction%mineral, &
+                                   reaction%use_geothermal_hpt, &
+                                   update_mnrl, &
+                                   option)
+    if (associated(reaction%surface_complexation%srfcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%surface_complexation% &
+                                      srfcplx_logKcoef, &
+                                reaction%surface_complexation%srfcplx_logK, &
+                                temp, &
+                                reaction%surface_complexation%nsrfcplx)      
+    endif
+  else ! high pressure and temperature
+    temp = global_auxvar%temp(iphase)
+    pres = global_auxvar%pres(iphase)
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef, &
+                                       reaction%eqcplx_logK, &
+                                       temp, &
+                                       pres, &
+                                       reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef, &
+                                       reaction%eqgas_logK, &
+                                       temp, &
+                                       pres, &
+                                       reaction%ngas)
+    endif   
+    call MineralUpdateTempDepCoefs(temp,pres,reaction%mineral, &
+                                   reaction%use_geothermal_hpt, &
+                                   update_mnrl, &
+                                   option)    
+    if (associated(reaction%surface_complexation%srfcplx_logKcoef)) then
+      option%io_buffer = 'Temperature dependent surface complexation ' // &
+        'coefficients not yet function for high pressure/temperature.'
+      call printMsg(option)   
+    endif
+  endif 
+  
+end subroutine RUpdateTempDependentCoefs
 
 ! ************************************************************************** !
 !
