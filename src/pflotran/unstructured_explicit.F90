@@ -590,7 +590,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   type(unstructured_explicit_type), pointer :: explicit_grid
   PetscViewer :: viewer
   
-  Mat :: M_mat,M_mat_loc
+  Mat :: M_mat
   Vec :: M_vec
   Mat :: Adj_mat
   Mat :: Dual_mat
@@ -629,7 +629,6 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   PetscInt :: cell_stride, dual_offset, connection_offset, connection_stride
   PetscInt :: natural_id_offset
   PetscErrorCode :: ierr
-  PetscInt :: icell_up,icell_dn
   
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -702,78 +701,12 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  ! GB: When MatConvert() is used, the diagonal entries are lost in Adj_mat
-  !call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Adj_mat,ierr)
-  !call MatDestroy(M_mat,ierr)
-
-  ! Alternate method of creating Adj_mat
-  if (option%mycommsize>1) then
-    call MatMPIAIJGetLocalMat(M_mat,MAT_INITIAL_MATRIX,M_mat_loc,ierr)
-    call MatGetRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                        ia_ptr,ja_ptr,success,ierr)
-  else
-    call MatGetRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                        ia_ptr,ja_ptr,success,ierr)
-  endif
-
-  count=0
-  do icell = 1,num_rows
-    istart = ia_ptr(icell)
-    iend = ia_ptr(icell+1)-1
-    num_cols = iend-istart+1
-    count = count+num_cols
-  enddo
-  allocate(local_connections(count))
-  allocate(local_connection_offsets(num_rows+1))
-  local_connection_offsets(1:num_rows+1) = ia_ptr(1:num_rows+1)
-  local_connections(1:count)             = ja_ptr(1:count)
-
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
-
-  call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
-                       num_connections_global, &
-                       local_connection_offsets, &
-                       local_connections,PETSC_NULL_INTEGER,Adj_mat,ierr)
-
-  if (option%mycommsize>1) then
-    call MatRestoreRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                        ia_ptr,ja_ptr,success,ierr)
-  else
-    call MatRestoreRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
-                        ia_ptr,ja_ptr,success,ierr)
-  endif
+  call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Adj_mat,ierr)
   call MatDestroy(M_mat,ierr)
 
 #if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Adj.out',viewer,ierr)
   call MatView(Adj_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
-
-  ! Create the Dual matrix. For implicit ugrid the subroutine UGridPartition()
-  ! creates this Dual matrix, but for explicit grid, the dual matrix is 
-  ! crated before call to UGridPartition().
-  call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
-                    ugrid%nmax,ugrid%nmax, &
-                    ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
-                    ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
-                    M_mat,ierr)
-  do iconn = 1, num_connections_local_old
-    icell_up = explicit_grid%connections(1,iconn)-1
-    icell_dn = explicit_grid%connections(2,iconn)-1
-    call MatSetValue(M_mat,icell_up,icell_dn,1.d0,INSERT_VALUES,ierr)
-    call MatSetValue(M_mat,icell_dn,icell_up,1.d0,INSERT_VALUES,ierr)
-  enddo
-  
-  call MatAssemblyBegin(M_mat,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(M_mat,MAT_FINAL_ASSEMBLY,ierr)
-  
-  call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Dual_mat,ierr)
-  call MatDestroy(M_mat,ierr)
-
-#if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'Dual_mat.out',viewer,ierr)
-  call MatView(Dual_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
@@ -1222,7 +1155,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   string = 'cells_local_raw' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do ghosted_id = 1, ugrid%ngmax
-    write(86,'(i5,4f7.3)') explicit_grid%cell_ids(ghosted_id), &
+    write(86,'(i5,4f10.3)') explicit_grid%cell_ids(ghosted_id), &
                 explicit_grid%cell_centroids(ghosted_id)%x, &
                 explicit_grid%cell_centroids(ghosted_id)%y, &
                 explicit_grid%cell_centroids(ghosted_id)%z, &
