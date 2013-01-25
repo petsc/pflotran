@@ -5077,7 +5077,7 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
         ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
         do iaqspec=1, ncomp  
           icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
-          if (icomp == realization%reaction%species_idx%co2_aq_id) then
+          if (icomp == reaction%species_idx%co2_aq_id) then
             global_auxvar%reaction_rate(2) &
               = global_auxvar%reaction_rate(2)& 
               + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
