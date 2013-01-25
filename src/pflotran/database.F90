@@ -1895,7 +1895,7 @@ subroutine BasisInit(reaction,option)
     else
       allocate(mineral%mnrl_logKcoef(FIVE_INTEGER,mineral%nmnrl))
     endif
-    reaction%eqgas_logKcoef = 0.d0
+    reaction%mineral%mnrl_logKcoef = 0.d0
 
     if (mineral%nkinmnrl > 0) then
     

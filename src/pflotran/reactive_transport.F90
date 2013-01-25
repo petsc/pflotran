@@ -3915,7 +3915,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
           endif
           if (.not.option%use_isothermal) then
-            call RUpdateTempDependentCoefs(patch%aux%Global%aux_vars_bc(ghosted_id), &
+            call RUpdateTempDependentCoefs(patch%aux%Global% &
+                                             aux_vars_bc(sum_connection), &
                                            reaction,PETSC_FALSE, &
                                            option)
           endif          
