@@ -1422,7 +1422,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call MatDestroy(Adj_mat,ierr)
   
 #if UGRID_DEBUG
-  if (ugrid%grid_type == THREE_DIM_GRID) then
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
     call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
   else
     call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
