@@ -1414,14 +1414,26 @@ subroutine UGridDecompose(unstructured_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  call UGridPartition(unstructured_grid, &
-                             option, &
-                             Adj_mat, &
-                             num_common_vertices, &
-                             Dual_mat,is_new, &
-                             num_cells_local_new)
-  
+#if UGRID_DEBUG
+  call printMsg(option,'Dual matrix')
+#endif
+
+  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
+  
+#if UGRID_DEBUG
+  if (ugrid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
+  endif
+  call MatView(Dual_mat,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+  
+  call UGridPartition(unstructured_grid,option,Dual_mat,is_new, &
+                      num_cells_local_new)
+  
   if (allocated(local_vertices)) deallocate(local_vertices)
   if (allocated(local_vertex_offset)) deallocate(local_vertex_offset)
   

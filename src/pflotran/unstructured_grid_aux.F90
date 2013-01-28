@@ -827,10 +827,8 @@ end subroutine UGridMapIndices
 ! date: 10/05/12
 !
 ! ************************************************************************** !
-subroutine UGridPartition(ugrid,option, &
-                                 Adj_mat,num_common_vertices, &
-                                 Dual_mat,is_new, &
-                                 num_cells_local_new)
+subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
+                          num_cells_local_new)
 
   use Option_module
   
@@ -844,8 +842,6 @@ subroutine UGridPartition(ugrid,option, &
   
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
-  Mat :: Adj_mat
-  PetscInt :: num_common_vertices
   Mat :: Dual_mat
   IS :: is_new
   PetscInt :: num_cells_local_new
@@ -856,28 +852,6 @@ subroutine UGridPartition(ugrid,option, &
   PetscViewer :: viewer
   PetscInt :: local_vertex_offset
   PetscErrorCode :: ierr
-
-#if UGRID_DEBUG
-  call printMsg(option,'Dual matrix')
-#endif
-
-  ! petsc will call parmetis to calculate the graph/dual
-#if defined(PETSC_HAVE_PARMETIS)
-  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
-#else
-  option%io_buffer = 'Must compile with Parmetis in order to use unstructured grids.'
-  call printErrMsg(option)
-#endif
-  
-#if UGRID_DEBUG
-  if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
-  else
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
-  endif
-  call MatView(Dual_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
 
 #if UGRID_DEBUG
   call printMsg(option,'Partitioning')
