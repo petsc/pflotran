@@ -590,6 +590,7 @@ A number of command line options are available:
 {\tt -file\_prefix} <output file name> & specify an output file [Default: {\tt pflotran.out, \,\ldots}]\\
 {\tt -screen\_output off} & turn off screen output\\
 %{\tt -v} &\\
+{\tt -realization\_id <integer>} & run specified realization ID\\
 {\tt -multisimulation} & run multiple input files in one run\\
 {\tt -stochastic} & Monte Carlo multiple realization run\\
 {\tt -log\_summary} & print out run performance (PETSc option)
@@ -3331,14 +3332,63 @@ END
 
 \subsection{Keyword: DATASET}
 
-%\noindent{\bf Description:} Input datafile for thermodynamic properties of aqueous species, minerals, gases, colloids, and surface complexes.
+\noindent{\bf Description:} 
+Specifies a data set to be associated with parameters sets in the model.
 
-\noindent{\bf Description:} Dataset for permeability.
+%\noindent{\bf Input:}
+%\begin{deflist}{000}
+%\item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
+%\end{deflist}
 
-\noindent{\bf Input:}
+%DATASET Card
+
+%Required Cards
+
 \begin{deflist}{000}
-\item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
+\item[DATASET] <string>: Opens the card block with the name of the data set in the string.
+
+\item[NAME] <string>: Name of the data set if not included with DATASET card. Note: this string overwrites the name specified with the DATASET.
+
+\item[FILENAME] <string>: Name of file containing data.
+
+\item[TYPE] <string>: Reserved for future application where the data set can be a single scalar or vector value or a functional relationship. The TYPE is currently fixed at HETEROGENEOUS by default. Other types report an unsupported error message.
+
+\item[REALIZATION\_DEPENDENT]: Toggle that causes PFLOTRAN to load the data set based on the realization ID. For instance, if the data set is tied to PERMEABILITY within a MATERIAL\_PROPERTY and the realization ID is 99, PFLOTRAN searches for an HDF5 data set labeled "PERMEABILITY99". For POROSITY, "POROSITY99".
+
 \end{deflist}
+
+\begin{mdframed}
+
+\noindent
+{\bf Examples:}
+
+Reading heterogeneous permeability and porosity for the Hanford unit for realization ID = 99. The name of the data sets within the HDF5 file are PERMEABILITY99 and POROSITY99, respectively.
+
+\begin{verbatim}
+
+DATASET perm
+  FILENAME hanford_unit.h5
+  REALIZATION_DEPENDENT
+END
+
+DATASET poros
+  FILENAME hanford_unit.h5
+  REALIZATION_DEPENDENT
+END
+
+MATERIAL_PROPERTY hanford_unit
+  ...
+  POROSITY DATASET poros
+  PERMEABILITY 
+    ...
+    DATASET perm
+    ...
+  /
+  ...
+END
+\end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
