@@ -14,10 +14,10 @@ module Reaction_Sandbox_CLM_CN_class
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_clm_cn_type
   contains
-    procedure, public :: Init => CLM_CN_Init
-    procedure, public :: ReadInput => CLM_CN_Read
-    procedure, public :: Evaluate => CLM_CN_React
-    procedure, public :: Destroy => CLM_CN_Destroy
+    procedure, public, nopass :: Init => CLM_CN_Init
+    procedure, public, nopass :: ReadInput => CLM_CN_Read
+    procedure, public, nopass :: Evaluate => CLM_CN_React
+    procedure, public, nopass :: Destroy => CLM_CN_Destroy
   end type reaction_sandbox_clm_cn_type
   
   public :: CLM_CN_Create
@@ -48,12 +48,10 @@ end function CLM_CN_Create
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_Init(reaction_sandbox)
+subroutine CLM_CN_Init()
 
   implicit none
   
-  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox
-      
 end subroutine CLM_CN_Init
 
 ! ************************************************************************** !
@@ -63,7 +61,7 @@ end subroutine CLM_CN_Init
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_Read(reaction_sandbox,input,option)
+subroutine CLM_CN_Read(input,option)
 
   use Option_module
   use String_module
@@ -72,7 +70,6 @@ subroutine CLM_CN_Read(reaction_sandbox,input,option)
   
   implicit none
   
-  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox
   type(input_type) :: input
   type(option_type) :: option
 
@@ -143,8 +140,7 @@ end subroutine CLM_CN_Read
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_React(reaction_sandbox, &
-                        Residual,Jacobian,compute_derivative,rt_auxvar, &
+subroutine CLM_CN_React(Residual,Jacobian,compute_derivative,rt_auxvar, &
                         global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
@@ -152,7 +148,6 @@ subroutine CLM_CN_React(reaction_sandbox, &
   
   implicit none
   
-  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox  
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
@@ -241,12 +236,10 @@ end subroutine CLM_CN_React
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_Destroy(reaction_sandbox)
+subroutine CLM_CN_Destroy()
 
   implicit none
   
-  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox  
-
 end subroutine CLM_CN_Destroy
 
 end module Reaction_Sandbox_CLM_CN_class

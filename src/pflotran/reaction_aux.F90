@@ -10,8 +10,6 @@ module Reaction_Aux_module
   use Solid_Solution_Aux_module
 #endif
 
-  use Reaction_Sandbox_Base_class
-
   implicit none
   
   private 
@@ -300,8 +298,6 @@ module Reaction_Aux_module
     PetscBool :: update_mineral_surface_area
     PetscBool :: update_mnrl_surf_with_porosity
     
-    class(reaction_sandbox_base_type), pointer :: sandbox_list
-    
   end type reaction_type
 
   public :: ReactionCreate, &
@@ -534,8 +530,6 @@ function ReactionCreate()
   reaction%update_mineral_surface_area = PETSC_FALSE
   reaction%update_mnrl_surf_with_porosity = PETSC_FALSE
   
-  nullify(reaction%sandbox_list)
-
   ReactionCreate => reaction
   
 end function ReactionCreate
@@ -1726,7 +1720,6 @@ subroutine ReactionDestroy(reaction)
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
-  class(reaction_sandbox_base_type), pointer :: cur_sandbox, prev_sandbox
 
   if (.not.associated(reaction)) return
   
@@ -1809,14 +1802,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%redox_species_list)) &
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
   nullify(reaction%redox_species_list)
-
-  ! sandbox reactions
-  cur_sandbox => reaction%sandbox_list
-  do
-    if (.not.associated(cur_sandbox)) exit
-    prev_sandbox => cur_sandbox%next
-    call cur_sandbox%Destroy()
-  enddo
   
   call DeallocateArray(reaction%primary_species_names)
   call DeallocateArray(reaction%secondary_species_names)

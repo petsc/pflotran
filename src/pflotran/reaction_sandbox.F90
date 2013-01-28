@@ -9,11 +9,36 @@ module Reaction_Sandbox_module
   
 #include "definitions.h"
 
-  public :: RSandboxRead, &
+  class(reaction_sandbox_base_type), pointer, public :: sandbox_list
+
+  public :: RSandboxInit, &
+            RSandboxRead, &
             RSandbox, &
             RSandboxDestroy
 
 contains
+
+! ************************************************************************** !
+!
+! RSandboxInit: Initializes the sandbox list
+! author: Glenn Hammond
+! date: 01/28/13
+!
+! ************************************************************************** !
+subroutine RSandboxInit(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+
+  if (associated(sandbox_list)) then
+    call RSandboxDestroy()
+  endif
+  nullify(sandbox_list)
+
+end subroutine RSandboxInit
 
 ! ************************************************************************** !
 !
@@ -22,7 +47,7 @@ contains
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine RSandboxRead(sandbox_list,input,option)
+subroutine RSandboxRead(input,option)
 
   use Option_module
   use String_module
@@ -31,7 +56,6 @@ subroutine RSandboxRead(sandbox_list,input,option)
   
   implicit none
   
-  class(reaction_sandbox_base_type), pointer :: sandbox_list
   type(input_type) :: input
   type(option_type) :: option
 
@@ -39,7 +63,7 @@ subroutine RSandboxRead(sandbox_list,input,option)
   character(len=MAXWORDLENGTH) :: word
   class(reaction_sandbox_base_type), pointer :: new_sandbox, cur_sandbox
   
-  class(reaction_sandbox_clm_cn_type), pointer :: clm_cn
+  call RSandboxInit(option)
   
   nullify(new_sandbox)
   do 
@@ -53,14 +77,14 @@ subroutine RSandboxRead(sandbox_list,input,option)
 
     select case(trim(word))
       case('CLM_CN')
-        clm_cn => CLM_CN_Create()
-        call clm_cn%Init()
-        new_sandbox => clm_cn
+        new_sandbox => CLM_CN_Create()
       case default
         option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &
           trim(word) // ' not recognized.'
         call printErrMsg(option)
     end select
+    
+    call new_sandbox%ReadInput(input,option)
     
     if (.not.associated(sandbox_list)) then
       sandbox_list => new_sandbox
@@ -83,8 +107,7 @@ end subroutine RSandboxRead
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine RSandbox(sandbox_list, &
-                    Residual,Jacobian,compute_derivative,rt_auxvar, &
+subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
                     global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
@@ -110,6 +133,7 @@ subroutine RSandbox(sandbox_list, &
   cur_reaction => sandbox_list
   do
     if (.not.associated(cur_reaction)) exit
+    call cur_reaction%Init()
     select type(cur_reaction)
       class is(reaction_sandbox_clm_cn_type)
         call cur_reaction%Evaluate(Residual,Jacobian,compute_derivative, &
@@ -132,6 +156,16 @@ end subroutine RSandbox
 subroutine RSandboxDestroy()
 
   implicit none
+
+  class(reaction_sandbox_base_type), pointer :: cur_sandbox, prev_sandbox
+  
+  ! sandbox reactions
+  cur_sandbox => sandbox_list
+  do
+    if (.not.associated(cur_sandbox)) exit
+    prev_sandbox => cur_sandbox%next
+    call cur_sandbox%Destroy()
+  enddo  
 
 end subroutine RSandboxDestroy
 

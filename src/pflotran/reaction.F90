@@ -19,8 +19,6 @@ module Reaction_module
   use Solid_Solution_Aux_module
 #endif  
 
-  use Reaction_Sandbox_module
-
   implicit none
  
   private
@@ -74,6 +72,7 @@ subroutine ReactionInit(reaction,input,option)
 
   use Option_module
   use Input_module
+  use Reaction_Sandbox_module, only : RSandboxInit
   
   implicit none
   
@@ -82,6 +81,10 @@ subroutine ReactionInit(reaction,input,option)
   type(option_type) :: option
   
   reaction => ReactionCreate()
+  
+  ! must be called prior to the first pass
+  call RSandboxInit(option)
+  
   call ReactionReadPass1(reaction,input,option)
   reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
   ! PCL add in colloid dofs
@@ -108,6 +111,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
                                TOTAL_MOLALITY, TOTAL_MOLARITY, &
                                SECONDARY_MOLALITY, SECONDARY_MOLARITY
+  use Reaction_Sandbox_module, only : RSandboxRead 
   
   implicit none
   
@@ -350,7 +354,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         nullify(general_rxn)
 
       case('REACTION_SANDBOX')
-        call RSandboxRead(reaction%sandbox_list,input,option)
+        call RSandboxRead(input,option)
       case('MICROBIAL_REACTION')
         call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
@@ -776,7 +780,7 @@ subroutine ReactionReadPass2(reaction,input,option)
     select case(trim(word))
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
-            'MICROBIAL_REACTION','REACTION_SANDBOX','BIOMASS_SPECIES')
+            'MICROBIAL_REACTION','BIOMASS_SPECIES')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)
@@ -784,6 +788,17 @@ subroutine ReactionReadPass2(reaction,input,option)
         call ReactionReadOutput(reaction,input,option)
       case('MINERAL_KINETICS')
         call MineralReadKinetics(reaction%mineral,input,option)
+      case('REACTION_SANDBOX')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,word, &
+                              'CHEMISTRY,SORPTION,REACTION_SANDBOX') 
+          ! skip over remaining cards to end of each reaction sandbox entry
+          call InputSkipToEnd(input,option,word)
+        enddo      
       case('SOLID_SOLUTIONS')
 #ifdef SOLID_SOLUTION                
         call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
@@ -3161,6 +3176,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                      volume,reaction,option)
 
   use Option_module
+  use Reaction_Sandbox_module, only : RSandbox, sandbox_list
   
   implicit none
   
@@ -3199,9 +3215,8 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                     volume,reaction,option)
   endif
   
-  if (associated(reaction%sandbox_list)) then
-    call RSandbox(reaction%sandbox_list, &
-                  Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+  if (associated(sandbox_list)) then
+    call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
   endif
   
