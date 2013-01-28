@@ -110,12 +110,12 @@ subroutine RSandbox(sandbox_list, &
   cur_reaction => sandbox_list
   do
     if (.not.associated(cur_reaction)) exit
-!    select type(cur_reaction)
-!      class is(reaction_sandbox_clm_cn_type)
+    select type(cur_reaction)
+      class is(reaction_sandbox_clm_cn_type)
         call cur_reaction%Evaluate(Residual,Jacobian,compute_derivative, &
                                    rt_auxvar,global_auxvar,porosity,volume, &
                                    reaction,option)
-!    end select
+    end select
     cur_reaction => cur_reaction%next
   enddo
 

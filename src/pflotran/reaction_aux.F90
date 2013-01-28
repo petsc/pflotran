@@ -1726,7 +1726,7 @@ subroutine ReactionDestroy(reaction)
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
-  type(reaction_sandbox_base_type), pointer :: cur_sandbox, prev_sandbox
+  class(reaction_sandbox_base_type), pointer :: cur_sandbox, prev_sandbox
 
   if (.not.associated(reaction)) return
   

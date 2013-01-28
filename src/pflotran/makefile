@@ -491,20 +491,21 @@ reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o microbial.o microbial_aux.o variables.o \
-             reaction_sandbox_clm_cn.o constraint.o
+             reaction_sandbox.o constraint.o
 else
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o microbial.o microbial_aux.o variables.o \
-             reaction_sandbox_clm_cn.o constraint.o biomass.o biomass_aux.o \
+             reaction_sandbox.o constraint.o biomass.o biomass_aux.o \
              co2eos.o water_eos.o 
 endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
                  microbial_aux.o biomass_aux.o reaction_sandbox_base.o
 reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
-                     input.o utility.o global_aux.o
+                     input.o utility.o global_aux.o reaction_sandbox_base.o \
+                     reaction_sandbox_clm_cn.o
 reaction_sandbox_base.o :
 reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
                             input.o utility.o global_aux.o reaction_sandbox_base.o
