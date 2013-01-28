@@ -10,7 +10,7 @@ module Reaction_Aux_module
   use Solid_Solution_Aux_module
 #endif
 
-  use Reaction_Sandbox_class
+  use Reaction_Sandbox_Base_class
 
   implicit none
   

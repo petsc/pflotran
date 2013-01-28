@@ -224,7 +224,8 @@ chem_obj = \
 	${common_src}mineral_aux.o \
 	${common_src}reaction.o \
 	${common_src}reaction_aux.o \
-	${common_src}reaction_sandbox.o \
+	${common_src}reaction_sandbox_clm_cn.o \
+	${common_src}reaction_sandbox_base.o \
 	${common_src}solid_solution.o \
 	${common_src}solid_solution_aux.o \
 	${common_src}surface_complexation.o \
@@ -489,20 +490,21 @@ reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o microbial.o microbial_aux.o variables.o \
-             reaction_sandbox.o constraint.o
+             reaction_sandbox_clm_cn.o constraint.o
 else
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o microbial.o microbial_aux.o variables.o \
-             reaction_sandbox.o constraint.o biomass.o biomass_aux.o \
+             reaction_sandbox_clm_cn.o constraint.o biomass.o biomass_aux.o \
              co2eos.o water_eos.o 
 endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
-                 microbial_aux.o biomass_aux.o
-reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
-                     input.o utility.o
+                 microbial_aux.o biomass_aux.o reaction_sandbox_base.o
+reaction_sandbox_base.o :
+reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
+                            input.o utility.o global_aux.o reaction_sandbox_base.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
