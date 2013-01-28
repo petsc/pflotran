@@ -1,4 +1,4 @@
-module Reaction_Sandbox_CLM_CN_class
+module Reaction_Sandbox_Template_class
 
   use Reaction_Sandbox_Base_class
   
@@ -12,15 +12,13 @@ module Reaction_Sandbox_CLM_CN_class
 #include "definitions.h"
 
   type, public, &
-    extends(reaction_sandbox_base_type) :: reaction_sandbox_clm_cn_type
+    extends(reaction_sandbox_base_type) :: reaction_sandbox_template_type
   contains
-    procedure, public :: Init => CLM_CN_Init
-    procedure, public :: ReadInput => CLM_CN_Read
-    procedure, public :: Evaluate => CLM_CN_React
-    procedure, public :: Destroy => CLM_CN_Destroy
-  end type reaction_sandbox_clm_cn_type
-  
-  public :: CLM_CN_Create
+    procedure, public :: Init => RSandboxInit
+    procedure, public :: ReadInput => RSandboxRead
+    procedure, public :: Evaluate => RSandbox
+    procedure, public :: Destroy => RSandboxDestroy
+  end type reaction_sandbox_template_type
 
 contains
 
@@ -31,39 +29,22 @@ contains
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-function CLM_CN_Create()
-
-  implicit none
-  
-  type(reaction_sandbox_clm_cn_type), pointer :: CLM_CN_Create
-  
-  allocate(CLM_CN_Create)
-  
-end function CLM_CN_Create
-
-! ************************************************************************** !
-!
-! CLM_CN_Init: Initializes reaction sandbox at beginning of simulation
-! author: Glenn Hammond
-! date: 11/08/12
-!
-! ************************************************************************** !
-subroutine CLM_CN_Init(reaction_sandbox)
+subroutine RSandboxInit(reaction_sandbox)
 
   implicit none
   
   class(reaction_sandbox_clm_cn_type) :: reaction_sandbox
       
-end subroutine CLM_CN_Init
+end subroutine RSandboxInit
 
 ! ************************************************************************** !
 !
-! CLM_CN_Read: Reads input deck for reaction sandbox parameters
+! RSandboxRead: Reads input deck for reaction sandbox parameters
 ! author: Glenn Hammond
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_Read(reaction_sandbox,input,option)
+subroutine RSandboxRead(reaction_sandbox,input,option)
 
   use Option_module
   use String_module
@@ -134,18 +115,17 @@ subroutine CLM_CN_Read(reaction_sandbox,input,option)
     end select
   enddo
   
-end subroutine CLM_CN_Read
+end subroutine RSandboxRead
 
 ! ************************************************************************** !
 !
-! CLM_CN_React: Evaluates reaction storing residual and/or Jacobian
+! RMicrobial: Evaluates reaction storing residual and/or Jacobian
 ! author: Glenn Hammond
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_React(reaction_sandbox, &
-                        Residual,Jacobian,compute_derivative,rt_auxvar, &
-                        global_auxvar,porosity,volume,reaction,option)
+subroutine RSandbox(reaction_sandbox,Residual,Jacobian,compute_derivative, &
+                    rt_auxvar,global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
   use Reaction_Aux_module
@@ -231,22 +211,22 @@ subroutine CLM_CN_React(reaction_sandbox, &
     !     entries.  This is my preference that you do not need to follow.
   endif
   
-end subroutine CLM_CN_React
+end subroutine RSandbox
 
 ! ************************************************************************** !
 !
-! CLM_CN_Destroy: Destroys allocatable or pointer objects created in this 
-!                 module
+! RSandboxDestroy: Destroys allocatable or pointer objects created in this 
+!                  module
 ! author: Glenn Hammond
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine CLM_CN_Destroy(reaction_sandbox)
+subroutine RSandboxDestroy(reaction_sandbox)
 
   implicit none
   
   class(reaction_sandbox_clm_cn_type) :: reaction_sandbox  
 
-end subroutine CLM_CN_Destroy
+end subroutine RSandboxDestroy
 
-end module Reaction_Sandbox_CLM_CN_class
+end module Reaction_Sandbox_Template_class

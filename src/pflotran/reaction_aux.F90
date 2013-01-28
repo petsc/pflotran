@@ -300,8 +300,7 @@ module Reaction_Aux_module
     PetscBool :: update_mineral_surface_area
     PetscBool :: update_mnrl_surf_with_porosity
     
-    PetscBool :: use_sandbox
-    type(reaction_sandbox_base_type), pointer :: sandbox_list
+    class(reaction_sandbox_base_type), pointer :: sandbox_list
     
   end type reaction_type
 
@@ -534,7 +533,6 @@ function ReactionCreate()
   reaction%minimum_porosity = 0.d0
   reaction%update_mineral_surface_area = PETSC_FALSE
   reaction%update_mnrl_surf_with_porosity = PETSC_FALSE
-  reaction%use_sandbox = PETSC_FALSE
   
   nullify(reaction%sandbox_list)
 

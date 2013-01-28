@@ -350,10 +350,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         nullify(general_rxn)
 
       case('REACTION_SANDBOX')
-        !TODO(geh): there has to be a better place to put this....
-        reaction%use_sandbox = PETSC_TRUE
-        call RSandBoxInit()
-        call RSandboxRead(input,option)
+        call RSandboxRead(reaction%sandbox_list,input,option)
       case('MICROBIAL_REACTION')
         call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
@@ -3202,8 +3199,9 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                     volume,reaction,option)
   endif
   
-  if (reaction%use_sandbox) then
-    call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+  if (associated(reaction%sandbox_list)) then
+    call RSandbox(reaction%sandbox_list, &
+                  Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
   endif
   

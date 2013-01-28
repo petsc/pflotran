@@ -198,7 +198,7 @@ end function RTAuxCreate
 subroutine RTAuxVarInit(aux_var,reaction,option)
 
   use Option_module
-  use Reaction_Aux_module, only : reaction_type
+  use Reaction_Aux_module
   use Surface_Complexation_Aux_module
 
   implicit none
