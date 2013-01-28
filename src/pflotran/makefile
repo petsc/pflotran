@@ -502,13 +502,15 @@ reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
 endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
-                 microbial_aux.o biomass_aux.o reaction_sandbox_base.o
+                 microbial_aux.o biomass_aux.o
 reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
                      input.o utility.o global_aux.o reaction_sandbox_base.o \
                      reaction_sandbox_clm_cn.o
-reaction_sandbox_base.o :
-reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
-                            input.o utility.o global_aux.o reaction_sandbox_base.o
+reaction_sandbox_base.o : reaction_aux.o reactive_transport_aux.o \
+                          global_aux.o
+reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
+                            string.o input.o utility.o global_aux.o \
+                            reaction_sandbox_base.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
