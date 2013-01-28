@@ -224,6 +224,7 @@ chem_obj = \
 	${common_src}mineral_aux.o \
 	${common_src}reaction.o \
 	${common_src}reaction_aux.o \
+	${common_src}reaction_sandbox.o \
 	${common_src}reaction_sandbox_clm_cn.o \
 	${common_src}reaction_sandbox_base.o \
 	${common_src}solid_solution.o \
@@ -502,6 +503,8 @@ endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
                  microbial_aux.o biomass_aux.o reaction_sandbox_base.o
+reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
+                     input.o utility.o global_aux.o
 reaction_sandbox_base.o :
 reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
                             input.o utility.o global_aux.o reaction_sandbox_base.o

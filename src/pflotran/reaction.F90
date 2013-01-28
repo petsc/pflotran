@@ -19,6 +19,8 @@ module Reaction_module
   use Solid_Solution_Aux_module
 #endif  
 
+  use Reaction_Sandbox_module
+
   implicit none
  
   private
