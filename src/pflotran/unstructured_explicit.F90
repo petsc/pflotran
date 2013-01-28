@@ -749,9 +749,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  ! Create the Dual matrix. For implicit ugrid the subroutine UGridPartition()
-  ! creates this Dual matrix, but for explicit grid, the dual matrix is 
-  ! crated before call to UGridPartition().
+  ! Create the Dual matrix.
   call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
                     ugrid%nmax,ugrid%nmax, &
                     ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
