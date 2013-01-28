@@ -1286,9 +1286,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
-            call CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)  
-       endif
-     endif
+        call CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)  
+      endif
+    endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%nsorb > 0) then
       if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
@@ -3373,10 +3373,14 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
 
 #ifdef CHUAN_CO2  
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
-         m_na,m_cl,sat_pressure*1D-5, co2aqact)
+         m_na,m_cl,sat_pressure*1D-5,co2aqact)
 #endif
-         
-  rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact 
+  
+  if (reaction%species_idx%co2_aq_id /= 0) then
+    rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact
+  else
+    co2aqact = 1.d0
+  endif
  ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
 end subroutine CO2AqActCoeff
 
