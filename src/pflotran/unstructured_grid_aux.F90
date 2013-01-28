@@ -1032,7 +1032,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 
   ! scatter all the cell data from the old decomposition (as read in in 
   ! parallel) to the more parmetis-calculated decomposition
-  call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter, &
+  call VecScatterCreate(elements_old,PETSC_NULL_OBJECT,elements_natural,is_scatter, &
                         vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,elements_old,elements_natural, &
