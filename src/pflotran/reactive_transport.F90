@@ -904,8 +904,7 @@ subroutine RTUpdateSolutionPatch(realization)
                                       secondary_continuum_diff_coeff
           sec_porosity = realization%material_property_array(1)%ptr% &
                          secondary_continuum_porosity
-
-#ifndef MULTI	
+#ifndef MULTI
           call SecondaryRTAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
                                         rt_aux_vars(ghosted_id), &
                                         global_aux_vars(ghosted_id), &
@@ -920,8 +919,8 @@ subroutine RTUpdateSolutionPatch(realization)
                                         reaction, &
                                         sec_diffusion_coefficient, &
                                         sec_porosity, &
-                                        option)
-#endif
+                                        option)                                        
+#endif                                    
       enddo
     endif
 
@@ -2975,23 +2974,23 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                   secondary_continuum_diff_coeff
       sec_porosity = realization%material_property_array(1)%ptr% &
                      secondary_continuum_porosity
-                     
-#ifndef MULTI                     
+
+#ifndef MULTI
       call RTSecondaryTransport(rt_sec_transport_vars(ghosted_id), &
                                 rt_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 reaction, &
                                 sec_diffusion_coefficient, &
                                 sec_porosity, &
-                                option,res_sec_transport)  
-#else
+                                option,res_sec_transport)
+#else                     
       call RTSecondaryTransportMulti(rt_sec_transport_vars(ghosted_id), &
                                 rt_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 reaction, &
                                 sec_diffusion_coefficient, &
                                 sec_porosity, &
-                                option,res_sec_transport)
+                                option,res_sec_transport)                                  
 #endif
                                                         
       r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)*1.d3 ! convert vol to L from m3
@@ -3614,7 +3613,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         sec_porosity = realization%material_property_array(1)%ptr% &
                        secondary_continuum_porosity
                        
-#ifdef MULTI
+#ifndef MULTI
         call RTSecondaryTransportJacobian(rt_aux_vars(ghosted_id), &
                                           rt_sec_transport_vars(ghosted_id), &
                                           global_aux_vars(ghosted_id), &
@@ -3629,9 +3628,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                           sec_diffusion_coefficient, &
                                           sec_porosity, &
                                           reaction, &
-                                          option,jac_transport)
-#endif
-                                        
+                                          option,jac_transport) 
+#endif                                                                
                                                                                 
         Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L
       endif
@@ -5205,7 +5203,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   ! Calculate the coupling term
   res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
-                    
+                                       
 end subroutine RTSecondaryTransport
 
 #ifdef MULTI
@@ -5333,17 +5331,14 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
               
   ! Apply boundary conditions
   ! Inner boundary
-  i = 1
-  res(i) = res(i) - pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))* &
-                    (conc_upd(i+1) - conc_upd(i))
-                    
+  res(1) = res(1) - pordiff*area(1)/(dm_minus(2) + dm_plus(1))* &
+                    (conc_upd(2) - conc_upd(1))
+                                      
   ! Outer boundary
-  i = ngcells
-  res(i) = res(i) - pordiff*area(i)/dm_plus(i)* &
-                    (conc_primary_node - conc_upd(i))
-  res(i) = res(i) + pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))* &
-                    (conc_upd(i) - conc_upd(i-i))  
-                          
+  res(ngcells) = res(ngcells) - pordiff*area(ngcells)/dm_plus(ngcells)* &
+                    (conc_primary_node - conc_upd(ngcells))
+  res(ngcells) = res(ngcells) + pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                + dm_plus(ngcells-1))*(conc_upd(ngcells) - conc_upd(ngcells-1))  
                                                      
 !================ Calculate the secondary jacobian =============================        
   
@@ -5372,21 +5367,21 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   
   ! Apply boundary conditions
   ! Inner boundary
-  i = 1
-  coeff_diag(i) = coeff_diag(i) + &
-                  pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
+  coeff_diag(1) = coeff_diag(1) + &
+                  pordiff*area(1)/(dm_minus(2) + dm_plus(1))
                   
-  coeff_right(i) = coeff_right(i) - &
-                   pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
-
-  ! Outer boundary -- closest to primary node\
-  i = ngcells
-  coeff_diag(i) = coeff_diag(i) + &
-                  pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1)) + &
-                  pordiff*area(i)/dm_plus(i)
-  coeff_left(i) = coeff_left(i) - &
-                  pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1)) 
-
+  coeff_right(1) = coeff_right(1) - &
+                   pordiff*area(1)/(dm_minus(2) + dm_plus(1))
+  
+  ! Outer boundary -- closest to primary node
+  coeff_diag(ngcells) = coeff_diag(ngcells) + &
+                        pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                        + dm_plus(ngcells-1)) + pordiff*area(ngcells)/ &
+                        dm_plus(ngcells)
+  coeff_left(ngcells) = coeff_left(ngcells) - &
+                        pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
+                        dm_plus(ngcells-1)) 
+  
 !===============================================================================        
                         
   rhs = -res                 
@@ -5402,10 +5397,11 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   ! Back substitution
   conc_current_N = rhs(ngcells)/coeff_diag(ngcells) + conc_upd(ngcells)
  
+   
   ! Calculate the coupling term
   res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
-                    
+
 end subroutine RTSecondaryTransportMulti
 #endif
 
@@ -5662,16 +5658,14 @@ subroutine RTSecondaryTransportJacobianMulti(aux_var,sec_transport_vars, &
               
   ! Apply boundary conditions
   ! Inner boundary
-  i = 1
-  res(i) = res(i) - pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))* &
-                    (conc_upd(i+1) - conc_upd(i))
-                    
+  res(1) = res(1) - pordiff*area(1)/(dm_minus(2) + dm_plus(1))* &
+                    (conc_upd(2) - conc_upd(1))
+                                      
   ! Outer boundary
-  i = ngcells
-  res(i) = res(i) - pordiff*area(i)/dm_plus(i)* &
-                    (conc_primary_node - conc_upd(i))
-  res(i) = res(i) + pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))* &
-                    (conc_upd(i) - conc_upd(i-i))  
+  res(ngcells) = res(ngcells) - pordiff*area(ngcells)/dm_plus(ngcells)* &
+                    (conc_primary_node - conc_upd(ngcells))
+  res(ngcells) = res(ngcells) + pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                + dm_plus(ngcells-1))*(conc_upd(ngcells) - conc_upd(ngcells-1))  
                           
                                                      
 !================ Calculate the secondary jacobian =============================        
@@ -5701,20 +5695,20 @@ subroutine RTSecondaryTransportJacobianMulti(aux_var,sec_transport_vars, &
   
   ! Apply boundary conditions
   ! Inner boundary
-  i = 1
-  coeff_diag(i) = coeff_diag(i) + &
-                  pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
+  coeff_diag(1) = coeff_diag(1) + &
+                  pordiff*area(1)/(dm_minus(2) + dm_plus(1))
                   
-  coeff_right(i) = coeff_right(i) - &
-                   pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
-
-  ! Outer boundary -- closest to primary node\
-  i = ngcells
-  coeff_diag(i) = coeff_diag(i) + &
-                  pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1)) + &
-                  pordiff*area(i)/dm_plus(i)
-  coeff_left(i) = coeff_left(i) - &
-                  pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1)) 
+  coeff_right(1) = coeff_right(1) - &
+                   pordiff*area(1)/(dm_minus(2) + dm_plus(1))
+  
+  ! Outer boundary -- closest to primary node
+  coeff_diag(ngcells) = coeff_diag(ngcells) + &
+                        pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                        + dm_plus(ngcells-1)) + pordiff*area(ngcells)/ &
+                        dm_plus(ngcells)
+  coeff_left(ngcells) = coeff_left(ngcells) - &
+                        pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
+                        dm_plus(ngcells-1)) 
 
 !===============================================================================        
                         
@@ -5735,7 +5729,7 @@ subroutine RTSecondaryTransportJacobianMulti(aux_var,sec_transport_vars, &
   ! Calculate the jacobian term
   jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
                   dm_plus(ngcells)*porosity   
-   
+                    
 end subroutine RTSecondaryTransportJacobianMulti
 #endif 
 

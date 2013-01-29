@@ -478,17 +478,14 @@ type(sec_transport_type) :: sec_transport_vars
               
   ! Apply boundary conditions
   ! Inner boundary
-  i = 1
-  res(i) = res(i) - pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))* &
-                    (conc_upd(i+1) - conc_upd(i))
-                    
+  res(1) = res(1) - pordiff*area(1)/(dm_minus(2) + dm_plus(1))* &
+                    (conc_upd(2) - conc_upd(1))
+                                      
   ! Outer boundary
-  i = ngcells
-  res(i) = res(i) - pordiff*area(i)/dm_plus(i)* &
-                    (conc_primary_node - conc_upd(i))
-  res(i) = res(i) + pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))* &
-                    (conc_upd(i) - conc_upd(i-i))  
-                          
+  res(ngcells) = res(ngcells) - pordiff*area(ngcells)/dm_plus(ngcells)* &
+                    (conc_primary_node - conc_upd(ngcells))
+  res(ngcells) = res(ngcells) + pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                + dm_plus(ngcells-1))*(conc_upd(ngcells) - conc_upd(ngcells-1))
                                                      
 !================ Calculate the secondary jacobian =============================        
   
@@ -517,21 +514,21 @@ type(sec_transport_type) :: sec_transport_vars
   
   ! Apply boundary conditions
   ! Inner boundary
-  i = 1
-  coeff_diag(i) = coeff_diag(i) + &
-                  pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
+  coeff_diag(1) = coeff_diag(1) + &
+                  pordiff*area(1)/(dm_minus(2) + dm_plus(1))
                   
-  coeff_right(i) = coeff_right(i) - &
-                   pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
-
-  ! Outer boundary -- closest to primary node\
-  i = ngcells
-  coeff_diag(i) = coeff_diag(i) + &
-                  pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1)) + &
-                  pordiff*area(i)/dm_plus(i)
-  coeff_left(i) = coeff_left(i) - &
-                  pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1)) 
-
+  coeff_right(1) = coeff_right(1) - &
+                   pordiff*area(1)/(dm_minus(2) + dm_plus(1))
+  
+  ! Outer boundary -- closest to primary node
+  coeff_diag(ngcells) = coeff_diag(ngcells) + &
+                        pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                        + dm_plus(ngcells-1)) + pordiff*area(ngcells)/ &
+                        dm_plus(ngcells)
+  coeff_left(ngcells) = coeff_left(ngcells) - &
+                        pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
+                        dm_plus(ngcells-1)) 
+                        
 !===============================================================================        
                         
   rhs = -res                 
@@ -584,7 +581,7 @@ type(sec_transport_type) :: sec_transport_vars
   sec_transport_vars%sec_zeta = sec_zeta
 
 end subroutine SecondaryRTAuxVarComputeMulti
-#endif
+#endif MULTI
 
 ! ************************************************************************** !
 ! 
