@@ -210,6 +210,7 @@ subroutine RTSetupPatch(realization)
       allocate(rt_sec_transport_vars(ghosted_id)%vol(rt_sec_transport_vars(ghosted_id)%ncells))
       allocate(rt_sec_transport_vars(ghosted_id)%dm_minus(rt_sec_transport_vars(ghosted_id)%ncells))
       allocate(rt_sec_transport_vars(ghosted_id)%dm_plus(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)%updated_conc(rt_sec_transport_vars(ghosted_id)%ncells))
     
       call SecondaryContinuumType(&
                               rt_sec_transport_vars(ghosted_id)%sec_continuum, &
@@ -894,7 +895,6 @@ subroutine RTUpdateSolutionPatch(realization)
       enddo
     endif
     
-#ifndef MULTI    
     ! update secondary continuum variables
     if (option%use_mc) then
       do ghosted_id = 1, grid%ngmax
@@ -904,6 +904,8 @@ subroutine RTUpdateSolutionPatch(realization)
                                       secondary_continuum_diff_coeff
           sec_porosity = realization%material_property_array(1)%ptr% &
                          secondary_continuum_porosity
+
+#ifndef MULTI	
           call SecondaryRTAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
                                         rt_aux_vars(ghosted_id), &
                                         global_aux_vars(ghosted_id), &
@@ -911,9 +913,17 @@ subroutine RTUpdateSolutionPatch(realization)
                                         sec_diffusion_coefficient, &
                                         sec_porosity, &
                                         option)
+#else
+          call SecondaryRTAuxVarComputeMulti(rt_sec_transport_vars(ghosted_id), &
+                                        rt_aux_vars(ghosted_id), &
+                                        global_aux_vars(ghosted_id), &
+                                        reaction, &
+                                        sec_diffusion_coefficient, &
+                                        sec_porosity, &
+                                        option)
+#endif
       enddo
     endif
-#endif
 
   endif
 
@@ -2965,13 +2975,24 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                   secondary_continuum_diff_coeff
       sec_porosity = realization%material_property_array(1)%ptr% &
                      secondary_continuum_porosity
+                     
+#ifndef MULTI                     
       call RTSecondaryTransport(rt_sec_transport_vars(ghosted_id), &
                                 rt_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 reaction, &
                                 sec_diffusion_coefficient, &
                                 sec_porosity, &
+                                option,res_sec_transport)  
+#else
+      call RTSecondaryTransportMulti(rt_sec_transport_vars(ghosted_id), &
+                                rt_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id), &
+                                reaction, &
+                                sec_diffusion_coefficient, &
+                                sec_porosity, &
                                 option,res_sec_transport)
+#endif
                                                         
       r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)*1.d3 ! convert vol to L from m3
     enddo   
@@ -3592,6 +3613,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                     ptr%secondary_continuum_diff_coeff
         sec_porosity = realization%material_property_array(1)%ptr% &
                        secondary_continuum_porosity
+                       
+#ifdef MULTI
         call RTSecondaryTransportJacobian(rt_aux_vars(ghosted_id), &
                                           rt_sec_transport_vars(ghosted_id), &
                                           global_aux_vars(ghosted_id), &
@@ -3599,6 +3622,16 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                           sec_porosity, &
                                           reaction, &
                                           option,jac_transport)
+#else
+        call RTSecondaryTransportJacobianMulti(rt_aux_vars(ghosted_id), &
+                                          rt_sec_transport_vars(ghosted_id), &
+                                          global_aux_vars(ghosted_id), &
+                                          sec_diffusion_coefficient, &
+                                          sec_porosity, &
+                                          reaction, &
+                                          option,jac_transport)
+#endif
+                                        
                                                                                 
         Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L
       endif
@@ -5367,7 +5400,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   enddo
 
   ! Back substitution
-   conc_current_N = rhs(ngcells)/coeff_diag(ngcells) + conc_prev(ngcells)
+  conc_current_N = rhs(ngcells)/coeff_diag(ngcells) + conc_upd(ngcells)
  
   ! Calculate the coupling term
   res_transport = area_fm*diffusion_coefficient*porosity* &
@@ -5685,7 +5718,7 @@ subroutine RTSecondaryTransportJacobianMulti(aux_var,sec_transport_vars, &
 
 !===============================================================================        
                         
-  rhs = -res            
+  rhs = -res           
                   
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
