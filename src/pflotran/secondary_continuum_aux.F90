@@ -581,7 +581,7 @@ type(sec_transport_type) :: sec_transport_vars
   sec_transport_vars%sec_zeta = sec_zeta
 
 end subroutine SecondaryRTAuxVarComputeMulti
-#endif MULTI
+#endif 
 
 ! ************************************************************************** !
 ! 
