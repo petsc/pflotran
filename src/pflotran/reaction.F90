@@ -19,6 +19,11 @@ module Reaction_module
   use Solid_Solution_Aux_module
 #endif  
 
+  !TODO(geh): Intel 2013.1.119 crashes if this module is included.  It does not
+  !           need to be included here given since the subroutines below 
+  !           include the module.  Remove once Intel fixes its bug.
+  use Reaction_Sandbox_module
+
   implicit none
  
   private
