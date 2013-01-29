@@ -70,6 +70,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   implicit none
   
   class(realization_base_type) :: realization_base
+  PetscInt :: var_list_type  
 
   call printMsg(realization_base%option,'')
   write(realization_base%option%io_buffer, &
