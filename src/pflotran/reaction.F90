@@ -7,12 +7,12 @@ module Reaction_module
   use Surface_Complexation_module
   use Mineral_module
   use Microbial_module
-  use Biomass_module
+  use Immobile_module
 
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
-  use Biomass_Aux_module
+  use Immobile_Aux_module
 
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
@@ -130,7 +130,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   character(len=MAXWORDLENGTH) :: card
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
-  type(biomass_species_type), pointer :: biomass_species, prev_biomass_species
+  type(immobile_species_type), pointer :: immobile_species, prev_immobile_species
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
@@ -144,7 +144,7 @@ subroutine ReactionReadPass1(reaction,input,option)
 
   nullify(prev_species)
   nullify(prev_gas)
-  nullify(prev_biomass_species)
+  nullify(prev_immobile_species)
   nullify(prev_colloid)
   nullify(prev_cation)
   nullify(prev_general_rxn)
@@ -234,39 +234,39 @@ subroutine ReactionReadPass1(reaction,input,option)
           prev_gas => gas
           nullify(gas)
         enddo
-      case('BIOMASS_SPECIES')
+      case('IMMOBILE_SPECIES')
         ! find end of list if it exists
-        if (associated(reaction%biomass%list)) then
-          biomass_species => reaction%biomass%list
+        if (associated(reaction%immobile%list)) then
+          immobile_species => reaction%immobile%list
           do
-            if (.not.associated(biomass_species%next)) exit
-            biomass_species => biomass_species%next
+            if (.not.associated(immobile_species%next)) exit
+            immobile_species => immobile_species%next
           enddo
-          prev_biomass_species => biomass_species
-          nullify(biomass_species)
+          prev_immobile_species => immobile_species
+          nullify(immobile_species)
         else
-          nullify(prev_biomass_species)
+          nullify(prev_immobile_species)
         endif
         do
           call InputReadFlotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
 
-          reaction%biomass%nbiomass = reaction%biomass%nbiomass + 1
+          reaction%immobile%nimmobile = reaction%immobile%nimmobile + 1
           
-          biomass_species => BiomassSpeciesCreate()
-          call InputReadWord(input,option,biomass_species%name,PETSC_TRUE)  
+          immobile_species => ImmobileSpeciesCreate()
+          call InputReadWord(input,option,immobile_species%name,PETSC_TRUE)  
           call InputErrorMsg(input,option,'keyword', &
-                             'CHEMISTRY,BIOMASS_SPECIES')
-          if (.not.associated(prev_biomass_species)) then
-            reaction%biomass%list => biomass_species
-            biomass_species%id = 1
+                             'CHEMISTRY,IMMOBILE_SPECIES')
+          if (.not.associated(prev_immobile_species)) then
+            reaction%immobile%list => immobile_species
+            immobile_species%id = 1
           else
-            prev_biomass_species%next => biomass_species
-            biomass_species%id = prev_biomass_species%id + 1
+            prev_immobile_species%next => immobile_species
+            immobile_species%id = prev_immobile_species%id + 1
           endif
-          prev_biomass_species => biomass_species
-          nullify(biomass_species)
+          prev_immobile_species => immobile_species
+          nullify(immobile_species)
         enddo        
       case('GENERAL_REACTION')
         reaction%ngeneral_rxn = reaction%ngeneral_rxn + 1
@@ -730,7 +730,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   endif
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
       reaction%ngeneral_rxn + reaction%microbial%nrxn + &
-      reaction%biomass%nbiomass > 0) then
+      reaction%immobile%nimmobile > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
       
@@ -785,7 +785,7 @@ subroutine ReactionReadPass2(reaction,input,option)
     select case(trim(word))
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
-            'MICROBIAL_REACTION','BIOMASS_SPECIES')
+            'MICROBIAL_REACTION','IMMOBILE_SPECIES')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)
@@ -932,7 +932,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      mineral_constraint, &
                                      srfcplx_constraint, &
                                      colloid_constraint, &
-                                     biomass_constraint, &
+                                     immobile_constraint, &
                                      option)
   use Option_module
   use Input_module
@@ -947,7 +947,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
-  type(biomass_constraint_type), pointer :: biomass_constraint
+  type(immobile_constraint_type), pointer :: immobile_constraint
   type(option_type) :: option
   
   PetscBool :: found
@@ -1056,9 +1056,9 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                 constraint_name, &
                                 srfcplx_constraint,option)
 
-  ! microbial biomass
-  call BiomassProcessConstraint(reaction%biomass,constraint_name, &
-                                biomass_constraint,option)
+  ! microbial immobile
+  call ImmobileProcessConstraint(reaction%immobile,constraint_name, &
+                                 immobile_constraint,option)
   
 end subroutine ReactionProcessConstraint
 
@@ -1076,7 +1076,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          mineral_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
-                                         biomass_constraint, &
+                                         immobile_constraint, &
                                          porosity1, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
@@ -1099,7 +1099,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
-  type(biomass_constraint_type), pointer :: biomass_constraint
+  type(immobile_constraint_type), pointer :: immobile_constraint
   PetscInt :: num_iterations
   
 ! *****************************
@@ -2734,7 +2734,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
   type(mineral_rxn_type), pointer :: cur_mineral
-  type(biomass_species_type), pointer :: cur_biomass
+  type(immobile_species_type), pointer :: cur_immobile
   type(surface_complex_type), pointer :: cur_srfcplx
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   
@@ -2777,7 +2777,7 @@ subroutine ReactionReadOutput(reaction,input,option)
  !       reaction%print_all_secondary_species = PETSC_TRUE
  !       reaction%print_all_gas_species = PETSC_TRUE
         reaction%mineral%print_all = PETSC_TRUE
-        reaction%biomass%print_all = PETSC_TRUE
+        reaction%immobile%print_all = PETSC_TRUE
         reaction%print_pH = PETSC_TRUE
       case('PRIMARY_SPECIES')
         reaction%print_all_primary_species = PETSC_TRUE
@@ -2788,8 +2788,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_gas_species = PETSC_TRUE
       case('MINERALS')
         reaction%mineral%print_all = PETSC_TRUE
-      case('BIOMASS')
-        reaction%biomass%print_all = PETSC_TRUE
+      case('IMMOBILE')
+        reaction%immobile%print_all = PETSC_TRUE
       case('PH')
         reaction%print_pH = PETSC_TRUE
       case('KD')
@@ -2883,17 +2883,17 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_mineral => cur_mineral%next
           enddo
         endif
-        ! biomass
+        ! immobile
         if (.not.found) then
-          cur_biomass => reaction%biomass%list
+          cur_immobile => reaction%immobile%list
           do  
-            if (.not.associated(cur_biomass)) exit
-            if (StringCompare(name,cur_biomass%name,MAXWORDLENGTH)) then
-              cur_biomass%print_me = PETSC_TRUE
+            if (.not.associated(cur_immobile)) exit
+            if (StringCompare(name,cur_immobile%name,MAXWORDLENGTH)) then
+              cur_immobile%print_me = PETSC_TRUE
               found = PETSC_TRUE
               exit
             endif
-            cur_biomass => cur_biomass%next
+            cur_immobile => cur_immobile%next
           enddo
         endif 
         ! surface complexation reaction

@@ -36,8 +36,8 @@ subroutine DatabaseRead(reaction,option)
   use Mineral_module
   use Microbial_Aux_module
   use Microbial_module
-  use Biomass_Aux_module
-  use Biomass_module
+  use Immobile_Aux_module
+  use Immobile_module
   
   implicit none
   
@@ -47,14 +47,14 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_rxn_type), pointer :: cur_mineral, cur_mineral2
-  type(biomass_species_type), pointer :: cur_biomass_spec
+  type(immobile_species_type), pointer :: cur_immobile_spec
   type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
                                          cur_srfcplx_in_master_list
   type(mineral_type), pointer :: mineral
-  type(biomass_type), pointer :: biomass
+  type(immobile_type), pointer :: immobile
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -70,7 +70,7 @@ subroutine DatabaseRead(reaction,option)
   
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
-  biomass => reaction%biomass
+  immobile => reaction%immobile
   
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
@@ -91,11 +91,11 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec%id = -abs(cur_gas_spec%id)
     cur_gas_spec => cur_gas_spec%next
   enddo  
-  cur_biomass_spec => biomass%list
+  cur_immobile_spec => immobile%list
   do
-    if (.not.associated(cur_biomass_spec)) exit
-    cur_biomass_spec%id = -abs(cur_biomass_spec%id)
-    cur_biomass_spec => cur_biomass_spec%next
+    if (.not.associated(cur_immobile_spec)) exit
+    cur_immobile_spec%id = -abs(cur_immobile_spec%id)
+    cur_immobile_spec => cur_immobile_spec%next
   enddo
   cur_mineral => mineral%mineral_list
   do
@@ -208,29 +208,29 @@ subroutine DatabaseRead(reaction,option)
           endif
           cur_colloid => cur_colloid%next
         enddo
-        ! check if biomass
-        if (.not.found) cur_biomass_spec => biomass%list
+        ! check if immobile
+        if (.not.found) cur_immobile_spec => immobile%list
         do
-          if (found .or. .not.associated(cur_biomass_spec)) exit
-          if (StringCompare(name,cur_biomass_spec%name,MAXWORDLENGTH)) then
+          if (found .or. .not.associated(cur_immobile_spec)) exit
+          if (StringCompare(name,cur_immobile_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
             ! change negative id to positive, indicating it was found in 
             ! database
-            cur_biomass_spec%id = abs(cur_biomass_spec%id)
+            cur_immobile_spec%id = abs(cur_immobile_spec%id)
 
             ! skip the Debye-Huckel ion size parameter (a0)
             call InputReadDouble(input,option,temp_real)
-            call InputErrorMsg(input,option,'Biomass skip a0','DATABASE')            
+            call InputErrorMsg(input,option,'Immobile skip a0','DATABASE')            
             ! skip the valence
             call InputReadDouble(input,option,temp_real)
-            call InputErrorMsg(input,option,'Biomass skip Z','DATABASE')            
+            call InputErrorMsg(input,option,'Immobile skip Z','DATABASE')            
             ! read the molar weight
-            call InputReadDouble(input,option,cur_biomass_spec%molar_weight)
-            call InputErrorMsg(input,option,'Biomass molar weight','DATABASE')
+            call InputReadDouble(input,option,cur_immobile_spec%molar_weight)
+            call InputErrorMsg(input,option,'Immobile molar weight','DATABASE')
             
             cycle ! avoid the aqueous species parameters below
           endif
-          cur_biomass_spec => cur_biomass_spec%next
+          cur_immobile_spec => cur_immobile_spec%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
@@ -758,7 +758,7 @@ subroutine BasisInit(reaction,option)
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
-  use Biomass_Aux_module
+  use Immobile_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
@@ -778,7 +778,7 @@ subroutine BasisInit(reaction,option)
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1
   type(gas_species_type), pointer :: cur_gas_spec2
-  type(biomass_species_type), pointer :: cur_biomass_spec
+  type(immobile_species_type), pointer :: cur_immobile_spec
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx_in_rxn
@@ -797,7 +797,7 @@ subroutine BasisInit(reaction,option)
   type(inhibition_type), pointer :: cur_inhibition
   type(mineral_type), pointer :: mineral
   type(microbial_type), pointer :: microbial
-  type(biomass_type), pointer :: biomass
+  type(immobile_type), pointer :: immobile
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -853,7 +853,7 @@ subroutine BasisInit(reaction,option)
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
   microbial => reaction%microbial
-  biomass => reaction%biomass
+  immobile => reaction%immobile
   
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
@@ -1783,40 +1783,23 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec)
   igas_spec = -1 ! to catch bugs
 
-  ! biomass species
-  biomass%nbiomass = BiomassGetCount(biomass)
-  if (biomass%nbiomass > 0) then
-    allocate(biomass%names(biomass%nbiomass))
-    biomass%names = ''
-    allocate(biomass%print_me(biomass%nbiomass))
-    biomass%print_me = PETSC_FALSE
-    allocate(biomass%immobile_id(biomass%nbiomass))
-    biomass%immobile_id = 0
+  ! immobile species
+  immobile%nimmobile = ImmobileGetCount(immobile)
+  if (immobile%nimmobile > 0) then
+    allocate(immobile%names(immobile%nimmobile))
+    immobile%names = ''
+    allocate(immobile%print_me(immobile%nimmobile))
+    immobile%print_me = PETSC_FALSE
 
-    cur_biomass_spec => biomass%list
+    cur_immobile_spec => immobile%list
     temp_int = 0
     do
-      if (.not.associated(cur_biomass_spec)) exit
+      if (.not.associated(cur_immobile_spec)) exit
       temp_int = temp_int + 1
-      biomass%names(temp_int) = cur_biomass_spec%name
-      biomass%print_me(temp_int) = cur_biomass_spec%print_me .or. &
-                                   biomass%print_all
-      cur_biomass_spec => cur_biomass_spec%next
-    enddo
-  endif
-  
-  ! immobile species - must come after initialization of immobile species
-  ! such as biomass
-  if (reaction%nimcomp > 0) then
-    allocate(reaction%immobile_species_names(reaction%nimcomp))
-    reaction%immobile_species_names = ''
-    
-    icount = 0
-    ! biomass first
-    do i = 1, biomass%nbiomass
-      icount = icount + 1
-      reaction%immobile_species_names(icount) = biomass%names(i)
-      biomass%immobile_id(i) = icount
+      immobile%names(temp_int) = cur_immobile_spec%name
+      immobile%print_me(temp_int) = cur_immobile_spec%print_me .or. &
+                                   immobile%print_all
+      cur_immobile_spec => cur_immobile_spec%next
     enddo
   endif
   
@@ -2831,7 +2814,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%primary_species_names, &
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
-                                       reaction%immobile_species_names, &
+                                       reaction%immobile%names, &
                                        option)
       cur_general_rxn => cur_general_rxn%next
     enddo
@@ -2952,7 +2935,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%primary_species_names, &
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
-                                       reaction%immobile_species_names, &
+                                       reaction%immobile%names, &
                                        option)
       temp_int = cur_microbial_rxn%dbaserxn%nspec
       if (temp_int > max_species_count) max_species_count = temp_int
@@ -3022,14 +3005,14 @@ subroutine BasisInit(reaction,option)
       enddo
       
       if (associated(cur_microbial_rxn%biomass)) then
-        ! check for biomass species in global biomass list
+        ! check for biomass species in global immobile list
         temp_int = &
           StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
-                                biomass%names)
+                                immobile%names)
         if (temp_int == 0) then
           option%io_buffer = 'Biomass species "' // &
             trim(cur_microbial_rxn%biomass%species_name) // &
-            ' not found among biomass species.'
+            ' not found among immobile species.'
           call printErrMsg(option)
         else
           microbial%biomassid(irxn) = temp_int

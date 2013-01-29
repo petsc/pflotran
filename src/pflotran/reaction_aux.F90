@@ -3,7 +3,7 @@ module Reaction_Aux_module
   use Database_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
-  use Biomass_Aux_module
+  use Immobile_Aux_module
   use Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
@@ -169,7 +169,7 @@ module Reaction_Aux_module
     type(surface_complexation_type), pointer :: surface_complexation
     type(mineral_type), pointer :: mineral
     type(microbial_type), pointer :: microbial
-    type(biomass_type), pointer :: biomass
+    type(immobile_type), pointer :: immobile
     
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
@@ -257,9 +257,6 @@ module Reaction_Aux_module
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscBool, pointer :: total_sorb_mobile_print(:)
     PetscBool, pointer :: colloid_print(:)
-    
-    ! immobile species
-    character(len=MAXWORDLENGTH), pointer :: immobile_species_names(:)
     
     ! general rxn
     PetscInt :: ngeneral_rxn
@@ -416,7 +413,7 @@ function ReactionCreate()
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralCreate()
   reaction%microbial => MicrobialCreate()
-  reaction%biomass => BiomassCreate()
+  reaction%immobile => ImmobileCreate()
 #ifdef SOLID_SOLUTION  
   nullify(reaction%solid_solution_list)
 #endif
@@ -497,8 +494,6 @@ function ReactionCreate()
   nullify(reaction%pri_spec_to_coll_spec)
   nullify(reaction%coll_spec_to_pri_spec)
   nullify(reaction%colloid_mobile_fraction)
-  
-  nullify(reaction%immobile_species_names)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -1222,7 +1217,7 @@ function GetImmobileCount(reaction)
   PetscInt :: GetImmobileCount
   type(reaction_type) :: reaction
 
-  GetImmobileCount = BiomassGetCount(reaction%biomass)
+  GetImmobileCount = ImmobileGetCount(reaction%immobile)
   
 end function GetImmobileCount
 
@@ -1789,7 +1784,7 @@ subroutine ReactionDestroy(reaction)
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
   call MicrobialDestroy(reaction%microbial)
-  call BiomassDestroy(reaction%biomass)
+  call ImmobileDestroy(reaction%immobile)
 #ifdef SOLID_SOLUTION  
   call SolidSolutionDestroy(reaction%solid_solution_list)
 #endif  
@@ -1856,8 +1851,6 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%pri_spec_to_coll_spec)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
-  
-  call DeallocateArray(reaction%immobile_species_names)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

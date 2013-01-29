@@ -1062,7 +1062,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
-                                   cur_constraint%biomass, &
+                                   cur_constraint%immobile_species, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -1086,7 +1086,7 @@ subroutine RealProcessTranConditions(realization)
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
-            cur_constraint_coupler%biomass => cur_constraint%biomass
+            cur_constraint_coupler%immobile_species => cur_constraint%immobile_species
             exit
           endif
           cur_constraint => cur_constraint%next

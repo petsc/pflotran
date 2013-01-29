@@ -453,7 +453,7 @@ subroutine CondControlAssignTranInitCond(realization)
   
   type(realization_type) :: realization
   
-  PetscInt :: icell, iconn, idof, isub_condition, temp_int, ibiomass
+  PetscInt :: icell, iconn, idof, isub_condition, temp_int, iimmobile
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite, imnrl, ikinrxn
   PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
@@ -563,15 +563,14 @@ subroutine CondControlAssignTranInitCond(realization)
           enddo
         endif
           
-        ! read in heterogeneous biomass
-        if (associated(constraint_coupler%biomass)) then
-          do ibiomass = 1, reaction%biomass%nbiomass
-            idof = reaction%biomass%immobile_id(ibiomass)
-            if (constraint_coupler%biomass%external_dataset(ibiomass)) then
+        ! read in heterogeneous immobile
+        if (associated(constraint_coupler%immobile_species)) then
+          do iimmobile = 1, reaction%immobile%nimmobile
+            if (constraint_coupler%immobile_species%external_dataset(iimmobile)) then
               ! no need to requilibrate at each cell
               string = 'constraint ' // trim(constraint_coupler%constraint_name)
               dataset => DatasetGetPointer(realization%datasets, &
-                  constraint_coupler%biomass%constraint_aux_string(ibiomass), &
+                  constraint_coupler%immobile_species%constraint_aux_string(iimmobile), &
                   string,option)
               string = '' ! group name
               string2 = dataset%h5_dataset_name ! dataset name
@@ -584,7 +583,7 @@ subroutine CondControlAssignTranInitCond(realization)
               do icell=1,initial_condition%region%num_cells
                 local_id = initial_condition%region%cell_ids(icell)
                 ghosted_id = grid%nL2G(local_id)
-                rt_aux_vars(ghosted_id)%immobile(idof) = vec_p(ghosted_id)
+                rt_aux_vars(ghosted_id)%immobile(iimmobile) = vec_p(ghosted_id)
               enddo
               call GridVecRestoreArrayF90(grid,field%work_loc,vec_p,ierr)
             endif
@@ -629,7 +628,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
-                constraint_coupler%biomass, &
+                constraint_coupler%immobile_species, &
                 porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
                 PETSC_FALSE,option)
@@ -646,7 +645,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
-                constraint_coupler%biomass, &
+                constraint_coupler%immobile_species, &
                 porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
                 PETSC_TRUE,option)
@@ -716,20 +715,19 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%colloids%basis_conc_imb(idof)
             enddo
           endif
-          ! biomass
-          if (associated(constraint_coupler%biomass)) then
+          ! immobile
+          if (associated(constraint_coupler%immobile_species)) then
             offset = ibegin + reaction%offset_immobile - 1
-            do ibiomass = 1, reaction%biomass%nbiomass
-              idof = reaction%biomass%immobile_id(ibiomass)
-              if (constraint_coupler%biomass%external_dataset(ibiomass)) then
+            do iimmobile = 1, reaction%immobile%nimmobile
+              if (constraint_coupler%immobile_species%external_dataset(iimmobile)) then
                 ! already read into rt_aux_vars above.
-                xx_p(offset+idof) = &
-                  rt_aux_vars(ghosted_id)%immobile(idof)
+                xx_p(offset+iimmobile) = &
+                  rt_aux_vars(ghosted_id)%immobile(iimmobile)
               else
-                xx_p(offset+idof) = &
-                  constraint_coupler%biomass%constraint_conc(ibiomass)
-                rt_aux_vars(ghosted_id)%immobile(idof) = &
-                  constraint_coupler%biomass%constraint_conc(ibiomass)
+                xx_p(offset+iimmobile) = &
+                  constraint_coupler%immobile_species%constraint_conc(iimmobile)
+                rt_aux_vars(ghosted_id)%immobile(iimmobile) = &
+                  constraint_coupler%immobile_species%constraint_conc(iimmobile)
               endif
             enddo
           endif
@@ -775,7 +773,7 @@ subroutine CondControlAssignTranInitCond(realization)
             trim(reaction%primary_species_names(idof))
         else
           string2 = '  Immobile species "' // &
-            trim(reaction%immobile_species_names(idof- &
+            trim(reaction%immobile%names(idof- &
                                                  reaction%offset_immobile))
         endif
           string2 = trim(string2) // &
