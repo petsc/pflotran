@@ -18,11 +18,13 @@ module Reaction_Sandbox_CLM_CN_class
     PetscReal, pointer :: litter_coefs(:,:)
     PetscReal, pointer :: litter_rate_const(:)
     PetscInt, pointer :: litter_species_ids(:,:)
+    PetscInt, pointer :: litter_upstream_pool(:)
     PetscInt :: nsom
     character(len=MAXWORDLENGTH), pointer :: som_names(:)
     PetscReal, pointer :: som_coefs(:,:)
     PetscReal, pointer :: som_rate_const(:)
     PetscInt, pointer :: som_species_ids(:,:)
+    PetscInt, pointer :: som_upstream_pool(:)
     character(len=MAXSTRINGLENGTH), pointer :: reaction_strings(:)
   contains
     procedure, public :: Init => CLM_CN_Init
@@ -56,9 +58,11 @@ function CLM_CN_Create()
   nullify(CLM_CN_Create%litter_coefs)
   nullify(CLM_CN_Create%som_coefs)
   nullify(CLM_CN_Create%litter_species_ids)
+  nullify(CLM_CN_Create%litter_upstream_pool)
   nullify(CLM_CN_Create%som_species_ids)
   nullify(CLM_CN_Create%litter_rate_const)
   nullify(CLM_CN_Create%som_rate_const)
+  nullify(CLM_CN_Create%som_upstream_pool)
   nullify(CLM_CN_Create%next)
   
 end function CLM_CN_Create
@@ -100,6 +104,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   use String_module
   use Input_module
   use Database_Aux_module
+  use Immobile_Aux_module
   
   implicit none
 
@@ -109,8 +114,10 @@ subroutine CLM_CN_Map(this,reaction,option)
   
   type(database_rxn_type), pointer ::dbase_rxn
   character(len=MAXSTRINGLENGTH), pointer :: strings(:)
+  character(len=MAXSTRINGLENGTH) :: temp_string
+  character(len=MAXWORDLENGTH) :: word
   
-  PetscInt :: ilit, isom, i, lit_max_spec, som_max_spec
+  PetscInt :: ilit, isom, i, lit_max_spec, som_max_spec, pool_id
   PetscErrorCode :: ierr
 
   ! determine how many SOM and Litters
@@ -147,6 +154,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   allocate(this%litter_coefs(lit_max_spec,this%nlitter))
   allocate(this%litter_species_ids(0:lit_max_spec,this%nlitter))
   allocate(this%litter_rate_const(this%nlitter))
+  allocate(this%litter_upstream_pool(this%nlitter))
   this%litter_coefs = 0.d0
   this%litter_species_ids = 0
   this%litter_rate_const = 0.d0
@@ -154,6 +162,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   allocate(this%som_coefs(som_max_spec,this%nsom))
   allocate(this%som_species_ids(0:som_max_spec,this%nsom))
   allocate(this%som_rate_const(this%nsom))
+  allocate(this%som_upstream_pool(this%nsom))
   this%som_coefs = 0.d0
   this%som_species_ids = 0
   this%som_rate_const = 0.d0
@@ -162,6 +171,20 @@ subroutine CLM_CN_Map(this,reaction,option)
   isom = 0
   do i = 1, size(this%reaction_strings)
     strings => StringSplit(this%reaction_strings(i),';')
+    ! find upstream pool.  The first species in the reaction string
+    temp_string = strings(1)
+    ierr = 0
+    do ! need to loop inorder to remove first stoichiometry if it exists
+      call InputReadWord(temp_string,word,PETSC_TRUE,ierr)
+      ! no need for an error message since the string would have to be
+      ! legitimate to pass the database rxn creation above.
+      ! PETSC_FALSE instucts not to throw an error, but to return
+      ! the unset value (= -999)
+      pool_id = GetImmobileSpeciesIDFromName(word,reaction%immobile, &
+                                             PETSC_FALSE,option)
+      if (ierr /= 0 .or. pool_id > 0) exit
+    enddo
+    ! process full reaction
     dbase_rxn => &
       DatabaseRxnCreateFromRxnString(strings(1), &
                                      reaction%naqcomp, &
@@ -177,6 +200,7 @@ subroutine CLM_CN_Map(this,reaction,option)
       this%litter_species_ids(0,ilit) = dbase_rxn%nspec
       this%litter_species_ids(1:dbase_rxn%nspec,ilit) = &
         dbase_rxn%spec_ids(:) - reaction%offset_immobile
+      this%litter_upstream_pool(ilit) = pool_id
       call InputReadDouble(strings(2),option,this%litter_rate_const(ilit),ierr)
     else if (StringStartsWith(strings(1),'SOM')) then
       isom = isom + 1
@@ -184,6 +208,7 @@ subroutine CLM_CN_Map(this,reaction,option)
       this%som_species_ids(0,isom) = dbase_rxn%nspec
       this%som_species_ids(1:dbase_rxn%nspec,isom) = &
         dbase_rxn%spec_ids(:) - reaction%offset_immobile
+      this%som_upstream_pool(isom) = pool_id
       call InputReadDouble(strings(2),option,this%som_rate_const(isom),ierr)
     endif
     ! as long as InputReadDouble is the last call in the conditional above
@@ -377,12 +402,35 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: ilit, isom, iimmobile, idof, i, icomp
   PetscReal :: drate, rate_const, rate
   
+  ! inhibition variables
+  PetscReal :: F_t
+  PetscReal :: F_theta
+  PetscReal :: inhibition
+  PetscReal :: temp_K
+  PetscReal, parameter :: one_over_71_02 = 1.408054069d-2
+  PetscReal, parameter :: theta_min = 0.01d0     ! 1/nat log(0.01d0)
+  PetscReal, parameter :: one_over_log_theta_min = -2.17147241d-1
+
+  
+  ! inhibition due to temperature
+  ! Equation: F_t = exp(308.56*(1/17.02 - 1/(T - 227.13)))
+  temp_K = global_auxvar%temp(1) + 273.15d0
+  F_t = exp(308.56d0*(one_over_71_02 - 1.d0/(temp_K - 227.13d0)))
+  
+  ! inhibition due to moisture content
+  ! Equation: F_theta = log(theta_min/theta) / log(theta_min/theta_max)
+  ! Assumptions: theta is saturation
+  !              theta_min = 0.01, theta_max = 1.
+  F_theta = log(theta_min/global_auxvar%sat(1)) * one_over_log_theta_min 
+  
+  inhibition = F_t * F_theta
+  
   ! Litter pools
   do ilit = 1, this%nlitter
     ! first species will be the used in the rate
-    iimmobile = this%litter_species_ids(1,ilit)
+    iimmobile = this%litter_upstream_pool(ilit)
     idof = reaction%offset_immobile + iimmobile
-    rate_const = this%litter_rate_const(ilit)
+    rate_const = this%litter_rate_const(ilit)*inhibition
     rate = rate_const * rt_auxvar%immobile(iimmobile)
     do i = 1, this%litter_species_ids(0,ilit)
       icomp = reaction%offset_immobile + this%litter_species_ids(i,ilit) 
@@ -400,9 +448,9 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   ! SOM pools
   do isom = 1, this%nsom
     ! first species will be the used in the rate
-    iimmobile = this%som_species_ids(1,isom)
+    iimmobile = this%som_upstream_pool(isom)
     idof = reaction%offset_immobile + iimmobile
-    rate_const = this%som_rate_const(isom)
+    rate_const = this%som_rate_const(isom)*inhibition
     rate = rate_const * rt_auxvar%immobile(iimmobile)
     do i = 1, this%som_species_ids(0,isom)
       icomp = reaction%offset_immobile + this%som_species_ids(i,isom) 
