@@ -43,6 +43,7 @@ module Immobile_Aux_module
             ImmobileConstraintCreate, &
             ImmobileGetCount, &
             ImmobileConstraintDestroy, &
+            GetImmobileSpeciesIDFromName, &
             ImmobileDestroy
              
 contains
@@ -157,6 +158,62 @@ function ImmobileGetCount(immobile)
   enddo
 
 end function ImmobileGetCount
+
+! ************************************************************************** !
+!
+! GetImmobileSpeciesIDFromName: Returns the id of named immobile species
+! author: Glenn Hammond
+! date: 01/28/13
+!
+! ************************************************************************** !
+function GetImmobileSpeciesIDFromName(name,immobile,option)
+
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: name
+  type(immobile_type) :: immobile
+  type(option_type) :: option
+
+  PetscInt :: GetImmobileSpeciesIDFromName
+
+  type(immobile_species_type), pointer :: species
+  PetscInt :: i
+
+  GetImmobileSpeciesIDFromName = -999
+  
+  ! if the primary species name list exists
+  if (associated(immobile%names)) then
+    do i = 1, size(immobile%names)
+      if (StringCompare(name,immobile%names(i), &
+                        MAXWORDLENGTH)) then
+        GetImmobileSpeciesIDFromName = i
+        exit
+      endif
+    enddo
+  else
+    species => immobile%list
+    i = 0
+    do
+      if (.not.associated(species)) exit
+      i = i + 1
+      if (StringCompare(name,species%name,MAXWORDLENGTH)) then
+        GetImmobileSpeciesIDFromName = i
+        exit
+      endif
+      species => species%next
+    enddo
+  endif
+
+  if (GetImmobileSpeciesIDFromName <= 0) then
+    option%io_buffer = 'Species "' // trim(name) // &
+      '" not founds among immobile species in GetImmobileSpeciesIDFromName().'
+    call printErrMsg(option)
+  endif
+  
+end function GetImmobileSpeciesIDFromName
 
 ! ************************************************************************** !
 !

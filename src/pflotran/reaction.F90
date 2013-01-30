@@ -801,6 +801,7 @@ subroutine ReactionReadPass2(reaction,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,word, &
                               'CHEMISTRY,SORPTION,REACTION_SANDBOX') 
+          call InputSkipToEnd(input,option,word)
           ! skip over remaining cards to end of each reaction sandbox entry
           call InputSkipToEnd(input,option,word)
         enddo      

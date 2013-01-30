@@ -13,6 +13,7 @@ module Reaction_Sandbox_module
 
   public :: RSandboxInit, &
             RSandboxRead, &
+            RSandboxSetup, &
             RSandbox, &
             RSandboxDestroy
 
@@ -39,6 +40,34 @@ subroutine RSandboxInit(option)
   nullify(sandbox_list)
 
 end subroutine RSandboxInit
+
+! ************************************************************************** !
+!
+! RSandboxInit: Initializes the sandbox list
+! author: Glenn Hammond
+! date: 01/28/13
+!
+! ************************************************************************** !
+subroutine RSandboxSetup(reaction,option)
+
+  use Option_module
+  use Reaction_Aux_module  
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  class(reaction_sandbox_base_type), pointer :: cur_sandbox  
+
+  ! sandbox reactions
+  cur_sandbox => sandbox_list
+  do
+    if (.not.associated(cur_sandbox)) exit
+    call cur_sandbox%init(reaction,option)
+    cur_sandbox => cur_sandbox%next
+  enddo 
+
+end subroutine RSandboxSetup
 
 ! ************************************************************************** !
 !
@@ -117,7 +146,6 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   
   implicit none
 
-  class(reaction_sandbox_base_type), pointer :: sandbox_list
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
@@ -133,13 +161,12 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   cur_reaction => sandbox_list
   do
     if (.not.associated(cur_reaction)) exit
-    call cur_reaction%Init()
-    select type(cur_reaction)
-      class is(reaction_sandbox_clm_cn_type)
+!    select type(cur_reaction)
+!      class is(reaction_sandbox_clm_cn_type)
         call cur_reaction%Evaluate(Residual,Jacobian,compute_derivative, &
                                    rt_auxvar,global_auxvar,porosity,volume, &
                                    reaction,option)
-    end select
+!    end select
     cur_reaction => cur_reaction%next
   enddo
 
@@ -165,6 +192,7 @@ subroutine RSandboxDestroy()
     if (.not.associated(cur_sandbox)) exit
     prev_sandbox => cur_sandbox%next
     call cur_sandbox%Destroy()
+    cur_sandbox => prev_sandbox
   enddo  
 
 end subroutine RSandboxDestroy

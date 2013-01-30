@@ -17,7 +17,8 @@ module String_module
             StringStartsWith, &
             StringAdjustl, &
             StringNull, &
-            StringFindEntryInList
+            StringFindEntryInList, &
+            StringSplit
   
   interface StringCompare
     module procedure StringCompare1
@@ -405,7 +406,7 @@ end function StringNull
 ! StringFindEntryInList: Returns the index of a string if found in a list
 !                        of strings
 ! author: Glenn Hammond
-! date: 10/30/13
+! date: 10/30/12
 !
 ! ************************************************************************** !
 function StringFindEntryInList(string,string_array)
@@ -428,5 +429,83 @@ function StringFindEntryInList(string,string_array)
   enddo
   
 end function StringFindEntryInList
+
+
+! ************************************************************************** !
+!
+! StringSplit: Splits a string based on a set of chars
+! author: Glenn Hammond
+! date: 01/28/13
+!
+! ************************************************************************** !
+function StringSplit(string,chars)
+      
+  implicit none
+
+  character(len=*) :: string
+  character(len=*) :: chars
+
+  character(len=MAXSTRINGLENGTH), pointer :: strings(:), StringSplit(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string1, string2
+  PetscInt :: i, icount, istart, iend, length, length_chars
+  PetscInt :: last_index
+  
+  nullify(StringSplit)
+  
+  ! determine how many delimiting block in string
+  length = len_trim(string)
+  length_chars = len_trim(chars)
+  icount = 0
+  last_index = 1
+  iend = length-length_chars+1
+  do i = 1, iend
+    string1 = string(i:i+length_chars-1)
+    if (StringCompare(string1,chars,length_chars)) then
+      last_index = i+1
+      icount = icount + 1
+    endif
+  enddo
+  
+  ! check for characters after last delimiter; add a string if they exist
+  if (last_index <= length) then
+    if (.not.StringNull(string(last_index:))) then
+      icount = icount + 1
+    endif
+  endif
+  
+  if (icount == 0) return
+  
+  ! allocate strings
+  allocate(strings(icount))
+  strings = ''
+
+  ! split string into strings
+  istart = 1
+  icount = 0
+  iend = length-length_chars+1
+  i = 1
+  do 
+    if (i > iend) exit
+    string1 = string(i:i+length_chars-1)
+    if (StringCompare(string1,chars,length_chars)) then
+      icount = icount + 1
+      strings(icount) = adjustl(string(istart:i-1))
+      i = i + length_chars
+      istart = i
+    else
+      i = i + 1
+    endif
+  enddo 
+  
+  ! add remaining string
+  if (icount < size(strings)) then
+    icount = icount + 1
+    strings(icount) = adjustl(string(istart:))
+  endif  
+  
+  StringSplit => strings
+  
+end function StringSplit
 
 end module String_module

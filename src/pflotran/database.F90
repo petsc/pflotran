@@ -762,7 +762,8 @@ subroutine BasisInit(reaction,option)
   
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
-#endif  
+#endif
+  use Reaction_Sandbox_module
 
   implicit none
   
@@ -3273,6 +3274,10 @@ subroutine BasisInit(reaction,option)
     endif
 
   enddo
+  
+  ! sandbox reactions
+  call RSandboxSetup(reaction,option)
+
   
 90 format(80('-'))
 100 format(/,2x,i4,2x,a)

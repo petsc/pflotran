@@ -773,8 +773,7 @@ subroutine CondControlAssignTranInitCond(realization)
             trim(reaction%primary_species_names(idof))
         else
           string2 = '  Immobile species "' // &
-            trim(reaction%immobile%names(idof- &
-                                                 reaction%offset_immobile))
+            trim(reaction%immobile%names(idof-reaction%offset_immobile))
         endif
           string2 = trim(string2) // &
             '" has zero concentration (' // &
