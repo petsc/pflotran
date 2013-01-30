@@ -46,7 +46,6 @@ module Secondary_Continuum_Aux_module
   end type sec_heat_type  
   
   type, public :: sec_transport_type  
-    PetscBool :: sec_conc_update               ! flag to check if the temp is updated
     PetscInt :: ncells                         ! number of secondary grid cells
     PetscReal :: aperture                      ! fracture aperture
     PetscReal :: epsilon                       ! vol. frac. of primary continuum
@@ -63,6 +62,8 @@ module Secondary_Continuum_Aux_module
     PetscBool :: log_spacing                   ! flag to check if log spacing is set
     PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
     PetscReal, pointer :: updated_conc(:)      ! This stores the secondary concentration update values from secondary NR iteration
+    PetscReal :: sec_jac                       ! stores the secondary continuum jacobian value
+    PetscBool :: sec_jac_update                ! flag to check if secondary jacobian is updated
   end type sec_transport_type  
 
   type, public :: sc_heat_type
