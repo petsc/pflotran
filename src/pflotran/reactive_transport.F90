@@ -184,13 +184,16 @@ subroutine RTSetupPatch(realization)
     initial_condition => patch%initial_conditions%first
     allocate(rt_sec_transport_vars(grid%ngmax))  
     do ghosted_id = 1, grid%ngmax
-    ! Assuming the same secondary continuum for all regions (need to make it an array)
+    ! Assuming the same secondary continuum for all regions
+    ! (need to make it an array)
       call SecondaryContinuumSetProperties( &
         rt_sec_transport_vars(ghosted_id)%sec_continuum, &
         realization%material_property_array(1)%ptr%secondary_continuum_name, &
         realization%material_property_array(1)%ptr%secondary_continuum_length, &
-        realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
-        realization%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
+        realization%material_property_array(1)%ptr% &
+                    secondary_continuum_matrix_block_size, &
+        realization%material_property_array(1)%ptr% &
+                    secondary_continuum_fracture_spacing, &
         realization%material_property_array(1)%ptr%secondary_continuum_radius, &
         realization%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
@@ -202,15 +205,22 @@ subroutine RTSetupPatch(realization)
       rt_sec_transport_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon 
       rt_sec_transport_vars(ghosted_id)%log_spacing = &
-        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+        realization%material_property_array(1)%ptr% &
+                    secondary_continuum_log_spacing
       rt_sec_transport_vars(ghosted_id)%outer_spacing = &
-        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing    
+        realization%material_property_array(1)%ptr% &
+                    secondary_continuum_outer_spacing    
         
-      allocate(rt_sec_transport_vars(ghosted_id)%area(rt_sec_transport_vars(ghosted_id)%ncells))
-      allocate(rt_sec_transport_vars(ghosted_id)%vol(rt_sec_transport_vars(ghosted_id)%ncells))
-      allocate(rt_sec_transport_vars(ghosted_id)%dm_minus(rt_sec_transport_vars(ghosted_id)%ncells))
-      allocate(rt_sec_transport_vars(ghosted_id)%dm_plus(rt_sec_transport_vars(ghosted_id)%ncells))
-      allocate(rt_sec_transport_vars(ghosted_id)%updated_conc(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               area(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               vol(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               dm_minus(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               dm_plus(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               updated_conc(rt_sec_transport_vars(ghosted_id)%ncells))
     
       call SecondaryContinuumType(&
                               rt_sec_transport_vars(ghosted_id)%sec_continuum, &
@@ -228,9 +238,12 @@ subroutine RTSetupPatch(realization)
           (1.d0 - rt_sec_transport_vars(ghosted_id)%epsilon)
     ! Setting the initial values of all secondary node concentrations same as
     ! primary nodal concentration values
-      allocate(rt_sec_transport_vars(ghosted_id)%sec_conc(rt_sec_transport_vars(ghosted_id)%ncells))
-      allocate(rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(rt_sec_transport_vars(ghosted_id)%ncells)) 
-      allocate(rt_sec_transport_vars(ghosted_id)%sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               sec_conc(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               sec_mnrl_volfrac(rt_sec_transport_vars(ghosted_id)%ncells)) 
+      allocate(rt_sec_transport_vars(ghosted_id)% &
+               sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
       
       if (reaction%mineral%nkinmnrl > 0) then 
         equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/kg
@@ -241,7 +254,8 @@ subroutine RTSetupPatch(realization)
         
       if (option%set_secondary_init_conc) then
         rt_sec_transport_vars(ghosted_id)%sec_conc = &
-          realization%material_property_array(1)%ptr%secondary_continuum_init_conc
+          realization%material_property_array(1)%ptr% &
+                      secondary_continuum_init_conc
       else
         rt_sec_transport_vars(ghosted_id)%sec_conc = equil_conc
       endif  
@@ -253,14 +267,18 @@ subroutine RTSetupPatch(realization)
       
       if (reaction%mineral%nkinmnrl > 0) then
         rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = &
-          realization%material_property_array(1)%ptr%secondary_continuum_mnrl_volfrac
+          realization%material_property_array(1)%ptr% &
+                      secondary_continuum_mnrl_volfrac
         rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = &
-          realization%material_property_array(1)%ptr%secondary_continuum_mnrl_area        
+          realization%material_property_array(1)%ptr% &
+                      secondary_continuum_mnrl_area        
                    
-        if (rt_sec_transport_vars(ghosted_id)%sec_conc(1)/equil_conc > 1.d0) then 
+        if (rt_sec_transport_vars(ghosted_id)%sec_conc(1)/equil_conc > 1.d0) &
+          then 
           rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
         else
-          if (rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(1) > 0.d0) then
+          if (rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(1) > 0.d0) &
+           then
             rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
           else
             rt_sec_transport_vars(ghosted_id)%sec_zeta = 0
