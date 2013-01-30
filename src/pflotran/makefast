@@ -212,12 +212,12 @@ shared_mode_aux_obj = \
 	${common_src}reactive_transport_aux.o 
 
 chem_obj = \
-	${common_src}biomass.o \
-	${common_src}biomass_aux.o \
 	${common_src}constraint.o \
 	${common_src}database.o \
 	${common_src}database_aux.o \
 	${common_src}database_hpt.o \
+	${common_src}immobile.o \
+	${common_src}immobile_aux.o \
 	${common_src}microbial.o \
 	${common_src}microbial_aux.o \
 	${common_src}mineral.o \
