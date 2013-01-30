@@ -467,15 +467,15 @@ type(sec_transport_type) :: sec_transport_vars
     res(i) = res(i) - pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))* &
                       (conc_upd(i+1) - conc_upd(i))
     res(i) = res(i) + pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))* &
-                      (conc_upd(i) - conc_upd(i-i))                      
+                      (conc_upd(i) - conc_upd(i-1)) 
   enddo
-  
+
   ! reaction term
   do i = 1, ngcells
     res(i) = res(i) + vol(i)*kin_mnrl_rate*mnrl_area* &
                       (conc_upd(i)/equil_conc - 1.d0)*1.d-3*sec_zeta(i)
   enddo            
-              
+
   ! Apply boundary conditions
   ! Inner boundary
   res(1) = res(1) - pordiff*area(1)/(dm_minus(2) + dm_plus(1))* &
@@ -528,11 +528,19 @@ type(sec_transport_type) :: sec_transport_vars
   coeff_left(ngcells) = coeff_left(ngcells) - &
                         pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
                         dm_plus(ngcells-1)) 
-                        
+
+  ! Scaling the equations with coeff_diag
+  do i = 1, ngcells
+    res(i) = res(i)/coeff_diag(i)   
+    coeff_left(i) = coeff_left(i)/coeff_diag(i) 
+    coeff_right(i) = coeff_right(i)/coeff_diag(i) 
+    coeff_diag(i) = coeff_diag(i)/coeff_diag(i) 
+  enddo
+    
 !===============================================================================        
                         
   rhs = -res                 
-                                  
+
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
   do i = 2, ngcells
