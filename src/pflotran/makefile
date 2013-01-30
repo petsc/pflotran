@@ -26,8 +26,7 @@ ifdef uo2
 endif
 
 ifdef glenn
-  #MYFLAGS += -DGLENN -DUGRID_DEBUG
-  MYFLAGS += -DUGRID_DEBUG -UGRID_NEW
+  MYFLAGS += -DUGRID_DEBUG
   #MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
@@ -128,7 +127,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW -DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
 endif
 
 ifdef surface_flow

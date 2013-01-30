@@ -650,6 +650,10 @@ end subroutine DiscretizationRead
 ! ************************************************************************** !
 !
 ! DiscretizationCreateDMs: creates distributed, parallel meshes/grids
+! If there are multiple degrees of freedom per grid cell, this will call 
+! DiscretizationCreateDM() multiple times to create the DMs corresponding 
+! to one degree of freedom grid cell and those corresponding to multiple 
+! degrees of freedom per cell.
 ! author: Glenn Hammond
 ! date: 02/08/08
 !
@@ -676,6 +680,14 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
       discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
     case(UNSTRUCTURED_GRID)
+
+      ! petsc will call parmetis to calculate the graph/dual
+#if !defined(PETSC_HAVE_PARMETIS)
+      option%io_buffer = &
+        'Must compile with Parmetis in order to use unstructured grids.'
+      call printErrMsg(option)
+#endif
+    
       select case(discretization%grid%itype)
         case(IMPLICIT_UNSTRUCTURED_GRID)
           call UGridDecompose(discretization%grid%unstructured_grid, &

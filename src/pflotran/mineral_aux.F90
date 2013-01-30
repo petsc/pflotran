@@ -62,8 +62,9 @@ module Mineral_Aux_module
   end type mineral_constraint_type
   
   type, public :: mineral_type
-
+  
     PetscInt :: nmnrl
+    PetscBool :: print_all
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
     
     type(mineral_rxn_type), pointer :: mineral_list
@@ -142,6 +143,7 @@ function MineralCreate()
   allocate(mineral)  
     
   nullify(mineral%mineral_list)
+  mineral%print_all = PETSC_FALSE
   
   ! for saturation states
   mineral%nmnrl = 0  

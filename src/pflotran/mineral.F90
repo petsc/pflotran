@@ -18,7 +18,8 @@ module Mineral_module
             MineralReadFromDatabase, &
             MineralProcessConstraint, &
             RKineticMineral, &
-            RMineralSaturationIndex
+            RMineralSaturationIndex, &
+            MineralUpdateTempDepCoefs
             
 contains
 
@@ -581,24 +582,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     ln_sec_act = ln_sec+log(rt_auxvar%sec_act_coef)
   endif
 
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    if (.not.reaction%use_geothermal_hpt)then
-      call ReactionInterpolateLogK(mineral%kinmnrl_logKcoef, &
-                                   mineral%kinmnrl_logK, &
-                                   global_auxvar%temp(iphase), &
-                                   mineral%nkinmnrl)
-    else
-     ! print *,'RKineticMineral:: ', global_auxvar%pres(iphase)
-      call ReactionInterpolateLogK_hpt(mineral%kinmnrl_logKcoef, &
-                                       mineral%kinmnrl_logK, &
-                                       global_auxvar%temp(iphase), &
-                                       global_auxvar%pres(iphase),&
-                                       mineral%nkinmnrl)
-    endif
-  endif
-#endif
-
 #ifdef SOLID_SOLUTION
   rate_scale = 1.d0
   if (associated(reaction%solid_solution_list)) then
@@ -1127,24 +1110,14 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   
   mineral => reaction%mineral
 
-#ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    if (.not.reaction%use_geothermal_hpt)then
-      call ReactionInterpolateLogK(mineral%mnrl_logKcoef, &
-                                   mineral%mnrl_logK, &
-                                   global_auxvar%temp(iphase), &
-                                   mineral%nmnrl)
-    else
-    !  print *,'RMineralSaturationIndex:: ',global_auxvar%pres(iphase)
-      call ReactionInterpolateLogK_hpt(mineral%mnrl_logKcoef, &
-                                       mineral%mnrl_logK, &
-                                       global_auxvar%temp(iphase), &
-                                       global_auxvar%pres(iphase),&
-                                       mineral%nmnrl)
-    endif
-  endif
-#endif  
-
+    call MineralUpdateTempDepCoefs(global_auxvar%temp(iphase), &
+                                   global_auxvar%pres(iphase), &
+                                   reaction%mineral, &
+                                   reaction%use_geothermal_hpt, &
+                                   PETSC_TRUE,option)
+  endif 
+  
   ! compute saturation
   lnQK = -mineral%mnrl_logK(imnrl)*LOG_TO_LN
   if (mineral%mnrlh2oid(imnrl) > 0) then
@@ -1158,5 +1131,59 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   RMineralSaturationIndex = exp(lnQK)    
 
 end function RMineralSaturationIndex
+
+! ************************************************************************** !
+!
+! MineralUpdateTempDepCoefs: Updates temperature dependent coefficients for
+!                            anisothermal simulations
+! author: Glenn Hammond
+! date: 01/25/13
+!
+! ************************************************************************** !
+subroutine MineralUpdateTempDepCoefs(temp,pres,mineral,use_geothermal_hpt, &
+                                     update_mnrl,option)
+
+  use Option_module
+
+  implicit none
+  
+  PetscReal :: temp
+  PetscReal :: pres
+  type(mineral_type) :: mineral
+  PetscBool :: use_geothermal_hpt  
+  PetscBool :: update_mnrl  
+  type(option_type) :: option
+  
+  if (.not.use_geothermal_hpt) then
+    if (associated(mineral%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK(mineral%kinmnrl_logKcoef, &
+                                   mineral%kinmnrl_logK, &
+                                   temp, &
+                                   mineral%nkinmnrl)
+    endif
+    if (update_mnrl .and. associated(mineral%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK(mineral%mnrl_logKcoef, &
+                                   mineral%mnrl_logK, &
+                                    temp, &
+                                   mineral%nmnrl)
+    endif  
+  else
+    if (associated(mineral%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(mineral%kinmnrl_logKcoef, &
+                                       mineral%kinmnrl_logK, &
+                                       temp, &
+                                       pres, &
+                                       mineral%nkinmnrl)
+    endif
+    if (update_mnrl .and. associated(mineral%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(mineral%mnrl_logKcoef, &
+                                       mineral%mnrl_logK, &
+                                       temp, &
+                                       pres, &
+                                       mineral%nmnrl)
+    endif  
+  endif
+  
+end subroutine MineralUpdateTempDepCoefs
 
 end module Mineral_module

@@ -129,7 +129,6 @@ module Reaction_Aux_module
     PetscBool :: print_all_primary_species
     PetscBool :: print_all_secondary_species
     PetscBool :: print_all_gas_species
-    PetscBool :: print_all_mineral_species
     PetscBool :: print_pH
     PetscBool :: print_kd
     PetscBool :: print_total_sorb
@@ -381,7 +380,6 @@ function ReactionCreate()
   reaction%print_all_primary_species = PETSC_FALSE
   reaction%print_all_secondary_species = PETSC_FALSE
   reaction%print_all_gas_species = PETSC_FALSE
-  reaction%print_all_mineral_species = PETSC_FALSE
   reaction%print_pH = PETSC_FALSE
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE
@@ -1277,15 +1275,17 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
       if (dabs(logK(i) - 500.) < 1.d-10) then
         iflag = 1
         temp_int(i) = ZERO_INTEGER
-        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-                           trim(name)
-        call printWrnMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
       endif
     enddo
   enddo
+
+  if (iflag == 1) then
+    option%io_buffer = 'In ReactionFitLogKCoef: log K = 500 for ' // trim(name)
+    call printWrnMsg(option)
+  endif
 
   do j = 1, FIVE_INTEGER
     do k = j, FIVE_INTEGER

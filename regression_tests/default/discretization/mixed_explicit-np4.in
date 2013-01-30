@@ -5,8 +5,13 @@
 REGRESSION
   CELLS
     1
-    8
+    3
+    5
+    7
+    9
     11
+    13
+    15
   /
 END
 
@@ -24,7 +29,7 @@ END
 
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured ./mixed.ugi
+  TYPE unstructured_explicit ./mixed.uge
 END
 
 :=========================== solver options ===================================
@@ -80,15 +85,15 @@ REGION all
 END 
 
 REGION top
-  FILE top_of_1.ss
+  FILE top_of_1.ex
 END 
 
 REGION west
-  file west_of_12.ss
+  file west_of_12.ex
 END 
 
 REGION center_of_13
-  COORDINATE 1.25d0 2.91667 1.25d0
+  FILE 13.txt
 END 
 
 REGION middle

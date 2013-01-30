@@ -875,10 +875,18 @@ subroutine Init(simulation)
            'Porosity',OUTPUT_GENERIC,'-',POROSITY)  
   endif
   if (realization%output_option%print_permeability) then
-    ! add porosity to header
+    ! add permeability to header
     call OutputVariableAddToList( &
            realization%output_option%output_variable_list, &
-           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)  
+           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+  endif
+  if (realization%output_option%print_iproc) then
+    output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
+                                            PROCESSOR_ID)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 1 ! integer
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list,output_variable)
   endif
 
   ! write material ids
@@ -1876,6 +1884,8 @@ subroutine InitReadInput(simulation)
               output_option%print_final = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
               output_option%print_initial = PETSC_FALSE
+            case('PROCESSOR_ID')
+              output_option%print_iproc = PETSC_TRUE
             case('PERMEABILITY')
               output_option%print_permeability = PETSC_TRUE
             case('POROSITY')

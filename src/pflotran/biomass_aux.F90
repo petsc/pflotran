@@ -28,12 +28,14 @@ module Biomass_Aux_module
   type, public :: biomass_type
 
     PetscInt :: nbiomass
+    PetscBool :: print_all
     
     type(biomass_species_type), pointer :: list
 
     ! biomass species
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscBool, pointer :: print_me(:)    
+    PetscInt, pointer :: immobile_id(:)    
 
   end type biomass_type
 
@@ -64,8 +66,10 @@ function BiomassCreate()
   allocate(biomass)  
   nullify(biomass%list)
   biomass%nbiomass = 0
+  biomass%print_all = PETSC_FALSE
   nullify(biomass%names)
   nullify(biomass%print_me)
+  nullify(biomass%immobile_id)
 
   BiomassCreate => biomass
   
@@ -235,6 +239,7 @@ subroutine BiomassDestroy(biomass)
   
   call DeallocateArray(biomass%names)
   call DeallocateArray(biomass%print_me)
+  call DeallocateArray(biomass%immobile_id)
   
   deallocate(biomass)
   nullify(biomass)
