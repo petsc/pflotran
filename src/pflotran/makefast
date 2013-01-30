@@ -5,12 +5,17 @@ srcdir = ./
 pflotran_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
+pflotran_test_dir = ../../regression_tests
+
 
 MYFLAGS = -I${objdir} 
 
-ifdef hdf5-vamsi
-    MYFLAGS += -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
-endif   
+# if compiling pflotran_rxn or libpflotranchem.a, need to define PFLOTRAN_RXN 
+# and toggle PFLOTRAN_RXN_FLAG
+ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
+  PFLOTRAN_RXN_FLAG := 1
+  MYFLAGS += -DPFLOTRAN_RXN
+endif
 
 ifdef compile_broken
   MYFLAGS += -DCOMPILE_BROKEN
@@ -21,8 +26,7 @@ ifdef uo2
 endif
 
 ifdef glenn
-  #MYFLAGS += -DGLENN -DUGRID_DEBUG
-  MYFLAGS += -DUGRID_DEBUG -UGRID_NEW
+  MYFLAGS += -DUGRID_DEBUG
   #MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
@@ -102,10 +106,6 @@ ifdef dont_use_wateos
   MYFLAGS += -DDONT_USE_WATEOS
 endif
 
-ifdef vamsi_hdf5
-  MYFLAGS += -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
-endif
-
 ifdef have_hdf5
   MYFLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DPETSC_HAVE_HDF5
 endif
@@ -127,7 +127,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  MYFLAGS += -w -g #-DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW -DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
 endif
 
 ifdef surface_flow
@@ -138,12 +138,12 @@ ifdef amanzi_bgd
   MYFLAGS += -DAMANZI_BGD
 endif
 
-CFLAGS		 = 
-FFLAGS		 =
-CPPFLAGS         = ${MYFLAGS}
-FPPFLAGS         = ${MYFLAGS}
+CFLAGS   = 
+FFLAGS   =
+CPPFLAGS = ${MYFLAGS}
+FPPFLAGS = ${MYFLAGS}
 
-CLEANFILES       = pflotran 
+CLEANFILES       = pflotran pflotran_rxn libpflotranchem.a make.log
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
@@ -165,120 +165,177 @@ FC = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_ma
 FLINKER = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
 endif
 
-util_obj  = ${common_src}input.o \
+util_obj  = \
+	${common_src}input.o \
+	${common_src}matrix_block_aux.o \
+	${common_src}option.o \
+	${common_src}output_aux.o \
 	${common_src}string.o \
-	${common_src}water_eos.o \
-	${common_src}gaseos_mod.o \
+	${common_src}units.o \
+	${common_src}utility.o \
+	${common_src}variables.o
+
+eos_obj = \
 	${common_src}co2eos.o \
+	${common_src}co2_sw.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
-	${common_src}spline.o \
 	${common_src}co2_span_wagner_spline.o \
-	${common_src}co2_sw.o \
-	${common_src}utility.o
+	${common_src}gaseos_mod.o \
+	${common_src}water_eos.o 
 
-pflotran_obj = ${common_src}option.o \
-	${common_src}geometry.o\
-	${common_src}units.o\
-	${common_src}logging.o \
-	${common_src}hdf5_aux.o \
-	${common_src}global_aux.o\
-	${common_src}material_aux.o\
-	${common_src}matrix_block_aux.o\
-	${common_src}database_aux.o\
-	${common_src}surface_complexation_aux.o\
-	${common_src}mineral_aux.o\
-	${common_src}solid_solution_aux.o\
-	${common_src}reaction_aux.o\
-	${common_src}reactive_transport_aux.o\
-	${common_src}secondary_continuum.o\
-	${common_src}thc_aux.o\
-	${common_src}thmc_aux.o\
-	${common_src}richards_aux.o\
-	${common_src}general_aux.o\
-	${common_src}mphase_aux.o\
-	${common_src}miscible_aux.o\
-	${common_src}immis_aux.o\
-	${common_src}mfd_aux.o\
-	${common_src}flash2_aux.o\
-	${common_src}auxilliary.o\
-	${common_src}field.o \
-	${common_src}debug.o \
-	${common_src}waypoint.o \
-	${common_src}region.o \
-	${common_src}fluid.o \
-	${common_src}time_series.o \
-	${common_src}dataset_aux.o \
-	${common_src}dataset.o \
-	${common_src}saturation_function.o \
-	${common_src}material.o \
-	${common_src}pckr_mod.o \
-	${common_src}strata.o \
+mode_aux_obj = \
+	${common_src}auxiliary.o \
+	${common_src}flash2_aux.o \
+	${common_src}general_aux.o \
+	${common_src}immis_aux.o \
+	${common_src}miscible_aux.o \
+	${common_src}mphase_aux.o \
+	${common_src}richards_aux.o \
+	${common_src}thc_aux.o \
+	${common_src}thmc_aux.o
+
+mode_obj = \
+	${common_src}flash2.o \
+	${common_src}general.o \
+	${common_src}global.o \
+	${common_src}immis.o \
+	${common_src}miscible.o \
+	${common_src}mphase.o \
+	${common_src}reactive_transport.o \
+	${common_src}richards.o \
+	${common_src}thc.o \
+	${common_src}thmc.o 
+
+shared_mode_aux_obj = \
+	${common_src}global_aux.o \
+	${common_src}reactive_transport_aux.o 
+
+chem_obj = \
+	${common_src}biomass.o \
+	${common_src}biomass_aux.o \
+	${common_src}constraint.o \
+	${common_src}database.o \
+	${common_src}database_aux.o \
+	${common_src}database_hpt.o \
+	${common_src}microbial.o \
+	${common_src}microbial_aux.o \
+	${common_src}mineral.o \
+	${common_src}mineral_aux.o \
+	${common_src}reaction.o \
+	${common_src}reaction_aux.o \
+	${common_src}reaction_sandbox.o \
+	${common_src}reaction_sandbox_clm_cn.o \
+	${common_src}reaction_sandbox_base.o \
+	${common_src}solid_solution.o \
+	${common_src}solid_solution_aux.o \
+	${common_src}surface_complexation.o \
+	${common_src}surface_complexation_aux.o 
+
+grid_obj = \
 	${common_src}connection.o \
-	${common_src}observation.o \
-	${common_src}solver.o \
-	${common_src}cf90bridge.o\
+	${common_src}discretization.o \
+	${common_src}general_grid.o \
+	${common_src}grid.o \
+	${common_src}mfd.o \
+	${common_src}mfd_aux.o \
 	${common_src}unstructured_cell.o \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o \
-	${common_src}condition.o \
-	${common_src}coupler.o \
-	${common_src}grid.o \
-	${common_src}matrix_buffer.o \
-	${common_src}hydrostatic.o \
+	${common_src}structured_grid.o 
+
+relations_obj = \
 	${common_src}saturation.o \
-	${common_src}patch.o \
-	${common_src}mfd.o\
-	${common_src}level.o \
-	${common_src}discretization.o \
-	${common_src}database.o \
-	${common_src}database_hpt.o \
-	${common_src}velocity.o \
-	${common_src}realization.o \
+	${common_src}saturation_function.o \
+	${common_src}pckr_mod.o 
+
+properties_obj = \
+	${common_src}fluid.o \
+	${common_src}material_aux.o \
+	${common_src}material.o 
+
+dataset_obj = \
+	${common_src}dataset.o \
+	${common_src}dataset_aux.o \
+	${common_src}time_series.o 
+
+io_obj = \
 	${common_src}hdf5.o \
-	${common_src}global.o \
-	${common_src}mphase.o\
-	${common_src}immis.o\
-	${common_src}miscible.o\
-	${common_src}flash2.o\
-	${common_src}transport.o\
-	${common_src}surface_complexation.o\
-	${common_src}mineral.o\
-	${common_src}solid_solution.o\
-	${common_src}reaction.o\
-	${common_src}reactive_transport.o\
-	${common_src}thc.o\
-	${common_src}thmc.o\
-	${common_src}richards.o\
-	${common_src}general.o\
-	${common_src}condition_control.o \
-	${common_src}general_grid.o \
-	${common_src}checkpoint.o \
-	${common_src}convergence.o \
-	${common_src}timestepper.o \
-	${common_src}simulation.o \
-	${common_src}stochastic_aux.o \
-	${common_src}stochastic.o \
-	${common_src}surface_field.o \
-	${common_src}surface_flow_aux.o \
-	${common_src}surface_flow.o \
-	${common_src}surface_material.o \
-	${common_src}surface_realization.o \
+	${common_src}hdf5_aux.o \
 	${common_src}output.o \
-	${common_src}init.o
+	${common_src}output_common.o \
+	${common_src}output_hdf5.o \
+	${common_src}output_observation.o \
+	${common_src}output_surface.o \
+	${common_src}output_tecplot.o \
+	${common_src}output_vtk.o
+
+misc_obj = \
+	${common_src}checkpoint.o \
+	${common_src}cf90bridge.o \
+	${common_src}condition.o \
+	${common_src}condition_control.o \
+	${common_src}convergence.o \
+	${common_src}coupler.o \
+	${common_src}debug.o \
+	${common_src}field.o \
+	${common_src}geometry.o \
+	${common_src}hydrostatic.o \
+	${common_src}init.o \
+	${common_src}level.o \
+	${common_src}logging.o \
+	${common_src}matrix_buffer.o \
+	${common_src}observation.o \
+	${common_src}patch.o \
+	${common_src}realization.o \
+	${common_src}realization_base.o \
+	${common_src}region.o \
+	${common_src}regression.o \
+	${common_src}secondary_continuum_aux.o\
+	${common_src}secondary_continuum.o \
+	${common_src}simulation.o \
+	${common_src}solver.o \
+	${common_src}spline.o \
+	${common_src}stochastic.o \
+	${common_src}stochastic_aux.o \
+	${common_src}strata.o \
+	${common_src}timestepper.o \
+	${common_src}transport.o \
+	${common_src}velocity.o \
+	${common_src}waypoint.o 
 #	${common_src}reaction_chunk.o\
 
-pflotran : $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o
-	${FLINKER} -o pflotran $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS} 
+surface_obj = \
+	${common_src}surface_field.o \
+	${common_src}surface_flow.o \
+	${common_src}surface_flow_aux.o \
+	${common_src}surface_material.o \
+	${common_src}surface_realization.o 
+
+pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
+	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
+	$(relations_obj) $(properties_obj) $(dataset_obj) \
+	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
+
+pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
+
+pflotran : $(pflotran_obj)
+	${FLINKER} -o pflotran $(pflotran_obj) ${PETSC_LIB} ${LIBS} 
+
+libpflotranchem.a : $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
+	$(AR) $(ARFLAGS) $@ $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
+
+pflotran_rxn : libpflotranchem.a $(pflotran_rxn_obj)
+	${FLINKER} -o $@ $(pflotran_rxn_obj) -L. -lpflotranchem ${PETSC_LIB} ${LIBS} 
 
 ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
 	$(LIBS)
 
-test: functions.o test.o
-	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
+# do these files exist anymore?
+#test: functions.o test.o
+#	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
 
 # Should add this to default PETSc targets as well?
 %.mod : %.F90
@@ -286,3 +343,19 @@ test: functions.o test.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
+
+# developer level regression testing
+test : FORCE
+	@if [ -d $(pflotran_test_dir) ]; then \
+		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	fi
+
+# user lever tests to verify pflotran is built correctly
+check : FORCE
+	@if [ -d $(pflotran_test_dir) ]; then \
+		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	fi
+
+# null rule to force things to happen
+FORCE :
+
