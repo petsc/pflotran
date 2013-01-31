@@ -625,9 +625,9 @@ The Darcy velocity $q_{nn'}$ is evaluated as (the superscript $k+1$ is omitted i
 \EQ
 q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n}{d_{n'}+d_n}-W_w \rho_{nn'} g z_{nn'}\right],
 \EN
-where the subscript $nn'$ implies the quantity is evaluated at the interface between $n$ and $n'$. The density $\rho_{nn'}$ is set equal to the {\color{red} arithmetic mean---check code}
+where the subscript $nn'$ implies the quantity is evaluated at the interface between $n$ and $n'$. The density $\rho_{nn'}$ is set equal to the inverse distance mean ({\em not} arithmetic mean)
 \EQ
-\rho_{nn'} \eq \omega_n \rho_n + (1-\omega_n) \rho_{n'},
+\rho_{nn'} \eq \omega_{n'} \rho_n + (1-\omega_{n'}) \rho_{n'},
 \EN
 where
 \EQ
