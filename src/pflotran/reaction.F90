@@ -667,6 +667,8 @@ subroutine ReactionReadPass1(reaction,input,option)
         reaction%update_mineral_surface_area = PETSC_TRUE
       case('UPDATE_MNRL_SURF_AREA_WITH_POR')
         reaction%update_mnrl_surf_with_porosity = PETSC_TRUE
+      case('UPDATE_ARMOR_MINERAL_SURFACE')
+        reaction%update_armor_mineral_surface = PETSC_TRUE
       case('MOLAL','MOLALITY')
         reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')

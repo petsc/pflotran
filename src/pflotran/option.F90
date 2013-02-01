@@ -132,8 +132,6 @@ module Option_module
     
     PetscReal :: minimum_hydrostatic_pressure
     
-!   PetscBool :: update_mnrl_surf_with_porosity
-    
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
     PetscBool :: no_restart_kinetic_sorption
