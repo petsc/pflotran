@@ -2047,6 +2047,63 @@ subroutine BasisInit(reaction,option)
       allocate(mineral%kinmnrl_surf_area_porosity_pwr(mineral%nkinmnrl))
       mineral%kinmnrl_surf_area_porosity_pwr = 0.d0    
     endif
+
+    ! Determine whether armor mineral name defined
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not. cur_mineral%tstrxn%armor_min_name == '') then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_armor_min_names(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_min_names = ''
+    endif
+
+
+    ! Determine whether armor mineral volume fraction power defined
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%armor_pwr, &
+                       0.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_armor_pwr(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_pwr = 0.d0
+    endif
+    
+    ! Determine whether armor critical volume fraction defined
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%armor_crit_vol_frac, &
+                       0.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_armor_crit_vol_frac(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_crit_vol_frac = 0.d0
+    endif
     
     cur_mineral => mineral%mineral_list
     imnrl = 1

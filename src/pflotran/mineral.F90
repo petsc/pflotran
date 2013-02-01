@@ -140,7 +140,8 @@ subroutine MineralReadKinetics(mineral,input,option)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           error_string = 'CHEMISTRY,MINERAL_KINETICS'
-          call InputErrorMsg(input,option,'word',error_string) 
+          call InputErrorMsg(input,option,'word',error_string)
+
           select case(trim(word))
             case('RATE_CONSTANT')
 !             read rate constant
@@ -152,7 +153,7 @@ subroutine MineralReadKinetics(mineral,input,option)
               ! read units if they exist
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
-                input%err_buf = trim(cur_mineral%name) // 'RATE UNITS'
+                input%err_buf = trim(cur_mineral%name) // ' RATE UNITS'
                 call InputDefaultMsg(input,option)
               else
                 tstrxn%rate = tstrxn%rate * UnitsConvertToInternal(word,option)
@@ -182,7 +183,7 @@ subroutine MineralReadKinetics(mineral,input,option)
             case('SURFACE_AREA_VOL_FRAC_POWER')
               call InputReadDouble(input,option,tstrxn%surf_area_vol_frac_pwr)
               call InputErrorMsg(input,option, &
-                                 'surface area voluem fraction power', &
+                                 'surface area volume fraction power', &
                                  error_string)
             case('RATE_LIMITER')
 !             read rate limiter for precipitation
@@ -192,6 +193,34 @@ subroutine MineralReadKinetics(mineral,input,option)
 !             read flag for irreversible reaction
               tstrxn%irreversible = 1
               call InputErrorMsg(input,option,'irreversible',error_string)
+
+            case('ARMORING')
+!             read amoring mineral and parameters for surface area armoring
+              do
+                call InputReadFlotranString(input,option)
+                call InputReadStringErrorMsg(input,option,card)
+                if (InputCheckExit(input,option)) exit
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'word',error_string)
+
+                print *,'Armor-2: ',word
+
+                select case(trim(word))
+                  case('ARMOR_MINERAL')
+                    ! read mineral name
+                    call InputReadWord(input,option,tstrxn%armor_min_name,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'name',error_string)
+                  case('ARMOR_PWR')
+                    ! read power law exponent
+                    call InputReadDouble(input,option,tstrxn%armor_pwr)
+                    call InputErrorMsg(input,option,'armor_pwr',error_string)
+                  case('ARMOR_CRIT_VOL_FRAC')
+                    ! read critical volume fraction
+                    call InputReadDouble(input,option,tstrxn%armor_crit_vol_frac)
+                    call InputErrorMsg(input,option,'armor_crit_vol_frac',error_string)
+                end select
+              enddo
+
             case('PREFACTOR')
               error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
               prefactor => TransitionStatePrefactorCreate()

@@ -368,6 +368,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           call InputReadWord(input,option,name,PETSC_TRUE)
           call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
           temp_int = temp_int + 1
+
           do
             call InputReadFlotranString(input,option)
             call InputReadStringErrorMsg(input,option,card)
@@ -377,6 +378,32 @@ subroutine ReactionReadPass1(reaction,input,option)
                                     'CHEMISTRY,MINERAL_KINETICS')
             call StringToUpper(word)
             select case(word)
+
+              case('ARMORING')
+!             read amoring mineral and parameters for surface area armoring
+                do
+                  call InputReadFlotranString(input,option)
+                  call InputReadStringErrorMsg(input,option,card)
+                  if (InputCheckExit(input,option)) exit
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'keyword', &
+                                      'CHEMISTRY,MINERAL_KINETICS,ARMORING')
+
+                  print *,'Armor-1: ',word,temp_int
+
+                  call InputSkipToEnd(input,option,word)
+
+!                 call StringToUpper(word)
+!                 select case(word)
+!                   case('ARMOR_MINERAL')
+!                     call InputSkipToEnd(input,option,word)
+!                 case('ARMOR_PWR')
+!                     call InputSkipToEnd(input,option,word)
+!                 case('ARMOR_CRIT_VOL_FRAC')
+!                     call InputSkipToEnd(input,option,word)
+!                 end select
+                enddo
+
               case('PREFACTOR')
                 do 
                   call InputReadFlotranString(input,option)
@@ -395,6 +422,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           enddo
         enddo
         reaction%mineral%nkinmnrl = reaction%mineral%nkinmnrl + temp_int
+
       case('SOLID_SOLUTIONS') ! solid solutions read on second round
 #ifdef SOLID_SOLUTION
         do
@@ -407,6 +435,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         option%io_buffer = 'To use solid solutions, must compile with -DSOLID_SOLUTION'
         call printErrMsg(option)
 #endif
+
       case('COLLOIDS')
         nullify(prev_colloid)
         do

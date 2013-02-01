@@ -30,6 +30,9 @@ module Mineral_Aux_module
     PetscInt :: irreversible
     PetscReal :: rate
     PetscReal :: activation_energy
+    character(len=MAXWORDLENGTH) :: armor_min_name
+    PetscReal :: armor_pwr
+    PetscReal :: armor_crit_vol_frac
     type(transition_state_prefactor_type), pointer :: prefactor
     type(transition_state_rxn_type), pointer :: next
   end type transition_state_rxn_type
@@ -81,6 +84,7 @@ module Mineral_Aux_module
     ! for kinetic reactions
     PetscInt :: nkinmnrl
     character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
+    character(len=MAXWORDLENGTH), pointer :: kinmnrl_armor_min_names(:)
     PetscBool, pointer :: kinmnrl_print(:)
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
@@ -105,6 +109,8 @@ module Mineral_Aux_module
     PetscReal, pointer :: kinmnrl_rate_limiter(:)
     PetscReal, pointer :: kinmnrl_surf_area_vol_frac_pwr(:)
     PetscReal, pointer :: kinmnrl_surf_area_porosity_pwr(:)
+    PetscReal, pointer :: kinmnrl_armor_crit_vol_frac(:)
+    PetscReal, pointer :: kinmnrl_armor_pwr(:)
     PetscInt, pointer :: kinmnrl_irreversible(:)
    
   end type mineral_type
@@ -187,6 +193,10 @@ function MineralCreate()
   nullify(mineral%kinmnrl_surf_area_vol_frac_pwr)
   nullify(mineral%kinmnrl_surf_area_porosity_pwr)
 
+  nullify(mineral%kinmnrl_armor_min_names)
+  nullify(mineral%kinmnrl_armor_crit_vol_frac)
+  nullify(mineral%kinmnrl_armor_pwr)
+
   MineralCreate => mineral
   
 end function MineralCreate
@@ -245,6 +255,9 @@ function TransitionStateTheoryRxnCreate()
   tstrxn%rate_limiter = 0.d0
   tstrxn%irreversible = 0
   tstrxn%activation_energy = 0.d0
+  tstrxn%armor_min_name = ''
+  tstrxn%armor_pwr = 1.d0
+  tstrxn%armor_crit_vol_frac = 0.d0
   tstrxn%rate = 0.d0
   nullify(tstrxn%prefactor)
   nullify(tstrxn%next)
