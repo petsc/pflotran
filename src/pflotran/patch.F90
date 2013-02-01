@@ -3177,11 +3177,15 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = option%myrank
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
+#ifndef MULTI      
       value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
+#endif
     case(SEC_MIN_VOLFRAC)
+#ifndef MULTI
       value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
               sec_mnrl_volfrac(isubvar)
-    case default
+#endif   
+     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
             ivar
