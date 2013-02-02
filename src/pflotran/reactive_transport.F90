@@ -5621,7 +5621,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
         rgas*(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
       endif    
       kin_mnrl_rate(i) = kin_mnrl_rate(i)*arrhenius_factor
-      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))          ! in mol/kg --> Note!
+      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(i))          ! in mol/kg --> Note!
     enddo
     equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol              ! in m^3
