@@ -180,6 +180,7 @@ util_obj  = \
 	${common_src}utility.o \
 	${common_src}variables.o\
 	${common_src}blksolv.o\
+  ${common_src}blaslapack.o
 
 eos_obj = \
 	${common_src}co2eos.o \
@@ -339,9 +340,10 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
-               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
-               miscible_aux.o general_aux.o material_aux.o\
-			   secondary_continuum_aux.o
+              mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
+              miscible_aux.o general_aux.o material_aux.o\
+              secondary_continuum_aux.o
+blksolv.o: blaslapack.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.o dataset.o time_series.o \

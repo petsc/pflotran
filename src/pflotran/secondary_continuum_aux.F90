@@ -84,8 +84,12 @@ module Secondary_Continuum_Aux_module
     PetscBool :: log_spacing                   ! flag to check if log spacing is set
     PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
     PetscReal, pointer :: updated_conc(:,:)    ! This stores the secondary concentration update values from secondary NR iteration  (naqcomp x ncells)
-    PetscReal, pointer :: sec_jac(:)           ! stores the secondary continuum jacobian value
+    PetscReal, pointer :: sec_jac(:,:)         ! stores the secondary continuum jacobian value (naqcomp x ncells)
     PetscBool :: sec_jac_update                ! flag to check if secondary jacobian is updated
+    PetscReal, pointer :: cxm(:,:,:)           ! stores the coeff of left diag in block triag system (ncomp x ncomp x ncells-1)
+    PetscReal, pointer :: cxp(:,:,:)           ! stores the coeff of right diag in block triag system (ncomp x ncomp x ncells-1)
+    PetscReal, pointer :: cdl(:,:,:)           ! stores the coeff of central diag in block triag system (ncomp x ncomp x ncells)
+    PetscReal, pointer :: r(:)                 ! stores the solution of the forward solve
   end type sec_transport_type  
 #endif    
         
@@ -102,10 +106,9 @@ module Secondary_Continuum_Aux_module
             SecondaryAuxRTCreate, SecondaryAuxRTDestroy, &
 #ifndef MULTI            
             SecondaryRTAuxVarCompute, &
-#endif
-!#ifdef MULTI
-!            SecondaryRTAuxVarComputeMulti
-!#endif            
+#else
+            SecondaryRTAuxVarComputeMulti, &
+#endif            
             THCSecHeatAuxVarCompute, &
             MphaseSecHeatAuxVarCompute
             
@@ -444,6 +447,141 @@ type(sec_transport_type) :: sec_transport_vars
   sec_transport_vars%sec_zeta = sec_zeta
 
 end subroutine SecondaryRTAuxVarCompute
+#endif
+
+#ifdef MULTI
+! ************************************************************************** !
+!
+! SecondaryRTAuxVarComputeMulti: Updates the secondary continuum 
+! concentrations at end of each time step for multicomponent system
+! author: Satish Karra
+! date: 2/1/13
+!
+! ************************************************************************** !
+subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
+                                         global_aux_var,reaction, &
+                                         diffusion_coefficient,porosity, &
+                                         option)
+                               
+                            
+  use Option_module 
+  use Global_Aux_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use blksolv_module
+  use Utility_module
+  
+
+  implicit none
+  
+  type(sec_transport_type) :: sec_transport_vars
+  type(reactive_transport_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
+                 sec_transport_vars%ncells-1)
+  PetscReal :: coeff_diag(reaction%naqcomp,reaction%naqcomp, &
+                 sec_transport_vars%ncells)
+  PetscReal :: coeff_right(reaction%naqcomp,reaction%naqcomp, &
+                 sec_transport_vars%ncells-1)
+  PetscReal :: rhs(sec_transport_vars%ncells*reaction%naqcomp)
+  
+  PetscReal :: conc_upd(reaction%naqcomp,sec_transport_vars%ncells) 
+  PetscReal :: sec_mnrl_volfrac(reaction%naqcomp,sec_transport_vars%ncells)
+  PetscInt :: sec_zeta(reaction%naqcomp,sec_transport_vars%ncells)
+
+  PetscReal :: res_transport(reaction%naqcomp)
+  PetscReal :: kin_mnrl_rate(reaction%naqcomp)
+  PetscReal :: mnrl_area(reaction%naqcomp)
+  PetscReal :: mnrl_molar_vol(reaction%naqcomp)
+  PetscReal :: equil_conc(reaction%naqcomp)
+  PetscReal :: conc_primary_node(reaction%naqcomp)
+  
+  PetscReal :: area(sec_transport_vars%ncells)
+  PetscReal :: vol(sec_transport_vars%ncells)
+  PetscReal :: dm_plus(sec_transport_vars%ncells)
+  PetscReal :: dm_minus(sec_transport_vars%ncells)
+
+  
+  PetscInt :: i, j, k, n
+  PetscInt :: ngcells, ncomp
+  PetscReal :: area_fm
+  PetscReal :: diffusion_coefficient
+  PetscReal :: porosity
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
+  PetscReal :: pordt, pordiff
+  
+  PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
+  PetscInt :: indx(reaction%naqcomp)
+  PetscInt :: d
+  
+  ngcells = sec_transport_vars%ncells
+  area = sec_transport_vars%area
+  vol = sec_transport_vars%vol          
+  dm_plus = sec_transport_vars%dm_plus
+  dm_minus = sec_transport_vars%dm_minus
+  area_fm = sec_transport_vars%interfacial_area
+  sec_zeta = sec_transport_vars%sec_zeta
+  conc_upd = sec_transport_vars%updated_conc
+  ncomp = reaction%naqcomp
+  ! Note that sec_transport_vars%sec_conc units are in mol/kg
+  ! Need to convert to mol/L since the units of conc. in the Thomas 
+  ! algorithm are in mol/L 
+  
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
+  
+  conc_primary_node = aux_var%total(:,1)                             ! in mol/L 
+  pordt = porosity/option%tran_dt
+  pordiff = porosity*diffusion_coefficient            
+              
+  
+  if (reaction%mineral%nkinmnrl > 0) then
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate                    ! in mol/m^2/s
+    do i = 1, reaction%mineral%nkinmnrl
+      ! Arrhenius factor
+      arrhenius_factor = 1.d0
+      if (reaction%mineral%kinmnrl_activation_energy(i) > 0.d0) then
+        arrhenius_factor = exp(reaction%mineral%kinmnrl_activation_energy(i)/ &
+        rgas*(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
+      endif    
+      kin_mnrl_rate(i) = kin_mnrl_rate(i)*arrhenius_factor
+      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))          ! in mol/kg --> Note!
+    enddo
+    equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol              ! in m^3
+    sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
+    mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/m
+  endif
+ 
+  ! Use the stored coefficient matrices from LU decomposition of the
+  ! block triagonal sytem
+  coeff_left = sec_transport_vars%cxm
+  coeff_right = sec_transport_vars%cxp
+  coeff_diag = sec_transport_vars%cdl
+  rhs = sec_transport_vars%r
+        
+  call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+  
+  do j = 1, ncomp
+    do i = 1, ngcells
+      n = j + (i - 1)*ncomp
+      conc_upd(j,i) = rhs(n) + conc_upd(j,i)
+    enddo
+  enddo
+
+  ! Convert the units of sec_conc from mol/L to mol/kg before passing to
+  ! sec_transport_vars
+  sec_transport_vars%sec_conc = conc_upd/global_aux_var%den_kg(1)/1.d-3
+  sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
+  sec_transport_vars%sec_zeta = sec_zeta
+  
+
+end subroutine SecondaryRTAuxVarComputeMulti
 #endif
 
 ! ************************************************************************** !
