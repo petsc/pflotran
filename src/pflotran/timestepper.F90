@@ -2174,6 +2174,11 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   sum_linear_iterations = 0
   prev_norm = 1.d20
 
+  if(option%surf_flow_explicit) then
+    call StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
+    return
+  endif
+
   if (option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE_FLOW ",52("="))')
   endif
@@ -2185,6 +2190,8 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
       option%io_buffer = 'ERROR: Incorrect iflowmode in SurfaceFlow'
       call printErrMsgByRank(option)
   end select
+  option%io_buffer='stopping for debugging'
+  call printErrMsg(option)
 
   do
     call PetscGetTime(log_start_time,ierr)
@@ -2313,6 +2320,52 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   if (option%print_screen_flag) print *, ""
 
 end subroutine StepperStepSurfaceFlowDT
+
+! ************************************************************************** !
+!
+! ************************************************************************** !
+subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
+  
+  use Surface_Realization_class
+  use Surface_Flow_module
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Surface_Field_module
+  use Grid_module
+  use Output_module, only : Output
+  
+  implicit none
+  
+#include "finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscts.h"
+
+  type(surface_realization_type) :: surf_realization
+  type(stepper_type)     :: stepper
+  PetscBool              :: failure
+
+  PetscErrorCode :: ierr
+  type(option_type), pointer          :: option
+  type(surface_field_type), pointer   :: surf_field 
+  type(discretization_type), pointer  :: discretization 
+  type(solver_type), pointer          :: solver
+  character(len=MAXSTRINGLENGTH)      :: string
+
+  option         => surf_realization%option
+  discretization => surf_realization%discretization
+  surf_field     => surf_realization%surf_field
+  solver         => stepper%solver
+
+  !call TSSetTime(solver%ts,option%surf_flow_time,ierr)
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
+  !call TSSetDuration(solver%ts,1,400.d0,ierr)
+  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+
+end subroutine StepperStepSurfaceFlowExplicitDT
 #endif
 
 ! ************************************************************************** !

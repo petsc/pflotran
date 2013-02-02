@@ -4431,8 +4431,7 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
     case(SURFACE_FLOW_PRESSURE)
       call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
-        ! gb: grid%nL2G(local_id)
-        vec_ptr(local_id) = vec_ptr2(local_id)
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
     case(MATERIAL_ID)

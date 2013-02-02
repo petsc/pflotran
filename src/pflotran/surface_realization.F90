@@ -71,7 +71,8 @@ private
             SurfaceRealizationCreateSurfaceSubsurfaceVec, &
             SurfaceRealizationUpdateSubsurfaceBC, &
             SurfaceRealizationUpdateSurfaceBC, &
-            SurfaceRealizationComputeSurfaceSubsurfFlux
+            SurfaceRealizationComputeSurfaceSubsurfFlux, &
+            SurfaceRealizationGetDataset
 
   !TODO(intel)
 !  public :: SurfaceRealizationGetDataset     
@@ -423,6 +424,8 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
                                      surf_field%subsurf_yy)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%subsurf_zz)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%surf2subsurf_dist_gravity)
 
   ! Create ghosted-local vectors
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%flow_xx_loc, &
@@ -1217,7 +1220,6 @@ subroutine SurfaceRealizationUpdate(surf_realization)
 
 end subroutine SurfaceRealizationUpdate
 
-#if 0
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar and isubvar from surface
 !! realization.
@@ -1248,7 +1250,6 @@ subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubva
                        vec,ivar,isubvar,isubvar1)
 
 end subroutine SurfaceRealizationGetDataset
-#endif
 
 ! ************************************************************************** !
 !> This routine prescribes the strength of source/sink between surface and
@@ -1429,6 +1430,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
   PetscReal, pointer :: Dq_p(:)
+  PetscReal, pointer :: dist_p(:)
   PetscReal :: dist_x,dist_y,dist_z,dist
   
   PetscBool :: coupler_found = PETSC_FALSE
@@ -1468,10 +1470,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
         call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
 
         ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                        surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                        surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
 
         ! If entering this subroutine for the first time, also scatter a few
@@ -1490,10 +1494,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%perm_xx_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
-                              surf_field%perm_xx, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                               surf_field%subsurf_temp_vec, &
+                               surf_field%perm_xx, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%perm_xx, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1508,10 +1514,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%perm_yy_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%perm_yy, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%perm_yy, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1526,10 +1534,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%perm_zz_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%perm_zz, &
-                              INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+                              INSERT_VALUES, SCATTER_FORWARD,ierr)
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%perm_zz, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1544,10 +1554,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%porosity_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%por, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%por, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1560,10 +1572,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%sat_func_id, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%sat_func_id, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
           ! x
@@ -1575,10 +1589,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%subsurf_xx, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%subsurf_xx, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1591,10 +1607,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%subsurf_yy, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%subsurf_yy, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1607,10 +1625,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%subsurf_zz, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%subsurf_zz, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1633,20 +1653,27 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
     call GridVecGetArrayF90(surf_grid,surf_field%perm_yy,perm_yy_p,ierr)
     call GridVecGetArrayF90(surf_grid,surf_field%perm_zz,perm_zz_p,ierr)
     call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
+    call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
 
     do local_id=1,surf_grid%nlmax
-      dist_x = abs(xx_p(local_id) - surf_grid%x(local_id))
-      dist_y = abs(yy_p(local_id) - surf_grid%y(local_id))
-      dist_z = abs(zz_p(local_id) - surf_grid%z(local_id))
+      dist_x = (xx_p(local_id) - surf_grid%x(local_id))
+      dist_y = (yy_p(local_id) - surf_grid%y(local_id))
+      dist_z = (zz_p(local_id) - surf_grid%z(local_id))
       
       dist = sqrt(dist_x*dist_x + dist_y*dist_y + dist_z*dist_z)
       
-      Dq_p(local_id) = (perm_xx_p(local_id)*dist_x/dist + &
-                        perm_yy_p(local_id)*dist_y/dist + &
-                        perm_zz_p(local_id)*dist_z/dist)/dist
-      
+      Dq_p(local_id) = (perm_xx_p(local_id)*abs(dist_x)/dist + &
+                        perm_yy_p(local_id)*abs(dist_y)/dist + &
+                        perm_zz_p(local_id)*abs(dist_z)/dist)/dist
+      dist_p(local_id) = dist*(dist_x*option%gravity(1)+ &
+                               dist_y*option%gravity(2)+ &
+                               dist_z*option%gravity(3))
+      !write(*,*),'Dq : ',Dq_p(local_id),Dq_p(local_id)*dist
+      !write(*,*),'perm: ',perm_xx_p(local_id),perm_yy_p(local_id),perm_zz_p(local_id)
+      !write(*,*),'dist: ',dist_x,dist_y,dist_z,dist
     enddo
 
+    call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
     call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_xx,xx_p,ierr)
     call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_yy,yy_p,ierr)
     call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_zz,zz_p,ierr)
@@ -1722,7 +1749,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   PetscReal, pointer :: Dq_p(:)
   PetscReal, pointer :: vol_p(:)
   PetscReal, pointer :: area_p(:)
-  
+  PetscReal, pointer :: dist_p(:)
   
   PetscReal :: press_surf
   PetscReal :: dphi
@@ -1741,6 +1768,8 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   PetscReal :: dvis_dt
   PetscReal :: v_darcy
   PetscReal :: v_darcy_max
+  PetscReal :: gravity
+  PetscReal :: press_up, press_dn
     
   PetscBool :: coupler_found = PETSC_FALSE
   PetscBool :: v_darcy_limit
@@ -1760,6 +1789,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   call GridVecGetArrayF90(surf_grid,surf_field%sat_func_id,sat_func_id_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%vol_subsurf_2_surf,vol_p,ierr)
+  call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
 
   ! Update the surface BC
@@ -1767,6 +1797,14 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   coupler => coupler_list%first
   v_darcy_max=0.d0
   v_darcy_limit=PETSC_FALSE
+  
+  !
+  !            SURFACE
+  !              (DN)
+  !   ---------------------------------
+  !           SUBSURFACE         ///\\\
+  !              (UP)
+  !
 
   do
     if (.not.associated(coupler)) exit
@@ -1781,16 +1819,29 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
       endif
       
       do local_id=1,surf_grid%nlmax
-        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*rho + option%reference_pressure
-        dphi = press_sub_p(local_id) - press_surf
-        if (dphi<0.d0 .and. press_surf - option%reference_pressure<eps) then
+        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*rho+option%reference_pressure
+
+        press_up = press_sub_p(local_id)
+        press_dn = press_surf
+        gravity = dist_p(local_id)*rho
+        
+        dphi = press_up - press_dn + gravity
+        
+        ! check if there is standing water on the surface
+        if (dphi<0.d0 .and. press_dn - option%reference_pressure<eps) then
           dphi= 0.d0
         endif
         
+        ! exfiltration will only occur if subsurface pressure is greater
+        ! than reference pressure
+        if (dphi>=0 .and. press_up-option%reference_pressure<eps ) then
+          dphi = 0.d0
+        endif
+        
         if(dphi>0.d0) then
-          press = press_sub_p(local_id)
+          press = press_up
         else
-          press = press_surf
+          press = press_dn
         endif
         
         call SaturationFunctionCompute( &
@@ -1811,11 +1862,13 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
         if (v_darcy<=0.d0) then
           ! Flow is happening from surface to subsurface
           if ( abs(v_darcy) > hw_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = hw_p(local_id)/option%surf_flow_dt
+            v_darcy = -hw_p(local_id)/option%surf_flow_dt
             v_darcy_limit=PETSC_TRUE
           endif
+          write(*,*),'infiltration is occuring: ',local_id,v_darcy,v_darcy_limit
         else
           ! Exfiltration is occuring
+          write(*,*),'exfiltration is occuring: ',local_id,v_darcy
         endif
         vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
@@ -1828,6 +1881,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   enddo
   
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+  call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%vol_subsurf_2_surf,vol_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)  
   call GridVecRestoreArrayF90(surf_grid,surf_field%sat_func_id,sat_func_id_p,ierr)

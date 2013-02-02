@@ -12,6 +12,7 @@ module Init_module
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
+#include "finclude/petscts.h"
 
 
   public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
@@ -201,6 +202,8 @@ subroutine Init(simulation)
   ! initialize surface-flow mode
   if (option%nsurfflowdof > 0) then
     surf_flow_solver => surf_flow_stepper%solver
+    waypoint_list => WaypointListCreate()
+    surf_realization%waypoints => waypoint_list
   else
     call TimestepperDestroy(simulation%surf_flow_stepper)
     nullify(surf_flow_solver)
@@ -533,74 +536,89 @@ subroutine Init(simulation)
 
 #ifdef SURFACE_FLOW
     if(option%nsurfflowdof>0) then
-      call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
-      call SolverCreateSNES(surf_flow_solver,option%mycomm)
-      call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
-      call SolverCheckCommandLine(surf_flow_solver)
 
-      if (surf_flow_solver%Jpre_mat_type == '') then
-        if (surf_flow_solver%J_mat_type /= MATMFFD) then
-          surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
-        else
-          surf_flow_solver%Jpre_mat_type = MATBAIJ
+
+      if(option%surf_flow_explicit) then
+
+        ! Setup PETSc TS for explicit surface flow solution
+        call printMsg(option,"  Beginning setup of SURF FLOW TS ")
+
+        call SolverCreateTS(surf_flow_solver,option%mycomm)
+        call TSSetProblemType(surf_flow_solver%ts,TS_NONLINEAR,ierr)
+        call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                              SurfaceFlowRHSFunction, &
+                              simulation%surf_realization,ierr)
+        call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
+                           simulation%surf_realization%waypoints%last%time,ierr)
+
+      else
+
+        ! Setup PETSc SNES for implicit surface flow solution
+        call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
+
+        call SolverCreateSNES(surf_flow_solver,option%mycomm)
+        call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
+        call SolverCheckCommandLine(surf_flow_solver)
+
+        if (surf_flow_solver%Jpre_mat_type == '') then
+          if (surf_flow_solver%J_mat_type /= MATMFFD) then
+            surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
+          else
+            surf_flow_solver%Jpre_mat_type = MATBAIJ
+          endif
         endif
-      endif
 
-      call DiscretizationCreateJacobian( &
-                                        simulation%surf_realization%discretization, &
-                                        NFLOWDOF, &
-                                        surf_flow_solver%Jpre_mat_type, &
-                                        surf_flow_solver%Jpre, &
-                                        option)
+        call DiscretizationCreateJacobian( &
+                                  simulation%surf_realization%discretization, &
+                                  NFLOWDOF, &
+                                  surf_flow_solver%Jpre_mat_type, &
+                                  surf_flow_solver%Jpre, &
+                                  option)
 
-      call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
-      call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+        call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+        call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
-      call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
+        call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
 
-      if (surf_flow_solver%J_mat_type /= MATMFFD) then
-        surf_flow_solver%J = surf_flow_solver%Jpre
-      endif
+        if (surf_flow_solver%J_mat_type /= MATMFFD) then
+          surf_flow_solver%J = surf_flow_solver%Jpre
+        endif
 
-      call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
-                            SurfaceFlowResidual, &
-                            simulation%surf_realization,ierr)
+        call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
+                              SurfaceFlowResidual, &
+                              simulation%surf_realization,ierr)
 
-      call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
-                          surf_flow_solver%Jpre, &
-                          SurfaceFlowJacobian,simulation%surf_realization,ierr)
-      ! by default turn off line search
-#ifndef HAVE_SNES_API_3_2
-      call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
-      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-#else    
-      call SNESLineSearchSet(surf_flow_solver%snes,SNESLineSearchNo, &
-                            PETSC_NULL_OBJECT,ierr)
+        call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
+                            surf_flow_solver%Jpre, &
+                            SurfaceFlowJacobian,simulation%surf_realization,ierr)
+        ! by default turn off line search
+        call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+
+        ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+        if (option%verbosity >= 1) then
+          string = '-surf_flow_snes_view'
+          call PetscOptionsInsertString(string, ierr)
+        endif
+
+        call SolverSetSNESOptions(surf_flow_solver)
+
+        option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
+        call printMsg(option)
+        option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
+        call printMsg(option)
+
+        ! shell for custom convergence test.  The default SNES convergence test
+        ! is call within this function.
+        surf_flow_stepper%convergence_context => &
+          ConvergenceContextCreate(surf_flow_solver,option,grid)
+        call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
+                                    surf_flow_stepper%convergence_context, &
+                                    PETSC_NULL_FUNCTION,ierr)
+      endif ! if(option%surface_flow_explicit)
+    endif ! if(option%nsurfflowdof>0)
 #endif
 
-      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-      if (option%verbosity >= 1) then
-        string = '-surf_flow_snes_view'
-        call PetscOptionsInsertString(string, ierr)
-      endif
-
-      call SolverSetSNESOptions(surf_flow_solver)
-
-      option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
-      call printMsg(option)
-      option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
-      call printMsg(option)
-
-      ! shell for custom convergence test.  The default SNES convergence test  
-      ! is call within this function. 
-      surf_flow_stepper%convergence_context => &
-        ConvergenceContextCreate(surf_flow_solver,option,grid)
-      call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
-                                  surf_flow_stepper%convergence_context, &
-                                  PETSC_NULL_FUNCTION,ierr) 
-
-    endif
-#endif
   endif
 
   
@@ -926,7 +944,7 @@ subroutine Init(simulation)
                                string)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_solver)) then
+  if (associated(surf_flow_solver).and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Newton Solver:'
     call SolverPrintNewtonInfo(surf_flow_solver,OptionPrintToScreen(option), &
                                OptionPrintToFile(option),option%fid_out, &
@@ -942,9 +960,17 @@ subroutine Init(simulation)
     call SolverPrintLinearInfo(tran_solver,string,option)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_solver)) then
+  if (associated(surf_flow_solver).and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Linear Solver:'
     call SolverPrintLinearInfo(surf_flow_solver,string,option)
+  endif
+  if (associated(surf_flow_solver).and.option%surf_flow_explicit) then
+    string = 'Surface Flow TS Solver:'
+    if (OptionPrintToScreen(option)) then
+      write(*,*),' '
+      write(*,*),string
+      call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    endif
   endif
 #endif
 
@@ -2245,6 +2271,13 @@ subroutine InitReadInput(simulation)
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
         option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+
+        ! Add final_time waypoint to surface_realization
+        waypoint => WaypointCreate()
+        waypoint%final = PETSC_TRUE
+        waypoint%time = realization%waypoints%last%time
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 #endif
 
 !......................

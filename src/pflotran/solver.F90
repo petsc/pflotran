@@ -14,6 +14,7 @@ module Solver_module
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
 #include "finclude/petscpcmg.h"
+#include "finclude/petscts.h"
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
@@ -59,6 +60,7 @@ module Solver_module
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
+    TS    :: ts
     
     PetscBool :: inexact_newton
 
@@ -76,6 +78,7 @@ module Solver_module
             SolverReadNewton, &
             SolverCreateSNES, &
             SolverSetSNESOptions, &
+            SolverCreateTS, &
             SolverPrintNewtonInfo, &
             SolverPrintLinearInfo, &
             SolverCheckCommandLine
@@ -139,6 +142,7 @@ function SolverCreate()
   solver%pc_type = ""
   solver%ksp = 0
   solver%pc = 0
+  solver%ts = 0
   
   solver%inexact_newton = PETSC_FALSE
   
@@ -267,6 +271,28 @@ subroutine SolverSetSNESOptions(solver)
 
 end subroutine SolverSetSNESOptions
   
+! ************************************************************************** !
+!> This routine creates PETSc TS object.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 01/18/13
+! ************************************************************************** !
+subroutine SolverCreateTS(solver,comm)
+
+  implicit none
+  
+  type(solver_type) :: solver
+
+  PetscMPIInt :: comm
+  PetscErrorCode :: ierr
+  
+  call TSCreate(comm,solver%ts,ierr)
+  call TSSetFromOptions(solver%ts,ierr)
+
+end subroutine SolverCreateTS
+
 ! ************************************************************************** !
 !
 ! SolverReadLinear: Reads parameters associated with linear solver
@@ -947,7 +973,7 @@ subroutine SolverCheckCommandLine(solver)
   if (is_present) solver%Jpre_mat_type = mat_type
 
   ! Parse the options for the Galerkin multigrid solver.
-  ! Users can specify the number of levels of coarsening via the 
+  ! Users can specify the number of levels of coarsening via the
   ! 'galerkin_mg N' option, which will set the number of levels in the 
   ! x, y, and z directions all to N.  For semi-coarsening, however, 
   ! it is possible to set the number of levels in each direction 
@@ -1017,6 +1043,7 @@ subroutine SolverDestroy(solver)
     call MatFDColoringDestroy(solver%matfdcoloring,ierr)
 
   if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
+  if (solver%ts /= 0) call TSDestroy(solver%ts,ierr)
 
   solver%ksp = 0
   solver%pc = 0

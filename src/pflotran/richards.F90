@@ -3516,7 +3516,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                             distance_gravity, &
                             upweight,option,v_darcy,Res)
         case (LSM_FLUX)
-!          write(*,*),'ids: ',ghosted_id_up,ghosted_id_dn
           call RichardsLSMFlux(rich_aux_vars(ghosted_id_up), &
                                global_aux_vars(ghosted_id_up), &
                                porosity_loc_p(ghosted_id_up), &

@@ -63,6 +63,7 @@ module Option_module
     PetscReal :: surf_flow_time, surf_flow_dt
     PetscReal :: surf_subsurf_coupling_time
     PetscReal :: surf_subsurf_coupling_flow_dt
+    PetscBool :: surf_flow_explicit
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -356,6 +357,7 @@ subroutine OptionInitRealization(option)
    option%surf_flow_time =0.d0
    option%surf_subsurf_coupling_time = 0.d0
    option%surf_subsurf_coupling_flow_dt = 0.d0
+   option%surf_flow_explicit = PETSC_TRUE
 #endif
 
   option%tranmode = ""
