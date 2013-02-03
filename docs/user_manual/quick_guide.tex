@@ -1737,33 +1737,52 @@ a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varph
 \EN
 where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$. The quantity $\varphi_c$ refers to a critical porosity below which the permeability is assumed to be constant with scale factor $f_{\rm min}$.
 
-In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{porosity} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
+\paragraph{Changes in Material Properties}
+
+In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral. It is not necessary  that Eqn.\eqref{porosity} relating porosity and mineral volume fractions holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
 \begin{subequations}
 \BA
 \varphi_m &\eq (1-\varphi) \frac{x_m \overline V_m}{\sum_{m'} x_{m'} \overline V_{m'}},\\
 &\eq (1-\varphi) \frac{y_m^{} \rho_m^{-1}}{\sum_{m'} y_{m'}^{} \rho_{m'}^{-1}},
 \EA
 \end{subequations}
-where
+with inverse relation
 \EQ
-\rho_m^{} \eq W_m^{} \overline V_m^{-1}.
+x_m \eq \frac{\varphi_m}{\overline V_m \eta_s(1-\varphi)},
 \EN
-In these relations $W_m$ refers to the formula weight and $\overline V_m$ the molar volume of the $m$th mineral. The solid molar density $\eta_s$ is given by
+and similarly for the mass fraction, where
 \EQ
-\eta_s \eq \frac{1}{\sum_m x_m \overline V_m},
+\rho_m^{} \eq W_m^{} \overline V_m^{-1},
 \EN
-which is related to the mass density $\rho_s$ by
+and the solid molar density $\eta_s$ is given by
 \EQ
-\rho_s \eq W \eta_s,
+\eta_s \eq \frac{1}{\sum_m x_m \overline V_m}.
 \EN
-with the mean molecular weight $W$ equal to
+In these relations $W_m$ refers to the formula weight and $\overline V_m$ the molar volume of the $m$th mineral. 
+The solid molar density is related to the mass density $\rho_s$ by
 \EQ
-W \eq \sum_m x_m W_m \eq \frac{1}{\sum_m W_m^{-1} y_m^{}}.
+\rho_s \eq W_s \eta_s,
+\EN
+with the mean molecular weight $W_s$ of the solid phase equal to
+\EQ
+W_s \eq \sum_m x_m W_m \eq \frac{1}{\sum_m W_m^{-1} y_m^{}}.
 \EN
 Mass and mole fractions are related by the expression
 \EQ
-W_m x_m \eq W y_m.
+W_m x_m \eq W_s y_m.
 \EN
+
+\paragraph{Surface Armoring}
+
+Surface armoring occurs when one mineral precipitates on top of another mineral, blocking that mineral from reacting. Thus suppose mineral $\M_m$ is being replaced by the secondary mineral $\M_{m'}$. Blocking may be described phenomenologically by the surface area relation
+\EQ\label{surface_armoring}
+a_m(t) \eq a_m^0  \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'} \left(\frac{\varphi_{m'}^c - \varphi_{m'}}{\varphi_{m'}^c}\right)^{n''},
+\EN
+for $\varphi_{m'} < \varphi_{m'}^c$, and 
+\EQ
+a_m \eq 0,
+\EN
+if $\varphi_{m'}(t) \geq \varphi_{m'}^c$, where $\varphi_{m'}^c$ represents the critical volume fraction necessary for complete blocking of the reaction of mineral $\M_m$.
 
 \subsubsection{Sorption}
 
@@ -2845,29 +2864,36 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 %\begin{deflist}{000000000000000000000}
 \begin{deflist}{0000}
-\item [Mineral Name]
+\item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
-\item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
-\item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
-\item [AFFINITY\_POWER] \ {\tt Value} [---]
-\item [TEMPKINS\_CONSTANT] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
-\item [RATE\_LIMITER] \ {\tt Value} [---]
-\item [IRREVERSIBLE] \ 
-
+\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
-
+\item [AFFINITY\_THRESHOLD] \ {\tt <Value>} [---]
+\item [AFFINITY\_POWER] \ {\tt <Value>} [---]
+~\\
+\item [TEMPKINS\_CONSTANT] \ {\tt <Value>} [---]
+~\\
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+~\\
+\item [RATE\_LIMITER] \ {\tt <Value>} [---]
+~\\
+\item [IRREVERSIBLE] \ 
+~\\
+\item[ARMOR\_MINERAL] \ {\tt <Char>} \ [See Eqn.\eqref{surface_armoring}]
+\item[ARMOR\_PWR] \ {\tt <Value>} [---] \ [See Eqn.\eqref{surface_armoring}]
+\item[ARMOR\_CRIT\_VOL\_FRAC] \ {\tt <Value>} [---] \ [See Eqn.\eqref{surface_armoring}]
+~\\
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
-\item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] 
-\item [PREFACTOR\_SPECIES] \ {\tt Name}
+\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K] 
+\item [PREFACTOR\_SPECIES] \ {\tt <Char>}
 \begin{deflist}{0000}
 \item [ALPHA] \ {\tt Value} [---]
 \item [BETA] \ {\tt Value} [---]
-\item [ATTENUATION\_COEF] \ {\tt Value}
+\item [ATTENUATION\_COEF] \ {\tt <Value>}
 \end{deflist}
 \item [\keyend]
 \end{deflist}
@@ -2987,13 +3013,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{deflist}
 
 \item [\keyend]
-
 ~\\
-
 \item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
-
 ~\\
-
 \item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
 \item[LOG\_FORMULATION]
@@ -3001,15 +3023,16 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[ACTIVITY\_COEFFICIENTS] [{\bf LAG, NEWTON, TIMESTEP, NEWTON\_ITERATION}]
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
-\item[NO\_BDOT]
-\item[UPDATE\_POROSITY] {\tt Value} \ \ \ [see Eqn.\eqref{porosity}]
-\item[UPDATE\_TORTUOSITY] {\tt Value} \ \ \ [see Eqn.\eqref{tortuosity}]
-\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
-\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
+\item[NO\_BDOT] 
+\item[UPDATE\_POROSITY] {\tt <Value>} \ \ \ [see Eqn.\eqref{porosity}]
+\item[UPDATE\_TORTUOSITY] {\tt <Value>} \ \ \ [see Eqn.\eqref{tortuosity}]
+\item[UPDATE\_PERMEABILITY] {\tt <Value>} \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
+\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt <Value>} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
-\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
+\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt <Value>} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
-\item[MINIMUM\_POROSITY] {\tt Value}
+\item[MINIMUM\_POROSITY] {\tt <Value>}
+\item[UPDATE\_ARMOR\_MINERAL\_SURFACE] {\tt <Value>} \ [See Eqn.\eqref{surface_armoring}]
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
 

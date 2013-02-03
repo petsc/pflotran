@@ -378,32 +378,6 @@ subroutine ReactionReadPass1(reaction,input,option)
                                     'CHEMISTRY,MINERAL_KINETICS')
             call StringToUpper(word)
             select case(word)
-
-              case('ARMORING')
-!             read amoring mineral and parameters for surface area armoring
-                do
-                  call InputReadFlotranString(input,option)
-                  call InputReadStringErrorMsg(input,option,card)
-                  if (InputCheckExit(input,option)) exit
-                  call InputReadWord(input,option,word,PETSC_TRUE)
-                  call InputErrorMsg(input,option,'keyword', &
-                                      'CHEMISTRY,MINERAL_KINETICS,ARMORING')
-
-                  print *,'Armor-1: ',word,temp_int
-
-                  call InputSkipToEnd(input,option,word)
-
-!                 call StringToUpper(word)
-!                 select case(word)
-!                   case('ARMOR_MINERAL')
-!                     call InputSkipToEnd(input,option,word)
-!                 case('ARMOR_PWR')
-!                     call InputSkipToEnd(input,option,word)
-!                 case('ARMOR_CRIT_VOL_FRAC')
-!                     call InputSkipToEnd(input,option,word)
-!                 end select
-                enddo
-
               case('PREFACTOR')
                 do 
                   call InputReadFlotranString(input,option)
@@ -669,6 +643,8 @@ subroutine ReactionReadPass1(reaction,input,option)
         reaction%update_mnrl_surf_with_porosity = PETSC_TRUE
       case('UPDATE_ARMOR_MINERAL_SURFACE')
         reaction%update_armor_mineral_surface = PETSC_TRUE
+      case('UPDATE_ARMOR_MINERAL_SURFACE_FLAG')
+        reaction%update_armor_mineral_surface = 0
       case('MOLAL','MOLALITY')
         reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')

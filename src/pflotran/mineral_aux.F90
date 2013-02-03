@@ -256,7 +256,7 @@ function TransitionStateTheoryRxnCreate()
   tstrxn%irreversible = 0
   tstrxn%activation_energy = 0.d0
   tstrxn%armor_min_name = ''
-  tstrxn%armor_pwr = 1.d0
+  tstrxn%armor_pwr = 0.d0
   tstrxn%armor_crit_vol_frac = 0.d0
   tstrxn%rate = 0.d0
   nullify(tstrxn%prefactor)
@@ -631,6 +631,9 @@ subroutine MineralDestroy(mineral)
   call DeallocateArray(mineral%kinmnrl_rate_limiter)
   call DeallocateArray(mineral%kinmnrl_surf_area_vol_frac_pwr)
   call DeallocateArray(mineral%kinmnrl_surf_area_porosity_pwr)
+  call DeallocateArray(mineral%kinmnrl_armor_min_names)
+  call DeallocateArray(mineral%kinmnrl_armor_pwr)
+  call DeallocateArray(mineral%kinmnrl_armor_crit_vol_frac)
   call DeallocateArray(mineral%kinmnrl_irreversible)
   
   deallocate(mineral)
