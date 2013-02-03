@@ -5621,7 +5621,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
         rgas*(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
       endif    
       kin_mnrl_rate(i) = kin_mnrl_rate(i)*arrhenius_factor
-      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(i))          ! in mol/kg --> Note!
+      equil_conc(i) = (10.d0)**(reaction%mineral%mnrl_logK(i))          ! in mol/kg --> Note!
     enddo
     equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol              ! in m^3
@@ -5637,7 +5637,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
     ! Accumulation
     do i = 1, ngcells
       n = j + (i-1)*ncomp
-      res(n) = pordt*(conc_upd(j,i) - conc_prev(j,i))*vol(i)
+      res(n) = pordt*(conc_upd(j,i) - conc_prev(j,i))*vol(i)        ! in mol/L*m3/s
     enddo
   
     ! Flux terms
@@ -5698,7 +5698,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
         do i = 1, ngcells
           coeff_diag(j,k,i) = coeff_diag(j,k,i) + &
                               vol(i)*kin_mnrl_rate(j)*mnrl_area(j)/ &
-                              equil_conc(j)*1.d-3*sec_zeta(i,j)
+                              equil_conc(j)*1.d-3*sec_zeta(j,i)
         enddo
   
   

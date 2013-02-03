@@ -497,7 +497,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   PetscReal :: mnrl_molar_vol(reaction%naqcomp)
   PetscReal :: equil_conc(reaction%naqcomp)
   PetscReal :: conc_primary_node(reaction%naqcomp)
-  PetscReal :: Im(sec_transport_vars%ncells)
+  PetscReal :: Im
   
   PetscReal :: area(sec_transport_vars%ncells)
   PetscReal :: vol(sec_transport_vars%ncells)
@@ -551,14 +551,14 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
         rgas*(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
       endif    
       kin_mnrl_rate(i) = kin_mnrl_rate(i)*arrhenius_factor
-      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(i))          ! in mol/kg --> Note!
+      equil_conc(i) = (10.d0)**(reaction%mineral%mnrl_logK(i))          ! in mol/kg --> Note!
     enddo
     equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol              ! in m^3
     sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
     mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/m
   endif
- 
+   
   ! Use the stored coefficient matrices from LU decomposition of the
   ! block triagonal sytem
   coeff_left = sec_transport_vars%cxm
@@ -578,18 +578,18 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   ! Mineral linear kinetics  
   do j = 1, ncomp
     do i = 1, ngcells
-      Im(i) = kin_mnrl_rate(j)*mnrl_area(j)*(conc_upd(j,i)/equil_conc(j) - 1.d0) ! in mol/m^3/s
-      if (Im(i) > 0.d0) then 
+      Im = kin_mnrl_rate(j)*mnrl_area(j)*(conc_upd(j,i)/equil_conc(j) - 1.d0) ! in mol/m^3/s
+      if (Im > 0.d0) then 
         sec_mnrl_volfrac(j,i) = sec_mnrl_volfrac(j,i) + option%tran_dt* &
-                              mnrl_molar_vol(j)*Im(i)
+                              mnrl_molar_vol(j)*Im
         sec_zeta(j,i) = 1
       else
         if (sec_mnrl_volfrac(j,i) > 0.d0) then
           sec_mnrl_volfrac(j,i) = sec_mnrl_volfrac(j,i) + option%tran_dt* &
-                                mnrl_molar_vol(j)*Im(i)
+                                mnrl_molar_vol(j)*Im
           sec_zeta(j,i) = 1
         else
-          Im(i) = 0.d0
+          Im = 0.d0
           sec_zeta(j,i) = 0
         endif
       endif
