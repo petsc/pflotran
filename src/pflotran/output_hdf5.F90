@@ -987,6 +987,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
     open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
     !call OutputXMFHeader(OUTPUT_UNIT,realization_base,filename)
     call OutputXMFHeader(OUTPUT_UNIT, &
+                         option%time/output_option%tconv, &
                          grid%nmax, &
                          realization_base%output_option%xmf_vert_len, &
                          grid%unstructured_grid%num_vertices_global,filename)
