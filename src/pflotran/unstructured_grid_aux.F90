@@ -20,10 +20,8 @@ module Unstructured_Grid_Aux_module
   PetscInt, parameter, public :: TWO_DIM_GRID = 1
   PetscInt, parameter, public :: THREE_DIM_GRID = 2 
   
-  !geh: for debugging purposes make these large
-  !TODO(geh): change values to 1, 2 respectively.
-  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 98
-  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 99
+  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
+  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
 
   type, public :: unstructured_grid_type
     ! variables for all unstructured grids

@@ -102,7 +102,6 @@ subroutine OutputVTK(realization_base)
 
   write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
 
-  !TODO(geh): refactor to use variable list in loop
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
