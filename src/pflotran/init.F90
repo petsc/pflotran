@@ -103,6 +103,7 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: min_value
 #ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: linesearch
 #endif
@@ -973,6 +974,21 @@ subroutine Init(simulation)
                        trim(adjustl(string)) // ' (note PETSc numbering).' // &
                        '  Ensure that REGIONS cover entire domain!!!'
     call printErrMsg(option)
+  endif
+  if (option%iflowmode /= NULL_MODE) then
+    min_value = 1.d20
+    call VecMin(field%perm0_xx,temp_int,r1,ierr)
+    min_value = min(min_value,r1)
+    call VecMin(field%perm0_yy,temp_int,r1,ierr)
+    min_value = min(min_value,r1)
+    call VecMin(field%perm0_zz,temp_int,r1,ierr)
+    min_value = min(min_value,r1)
+    if (min_value < 1.d-60) then
+      option%io_buffer = &
+        'A positive non-zero permeability must be defined throughout ' // &
+        'domain in X, Y and Z.'
+      call printErrMsg(option)
+    endif
   endif
   
 #if defined(PETSC_HAVE_HDF5)
