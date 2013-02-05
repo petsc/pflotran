@@ -510,7 +510,8 @@ reaction_sandbox_base.o : reaction_aux.o reactive_transport_aux.o \
                           global_aux.o
 reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
                             string.o input.o utility.o global_aux.o \
-                            reaction_sandbox_base.o
+                            reaction_sandbox_base.o database_aux.o \
+                            immobile_aux.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
