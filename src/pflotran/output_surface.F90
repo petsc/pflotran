@@ -840,6 +840,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
     call OutputXMFHeader(OUTPUT_UNIT, &
+                         option%time/output_option%tconv, &
                          surf_grid%nmax, &
                          surf_realization%output_option%surf_xmf_vert_len, &
                          subsurf_grid%unstructured_grid%num_vertices_global,filename)

@@ -155,7 +155,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   use Reactive_Transport_Aux_module, only : reactive_transport_auxvar_type
   use Global_Aux_module, only : global_auxvar_type
   use Reaction_Aux_module, only : reaction_type
-  use Biomass_Aux_module, only : biomass_type
+  use Immobile_Aux_module, only : immobile_type
   
   implicit none
   
@@ -183,10 +183,10 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: immobile_id
   PetscReal :: denominator, dR_dX, dX_dc, dR_dc, dR_dbiomass
   type(microbial_type), pointer :: microbial
-  type(biomass_type), pointer :: biomass
+  type(immobile_type), pointer :: immobile
   
   microbial => reaction%microbial
-  biomass => reaction%biomass
+  immobile => reaction%immobile
   
   ! units:
   ! Residual: mol/sec
@@ -222,8 +222,8 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     ! biomass term
     ibiomass = microbial%biomassid(irxn)
     if (ibiomass > 0) then
-      immobile_id = reaction%offset_immobile + biomass%immobile_id(ibiomass)
-      biomass_conc = rt_auxvar%immobile(microbial%biomassid(ibiomass))
+      immobile_id = reaction%offset_immobile + ibiomass
+      biomass_conc = rt_auxvar%immobile(ibiomass)
       Im = Im*biomass_conc
     endif
     

@@ -140,20 +140,9 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   
   
   if (open_file) then
-
-    if (option%myrank < 10) then
-      write(string,'(i1)') option%myrank  
-    else if (option%myrank < 100) then
-      write(string,'(i2)') option%myrank  
-    else if (option%myrank < 1000) then
-      write(string,'(i3)') option%myrank  
-    else if (option%myrank < 10000) then
-      write(string,'(i4)') option%myrank  
-    else if (option%myrank < 100000) then
-      write(string,'(i5)') option%myrank  
-    endif
-    filename = 'observation' // trim(option%group_prefix) // '-' // &
-               trim(string) // '.tec'
+    write(string,'(i6)') option%myrank
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-obs-' // trim(adjustl(string)) // '.tec'
   
     ! open file
     fid = 86
@@ -1257,9 +1246,10 @@ subroutine OutputMassBalance(realization_base)
   output_option => realization_base%output_option
  
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.dat'
+    filename = trim(output_option%plot_name) // '-mas.dat'
   else
-    filename = 'mass_balance' // trim(option%group_prefix) // '.dat'
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-mas.dat'
   endif
   
   ! open file

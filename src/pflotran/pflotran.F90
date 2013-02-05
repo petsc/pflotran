@@ -58,13 +58,15 @@ program pflotran
   PetscLogDouble :: timex_wall(4)
 
   PetscBool :: truth
-  PetscBool :: option_found  
+  PetscBool :: option_found
+  PetscBool :: input_prefix_option_found, pflotranin_option_found
   PetscBool :: single_inputfile
   PetscInt :: i
   PetscInt :: temp_int
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
+  character(len=MAXSTRINGLENGTH), pointer :: strings(:)
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
@@ -84,19 +86,44 @@ program pflotran
   option%myrank = option%global_rank
   option%mycommsize = option%global_commsize
   option%mygroup = option%global_group
+
   ! check for non-default input filename
-  option%input_filename = "pflotran.in"
+  option%input_filename = 'pflotran.in'
   string = '-pflotranin'
-  call InputGetCommandLineString(string,option%input_filename,option_found,option)
+  call InputGetCommandLineString(string,option%input_filename, &
+                                 pflotranin_option_found,option)
+  string = '-input_prefix'
+  call InputGetCommandLineString(string,option%input_prefix, &
+                                 input_prefix_option_found,option)
+  
+  if (pflotranin_option_found .and. input_prefix_option_found) then
+    option%io_buffer = 'Cannot specify both "-pflotranin" and ' // &
+      '"-input_prefix" on the command lines.'
+    call printErrMsg(option)
+  else if (pflotranin_option_found) then
+    !TODO(geh): replace this with StringSplit()
+    i = index(option%input_filename,'.',PETSC_TRUE)
+    if (i > 1) then
+      i = i-1
+    else
+      ! for some reason len_trim doesn't work on MS Visual Studio in 
+      ! this location
+      i = len(trim(option%input_filename)) 
+    endif
+    option%input_prefix = option%input_filename(1:i)
+  else if (input_prefix_option_found) then
+    option%input_filename = trim(option%input_prefix) // '.in'
+  endif
+
+  string = '-output_prefix'
+  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
+  if (.not.option_found) option%global_prefix = option%input_prefix
 
   string = '-screen_output'
   call InputGetCommandLineTruth(string,option%print_to_screen,option_found,option)
 
   string = '-file_output'
   call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
-
-  string = '-output_prefix'
-  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
 
   string = '-v'
   call InputGetCommandLineTruth(string,truth,option_found,option)

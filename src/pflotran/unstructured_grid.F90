@@ -1418,7 +1418,9 @@ subroutine UGridDecompose(unstructured_grid,option)
   call printMsg(option,'Dual matrix')
 #endif
 
+#if defined(PETSC_HAVE_PARMETIS)
   call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+#endif
   call MatDestroy(Adj_mat,ierr)
   
 #if UGRID_DEBUG

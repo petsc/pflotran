@@ -3988,7 +3988,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
-              boundary_condition%tran_condition%cur_constraint_coupler%biomass, &
+              boundary_condition%tran_condition%cur_constraint_coupler%immobile_species, &
               porosity_loc_p(ghosted_id), &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
@@ -4282,13 +4282,12 @@ subroutine RTSetPlotVariables(realization)
     endif
   enddo
   
-  do i=1,reaction%biomass%nbiomass
-    if (reaction%biomass%print_me(i)) then
-      name = trim(reaction%biomass%names(i)) 
+  do i=1,reaction%immobile%nimmobile
+    if (reaction%immobile%print_me(i)) then
+      name = trim(reaction%immobile%names(i)) 
       units = 'mol/m^3'
       call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
-                                   IMMOBILE_SPECIES, &
-                                   reaction%biomass%immobile_id(i))
+                                   IMMOBILE_SPECIES,i)
     endif
   enddo
   

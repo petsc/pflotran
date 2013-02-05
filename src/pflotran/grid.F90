@@ -22,7 +22,6 @@ module Grid_module
   PetscInt, parameter, public :: STRUCTURED_GRID = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
   PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 4
 
   type, public :: grid_type 
   
