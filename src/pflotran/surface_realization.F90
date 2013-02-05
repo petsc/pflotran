@@ -1865,10 +1865,10 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
             v_darcy = -hw_p(local_id)/option%surf_flow_dt
             v_darcy_limit=PETSC_TRUE
           endif
-          write(*,*),'infiltration is occuring: ',local_id,v_darcy,v_darcy_limit
+!          write(*,*),'infiltration is occuring: ',local_id,v_darcy,v_darcy_limit
         else
           ! Exfiltration is occuring
-          write(*,*),'exfiltration is occuring: ',local_id,v_darcy
+ !         write(*,*),'exfiltration is occuring: ',local_id,v_darcy
         endif
         vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy

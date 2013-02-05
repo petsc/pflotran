@@ -621,11 +621,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
           ! if still stepping, update solution
           call StepperUpdateSurfaceFlowSolution(surf_realization)
-          if(option%surf_flow_explicit) then
-            call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-          else
-            call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
-          endif
 
           ! Set new target time for surface model
           if(option%surf_flow_explicit) then

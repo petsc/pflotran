@@ -2409,16 +2409,6 @@ subroutine SurfaceFlowRHSFunctionPatch1(ts,t,xx,ff,surf_realization,ierr)
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(sum_connection) = Res(1)
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
-      if(ghosted_id_up==-1.or.ghosted_id_dn==-11) then
-      write(*,*),sum_connection,local_id_up,local_id_dn, &
-        hw_up, hw_dn, &
-        zc(ghosted_id_up), zc(ghosted_id_dn), &
-        cur_connection_set%area(iconn), &
-        area_p(local_id_up), &
-        vel,Res(1), &
-        Res(1)/area_p(local_id_up), &
-        max_allowable_dt
-      endif
       
       if (local_id_up>0) then
         ff_p(local_id_up) = ff_p(local_id_up) - Res(1)/area_p(local_id_up)
@@ -2594,7 +2584,6 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
   implicit none
   
-  Vec                            :: xx
   type(surface_realization_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
@@ -2621,7 +2610,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
   PetscReal :: max_allowable_dt
 
-  PetscReal, pointer :: ff_p(:), mannings_loc_p(:),xx_loc_p(:),area_p(:)
+  PetscReal, pointer :: mannings_loc_p(:),xx_loc_p(:),area_p(:)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
 
   patch => surf_realization%patch
@@ -2633,7 +2622,6 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
 
-  ff_p = 0.d0
   Res  = 0.d0
   max_allowable_dt = 1.d10
 
@@ -2700,16 +2688,6 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       end select
 
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
-      if(ghosted_id_up==-1.or.ghosted_id_dn==-1) then
-      write(*,*),sum_connection,local_id_up,local_id_dn, &
-        hw_up, hw_dn, &
-        zc(ghosted_id_up), zc(ghosted_id_dn), &
-        cur_connection_set%area(iconn), &
-        area_p(local_id_up), &
-        vel,Res(1), &
-        Res(1)/area_p(local_id_up), &
-        max_allowable_dt
-      endif
 
     enddo
     cur_connection_set => cur_connection_set%next
