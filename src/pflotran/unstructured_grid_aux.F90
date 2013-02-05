@@ -20,10 +20,8 @@ module Unstructured_Grid_Aux_module
   PetscInt, parameter, public :: TWO_DIM_GRID = 1
   PetscInt, parameter, public :: THREE_DIM_GRID = 2 
   
-  !geh: for debugging purposes make these large
-  !TODO(geh): change values to 1, 2 respectively.
-  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 98
-  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 99
+  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
+  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
 
   type, public :: unstructured_grid_type
     ! variables for all unstructured grids
@@ -1032,7 +1030,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 
   ! scatter all the cell data from the old decomposition (as read in in 
   ! parallel) to the more parmetis-calculated decomposition
-  call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter, &
+  call VecScatterCreate(elements_old,PETSC_NULL_OBJECT,elements_natural,is_scatter, &
                         vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,elements_old,elements_natural, &

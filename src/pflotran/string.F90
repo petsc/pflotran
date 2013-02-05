@@ -19,6 +19,7 @@ module String_module
             StringNull, &
             StringFindEntryInList, &
             StringSplit
+            StringSwapChar
   
   interface StringCompare
     module procedure StringCompare1
@@ -430,6 +431,28 @@ function StringFindEntryInList(string,string_array)
   
 end function StringFindEntryInList
 
+! ************************************************************************** !
+!
+! StringSwapChar: Swaps a character from a string
+! author: Glenn Hammond
+! date: 02/04/13
+!
+! ************************************************************************** !
+subroutine StringSwapChar(string,char_in,char_out)
+
+  implicit none
+ 
+  character(len=*) :: string
+  character(len=1) :: char_in
+  character(len=1) :: char_out
+ 
+  PetscInt :: i
+ 
+  do i=1, len_trim(string)
+   if (string(i:i) == char_in(1:1)) string(i:i) = char_out(1:1)
+  enddo
+ 
+end subroutine StringSwapChar
 
 ! ************************************************************************** !
 !

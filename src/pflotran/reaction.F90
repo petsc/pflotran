@@ -374,6 +374,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           call InputReadWord(input,option,name,PETSC_TRUE)
           call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
           temp_int = temp_int + 1
+
           do
             call InputReadFlotranString(input,option)
             call InputReadStringErrorMsg(input,option,card)
@@ -401,6 +402,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           enddo
         enddo
         reaction%mineral%nkinmnrl = reaction%mineral%nkinmnrl + temp_int
+
       case('SOLID_SOLUTIONS') ! solid solutions read on second round
 #ifdef SOLID_SOLUTION
         do
@@ -413,6 +415,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         option%io_buffer = 'To use solid solutions, must compile with -DSOLID_SOLUTION'
         call printErrMsg(option)
 #endif
+
       case('COLLOIDS')
         nullify(prev_colloid)
         do
@@ -644,6 +647,10 @@ subroutine ReactionReadPass1(reaction,input,option)
         reaction%update_mineral_surface_area = PETSC_TRUE
       case('UPDATE_MNRL_SURF_AREA_WITH_POR')
         reaction%update_mnrl_surf_with_porosity = PETSC_TRUE
+      case('UPDATE_ARMOR_MINERAL_SURFACE')
+        reaction%update_armor_mineral_surface = PETSC_TRUE
+      case('UPDATE_ARMOR_MINERAL_SURFACE_FLAG')
+        reaction%update_armor_mineral_surface = 0
       case('MOLAL','MOLALITY')
         reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')

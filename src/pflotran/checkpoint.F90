@@ -187,7 +187,8 @@ subroutine Checkpoint(realization, &
   ! Open the checkpoint file.
   call PetscGetTime(tstart,ierr)   
   if (id < 0) then
-    filename = 'restart' // trim(option%group_prefix) // '.chk'
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-restart.chk'
   else 
     write(id_string,'(i8)') id
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &

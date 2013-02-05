@@ -33,6 +33,7 @@ subroutine OutputVTK(realization_base)
   use Option_module
   use Field_module
   use Patch_module
+  use String_module
   
   use Reaction_Aux_module
   use Variables_module
@@ -56,6 +57,7 @@ subroutine OutputVTK(realization_base)
   type(patch_type), pointer :: patch 
   type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec
   Vec :: natural_vec
@@ -69,32 +71,8 @@ subroutine OutputVTK(realization_base)
   reaction => realization_base%reaction
   output_option => realization_base%output_option
   
-  if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
-    free_mol_char = 'm'
-  else
-    free_mol_char = 'M'
-  endif
-  
-  if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
-    tot_mol_char = 'm'
-  else
-    tot_mol_char = 'M'
-  endif
-  
-  if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
-    sec_mol_char = 'm'
-  else
-    sec_mol_char = 'M'
-  endif
-  
   ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.vtk'
-  else
-    string = OutputFilenameID(output_option,option)
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.vtk'    
-  endif
+  filename = OutputFilename(output_option,option,'vtk','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write vtk output file: ' // trim(filename)
@@ -119,320 +97,24 @@ subroutine OutputVTK(realization_base)
 
   write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
 
-  !TODO(geh): refactor to use variable list in loop
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
-         FLASH2_MODE,G_MODE)
-
-      ! temperature
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          word = 'Temperature'
-          call OutputGetVarFromArray(realization_base,global_vec,TEMPERATURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-
-      ! pressure
-      word = 'Liquid Pressure'
-      call OutputGetVarFromArray(realization_base,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-
-      ! phase
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          word = 'Phase'
-          call OutputGetVarFromArray(realization_base,global_vec,PHASE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_INTEGER)
-      end select
-
-      ! liquid saturation
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          word = 'Liquid_Saturation'
-          call OutputGetVarFromArray(realization_base,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-
-      ! gas saturation
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
-          word = 'Gas_Saturation'
-          call OutputGetVarFromArray(realization_base,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-
-#ifdef ICE
-      ! ice saturation
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          word = 'Ice_Saturation'
-          call OutputGetVarFromArray(realization_base,global_vec,ICE_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-
-      ! ice density
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          word = 'Ice_Density'
-          call OutputGetVarFromArray(realization_base,global_vec,ICE_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-#endif
-    
-      ! liquid energy
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          word = 'Liquid_Energy'
-          call OutputGetVarFromArray(realization_base,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-    
-     ! gas energy
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          word = 'Gas_Energy'
-          call OutputGetVarFromArray(realization_base,global_vec,GAS_ENERGY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-      end select
-
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          ! liquid mole fractions
-          do i=1,option%nflowspec
-            write(word,'(i2)') i
-            word = 'Xl(' // trim(adjustl(word)) // ')'
-            call OutputGetVarFromArray(realization_base,global_vec,LIQUID_MOLE_FRACTION,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          enddo
-      end select
-  
-      select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,G_MODE)
-          ! gas mole fractions
-          do i=1,option%nflowspec
-            write(word,'(i2)') i
-            word = 'Xg(' // trim(adjustl(word)) // ')'
-            call OutputGetVarFromArray(realization_base,global_vec,GAS_MOLE_FRACTION,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          enddo
-      end select 
-      
-    case default
-  
-  end select
-  
-  if (option%ntrandof > 0) then
-    if (associated(reaction)) then
-    
-      if (reaction%print_pH .and. associated(reaction%species_idx)) then
-        if (reaction%species_idx%h_ion_id > 0) then
-          call OutputGetVarFromArray(realization_base,global_vec,PH,reaction%species_idx%h_ion_id)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = 'pH'
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      endif
-    
-    
-      if (reaction%print_total_component) then
-        do i=1,reaction%naqcomp
-          call OutputGetVarFromArray(realization_base,global_vec,reaction%print_tot_conc_type,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%primary_species_names(i)) // '_tot_' // trim(tot_mol_char)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word, &
-                                      natural_vec,VTK_REAL)
-        enddo
-      endif
-      if (reaction%print_free_ion) then
-        do i=1,reaction%naqcomp
-          call OutputGetVarFromArray(realization_base,global_vec,reaction%print_free_conc_type,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%primary_species_names(i)) // '_free_' // trim(free_mol_char)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word, &
-                                      natural_vec,VTK_REAL)
-        enddo
-      endif    
-      if (reaction%print_total_bulk) then
-        do i=1,reaction%naqcomp
-          call OutputGetVarFromArray(realization_base,global_vec,TOTAL_BULK,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%primary_species_names(i)) // '_total_bulk'
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word, &
-                                      natural_vec,VTK_REAL)
-        enddo
-      endif
-      if (reaction%print_act_coefs) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization_base,global_vec,PRIMARY_ACTIVITY_COEF,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            word = trim(reaction%primary_species_names(i)) // '_gam'
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          endif
-        enddo
-      endif
-      do i=1,reaction%neqcplx
-        if (reaction%secondary_species_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,reaction%print_secondary_conc_type,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%secondary_species_names(i)) // &
-               '_' // trim(sec_mol_char)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,MINERAL_VOLUME_FRACTION,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word, &
-                                    natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,MINERAL_RATE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word, &
-                                    natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nmnrl
-        if (reaction%mineral%mnrl_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,MINERAL_SATURATION_INDEX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%mineral%kinmnrl_names(i)) // '_si'
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,SURFACE_SITE_DENSITY,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,SURFACE_CMPLX_FREE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,SURFACE_CMPLX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%surface_complexation%srfcplx_names(i))
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-        !TODO(geh): fix
-          call OutputGetVarFromArray(realization_base,global_vec,KIN_SURFACE_CMPLX_FREE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization_base,global_vec,KIN_SURFACE_CMPLX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%surface_complexation%srfcplx_names(i))
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      enddo
-      if (associated(reaction%kd_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%kd_print(i)) then      
-            call OutputGetVarFromArray(realization_base,global_vec,PRIMARY_KD,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            word = trim(reaction%primary_species_names(i)) // '_kd'
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%total_sorb_print(i)) then
-            call OutputGetVarFromArray(realization_base,global_vec,TOTAL_SORBED,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            word = trim(reaction%primary_species_names(i)) // '_total_sorb'
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_mobile_print)) then
-        do i=1,reaction%ncollcomp
-          if (reaction%total_sorb_mobile_print(i)) then
-            call OutputGetVarFromArray(realization_base,global_vec,TOTAL_SORBED_MOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            word = trim(reaction%colloid_species_names(i)) // '_total_sorb_mob'
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_colloid) then
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization_base,global_vec,COLLOID_MOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            word = trim(reaction%colloid_names(i)) // '_col_mob_' // &
-                 trim(tot_mol_char)
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          endif
-        enddo
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization_base,global_vec,COLLOID_IMMOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            word = trim(reaction%colloid_names(i)) // '_col_imb_' // &
-                 trim(tot_mol_char)
-            call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_age) then
-        if (reaction%species_idx%tracer_age_id > 0) then
-          call OutputGetVarFromArray(realization_base,global_vec,AGE, &
-            reaction%species_idx%tracer_age_id,reaction%species_idx%tracer_aq_id)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = 'Tracer_Age'
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_REAL)
-        endif
-      endif
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                        natural_vec,ONEDOF)
+    word=trim(cur_variable%name)
+    call StringSwapChar(word," ","_")
+    if (cur_variable%iformat == 0) then
+      call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base, &
+        word,natural_vec,VTK_REAL)
+    else
+      call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base, &
+        word,natural_vec,VTK_INTEGER)
     endif
-  endif
-  
-  ! porosity
-  if (output_option%print_porosity) then
-    word = 'Porosity'
-    call OutputGetVarFromArray(realization_base,global_vec,POROSITY,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_INTEGER)
-  endif
-
-  ! material id
-  word = 'Material_ID'
-  call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_INTEGER)
+    cur_variable => cur_variable%next
+  enddo
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -527,13 +209,7 @@ subroutine OutputVelocitiesVTK(realization_base)
   discretization => realization_base%discretization
   
   ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.vtk'
-  else  
-    string = OutputFilenameID(output_option,option)
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.vtk'
-  endif
+  filename = OutputFilename(output_option,option,'vtk','vel')
   
   if (option%myrank == option%io_rank) then
    option%io_buffer = '--> write vtk velocity output file: ' // &
@@ -727,6 +403,8 @@ subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype
   use Realization_Base_class, only : realization_base_type
   
   implicit none
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   PetscInt :: fid
   class(realization_base_type) :: realization_base
@@ -736,7 +414,7 @@ subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: vec_ptr(:)
-  
+
   call VecGetArrayF90(vec,vec_ptr,ierr)
   call WriteVTKDataSet(fid,realization_base,dataset_name,vec_ptr,datatype, &
                        ZERO_INTEGER) ! 0 implies grid%nlmax

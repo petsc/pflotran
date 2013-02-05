@@ -609,6 +609,106 @@ of the liquid phase, $n_l$, is represented on a molar basis.
 
 \subsection{Finite Volume Discretization}
 
+The number of degrees of freedom is equal to the number of control volumes $N$ with one degree of freedom, fluid pressure $P$, per control volume. The following applies to both structured and unstructured grids assuming a two-point flux approximation. For accuracy this requires in the case of an unstructured grid that the line connecting neighboring control volumes be perpendicular to their common interface.
+
+\subsubsection{Residual Function}
+
+The residual function for the Richards equation at the $k+1$st time level is given by
+\EQ
+R_n \eq \varphi\Big((s\rho)_n^{k+1} - (s\rho)_n^k\Big)\frac{V_n}{\Delta t} + \sum_{n' \ne n} F_{nn'}^{k+1} A_{nn'}^{} - Q_{wn}^{} V_n^{},
+\EN
+for the $n$th control volume with volume $V_n$ and interfacial area $A_{nn'}$, where the sum over $n'$ is over all control volumes connecting with the $n$th control volume. The finite volume form of the flux $F_{nn'}$ is given by
+\EQ
+F_{nn'}^{k+1} \eq \big(\rho_{nn'}\big)_{nn'}^{k+1} \, \big(q\big)_{nn'}^{k+1}.
+\EN
+The Darcy velocity $q_{nn'}$ is evaluated as (the superscript $k+1$ is omitted in the following)
+\EQ
+q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n}{d_{n'}+d_n}-W_w \rho_{nn'} g z_{nn'}\right],
+\EN
+where the subscript $nn'$ implies the quantity is evaluated at the interface between $n$ and $n'$. The density $\rho_{nn'}$ is set equal to the inverse distance mean ({\em not} arithmetic mean)
+\EQ
+\rho_{nn'} \eq \omega_{n'} \rho_n + (1-\omega_{n'}) \rho_{n'},
+\EN
+where
+\EQ
+\omega_n \eq \frac{d_n}{d_{n'}+d_n} \eq 1-\omega_{n'}.
+\EN
+The quantity in brackets is evaluated using the harmonic mean for permeability and unwinding for mobility $\lambda = k_r/\mu$
+\EQ
+\Big(\frac{kk_r}{\mu}\Big)_{nn'} \eq \frac{k_n k_{n'} (d_{n'}+d_n)}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'},
+\EN
+where
+\EQ
+\lambda_{nn'} \eq \left\{
+\begin{array}{ll}
+\lambda_n, & q_{nn'} > 0,\\
+\lambda_{n'}, & q_{nn'} < 0,
+\end{array} \right.
+\EN
+where $q_{nn'} > 0$ for flow from $n$ to $n'$, and $q_{nn'} < 0$ for flow from $n'$ to $n$. Combining these relations it follows that
+\EQ
+q_{nn'}\eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big[P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'} (d_{n'}+d_n)\Big].
+\EN
+
+\subsubsection{Jacobian}
+
+The Jacobian $J_{nn'}$ is given by the derivatives of the residual function with respect to pressure as
+\BA
+J_{nn'} &\eq \frac{\p R_n}{\p P_{n'}}.
+\EA
+From the expression for the residual function it follows that
+\EQ
+\frac{\p R_n}{\p P_n} \eq \frac{V_n \varphi}{\Delta t} \frac{\p}{\p P_n} \big(s_n\rho_n\big) + \sum_{n' \ne n} \frac{\p F_{nn'}}{\p P_n} A_{nn'}^{} - \frac{\p Q_{wn}^{}}{\p P_n} V_n^{},
+\EN
+and for $n' \ne n$
+\EQ
+\frac{\p R_n}{\p P_{n'}} \eq \sum_{n' \ne n} \frac{\p F_{nn'}}{\p P_{n'}} A_{nn'}^{} - \frac{\p Q_{wn}^{}}{\p P_{n'}} V_n^{}.
+\EN
+For the accumulation term one has
+\EQ
+\frac{\p}{\p P_n} \big(s_n\rho_n\big) \eq \rho_n \frac{\p s_n}{\p P_n} + s_n \frac{\p\rho_n}{\p P_n}.
+\EN
+The derivative of the flux terms is found to be
+\EQ
+\frac{\p F_{nn'}}{\p P_n} \eq \omega_n \frac{\p\rho_n}{\p P_n} q_{nn'} + \rho_{nn'} \frac{\p q_{nn'}}{\p P_n},
+\EN
+and
+\EQ
+\frac{\p F_{nn'}}{\p P_{n'}} \eq \omega_{n'} \frac{\p\rho_n}{\p P_{n'}} q_{nn'} + \rho_{nn'} \frac{\p q_{nn'}}{\p P_{n'}},
+\EN
+with
+\EQ
+\frac{\p q_{nn'}}{\p P_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
+\lambda_{nn'} - \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
+\right\},
+\EN
+and
+\EQ
+\frac{\p q_{nn'}}{\p P_{n'}} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
+\lambda_{nn'} + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
+\right\}.
+\EN
+
+\begin{comment}
+For a 1D system the Jacobian reduces to
+\EQ
+J_{nn'} \eq \delta_{n-1,n'} \frac{\p R_n}{\p P_{n-1}} 
++ \delta_{nn'} \frac{\p R_n}{\p P_{n}} 
++ \delta_{n+1,n'} \frac{\p R_n}{\p P_{n+1}}.
+\EN
+It follows that
+\EQ
+J_{n,n-1} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'},
+\EN
+\EQ
+J_{n,n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big(1+d_n\frac{\p\rho_n}{\p P_n}W_w g z_{nn'}\Big),
+\EN
+and
+\EQ
+J_{n,n+1} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'}.
+\EN
+\end{comment}
+
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 \section{Supercritical CO$_2$}

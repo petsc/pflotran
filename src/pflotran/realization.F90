@@ -1731,7 +1731,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   type(discretization_type), pointer :: discretization
 
   PetscInt :: local_id, ghosted_id
-  PetscInt :: imnrl
+  PetscInt :: imnrl, imnrl1, imnrl_armor
   PetscReal :: sum_volfrac
   PetscReal :: scale, porosity_scale, volfrac_scale
   PetscBool :: porosity_updated
@@ -1804,7 +1804,6 @@ subroutine RealizationUpdatePropertiesPatch(realization)
 
   if (reaction%update_mineral_surface_area) then
     porosity_scale = 1.d0
-!   if (option%update_mnrl_surf_with_porosity) then
     if (reaction%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will
       ! avoid improper access.
@@ -1833,8 +1832,52 @@ subroutine RealizationUpdatePropertiesPatch(realization)
           rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
             rt_auxvars(ghosted_id)%mnrl_area0(imnrl)
         endif
+
+        if (reaction%update_armor_mineral_surface .and. &
+            reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) > 0.d0) then
+          imnrl_armor = imnrl
+          do imnrl1 = 1, reaction%mineral%nkinmnrl
+            if (reaction%mineral%kinmnrl_armor_min_names(imnrl) == &
+                reaction%mineral%kinmnrl_names(imnrl1)) then
+              imnrl_armor = imnrl1
+              exit
+            endif
+          enddo
+
+!         print *,'update-armor: ',imnrl,imnrl_armor,reaction%mineral%kinmnrl_armor_min_names(imnrl_armor)
+
+!            check for negative surface area armoring correction
+          if (reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) > &
+              rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl_armor)) then
+
+            if (reaction%update_armor_mineral_surface_flag == 0) then ! surface unarmored
+              rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+                rt_auxvars(ghosted_id)%mnrl_area(imnrl) * &
+                ((reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) &
+                - rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl_armor))/ &
+                reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl))** &
+                reaction%mineral%kinmnrl_surf_area_vol_frac_pwr(imnrl)
+            else
+              rt_auxvars(ghosted_id)%mnrl_area(imnrl) = rt_auxvars(ghosted_id)%mnrl_area0(imnrl)
+              reaction%update_armor_mineral_surface_flag = 0
+            endif
+          else
+            rt_auxvars(ghosted_id)%mnrl_area(imnrl) = 0.d0
+            reaction%update_armor_mineral_surface_flag = 1 ! surface armored
+          endif
+        endif
+
+!       print *,'update min srf: ',imnrl,local_id,reaction%mineral%kinmnrl_names(imnrl), &
+!       reaction%mineral%kinmnrl_armor_min_names(imnrl), &
+!       reaction%update_armor_mineral_surface, &
+!       rt_auxvars(ghosted_id)%mnrl_area(imnrl), &
+!       reaction%mineral%kinmnrl_armor_pwr(imnrl), &
+!       reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl), &
+!       rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl_armor), &
+!       rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)
       enddo
     enddo
+
     if (reaction%update_mnrl_surf_with_porosity) then
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
     endif

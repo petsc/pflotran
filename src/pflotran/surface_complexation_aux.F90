@@ -179,7 +179,6 @@ function SurfaceComplexationCreate()
   nullify(surface_complexation%srfcplxrxn_stoich_flag) 
   
   ! equilibrium
-  !TODO(geh): remove 999, for catching bugs
   surface_complexation%neqsrfcplx = 0
   surface_complexation%neqsrfcplxrxn = 0
   nullify(surface_complexation%eqsrfcplxrxn_to_srfcplxrxn) 
