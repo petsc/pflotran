@@ -631,7 +631,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
         endif
       endif
       ! carbon
-      Jac(ires_c,ires_up) = Jac(ires_c,ires_up) + & stoich_C * drate
+      Jac(ires_c,ires_up) = Jac(ires_c,ires_up) + stoich_C * drate
       ! nitrogen
       Jac(ires_n,ires_up) = Jac(ires_n,ires_up) + stoich_N * drate
       if (inhibitor_id > 0) then
