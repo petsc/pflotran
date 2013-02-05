@@ -1,0 +1,235 @@
+: Description: reaction with linear kinetics
+: Benchmark from Lichtner & Kang (2007)
+: P.C.Lichtner/S. Karra
+: 11/5/12
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+UNIFORM_VELOCITY 14.4d0 0.d0 0.d0 m/yr
+
+MULTIPLE_CONTINUUM
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+   /
+
+  MINERALS
+    A(s)
+  /
+
+  MINERAL_KINETICS
+    A(s)
+     RATE_CONSTANT 1.d-6
+  :   ACTIVATION_ENERGY 89.d0
+   /
+ /
+
+ DATABASE ../../../database/hanford.dat
+  MOLAL
+  OUTPUT
+    All
+  /
+/
+
+:===================== Discretization =========================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.04d0
+    0.d0 1.d0
+    0.d0 1.d0
+  /
+END
+
+:===================== Solver options ========================
+TIMESTEPPER
+  TS_ACCELERATION 25
+  MAX_TS_CUTS 10
+  MAX_STEPS 100000
+END
+
+NEWTON_SOLVER TRANSPORT
+  ATOL 1D-8
+  RTOL 1D-8
+  STOL 1D-30
+  MAX_NORM 1D10
+  ITOL 1D-8
+  MAXIT 100
+  MAXF 100
+END
+
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:========================= material properties ===================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 1.d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION default 
+  PERMEABILITY 
+    PERM_X 1.d-15
+    PERM_Y 1.d-15
+    PERM_Z 1.d-15
+  /
+  SECONDARY_CONTINUUM
+    TYPE SLAB
+    LENGTH 0.009
+    AREA 1.75e-6
+    NUM_CELLS 20
+    EPSILON 0.4167d0
+    CONCENTRATION 1.d-1
+    DIFFUSION_COEFFICIENT 0.8d-9
+    POROSITY 0.4464
+    MINERAL_VOLFRAC 0.5d5
+    MINERAL_AREA    17.857d2
+   /
+/
+
+:========================= saturation functions ==================
+SATURATION_FUNCTION default
+   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+   RESIDUAL_SATURATION LIQUID_PHASE 0.1
+   RESIDUAL_SATURATION GAS_PHASE 0.0
+   LAMBDA 0.762
+   ALPHA 7.5d-4
+   MAX_CAPILLARY_PRESSURE 1.D6
+/
+
+:========================= output options =========================
+OUTPUT
+:  TIMES s 2.6042e4 3.9063e4 5.2083e4
+:  PERIODIC_OBSERVATION TIMESTEP 1 
+:  PRINT_COLUMN_IDS
+:  FORMAT TECPLOT POINT
+/
+
+:======================== times ====================================
+TIME
+  FINAL_TIME 5.2083e4 s
+  INITIAL_TIMESTEP_SIZE 1.d-6 s
+  MAXIMUM_TIMESTEP_SIZE 10.d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d2 s at 5.d3 s
+  :MAXIMUM_TIMESTEP_SIZE 1.d3 s at 5.e4 s
+/
+
+:=========================== regions ===============================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.04d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    0.04d0 0.d0 0.d0
+    0.04d0 1.d0 1.d0
+  /
+END
+
+REGION obs
+  COORDINATES
+    0.04d0 0.d0 0.d0
+    0.04d0 1.d0 1.d0
+  /
+END
+
+OBSERVATION 
+  REGION obs
+  SECONDARY_CONCENTRATION
+  SECONDARY_MINERAL_VOLFRAC
+/
+
+:==== transport conditions=====================================================
+TRANSPORT_CONDITION initial
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION west
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 west
+  / 
+/
+
+TRANSPORT_CONDITION east
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 east
+  / 
+/
+
+:========================== initial and boundary conditions =================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+TRANSPORT_CONDITION west
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION east
+TRANSPORT_CONDITION east
+REGION east
+END
+
+:===================== stratigraphy couplers ==============================
+STRATA
+REGION all
+MATERIAL soil1
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial
+CONCENTRATIONS
+A(aq)  0.1  M A(s)
+/
+MINERALS
+:mineral vol. frac. area
+A(s)       1.d5     7.d2
+/
+/
+
+CONSTRAINT west
+CONCENTRATIONS
+A(aq)  1.e-8  T
+/
+/
+
+CONSTRAINT east
+CONCENTRATIONS
+A(aq)  1.E-02  T
+/
+/
