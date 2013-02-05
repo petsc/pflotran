@@ -587,6 +587,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
 
         ! Update model coupling time
+        if(option%surf_flow_explicit) then
+          call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+        endif
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag)
 
@@ -618,9 +621,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
           ! if still stepping, update solution
           call StepperUpdateSurfaceFlowSolution(surf_realization)
-          call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+          if(option%surf_flow_explicit) then
+            call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+          else
+            call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+          endif
 
           ! Set new target time for surface model
+          if(option%surf_flow_explicit) then
+            call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+          endif
           call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                           option,plot_flag,transient_plot_flag)
         enddo
@@ -822,7 +832,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call OutputSurface(surf_realization,realization,plot_flag_surf, &
                        transient_plot_flag_surf)
     if(associated(surf_flow_stepper)) then
-      call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+      if(option%surf_flow_explicit) then
+        call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+      else
+        call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+      endif
     endif
 #endif
 
@@ -1244,6 +1258,32 @@ subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
   endif
 
 end subroutine StepperUpdateSurfaceFlowDT
+
+! ************************************************************************** !
+!> This routine the maximum allowable dt for surface flow
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date:
+! ************************************************************************** !
+subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+
+  use Surface_Realization_class
+  use Surface_Flow_module
+  use Option_module
+  
+  implicit none
+
+  type(surface_realization_type), pointer :: surf_realization
+  type(option_type) :: option
+
+  PetscReal :: max_allowable_surf_flow_dt
+
+  call SurfaceFlowComputeMaxDt(surf_realization,max_allowable_surf_flow_dt)
+  option%surf_flow_dt=min(0.9d0*max_allowable_surf_flow_dt,surf_realization%dt_max)
+
+end subroutine StepperUpdateSurfaceFlowDTExplicit
 #endif
 ! ************************************************************************** !
 !
@@ -2364,6 +2404,9 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
   !call TSSetDuration(solver%ts,1,400.d0,ierr)
   call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+
+  call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
+    surf_field%flow_xx_loc,option%nflowdof)
 
 end subroutine StepperStepSurfaceFlowExplicitDT
 #endif

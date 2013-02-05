@@ -38,6 +38,7 @@ module Surface_Flow_module
          SurfaceFlowMaxChange, &
          SurfaceFlowUpdateSolution, &
          SurfaceFlowRHSFunction, &
+         SurfaceFlowComputeMaxDt, &
          SurfaceFlowGetTecplotHeader
   
 contains
@@ -2198,6 +2199,8 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   type(surface_realization_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
+  PetscViewer :: viewer
+
   type(discretization_type), pointer   :: discretization
   type(surface_field_type), pointer    :: surf_field
   type(level_type), pointer            :: cur_level
@@ -2206,6 +2209,18 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   character(len=MAXSTRINGLENGTH)       :: string,string2
 
   write(*,*),'In SurfaceFlowRHSFunction:           ',t
+
+  surf_realization%iter_count = surf_realization%iter_count+1
+  if (surf_realization%iter_count < 10) then
+    write(string2,'("00",i1)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 100) then
+    write(string2,'("0",i2)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 1000) then
+    write(string2,'(i3)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 10000) then
+    write(string2,'(i4)') surf_realization%iter_count
+  endif 
+
 !  call VecView(ff,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   surf_field      => surf_realization%surf_field
@@ -2243,6 +2258,20 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   enddo
 
 !  call VecView(ff,PETSC_VIEWER_STDOUT_WORLD,ierr)
+  if (surf_realization%debug%vecview_solution) then
+    string = 'Surf_xx_' // trim(adjustl(string2)) // '.bin'
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    string = 'Surf_ff_' // trim(adjustl(string2)) // '.bin'
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call VecView(ff,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+  endif
 
 end subroutine SurfaceFlowRHSFunction
 
@@ -2296,6 +2325,7 @@ subroutine SurfaceFlowRHSFunctionPatch1(ts,t,xx,ff,surf_realization,ierr)
   PetscReal :: rho          ! density      [kg/m^3]
   PetscReal :: hw_up, hw_dn ! water height [m]
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
+  PetscReal :: max_allowable_dt
 
   PetscReal, pointer :: ff_p(:), mannings_loc_p(:),xx_loc_p(:),area_p(:)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
@@ -2312,6 +2342,7 @@ subroutine SurfaceFlowRHSFunctionPatch1(ts,t,xx,ff,surf_realization,ierr)
 
   ff_p = 0.d0
   Res  = 0.d0
+  max_allowable_dt = 1.d10
 
   call density(option%reference_temperature,option%reference_pressure,rho)
   !call nacl_den(option%reference_temperature,option%reference_pressure*1d-6,0.d0,rho)
@@ -2377,6 +2408,17 @@ subroutine SurfaceFlowRHSFunctionPatch1(ts,t,xx,ff,surf_realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(sum_connection) = Res(1)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      if(ghosted_id_up==-1.or.ghosted_id_dn==-11) then
+      write(*,*),sum_connection,local_id_up,local_id_dn, &
+        hw_up, hw_dn, &
+        zc(ghosted_id_up), zc(ghosted_id_dn), &
+        cur_connection_set%area(iconn), &
+        area_p(local_id_up), &
+        vel,Res(1), &
+        Res(1)/area_p(local_id_up), &
+        max_allowable_dt
+      endif
       
       if (local_id_up>0) then
         ff_p(local_id_up) = ff_p(local_id_up) - Res(1)/area_p(local_id_up)
@@ -2423,6 +2465,7 @@ subroutine SurfaceFlowRHSFunctionPatch1(ts,t,xx,ff,surf_realization,ierr)
 
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(sum_connection) = Res(1)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
       
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)
     enddo
@@ -2528,6 +2571,190 @@ subroutine SurfaceFlowRHSFunctionPatch2(ts,t,xx,ff,surf_realization,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
 
 end subroutine SurfaceFlowRHSFunctionPatch2
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date:
+! ************************************************************************** !
+subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
+
+  use water_eos_module
+  use Connection_module
+  use Surface_Realization_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Surface_Field_module
+  use Debug_module
+
+  implicit none
+  
+  Vec                            :: xx
+  type(surface_realization_type) :: surf_realization
+  PetscErrorCode                 :: ierr
+
+  type(grid_type), pointer                  :: grid
+  type(patch_type), pointer                 :: patch
+  type(option_type), pointer                :: option
+  type(surface_field_type), pointer         :: surf_field
+  type(coupler_type), pointer               :: boundary_condition
+  type(connection_set_list_type), pointer   :: connection_set_list
+  type(connection_set_type), pointer        :: cur_connection_set
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+
+  PetscReal :: dx, dy, dz
+  PetscReal :: dist
+  PetscReal :: vel
+  PetscReal :: slope, slope_dn
+  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: hw_up, hw_dn ! water height [m]
+  PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
+  PetscReal :: max_allowable_dt
+
+  PetscReal, pointer :: ff_p(:), mannings_loc_p(:),xx_loc_p(:),area_p(:)
+  PetscReal, pointer :: xc(:),yc(:),zc(:)
+
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+  surf_field => surf_realization%surf_field
+
+  call GridVecGetArrayF90(grid,surf_field%mannings_loc,mannings_loc_p, ierr)
+  call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
+
+  ff_p = 0.d0
+  Res  = 0.d0
+  max_allowable_dt = 1.d10
+
+  call density(option%reference_temperature,option%reference_pressure,rho)
+  !call nacl_den(option%reference_temperature,option%reference_pressure*1d-6,0.d0,rho)
+  !rho = rho * 1.d3
+
+  xc => surf_realization%discretization%grid%x
+  yc => surf_realization%discretization%grid%y
+  zc => surf_realization%discretization%grid%z
+
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn)
+      
+      dx = xc(ghosted_id_dn) - xc(ghosted_id_up)
+      dy = yc(ghosted_id_dn) - yc(ghosted_id_up)
+      dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
+      dist = sqrt(dx*dx + dy*dy + dz*dz)
+      slope = dz/dist
+      
+      hw_up = xx_loc_p(ghosted_id_up)
+      hw_dn = xx_loc_p(ghosted_id_dn)
+      
+      if(hw_up<0.d0) then
+        hw_up = 0.d0
+        xx_loc_p(ghosted_id_up) = 0.d0
+      endif
+      if(hw_dn<0.d0) then
+        hw_dn = 0.d0
+        xx_loc_p(ghosted_id_dn) = 0.d0
+      endif
+      
+      if (hw_up<0.d0 .or. hw_dn<0.d0) then
+        option%io_buffer = 'Surface water head negative'
+        call printErrMsg(option)        
+      endif
+
+      select case(option%surface_flow_formulation)
+        case (KINEMATIC_WAVE)
+          !call SurfaceFlowKinematic(hw_up,mannings_loc_p(ghosted_id_up), &
+          !                          hw_dn,mannings_loc_p(ghosted_id_dn), &
+          !                          slope, cur_connection_set%area(iconn), &
+          !                          option,vel,Res)
+        case (DIFFUSION_WAVE)
+          call SurfaceFlowDiffusion(hw_up,zc(ghosted_id_up), &
+                                    mannings_loc_p(ghosted_id_up), &
+                                    hw_dn,zc(ghosted_id_dn), &
+                                    mannings_loc_p(ghosted_id_dn), &
+                                    dist, &
+                                    cur_connection_set%area(iconn), &
+                                    option,vel,Res)
+      end select
+
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      if(ghosted_id_up==-1.or.ghosted_id_dn==-1) then
+      write(*,*),sum_connection,local_id_up,local_id_dn, &
+        hw_up, hw_dn, &
+        zc(ghosted_id_up), zc(ghosted_id_dn), &
+        cur_connection_set%area(iconn), &
+        area_p(local_id_up), &
+        vel,Res(1), &
+        Res(1)/area_p(local_id_up), &
+        max_allowable_dt
+      endif
+
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id_dn = grid%nL2G(local_id)
+  
+      dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
+      dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
+      dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
+      slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
+
+      hw_dn = xx_loc_p(ghosted_id_dn)
+      if(hw_dn<0.d0) then
+        hw_dn = 0.d0
+        xx_loc_p(ghosted_id_dn) = 0.d0
+        write(*,*),'setting pressure values to zero for >> ',ghosted_id_dn
+      endif
+
+      call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
+                          hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
+                          cur_connection_set%area(iconn),option,vel,Res)
+
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,surf_field%mannings_loc,mannings_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+
+end subroutine SurfaceFlowComputeMaxDt
 
 ! ************************************************************************** !
 !> This routine computes the maximum change in the solution vector

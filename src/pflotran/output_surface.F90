@@ -106,7 +106,6 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   if (plot_flag) then
     if (surf_realization%output_option%print_hdf5) then
-      write(*,*),'call OutputSurfaceHDF5UGridXDMF() '
       call OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
     endif
   
