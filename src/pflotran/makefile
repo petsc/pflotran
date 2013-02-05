@@ -362,8 +362,7 @@ constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                surface_complexation_aux.o mineral_aux.o option.o input.o \
                units.o string.o logging.o
 endif
-coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
-            auxiliary.o
+coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
 co2_span_wagner.o : co2_sw_rtsafe.o
 co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
@@ -491,9 +490,10 @@ richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
-secondary_continuum.o : string.o secondary_continuum_aux.o
+secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
+                        material.o option.o 
 secondary_continuum_aux.o : option.o global_aux.o reaction_aux.o\
-							reactive_transport_aux.o mphase_aux.o
+							reactive_transport_aux.o mphase_aux.o 
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o

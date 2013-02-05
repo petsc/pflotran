@@ -3,7 +3,6 @@ module Coupler_module
   use Condition_module
   use Connection_module
   use Region_module
-  use Auxiliary_module
  
   implicit none
 
