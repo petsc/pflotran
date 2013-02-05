@@ -58,7 +58,8 @@ program pflotran
   PetscLogDouble :: timex_wall(4)
 
   PetscBool :: truth
-  PetscBool :: option_found  
+  PetscBool :: option_found
+  PetscBool :: input_prefix_option_found, pflotranin_option_found
   PetscBool :: single_inputfile
   PetscInt :: i
   PetscInt :: temp_int
@@ -89,8 +90,17 @@ program pflotran
   ! check for non-default input filename
   option%input_filename = 'pflotran.in'
   string = '-pflotranin'
-  call InputGetCommandLineString(string,option%input_filename,option_found,option)
-  if (option_found) then
+  call InputGetCommandLineString(string,option%input_filename, &
+                                 pflotranin_option_found,option)
+  string = '-input_prefix'
+  call InputGetCommandLineString(string,option%input_prefix, &
+                                 input_prefix_option_found,option)
+  
+  if (pflotranin_option_found .and. input_prefix_option_found) then
+    option%io_buffer = 'Cannot specify both "-pflotranin" and ' // &
+      '"-input_prefix" on the command lines.'
+    call printErrMsg(option)
+  else if (pflotranin_option_found) then
     !TODO(geh): replace this with StringSplit()
     i = index(option%input_filename,'.',PETSC_TRUE)
     if (i > 1) then
@@ -101,17 +111,19 @@ program pflotran
       i = len(trim(option%input_filename)) 
     endif
     option%input_prefix = option%input_filename(1:i)
+  else if (input_prefix_option_found) then
+    option%input_filename = trim(option%input_prefix) // '.in'
   endif
+
+  string = '-output_prefix'
+  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
+  if (.not.option_found) option%global_prefix = option%input_prefix
 
   string = '-screen_output'
   call InputGetCommandLineTruth(string,option%print_to_screen,option_found,option)
 
   string = '-file_output'
   call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
-
-  string = '-output_prefix'
-  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
-  if (.not.option_found) option%global_prefix = option%input_prefix
 
   string = '-v'
   call InputGetCommandLineTruth(string,truth,option_found,option)
