@@ -18,7 +18,7 @@ module String_module
             StringAdjustl, &
             StringNull, &
             StringFindEntryInList, &
-            StringSplit
+            StringSplit, &
             StringSwapChar
   
   interface StringCompare
