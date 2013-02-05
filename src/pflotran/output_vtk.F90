@@ -71,13 +71,7 @@ subroutine OutputVTK(realization_base)
   output_option => realization_base%output_option
   
   ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.vtk'
-  else
-    string = OutputFilenameID(output_option,option)
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.vtk'    
-  endif
+  filename = OutputFilename(output_option,option,'vtk','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write vtk output file: ' // trim(filename)
@@ -212,13 +206,7 @@ subroutine OutputVelocitiesVTK(realization_base)
   discretization => realization_base%discretization
   
   ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.vtk'
-  else  
-    string = OutputFilenameID(output_option,option)
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.vtk'
-  endif
+  filename = OutputFilename(output_option,option,'vtk','vel')
   
   if (option%myrank == option%io_rank) then
    option%io_buffer = '--> write vtk velocity output file: ' // &
