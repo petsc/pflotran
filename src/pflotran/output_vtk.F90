@@ -33,6 +33,7 @@ subroutine OutputVTK(realization_base)
   use Option_module
   use Field_module
   use Patch_module
+  use String_module
   
   use Reaction_Aux_module
   use Variables_module
@@ -103,12 +104,14 @@ subroutine OutputVTK(realization_base)
                                 cur_variable%isubvar)
     call DiscretizationGlobalToNatural(discretization,global_vec, &
                                         natural_vec,ONEDOF)
+    word=trim(cur_variable%name)
+    call StringSwapChar(word," ","_")
     if (cur_variable%iformat == 0) then
       call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base, &
-        cur_variable%name,natural_vec,VTK_REAL)
+        word,natural_vec,VTK_REAL)
     else
       call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base, &
-        cur_variable%name,natural_vec,VTK_INTEGER)
+        word,natural_vec,VTK_INTEGER)
     endif
     cur_variable => cur_variable%next
   enddo

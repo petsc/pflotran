@@ -668,11 +668,12 @@ end subroutine GetCellConnections
 !!
 !! date: 10/29/12
 ! ************************************************************************** !
-subroutine OutputXMFHeader(fid,nmax,xmf_vert_len,ngvert,filename)
+subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   implicit none
 
   PetscInt :: fid, vert_count
+  PetscReal :: time
   PetscInt :: nmax,xmf_vert_len,ngvert
   character(len=MAXSTRINGLENGTH) :: filename
 
@@ -695,6 +696,10 @@ subroutine OutputXMFHeader(fid,nmax,xmf_vert_len,ngvert,filename)
   write(fid,'(a)') trim(string)
 
   string="    <Grid Name=""Mesh"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,'(es13.5)') time
+  string="      <Time Value = """ // trim(adjustl(string2)) // """ />"
   write(fid,'(a)') trim(string)
 
   write(string2,*) nmax
