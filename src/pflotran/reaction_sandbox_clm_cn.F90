@@ -13,25 +13,39 @@ module Reaction_Sandbox_CLM_CN_class
 
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_clm_cn_type
-    PetscInt :: nlitter
-    character(len=MAXWORDLENGTH), pointer :: litter_names(:)
-    PetscReal, pointer :: litter_coefs(:,:)
-    PetscReal, pointer :: litter_rate_const(:)
-    PetscInt, pointer :: litter_species_ids(:,:)
-    PetscInt, pointer :: litter_upstream_pool(:)
-    PetscInt :: nsom
-    character(len=MAXWORDLENGTH), pointer :: som_names(:)
-    PetscReal, pointer :: som_coefs(:,:)
-    PetscReal, pointer :: som_rate_const(:)
-    PetscInt, pointer :: som_species_ids(:,:)
-    PetscInt, pointer :: som_upstream_pool(:)
-    character(len=MAXSTRINGLENGTH), pointer :: reaction_strings(:)
+    PetscInt :: nrxn
+    PetscInt :: npool
+    PetscReal, pointer :: CN_ratio(:)
+    PetscReal, pointer :: rate_constant(:)
+    PetscReal, pointer :: respiration_fraction(:)
+    PetscInt, pointer :: upstream_pool_id(:)
+    PetscInt, pointer :: downstream_pool_id(:)
+    PetscInt, pointer :: pool_id_to_species_id(:)
+    PetscInt :: C_species_id
+    PetscInt :: N_species_id
+    type(pool_type), pointer :: pools
+    type(clm_cn_reaction_type), pointer :: reactions
   contains
     procedure, public :: Init => CLM_CN_Init
     procedure, public :: ReadInput => CLM_CN_Read
+    procedure, public :: SkipInput => CLM_CN_ReadSkipBlock
     procedure, public :: Evaluate => CLM_CN_React
     procedure, public :: Destroy => CLM_CN_Destroy
   end type reaction_sandbox_clm_cn_type
+  
+  type :: pool_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: CN_ratio
+    type(pool_type), pointer :: next
+  end type pool_type
+  
+  type :: clm_cn_reaction_type
+    character(len=MAXWORDLENGTH) :: upstream_pool_name
+    character(len=MAXWORDLENGTH) :: downstream_pool_name
+    PetscReal :: rate_constant
+    PetscReal :: respiration_fraction
+    type(clm_cn_reaction_type), pointer :: next
+  end type clm_cn_reaction_type
   
   public :: CLM_CN_Create
 
@@ -41,7 +55,7 @@ contains
 !
 ! RSandboxInit: Initializes reaction sandbox at beginning of simulation
 ! author: Glenn Hammond
-! date: 11/08/12
+! date: 02/04/13
 !
 ! ************************************************************************** !
 function CLM_CN_Create()
@@ -51,32 +65,32 @@ function CLM_CN_Create()
   type(reaction_sandbox_clm_cn_type), pointer :: CLM_CN_Create
   
   allocate(CLM_CN_Create)
-  CLM_CN_Create%nlitter = 0
-  CLM_CN_Create%nsom = 0
-  nullify(CLM_CN_Create%litter_names)
-  nullify(CLM_CN_Create%som_names)
-  nullify(CLM_CN_Create%litter_coefs)
-  nullify(CLM_CN_Create%som_coefs)
-  nullify(CLM_CN_Create%litter_species_ids)
-  nullify(CLM_CN_Create%litter_upstream_pool)
-  nullify(CLM_CN_Create%som_species_ids)
-  nullify(CLM_CN_Create%litter_rate_const)
-  nullify(CLM_CN_Create%som_rate_const)
-  nullify(CLM_CN_Create%som_upstream_pool)
+  CLM_CN_Create%nrxn = 0
+  CLM_CN_Create%npool = 0
+  nullify(CLM_CN_Create%CN_ratio)
+  nullify(CLM_CN_Create%rate_constant)
+  nullify(CLM_CN_Create%respiration_fraction)
+  nullify(CLM_CN_Create%pool_id_to_species_id)
+  nullify(CLM_CN_Create%upstream_pool_id)
+  nullify(CLM_CN_Create%downstream_pool_id)
+  CLM_CN_Create%C_species_id = 0
+  CLM_CN_Create%N_species_id = 0
   nullify(CLM_CN_Create%next)
-  
+  nullify(CLM_CN_Create%pools)
+  nullify(CLM_CN_Create%reactions)
+
 end function CLM_CN_Create
 
 ! ************************************************************************** !
 !
 ! CLM_CN_Init: Initializes reaction sandbox at beginning of simulation
 ! author: Glenn Hammond
-! date: 01/29/13
+! date: 02/04/13
 !
 ! ************************************************************************** !
 subroutine CLM_CN_Init(this,reaction,option)
 
-  use Reaction_Aux_module
+  use Reaction_Aux_module, only : reaction_type
   use Option_module
   
   implicit none
@@ -89,150 +103,150 @@ subroutine CLM_CN_Init(this,reaction,option)
 
 end subroutine CLM_CN_Init
 
-
-! ************************************************************************** !
-!
-! CLM_CN_Map: Maps coefficients to primary dependent variables
-! author: Glenn Hammond
-! date: 01/29/13
-!
-! ************************************************************************** !
-subroutine CLM_CN_Map(this,reaction,option)
-
-  use Reaction_Aux_module
-  use Option_module
-  use String_module
-  use Input_module
-  use Database_Aux_module
-  use Immobile_Aux_module
-  
-  implicit none
-
-  class(reaction_sandbox_clm_cn_type) :: this
-  type(option_type) :: option
-  type(reaction_type) :: reaction
-  
-  type(database_rxn_type), pointer ::dbase_rxn
-  character(len=MAXSTRINGLENGTH), pointer :: strings(:)
-  character(len=MAXSTRINGLENGTH) :: temp_string
-  character(len=MAXWORDLENGTH) :: word
-  
-  PetscInt :: ilit, isom, i, lit_max_spec, som_max_spec, pool_id
-  PetscErrorCode :: ierr
-
-  ! determine how many SOM and Litters
-  ilit = 0
-  isom = 0
-  lit_max_spec = 0
-  som_max_spec = 0
-  do i = 1, size(this%reaction_strings)
-    strings => StringSplit(this%reaction_strings(i),';')
-    dbase_rxn => &
-      DatabaseRxnCreateFromRxnString(strings(1), &
-                                     reaction%naqcomp, &
-                                     reaction%offset_aqueous, &
-                                     reaction%primary_species_names, &
-                                     reaction%nimcomp, &
-                                     reaction%offset_immobile, &
-                                     reaction%immobile%names, &
-                                     option)
-    if (StringStartsWith(this%reaction_strings(i),'SOM')) then
-      som_max_spec = max(som_max_spec,dbase_rxn%nspec)
-      isom = isom + 1
-    else if (StringStartsWith(this%reaction_strings(i),'Lit')) then
-      lit_max_spec = max(lit_max_spec,dbase_rxn%nspec)
-      ilit = ilit + 1
-    else
-      option%io_buffer = 'Unrecognized reaction string for CLM_CN.'
-      call printErrMsg(option)
-    endif
-    call DatabaseRxnDestroy(dbase_rxn)    
-  enddo
-  this%nsom = isom
-  this%nlitter = ilit
-  
-  allocate(this%litter_coefs(lit_max_spec,this%nlitter))
-  allocate(this%litter_species_ids(0:lit_max_spec,this%nlitter))
-  allocate(this%litter_rate_const(this%nlitter))
-  allocate(this%litter_upstream_pool(this%nlitter))
-  this%litter_coefs = 0.d0
-  this%litter_species_ids = 0
-  this%litter_rate_const = 0.d0
-
-  allocate(this%som_coefs(som_max_spec,this%nsom))
-  allocate(this%som_species_ids(0:som_max_spec,this%nsom))
-  allocate(this%som_rate_const(this%nsom))
-  allocate(this%som_upstream_pool(this%nsom))
-  this%som_coefs = 0.d0
-  this%som_species_ids = 0
-  this%som_rate_const = 0.d0
-  
-  ilit = 0
-  isom = 0
-  do i = 1, size(this%reaction_strings)
-    strings => StringSplit(this%reaction_strings(i),';')
-    ! find upstream pool.  The first species in the reaction string
-    temp_string = strings(1)
-    ierr = 0
-    do ! need to loop inorder to remove first stoichiometry if it exists
-      call InputReadWord(temp_string,word,PETSC_TRUE,ierr)
-      ! no need for an error message since the string would have to be
-      ! legitimate to pass the database rxn creation above.
-      ! PETSC_FALSE instucts not to throw an error, but to return
-      ! the unset value (= -999)
-      pool_id = GetImmobileSpeciesIDFromName(word,reaction%immobile, &
-                                             PETSC_FALSE,option)
-      if (ierr /= 0 .or. pool_id > 0) exit
-    enddo
-    ! process full reaction
-    dbase_rxn => &
-      DatabaseRxnCreateFromRxnString(strings(1), &
-                                     reaction%naqcomp, &
-                                     reaction%offset_aqueous, &
-                                     reaction%primary_species_names, &
-                                     reaction%nimcomp, &
-                                     reaction%offset_immobile, &
-                                     reaction%immobile%names, &
-                                     option)
-    if (StringStartsWith(strings(1),'Lit')) then
-      ilit = ilit + 1
-      this%litter_coefs(1:dbase_rxn%nspec,ilit) = dbase_rxn%stoich(:)
-      this%litter_species_ids(0,ilit) = dbase_rxn%nspec
-      this%litter_species_ids(1:dbase_rxn%nspec,ilit) = &
-        dbase_rxn%spec_ids(:) - reaction%offset_immobile
-      this%litter_upstream_pool(ilit) = pool_id
-      call InputReadDouble(strings(2),option,this%litter_rate_const(ilit),ierr)
-    else if (StringStartsWith(strings(1),'SOM')) then
-      isom = isom + 1
-      this%som_coefs(1:dbase_rxn%nspec,isom) = dbase_rxn%stoich(:)
-      this%som_species_ids(0,isom) = dbase_rxn%nspec
-      this%som_species_ids(1:dbase_rxn%nspec,isom) = &
-        dbase_rxn%spec_ids(:) - reaction%offset_immobile
-      this%som_upstream_pool(isom) = pool_id
-      call InputReadDouble(strings(2),option,this%som_rate_const(isom),ierr)
-    endif
-    ! as long as InputReadDouble is the last call in the conditional above
-    ! both branches can use thir error statement.
-    if (ierr /= 0) then
-      option%io_buffer = 'Rate not found in CLM_CN reacton string (' // &
-        trim(adjustl(this%reaction_strings(i))) // ').'
-      call printErrMsg(option)
-    endif
-    deallocate(strings)
-    nullify(strings)
-    call DatabaseRxnDestroy(dbase_rxn)
-  enddo
-  
-end subroutine CLM_CN_Map
-
 ! ************************************************************************** !
 !
 ! CLM_CN_Read: Reads input deck for reaction sandbox parameters
 ! author: Glenn Hammond
-! date: 01/29/13
+! date: 02/04/13
 !
 ! ************************************************************************** !
 subroutine CLM_CN_Read(this,input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  use Units_module, only : UnitsConvertToInternal
+  
+  implicit none
+  
+  class(reaction_sandbox_clm_cn_type) :: this
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: temp_real
+  
+  type(pool_type), pointer :: new_pool, prev_pool
+  type(clm_cn_reaction_type), pointer :: new_reaction, prev_reaction
+  
+  nullify(new_pool)
+  nullify(prev_pool)
+  
+  nullify(new_reaction)
+  nullify(prev_reaction)
+  
+  do 
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword', &
+                       'CHEMISTRY,REACTION_SANDBOX,CLM_CN')
+    call StringToUpper(word)   
+
+    select case(trim(word))
+      case('POOLS')
+        do
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit   
+
+          allocate(new_pool)
+          new_pool%name = ''
+          new_pool%CN_ratio = 0.d0
+          nullify(new_pool%next)
+
+          call InputReadWord(input,option,new_pool%name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'pool name', &
+            'CHEMISTRY,REACTION_SANDBOX,CLM_CN,POOLS')
+          call InputReadDouble(input,option,new_pool%CN_ratio)
+          call InputErrorMsg(input,option,'pool CN ratio', &
+            'CHEMISTRY,REACTION_SANDBOX,CLM_CN,POOLS')
+          if (associated(this%pools)) then
+            prev_pool%next => new_pool
+          else
+            this%pools => new_pool
+          endif
+          prev_pool => new_pool
+          nullify(new_pool)
+        enddo
+      case('REACTION')
+      
+        allocate(new_reaction)
+        new_reaction%upstream_pool_name = ''
+        new_reaction%upstream_pool_name = ''
+        new_reaction%rate_constant = -999.d0
+        new_reaction%rate_constant = -999.d0
+        
+        do 
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+          call StringToUpper(word)   
+
+          select case(trim(word))
+            case('UPSTREAM_POOL')
+              call InputReadWord(input,option, &
+                                 new_reaction%upstream_pool_name,PETSC_TRUE)
+              call InputErrorMsg(input,option,'upstream pool name', &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+            case('DOWNSTREAM_POOL')
+              call InputReadWord(input,option, &
+                                 new_reaction%downstream_pool_name,PETSC_TRUE)
+              call InputErrorMsg(input,option,'downstream pool name', &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+            case('RATE_CONSTANT')
+              call InputReadDouble(input,option,new_reaction%rate_constant)
+              call InputErrorMsg(input,option,'rate constant', &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (InputError(input)) then
+                input%err_buf = 'CLM_CN RATE CONSTANT UNITS'
+                call InputDefaultMsg(input,option)
+              else              
+                new_reaction%rate_constant = new_reaction%rate_constant * &
+                  UnitsConvertToInternal(word,option)
+              endif
+            case('RESPIRATION_FRACTION')
+              call InputReadDouble(input,option,new_reaction%respiration_fraction)
+              call InputErrorMsg(input,option,'respiration fraction', &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+            case default
+              option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM_CN,' // &
+                'REACTION keyword: ' // trim(word) // ' not recognized.'
+              call printErrMsg(option)
+          end select
+        enddo
+        if (associated(this%reactions)) then
+          prev_reaction%next => new_reaction
+        else
+          this%reactions => new_reaction
+        endif
+        prev_reaction => new_reaction
+        nullify(new_reaction)        
+      case default
+        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM_CN keyword: ' // &
+          trim(word) // ' not recognized.'
+        call printErrMsg(option)
+    end select
+  enddo
+  
+end subroutine CLM_CN_Read
+
+! ************************************************************************** !
+!
+! CLM_CN_ReadSkipBlock: Intelligently skips over block
+! author: Glenn Hammond
+! date: 02/04/13
+!
+! ************************************************************************** !
+subroutine CLM_CN_ReadSkipBlock(this,input,option)
 
   use Option_module
   use String_module
@@ -244,16 +258,8 @@ subroutine CLM_CN_Read(this,input,option)
   class(reaction_sandbox_clm_cn_type) :: this
   type(input_type) :: input
   type(option_type) :: option
-
-  character(len=MAXSTRINGLENGTH) :: string
+  
   character(len=MAXWORDLENGTH) :: word
-
-  PetscInt :: icoef, icount
-  character(len=MAXWORDLENGTH) :: names(TWELVE_INTEGER)
-  PetscReal :: litter_coefs(THREE_INTEGER,TWELVE_INTEGER)
-  PetscReal :: som_coefs(THREE_INTEGER,TWELVE_INTEGER)
-
-  character(len=MAXSTRINGLENGTH) :: strings(100)
 
   do 
     call InputReadFlotranString(input,option)
@@ -261,128 +267,138 @@ subroutine CLM_CN_Read(this,input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','CHEMISTRY,REACTION_SANDBOX')
+    call InputErrorMsg(input,option,'keyword', &
+                       'CHEMISTRY,REACTION_SANDBOX,CLM_CN Skip Block')
     call StringToUpper(word)   
 
     select case(trim(word))
-      case('REACTIONS')
-        icount = 0
-        do
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit   
-          icount = icount + 1
-          strings(icount) = adjustl(input%buf)
-        enddo
-#if 0    
-      case('LITTER_NAMES')
-        icount = 0
-        do
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit   
-          icount = icount + 1
-          call InputReadWord(input,option,names(icount),PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword', &
-                             'CHEMISTRY,CLM_CN,LITTERNAMES')
-        enddo
-        ! deallocate just incase already allocated by mistake
-        call DeallocateArray(this%litter_names)
-        allocate(this%litter_names(icount))
-        this%litter_names = names(1:icount)
-      case('SOM_NAMES')
-        icount = 0
-        do
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit   
-          icount = icount + 1
-          call InputReadWord(input,option,som_names(icount),PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword', &
-                             'CHEMISTRY,CLM_CN,SOM_NAMES')
-        enddo
-        call DeallocateArray(this%som_names)
-        allocate(this%som_names(icount))
-        this%som_names = names(1:icount)
-      case('LITTER_COEFFICIENTS')
-        icount = 0
-        do
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit   
-          icount = icount + 1
-          do icoef = 1, 3
-            call InputReadWord(input,option,litter_coefs(icoef,icount), &
-                               PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword', &
-                               'CHEMISTRY,CLM_CN,LITTER_COEFFICIENTS')
-          enddo
-        enddo
-        call DeallocateArray(this%litter_coefs)
-        allocate(this%litter_coefs(icount))
-        this%litter_coefs = litter_coefs(1:icount)
-      case('SOM_COEFFICIENTS')
-        icount = 0
-        do
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit   
-          icount = icount + 1
-          do icoef = 1, 3
-            call InputReadWord(input,option,som_coefs(icoef,icount), &
-                               PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword', &
-                               'CHEMISTRY,CLM_CN,SOM_COEFFICIENTS')
-          enddo
-        enddo 
-        call DeallocateArray(this%som_coefs)
-        allocate(this%som_coefs(icount))
-        this%som_coefs = som_coefs(1:icount)      
-#endif        
-      case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &
-          trim(word) // ' not recognized.'
-        call printErrMsg(option)
+      case('POOLS','REACTION')
+        call InputSkipToEnd(input,option,word)
     end select
   enddo
   
-#if 0  
-  ! error checking
-  if (size(this%litter_names) /= size(this%litter_coefs,2)) then
-    option%io_buffer = &
-      'Number of Liter names does not match number of coefficients.'
-    call printErrMsg(option)
-  else
-    this%nlitter = this%litter_names
-  endif
-  if (size(this%som_names) /= size(this%som_coefs,2)) then
-    option%io_buffer = &
-      'Number of SOM names does not match number of coefficients.'
-    call printErrMsg(option)
-  else
-    this%nsom = this%som_names
-  endif
-#endif  
+end subroutine CLM_CN_ReadSkipBlock
 
-  if (icount > 0) then
-    allocate(this%reaction_strings(icount))
-    this%reaction_strings = strings(1:icount)
-  endif
+! ************************************************************************** !
+!
+! CLM_CN_Map: Maps coefficients to primary dependent variables
+! author: Glenn Hammond
+! date: 02/04/13
+!
+! ************************************************************************** !
+subroutine CLM_CN_Map(this,reaction,option)
+
+  use Reaction_Aux_module, only : reaction_type
+  use Option_module
+  use String_module
+  use Immobile_Aux_module
   
-end subroutine CLM_CN_Read
+  implicit none
+
+  class(reaction_sandbox_clm_cn_type) :: this
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  
+  character(len=MAXWORDLENGTH), allocatable :: pool_names(:)
+  character(len=MAXWORDLENGTH) :: word
+  
+  PetscInt :: icount
+
+  type(pool_type), pointer :: cur_pool
+  type(clm_cn_reaction_type), pointer :: cur_rxn
+  
+  ! count # pools
+  icount = 0
+  cur_pool => this%pools
+  do
+    if (.not.associated(cur_pool)) exit
+    icount = icount + 1
+    cur_pool => cur_pool%next
+  enddo
+  this%npool = icount
+  
+  ! count # reactions
+  icount = 0
+  cur_rxn => this%reactions
+  do
+    if (.not.associated(cur_rxn)) exit
+    icount = icount + 1
+    cur_rxn => cur_rxn%next
+  enddo
+  this%nrxn = icount
+  
+  ! allocate and initialize arrays
+  allocate(this%CN_ratio(this%npool))
+  allocate(this%pool_id_to_species_id(this%npool))
+  allocate(this%upstream_pool_id(this%nrxn))
+  allocate(this%downstream_pool_id(this%nrxn))
+  allocate(this%rate_constant(this%nrxn))
+  allocate(this%respiration_fraction(this%nrxn))
+  this%CN_ratio = 0.d0
+  this%pool_id_to_species_id = 0
+  this%upstream_pool_id = 0
+  this%downstream_pool_id = 0
+  this%rate_constant = 0.d0
+  this%respiration_fraction = 0.d0
+  
+  ! temporary array for mapping pools in reactions
+  allocate(pool_names(this%npool))
+  
+  icount = 0
+  cur_pool => this%pools
+  do
+    if (.not.associated(cur_pool)) exit
+    icount = icount + 1
+    this%CN_ratio(icount) = cur_pool%CN_ratio
+    pool_names(icount) = cur_pool%name
+    this%pool_id_to_species_id(icount) = &
+      GetImmobileSpeciesIDFromName(cur_pool%name,reaction%immobile, &
+                                   PETSC_TRUE,option)
+    cur_pool => cur_pool%next
+  enddo
+  
+  ! map C and N species (solid phase for now)
+  word = 'C'
+  this%C_species_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile, &
+                                   PETSC_TRUE,option)
+  word = 'N'
+  this%N_species_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile, &
+                                   PETSC_TRUE,option)
+  
+  icount = 0
+  cur_rxn => this%reactions
+  do
+    if (.not.associated(cur_rxn)) exit
+    icount = icount + 1
+    this%upstream_pool_id(icount) = &
+      StringFindEntryInList(cur_rxn%upstream_pool_name,pool_names)
+    if (len_trim(cur_rxn%downstream_pool_name)) then
+      this%downstream_pool_id(icount) = &
+        StringFindEntryInList(cur_rxn%downstream_pool_name,pool_names)
+    endif
+    this%rate_constant(icount) = cur_rxn%rate_constant
+    this%respiration_fraction(icount) = cur_rxn%respiration_fraction
+    cur_rxn => cur_rxn%next
+  enddo 
+  
+  deallocate(pool_names)
+  
+end subroutine CLM_CN_Map
 
 ! ************************************************************************** !
 !
 ! CLM_CN_React: Evaluates reaction storing residual and/or Jacobian
 ! author: Glenn Hammond
-! date: 01/29/13
+! date: 02/04/13
 !
 ! ************************************************************************** !
 subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
                         global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
-  use Reaction_Aux_module
+  use Reaction_Aux_module, only : reaction_type
   
   implicit none
   
@@ -399,8 +415,10 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   type(global_auxvar_type) :: global_auxvar
 
   PetscInt, parameter :: iphase = 1
-  PetscInt :: ilit, isom, iimmobile, idof, i, icomp
+  PetscInt :: ipool_up, ipool_down, ispec_up, ispec_down
+  PetscInt :: ires_up, ires_dn, ires_c, ires_n
   PetscReal :: drate, rate_const, rate
+  PetscInt :: irxn
   
   ! inhibition variables
   PetscReal :: F_t
@@ -411,6 +429,11 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal, parameter :: theta_min = 0.01d0     ! 1/nat log(0.01d0)
   PetscReal, parameter :: one_over_log_theta_min = -2.17147241d-1
 
+  PetscReal :: resp_frac
+  PetscReal :: stoich_N
+  PetscReal :: stoich_C
+  PetscReal :: stoich_downstream_pool
+  PetscReal :: stoich_upstream_pool
   
   ! inhibition due to temperature
   ! Equation: F_t = exp(308.56*(1/17.02 - 1/(T - 227.13)))
@@ -426,42 +449,56 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   inhibition = F_t * F_theta
   
   ! Litter pools
-  do ilit = 1, this%nlitter
-    ! first species will be the used in the rate
-    iimmobile = this%litter_upstream_pool(ilit)
-    idof = reaction%offset_immobile + iimmobile
-    rate_const = this%litter_rate_const(ilit)*inhibition
-    rate = rate_const * rt_auxvar%immobile(iimmobile)
-    do i = 1, this%litter_species_ids(0,ilit)
-      icomp = reaction%offset_immobile + this%litter_species_ids(i,ilit) 
-      Res(icomp) = Res(icomp) - this%litter_coefs(i,ilit)*rate
-    enddo
-    if (compute_derivative) then
-      drate = rate_const
-      do i = 1, this%litter_species_ids(0,ilit)
-        icomp = reaction%offset_immobile + this%litter_species_ids(i,ilit) 
-        Jac(icomp,idof) = Jac(icomp,idof) + this%litter_coefs(i,ilit)*drate
-      enddo
-    endif
-  enddo
+  do irxn = 1, this%nrxn
   
-  ! SOM pools
-  do isom = 1, this%nsom
-    ! first species will be the used in the rate
-    iimmobile = this%som_upstream_pool(isom)
-    idof = reaction%offset_immobile + iimmobile
-    rate_const = this%som_rate_const(isom)*inhibition
-    rate = rate_const * rt_auxvar%immobile(iimmobile)
-    do i = 1, this%som_species_ids(0,isom)
-      icomp = reaction%offset_immobile + this%som_species_ids(i,isom) 
-      Res(icomp) = Res(icomp) - this%som_coefs(i,isom)*rate
-    enddo
+    ipool_up = this%upstream_pool_id(irxn)
+    ipool_down = this%upstream_pool_id(irxn)
+    ispec_up = this%pool_id_to_species_id(ipool_up)
+    ispec_down = this%pool_id_to_species_id(ipool_down)
+
+    ires_up = reaction%offset_immobile + ispec_up
+    ires_c = reaction%offset_immobile + this%C_species_id
+    ires_n = reaction%offset_immobile + this%N_species_id
+    
+    rate = rate_const * rt_auxvar%immobile(ispec_up)
+
+    rate_const = this%rate_constant(irxn)*inhibition
+    resp_frac = this%respiration_fraction(irxn)
+
+    ! calculation of n (stoichiometry for N in reaction)
+    ! n = u - (1-f) * d 
+    stoich_N = (12.d0/this%CN_ratio(ipool_up) - (1.d0 - resp_frac)) / 14.d0
+    stoich_upstream_pool = -1.d0
+    stoich_C = resp_frac
+    
+    ! upstream pool
+    Res(ires_up) = Res(ires_up) - stoich_upstream_pool * rate
+    ! carbon
+    Res(ires_c) = Res(ires_c) - stoich_C * rate
+    ! nitrogen
+    Res(ires_n) = Res(ires_n) - stoich_N * rate
+    
+    if (ispec_down > 0) then
+      ! downstream pool
+      stoich_downstream_pool = 1.d0 - resp_frac
+      ires_dn = reaction%offset_immobile + ispec_down
+      Res(ires_dn) = Res(ires_dn) - stoich_downstream_pool * rate
+    endif
+    
     if (compute_derivative) then
       drate = rate_const
-      do i = 1, this%som_species_ids(0,isom)
-        icomp = reaction%offset_immobile + this%som_species_ids(i,isom) 
-        Jac(icomp,idof) = Jac(icomp,idof) + this%som_coefs(i,isom)*drate
-      enddo
+      ! upstream pool
+      Jac(ires_up,ires_up) = Jac(ires_up,ires_up) + &
+        stoich_upstream_pool * drate
+      ! downstream pool
+      if (ispec_down > 0) then
+        Jac(ires_dn,ires_up) = Jac(ires_dn,ires_up) + &
+          stoich_downstream_pool * drate
+      endif
+      ! carbon
+      Jac(ires_c,ires_up) = Jac(ires_c,ires_up) + & stoich_C * drate
+      ! nitrogen
+      Jac(ires_n,ires_up) = Jac(ires_n,ires_up) + stoich_N * drate
     endif
   enddo
   
@@ -472,14 +509,44 @@ end subroutine CLM_CN_React
 ! CLM_CN_Destroy: Destroys allocatable or pointer objects created in this 
 !                 module
 ! author: Glenn Hammond
-! date: 01/29/13
+! date: 02/04/13
 !
 ! ************************************************************************** !
 subroutine CLM_CN_Destroy(this)
 
+  use Utility_module, only : DeallocateArray
+
   implicit none
   
   class(reaction_sandbox_clm_cn_type) :: this
+  
+  type(pool_type), pointer :: cur_pool, prev_pool
+  type(clm_cn_reaction_type), pointer :: cur_reaction, prev_reaction
+  
+  cur_pool => this%pools
+  do
+    if (.not.associated(cur_pool)) exit
+    prev_pool => cur_pool
+    cur_pool => cur_pool%next
+    deallocate(prev_pool)
+    nullify(prev_pool)
+  enddo
+  
+  cur_reaction => this%reactions
+  do
+    if (.not.associated(cur_reaction)) exit
+    prev_reaction => cur_reaction
+    cur_reaction => cur_reaction%next
+    deallocate(prev_reaction)
+    nullify(prev_reaction)
+  enddo
+  
+  call DeallocateArray(this%CN_ratio)
+  call DeallocateArray(this%rate_constant)
+  call DeallocateArray(this%respiration_fraction)
+  call DeallocateArray(this%upstream_pool_id)
+  call DeallocateArray(this%downstream_pool_id)
+  call DeallocateArray(this%pool_id_to_species_id)
   
 end subroutine CLM_CN_Destroy
 

@@ -794,17 +794,7 @@ subroutine ReactionReadPass2(reaction,input,option)
       case('MINERAL_KINETICS')
         call MineralReadKinetics(reaction%mineral,input,option)
       case('REACTION_SANDBOX')
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,word, &
-                              'CHEMISTRY,SORPTION,REACTION_SANDBOX') 
-          call InputSkipToEnd(input,option,word)
-          ! skip over remaining cards to end of each reaction sandbox entry
-          call InputSkipToEnd(input,option,word)
-        enddo      
+        call RSandboxSkipInput(input,option)
       case('SOLID_SOLUTIONS')
 #ifdef SOLID_SOLUTION                
         call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &

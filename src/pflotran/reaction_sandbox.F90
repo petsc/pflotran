@@ -13,6 +13,7 @@ module Reaction_Sandbox_module
 
   public :: RSandboxInit, &
             RSandboxRead, &
+            RSandboxSkipInput, &
             RSandboxSetup, &
             RSandbox, &
             RSandboxDestroy
@@ -128,6 +129,39 @@ subroutine RSandboxRead(input,option)
   enddo
   
 end subroutine RSandboxRead
+
+! ************************************************************************** !
+!
+! RSandboxSkipInput: Intelligently skips over REACTION_SANDBOX block
+! author: Glenn Hammond
+! date: 02/04/13
+!
+! ************************************************************************** !
+subroutine RSandboxSkipInput(input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+
+  class(reaction_sandbox_base_type), pointer :: cur_sandbox
+  
+  cur_sandbox => sandbox_list
+  do 
+  
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    call cur_sandbox%SkipInput(input,option)
+    cur_sandbox => cur_sandbox%next
+  enddo
+  
+end subroutine RSandboxSkipInput
 
 ! ************************************************************************** !
 !

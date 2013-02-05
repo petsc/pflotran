@@ -17,6 +17,7 @@ module Reaction_Sandbox_Base_class
 #else
     procedure, public :: Init => Base_Init
     procedure, public :: ReadInput => Base_Read
+    procedure, public :: SkipInput => Base_SkipBlock
     procedure, public :: Evaluate => Base_React
     procedure, public :: Destroy => Base_Destroy    
 #endif
@@ -52,6 +53,19 @@ module Reaction_Sandbox_Base_class
       type(option_type) :: option
   
     end subroutine Base_Read 
+    
+    subroutine Base_SkipBlock(this,input,option)
+    
+      use Option_module
+      use Input_module
+  
+      implicit none
+  
+      class(reaction_sandbox_base_type) :: this
+      type(input_type) :: input
+      type(option_type) :: option
+  
+    end subroutine Base_SkipBlock 
     
     subroutine Base_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
                           global_auxvar,porosity,volume,reaction,option)
@@ -114,7 +128,21 @@ contains
     type(input_type) :: input
     type(option_type) :: option
   
-  end subroutine Base_Read 
+  end subroutine Base_Read
+  
+
+  subroutine Base_SkipBlock(this,input,option)
+    
+    use Option_module
+    use Input_module
+  
+    implicit none
+  
+    class(reaction_sandbox_base_type) :: this
+    type(input_type) :: input
+    type(option_type) :: option
+  
+  end subroutine Base_SkipBlock   
     
   subroutine Base_React(this,Res,Jac,compute_derivative,rt_auxvar, &
                         global_auxvar,porosity,volume,reaction,option)
