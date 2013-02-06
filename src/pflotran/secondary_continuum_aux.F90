@@ -2,6 +2,8 @@
 
 module Secondary_Continuum_Aux_module
 
+  use Reactive_Transport_Aux_module
+
   implicit none
 
   private
@@ -72,7 +74,7 @@ module Secondary_Continuum_Aux_module
     PetscReal :: aperture                      ! fracture aperture
     PetscReal :: epsilon                       ! vol. frac. of primary continuum
     type(sec_continuum_type) :: sec_continuum
-    PetscReal, pointer :: sec_conc(:,:)        ! array of aqueous species conc. at secondary grid cells for each species  (naqcomp x ncells)
+    type(reactive_transport_auxvar_type), pointer :: sec_rt_auxvar(:)  ! for each secondary grid cell
     PetscReal, pointer :: sec_mnrl_volfrac(:,:)  ! array of mineral vol fraction at secondary grid cells for each species  (naqcomp x ncells)
     PetscInt, pointer :: sec_zeta(:,:)           ! array of zetas at secondary grid cells for each species  (naqcomp x ncells)
     PetscReal, pointer :: area(:)              ! surface area
@@ -604,7 +606,13 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
 
   ! Convert the units of sec_conc from mol/L to mol/kg before passing to
   ! sec_transport_vars
-  sec_transport_vars%sec_conc = conc_upd/global_aux_var%den_kg(1)/1.d-3
+  do j = 1, ncomp
+    do i = 1, ngcells
+      sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) = conc_upd(j,i)/ &
+        global_aux_var%den_kg(1)/1.d-3
+    enddo
+  enddo
+  
   sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
   sec_transport_vars%sec_zeta = sec_zeta  
 

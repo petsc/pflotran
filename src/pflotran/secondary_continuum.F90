@@ -378,6 +378,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   use Reaction_Aux_module
   use Coupler_module
   use Option_module
+  use Reactive_Transport_Aux_module
   
   implicit none 
   
@@ -388,11 +389,11 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   type(option_type), pointer :: option
 
   PetscReal :: equil_conc(reaction%mineral%nmnrl)
-  PetscInt :: i
+  PetscInt :: i, cell
   PetscReal :: area_per_vol
 
 
-      call SecondaryContinuumSetProperties( &
+  call SecondaryContinuumSetProperties( &
         rt_sec_transport_vars%sec_continuum, &
         ptr%secondary_continuum_name, &
         ptr%secondary_continuum_length, &
@@ -402,28 +403,18 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
         ptr%secondary_continuum_area, &
         option)
         
-      rt_sec_transport_vars%ncells = &
-        ptr%secondary_continuum_ncells
-      rt_sec_transport_vars%aperture = &
-        ptr%secondary_continuum_aperture
-      rt_sec_transport_vars%epsilon = &
-        ptr%secondary_continuum_epsilon 
-      rt_sec_transport_vars%log_spacing = &
-        ptr%secondary_continuum_log_spacing
-      rt_sec_transport_vars%outer_spacing = &
-        ptr%secondary_continuum_outer_spacing    
+  rt_sec_transport_vars%ncells = ptr%secondary_continuum_ncells
+  rt_sec_transport_vars%aperture = ptr%secondary_continuum_aperture
+  rt_sec_transport_vars%epsilon = ptr%secondary_continuum_epsilon 
+  rt_sec_transport_vars%log_spacing = ptr%secondary_continuum_log_spacing
+  rt_sec_transport_vars%outer_spacing = ptr%secondary_continuum_outer_spacing    
         
-      allocate(rt_sec_transport_vars% &
-               area(rt_sec_transport_vars%ncells))
-      allocate(rt_sec_transport_vars% &
-               vol(rt_sec_transport_vars%ncells))
-      allocate(rt_sec_transport_vars% &
-               dm_minus(rt_sec_transport_vars%ncells))
-      allocate(rt_sec_transport_vars% &
-               dm_plus(rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%area(rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%vol(rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%dm_minus(rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%dm_plus(rt_sec_transport_vars%ncells))
     
-      call SecondaryContinuumType(&
-                              rt_sec_transport_vars%sec_continuum, &
+  call SecondaryContinuumType(rt_sec_transport_vars%sec_continuum, &
                               rt_sec_transport_vars%ncells, &
                               rt_sec_transport_vars%area, &
                               rt_sec_transport_vars%vol, &
@@ -434,81 +425,89 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
                               rt_sec_transport_vars%log_spacing, &
                               rt_sec_transport_vars%outer_spacing, &
                               area_per_vol,option)                                
-      rt_sec_transport_vars%interfacial_area = area_per_vol* &
+  rt_sec_transport_vars%interfacial_area = area_per_vol* &
           (1.d0 - rt_sec_transport_vars%epsilon)
-    ! Setting the initial values of all secondary node concentrations same as
-    ! primary nodal concentration values
-      allocate(rt_sec_transport_vars%sec_conc(reaction%naqcomp, &
-               rt_sec_transport_vars%ncells))
-      allocate(rt_sec_transport_vars%sec_mnrl_volfrac(reaction%naqcomp, &
-               rt_sec_transport_vars%ncells)) 
-      allocate(rt_sec_transport_vars%sec_zeta(reaction%naqcomp, &
-               rt_sec_transport_vars%ncells))
-      allocate(rt_sec_transport_vars%sec_jac(reaction%naqcomp,reaction%naqcomp))    
-      allocate(rt_sec_transport_vars%updated_conc(reaction%naqcomp, &
-               rt_sec_transport_vars%ncells))
-      allocate(rt_sec_transport_vars%sec_mnrl_area(reaction%naqcomp))
-               
-      ! Allocate diagonal terms
-      allocate(rt_sec_transport_vars%cxm(reaction%naqcomp,reaction%naqcomp,&
-               rt_sec_transport_vars%ncells-1)) 
-      allocate(rt_sec_transport_vars%cxp(reaction%naqcomp,reaction%naqcomp,&
-               rt_sec_transport_vars%ncells-1))  
-      allocate(rt_sec_transport_vars%cdl(reaction%naqcomp,reaction%naqcomp,&
-               rt_sec_transport_vars%ncells)) 
-      allocate(rt_sec_transport_vars% &
-               r(reaction%naqcomp*rt_sec_transport_vars%ncells))
+  
+  ! Initializing the secondary RT auxvars
+  allocate(rt_sec_transport_vars%sec_rt_auxvar(rt_sec_transport_vars%ncells))
+  do cell = 1, rt_sec_transport_vars%ncells
+    call RTAuxVarInit(rt_sec_transport_vars%sec_rt_auxvar(cell),reaction,option)
+  enddo
+
+  allocate(rt_sec_transport_vars%sec_mnrl_volfrac(reaction%naqcomp, &
+           rt_sec_transport_vars%ncells)) 
+  allocate(rt_sec_transport_vars%sec_zeta(reaction%naqcomp, &
+           rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%sec_jac(reaction%naqcomp,reaction%naqcomp))    
+  allocate(rt_sec_transport_vars%updated_conc(reaction%naqcomp, &
+           rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%sec_mnrl_area(reaction%naqcomp))
+                 
+  ! Allocate diagonal terms
+  allocate(rt_sec_transport_vars%cxm(reaction%naqcomp,reaction%naqcomp,&
+           rt_sec_transport_vars%ncells-1)) 
+  allocate(rt_sec_transport_vars%cxp(reaction%naqcomp,reaction%naqcomp,&
+           rt_sec_transport_vars%ncells-1))  
+  allocate(rt_sec_transport_vars%cdl(reaction%naqcomp,reaction%naqcomp,&
+           rt_sec_transport_vars%ncells)) 
+  allocate(rt_sec_transport_vars% &
+           r(reaction%naqcomp*rt_sec_transport_vars%ncells))
                      
-      if (reaction%mineral%nkinmnrl > 0) then 
-        equil_conc = (10.d0)**(reaction%mineral% &
-                     mnrl_logK(1:reaction%mineral%nkinmnrl))       ! in mol/kg
-      else
-        equil_conc = initial_condition%tran_condition% &
-        cur_constraint_coupler%aqueous_species% &
-          constraint_conc(1:reaction%mineral%nkinmnrl)
-      endif  
+  if (reaction%mineral%nkinmnrl > 0) then 
+    equil_conc = (10.d0)**(reaction%mineral% &
+                 mnrl_logK(1:reaction%mineral%nkinmnrl))       ! in mol/kg
+  else
+    equil_conc = initial_condition%tran_condition%cur_constraint_coupler% &
+       aqueous_species%constraint_conc(1:reaction%mineral%nkinmnrl)
+  endif  
+  
         
-      if (option%set_secondary_init_conc) then
-        rt_sec_transport_vars%sec_conc = &
-          ptr%secondary_continuum_init_conc
-      else
-        do i = 1, reaction%mineral%nmnrl
-          rt_sec_transport_vars%sec_conc(i,:) = equil_conc(i)
-        enddo
-      endif  
+  if (option%set_secondary_init_conc) then
+    do cell = 1, rt_sec_transport_vars%ncells
+      rt_sec_transport_vars%sec_rt_auxvar(i)%pri_molal = &
+         ptr%secondary_continuum_init_conc
+    enddo
+  else
+    do i = 1, reaction%mineral%nmnrl
+      do cell = 1, rt_sec_transport_vars%ncells
+        rt_sec_transport_vars%sec_rt_auxvar(cell)%pri_molal(i) = equil_conc(i)
+      enddo
+    enddo
+  endif  
           
       
-      ! Assuming only one mineral
-      rt_sec_transport_vars%sec_mnrl_volfrac = 0.d0
-      rt_sec_transport_vars%sec_mnrl_area = 0.d0
-      rt_sec_transport_vars%sec_zeta = 0
+  ! Assuming only one mineral
+  rt_sec_transport_vars%sec_mnrl_volfrac = 0.d0
+  rt_sec_transport_vars%sec_mnrl_area = 0.d0
+  rt_sec_transport_vars%sec_zeta = 0
       
-      if (reaction%mineral%nkinmnrl > 0) then
-        rt_sec_transport_vars%sec_mnrl_volfrac = &
-          ptr%secondary_continuum_mnrl_volfrac
-        rt_sec_transport_vars%sec_mnrl_area = &
-          ptr%secondary_continuum_mnrl_area        
+  if (reaction%mineral%nkinmnrl > 0) then
+    rt_sec_transport_vars%sec_mnrl_volfrac = &
+      ptr%secondary_continuum_mnrl_volfrac
+    rt_sec_transport_vars%sec_mnrl_area = ptr%secondary_continuum_mnrl_area        
         
-        do i = 1, reaction%mineral%nkinmnrl                      
-          if (rt_sec_transport_vars%sec_conc(i,1)/equil_conc(i) > 1.d0) then 
-            rt_sec_transport_vars%sec_zeta(i,:) = 1
-          else
-            if (rt_sec_transport_vars%sec_mnrl_volfrac(i,1) > 0.d0) then
-              rt_sec_transport_vars%sec_zeta(i,:) = 1
-            else
-              rt_sec_transport_vars%sec_zeta(i,:) = 0
-            endif      
-          endif
-        enddo
+    do i = 1, reaction%mineral%nkinmnrl                      
+      if (rt_sec_transport_vars%sec_rt_auxvar(1)%pri_molal(i)/ &
+          equil_conc(i) > 1.d0) then 
+        rt_sec_transport_vars%sec_zeta(i,:) = 1
+      else
+        if (rt_sec_transport_vars%sec_mnrl_volfrac(i,1) > 0.d0) then
+          rt_sec_transport_vars%sec_zeta(i,:) = 1
+        else
+          rt_sec_transport_vars%sec_zeta(i,:) = 0
+        endif      
+      endif
+    enddo
         
-      endif         
-      rt_sec_transport_vars%updated_conc = 0.d0
-      rt_sec_transport_vars%sec_jac_update = PETSC_FALSE
-      rt_sec_transport_vars%sec_jac = 0.d0
-      rt_sec_transport_vars%cxm = 0.d0
-      rt_sec_transport_vars%cxp = 0.d0
-      rt_sec_transport_vars%cdl = 0.d0
-      rt_sec_transport_vars%r = 0.d0
+  endif         
+  
+  rt_sec_transport_vars%updated_conc = 0.d0
+  rt_sec_transport_vars%sec_jac_update = PETSC_FALSE
+  rt_sec_transport_vars%sec_jac = 0.d0
+  rt_sec_transport_vars%cxm = 0.d0
+  rt_sec_transport_vars%cxp = 0.d0
+  rt_sec_transport_vars%cdl = 0.d0
+  rt_sec_transport_vars%r = 0.d0
       
 end subroutine SecondaryRTAuxVarInit  
 #endif    

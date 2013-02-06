@@ -296,14 +296,13 @@ subroutine RTSetupPatch(realization)
 
 !===============================================================================   
 #else   
-!============== Create secondary continuum variables - SK 1/31/13 ==============
+!============== Create secondary continuum variables - SK 2/5/13 ===============
 
   if (option%use_mc) then
     initial_condition => patch%initial_conditions%first
     allocate(rt_sec_transport_vars(grid%ngmax))  
     do ghosted_id = 1, grid%ngmax
-    ! Assuming the same secondary continuum for all regions
-    ! (need to make it an array)
+    ! Assuming the same secondary continuum type for all regions
       call SecondaryRTAuxVarInit(realization%material_property_array(1)%ptr, &
                                  rt_sec_transport_vars(ghosted_id), &
                                  reaction,initial_condition,option)
@@ -5460,8 +5459,15 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   area_fm = sec_transport_vars%interfacial_area
   sec_zeta = sec_transport_vars%sec_zeta
   conc_upd = sec_transport_vars%updated_conc
-  conc_prev = sec_transport_vars%sec_conc*global_aux_var%den_kg(1)*1.d-3 
   ncomp = reaction%naqcomp
+
+  do j = 1, ncomp
+    do i = 1, ngcells
+      conc_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j)* &
+                  global_aux_var%den_kg(1)*1.d-3 
+    enddo
+  enddo
+  
   ! Note that sec_transport_vars%sec_conc units are in mol/kg
   ! Need to convert to mol/L since the units of conc. in the Thomas 
   ! algorithm are in mol/L 

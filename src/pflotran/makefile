@@ -491,7 +491,7 @@ richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
-                        material.o option.o 
+                        material.o option.o reactive_transport_aux.o
 secondary_continuum_aux.o : option.o global_aux.o reaction_aux.o\
 							reactive_transport_aux.o mphase_aux.o 
 simulation.o : timestepper.o realization.o regression.o
