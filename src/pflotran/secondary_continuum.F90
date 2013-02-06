@@ -464,7 +464,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
         
   if (option%set_secondary_init_conc) then
     do cell = 1, rt_sec_transport_vars%ncells
-      rt_sec_transport_vars%sec_rt_auxvar(i)%pri_molal = &
+      rt_sec_transport_vars%sec_rt_auxvar(cell)%pri_molal = &
          ptr%secondary_continuum_init_conc
     enddo
   else

@@ -5414,7 +5414,6 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   PetscReal :: rhs(sec_transport_vars%ncells*reaction%naqcomp)
   PetscReal :: D_M(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: identity(reaction%naqcomp,reaction%naqcomp)
-  PetscReal :: a_M(reaction%naqcomp)
   PetscReal :: b_M(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: sec_jac(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: inv_D_M(reaction%naqcomp,reaction%naqcomp)
@@ -5479,7 +5478,6 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   rhs = 0.d0
   D_M = 0.d0
   identity = 0.d0
-  a_M = 0.d0
   b_M = 0.d0
   inv_D_M = 0.d0
   
