@@ -49,6 +49,7 @@ private
     type(tran_constraint_list_type), pointer :: transport_constraints
     
     type(reaction_type), pointer :: reaction
+    type(tran_constraint_type), pointer :: sec_transport_constraint
     
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
@@ -172,6 +173,7 @@ function RealizationCreate2(option)
   nullify(realization%velocity_dataset)
   
   nullify(realization%reaction)
+  nullify(realization%sec_transport_constraint)
 
   nullify(realization%patch)
   nullify(realization%level_list)
@@ -2395,6 +2397,8 @@ subroutine RealizationDestroy(realization)
   call DiscretizationDestroy(realization%discretization)
   
   call ReactionDestroy(realization%reaction)
+  
+  call TranConstraintDestroy(realization%sec_transport_constraint)  
   
 end subroutine RealizationDestroy
 
