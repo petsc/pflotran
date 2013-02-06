@@ -124,6 +124,7 @@ subroutine RTSetupPatch(realization)
   use Coupler_module
   use Condition_module
   use Connection_module
+  use Constraint_module
   use Fluid_module
   use Material_module
   use Secondary_Continuum_Aux_module
@@ -142,6 +143,7 @@ subroutine RTSetupPatch(realization)
   type(fluid_property_type), pointer :: cur_fluid_property
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   type(coupler_type), pointer :: initial_condition
+  type(tran_constraint_type), pointer :: sec_tran_constraint
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: iphase
@@ -150,6 +152,7 @@ subroutine RTSetupPatch(realization)
   patch => realization%patch
   grid => patch%grid
   reaction => realization%reaction
+  sec_tran_constraint => realization%sec_transport_constraint
 
   patch%aux%RT => RTAuxCreate(option)
   patch%aux%SC_RT => SecondaryAuxRTCreate(option)
@@ -177,6 +180,7 @@ subroutine RTSetupPatch(realization)
  
 !============== Create secondary continuum variables - SK 2/5/13 ===============
 
+  
   if (option%use_mc) then
     initial_condition => patch%initial_conditions%first
     allocate(rt_sec_transport_vars(grid%ngmax))  
@@ -184,7 +188,8 @@ subroutine RTSetupPatch(realization)
     ! Assuming the same secondary continuum type for all regions
       call SecondaryRTAuxVarInit(realization%material_property_array(1)%ptr, &
                                  rt_sec_transport_vars(ghosted_id), &
-                                 reaction,initial_condition,option)
+                                 reaction,initial_condition, &
+                                 sec_tran_constraint,option)
     enddo      
     patch%aux%SC_RT%sec_transport_vars => rt_sec_transport_vars      
   endif

@@ -365,32 +365,45 @@ end subroutine SecondaryContinuumCalcLogSpacing
 ! ************************************************************************** !
 !
 ! SecondaryRTAuxVarInit: Initializes all the secondary continuum reactive
-! transport variables
-! author: Satish Karra
+!                        transport variables
+! author: Satish Karra, LANL
 ! date: 02/05/13
 !
 ! ************************************************************************** !
 subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
-                                 initial_condition,option)
+                                 initial_condition,constraint,option)
   
-  use Material_module
-  use Reaction_Aux_module
   use Coupler_module
+  use Constraint_module
+  use Condition_module
+  use GLobal_Aux_module
+  use Material_module
   use Option_module
+  use Reaction_module
+  use Reaction_Aux_module
   use Reactive_Transport_Aux_module
+  use water_eos_module
   
   implicit none 
   
   type(sec_transport_type) :: rt_sec_transport_vars
   type(material_property_type), pointer :: ptr
-  type(reaction_type) :: reaction
+  type(reaction_type), pointer :: reaction
   type(coupler_type), pointer :: initial_condition
   type(option_type), pointer :: option
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  type(global_auxvar_type), pointer :: global_auxvar
+  type(tran_constraint_type), pointer :: constraint
+  type(flow_condition_type), pointer :: initial_flow_condition
+  
 
   PetscReal :: equil_conc(reaction%mineral%nmnrl)
   PetscInt :: i, cell
   PetscReal :: area_per_vol
-
+  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscInt :: num_iterations, ierr
+  
+  num_iterations = 0
 
   call SecondaryContinuumSetProperties( &
         rt_sec_transport_vars%sec_continuum, &
@@ -451,54 +464,65 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
            rt_sec_transport_vars%ncells)) 
   allocate(rt_sec_transport_vars% &
            r(reaction%naqcomp*rt_sec_transport_vars%ncells))
-                     
-  if (reaction%mineral%nkinmnrl > 0) then 
-    equil_conc = (10.d0)**(reaction%mineral% &
-                 mnrl_logK(1:reaction%mineral%nkinmnrl))       ! in mol/kg
-  else
-    equil_conc = initial_condition%tran_condition%cur_constraint_coupler% &
-       aqueous_species%constraint_conc(1:reaction%mineral%nkinmnrl)
-  endif  
+           
   
-        
-  if (option%set_secondary_init_conc) then
-    do cell = 1, rt_sec_transport_vars%ncells
-      rt_sec_transport_vars%sec_rt_auxvar(cell)%pri_molal = &
-         ptr%secondary_continuum_init_conc
-    enddo
-  else
-    do i = 1, reaction%mineral%nmnrl
-      do cell = 1, rt_sec_transport_vars%ncells
-        rt_sec_transport_vars%sec_rt_auxvar(cell)%pri_molal(i) = equil_conc(i)
-      enddo
-    enddo
-  endif  
-          
-      
-  ! Assuming only one mineral
-  rt_sec_transport_vars%sec_mnrl_volfrac = 0.d0
-  rt_sec_transport_vars%sec_mnrl_area = 0.d0
-  rt_sec_transport_vars%sec_zeta = 0
-      
-  if (reaction%mineral%nkinmnrl > 0) then
-    rt_sec_transport_vars%sec_mnrl_volfrac = &
-      ptr%secondary_continuum_mnrl_volfrac
-    rt_sec_transport_vars%sec_mnrl_area = ptr%secondary_continuum_mnrl_area        
-        
-    do i = 1, reaction%mineral%nkinmnrl                      
-      if (rt_sec_transport_vars%sec_rt_auxvar(1)%pri_molal(i)/ &
-          equil_conc(i) > 1.d0) then 
-        rt_sec_transport_vars%sec_zeta(i,:) = 1
-      else
-        if (rt_sec_transport_vars%sec_mnrl_volfrac(i,1) > 0.d0) then
-          rt_sec_transport_vars%sec_zeta(i,:) = 1
+  initial_flow_condition => initial_condition%flow_condition
+  do cell = 1, rt_sec_transport_vars%ncells
+    rt_auxvar => rt_sec_transport_vars%sec_rt_auxvar(cell)
+    if (associated(initial_flow_condition)) then
+      if (associated(initial_flow_condition%pressure)) then
+        if (associated(initial_flow_condition%pressure% &
+                      flow_dataset%time_series)) then
+          global_auxvar%pres = &
+            initial_flow_condition%pressure%flow_dataset%time_series% &
+              cur_value(1)
         else
-          rt_sec_transport_vars%sec_zeta(i,:) = 0
-        endif      
+          global_auxvar%pres = option%reference_pressure
+        endif
+      else 
+        global_auxvar%pres = option%reference_pressure
       endif
-    enddo
+      if (associated(initial_flow_condition%temperature)) then
+        if (associated(initial_flow_condition%temperature% &
+                       flow_dataset%time_series)) then
+          global_auxvar%temp  = &
+            initial_flow_condition%temperature%flow_dataset%time_series% &
+              cur_value(1)
+        else
+          global_auxvar%temp = option%reference_temperature
+        endif
+      else
+        global_auxvar%temp = option%reference_temperature
+      endif
         
-  endif         
+#ifndef DONT_USE_WATEOS
+        call wateos(global_auxvar%temp(1),global_auxvar%pres(1), &
+                    global_auxvar%den_kg(1),r1,r2,r3,r4,r5,r6, &
+                    option%scale,ierr)
+#else
+        call density(global_auxvar%temp(1),global_auxvar%pres(1), &
+                     global_auxvar%den_kg(1))
+#endif             
+    else
+      global_auxvar%pres = option%reference_pressure
+      global_auxvar%temp = option%reference_temperature
+      global_auxvar%den_kg = option%reference_water_density
+    endif
+    global_auxvar%sat = option%reference_saturation
+                      
+    call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                          reaction,constraint%name, &
+                          constraint%aqueous_species, &
+                          constraint%minerals, &
+                          constraint%surface_complexes, &
+                          constraint%colloids, &
+                          constraint%biomass, &
+                          option%reference_porosity, &
+                          num_iterations, &
+                          PETSC_FALSE,option)   
+  
+   
+  enddo                                    
   
   rt_sec_transport_vars%updated_conc = 0.d0
   rt_sec_transport_vars%sec_jac_update = PETSC_FALSE
