@@ -953,9 +953,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
 
     
 #if UGRID_DEBUG
-  write(string,*) option%myrank
-  string = 'connections_old' // trim(adjustl(string)) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'connections_old.out',viewer,ierr)
   call VecView(connections_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
