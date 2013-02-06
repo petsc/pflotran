@@ -468,6 +468,8 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   
   initial_flow_condition => initial_condition%flow_condition
   do cell = 1, rt_sec_transport_vars%ncells
+    global_auxvar => initial_condition%tran_condition% &
+                       constraint_coupler_list%global_auxvar
     rt_auxvar => rt_sec_transport_vars%sec_rt_auxvar(cell)
     if (associated(initial_flow_condition)) then
       if (associated(initial_flow_condition%pressure)) then

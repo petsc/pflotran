@@ -1094,6 +1094,17 @@ subroutine RealProcessTranConditions(realization)
     cur_constraint => cur_constraint%next
   enddo
   
+  if (option%use_mc) then
+    call ReactionProcessConstraint(realization%reaction, &
+                                   realization%sec_transport_constraint%name, &
+                                   realization%sec_transport_constraint%aqueous_species, &
+                                   realization%sec_transport_constraint%minerals, &
+                                   realization%sec_transport_constraint%surface_complexes, &
+                                   realization%sec_transport_constraint%colloids, &
+                                   realization%sec_transport_constraint%biomass, &
+                                   realization%option)
+  endif
+  
   ! tie constraints to couplers, if not already associated
   cur_condition => realization%transport_conditions%first
   do
