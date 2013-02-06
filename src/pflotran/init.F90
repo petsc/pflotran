@@ -3862,5 +3862,105 @@ subroutine InitPrintPFLOTRANHeader(option,fid)
   write(fid,'(" PFLOTRAN Header")') 
   
 end subroutine InitPrintPFLOTRANHeader
+
+! ************************************************************************** !
+!
+! InitReadVelocityField: Reads fluxes in for transport with no flow.
+! author: Glenn Hammond
+! date: 02/05/13
+!
+! ************************************************************************** !
+subroutine InitReadVelocityField(realization,filename)
+
+  use Realization_class
+  use Patch_module
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Coupler_module
+  use Connection_module
+  use Discretization_module
+  use HDF5_module
+
+  implicit none
   
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt :: idir, iconn, sum_connection
+  PetscInt :: ghosted_id_up, local_id
+  PetscErrorCode :: ierr
+  
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscReal, pointer :: vec_p(:)
+  type(coupler_type), pointer :: boundary_condition  
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  discretization => realization%discretization
+
+  group_name = ''
+  do idir = 1, 3
+    select case(idir)
+      case(1)
+        dataset_name = 'Internal Velocity X'
+      case(2)
+        dataset_name = 'Internal Velocity Y'
+      case(3)
+        dataset_name = 'Internal Velocity Z'
+    end select
+    call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
+                                      group_name,dataset_name,PETSC_FALSE)
+    call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc, &
+                                     ONEDOF)
+    call GridVecGetArrayF90(grid,field%work_loc,vec_loc_p,ierr)
+    connection_set_list => grid%internal_connection_set_list
+    cur_connection_set => connection_set_list%first
+    sum_connection = 0  
+    do 
+      if (.not.associated(cur_connection_set)) exit
+      do iconn = 1, cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        ghosted_id_up = cur_connection_set%id_up(iconn)
+        if (cur_connection_set%dist(idir,iconn) > 0.9d0) then
+          patch%internal_velocities(1,sum_connection) = vec_p(ghosted_id_up)
+        endif
+      enddo
+      cur_connection_set => cur_connection_set%next
+    enddo
+    call GridVecRestoreArrayF90(grid,field%work_loc,vec_loc_p,ierr)
+  enddo
+  
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    group_name = boundary_condition%name
+    dataset_name = 'Velocity'
+    call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
+                                      group_name,dataset_name,PETSC_FALSE)
+    call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      patch%boundary_velocities(1,sum_connection) = vec_p(local_id)
+    enddo
+    call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+    boundary_condition => boundary_condition%next
+  enddo
+  
+end subroutine InitReadVelocityField
+            
 end module Init_module
