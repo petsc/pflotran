@@ -3175,16 +3175,14 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
       value = option%myrank
+    ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
-#ifndef MULTI      
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
-#endif
-    case(SEC_MIN_VOLFRAC)
-#ifndef MULTI
       value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
-              sec_mnrl_volfrac(isubvar)
-#endif   
+              sec_rt_auxvar(isubvar)%pri_molal(1)
+    case(SEC_MIN_VOLFRAC)
+      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+              sec_mnrl_volfrac(1,isubvar)
      case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &

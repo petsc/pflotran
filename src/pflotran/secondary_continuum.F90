@@ -362,7 +362,6 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
     
 end subroutine SecondaryContinuumCalcLogSpacing
 
-#ifdef MULTI
 ! ************************************************************************** !
 !
 ! SecondaryRTAuxVarInit: Initializes all the secondary continuum reactive
@@ -510,7 +509,6 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   rt_sec_transport_vars%r = 0.d0
       
 end subroutine SecondaryRTAuxVarInit  
-#endif    
 
 
 end module Secondary_Continuum_module

@@ -91,10 +91,6 @@ ifdef no_vapor_diffusion
   MYFLAGS += -DNO_VAPOR_DIFFUSION
 endif
 
-ifdef multi
-  MYFLAGS += -DMULTI
-endif
-
 ifdef scco2
   MYFLAGS += -DCHUAN_CO2
 endif
