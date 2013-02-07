@@ -5214,7 +5214,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
-                  (conc_current_M - total_primary_node)
+                  (total_current_M - total_primary_node)
                   
   ! Calculate the jacobian contribution due to coupling term
   sec_jac = area_fm*pordiff/dm_plus(ngcells)*(b_m - identity)
