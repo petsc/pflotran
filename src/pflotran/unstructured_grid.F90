@@ -3210,11 +3210,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
     enddo
   enddo
 
-#ifdef MATCREATE_OLD  
-  call MatCreateMPIAIJ(option%mycomm, &
-#else
   call MatCreateAIJ(option%mycomm, &
-#endif
                        boundary_face_count, &
                        PETSC_DETERMINE, &
                        PETSC_DETERMINE, &
@@ -3718,11 +3714,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 
   ! Allocate memory for a matrix to saves mesh connectivity
   ! size(Mat_vert_to_cell) = global_num_cell x global_num_vertices
-#ifdef MATCREATE_OLD
-  call MatCreateMPIAIJ(option%mycomm, &
-#else
   call MatCreateAIJ(option%mycomm, &
-#endif
                     unstructured_grid%nlmax, &
                     PETSC_DETERMINE, &
                     PETSC_DETERMINE, &
@@ -3773,11 +3765,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 
     ! Create a matrix that saves natural id of vertices present on each
     ! processor
-#ifdef MATCREATE_OLD
-    call MatCreateMPIAIJ(option%mycomm, &
-#else
     call MatCreateAIJ(option%mycomm, &
-#endif
                       1, &
                       PETSC_DETERMINE, &
                       PETSC_DETERMINE, &

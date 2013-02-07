@@ -104,9 +104,7 @@ subroutine Init(simulation)
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
   PetscReal :: min_value
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: linesearch
-#endif
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer               :: surf_flow_stepper
   type(solver_type), pointer                :: surf_flow_solver
@@ -427,13 +425,8 @@ subroutine Init(simulation)
     end select
     
     ! by default turn off line search
-#ifndef HAVE_SNES_API_3_2
     call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-#else
-    call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
-                           PETSC_NULL_OBJECT,ierr)
-#endif
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 1) then
       string = '-flow_snes_view'
@@ -474,31 +467,19 @@ subroutine Init(simulation)
       case(RICHARDS_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%saturation_change_limit) > 0.d0) then
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
-#else        
-          call SNESLineSearchSetPreCheck(flow_solver%snes, &
-                                         RichardsCheckUpdatePre, &
-                                         realization,ierr)
-#endif
         endif
       case(THC_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCCheckUpdatePre, &
                                          realization,ierr)
-#else        
-          call SNESLineSearchSetPreCheck(flow_solver%snes, &
-                                         THCCheckUpdatePre, &
-                                         realization,ierr)
-#endif          
         endif
     end select
     
@@ -506,27 +487,15 @@ subroutine Init(simulation)
     if (option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
                                           realization,ierr)
-#else         
-          call SNESLineSearchSetPostCheck(flow_solver%snes, &
-                                          RichardsCheckUpdatePost, &
-                                          realization,ierr)
-#endif
         case(THC_MODE)
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCCheckUpdatePost, &
                                           realization,ierr)
-#else         
-          call SNESLineSearchSetPostCheck(flow_solver%snes, &
-                                          THCCheckUpdatePost, &
-                                          realization,ierr)
-#endif        
       end select
     endif
     
@@ -571,13 +540,8 @@ subroutine Init(simulation)
                           surf_flow_solver%Jpre, &
                           SurfaceFlowJacobian,simulation%surf_realization,ierr)
       ! by default turn off line search
-#ifndef HAVE_SNES_API_3_2
       call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-#else    
-      call SNESLineSearchSet(surf_flow_solver%snes,SNESLineSearchNo, &
-                            PETSC_NULL_OBJECT,ierr)
-#endif
 
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
@@ -663,13 +627,8 @@ subroutine Init(simulation)
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.
-#ifndef HAVE_SNES_API_3_2
       call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-#else       
-      call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
-                             PETSC_NULL_OBJECT,ierr)
-#endif      
     
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
@@ -701,14 +660,9 @@ subroutine Init(simulation)
       ! to fail
       if (associated(realization%reaction)) then
         if (realization%reaction%check_update) then
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
                                          realization,ierr)
-#else           
-          call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
-                                         realization,ierr)
-#endif          
         endif
       endif
     endif

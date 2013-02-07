@@ -339,11 +339,7 @@ end subroutine THCSetupPatch
 ! date: 08/02/12
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
-#else
-subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
-#endif
 
   use Realization_class
   use Grid_module
@@ -354,11 +350,7 @@ subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: P
   Vec :: dP
   ! ignore changed flag for now.
@@ -500,13 +492,8 @@ end subroutine THCCheckUpdatePre
 ! date: 07/25/12
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                    P1_changed,realization,ierr)
-#else
-subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
-                                   P1_changed,ierr)
-#endif
 
   use Realization_class
   use Grid_module
@@ -516,11 +503,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: P0
   Vec :: dP
   Vec :: P1
