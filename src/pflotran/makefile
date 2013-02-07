@@ -10,10 +10,6 @@ pflotran_test_dir = ../../regression_tests
 
 MYFLAGS = -I${objdir} 
 
-ifdef compile_broken
-  MYFLAGS += -DCOMPILE_BROKEN
-endif
-
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
@@ -31,20 +27,8 @@ ifdef radioactive_decay
   MYFLAGS += -DRADIOACTIVE_DECAY
 endif
 
-ifdef matcreate_old
-  MYFLAGS += -DMATCREATE_OLD
-endif
-
 ifdef mualem_spline
   MYFLAGS += -DMUALEM_SPLINE
-endif
-
-ifdef snes_old
-  MYFLAGS += -DHAVE_SNES_API_3_2
-endif
-
-ifdef snes_api_3_2
-  MYFLAGS += -DHAVE_SNES_API_3_2
 endif
 
 ifdef petsc_api_3_3
