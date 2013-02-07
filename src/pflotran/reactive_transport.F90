@@ -4991,12 +4991,16 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: aux_var
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
   type(global_auxvar_type) :: global_aux_var
-  type(reaction_type) :: reaction
+  type(reaction_type), pointer :: reaction
   type(option_type) :: option
-  PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp,sec_transport_vars%ncells-1)
-  PetscReal :: coeff_diag(reaction%naqcomp,reaction%naqcomp,sec_transport_vars%ncells)
-  PetscReal :: coeff_right(reaction%naqcomp,reaction%naqcomp,sec_transport_vars%ncells-1)
+  PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells-1)
+  PetscReal :: coeff_diag(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
+  PetscReal :: coeff_right(reaction%naqcomp,reaction%naqcomp, &
+                           sec_transport_vars%ncells-1)
   PetscReal :: res(sec_transport_vars%ncells*reaction%naqcomp)
   PetscReal :: rhs(sec_transport_vars%ncells*reaction%naqcomp)
   PetscReal :: D_M(reaction%naqcomp,reaction%naqcomp)
@@ -5004,14 +5008,14 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   PetscReal :: b_M(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: sec_jac(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: inv_D_M(reaction%naqcomp,reaction%naqcomp)
-  
   PetscReal :: conc_upd(reaction%naqcomp,sec_transport_vars%ncells) 
+  PetscReal :: total_upd(reaction%naqcomp,sec_transport_vars%ncells)
   PetscReal :: conc_prev(reaction%naqcomp,sec_transport_vars%ncells)
+  PetscReal :: total_prev(reaction%naqcomp,sec_transport_vars%ncells)
   PetscReal :: conc_current_M(reaction%naqcomp)
-
+  PetscReal :: total_current_M(reaction%naqcomp)
   PetscReal :: res_transport(reaction%naqcomp)
-  PetscReal :: conc_primary_node(reaction%naqcomp)
-  
+  PetscReal :: total_primary_node(reaction%naqcomp)
   PetscReal :: area(sec_transport_vars%ncells)
   PetscReal :: vol(sec_transport_vars%ncells)
   PetscReal :: dm_plus(sec_transport_vars%ncells)
@@ -5043,12 +5047,13 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   do j = 1, ncomp
     do i = 1, ngcells
       conc_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j)* &
-                  global_aux_var%den_kg(1)*1.d-3 
+                       global_aux_var%den_kg(1)*1.d-3 
+      total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
     enddo
   enddo
   
-  ! Note that sec_transport_vars%sec_conc units are in mol/kg
-  ! Need to convert to mol/L since the units of conc. in the Thomas 
+  ! Note that sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) units are in mol/kg
+  ! Need to convert to mol/L since the units of total. in the Thomas 
   ! algorithm are in mol/L 
   
   coeff_left = 0.d0
@@ -5060,14 +5065,14 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   identity = 0.d0
   b_M = 0.d0
   inv_D_M = 0.d0
+  total_upd = 0.d0 ! Need to calculate this from conc_upd
+  total_current_M = 0.d0
   
   
-  conc_primary_node = aux_var%total(:,1)                             ! in mol/L 
+  total_primary_node = aux_var%total(:,1)                             ! in mol/L 
   pordt = porosity/option%tran_dt
   pordiff = porosity*diffusion_coefficient            
               
- 
-
 !================ Calculate the secondary residual =============================        
 
   do j = 1, ncomp
@@ -5075,35 +5080,37 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
     ! Accumulation
     do i = 1, ngcells
       n = j + (i-1)*ncomp
-      res(n) = pordt*(conc_upd(j,i) - conc_prev(j,i))*vol(i)        ! in mol/L*m3/s
+      res(n) = pordt*(total_upd(j,i) - total_prev(j,i))*vol(i)    ! in mol/L*m3/s
     enddo
   
     ! Flux terms
     do i = 2, ngcells - 1
       n = j + (i-1)*ncomp
       res(n) = res(n) - pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))* &
-                        (conc_upd(j,i+1) - conc_upd(j,i))
+                        (total_upd(j,i+1) - total_upd(j,i))
       res(n) = res(n) + pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))* &
-                        (conc_upd(j,i) - conc_upd(j,i-1))                      
+                        (total_upd(j,i) - total_upd(j,i-1))                      
     enddo
          
               
     ! Apply boundary conditions
     ! Inner boundary
     res(j) = res(j) - pordiff*area(1)/(dm_minus(2) + dm_plus(1))* &
-                      (conc_upd(j,2) - conc_upd(j,1))
+                      (total_upd(j,2) - total_upd(j,1))
                                       
     ! Outer boundary
     res(j+(ngcells-1)*ncomp) = res(j+(ngcells-1)*ncomp) - &
                                pordiff*area(ngcells)/dm_plus(ngcells)* &
-                               (conc_primary_node(j) - conc_upd(j,ngcells))
+                               (total_primary_node(j) - total_upd(j,ngcells))
     res(j+(ngcells-1)*ncomp) = res(j+(ngcells-1)*ncomp) + &
                                pordiff*area(ngcells-1)/(dm_minus(ngcells) &
-                               + dm_plus(ngcells-1))*(conc_upd(j,ngcells) - &
-                               conc_upd(j,ngcells-1))  
+                               + dm_plus(ngcells-1))*(total_upd(j,ngcells) - &
+                               total_upd(j,ngcells-1))  
                                
   enddo
-                                                    
+                         
+  res = res*1.d3 ! Convert mol/L*m3/s to mol/s                                                    
+                                                                                                          
 !================ Calculate the secondary jacobian =============================        
 
 
@@ -5147,6 +5154,11 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
       endif
     enddo    
   enddo
+  
+  ! Convert mol/L*m3/s to mol/s
+  coeff_right = coeff_right*1.d3
+  coeff_left = coeff_left*1.d3
+  coeff_diag = coeff_diag*1.d3
          
 !===============================================================================        
                         
@@ -5180,6 +5192,13 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
     conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
   enddo
   
+  ! Update the secondary continuum totals at the outer matrix node
+  rt_auxvar => sec_transport_vars%sec_rt_auxvar(ngcells)
+  rt_auxvar%pri_molal(1:ncomp) = conc_current_M/(global_aux_var%den_kg(1)*1.d-3) ! in mol/kg
+  call RTotal(rt_auxvar,global_aux_var,reaction,option)
+  
+  total_current_M = rt_auxvar%total(:,1)
+  
   b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M
   
   ! Reset identity matrix
@@ -5195,7 +5214,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
-                  (conc_current_M - conc_primary_node)
+                  (conc_current_M - total_primary_node)
                   
   ! Calculate the jacobian contribution due to coupling term
   sec_jac = area_fm*pordiff/dm_plus(ngcells)*(b_m - identity)

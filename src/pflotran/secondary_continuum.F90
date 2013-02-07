@@ -452,7 +452,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   allocate(rt_sec_transport_vars%sec_jac(reaction%naqcomp,reaction%naqcomp))    
   allocate(rt_sec_transport_vars%updated_conc(reaction%naqcomp, &
            rt_sec_transport_vars%ncells))
-                 
+           
   ! Allocate diagonal terms
   allocate(rt_sec_transport_vars%cxm(reaction%naqcomp,reaction%naqcomp,&
            rt_sec_transport_vars%ncells-1)) 
@@ -551,6 +551,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   use Option_module 
   use Global_Aux_module
   use Reaction_Aux_module
+  use Reaction_module
   use Reactive_Transport_Aux_module
   use blksolv_module
   use Utility_module
@@ -561,7 +562,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
-  type(reaction_type) :: reaction
+  type(reaction_type), pointer :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
                  sec_transport_vars%ncells-1)
@@ -641,7 +642,11 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
         global_aux_var%den_kg(1)/1.d-3
     enddo
   enddo
-   
+  
+  do i = 1, ngcells
+    call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_aux_var, &
+                reaction,option)
+  enddo
 
 end subroutine SecondaryRTAuxVarComputeMulti
 
