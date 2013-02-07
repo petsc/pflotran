@@ -187,7 +187,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string, hint
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, card
   PetscInt :: fileid, icell, iconn, irank, remainder, temp_int, num_to_read
   
   PetscInt :: num_cells, num_connections
