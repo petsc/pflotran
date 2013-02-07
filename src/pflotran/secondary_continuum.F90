@@ -461,7 +461,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   allocate(rt_sec_transport_vars%cdl(reaction%naqcomp,reaction%naqcomp,&
            rt_sec_transport_vars%ncells)) 
   allocate(rt_sec_transport_vars% &
-           rhs(reaction%naqcomp*rt_sec_transport_vars%ncells))
+           r(reaction%naqcomp*rt_sec_transport_vars%ncells))
            
   
   initial_flow_condition => initial_condition%flow_condition
@@ -530,7 +530,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   rt_sec_transport_vars%cxm = 0.d0
   rt_sec_transport_vars%cxp = 0.d0
   rt_sec_transport_vars%cdl = 0.d0
-  rt_sec_transport_vars%rhs = 0.d0
+  rt_sec_transport_vars%r = 0.d0
       
 end subroutine SecondaryRTAuxVarInit  
 
@@ -551,7 +551,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   use Option_module 
   use Global_Aux_module
   use Reaction_Aux_module
-  use Reaction_module
   use Reactive_Transport_Aux_module
   use blksolv_module
   use Utility_module
@@ -561,9 +560,8 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: aux_var
-  type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_aux_var
-  type(reaction_type), pointer :: reaction
+  type(reaction_type) :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
                  sec_transport_vars%ncells-1)
@@ -614,16 +612,16 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   coeff_right = 0.d0
   rhs = 0.d0
   
+  conc_primary_node = aux_var%total(:,1)                             ! in mol/L 
   pordt = porosity/option%tran_dt
   pordiff = porosity*diffusion_coefficient            
               
-    
   ! Use the stored coefficient matrices from LU decomposition of the
   ! block triagonal sytem
   coeff_left = sec_transport_vars%cxm
   coeff_right = sec_transport_vars%cxp
   coeff_diag = sec_transport_vars%cdl
-  rhs = sec_transport_vars%rhs
+  rhs = sec_transport_vars%r
         
   call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
   
@@ -634,9 +632,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
     enddo
   enddo
 
-  ! Mineral linear kinetics  
-  
-  
 
   ! Convert the units of sec_conc from mol/L to mol/kg before passing to
   ! sec_transport_vars
@@ -646,12 +641,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
         global_aux_var%den_kg(1)/1.d-3
     enddo
   enddo
-  
-  do i = 1, ngcells
-    call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_aux_var,reaction, &
-                option)
-  enddo
-  
+   
 
 end subroutine SecondaryRTAuxVarComputeMulti
 
@@ -850,7 +840,6 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,aux_var,global_aux_var, &
 
 
 end subroutine MphaseSecHeatAuxVarCompute
-
 
 end module Secondary_Continuum_module
             

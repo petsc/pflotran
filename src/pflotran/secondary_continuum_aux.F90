@@ -66,7 +66,7 @@ module Secondary_Continuum_Aux_module
     PetscReal, pointer :: cxm(:,:,:)           ! stores the coeff of left diag in block triag system (ncomp x ncomp x ncells-1)
     PetscReal, pointer :: cxp(:,:,:)           ! stores the coeff of right diag in block triag system (ncomp x ncomp x ncells-1)
     PetscReal, pointer :: cdl(:,:,:)           ! stores the coeff of central diag in block triag system (ncomp x ncomp x ncells)
-    PetscReal, pointer :: rhs(:)                 ! stores the solution of the forward solve
+    PetscReal, pointer :: r(:)                 ! stores the solution of the forward solve
   end type sec_transport_type  
         
 
@@ -178,7 +178,6 @@ subroutine SecondaryAuxRTDestroy(aux)
   nullify(aux)  
 
 end subroutine SecondaryAuxRTDestroy
-
 
 end module Secondary_Continuum_Aux_module
             

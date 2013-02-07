@@ -2717,7 +2717,6 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Mineral_module
   use Output_Aux_module
   use Variables_module
-  use Secondary_Continuum_Aux_module
 
   implicit none
 
@@ -3176,7 +3175,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
       value = option%myrank
-    ! Need to fix the below two cases -- SK 02/06/13  
+    ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
       value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
@@ -3184,7 +3183,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     case(SEC_MIN_VOLFRAC)
       value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(1)
-    case default
+     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
             ivar
