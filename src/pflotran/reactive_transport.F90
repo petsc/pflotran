@@ -5156,7 +5156,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
     enddo    
   enddo
   
-  ! Convert mol/L*m3/s to mol/s
+  ! Convert m3/s to L/s
   coeff_right = coeff_right*1.d3
   coeff_left = coeff_left*1.d3
   coeff_diag = coeff_diag*1.d3
@@ -5166,18 +5166,21 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   do i = 1, ngcells
     res_react = 0.d0
     jac_react = 0.d0
+!    For a more general case    
 !    call RReaction(res_react,jac_react,PETSC_TRUE, &
 !                  sec_transport_vars%sec_rt_auxvar(i), &
 !                  global_aux_var,porosity,vol(i),reaction,option)
     if (reaction%mineral%nkinmnrl > 0) then
-      call RKineticMineral(res_react,jac_react,PETSC_TRUE, &
+      call RKineticMineral(res_react,jac_react,PETSC_FALSE, &
                            sec_transport_vars%sec_rt_auxvar(i), &
                            global_aux_var,vol(i),reaction,option)
+      ! Note jac_react here is in kg water/s                     
     endif
     do j = 1, ncomp
       res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j)
     enddo
-    coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react
+    coeff_diag(:,:,i) = coeff_diag(:,:,i) + &
+                          jac_react/(global_aux_var%den_kg(1)*.1d-3) ! in L/s
   enddo
   
          
