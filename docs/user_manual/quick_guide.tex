@@ -1446,7 +1446,7 @@ where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock
 
 \subsection{Mode: {\tt THC} (Thermal-Hydrologic-Chemical)}
 
-The current implementation of the {\tt THC} mode applies only to mass and energy conservation equations and a single tracer ($i=1$ in Eqn.\eqref{thc} below). Future generalizations will include multicomponent variable density fluids.
+The current implementation of the {\tt THC} mode applies only to mass and energy conservation equations and a single tracer ($i=1$ in Eqn.\eqref{thc} below) which are solved fully coupled. The conservation equation for the tracer is coupled to the mass and energy equations through the Darcy velocity $\bq$, saturation $s$, temperature $T$ and pressure $P$. However, for fluid density only a function of $T$ and $P$, the mass and energy conservation equations are not coupled to the tracer equation and, therefore, they could be solved independently from the tracer equation although this is not done in the {\tt THC} mode. Future generalizations of the {\tt THC} mode will include multicomponent variable density fluids.
 In the current implementation the THC equations may be coupled to the reactive transport mode (see Section \ref{sec:chem}).
 
 {\tt THC} mode applies to single phase, variably saturated, nonisothermal systems
