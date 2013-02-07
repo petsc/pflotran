@@ -2410,6 +2410,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
+  use Secondary_Continuum_module
   use Secondary_Continuum_Aux_module
   
   implicit none
