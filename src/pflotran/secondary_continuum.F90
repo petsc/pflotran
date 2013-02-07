@@ -571,18 +571,13 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   PetscReal :: coeff_right(reaction%naqcomp,reaction%naqcomp, &
                  sec_transport_vars%ncells-1)
   PetscReal :: rhs(sec_transport_vars%ncells*reaction%naqcomp)
-  
   PetscReal :: conc_upd(reaction%naqcomp,sec_transport_vars%ncells) 
-
   PetscReal :: res_transport(reaction%naqcomp)
   PetscReal :: conc_primary_node(reaction%naqcomp)
-  
   PetscReal :: area(sec_transport_vars%ncells)
   PetscReal :: vol(sec_transport_vars%ncells)
   PetscReal :: dm_plus(sec_transport_vars%ncells)
   PetscReal :: dm_minus(sec_transport_vars%ncells)
-
-  
   PetscInt :: i, j, k, n
   PetscInt :: ngcells, ncomp
   PetscReal :: area_fm
@@ -591,7 +586,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   PetscReal, parameter :: rgas = 8.3144621d-3
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
-  
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
   PetscInt :: d

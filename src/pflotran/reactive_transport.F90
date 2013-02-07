@@ -5011,7 +5011,6 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   PetscReal :: inv_D_M(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: conc_upd(reaction%naqcomp,sec_transport_vars%ncells) 
   PetscReal :: total_upd(reaction%naqcomp,sec_transport_vars%ncells)
-  PetscReal :: conc_prev(reaction%naqcomp,sec_transport_vars%ncells)
   PetscReal :: total_prev(reaction%naqcomp,sec_transport_vars%ncells)
   PetscReal :: conc_current_M(reaction%naqcomp)
   PetscReal :: total_current_M(reaction%naqcomp)
@@ -5047,7 +5046,6 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
 
   do j = 1, ncomp
     do i = 1, ngcells
-      conc_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j)
       total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
     enddo
   enddo
@@ -5216,7 +5214,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   
   ! Update the secondary continuum totals at the outer matrix node
   rt_auxvar => sec_transport_vars%sec_rt_auxvar(ngcells)
-  rt_auxvar%pri_molal(1:ncomp) = conc_current_M ! in mol/kg
+  rt_auxvar%pri_molal = conc_current_M ! in mol/kg
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
   
   total_current_M = rt_auxvar%total(:,1)
