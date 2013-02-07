@@ -310,9 +310,11 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call UGridReadHDF5PIOLib(un_str_grid,discretization%filename,option)
 #else
             call UGridReadHDF5(un_str_grid,discretization%filename,option)
-#endif ! #ifdef PARALLELIO_LIB
+#endif
+! #ifdef PARALLELIO_LIB
 
-#endif !#if !defined(PETSC_HAVE_HDF5)
+#endif
+!#if !defined(PETSC_HAVE_HDF5)
 
           else
             call UGridRead(un_str_grid,discretization%filename,option)

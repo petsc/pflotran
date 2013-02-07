@@ -650,7 +650,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('UPDATE_ARMOR_MINERAL_SURFACE')
         reaction%update_armor_mineral_surface = PETSC_TRUE
       case('UPDATE_ARMOR_MINERAL_SURFACE_FLAG')
-        reaction%update_armor_mineral_surface = 0
+        reaction%update_armor_mineral_surface = PETSC_TRUE
       case('MOLAL','MOLALITY')
         reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
@@ -3325,8 +3325,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     enddo
     ! immobile species
     do jcomp = 1, reaction%nimcomp
+      Res_pert = 0.d0
       call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
       ! leave pri_molal, total, total sorbed as is; just copy
+      pert = rt_auxvar_pert%immobile(jcomp)*perturbation_tolerance
       rt_auxvar_pert%immobile(jcomp) = rt_auxvar_pert%immobile(jcomp) + pert
       call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                      global_auxvar,porosity,volume,reaction,option)    
@@ -3335,7 +3337,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       joffset = reaction%offset_immobile + jcomp
       do icomp = 1, reaction%ncomp
         Jac(icomp,joffset) = Jac(icomp,joffset) + &
-                           (Res_pert(joffset)-Res_orig(joffset))/pert
+                           (Res_pert(icomp)-Res_orig(icomp))/pert
       enddo
     enddo
     

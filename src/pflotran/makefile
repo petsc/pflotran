@@ -10,17 +10,6 @@ pflotran_test_dir = ../../regression_tests
 
 MYFLAGS = -I${objdir} 
 
-# if compiling pflotran_rxn or libpflotranchem.a, need to define PFLOTRAN_RXN 
-# and toggle PFLOTRAN_RXN_FLAG
-ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
-  PFLOTRAN_RXN_FLAG := 1
-  MYFLAGS += -DPFLOTRAN_RXN
-endif
-
-ifdef compile_broken
-  MYFLAGS += -DCOMPILE_BROKEN
-endif
-
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
@@ -38,20 +27,8 @@ ifdef radioactive_decay
   MYFLAGS += -DRADIOACTIVE_DECAY
 endif
 
-ifdef matcreate_old
-  MYFLAGS += -DMATCREATE_OLD
-endif
-
 ifdef mualem_spline
   MYFLAGS += -DMUALEM_SPLINE
-endif
-
-ifdef snes_old
-  MYFLAGS += -DHAVE_SNES_API_3_2
-endif
-
-ifdef snes_api_3_2
-  MYFLAGS += -DHAVE_SNES_API_3_2
 endif
 
 ifdef petsc_api_3_3
@@ -126,8 +103,8 @@ ifdef dasvyat_test_cut
   MYFLAGS += -DDASVYAT_TEST_CUT
 endif
 
-ifdef gautam
-  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW -DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+ifdef ugrid_debug
+  MYFLAGS += -DUGRID_DEBUG
 endif
 
 ifdef surface_flow
@@ -167,6 +144,7 @@ endif
 
 util_obj  = \
 	${common_src}input.o \
+	${common_src}logging.o \
 	${common_src}matrix_block_aux.o \
 	${common_src}option.o \
 	${common_src}output_aux.o \
@@ -284,7 +262,6 @@ misc_obj = \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}level.o \
-	${common_src}logging.o \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
 	${common_src}patch.o \

@@ -190,12 +190,7 @@ subroutine SolverSetSNESOptions(solver)
   
   type(solver_type) :: solver
 
-#ifndef HAVE_SNES_API_3_2  
   SNESLineSearch :: linesearch
-#else
-  ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
-  PetscReal :: alpha, maxstep, steptol
-#endif
   PetscErrorCode :: ierr
   PetscInt :: i
   
@@ -247,16 +242,11 @@ subroutine SolverSetSNESOptions(solver)
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes,ierr) 
 
-#ifndef HAVE_SNES_API_3_2
   call SNESGetSNESLineSearch(solver%snes, linesearch, ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
           PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
           PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
           PETSC_DEFAULT_INTEGER, ierr)
-#else   
-  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol,ierr)  
-  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%newton_stol,ierr)  
-#endif
 
   call SNESGetTolerances(solver%snes,solver%newton_atol,solver%newton_rtol, &
                          solver%newton_stol,solver%newton_maxit, &
@@ -941,10 +931,10 @@ subroutine SolverCheckCommandLine(solver)
 
   ! Parse the options to determine if the matrix type has been specified.
   call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present,ierr)
-  if (is_present) solver%J_mat_type = mat_type
+  if (is_present) solver%J_mat_type = trim(mat_type)
   
   call PetscOptionsGetString(prefix, '-pre_mat_type', mat_type, is_present,ierr)
-  if (is_present) solver%Jpre_mat_type = mat_type
+  if (is_present) solver%Jpre_mat_type = trim(mat_type)
 
   ! Parse the options for the Galerkin multigrid solver.
   ! Users can specify the number of levels of coarsening via the 

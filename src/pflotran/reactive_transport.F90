@@ -337,32 +337,20 @@ end subroutine RTSetupPatch
 ! date: 03/16/09
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
-#else
-subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
-#endif
  
   use Realization_class
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: C
   Vec :: dC
   PetscBool :: changed
   type(realization_type) :: realization
   PetscErrorCode :: ierr
 
-#ifndef HAVE_SNES_API_3_2
   call RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
-#else
-  call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
-#endif
 
 end subroutine RTCheckUpdate
 
@@ -374,22 +362,14 @@ end subroutine RTCheckUpdate
 ! date: 03/16/09
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
-#else
-subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
-#endif
 
   use Realization_class
   use Grid_module
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: C
   Vec :: dC
   type(realization_type) :: realization

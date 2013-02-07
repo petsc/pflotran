@@ -622,8 +622,11 @@ for the $n$th control volume with volume $V_n$ and interfacial area $A_{nn'}$, w
 F_{nn'}^{k+1} \eq \big(\rho_{nn'}\big)_{nn'}^{k+1} \, \big(q\big)_{nn'}^{k+1}.
 \EN
 The Darcy velocity $q_{nn'}$ is evaluated as (the superscript $k+1$ is omitted in the following)
+%\EQ
+%q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n}{d_{n'}+d_n}-W_w \rho_{nn'} g z_{nn'}\right],
+%\EN
 \EQ
-q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n}{d_{n'}+d_n}-W_w \rho_{nn'} g z_{nn'}\right],
+q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'}}{d_{n'}+d_n}\right],
 \EN
 where the subscript $nn'$ implies the quantity is evaluated at the interface between $n$ and $n'$. The density $\rho_{nn'}$ is set equal to the inverse distance mean ({\em not} arithmetic mean)
 \EQ
@@ -646,8 +649,11 @@ where
 \end{array} \right.
 \EN
 where $q_{nn'} > 0$ for flow from $n$ to $n'$, and $q_{nn'} < 0$ for flow from $n'$ to $n$. Combining these relations it follows that
+%\EQ
+%q_{nn'}\eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big[P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'} (d_{n'}+d_n)\Big].
+%\EN
 \EQ
-q_{nn'}\eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big[P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'} (d_{n'}+d_n)\Big].
+q_{nn'}\eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big[P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'}\Big].
 \EN
 
 \subsubsection{Jacobian}
@@ -677,16 +683,29 @@ and
 \frac{\p F_{nn'}}{\p P_{n'}} \eq \omega_{n'} \frac{\p\rho_n}{\p P_{n'}} q_{nn'} + \rho_{nn'} \frac{\p q_{nn'}}{\p P_{n'}},
 \EN
 with
+%\EQ
+%\frac{\p q_{nn'}}{\p P_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
+%\lambda_{nn'} - \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
+%\right\},
+%\EN
+%and
+%\EQ
+%\frac{\p q_{nn'}}{\p P_{n'}} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
+%\lambda_{nn'} + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
+%\right\}.
+%\EN
 \EQ
-\frac{\p q_{nn'}}{\p P_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
-\lambda_{nn'} - \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
-\right\},
+\frac{\p q_{nn'}}{\p P_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
+\lambda_{nn'} \left\{ 1 + W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial P_n} \right\}
++ \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
+,
 \EN
 and
 \EQ
-\frac{\p q_{nn'}}{\p P_{n'}} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
-\lambda_{nn'} + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
-\right\}.
+\frac{\p q_{nn'}}{\p P_{n'}} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
+\lambda_{nn'} \left\{ -1 + W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial P_{n'}} \right\}
+ + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
+.
 \EN
 
 \begin{comment}

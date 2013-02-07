@@ -226,9 +226,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
 ! PARALLELIO_LIB_WRITE
 
   if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // filename
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
   else
-    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
   endif
   call printMsg(option)
 
@@ -590,9 +590,9 @@ subroutine OutputHDF5UGrid(realization_base)
   endif
 
   if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // filename
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
   else
-    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
   endif
   call printMsg(option)
 
@@ -635,9 +635,9 @@ subroutine OutputHDF5UGrid(realization_base)
   call h5pclose_f(prop_id,hdf5_err)
 
   if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // filename
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
   else
-    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
   endif
   call printMsg(option)
 
@@ -968,9 +968,9 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   call h5pclose_f(prop_id,hdf5_err)
 
   if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // filename
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
   else
-    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
   endif
   call printMsg(option)
 
@@ -1943,7 +1943,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
   call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
-  realization_base%output_option%xmf_vert_len=dims(1)
+  realization_base%output_option%xmf_vert_len=int(dims(1))
 
   ! file space which is a 2D block
   rank_mpi = 1

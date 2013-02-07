@@ -3667,25 +3667,21 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-!           patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1) = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-!           patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%pres = vec_ptr(ghosted_id)
-                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1) = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(ghosted_id))%pres(1) = vec_ptr(ghosted_id)
               enddo
             endif
           case(GAS_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-!           patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2) = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-!           patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%pres = vec_ptr(ghosted_id)
-                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2) = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(ghosted_id))%pres(2) = vec_ptr(ghosted_id)
               enddo
             endif
           case(LIQUID_SATURATION)
@@ -3881,7 +3877,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
-              patch%aux%Global%aux_vars(ghosted_id)%istate = int(vec_ptr(local_id)+1.d-10)
+              patch%aux%Global%aux_vars(grid%nL2G(local_id))%istate = int(vec_ptr(local_id)+1.d-10)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
@@ -4028,10 +4024,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
     case(MATERIAL_ID)
       if (vec_format == GLOBAL) then
         do local_id=1,grid%nlmax
-          patch%imat(grid%nL2G(local_id)) = vec_ptr(local_id)
+          patch%imat(grid%nL2G(local_id)) = int(vec_ptr(local_id))
         enddo
       else if (vec_format == LOCAL) then
-        patch%imat(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
+        patch%imat(1:grid%ngmax) = int(vec_ptr(1:grid%ngmax))
       endif
     case(PROCESSOR_ID)
       call printErrMsg(option, &
@@ -4447,6 +4443,7 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
 
 end subroutine PatchGetDataset2
 
-#endif ! SURFACE_FLOW
+#endif
+! SURFACE_FLOW
 
 end module Patch_module
