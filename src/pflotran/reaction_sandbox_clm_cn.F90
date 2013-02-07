@@ -131,7 +131,6 @@ subroutine CLM_CN_Read(this,input,option)
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word
-  PetscReal :: temp_real
   
   type(pool_type), pointer :: new_pool, prev_pool
   type(clm_cn_reaction_type), pointer :: new_reaction, prev_reaction
@@ -188,6 +187,7 @@ subroutine CLM_CN_Read(this,input,option)
         new_reaction%rate_constant = -999.d0
         new_reaction%respiration_fraction = -999.d0
         new_reaction%inhibition_constant = 0.d0
+        nullify(new_reaction%next)
         
         do 
           call InputReadFlotranString(input,option)
@@ -346,7 +346,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   
   ! allocate and initialize arrays
   allocate(this%CN_ratio(this%npool))
-  allocate(this%pool_id_to_species_id(0,2:this%npool))
+  allocate(this%pool_id_to_species_id(0:2,this%npool))
   allocate(this%upstream_pool_id(this%nrxn))
   allocate(this%downstream_pool_id(this%nrxn))
   allocate(this%inhibitor_id(this%nrxn))
@@ -384,7 +384,7 @@ subroutine CLM_CN_Map(this,reaction,option)
         GetImmobileSpeciesIDFromName(word,reaction%immobile, &
                                      PETSC_FALSE,option)
       this%pool_id_to_species_id(0,icount) = 2
-      if (minval(this%pool_id_to_species_id) <= 0) then
+      if (minval(this%pool_id_to_species_id(:,icount)) <= 0) then
         option%io_buffer = 'For CLM_CN pools with no CN ratio defined, ' // &
           'the user must define two immobile species with the same name ' // &
           'as the pool with "C" or "N" appended, respectively.'
@@ -464,10 +464,10 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
 
   PetscInt, parameter :: iphase = 1
   PetscInt :: ipool_up, ipool_down
-  PetscInt :: ispec_up, ispec_down
-  PetscInt :: ispecC_up, ispecN_up
-  PetscInt :: ires_up, ires_dn, ires_c, ires_n
-  PetscInt :: iresC_up, iresN_up
+  PetscInt :: ispec_pool_down
+  PetscInt :: ispecC_pool_up, ispecN_pool_up
+  PetscInt :: ires_pool_down, ires_C, ires_N
+  PetscInt :: iresC_pool_up, iresN_pool_up
   PetscReal :: drate, rate_const, rate
   PetscInt :: irxn
   
@@ -482,17 +482,23 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal, parameter :: twelve_over_14 = 0.857142857143d0
 
   PetscReal :: CN_ratio_up
+  PetscBool :: constant_CN_ratio_up
   PetscReal :: resp_frac
   PetscReal :: stoich_N
   PetscReal :: stoich_C
   PetscReal :: stoich_downstream_pool
-  PetscReal :: stoich_upstream_pool
   PetscReal :: stoich_upstreamC_pool, stoich_upstreamN_pool
   
   PetscReal :: inhibition_conc, species_inhibition, d_species_inhibition
   PetscInt :: inhibitor_id, ires_inhibitor
-  PetscReal :: drate_inhibited
+  PetscReal :: drate_dinhibition
   PetscReal :: temp_real, u, d
+  
+  PetscReal :: dCN_ratio_up_dC_pool_up, dCN_ratio_up_dN_pool_up
+  PetscReal :: dstoich_upstreamN_pool_dC_pool_up
+  PetscReal :: du_dCN_ratio_up
+  PetscReal :: dstoich_N_dC_pool_up
+  PetscReal :: dstoich_N_dN_pool_up
   
   ! inhibition due to temperature
   ! Equation: F_t = exp(308.56*(1/17.02 - 1/(T - 227.13)))
@@ -508,14 +514,14 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   constant_inhibition = F_t * F_theta
   
   ! indices for C and N species
-  ires_c = reaction%offset_immobile + this%C_species_id
-  ires_n = reaction%offset_immobile + this%N_species_id
+  ires_C = reaction%offset_immobile + this%C_species_id
+  ires_N = reaction%offset_immobile + this%N_species_id
 
     ! Litter pools
   do irxn = 1, this%nrxn
   
     ipool_up = this%upstream_pool_id(irxn)
-    ispec_up = 0 ! this serves as a flag regardless of whether it is set later
+    ispecC_pool_up = 0 ! this serves as a flag regardless of whether it is set later
     
     rate_const = this%rate_constant(irxn)*constant_inhibition
     resp_frac = this%respiration_fraction(irxn)
@@ -532,34 +538,35 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     else 
       inhibitor_id = 0
       species_inhibition = 1.d0
+      drate_dinhibition = 0.d0
     endif
     
     ! contributions for pools of carbon/nitrogen
+    ispecC_pool_up = this%pool_id_to_species_id(1,ipool_up)
+    stoich_upstreamC_pool = -1.d0 ! always -1.d0
+    rate = rate_const * rt_auxvar%immobile(ispecC_pool_up) * species_inhibition
+
     if (this%pool_id_to_species_id(0,ipool_up) == 2) then
       ! upstream pool is Litter pool with two species (C,N)
-      ispecC_up = this%pool_id_to_species_id(1,ipool_up)
-      ispecN_up = this%pool_id_to_species_id(2,ipool_up)
-      CN_ratio_up = rt_auxvar%immobile(ispecC_up) / &
-                    rt_auxvar%immobile(ispecN_up)
+      constant_CN_ratio_up = PETSC_FALSE
+      ispecN_pool_up = this%pool_id_to_species_id(2,ipool_up)
+      CN_ratio_up = rt_auxvar%immobile(ispecC_pool_up) / &
+                    rt_auxvar%immobile(ispecN_pool_up)
       ! right now, rate calculated based on carbon
-      rate = rate_const * rt_auxvar%immobile(ispecC_up) * species_inhibition
-      stoich_upstreamC_pool = -1.d0
       stoich_upstreamN_pool = stoich_upstreamC_pool / CN_ratio_up
     else
       ! upstream pool is an SOM pool with one species
-      ispec_up = this%pool_id_to_species_id(1,ipool_up)
+      constant_CN_ratio_up = PETSC_TRUE
       CN_ratio_up = this%CN_ratio(ipool_up)
-      rate = rate_const * rt_auxvar%immobile(ispec_up) * species_inhibition
-      stoich_upstream_pool = -1.d0
     endif
 
-    ipool_down = this%upstream_pool_id(irxn)
+    ipool_down = this%downstream_pool_id(irxn)
     if (ipool_down > 0) then
       ! downstream pool is always SOM
-      ispec_down = this%pool_id_to_species_id(1,ipool_down)
+      ispec_pool_down = this%pool_id_to_species_id(1,ipool_down)
       d = twelve_over_14/this%CN_ratio(ipool_down)
     else
-      ispec_down = 0
+      ispec_pool_down = 0
       d = 0.d0
     endif
 
@@ -572,73 +579,96 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     ! calculation of residual
     
     ! carbon
-    Res(ires_c) = Res(ires_c) - stoich_C * rate
+    Res(ires_C) = Res(ires_C) - stoich_C * rate
     ! nitrogen
-    Res(ires_n) = Res(ires_n) - stoich_N * rate
+    Res(ires_N) = Res(ires_N) - stoich_N * rate
 
-    if (ispec_up == 0) then ! C and N separate
-      ! C species in upstream pool
-      iresC_up = reaction%offset_immobile + ispecC_up
-      Res(iresC_up) = Res(iresC_up) - stoich_upstreamC_pool * rate
+    ! C species in upstream pool
+    iresC_pool_up = reaction%offset_immobile + ispecC_pool_up
+    Res(iresC_pool_up) = Res(iresC_pool_up) - stoich_upstreamC_pool * rate
+    if (.not.constant_CN_ratio_up) then ! For Litter pools N is separate dof
       ! N species in upstream pool
-      iresN_up = reaction%offset_immobile + ispecN_up
-      Res(iresN_up) = Res(iresN_up) - stoich_upstreamN_pool * rate
-    else
-      ! upstream pool
-      ires_up = reaction%offset_immobile + ispec_up
-      Res(ires_up) = Res(ires_up) - stoich_upstream_pool * rate
+      iresN_pool_up = reaction%offset_immobile + ispecN_pool_up
+      Res(iresN_pool_up) = Res(iresN_pool_up) - stoich_upstreamN_pool * rate
     endif
     
-    if (ispec_down > 0) then
+    if (ispec_pool_down > 0) then
       ! downstream pool
       stoich_downstream_pool = 1.d0 - resp_frac
-      ires_dn = reaction%offset_immobile + ispec_down
-      Res(ires_dn) = Res(ires_dn) - stoich_downstream_pool * rate
+      ires_pool_down = reaction%offset_immobile + ispec_pool_down
+      Res(ires_pool_down) = Res(ires_pool_down) - stoich_downstream_pool * rate
     endif
     
     if (compute_derivative) then
       drate = rate_const * species_inhibition
-      drate_inhibited = rate / species_inhibition * d_species_inhibition
-      ! upstream pool
-      if (ispec_up == 0) then ! C and N separate
-        Jac(iresC_up,iresC_up) = Jac(iresC_up,iresC_up) + &
-          stoich_upstreamC_pool * drate
-        Jac(iresN_up,iresN_up) = Jac(iresN_up,iresN_up) + &
-          stoich_upstreamN_pool * drate
-        if (inhibitor_id > 0) then
-          Jac(iresC_up,ires_inhibitor) = Jac(iresC_up,ires_inhibitor) + &
-            stoich_upstreamC_pool * drate_inhibited
-          Jac(iresN_up,ires_inhibitor) = Jac(iresN_up,ires_inhibitor) + &
-            stoich_upstreamN_pool * drate_inhibited
-        endif
-        ! set index of Jacobian column for downstream pool, C and N.
-        ires_up = iresC_up
-      else
-        Jac(ires_up,ires_up) = Jac(ires_up,ires_up) + &
-          stoich_upstream_pool * drate
-        if (inhibitor_id > 0) then
-          Jac(ires_up,ires_inhibitor) = Jac(ires_up,ires_inhibitor) + &
-            stoich_upstream_pool * drate_inhibited
-        endif
+      
+      ! upstream pool or upstream C pool
+      Jac(iresC_pool_up,iresC_pool_up) = Jac(iresC_pool_up,iresC_pool_up) + &
+        stoich_upstreamC_pool * drate
+      if (inhibitor_id > 0) then
+        drate_dinhibition = rate / species_inhibition * d_species_inhibition
+        Jac(iresC_pool_up,ires_inhibitor) = Jac(iresC_pool_up,ires_inhibitor) + &
+          stoich_upstreamC_pool * drate_dinhibition
       endif
+      
+      ! variable upstream N pool
+      if (.not.constant_CN_ratio_up) then ! C and N separate
+
+        ! Since CN_ratio is a function of unknowns, other derivatives to 
+        ! calculate
+        dCN_ratio_up_dC_pool_up = 1.d0 / rt_auxvar%immobile(ispecN_pool_up)
+        dCN_ratio_up_dN_pool_up = -1.d0 * CN_ratio_up / &
+                                  rt_auxvar%immobile(ispecN_pool_up)
+        
+        ! stoich_upstreamC_pool = -1.d0
+        ! stoich_upstreamN_pool = stoich_upstreamC_pool / CN_ratio_up        
+        ! dstoich_upstreamC_pool_dCup = 0.
+        dstoich_upstreamN_pool_dC_pool_up = -1.d0 * stoich_upstreamN_pool / &
+                                         CN_ratio_up * dCN_ratio_up_dC_pool_up
+        ! 
+        ! stoich_N = u - (1.d0 - resp_frac) * d
+        !   constants: d, resp_frac
+        !   u = twelve_over_14/CN_ratio_up
+        !   CN_ratio_up = f(Cup,Nup)
+        du_dCN_ratio_up = -1.d0 * u / CN_ratio_up
+        dstoich_N_dC_pool_up = du_dCN_ratio_up * dCN_ratio_up_dC_pool_up
+        dstoich_N_dN_pool_up = du_dCN_ratio_up * dCN_ratio_up_dN_pool_up
+
+        Jac(iresN_pool_up,iresN_pool_up) = Jac(iresN_pool_up,iresN_pool_up) + &
+          stoich_upstreamN_pool * drate
+        Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) + &
+          dstoich_upstreamN_pool_dC_pool_up * rate
+        if (inhibitor_id > 0) then
+          Jac(iresN_pool_up,ires_inhibitor) = Jac(iresN_pool_up,ires_inhibitor) + &
+            stoich_upstreamN_pool * drate_dinhibition
+        endif
+
+        ! nitrogen (stoichiometry a function of upstream C/N)
+        Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) + &
+          dstoich_N_dC_pool_up * rate
+        Jac(ires_N,iresN_pool_up) = Jac(ires_N,iresN_pool_up) + &
+          dstoich_N_dN_pool_up * rate
+      endif
+      
       ! downstream pool
-      if (ispec_down > 0) then
-        Jac(ires_dn,ires_up) = Jac(ires_dn,ires_up) + &
+      if (ispec_pool_down > 0) then
+        Jac(ires_pool_down,iresC_pool_up) = Jac(ires_pool_down,iresC_pool_up) + &
           stoich_downstream_pool * drate
         if (inhibitor_id > 0) then
-          Jac(ires_dn,ires_inhibitor) = Jac(ires_dn,ires_inhibitor) + &
-            stoich_downstream_pool * drate_inhibited
+          Jac(ires_pool_down,ires_inhibitor) = Jac(ires_pool_down,ires_inhibitor) + &
+            stoich_downstream_pool * drate_dinhibition
         endif
       endif
+      
       ! carbon
-      Jac(ires_c,ires_up) = Jac(ires_c,ires_up) + stoich_C * drate
+      Jac(ires_C,iresC_pool_up) = Jac(ires_C,iresC_pool_up) + stoich_C * drate
       ! nitrogen
-      Jac(ires_n,ires_up) = Jac(ires_n,ires_up) + stoich_N * drate
+      Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) + stoich_N * drate
       if (inhibitor_id > 0) then
-        Jac(ires_c,ires_inhibitor) = Jac(ires_c,ires_inhibitor) + & 
-          stoich_C * drate_inhibited
-        Jac(ires_n,ires_inhibitor) = Jac(ires_n,ires_inhibitor) + &
-          stoich_N * drate_inhibited
+        Jac(ires_C,ires_inhibitor) = Jac(ires_C,ires_inhibitor) + & 
+          stoich_C * drate_dinhibition
+        Jac(ires_N,ires_inhibitor) = Jac(ires_N,ires_inhibitor) + &
+          stoich_N * drate_dinhibition
       endif
     endif
   enddo
