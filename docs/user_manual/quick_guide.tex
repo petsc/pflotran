@@ -56,7 +56,7 @@
 \cfoot{\rm < \thepage\ >}
 %\cfoot{}
 %\footrulewidth 0.4pt
-\newcommand\keyend{{(END \, / \, .)}}
+\newcommand\keyend{{END \, [/ \, .]}}
 \newcommand\return{{\hfill$\hookrightarrow$} Return to Keyword List}
 \newcommand\returnb{{\hfill$\nearrow$}}
 %\newcommand\return{{\hfill\bf RETURN}}
@@ -1446,29 +1446,37 @@ where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock
 
 \subsection{Mode: {\tt THC} (Thermal-Hydrologic-Chemical)}
 
-{\tt THC} Mode applies to single phase, variably saturated, nonisothermal systems
-with incorporation of density variations coupled to fluid flow. The THC equations may be coupled to the reactive transport mode (see section \ref{sec:chem}).
+The current implementation of the {\tt THC} mode applies only to mass and energy conservation equations and a single tracer ($i=1$ in Eqn.\eqref{thc} below). Future generalizations will include multicomponent variable density fluids.
+In the current implementation the THC equations may be coupled to the reactive transport mode (see Section \ref{sec:chem}).
+
+{\tt THC} mode applies to single phase, variably saturated, nonisothermal systems
+with incorporation of density variations coupled to fluid flow. 
 The governing equations for mass and energy are given by
 \EQ\label{masseqn}
 \frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
 \EN
 and
 \EQ
-\frac{\p}{\p t}\left(\varphi s\rho U + (1-\varphi) c_p T\right) + \bnabla\cdot\left(\rho\bq H -\kappa \bnabla T\right) = Q_e,
+\frac{\p}{\p t}\big(\varphi s\rho U + (1-\varphi) c_p T\big) + \bnabla\cdot\big(\rho\bq H -\kappa \bnabla T\big) = Q_e,
 \EN
-with the Darcy flow velocity $\bq$ given by
+coupled to nonreactive solute transport equations representing e.g. NaCl with the form
+\EQ\label{thc}
+\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\big(\bq \rho x_i -\varphi D \rho\bnabla x_i\big) \eq Q_i,
+\EN
+with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. 
+In these equations the Darcy flow velocity $\bq$ is given by
 \EQ
-\bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
+\bq = -\frac{kk_r}{\mu}\bnabla\left(P-W\rho g z\right).
 \EN
 Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantity $\kappa$ denotes the thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
 \EQ
 U \eq H -\frac{P}{\rho}.
 \EN
-Nonreactive solute transport equations representing e.g. NaCl have the form
+The mean formula weight $W$ is related to the fluid composition by
 \EQ
-\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\Big(\bq \rho x_i -\varphi D \rho\bnabla x_i\Big) \eq Q_i,
+W \eq \sum_i W_i x_i.
 \EN
-with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.\eqref{masseqn} with
+Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.\eqref{masseqn} with
 \EQ
 Q_w \eq \sum_i Q_i.
 \EN
@@ -4250,15 +4258,15 @@ specified under the MATERIAL\_PROPERTY keyword.
 \item[NO\_INF\_NORM (NO\_INFINITY\_NORM)]
 \item[NO\_FORCE\_ITERATION]
 \item[PRINT\_DETAILED\_CONVERGENCE]
-\item[ATOL]
-\item[RTOL]
-\item[STOL]
-\item[DTOL]
-\item[ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)]
-\item[ITOL\_UPDATE (INF\_TOL\_UPDATE)]
-\item[MAXIT] Cuts time step if the number of iterations exceed this value
-\item[MAXF]
-\item[MAX\_NORM]  Cuts time step if the convergence norm exceeds this value. 
+\item[ATOL] \ {\tt <Value>}
+\item[RTOL] \ {\tt <Value>}
+\item[STOL] \ {\tt <Value>}
+\item[DTOL] \ {\tt <Value>}
+\item[ITOL \ (INF\_TOL, \ ITOL\_RES, \ INF\_TOL\_RES)] \ {\tt <Value>}
+\item[ITOL\_UPDATE \ (INF\_TOL\_UPDATE)] \ {\tt <Value>}
+\item[MAXIT] \ {\tt <Value>} \ Cuts time step if the number of iterations exceed this value
+\item[MAXF] \ {\tt <Value>}
+\item[MAX\_NORM] \ {\tt <Value>} \ Cuts time step if the convergence norm exceeds this value. 
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -4338,7 +4346,7 @@ END
 
 \subsection{Keyword: ORIGIN (ORIG)}
 \begin{deflist}{0000000000}
-\item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
+\item[ORIGIN (ORIG)] X\_DIRECTION \ \ Y\_DIRECTION \ \ Z\_DIRECTION
 \end{deflist}
 
 \hyperlink{target_key}{\return}
@@ -4636,8 +4644,10 @@ RESTART pflotran.chk3000
 \item[SATURATION\_FUNCTION] \ {\tt Name}
 
 \begin{deflist}{000}
-\item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf BROOKS\_COREY}, {\bf THOMEER\_COREY}, {\bf NMT\_EXP}, {\bf PRUESS\_1}]
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf MUALEM}, {\bf BURDINE}]
+\item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf BROOKS\_COREY}, 
+
+{\bf THOMEER\_COREY}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}]
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf MUALEM}, \ {\bf BURDINE}]
 \item[RESIDUAL\_SATURATION] \ {\tt <Value>}
 \item[LAMBDA] \ {\tt <Value>} [---]
 \item[ALPHA] \ {\tt <Value>} [Pa$^{-1}$]
