@@ -133,8 +133,6 @@ module Option_module
     
     PetscReal :: minimum_hydrostatic_pressure
     
-!   PetscBool :: update_mnrl_surf_with_porosity
-    
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
     PetscBool :: no_restart_kinetic_sorption
@@ -169,6 +167,7 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: initialize_transport_filename
         
+    character(len=MAXSTRINGLENGTH) :: input_prefix
     character(len=MAXSTRINGLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
     
@@ -290,8 +289,9 @@ subroutine OptionInitAll(option)
   option%mygroup = 0
   option%mygroup_id = 0
   
-  option%global_prefix = 'pflotran'
+  option%input_prefix = 'pflotran'
   option%group_prefix = ''
+  option%global_prefix = ''
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0

@@ -10,13 +10,6 @@ pflotran_test_dir = ../../regression_tests
 
 MYFLAGS = -I${objdir} 
 
-# if compiling pflotran_rxn or libpflotranchem.a, need to define PFLOTRAN_RXN 
-# and toggle PFLOTRAN_RXN_FLAG
-ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
-  PFLOTRAN_RXN_FLAG := 1
-  MYFLAGS += -DPFLOTRAN_RXN
-endif
-
 ifdef compile_broken
   MYFLAGS += -DCOMPILE_BROKEN
 endif
@@ -126,8 +119,8 @@ ifdef dasvyat_test_cut
   MYFLAGS += -DDASVYAT_TEST_CUT
 endif
 
-ifdef gautam
-  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+ifdef ugrid_debug
+  MYFLAGS += -DUGRID_DEBUG
 endif
 
 ifdef surface_flow
@@ -167,6 +160,7 @@ endif
 
 util_obj  = \
 	${common_src}input.o \
+	${common_src}logging.o \
 	${common_src}matrix_block_aux.o \
 	${common_src}option.o \
 	${common_src}output_aux.o \
@@ -212,12 +206,12 @@ shared_mode_aux_obj = \
 	${common_src}reactive_transport_aux.o 
 
 chem_obj = \
-	${common_src}biomass.o \
-	${common_src}biomass_aux.o \
 	${common_src}constraint.o \
 	${common_src}database.o \
 	${common_src}database_aux.o \
 	${common_src}database_hpt.o \
+	${common_src}immobile.o \
+	${common_src}immobile_aux.o \
 	${common_src}microbial.o \
 	${common_src}microbial_aux.o \
 	${common_src}mineral.o \
@@ -225,6 +219,8 @@ chem_obj = \
 	${common_src}reaction.o \
 	${common_src}reaction_aux.o \
 	${common_src}reaction_sandbox.o \
+	${common_src}reaction_sandbox_clm_cn.o \
+	${common_src}reaction_sandbox_base.o \
 	${common_src}solid_solution.o \
 	${common_src}solid_solution_aux.o \
 	${common_src}surface_complexation.o \
@@ -282,7 +278,6 @@ misc_obj = \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}level.o \
-	${common_src}logging.o \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
 	${common_src}patch.o \
@@ -345,8 +340,6 @@ auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
               secondary_continuum_aux.o
-biomass.o : biomass_aux.o option.o string.o input.o utility.o
-biomass_aux.o : option.o utility.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
@@ -360,12 +353,12 @@ convergence.o : option.o solver.o grid.o
 ifdef PFLOTRAN_RXN_FLAG
 constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                surface_complexation_aux.o mineral_aux.o option.o input.o \
-               biomass.o \
+               immobile.o \
                units.o string.o
 else
 constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                surface_complexation_aux.o mineral_aux.o option.o input.o \
-               biomass.o \
+               immobile.o \
                units.o string.o logging.o
 endif
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
@@ -375,7 +368,7 @@ co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
              database_aux.o surface_complexation_aux.o string.o mineral_aux.o \
-             microbial.o microbial_aux.o biomass.o biomass_aux.o
+             microbial.o microbial_aux.o immobile.o immobile_aux.o
 database_aux.o : option.o string.o input.o
 database_hpt.o : database.o reaction.o database_aux.o mineral_aux.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
@@ -410,6 +403,8 @@ immis.o : immis_aux.o realization.o global_aux.o variables.o output_aux.o
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
               co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
               saturation_function.o
+immobile.o : immobile_aux.o option.o string.o input.o utility.o
+immobile_aux.o : option.o utility.o
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          simulation.o input.o material.o region.o condition.o convergence.o \
          waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
@@ -495,14 +490,21 @@ reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o microbial.o microbial_aux.o variables.o \
-             reaction_sandbox.o constraint.o biomass.o biomass_aux.o \
+             reaction_sandbox.o constraint.o immobile.o immobile_aux.o \
              co2eos.o water_eos.o 
 endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
-                 microbial_aux.o biomass_aux.o
+                 microbial_aux.o immobile_aux.o
 reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
-                     input.o utility.o
+                     input.o utility.o global_aux.o reaction_sandbox_base.o \
+                     reaction_sandbox_clm_cn.o
+reaction_sandbox_base.o : reaction_aux.o reactive_transport_aux.o \
+                          global_aux.o
+reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
+                            string.o input.o utility.o global_aux.o \
+                            reaction_sandbox_base.o database_aux.o \
+                            immobile_aux.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
