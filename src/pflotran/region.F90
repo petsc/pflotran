@@ -1013,7 +1013,7 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
   
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: card, word
   PetscInt :: fileid
   
   PetscInt :: num_connections

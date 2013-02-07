@@ -674,7 +674,7 @@ subroutine RealizationCreatenG2LP(realization)
 
 
      do icell = 1, grid%ngmax
-      if (grid%nG2L(icell) < 1) grid%nG2LP(icell) = lp_cell_ids_loc(icell) - 1
+      if (grid%nG2L(icell) < 1) grid%nG2LP(icell) = int(lp_cell_ids_loc(icell)) - 1
     end do
 
     call VecRestoreArrayF90(vec_LP_cell_id_loc, lp_cell_ids_loc, ierr)

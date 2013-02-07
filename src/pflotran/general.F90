@@ -120,7 +120,7 @@ subroutine GeneralTimeCutPatch(realization)
   ! restore stored state
   call GridVecGetArrayF90(grid,field%iphas_loc,iphas_loc_p, ierr)
   do ghosted_id = 1, grid%ngmax
-    global_aux_vars(ghosted_id)%istate = iphas_loc_p(ghosted_id)
+    global_aux_vars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
   enddo
   call GridVecRestoreArrayF90(grid,field%iphas_loc,iphas_loc_p, ierr)  
  

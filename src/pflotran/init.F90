@@ -997,7 +997,8 @@ subroutine Init(simulation)
 #else
   call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
 #endif
-#endif !PETSC_HAVE_HDF5
+#endif
+!PETSC_HAVE_HDF5
 
 #ifdef SURFACE_FLOW
   if(option%nsurfflowdof > 0) then
@@ -2198,7 +2199,7 @@ subroutine InitReadInput(simulation)
               call InputErrorMsg(input,option,'Final Time','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Final Time Units','TIME')
-              realization%output_option%tunit = word
+              realization%output_option%tunit = trim(word)
               realization%output_option%tconv = UnitsConvertToInternal(word,option)
               waypoint => WaypointCreate()
               waypoint%final = PETSC_TRUE
@@ -3516,7 +3517,8 @@ subroutine Create_IOGroups(option)
     write(option%io_buffer, '(" Write group id :  ", i6)') option%iowrite_group_id
     call printMsg(option)      
   call PetscLogEventEnd(logging%event_create_iogroups,ierr)
-#endif   ! PARALLELIO_LIB 
+#endif
+! PARALLELIO_LIB
  
 end subroutine Create_IOGroups
 
@@ -3840,7 +3842,8 @@ subroutine readSurfaceRegionFiles(surf_realization)
 
 end subroutine readSurfaceRegionFiles
 
-#endif ! SURF_FLOW
+#endif
+! SURF_FLOW
 
 ! ************************************************************************** !
 !

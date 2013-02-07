@@ -119,8 +119,8 @@ ifdef dasvyat_test_cut
   MYFLAGS += -DDASVYAT_TEST_CUT
 endif
 
-ifdef gautam
-  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW -DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+ifdef ugrid_debug
+  MYFLAGS += -DUGRID_DEBUG
 endif
 
 ifdef surface_flow

@@ -658,7 +658,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   ! Get number of dimensions and check
   call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
   if (ndims /= 2) then
-    option%io_buffer='Dimension of Domain/Cells dataset in ' // filename // &
+    option%io_buffer='Dimension of Domain/Cells dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
@@ -748,7 +748,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   ! Get number of dimensions and check
   call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
   if (ndims /= 2) then
-    option%io_buffer='Dimension of Domain/Vertices dataset in ' // filename // &
+    option%io_buffer='Dimension of Domain/Vertices dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
@@ -935,7 +935,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   ! Get number of dimensions and check
   call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
   if (ndims /= 2) then
-    option%io_buffer='Dimension of Domain/Cells dataset in ' // filename // &
+    option%io_buffer='Dimension of Domain/Cells dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
@@ -1025,7 +1025,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   ! Get number of dimensions and check
   call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
   if (ndims /= 2) then
-    option%io_buffer='Dimension of Domain/Vertices dataset in ' // filename // &
+    option%io_buffer='Dimension of Domain/Vertices dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
@@ -1576,7 +1576,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecGetArrayF90(elements_local,vec_ptr,ierr)
   do local_id=1, unstructured_grid%ngmax
     do ivertex = 1, unstructured_grid%max_nvert_per_cell
-      vertex_id = vec_ptr(ivertex + vertex_ids_offset + (local_id-1)*stride)
+      vertex_id = int(vec_ptr(ivertex + vertex_ids_offset + (local_id-1)*stride))
       if (vertex_id < 1) exit
       vertex_count = vertex_count + 1
       if (vertex_count > max_int_count) then
@@ -1641,7 +1641,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   do ghosted_id=1, unstructured_grid%ngmax
     do ivertex = 1, unstructured_grid%max_nvert_per_cell
       ! extract the original vertex id
-      vertex_id = vec_ptr(ivertex + vertex_ids_offset + (ghosted_id-1)*stride)
+      vertex_id = int(vec_ptr(ivertex + vertex_ids_offset + (ghosted_id-1)*stride))
       if (vertex_id < 1) exit
       count = unstructured_grid%cell_vertices(0,ghosted_id)+1
       unstructured_grid%cell_vertices(count,ghosted_id) = &
@@ -2053,7 +2053,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                 if (face_id2 > face_id) then
 #ifdef UGRID_DEBUG                
                   write(string,*) option%myrank, face_id2, ' -> ', face_id
-                  option%io_buffer = 'Duplicated face removed:' // string
+                  option%io_buffer = 'Duplicated face removed:' // trim(string)
                   call printMsg(option)
 #endif
                   cell_to_face(iface2,cell_id2) = face_id
@@ -2064,7 +2064,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                 else
 #ifdef UGRID_DEBUG                
                   write(string,*) option%myrank, face_id, ' -> ', face_id2
-                  option%io_buffer = 'Duplicated face removed:' // string
+                  option%io_buffer = 'Duplicated face removed:' // trim(string)
                   call printMsg(option)
 #endif
                   cell_to_face(iface,cell_id) = face_id2
@@ -2229,7 +2229,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           unstructured_grid%connection_to_face(iconn) = face_id
         else
           write(string,*) option%myrank,local_id,dual_local_id 
-          option%io_buffer = 'face not found in connection loop' // string 
+          option%io_buffer = 'face not found in connection loop' // trim(string)
           call printErrMsg(option)
         endif
         face_type = &
@@ -2248,12 +2248,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                                                                  iface2,option)
           if (face_type /= face_type2) then
             write(string,*) option%myrank, local_id, cell_id2 
-            option%io_buffer = 'face types do not match' // string 
+            option%io_buffer = 'face types do not match' // trim(string)
             call printErrMsg(option)
           endif
         else
           write(string,*) option%myrank, iface, cell_id2
-          option%io_buffer = 'global face not found' // string 
+          option%io_buffer = 'global face not found' // trim(string)
           call printErrMsg(option)
         endif
         connections%id_up(iconn) = local_id

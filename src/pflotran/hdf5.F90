@@ -283,7 +283,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   memory_space_id = -1
   do
     if (cell_count >= num_cells_in_file) exit
-    temp_int = num_cells_in_file-cell_count
+    temp_int = int(num_cells_in_file)-cell_count
     temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
@@ -313,7 +313,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
         
     call PetscLogEventBegin(logging%event_hash_map,ierr)
 
-    do i=1,dims(1)
+    do i=1,int(dims(1))
       cell_count = cell_count + 1
       natural_id = cell_ids_i4(i)
       local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
@@ -370,7 +370,8 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   call PetscLogEventEnd(logging%event_map_indices_hdf5,ierr)
 ! End of Default & Glenn's HDF5 Broadcast Mechanism
 
-#endif ! PARALLELIO_LIB
+#endif
+! PARALLELIO_LIB
 
 end subroutine HDF5MapLocalToNaturalIndices
    
@@ -463,7 +464,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
       if (index > real_count) then
         do 
           if (index <= real_count) exit
-          temp_int = num_reals_in_file-real_count
+          temp_int = int(num_reals_in_file-real_count)
           temp_int = min(temp_int,read_block_size)
           if (dims(1) /= temp_int) then
             dims(1) = temp_int
@@ -482,7 +483,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                        !hdf5_err,memory_space_id,file_space_id,prop_id)
         call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
           prev_real_count = real_count
-          real_count = real_count + length(1)                  
+          real_count = real_count + int(length(1))
         enddo
       endif
       real_array(i) = real_buffer(index-prev_real_count)
@@ -504,7 +505,8 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
   endif
   
-#else !PARALLELIO_LIB is not defined    
+#else
+!PARALLELIO_LIB is not defined
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -544,7 +546,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
       if (index > real_count) then
         do 
           if (index <= real_count) exit
-          temp_int = num_reals_in_file-real_count
+          temp_int = int(num_reals_in_file)-real_count
           temp_int = min(temp_int,read_block_size)
           if (dims(1) /= temp_int) then
             if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
@@ -572,7 +574,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
           endif
 #endif
           prev_real_count = real_count
-          real_count = real_count + length(1)                  
+          real_count = real_count + int(length(1))
         enddo
       endif
       real_array(i) = real_buffer(index-prev_real_count)
@@ -604,7 +606,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
         call MPI_Bcast(real_buffer,int_mpi,MPI_DOUBLE_PRECISION, &
                        option%io_rank,option%mycomm,ierr)
       endif
-      real_count = real_count + length(1)                  
+      real_count = real_count + int(length(1))
     enddo
 #endif
     deallocate(real_buffer)
@@ -641,7 +643,8 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
-#endif !PARALLELIO_LIB 
+#endif
+!PARALLELIO_LIB
 
   call PetscLogEventEnd(logging%event_read_real_array_hdf5,ierr)
                           
@@ -773,7 +776,8 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 
   call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr)
 
-#else ! PARALLELIO_LIB is not defined    
+#else
+! PARALLELIO_LIB is not defined
 
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
@@ -843,7 +847,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
     if (index > integer_count) then
       do
         if (index <= integer_count) exit
-        temp_int = num_integers_in_file-integer_count
+        temp_int = int(num_integers_in_file)-integer_count
         temp_int = min(temp_int,read_block_size)
         if (dims(1) /= temp_int) then
           if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
@@ -871,7 +875,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
         endif
 #endif
         prev_integer_count = integer_count
-        integer_count = integer_count + length(1)                  
+        integer_count = integer_count + int(length(1))
       enddo
     endif
     integer_array(i) = integer_buffer_i4(index-prev_integer_count)
@@ -917,7 +921,8 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 
 ! Default & Glenn's HDF5 Broadcast Mechanism (uses HDF5 Independent I/O mode)
                           
-#endif ! PARALLELIO_LIB 
+#endif
+! PARALLELIO_LIB
 
 end subroutine HDF5ReadIntegerArray
 
@@ -1183,7 +1188,8 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
   call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
                           
-#endif ! PARALLELIO_LIB_WRITE vs previous
+#endif
+! PARALLELIO_LIB_WRITE vs previous
 
 end subroutine HDF5WriteStructuredDataSet
       
@@ -1267,7 +1273,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   !  dataset_size = num_data_in_file
   !endif  
   
-  dataset_size = num_data_in_file
+  dataset_size = int(num_data_in_file)
 
   if (istart < num_data_in_file) then
   
@@ -1301,7 +1307,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   
   call PetscLogEventEnd(logging%event_read_indices_hdf5,ierr)
 
-#else ! PARALLELIO_LIB is not defined  
+#else
+! PARALLELIO_LIB is not defined
 
 ! Default HDF5 Mechanism 
 
@@ -1347,7 +1354,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
            num_data_in_file,dataset_size
     call printErrMsg(option)   
   else
-    dataset_size = num_data_in_file
+    dataset_size = int(num_data_in_file)
   endif  
   
   if (istart < num_data_in_file) then
@@ -1394,7 +1401,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   call PetscLogEventEnd(logging%event_read_indices_hdf5,ierr)
 ! End of Default HDF5 Mechanism  
   
-#endif ! PARALLELIO_LIB
+#endif
+! PARALLELIO_LIB
   
 end subroutine HDF5ReadIndices
 
@@ -1532,7 +1540,8 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
 
-#else ! PARALLELIO_LIB is not defined  
+#else
+! PARALLELIO_LIB is not defined
 
 ! Default HDF5 Mechanism 
  
@@ -1651,11 +1660,13 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
 ! End of Default HDF5 Mechanism
 
-#endif ! PARALLELIO_LIB
+#endif
+! PARALLELIO_LIB
 
 end subroutine HDF5ReadArray
 
-#endif !PETSC_HAVE_HDF5
+#endif
+!PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
 !
@@ -1860,7 +1871,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 #endif  
 ! if PARALLELIO_LIB is not defined
 
-#endif !PETSC_HAVE_HDF5
+#endif
+!PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_region_read_hdf5,ierr)
 
@@ -1952,7 +1964,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   ! Get number of dimensions and check
   call h5sget_simple_extent_ndims_f(data_space_id,ndims,hdf5_err)
   if ((ndims > 2).or.(ndims < 1)) then
-    option%io_buffer='Dimension of '//string//' dataset in ' // filename // &
+    option%io_buffer='Dimension of '//string//' dataset in ' // trim(filename) // &
      ' is > 2 or < 1.'
   call printErrMsg(option)
   endif
@@ -1969,8 +1981,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     !
     !                    Read Cell IDs
     !
-    region%num_cells = dims_h5(1)/option%mycommsize
-      remainder = dims_h5(1) - region%num_cells*option%mycommsize
+    region%num_cells = int(dims_h5(1)/option%mycommsize)
+      remainder = int(dims_h5(1)) - region%num_cells*option%mycommsize
     if (option%myrank < remainder) region%num_cells = region%num_cells + 1
     
     ! Find istart and iend
@@ -2035,8 +2047,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     !  remainder = dims_h5(2) - region%num_verts*option%mycommsize
     region%sideset => RegionCreateSideset()
     sideset => region%sideset
-    sideset%nfaces = dims_h5(2)/option%mycommsize
-      remainder = dims_h5(2) - region%num_verts*option%mycommsize
+    sideset%nfaces = int(dims_h5(2)/option%mycommsize)
+    remainder = int(dims_h5(2)) - region%num_verts*option%mycommsize
 
      ! Find istart and iend
      istart = 0
@@ -2248,7 +2260,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   nullify(indices)
 
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
-    option%io_buffer = 'Closing hdf5 file: ' // filename
+    option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
     call printMsg(option)   
     call parallelio_close_file(file_id, option%ioread_group_id, ierr)
   endif
@@ -2324,14 +2336,15 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
     call printMsg(option)   
     call h5gclose_f(grp_id,hdf5_err)
   endif
-  option%io_buffer = 'Closing hdf5 file: ' // filename
+  option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
   call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
 #endif  
 ! if PARALLELIO_LIB is not defined
 
-#endif  ! PETSC_HAVE_HDF5
+#endif
+! PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5,ierr)
                           
@@ -2463,7 +2476,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   nullify(indices)
 
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
-    option%io_buffer = 'Closing hdf5 file: ' // filename
+    option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
     call printMsg(option)   
     call parallelio_close_file(file_id, option%ioread_group_id, ierr)
   endif
@@ -2537,7 +2550,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
     call printMsg(option)   
     call h5gclose_f(grp_id,hdf5_err)
   endif
-  option%io_buffer = 'Closing hdf5 file: ' // filename
+  option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
   call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
@@ -2545,7 +2558,8 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 #endif  
 ! if PARALLELIO_LIB is not defined
 
-#endif ! PETSC_HAVE_HDF5
+#endif
+! PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_cell_indx_real_read_hdf5,ierr)
                           
@@ -2729,7 +2743,7 @@ subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type
     allocate(int_array(local_size))
     call VecGetArrayF90(vec,vec_ptr,ierr)
     do i=1,local_size
-      int_array(i) = vec_ptr(i)
+      int_array(i) = int(vec_ptr(i))
     enddo
     call VecRestoreArrayF90(vec,vec_ptr,ierr)
   

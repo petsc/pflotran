@@ -301,4 +301,5 @@ end function SurfaceMaterialPropGetPtrFromArray
 
 end module Surface_Material_module
 
-#endif ! SURFACE_FLOW
+#endif
+! SURFACE_FLOW
