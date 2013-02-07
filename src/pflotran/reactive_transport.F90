@@ -4985,6 +4985,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   use Secondary_Continuum_Aux_module
   use blksolv_module
   use Utility_module
+  use Mineral_module
   
 
   implicit none
@@ -5020,8 +5021,8 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   PetscReal :: vol(sec_transport_vars%ncells)
   PetscReal :: dm_plus(sec_transport_vars%ncells)
   PetscReal :: dm_minus(sec_transport_vars%ncells)
-
-  
+  PetscReal :: res_react(reaction%naqcomp)
+  PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: i, j, k, n
   PetscInt :: ngcells, ncomp
   PetscReal :: area_fm
@@ -5159,6 +5160,26 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   coeff_right = coeff_right*1.d3
   coeff_left = coeff_left*1.d3
   coeff_diag = coeff_diag*1.d3
+  
+  
+  ! Reaction 
+  do i = 1, ngcells
+    res_react = 0.d0
+    jac_react = 0.d0
+!    call RReaction(res_react,jac_react,PETSC_TRUE, &
+!                  sec_transport_vars%sec_rt_auxvar(i), &
+!                  global_aux_var,porosity,vol(i),reaction,option)
+    if (reaction%mineral%nkinmnrl > 0) then
+      call RKineticMineral(res_react,jac_react,PETSC_TRUE, &
+                           sec_transport_vars%sec_rt_auxvar(i), &
+                           global_aux_var,vol(i),reaction,option)
+    endif
+    do j = 1, ncomp
+      res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j)
+    enddo
+    coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react
+  enddo
+  
          
 !===============================================================================        
                         

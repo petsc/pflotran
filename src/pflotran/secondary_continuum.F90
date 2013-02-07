@@ -647,6 +647,20 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
     call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_aux_var, &
                 reaction,option)
   enddo
+  
+  if (reaction%mineral%nkinmnrl > 0) then
+    do i = 1, ngcells
+      do j = 1, reaction%mineral%nkinmnrl
+        sec_transport_vars%sec_rt_auxvar(i)%mnrl_volfrac(j) = &
+          sec_transport_vars%sec_rt_auxvar(i)%mnrl_volfrac(j) + &
+          sec_transport_vars%sec_rt_auxvar(i)%mnrl_rate(j)* &
+          reaction%mineral%kinmnrl_molar_vol(j)* &
+          option%tran_dt
+          if (sec_transport_vars%sec_rt_auxvar(i)%mnrl_volfrac(j) < 0.d0) &
+            sec_transport_vars%sec_rt_auxvar(i)%mnrl_volfrac(j) = 0.d0
+      enddo
+    enddo
+  endif
 
 end subroutine SecondaryRTAuxVarComputeMulti
 
