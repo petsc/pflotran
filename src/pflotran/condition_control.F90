@@ -227,7 +227,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                       initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
                       iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                  iphase_loc_p(ghosted_id)
+                  int(iphase_loc_p(ghosted_id))
               enddo
             endif
             initial_condition => initial_condition%next
@@ -364,7 +364,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                   initial_condition%flow_condition%iphase
                 if (option%iflowmode == G_MODE) then
                   cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                    iphase_loc_p(ghosted_id)
+                    int(iphase_loc_p(ghosted_id))
                 endif
               enddo
             end if
@@ -910,6 +910,8 @@ subroutine CondControlScaleSourceSink(realization)
   field => realization%field
   patch => realization%patch
 
+  ! GB: grid was uninitialized
+  grid => patch%grid
   call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_loc_ptr,ierr)
 
   cur_level => realization%level_list%first
@@ -1111,7 +1113,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                   iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
                   if (option%iflowmode == G_MODE) then
                       cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                          iphase_loc_p(ghosted_id)
+                          int(iphase_loc_p(ghosted_id))
                   endif
                 enddo
               else
@@ -1132,7 +1134,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                   xx_p(ibegin:iend) = 0.d0
                   if (option%iflowmode == G_MODE) then
                     cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                        iphase_loc_p(ghosted_id)
+                        int(iphase_loc_p(ghosted_id))
                   endif
                 enddo
               endif
@@ -1154,6 +1156,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   !call VecCopy(surf_field%flow_xx, surf_field%flow_yy, ierr)
 
 end subroutine CondControlAssignFlowInitCondSurface
-#endif ! SURFACE_FLOW
+#endif
+! SURFACE_FLOW
 
 end module Condition_Control_module

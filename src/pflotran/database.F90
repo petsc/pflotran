@@ -3581,7 +3581,8 @@ subroutine BasisInit(reaction,option)
 
     close(86)
   endif
-#endif ! AMANZI_BGD
+#endif
+! AMANZI_BGD
   
 #if 0
   ! output for ASCEM reactions

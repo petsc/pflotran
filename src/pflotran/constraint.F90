@@ -151,9 +151,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   use Input_module
   use Units_module
   use String_module
-#ifndef PFLOTRAN_RXN  
   use Logging_module
-#endif
 
   implicit none
   
@@ -176,9 +174,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   PetscErrorCode :: ierr
   PetscReal :: tempreal
 
-#ifndef PFLOTRAN_RXN  
   call PetscLogEventBegin(logging%event_tran_constraint_read,ierr)
-#endif
 
   ! read the constraint
   input%ierr = 0
@@ -590,9 +586,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   
   enddo  
   
-#ifndef PFLOTRAN_RXN  
   call PetscLogEventEnd(logging%event_tran_constraint_read,ierr)
-#endif
 
 end subroutine TranConstraintRead
 

@@ -163,7 +163,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   PetscInt, parameter :: icolumn = -1
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
   character(len=MAXHEADERLENGTH) :: header, header2
-  character(len=MAXWORDLENGTH) :: tmp_global_prefix
+  character(len=MAXSTRINGLENGTH) :: tmp_global_prefix
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -821,9 +821,9 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
   call h5pclose_f(prop_id,hdf5_err)
 
   if (first) then
-    option%io_buffer = '--> creating hdf5 output file: ' // filename
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
   else
-    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
   endif
   call printMsg(option)
 
@@ -1125,7 +1125,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
   call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
-  surf_realization%output_option%surf_xmf_vert_len=dims(1)
+  surf_realization%output_option%surf_xmf_vert_len=int(dims(1))
 
   ! file space which is a 2D block
   rank_mpi = 1

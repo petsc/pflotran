@@ -1716,6 +1716,8 @@ and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
+\paragraph{Changes in Material Properties}
+
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
 \EQ\label{porosity}
 \varphi \eq 1-\sum_m\varphi_m,
@@ -1736,8 +1738,6 @@ and
 a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'},
 \EN
 where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$. The quantity $\varphi_c$ refers to a critical porosity below which the permeability is assumed to be constant with scale factor $f_{\rm min}$.
-
-\paragraph{Changes in Material Properties}
 
 In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral. It is not necessary  that Eqn.\eqref{porosity} relating porosity and mineral volume fractions holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
 \begin{subequations}
@@ -1771,6 +1771,10 @@ Mass and mole fractions are related by the expression
 \EQ
 W_m x_m \eq W_s y_m.
 \EN
+
+\paragraph{Affinity Threshold}
+
+An affinity threshold $f$ for precipitation may be introduced which only allows precipitation to occur if $K_m Q_m > f > 1$.
 
 \paragraph{Surface Armoring}
 
@@ -2755,7 +2759,7 @@ END
 \subsection{Keyword: BRINE (BRIN)}
 
 \begin{deflist}{000}
-\item[BRINE, BRIN] {\tt Value m\_nacl} [MOLAL, MASS, MOLE]
+\item[BRINE, BRIN] {\tt <Value> m\_nacl} [MOLAL, MASS, MOLE]
 \end{deflist}
 
 \hyperlink{target_key}{\return}
@@ -2866,7 +2870,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{0000}
 \item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt <Value>} $<$ 0, {\tt <Value>} = 10$^{\tt <Value>}$
 \item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
 \item [AFFINITY\_THRESHOLD] \ {\tt <Value>} [---]
@@ -2887,12 +2891,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 ~\\
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt <Value>} $<$ 0, {\tt <Value>} = 10$^{\tt <Value>}$
 \item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K] 
 \item [PREFACTOR\_SPECIES] \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [ALPHA] \ {\tt Value} [---]
-\item [BETA] \ {\tt Value} [---]
+\item [ALPHA] \ {\tt <Value>} [---]
+\item [BETA] \ {\tt <Value>} [---]
 \item [ATTENUATION\_COEF] \ {\tt <Value>}
 \end{deflist}
 \item [\keyend]
@@ -2921,9 +2925,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[KINETIC]
 
 
-\item [SITE\_FRACTION] \ {\tt Value}[---] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [RATE, RATES] \ {\tt Value} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [MULTIRATE\_SCALE\_FACTOR] {\tt Value} [---]
+\item [SITE\_FRACTION] \ {\tt <Value>}[---] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [RATE, RATES] \ {\tt <Value>} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [MULTIRATE\_SCALE\_FACTOR] {\tt <Value>} [---]
 
 ~\\
 
@@ -2941,8 +2945,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[COMPLEX\_KINETICS] ~
 \begin{deflist}{000}
 \item[COMPLEX] {\tt name}
-\item[FORWARD\_RATE\_CONSTANT] {\tt Value} [1/s]
-\item[BACKWARD\_RATE\_CONSTANT] {\tt Value} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
+\item[FORWARD\_RATE\_CONSTANT] {\tt <Value>} [1/s]
+\item[BACKWARD\_RATE\_CONSTANT] {\tt <Value>} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2973,7 +2977,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item [EQUILIBRIUM]
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
-\item [CEC] {\tt Value} \ [mol/m$^3$]
+\item [CEC] {\tt <Value>} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
@@ -2995,9 +2999,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \begin{deflist}{000}
 \item [TYPE] LINEAR, \ LANGMUIR, \ FREUNDLICH
-\item [DISTRIBUTION\_COEF, KD] \ {\tt Value} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
-\item [LANGMUIR\_B] \ {\tt Value} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
-\item [FREUNDLICH\_N] \ {\tt Value} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
+\item [DISTRIBUTION\_COEF, KD] \ {\tt <Value>} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
+\item [LANGMUIR\_B] \ {\tt <Value>} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
+\item [FREUNDLICH\_N] \ {\tt <Value>} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
 \end{deflist}
 \item [\keyend] ~
 
@@ -3024,15 +3028,15 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
 \item[NO\_BDOT] 
-\item[UPDATE\_POROSITY] {\tt <Value>} \ \ \ [see Eqn.\eqref{porosity}]
-\item[UPDATE\_TORTUOSITY] {\tt <Value>} \ \ \ [see Eqn.\eqref{tortuosity}]
-\item[UPDATE\_PERMEABILITY] {\tt <Value>} \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
-\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt <Value>} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
+\item[UPDATE\_POROSITY]  \ \ \ [see Eqn.\eqref{porosity}]
+\item[UPDATE\_TORTUOSITY]  \ \ \ [see Eqn.\eqref{tortuosity}]
+\item[UPDATE\_PERMEABILITY] \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
+\item[UPDATE\_MINERAL\_SURFACE\_AREA] \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
-\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt <Value>} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
+\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
 \item[MINIMUM\_POROSITY] {\tt <Value>}
-\item[UPDATE\_ARMOR\_MINERAL\_SURFACE] {\tt <Value>} \ [See Eqn.\eqref{surface_armoring}]
+\item[UPDATE\_ARMOR\_MINERAL\_SURFACE] \ [See Eqn.\eqref{surface_armoring}]
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
 
@@ -3472,9 +3476,9 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \begin{deflist}{000}
 \item [FLOW\_CONDITION] \ {\tt flow\_condition\_name}
 \begin{deflist}{000}
-\item [UNITS] {\tt Value} (not currently supported)
+\item [UNITS] {\tt <Value>} (not currently supported)
 \begin{deflist}{000000000}
-{\tt Value} is one of the following entries:
+{\tt <Value>} is one of the following entries:
 \item[s, sec, min, hr, d, day, w, week, mo, month, y, yr] (time)
 \item[mm, cm, m, met, meter, dm, km] (length)
 \item[kg/s, kg/yr] (rate)
@@ -3510,7 +3514,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[\keyend]
 \item[TIME] (not currently supported)
 
-\item[IPHASE] {\tt Value[integer]}
+\item[IPHASE] {\tt <Value>[integer]}
 
 \item[DATUM] ~
 \begin{deflist}{000}
@@ -3533,7 +3537,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[TEMPERATURE, \ TEMP] \ {\tt <float>}
 \item[ENTHALPY, H] \ {\tt <float>}
 \item[PRESSURE, \ PRES, \ RESS] \ {\tt <float>}
-\item[RATE] \ {\tt Value}
+\item[RATE] \ {\tt <Value>}
 \item[FLUX, \ VELOCITY, \ VEL] \ {\tt <float>}
 \item[CONC, \ CONCENTRATION] \ {\tt <float>}
 \item[SAT, \ SATURATION] \ {\tt <float>}
@@ -3936,37 +3940,37 @@ END
 \begin{deflist}{000}
 \item[TYPE] \ [{\tt pilut, parasails, boomeramg, euclid}]
 \item[BOOMERAMG\_CYCLE\_TYPE] / [{\tt V, W}]
-\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt Value}
-\item[BOOMERAMG\_MAX\_ITER] \ {\tt Value}
-\item[BOOMERAMG\_TOL] \ {\tt Value}
-\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt Value}
-\item[BOOMERAMG\_AGG\_NL] \ {\tt Value}
-\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt Value}
-\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt Value}
-\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt Value}
-\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt Value}
-\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt Value}
-\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt Value}
-\item[BOOMERAMG\_RELAX\_TYPE\_ALL] \ {\tt Value}
-\item[BOOMERAMG\_RELAX\_TYPE\_DOWN] \ {\tt Value}
-\item[BOOMERAMG\_RELAX\_TYPE\_UP] \ {\tt Value}
-\item[BOOMERAMG\_RELAX\_TYPE\_COARSE] \ {\tt Value}
-\item[BOOMERAMG\_RELAX\_WEIGHT\_ALL] \ {\tt Value}
-\item[BOOMERAMG\_RELAX\_WEIGHT\_LEVEL] \ {\tt Value}
-\item[BOOMERAMG\_OUTER\_RELAX\_WEIGHT\_ALL] \ {\tt Value}
-\item[BOOMERAMG\_OUTER\_RELAX\_WEIGHT\_LEVEL] \ {\tt Value}
-\item[BOOMERAMG\_NO\_CF] \ {\tt Value}
-\item[BOOMERAMG\_MEASURE\_TYPE] \ {\tt Value}
-\item[BOOMERAMG\_COARSEN\_TYPE] \ {\tt Value}
-\item[BOOMERAMG\_INTERPOLATION\_TYPE, BOOMERAMG\_INTERP\_TYPE] \ {\tt Value}
-\item[BOOMERAMG\_NODAL\_COARSEN] \ {\tt Value}
-\item[BOOMERAMG\_NODAL\_RELAXATION] \ {\tt Value}
+\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt <Value>}
+\item[BOOMERAMG\_MAX\_ITER] \ {\tt <Value>}
+\item[BOOMERAMG\_TOL] \ {\tt <Value>}
+\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt <Value>}
+\item[BOOMERAMG\_AGG\_NL] \ {\tt <Value>}
+\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt <Value>}
+\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt <Value>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt <Value>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt <Value>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt <Value>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt <Value>}
+\item[BOOMERAMG\_RELAX\_TYPE\_ALL] \ {\tt <Value>}
+\item[BOOMERAMG\_RELAX\_TYPE\_DOWN] \ {\tt <Value>}
+\item[BOOMERAMG\_RELAX\_TYPE\_UP] \ {\tt <Value>}
+\item[BOOMERAMG\_RELAX\_TYPE\_COARSE] \ {\tt <Value>}
+\item[BOOMERAMG\_RELAX\_WEIGHT\_ALL] \ {\tt <Value>}
+\item[BOOMERAMG\_RELAX\_WEIGHT\_LEVEL] \ {\tt <Value>}
+\item[BOOMERAMG\_OUTER\_RELAX\_WEIGHT\_ALL] \ {\tt <Value>}
+\item[BOOMERAMG\_OUTER\_RELAX\_WEIGHT\_LEVEL] \ {\tt <Value>}
+\item[BOOMERAMG\_NO\_CF] \ {\tt <Value>}
+\item[BOOMERAMG\_MEASURE\_TYPE] \ {\tt <Value>}
+\item[BOOMERAMG\_COARSEN\_TYPE] \ {\tt <Value>}
+\item[BOOMERAMG\_INTERPOLATION\_TYPE, BOOMERAMG\_INTERP\_TYPE] \ {\tt <Value>}
+\item[BOOMERAMG\_NODAL\_COARSEN] \ {\tt <Value>}
+\item[BOOMERAMG\_NODAL\_RELAXATION] \ {\tt <Value>}
 \end{deflist}
 
-\item[ATOL] \ {\tt Value}
-\item[RTOL] \ {\tt Value}
-\item[DTOL] \ {\tt Value}
-\item[MAXIT] \ {\tt Value}
+\item[ATOL] \ {\tt <Value>}
+\item[RTOL] \ {\tt <Value>}
+\item[DTOL] \ {\tt <Value>}
+\item[MAXIT] \ {\tt <Value>}
 
 \end{deflist}
 \item[\keyend]
@@ -4634,12 +4638,12 @@ RESTART pflotran.chk3000
 \begin{deflist}{000}
 \item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf BROOKS\_COREY}, {\bf THOMEER\_COREY}, {\bf NMT\_EXP}, {\bf PRUESS\_1}]
 \item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf MUALEM}, {\bf BURDINE}]
-\item[RESIDUAL\_SATURATION] \ {\tt Value}
-\item[LAMBDA] \ {\tt Value} [---]
-\item[ALPHA] \ {\tt Value} [Pa$^{-1}$]
-\item[MAX\_CAPILLARY\_PRESSURE] \ {\tt Value} [Pa]
-\item[BETAC] \ {\tt Value} [---]
-\item[POWER] \ {\tt Value} [---]
+\item[RESIDUAL\_SATURATION] \ {\tt <Value>}
+\item[LAMBDA] \ {\tt <Value>} [---]
+\item[ALPHA] \ {\tt <Value>} [Pa$^{-1}$]
+\item[MAX\_CAPILLARY\_PRESSURE] \ {\tt <Value>} [Pa]
+\item[BETAC] \ {\tt <Value>} [---]
+\item[POWER] \ {\tt <Value>} [---]
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -4728,10 +4732,10 @@ END
 \begin{deflist}{000}
 \item[TIME] ~
 \begin{deflist}{000}
-\item[FINAL\_TIME] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
-\item[INITIAL\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
-\item[MAXIMUM\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
-\item[MAXIMUM\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)} \ {\bf AT} \ {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[FINAL\_TIME] {\tt <Value>} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[INITIAL\_TIMESTEP\_SIZE] {\tt <Value>} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[MAXIMUM\_TIMESTEP\_SIZE] {\tt <Value>} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[MAXIMUM\_TIMESTEP\_SIZE] {\tt <Value>} \ {\tt Unit (s, m, h, d, mo, y)} \ {\bf AT} \ {\tt <Value>} \ {\tt Unit (s, m, h, d, mo, y)}
 \item[STEADY\_STATE]
 \end{deflist}
 \item[\keyend]
@@ -4814,7 +4818,7 @@ END
 
 \begin{deflist}{000}
 \item[TYPE] [{\bf dirichlet, dirichlet\_zero\_gradient, equilibrium, neumann, mole, mole\_rate, \linebreak zero\_gradient}]
-\item[TIME] \ {\tt Value}
+\item[TIME] \ {\tt <Value>}
 \item[UNITS] \ {\bf s, sec, min, hr, d, day, y, yr}
 \item[CONSTRAINT\_LIST]
 \item {\tt time} \ {\tt constraint\_name}

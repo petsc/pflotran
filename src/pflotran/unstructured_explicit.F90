@@ -49,7 +49,7 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
   
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: card, word
   PetscInt :: fileid, icell, iconn, id_up, id_dn
   
   PetscInt :: num_cells
@@ -187,7 +187,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: card, word
   PetscInt :: fileid, icell, iconn, irank, remainder, temp_int, num_to_read
   
   PetscInt :: num_cells, num_connections
@@ -953,9 +953,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
 
     
 #if UGRID_DEBUG
-  write(string,*) option%myrank
-  string = 'connections_old' // trim(adjustl(string)) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'connections_old.out',viewer,ierr)
   call VecView(connections_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
@@ -965,7 +963,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   count = 0
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! here we hit the 0 at the end of last connection
       ! yes, we will be counting them twice
       count = count + 1
@@ -977,7 +975,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   count = 0
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0 
       count = count + 1
       int_array(count) = conn_id
@@ -1025,7 +1023,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   count = 0
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0 
       count = count + 1
       vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride) = &
@@ -1097,7 +1095,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
       ! this connection id is now local
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0
       do i = 1, 2
         if (int_array2d(i,conn_id) <= -999) then
@@ -1127,8 +1125,8 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
       vec_ptr(offset+7) = 0.d0
       cycle
     endif
-    id_up = vec_ptr(offset+1) ! this is the natural id
-    id_dn = vec_ptr(offset+2)
+    id_up = int(vec_ptr(offset+1)) ! this is the natural id
+    id_dn = int(vec_ptr(offset+2))
     count = 0
     found = PETSC_FALSE
     do i = 1, 2
@@ -1201,7 +1199,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call VecGetArrayF90(cells_local,vec_ptr,ierr)
   do ghosted_id=1, ugrid%ngmax
     offset = cell_stride*(ghosted_id-1)
-    explicit_grid%cell_ids(ghosted_id) = vec_ptr(offset + 2)
+    explicit_grid%cell_ids(ghosted_id) = int(vec_ptr(offset + 2))
     explicit_grid%cell_centroids(ghosted_id)%x = vec_ptr(offset + 3)
     explicit_grid%cell_centroids(ghosted_id)%y = vec_ptr(offset + 4)
     explicit_grid%cell_centroids(ghosted_id)%z = vec_ptr(offset + 5)
@@ -1252,8 +1250,8 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
     offset = connection_stride*(iconn-1)
     if (vec_ptr(offset+7) > 0.1d0) then
       count = count + 1
-      explicit_grid%connections(1,count) = vec_ptr(offset+1)
-      explicit_grid%connections(2,count) = vec_ptr(offset+2)
+      explicit_grid%connections(1,count) = int(vec_ptr(offset+1))
+      explicit_grid%connections(2,count) = int(vec_ptr(offset+2))
       explicit_grid%face_centroids(count)%x = vec_ptr(offset+3)
       explicit_grid%face_centroids(count)%y = vec_ptr(offset+4)
       explicit_grid%face_centroids(count)%z = vec_ptr(offset+5)

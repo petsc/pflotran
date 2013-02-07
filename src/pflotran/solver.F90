@@ -941,10 +941,10 @@ subroutine SolverCheckCommandLine(solver)
 
   ! Parse the options to determine if the matrix type has been specified.
   call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present,ierr)
-  if (is_present) solver%J_mat_type = mat_type
+  if (is_present) solver%J_mat_type = trim(mat_type)
   
   call PetscOptionsGetString(prefix, '-pre_mat_type', mat_type, is_present,ierr)
-  if (is_present) solver%Jpre_mat_type = mat_type
+  if (is_present) solver%Jpre_mat_type = trim(mat_type)
 
   ! Parse the options for the Galerkin multigrid solver.
   ! Users can specify the number of levels of coarsening via the 

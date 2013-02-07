@@ -1090,7 +1090,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     ! It may match the first entry (the calculated natural id based on the
     ! order that cells were read), but it need not.
     ugrid%cell_ids_natural(local_id) = &
-      abs(vec_ptr((local_id-1)*stride+natural_id_offset))
+      int(abs(vec_ptr((local_id-1)*stride+natural_id_offset)))
   enddo
   call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
 
@@ -1141,7 +1141,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   do local_id=1, num_cells_local_new
     count = count + 1
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit ! here we hit the 0 at the end of last dual
       count = count + 1
     enddo
@@ -1154,7 +1154,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     count = count + 1
     int_array(count) = ugrid%cell_ids_natural(local_id)
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit ! again we hit the 0 
       count = count + 1
       int_array(count) = dual_id
@@ -1192,7 +1192,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     vec_ptr((local_id-1)*stride+1) = int_array(count)
     do idual = 1, ugrid%max_ndual_per_cell
 !geh      dual_id = vec_ptr2(idual + dual_offset + (local_id-1)*stride)
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit
       count = count + 1
       ! store the petsc numbered duals in the vector also
@@ -1231,7 +1231,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   ! end of a dual
   do local_id=1, num_cells_local_new
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       found = PETSC_FALSE
       if (dual_id < 1) exit
       if (dual_id <= global_offset_new .or. &
@@ -1326,7 +1326,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     do local_id=1, num_cells_local_new
       do idual = 1, ugrid%max_ndual_per_cell
         ! dual_id is now the negative of the local unsorted ghost cell id
-        dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+        dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
         ! dual_id = 0: not assigned
         ! dual_id > 0: assigned to local cell
         ! dual_id < 0: assigned to ghost cell
@@ -1380,11 +1380,11 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
   do local_id=1, ugrid%nlmax
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit
       if (dual_id > ugrid%nlmax) then
         ugrid%cell_ids_natural(dual_id) = &
-          vec_ptr2(idual + dual_offset + (local_id-1)*stride)
+          int(vec_ptr2(idual + dual_offset + (local_id-1)*stride))
       endif       
     enddo
   enddo
@@ -1412,7 +1412,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   do local_id=1, ugrid%nlmax
     count = 0
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit
       count = count + 1
       ! flag ghosted cells in dual as negative
