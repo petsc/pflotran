@@ -613,7 +613,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   coeff_right = 0.d0
   rhs = 0.d0
   
-  conc_primary_node = aux_var%total(:,1)                             ! in mol/L 
   pordt = porosity/option%tran_dt
   pordiff = porosity*diffusion_coefficient            
               
@@ -634,12 +633,10 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   enddo
 
 
-  ! Convert the units of sec_conc from mol/L to mol/kg before passing to
-  ! sec_transport_vars
+  ! Units of conc_upd are in mol/kg water
   do j = 1, ncomp
     do i = 1, ngcells
-      sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) = conc_upd(j,i)/ &
-        global_aux_var%den_kg(1)/1.d-3
+      sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) = conc_upd(j,i)
     enddo
   enddo
   

@@ -5047,8 +5047,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
 
   do j = 1, ncomp
     do i = 1, ngcells
-      conc_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j)* &
-                       global_aux_var%den_kg(1)*1.d-3 
+      conc_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j)
       total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
     enddo
   enddo
@@ -5156,10 +5155,10 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
     enddo    
   enddo
   
-  ! Convert m3/s to L/s
-  coeff_right = coeff_right*1.d3
-  coeff_left = coeff_left*1.d3
-  coeff_diag = coeff_diag*1.d3
+  ! Convert m3/s to kg water/s
+  coeff_right = coeff_right*global_aux_var%den_kg(1)
+  coeff_left = coeff_left*global_aux_var%den_kg(1)
+  coeff_diag = coeff_diag*global_aux_var%den_kg(1)
   
   
   ! Reaction 
@@ -5179,8 +5178,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
     do j = 1, ncomp
       res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j)
     enddo
-    coeff_diag(:,:,i) = coeff_diag(:,:,i) + &
-                          jac_react/(global_aux_var%den_kg(1)*.1d-3) ! in L/s
+    coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react
   enddo
   
          
@@ -5218,7 +5216,7 @@ subroutine RTSecondaryTransportMulti(sec_transport_vars,aux_var, &
   
   ! Update the secondary continuum totals at the outer matrix node
   rt_auxvar => sec_transport_vars%sec_rt_auxvar(ngcells)
-  rt_auxvar%pri_molal(1:ncomp) = conc_current_M/(global_aux_var%den_kg(1)*1.d-3) ! in mol/kg
+  rt_auxvar%pri_molal(1:ncomp) = conc_current_M ! in mol/kg
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
   
   total_current_M = rt_auxvar%total(:,1)
