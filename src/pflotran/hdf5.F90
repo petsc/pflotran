@@ -1993,7 +1993,6 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
   
     ! Select hyperslab
-    call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
     call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
   
     ! Initialize data buffer
@@ -2060,7 +2059,6 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
      call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
   
      ! Select hyperslab
-     call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
      call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
   
      ! Initialize data buffer
@@ -2094,26 +2092,24 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        ! Input data is list of Vertices
        !
        ! allocate array to store vertices for each cell
-       !allocate(region%vertex_ids(0:MAX_VERT_PER_FACE,region%num_verts))
-       !region%vertex_ids = -1
        allocate(sideset%face_vertices(MAX_VERT_PER_FACE,sideset%nfaces))
        sideset%face_vertices = -999
   
        do ii = 1,sideset%nfaces
-        !region%vertex_ids(0,ii) = int_buffer(1,ii)
         do jj = 2,int_buffer(1,ii)+1
-         !region%vertex_ids(jj-1,ii) = int_buffer(jj,ii)
          sideset%face_vertices(jj-1,ii) = int_buffer(jj,ii)
         enddo
        enddo
      endif
-
   end select
     
   deallocate(dims_h5)
   deallocate(max_dims_h5)
   deallocate(int_buffer)
 
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(data_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
