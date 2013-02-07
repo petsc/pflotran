@@ -10,13 +10,6 @@ pflotran_test_dir = ../../regression_tests
 
 MYFLAGS = -I${objdir} 
 
-# if compiling pflotran_rxn or libpflotranchem.a, need to define PFLOTRAN_RXN 
-# and toggle PFLOTRAN_RXN_FLAG
-ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
-  PFLOTRAN_RXN_FLAG := 1
-  MYFLAGS += -DPFLOTRAN_RXN
-endif
-
 ifdef compile_broken
   MYFLAGS += -DCOMPILE_BROKEN
 endif
@@ -167,6 +160,7 @@ endif
 
 util_obj  = \
 	${common_src}input.o \
+	${common_src}logging.o \
 	${common_src}matrix_block_aux.o \
 	${common_src}option.o \
 	${common_src}output_aux.o \
@@ -284,7 +278,6 @@ misc_obj = \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}level.o \
-	${common_src}logging.o \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
 	${common_src}patch.o \
