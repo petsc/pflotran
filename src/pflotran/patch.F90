@@ -803,7 +803,11 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 case(RICHARDS_MODE)
                   allocate(coupler%flow_aux_real_var(1,num_connections))
                   coupler%flow_aux_real_var = 0.d0
-                  
+                case default
+                  write(string,*),coupler%flow_condition%rate%itype
+                  option%io_buffer='Source/Sink of rate%itype = ' // &
+                    trim(adjustl(string)) // ', not implemented in this mode.'
+                  call printErrMsg(option)
               end select
           end select
         endif ! associated(coupler%flow_condition%rate)
