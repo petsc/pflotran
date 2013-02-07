@@ -21,7 +21,6 @@ module Reaction_Sandbox_CLM_CN_class
     PetscReal, pointer :: inhibition_constant(:)
     PetscInt, pointer :: upstream_pool_id(:)
     PetscInt, pointer :: downstream_pool_id(:)
-    PetscInt, pointer :: inhibitor_id(:)
     PetscInt, pointer :: pool_id_to_species_id(:,:)
     PetscInt :: C_species_id
     PetscInt :: N_species_id
@@ -44,7 +43,6 @@ module Reaction_Sandbox_CLM_CN_class
   type :: clm_cn_reaction_type
     character(len=MAXWORDLENGTH) :: upstream_pool_name
     character(len=MAXWORDLENGTH) :: downstream_pool_name
-    character(len=MAXWORDLENGTH) :: inhibitor_name
     PetscReal :: rate_constant
     PetscReal :: respiration_fraction
     PetscReal :: inhibition_constant
@@ -78,7 +76,6 @@ function CLM_CN_Create()
   nullify(CLM_CN_Create%pool_id_to_species_id)
   nullify(CLM_CN_Create%upstream_pool_id)
   nullify(CLM_CN_Create%downstream_pool_id)
-  nullify(CLM_CN_Create%inhibitor_id)
   CLM_CN_Create%C_species_id = 0
   CLM_CN_Create%N_species_id = 0
   nullify(CLM_CN_Create%next)
@@ -135,6 +132,8 @@ subroutine CLM_CN_Read(this,input,option)
   type(pool_type), pointer :: new_pool, prev_pool
   type(clm_cn_reaction_type), pointer :: new_reaction, prev_reaction
   
+  PetscReal :: rate_constant, turnover_time
+  
   nullify(new_pool)
   nullify(prev_pool)
   
@@ -148,7 +147,7 @@ subroutine CLM_CN_Read(this,input,option)
 
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,CLM_CN')
+                       'CHEMISTRY,REACTION_SANDBOX,CLM-CN')
     call StringToUpper(word)   
 
     select case(trim(word))
@@ -165,7 +164,7 @@ subroutine CLM_CN_Read(this,input,option)
 
           call InputReadWord(input,option,new_pool%name,PETSC_TRUE)
           call InputErrorMsg(input,option,'pool name', &
-            'CHEMISTRY,REACTION_SANDBOX,CLM_CN,POOLS')
+            'CHEMISTRY,REACTION_SANDBOX,CLM-CN,POOLS')
           call InputReadDouble(input,option,new_pool%CN_ratio)
           if (InputError(input)) then
             new_pool%CN_ratio = -999.d0
@@ -183,11 +182,15 @@ subroutine CLM_CN_Read(this,input,option)
         allocate(new_reaction)
         new_reaction%upstream_pool_name = ''
         new_reaction%downstream_pool_name = ''
-        new_reaction%inhibitor_name = ''
         new_reaction%rate_constant = -999.d0
         new_reaction%respiration_fraction = -999.d0
         new_reaction%inhibition_constant = 0.d0
         nullify(new_reaction%next)
+        
+        ! need to set these temporarily in order to check that they
+        ! are not both set.
+        turnover_time = 0.d0
+        rate_constant = 0.d0
         
         do 
           call InputReadFlotranString(input,option)
@@ -196,7 +199,7 @@ subroutine CLM_CN_Read(this,input,option)
 
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword', &
-                             'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+                             'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
           call StringToUpper(word)   
 
           select case(trim(word))
@@ -204,42 +207,63 @@ subroutine CLM_CN_Read(this,input,option)
               call InputReadWord(input,option, &
                                  new_reaction%upstream_pool_name,PETSC_TRUE)
               call InputErrorMsg(input,option,'upstream pool name', &
-                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
             case('DOWNSTREAM_POOL')
               call InputReadWord(input,option, &
                                  new_reaction%downstream_pool_name,PETSC_TRUE)
               call InputErrorMsg(input,option,'downstream pool name', &
-                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
             case('RATE_CONSTANT')
-              call InputReadDouble(input,option,new_reaction%rate_constant)
+              call InputReadDouble(input,option,rate_constant)
               call InputErrorMsg(input,option,'rate constant', &
-                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
-                input%err_buf = 'CLM_CN RATE CONSTANT UNITS'
+                input%err_buf = 'CLM-CN RATE CONSTANT UNITS'
                 call InputDefaultMsg(input,option)
               else              
-                new_reaction%rate_constant = new_reaction%rate_constant * &
+                rate_constant = rate_constant * &
+                  UnitsConvertToInternal(word,option)
+              endif
+            case('TURNOVER_TIME')
+              call InputReadDouble(input,option,turnover_time)
+              call InputErrorMsg(input,option,'turnover time', &
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (InputError(input)) then
+                input%err_buf = 'CLM-CN TURNOVER TIME UNITS'
+                call InputDefaultMsg(input,option)
+              else              
+                turnover_time = turnover_time * &
                   UnitsConvertToInternal(word,option)
               endif
             case('RESPIRATION_FRACTION')
               call InputReadDouble(input,option,new_reaction%respiration_fraction)
               call InputErrorMsg(input,option,'respiration fraction', &
-                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
-            case('INHIBITION')
-              call InputReadWord(input,option,new_reaction%inhibitor_name, &
-                                 PETSC_TRUE)
-              call InputErrorMsg(input,option,'inhibitor name', &
-                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
+            case('N_INHIBITION')
               call InputReadDouble(input,option,new_reaction%inhibition_constant)
               call InputErrorMsg(input,option,'inhibition constant', &
-                     'CHEMISTRY,REACTION_SANDBOX,CLM_CN,REACTION')
+                     'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
             case default
-              option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM_CN,' // &
+              option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM-CN,' // &
                 'REACTION keyword: ' // trim(word) // ' not recognized.'
               call printErrMsg(option)
           end select
         enddo
+        
+        ! check to ensure that one of turnover time or rate constant is set.
+        if (turnover_time > 0.d0 .and. rate_constant > 0.d0) then
+          option%io_buffer = 'Only TURNOVER_TIME or RATE_CONSTANT may ' // &
+            'be included in a CLM-CN reaction definition, but not both. ' // &
+            'See reaction with upstream pool "' // &
+            trim(new_reaction%upstream_pool_name) // '".'
+          call printErrMsg(option)
+        else if (turnover_time > 0.d0) then
+          new_reaction%rate_constant = 1.d0 / turnover_time
+        else
+          new_reaction%rate_constant = rate_constant
+        endif
         if (associated(this%reactions)) then
           prev_reaction%next => new_reaction
         else
@@ -248,7 +272,7 @@ subroutine CLM_CN_Read(this,input,option)
         prev_reaction => new_reaction
         nullify(new_reaction)        
       case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM_CN keyword: ' // &
+        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,CLM-CN keyword: ' // &
           trim(word) // ' not recognized.'
         call printErrMsg(option)
     end select
@@ -285,7 +309,7 @@ subroutine CLM_CN_ReadSkipBlock(this,input,option)
 
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,CLM_CN Skip Block')
+                       'CHEMISTRY,REACTION_SANDBOX,CLM-CN Skip Block')
     call StringToUpper(word)   
 
     select case(trim(word))
@@ -349,7 +373,6 @@ subroutine CLM_CN_Map(this,reaction,option)
   allocate(this%pool_id_to_species_id(0:2,this%npool))
   allocate(this%upstream_pool_id(this%nrxn))
   allocate(this%downstream_pool_id(this%nrxn))
-  allocate(this%inhibitor_id(this%nrxn))
   allocate(this%rate_constant(this%nrxn))
   allocate(this%respiration_fraction(this%nrxn))
   allocate(this%inhibition_constant(this%nrxn))
@@ -357,7 +380,6 @@ subroutine CLM_CN_Map(this,reaction,option)
   this%pool_id_to_species_id = 0
   this%upstream_pool_id = 0
   this%downstream_pool_id = 0
-  this%inhibitor_id = 0
   this%rate_constant = 0.d0
   this%respiration_fraction = 0.d0
   this%inhibition_constant = 0.d0
@@ -385,9 +407,9 @@ subroutine CLM_CN_Map(this,reaction,option)
                                      PETSC_FALSE,option)
       this%pool_id_to_species_id(0,icount) = 2
       if (minval(this%pool_id_to_species_id(:,icount)) <= 0) then
-        option%io_buffer = 'For CLM_CN pools with no CN ratio defined, ' // &
-          'the user must define two immobile species with the same name ' // &
-          'as the pool with "C" or "N" appended, respectively.'
+        option%io_buffer = 'For CLM-CN pools with no CN ratio defined, ' // &
+          'the user must define two immobile species with the same root ' // &
+          'name as the pool with "C" or "N" appended, respectively.'
         call printErrMsg(option)
       endif
     else ! only one species (e.g. SOMX)
@@ -419,11 +441,14 @@ subroutine CLM_CN_Map(this,reaction,option)
     if (len_trim(cur_rxn%downstream_pool_name) > 0) then
       this%downstream_pool_id(icount) = &
         StringFindEntryInList(cur_rxn%downstream_pool_name,pool_names)
-    endif
-    if (len_trim(cur_rxn%inhibitor_name) > 0) then
-      this%inhibitor_id(icount) = &
-        GetImmobileSpeciesIDFromName(cur_rxn%inhibitor_name,reaction%immobile, &
-                                     PETSC_TRUE,option)
+      if (this%CN_ratio(this%downstream_pool_id(icount)) < 0.d0) then
+        option%io_buffer = 'For CLM-CN reactions, downstream pools ' // &
+          'must have a constant C:N ratio (i.e. C and N are not tracked ' // &
+          ' individually.  Therefore, pool "' // &
+          trim(cur_rxn%downstream_pool_name) // &
+          '" may not be used as a downstream pool.'
+        call printErrMsg(option)
+      endif
     endif
     this%rate_constant(icount) = cur_rxn%rate_constant
     this%respiration_fraction(icount) = cur_rxn%respiration_fraction
@@ -468,7 +493,8 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: ispecC_pool_up, ispecN_pool_up
   PetscInt :: ires_pool_down, ires_C, ires_N
   PetscInt :: iresC_pool_up, iresN_pool_up
-  PetscReal :: drate, rate_const, rate
+  PetscInt :: ispec_N
+  PetscReal :: drate, scaled_rate_const, rate
   PetscInt :: irxn
   
   ! inhibition variables
@@ -489,13 +515,14 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: stoich_downstream_pool
   PetscReal :: stoich_upstreamC_pool, stoich_upstreamN_pool
   
-  PetscReal :: inhibition_conc, species_inhibition, d_species_inhibition
-  PetscInt :: inhibitor_id, ires_inhibitor
-  PetscReal :: drate_dinhibition
+  PetscReal :: N_inhibition, d_N_inhibition
+  PetscReal :: drate_dN_inhibition
+  PetscBool :: use_N_inhibition
   PetscReal :: temp_real, u, d
   
   PetscReal :: dCN_ratio_up_dC_pool_up, dCN_ratio_up_dN_pool_up
   PetscReal :: dstoich_upstreamN_pool_dC_pool_up
+  PetscReal :: dstoich_upstreamN_pool_dN_pool_up
   PetscReal :: du_dCN_ratio_up
   PetscReal :: dstoich_N_dC_pool_up
   PetscReal :: dstoich_N_dN_pool_up
@@ -515,36 +542,21 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   
   ! indices for C and N species
   ires_C = reaction%offset_immobile + this%C_species_id
-  ires_N = reaction%offset_immobile + this%N_species_id
+  ispec_N = this%N_species_id
+  ires_N = reaction%offset_immobile + ispec_N
 
     ! Litter pools
   do irxn = 1, this%nrxn
   
     ipool_up = this%upstream_pool_id(irxn)
-    ispecC_pool_up = 0 ! this serves as a flag regardless of whether it is set later
     
-    rate_const = this%rate_constant(irxn)*constant_inhibition
+    ! scaled_rate_const units: (m^3 bulk / s) = (1/s) * (m^3 bulk)
+    scaled_rate_const = this%rate_constant(irxn)*volume*constant_inhibition
     resp_frac = this%respiration_fraction(irxn)
-    
-    ! inhibition by limitting species
-    if (this%inhibitor_id(irxn) > 0) then
-      inhibitor_id = this%inhibitor_id(irxn) 
-      ires_inhibitor = reaction%offset_immobile + inhibitor_id
-      inhibition_conc = rt_auxvar%immobile(inhibitor_id)
-      temp_real = inhibition_conc + this%inhibition_constant(irxn)
-      species_inhibition = inhibition_conc / temp_real
-      d_species_inhibition = this%inhibition_constant(irxn) / &
-                             (temp_real * temp_real)
-    else 
-      inhibitor_id = 0
-      species_inhibition = 1.d0
-      drate_dinhibition = 0.d0
-    endif
     
     ! contributions for pools of carbon/nitrogen
     ispecC_pool_up = this%pool_id_to_species_id(1,ipool_up)
     stoich_upstreamC_pool = -1.d0 ! always -1.d0
-    rate = rate_const * rt_auxvar%immobile(ispecC_pool_up) * species_inhibition
 
     if (this%pool_id_to_species_id(0,ipool_up) == 2) then
       ! upstream pool is Litter pool with two species (C,N)
@@ -576,6 +588,24 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     stoich_N = u - (1.d0 - resp_frac) * d
     stoich_C = resp_frac
 
+    ! inhibition by limiting N
+    ! an inhibition concentration > 0 and N is a reactant
+    if (this%inhibition_constant(irxn) > 1.d-40 .and. stoich_N < 0.d0) then
+      use_N_inhibition = PETSC_TRUE
+      temp_real = rt_auxvar%immobile(ispec_N) + &
+                  this%inhibition_constant(irxn)
+      N_inhibition = rt_auxvar%immobile(ispec_N) / temp_real
+      d_N_inhibition = this%inhibition_constant(irxn) / &
+                             (temp_real * temp_real)
+    else 
+      use_N_inhibition = PETSC_FALSE
+      N_inhibition = 1.d0
+      d_N_inhibition = 0.d0
+    endif
+    
+    ! residual units: (mol/sec) = (m^3 bulk/s) * (mol/m^3 bulk)
+    rate = scaled_rate_const * rt_auxvar%immobile(ispecC_pool_up) * N_inhibition
+
     ! calculation of residual
     
     ! carbon
@@ -600,15 +630,16 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     if (compute_derivative) then
-      drate = rate_const * species_inhibition
+      drate = scaled_rate_const * N_inhibition
       
       ! upstream pool or upstream C pool
-      Jac(iresC_pool_up,iresC_pool_up) = Jac(iresC_pool_up,iresC_pool_up) + &
+      Jac(iresC_pool_up,iresC_pool_up) = Jac(iresC_pool_up,iresC_pool_up) - &
         stoich_upstreamC_pool * drate
-      if (inhibitor_id > 0) then
-        drate_dinhibition = rate / species_inhibition * d_species_inhibition
-        Jac(iresC_pool_up,ires_inhibitor) = Jac(iresC_pool_up,ires_inhibitor) + &
-          stoich_upstreamC_pool * drate_dinhibition
+      if (use_N_inhibition) then
+        drate_dN_inhibition = rate / N_inhibition * d_N_inhibition
+        Jac(iresC_pool_up,ires_N) = &
+          Jac(iresC_pool_up,ires_N) - &
+          stoich_upstreamC_pool * drate_dN_inhibition
       endif
       
       ! variable upstream N pool
@@ -623,8 +654,9 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
         ! stoich_upstreamC_pool = -1.d0
         ! stoich_upstreamN_pool = stoich_upstreamC_pool / CN_ratio_up        
         ! dstoich_upstreamC_pool_dCup = 0.
-        dstoich_upstreamN_pool_dC_pool_up = -1.d0 * stoich_upstreamN_pool / &
-                                         CN_ratio_up * dCN_ratio_up_dC_pool_up
+        temp_real = -1.d0 * stoich_upstreamN_pool / CN_ratio_up
+        dstoich_upstreamN_pool_dC_pool_up = temp_real * dCN_ratio_up_dC_pool_up
+        dstoich_upstreamN_pool_dN_pool_up = temp_real * dCN_ratio_up_dN_pool_up        
         ! 
         ! stoich_N = u - (1.d0 - resp_frac) * d
         !   constants: d, resp_frac
@@ -634,41 +666,43 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
         dstoich_N_dC_pool_up = du_dCN_ratio_up * dCN_ratio_up_dC_pool_up
         dstoich_N_dN_pool_up = du_dCN_ratio_up * dCN_ratio_up_dN_pool_up
 
-        Jac(iresN_pool_up,iresN_pool_up) = Jac(iresN_pool_up,iresN_pool_up) + &
+        Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) - &
           stoich_upstreamN_pool * drate
-        Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) + &
+        Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) - &
           dstoich_upstreamN_pool_dC_pool_up * rate
-        if (inhibitor_id > 0) then
-          Jac(iresN_pool_up,ires_inhibitor) = Jac(iresN_pool_up,ires_inhibitor) + &
-            stoich_upstreamN_pool * drate_dinhibition
+        Jac(iresN_pool_up,iresN_pool_up) = Jac(iresN_pool_up,iresN_pool_up) - &
+          dstoich_upstreamN_pool_dN_pool_up * rate
+        if (use_N_inhibition) then
+          Jac(iresN_pool_up,ires_N) = Jac(iresN_pool_up,ires_N) - &
+            stoich_upstreamN_pool * drate_dN_inhibition
         endif
 
         ! nitrogen (stoichiometry a function of upstream C/N)
-        Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) + &
+        Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) - &
           dstoich_N_dC_pool_up * rate
-        Jac(ires_N,iresN_pool_up) = Jac(ires_N,iresN_pool_up) + &
+        Jac(ires_N,iresN_pool_up) = Jac(ires_N,iresN_pool_up) - &
           dstoich_N_dN_pool_up * rate
       endif
       
       ! downstream pool
       if (ispec_pool_down > 0) then
-        Jac(ires_pool_down,iresC_pool_up) = Jac(ires_pool_down,iresC_pool_up) + &
+        Jac(ires_pool_down,iresC_pool_up) = Jac(ires_pool_down,iresC_pool_up) - &
           stoich_downstream_pool * drate
-        if (inhibitor_id > 0) then
-          Jac(ires_pool_down,ires_inhibitor) = Jac(ires_pool_down,ires_inhibitor) + &
-            stoich_downstream_pool * drate_dinhibition
+        if (use_N_inhibition) then
+          Jac(ires_pool_down,ires_N) = Jac(ires_pool_down,ires_N) - &
+            stoich_downstream_pool * drate_dN_inhibition
         endif
       endif
       
       ! carbon
-      Jac(ires_C,iresC_pool_up) = Jac(ires_C,iresC_pool_up) + stoich_C * drate
+      Jac(ires_C,iresC_pool_up) = Jac(ires_C,iresC_pool_up) - stoich_C * drate
       ! nitrogen
-      Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) + stoich_N * drate
-      if (inhibitor_id > 0) then
-        Jac(ires_C,ires_inhibitor) = Jac(ires_C,ires_inhibitor) + & 
-          stoich_C * drate_dinhibition
-        Jac(ires_N,ires_inhibitor) = Jac(ires_N,ires_inhibitor) + &
-          stoich_N * drate_dinhibition
+      Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) - stoich_N * drate
+      if (use_N_inhibition) then
+        Jac(ires_C,ires_N) = Jac(ires_C,ires_N) - & 
+          stoich_C * drate_dN_inhibition
+        Jac(ires_N,ires_N) = Jac(ires_N,ires_N) - &
+          stoich_N * drate_dN_inhibition
       endif
     endif
   enddo
@@ -715,6 +749,7 @@ subroutine CLM_CN_Destroy(this)
   call DeallocateArray(this%CN_ratio)
   call DeallocateArray(this%rate_constant)
   call DeallocateArray(this%respiration_fraction)
+  call DeallocateArray(this%inhibition_constant)
   call DeallocateArray(this%upstream_pool_id)
   call DeallocateArray(this%downstream_pool_id)
   call DeallocateArray(this%pool_id_to_species_id)

@@ -151,7 +151,7 @@ end subroutine MicrobialRead
 subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                       global_auxvar,porosity,volume,reaction,option)
 
-  use Option_module, only : option_type
+  use Option_module, only : option_type, printErrMsg
   use Reactive_Transport_Aux_module, only : reactive_transport_auxvar_type
   use Global_Aux_module, only : global_auxvar_type
   use Reaction_Aux_module, only : reaction_type
@@ -303,6 +303,8 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     ! biomass expression
     if (ibiomass > 0) then
       dR_dbiomass = Im / biomass_conc
+      option%io_buffer = "Shouldn't biomass contribution be negative"
+      call printErrMsg(option)
       do i = 1, ncomp
         ! units = (mol/sec)*(kg water/mol) = kg water/sec
         Jac(icomp,immobile_id) = Jac(icomp,immobile_id) + &
