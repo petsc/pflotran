@@ -1716,6 +1716,8 @@ and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
+\paragraph{Changes in Material Properties}
+
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
 \EQ\label{porosity}
 \varphi \eq 1-\sum_m\varphi_m,
@@ -1736,8 +1738,6 @@ and
 a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'},
 \EN
 where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$. The quantity $\varphi_c$ refers to a critical porosity below which the permeability is assumed to be constant with scale factor $f_{\rm min}$.
-
-\paragraph{Changes in Material Properties}
 
 In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral. It is not necessary  that Eqn.\eqref{porosity} relating porosity and mineral volume fractions holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
 \begin{subequations}
@@ -1771,6 +1771,10 @@ Mass and mole fractions are related by the expression
 \EQ
 W_m x_m \eq W_s y_m.
 \EN
+
+\paragraph{Affinity Threshold}
+
+An affinity threshold $f$ for precipitation may be introduced which only allows precipitation to occur if $K_m Q_m > f > 1$.
 
 \paragraph{Surface Armoring}
 
