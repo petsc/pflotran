@@ -203,6 +203,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
+  use Dataset_Aux_module
   use Unstructured_Grid_Aux_module
   use Discretization_module
   use Region_module
@@ -231,9 +232,10 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   type(flow_condition_type), pointer           :: flow_condition
   type(coupler_type), pointer                  :: coupler
   type(strata_type), pointer                   :: strata
+  type(dataset_type), pointer                  :: dataset
 
-  type(patch_type), pointer :: patch
-  type(output_option_type), pointer :: output_option
+  type(patch_type), pointer                    :: patch
+  type(output_option_type), pointer            :: output_option
   PetscReal :: units_conversion
 
   character(len=MAXWORDLENGTH)                 :: word
@@ -690,6 +692,14 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
               call printErrMsg(option)
             end select
         enddo
+      !.........................................................................
+      case ('SURF_DATASET')
+      dataset => DatasetCreate()
+      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+      call InputDefaultMsg(input,option,'Dataset name')
+      call DatasetRead(dataset,input,option)
+      call DatasetAddToList(dataset,surf_realization%datasets)
+      nullify(dataset)
       
       !.........................................................................
       case default
@@ -2528,6 +2538,8 @@ subroutine SurfaceFlowRHSFunctionPatch2(ts,t,xx,ff,surf_realization,ierr)
   do
     if (.not.associated(source_sink)) exit
     
+    if(source_sink%flow_condition%rate%itype/=DISTRIBUTED_VOLUMETRIC_RATE_SS.and. &
+       source_sink%flow_condition%rate%itype/=DISTRIBUTED_MASS_RATE_SS) &
     qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       
     cur_connection_set => source_sink%connection_set

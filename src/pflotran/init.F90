@@ -1059,7 +1059,7 @@ subroutine Init(simulation)
     call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
 
     ! override initial conditions if they are to be read from a file
-    if (len_trim(option%initialize_flow_filename) > 1) then
+    if (len_trim(option%surf_initialize_flow_filename) > 1) then
       option%io_buffer = 'For surface-flow initial conditions cannot be read from file'
       call printErrMsgByRank(option)
     endif

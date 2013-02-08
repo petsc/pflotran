@@ -1273,10 +1273,13 @@ subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
   type(surface_realization_type), pointer :: surf_realization
   type(option_type) :: option
 
-  PetscReal :: max_allowable_surf_flow_dt
+  PetscReal :: dt_max,dt_max_glb
+  PetscErrorCode :: ierr
 
-  call SurfaceFlowComputeMaxDt(surf_realization,max_allowable_surf_flow_dt)
-  option%surf_flow_dt=min(0.9d0*max_allowable_surf_flow_dt,surf_realization%dt_max)
+  call SurfaceFlowComputeMaxDt(surf_realization,dt_max)
+  call MPI_Allreduce(dt_max,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MIN,option%mycomm,ierr)
+  option%surf_flow_dt=min(0.9d0*dt_max_glb,surf_realization%dt_max)
 
 end subroutine StepperUpdateSurfaceFlowDTExplicit
 #endif
