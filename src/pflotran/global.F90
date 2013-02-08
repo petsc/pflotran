@@ -702,6 +702,22 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF,time_level)       
+    case(TH_MODE)
+      ! pressure
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
+ 
+      ! temperature
+      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
+      
+
     case(THC_MODE)
 #if 0
       ! Gas density

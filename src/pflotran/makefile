@@ -170,6 +170,7 @@ mode_aux_obj = \
 	${common_src}miscible_aux.o \
 	${common_src}mphase_aux.o \
 	${common_src}richards_aux.o \
+	${common_src}th_aux.o \
 	${common_src}thc_aux.o \
 	${common_src}thmc_aux.o
 
@@ -182,6 +183,7 @@ mode_obj = \
 	${common_src}mphase.o \
 	${common_src}reactive_transport.o \
 	${common_src}richards.o \
+	${common_src}th.o \
 	${common_src}thc.o \
 	${common_src}thmc.o 
 
@@ -320,7 +322,7 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
+auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
               secondary_continuum_aux.o
@@ -394,7 +396,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
          co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
          coupler.o strata.o pckr_mod.o mphase.o flash2.o \
-         richards.o thc.o thmc.o discretization.o logging.o \
+         richards.o th.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
@@ -443,7 +445,7 @@ output_observation.o : realization_base.o logging.o output_aux.o option.o \
                        discretization.o grid.o field.o patch.o observation.o \
                        utility.o region.o reactive_transport.o reaction_aux.o \
                        structured_grid.o connection.o coupler.o variables.o \
-                       global_aux.o mphase.o immis.o thc.o thmc.o richards.o \
+                       global_aux.o mphase.o immis.o th.o thc.o thmc.o richards.o \
                        flash2.o miscible.o general.o reactive_transport.o 
 output_surface.o : realization_base.o logging.o output_common.o output_hdf5.o \
                    output_tecplot.o option.o surface_realization.o \
@@ -537,13 +539,17 @@ surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         surface_material.o waypoint.o dataset_aux.o coupler.o \
                         string.o grid.o strata.o unstructured_grid.o dataset.o \
                         unstructured_grid_aux.o realization_base.o
+th.o : secondary_continuum.o th_aux.o realization.o saturation_function.o \
+        variables.o secondary_continuum_aux.o
+th_aux.o : option.o material.o water_eos.o \
+            saturation_function.o grid.o global_aux.o
 thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \
         variables.o secondary_continuum_aux.o
 thc_aux.o : option.o material.o water_eos.o \
             saturation_function.o grid.o global_aux.o
 thmc.o : thmc_aux.o realization.o saturation_function.o
 thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o global_aux.o
-timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
+timestepper.o : th.o thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 input.o string.o reactive_transport.o condition_control.o \

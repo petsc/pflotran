@@ -1019,7 +1019,7 @@ subroutine FlowConditionRead(condition,input,option)
     case(G_MODE)
       option%io_buffer = 'General mode not supported in original FlowConditionRead.'
       call printMsg(option)
-    case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+    case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)&
            .and. .not.associated(well) .and. .not.associated(saturation)) then
         option%io_buffer = 'pressure, rate and saturation condition null in ' // &

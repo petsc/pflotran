@@ -55,6 +55,7 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
+  use TH_module
   use THC_module
   use THMC_module
   use General_module
@@ -288,7 +289,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -307,6 +308,8 @@ subroutine Init(simulation)
           write(*,'(" mode = IMS: p, T, s")')
         case(MIS_MODE)
           write(*,'(" mode = MIS: p, Xs")')
+        case(TH_MODE)
+          write(*,'(" mode = THC: p, T, s/X")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(THMC_MODE)
@@ -352,6 +355,9 @@ subroutine Init(simulation)
     endif
     
     select case(option%iflowmode)
+      case(TH_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
+                             realization,ierr)
       case(THC_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
@@ -391,6 +397,9 @@ subroutine Init(simulation)
     endif
 
     select case(option%iflowmode)
+      case(TH_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             THJacobian,realization,ierr)
       case(THC_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THCJacobian,realization,ierr)
@@ -472,6 +481,15 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
+      case(TH_MODE)
+        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+            dabs(option%pressure_change_limit) > 0.d0 .or. &
+            dabs(option%temperature_change_limit) > 0.d0) then
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch, &
+                                         THCheckUpdatePre, &
+                                         realization,ierr)
+        endif
       case(THC_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
@@ -490,6 +508,11 @@ subroutine Init(simulation)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
+                                          realization,ierr)
+        case(TH_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          THCheckUpdatePost, &
                                           realization,ierr)
         case(THC_MODE)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
@@ -730,6 +753,8 @@ subroutine Init(simulation)
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
+      case(TH_MODE)
+        call THSetup(realization)
       case(THC_MODE)
         call THCSetup(realization)
       case(THMC_MODE)
@@ -758,6 +783,8 @@ subroutine Init(simulation)
     endif
   
     select case(option%iflowmode)
+      case(TH_MODE)
+        call THUpdateAuxVars(realization)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
       case(THMC_MODE)
@@ -2259,6 +2286,13 @@ subroutine setFlowMode(option)
   
   call StringToUpper(option%flowmode)
   select case(option%flowmode)
+    case('TH')
+      option%iflowmode = THC_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1
