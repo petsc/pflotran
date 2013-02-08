@@ -1,0 +1,168 @@
+:Description: 1D test problem for THC mode
+:===================== THC mode ===============================
+MODE TH
+
+:===================== Discretization =========================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 100 1 1
+BOUNDS
+0.d0 100.d0
+0.d0 1.d0
+0.d0 1.d0
+/
+END
+
+:===================== Solver options ========================
+NEWTON_SOLVER FLOW
+ATOL 1D-12
+RTOL 1D-8
+STOL 1D-15
+ITOL 1D-8
+MAXIT 100
+MAXF 1000
+END
+
+
+LINEAR_SOLVER FLOW
+:PC_TYPE LU
+:KSP_TYPE PREONLY
+END
+
+LINEAR_SOLVER TRANSPORT
+:PC_TYPE LU
+:KSP_TYPE PREONLY
+END
+
+NEWTON_SOLVER TRANSPORT
+MATRIX_TYPE AIJ
+PRECONDITIONER_MATRIX_TYPE AIJ
+END
+
+:UNIFORM_VELOCITY 7.9274479960d-9 0.d0 0.d0
+
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+:========================= material properties ===================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.5d0
+TORTUOSITY 1.d0
+ROCK_DENSITY 2.8E3
+SPECIFIC_HEAT 1E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5
+SATURATION_FUNCTION default 
+LONGITUDINAL_DISPERSIVITY 3.1536d0
+PERMEABILITY 
+PERM_X 1.d-15
+PERM_Y 1.d-15
+PERM_Z 1.d-15
+/
+/
+
+:========================= saturation functions ==================
+SATURATION_FUNCTION default
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.5d-1
+LAMBDA 0.75
+ALPHA 1.d-3
+/
+
+:========================= output options =========================
+OUTPUT
+:TIMES y 0.25d0 0.5d0 0.75d0 2.d0
+SCREEN PERIODIC 10
+PERIODIC_OBSERVATION TIMESTEP 1 
+:FORMAT TECPLOT POINT
+FORMAT HDF5
+:VELOCITIES
+/
+
+:======================== times ====================================
+TIME
+FINAL_TIME 2.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+/
+
+:=========================== regions ===============================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 1.d0 1.d0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 1.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 1.d0 1.d0
+/
+END
+
+OBSERVATION 
+REGION east
+:VELOCITY
+/
+
+:======================= flow conditions ===============================
+FLOW_CONDITION initial
+UNITS Pa, C, yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+ENTHALPY dirichlet
+/
+PRESSURE 1.5D5
+TEMPERATURE 100.D0
+ENTHALPY 0.D0
+END
+
+FLOW_CONDITION west
+TYPE 
+PRESSURE zero_gradient
+TEMPERATURE dirichlet
+ENTHALPY dirichlet
+/
+PRESSURE 1.D5
+TEMPERATURE 25.D0
+ENTHALPY 0.D0 
+END
+
+:========================== initial and boundary conditions =================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION initial
+REGION east
+END
+
+:===================== stratigraphy couplers ==============================
+STRATA
+REGION all
+MATERIAL soil1
+END
+
