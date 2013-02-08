@@ -857,8 +857,8 @@ subroutine RegionReadSideSet(sideset,filename,option)
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: num_faces_local_save
   PetscInt :: num_faces_local
   PetscInt :: num_to_read
@@ -888,15 +888,15 @@ subroutine RegionReadSideSet(sideset,filename,option)
 ! type vert1 vert2 ... vertn  ! for face num_faces
 ! -----------------------------------------------------------------
 
-  card = 'Unstructured Sideset'
+  hint = 'Unstructured Sideset'
 
   call InputReadFlotranString(input,option)
   string = 'unstructured sideset'
-  call InputReadStringErrorMsg(input,option,card)  
+  call InputReadStringErrorMsg(input,option,hint)  
 
   ! read num_faces
   call InputReadInt(input,option,sideset%nfaces)
-  call InputErrorMsg(input,option,'number of faces',card)
+  call InputErrorMsg(input,option,'number of faces',hint)
 
   ! divide faces across ranks
   num_faces_local = sideset%nfaces/option%mycommsize 
@@ -924,9 +924,9 @@ subroutine RegionReadSideSet(sideset,filename,option)
       do iface = 1, num_to_read
         ! read in the vertices defining the cell face
         call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadStringErrorMsg(input,option,hint)  
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'face type',card)
+        call InputErrorMsg(input,option,'face type',hint)
         call StringToUpper(word)
         select case(word)
           case('Q')
@@ -940,7 +940,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
         end select
         do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,iface))
-          call InputErrorMsg(input,option,'vertex id',card)
+          call InputErrorMsg(input,option,'vertex id',hint)
         enddo
       enddo
       ! if the faces reside on io_rank
@@ -1012,8 +1012,8 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: fileid
   
   PetscInt :: num_connections
@@ -1048,13 +1048,13 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
-    card = trim(word)
+    hint = trim(word)
   
     select case(word)
       case('CONNECTIONS')
-        card = 'Explicit Unstructured Grid CONNECTIONS'
+        hint = 'Explicit Unstructured Grid CONNECTIONS'
         call InputReadInt(input,option,num_connections)
-        call InputErrorMsg(input,option,'number of connections',card)
+        call InputErrorMsg(input,option,'number of connections',hint)
         
         allocate(cell_ids(num_connections))
         cell_ids = 0
@@ -1068,21 +1068,21 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
         enddo
         do iconn = 1, num_connections
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadStringErrorMsg(input,option,hint)  
           call InputReadInt(input,option,cell_ids(iconn))
-          call InputErrorMsg(input,option,'cell id',card)
+          call InputErrorMsg(input,option,'cell id',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_centroids(iconn)%x)
-          call InputErrorMsg(input,option,'face x coordinate',card)
+          call InputErrorMsg(input,option,'face x coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_centroids(iconn)%y)
-          call InputErrorMsg(input,option,'face y coordinate',card)
+          call InputErrorMsg(input,option,'face y coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_centroids(iconn)%z)
-          call InputErrorMsg(input,option,'face z coordinate',card)
+          call InputErrorMsg(input,option,'face z coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_areas(iconn))
-          call InputErrorMsg(input,option,'face area',card)
+          call InputErrorMsg(input,option,'face area',hint)
         enddo
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &

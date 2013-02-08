@@ -339,11 +339,7 @@ end subroutine THCSetupPatch
 ! date: 08/02/12
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
-#else
-subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
-#endif
 
   use Realization_class
   use Grid_module
@@ -354,11 +350,7 @@ subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: P
   Vec :: dP
   ! ignore changed flag for now.
@@ -500,13 +492,8 @@ end subroutine THCCheckUpdatePre
 ! date: 07/25/12
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                    P1_changed,realization,ierr)
-#else
-subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
-                                   P1_changed,ierr)
-#endif
 
   use Realization_class
   use Grid_module
@@ -516,11 +503,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: P0
   Vec :: dP
   Vec :: P1
@@ -3188,22 +3171,7 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  ! Compute internal and boundary flux terms
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THCResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  ! Now make a second pass and compute everything that isn't an internal 
-  ! or boundary flux term
+  ! Compute internal and boundary flux terms as well as source/sink terms
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit

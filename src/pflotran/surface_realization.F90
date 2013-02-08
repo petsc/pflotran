@@ -1067,21 +1067,13 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
     call MatGetRowIJF90(prod_loc_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
     ! Get values stored in the local-matrix
-#ifdef HAVE_PETSC_API_3_3      
-    call MatGetArray(prod_loc_mat, aa, aaa, ierr)
-#else
     call MatSeqAIJGetArray(prod_loc_mat, aa, aaa, ierr)
-#endif
   else
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(prod_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
     ! Get values stored in the local-matrix
-#ifdef HAVE_PETSC_API_3_3      
-    call MatGetArray(prod_mat, aa, aaa, ierr)
-#else
     call MatSeqAIJGetArray(prod_mat, aa, aaa, ierr)
-#endif
   endif
 
   ! For each row of the local-matrix, find the column with the largest value

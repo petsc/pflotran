@@ -56,6 +56,7 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
+  use TH_module
   use THC_module
   use THMC_module
   use General_module
@@ -105,9 +106,7 @@ subroutine Init(simulation)
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
   PetscReal :: min_value
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: linesearch
-#endif
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer               :: surf_flow_stepper
   type(solver_type), pointer                :: surf_flow_solver
@@ -293,7 +292,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -312,6 +311,8 @@ subroutine Init(simulation)
           write(*,'(" mode = IMS: p, T, s")')
         case(MIS_MODE)
           write(*,'(" mode = MIS: p, Xs")')
+        case(TH_MODE)
+          write(*,'(" mode = THC: p, T")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(THMC_MODE)
@@ -357,6 +358,9 @@ subroutine Init(simulation)
     endif
     
     select case(option%iflowmode)
+      case(TH_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
+                             realization,ierr)
       case(THC_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
@@ -396,6 +400,9 @@ subroutine Init(simulation)
     endif
 
     select case(option%iflowmode)
+      case(TH_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             THJacobian,realization,ierr)
       case(THC_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THCJacobian,realization,ierr)
@@ -430,13 +437,8 @@ subroutine Init(simulation)
     end select
     
     ! by default turn off line search
-#ifndef HAVE_SNES_API_3_2
     call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-#else
-    call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
-                           PETSC_NULL_OBJECT,ierr)
-#endif
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 1) then
       string = '-flow_snes_view'
@@ -477,31 +479,28 @@ subroutine Init(simulation)
       case(RICHARDS_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%saturation_change_limit) > 0.d0) then
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
-#else        
-          call SNESLineSearchSetPreCheck(flow_solver%snes, &
-                                         RichardsCheckUpdatePre, &
+        endif
+      case(TH_MODE)
+        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+            dabs(option%pressure_change_limit) > 0.d0 .or. &
+            dabs(option%temperature_change_limit) > 0.d0) then
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch, &
+                                         THCheckUpdatePre, &
                                          realization,ierr)
-#endif
         endif
       case(THC_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCCheckUpdatePre, &
                                          realization,ierr)
-#else        
-          call SNESLineSearchSetPreCheck(flow_solver%snes, &
-                                         THCCheckUpdatePre, &
-                                         realization,ierr)
-#endif          
         endif
     end select
     
@@ -509,27 +508,20 @@ subroutine Init(simulation)
     if (option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
                                           realization,ierr)
-#else         
-          call SNESLineSearchSetPostCheck(flow_solver%snes, &
-                                          RichardsCheckUpdatePost, &
+        case(TH_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          THCheckUpdatePost, &
                                           realization,ierr)
-#endif
         case(THC_MODE)
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCCheckUpdatePost, &
                                           realization,ierr)
-#else         
-          call SNESLineSearchSetPostCheck(flow_solver%snes, &
-                                          THCCheckUpdatePost, &
-                                          realization,ierr)
-#endif        
       end select
     endif
     
@@ -681,13 +673,8 @@ subroutine Init(simulation)
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.
-#ifndef HAVE_SNES_API_3_2
       call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-#else       
-      call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
-                             PETSC_NULL_OBJECT,ierr)
-#endif      
     
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
@@ -719,14 +706,9 @@ subroutine Init(simulation)
       ! to fail
       if (associated(realization%reaction)) then
         if (realization%reaction%check_update) then
-#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
                                          realization,ierr)
-#else           
-          call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
-                                         realization,ierr)
-#endif          
         endif
       endif
     endif
@@ -794,6 +776,8 @@ subroutine Init(simulation)
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
+      case(TH_MODE)
+        call THSetup(realization)
       case(THC_MODE)
         call THCSetup(realization)
       case(THMC_MODE)
@@ -822,6 +806,8 @@ subroutine Init(simulation)
     endif
   
     select case(option%iflowmode)
+      case(TH_MODE)
+        call THUpdateAuxVars(realization)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
       case(THMC_MODE)
@@ -986,37 +972,9 @@ subroutine Init(simulation)
   call RealizationPrintGridStatistics(realization)
 #endif
   
-  ! check that material properties have been set at all grid cells
-  ! right now, we check just perms; maybe more needed later
-  call VecMin(field%porosity0,temp_int,r1,ierr)
-  if (r1 < -998.d0) then
-    ! if less than 10M grid cells, print porosities
-    if (grid%nmax < 10000000) then
-      string = 'porosity-uninitialized.tec'
-      call OutputVectorTecplot(string,string,realization,field%porosity0)
-    endif
-    write(string,*) temp_int, r1
-    option%io_buffer = 'Porosity not initialized at cell ' // &
-                       trim(adjustl(string)) // ' (note PETSc numbering).' // &
-                       '  Ensure that REGIONS cover entire domain!!!'
-    call printErrMsg(option)
-  endif
-  if (option%iflowmode /= NULL_MODE) then
-    min_value = 1.d20
-    call VecMin(field%perm0_xx,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    call VecMin(field%perm0_yy,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    call VecMin(field%perm0_zz,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    if (min_value < 1.d-60) then
-      option%io_buffer = &
-        'A positive non-zero permeability must be defined throughout ' // &
-        'domain in X, Y and Z.'
-      call printErrMsg(option)
-    endif
-  endif
-  
+  ! check for non-initialized data sets, e.g. porosity, permeability
+  call RealizationNonInitializedData(realization)
+
 #if defined(PETSC_HAVE_HDF5)
 #if !defined(HDF5_BROADCAST)
   call printMsg(option,"Default HDF5 method is used in Initialization")
@@ -2338,6 +2296,13 @@ subroutine setFlowMode(option)
   
   call StringToUpper(option%flowmode)
   select case(option%flowmode)
+    case('TH')
+      option%iflowmode = TH_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2
+      option%nflowdof = 2
+      option%nflowspec = 1
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1
@@ -3898,5 +3863,105 @@ subroutine InitPrintPFLOTRANHeader(option,fid)
   write(fid,'(" PFLOTRAN Header")') 
   
 end subroutine InitPrintPFLOTRANHeader
+
+! ************************************************************************** !
+!
+! InitReadVelocityField: Reads fluxes in for transport with no flow.
+! author: Glenn Hammond
+! date: 02/05/13
+!
+! ************************************************************************** !
+subroutine InitReadVelocityField(realization,filename)
+
+  use Realization_class
+  use Patch_module
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Coupler_module
+  use Connection_module
+  use Discretization_module
+  use HDF5_module
+
+  implicit none
   
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscInt :: idir, iconn, sum_connection
+  PetscInt :: ghosted_id_up, local_id
+  PetscErrorCode :: ierr
+  
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscReal, pointer :: vec_p(:)
+  type(coupler_type), pointer :: boundary_condition  
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  discretization => realization%discretization
+
+  group_name = ''
+  do idir = 1, 3
+    select case(idir)
+      case(1)
+        dataset_name = 'Internal Velocity X'
+      case(2)
+        dataset_name = 'Internal Velocity Y'
+      case(3)
+        dataset_name = 'Internal Velocity Z'
+    end select
+    call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
+                                      group_name,dataset_name,PETSC_FALSE)
+    call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc, &
+                                     ONEDOF)
+    call GridVecGetArrayF90(grid,field%work_loc,vec_loc_p,ierr)
+    connection_set_list => grid%internal_connection_set_list
+    cur_connection_set => connection_set_list%first
+    sum_connection = 0  
+    do 
+      if (.not.associated(cur_connection_set)) exit
+      do iconn = 1, cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        ghosted_id_up = cur_connection_set%id_up(iconn)
+        if (cur_connection_set%dist(idir,iconn) > 0.9d0) then
+          patch%internal_velocities(1,sum_connection) = vec_p(ghosted_id_up)
+        endif
+      enddo
+      cur_connection_set => cur_connection_set%next
+    enddo
+    call GridVecRestoreArrayF90(grid,field%work_loc,vec_loc_p,ierr)
+  enddo
+  
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    group_name = boundary_condition%name
+    dataset_name = 'Velocity'
+    call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
+                                      group_name,dataset_name,PETSC_FALSE)
+    call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      patch%boundary_velocities(1,sum_connection) = vec_p(local_id)
+    enddo
+    call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+    boundary_condition => boundary_condition%next
+  enddo
+  
+end subroutine InitReadVelocityField
+            
 end module Init_module

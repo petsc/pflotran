@@ -98,6 +98,7 @@ PetscInt, parameter :: FLASH2_MODE = 6
 PetscInt, parameter :: G_MODE = 7
 PetscInt, parameter :: MIS_MODE = 8
 PetscInt, parameter :: THMC_MODE = 9
+PetscInt, parameter :: TH_MODE = 10
 
 ! transport modes
 PetscInt, parameter :: EXPLICIT_ADVECTION = 1
@@ -171,6 +172,12 @@ PetscInt, parameter :: THC_TEMPERATURE_DOF = 2
 !PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
 PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
 PetscInt, parameter :: THC_ENTHALPY_DOF = 5
+
+PetscInt, parameter :: TH_PRESSURE_DOF = 1
+PetscInt, parameter :: TH_MASS_RATE_DOF = 4
+PetscInt, parameter :: TH_TEMPERATURE_DOF = 2
+PetscInt, parameter :: TH_CONCENTRATION_DOF = 3
+PetscInt, parameter :: TH_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: THMC_PRESSURE_DOF = 1
 PetscInt, parameter :: THMC_TEMPERATURE_DOF = 2

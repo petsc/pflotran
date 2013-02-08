@@ -106,7 +106,7 @@ subroutine RSandboxRead(input,option)
     call StringToUpper(word)   
 
     select case(trim(word))
-      case('CLM_CN')
+      case('CLM-CN')
         new_sandbox => CLM_CN_Create()
       case default
         option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &

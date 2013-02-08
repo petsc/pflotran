@@ -660,11 +660,7 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
       case(MATAIJ)
         d_nnz = d_nnz*ugdm%ndof
         o_nnz = o_nnz*ugdm%ndof
-#ifdef MATCREATE_OLD      
-        call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
-#else
         call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
-#endif
                           PETSC_DETERMINE,PETSC_DETERMINE, &
                           PETSC_NULL_INTEGER,d_nnz, &
                           PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -673,11 +669,7 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
         call MatSetLocalToGlobalMappingBlock(J,ugdm%mapping_ltogb, &
                                              ugdm%mapping_ltogb,ierr)
       case(MATBAIJ)
-#ifdef MATCREATE_OLD      
-        call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-#else
         call MatCreateBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-#endif
                            PETSC_DETERMINE,PETSC_DETERMINE, &
                            PETSC_NULL_INTEGER,d_nnz, &
                            PETSC_NULL_INTEGER,o_nnz,J,ierr)

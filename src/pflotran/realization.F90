@@ -82,7 +82,8 @@ private
             RealizationSetUpBC4Faces, &
             RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
-            RealizationCalculateCFL1Timestep
+            RealizationCalculateCFL1Timestep, &
+            RealizationNonInitializedData
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -1267,11 +1268,14 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
 
   write(option%fid_out,99)
 101 format(5x,'     Flow Condition: ',2x,a)
-  if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
+  if (associated(flow_condition)) &
+    write(option%fid_out,101) trim(flow_condition%name)
 102 format(5x,'Transport Condition: ',2x,a)
-  if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
+  if (associated(tran_condition)) &
+    write(option%fid_out,102) trim(tran_condition%name)
 103 format(5x,'             Region: ',2x,a)
-  if (associated(region)) write(option%fid_out,103) trim(region%name)
+  if (associated(region)) &
+    write(option%fid_out,103) trim(region%name)
   write(option%fid_out,99)
   
   if (associated(flow_condition)) then
@@ -2376,6 +2380,83 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
   max_dt_cfl_1 = tempreal
 
 end subroutine RealizationCalculateCFL1Timestep
+
+! ************************************************************************** !
+!
+! RealizationNonInitializedData: Checks for non-initialized data sets
+!                                i.e. porosity, permeability
+! author: Glenn Hammond
+! date: 02/08/13
+!
+! ************************************************************************** !
+subroutine RealizationNonInitializedData(realization)
+
+  use Grid_module
+  use Patch_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  PetscReal, pointer :: vec_p(:), vecy_p(:), vecz_p(:)
+  PetscReal :: min_value, global_value
+  PetscInt :: local_id
+  PetscErrorCode :: ierr
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  
+  ! cannot use VecMin as there may be inactive cells without data assigned.
+  
+  min_value = 1.d20
+  ! porosity
+  call GridVecGetArrayF90(grid,field%porosity0,vec_p,ierr)
+  do local_id = 1, grid%nlmax
+    if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    min_value = min(min_value,vec_p(local_id)) 
+  enddo
+  call GridVecRestoreArrayF90(grid,field%porosity0,vec_p,ierr)
+  call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+  
+  if (global_value < -998.d0) then
+    option%io_buffer = 'Porosity not initialized at all cells.  ' // &
+                       'Ensure that REGIONS cover entire domain!!!'
+    call printErrMsg(option)
+  endif
+  
+  if (option%iflowmode /= NULL_MODE) then
+    call GridVecGetArrayF90(grid,field%perm0_xx,vec_p,ierr)
+    call GridVecGetArrayF90(grid,field%perm0_yy,vecy_p,ierr)
+    call GridVecGetArrayF90(grid,field%perm0_zz,vecz_p,ierr)
+    min_value = 1.d20
+    do local_id = 1, grid%nlmax
+      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+      min_value = min(min_value,vec_p(local_id),vecy_p(local_id), &
+                      vecz_p(local_id)) 
+    enddo        
+    call GridVecRestoreArrayF90(grid,field%perm0_xx,vec_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%perm0_yy,vecy_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%perm0_zz,vecz_p,ierr)
+    call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    if (global_value < 1.d-60) then
+      option%io_buffer = &
+        'A positive non-zero permeability must be defined throughout ' // &
+        'domain in X, Y and Z.'
+      call printErrMsg(option)
+    endif
+  endif
+
+end subroutine RealizationNonInitializedData
 
 ! ************************************************************************** !
 !

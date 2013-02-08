@@ -48,8 +48,8 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word, card
   PetscInt :: fileid, icell, iconn, id_up, id_dn
   
   PetscInt :: num_cells
@@ -83,13 +83,13 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
 
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
-    card = trim(word)
+    hint = trim(word)
   
     select case(word)
       case('CELLS')
-        card = 'Explicit Unstructured Grid CELLS'
+        hint = 'Explicit Unstructured Grid CELLS'
         call InputReadInt(input,option,num_cells)
-        call InputErrorMsg(input,option,'number of cells',card)
+        call InputErrorMsg(input,option,'number of cells',hint)
         allocate(explicit_grid%cell_ids(num_cells))
         explicit_grid%cell_ids = 0
         allocate(explicit_grid%cell_volumes(num_cells))
@@ -102,26 +102,26 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
         enddo
         do icell = 1, num_cells
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadStringErrorMsg(input,option,hint)  
           call InputReadInt(input,option,explicit_grid%cell_ids(icell))
-          call InputErrorMsg(input,option,'cell id',card)
+          call InputErrorMsg(input,option,'cell id',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%cell_centroids(icell)%x)
-          call InputErrorMsg(input,option,'cell x coordinate',card)
+          call InputErrorMsg(input,option,'cell x coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%cell_centroids(icell)%y)
-          call InputErrorMsg(input,option,'cell y coordinate',card)
+          call InputErrorMsg(input,option,'cell y coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%cell_centroids(icell)%z)
-          call InputErrorMsg(input,option,'cell z coordinate',card)
+          call InputErrorMsg(input,option,'cell z coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%cell_volumes(icell))
-          call InputErrorMsg(input,option,'cell volume',card)
+          call InputErrorMsg(input,option,'cell volume',hint)
         enddo
       case('CONNECTIONS')
-        card = 'Explicit Unstructured Grid CONNECTIONS'
+        hint = 'Explicit Unstructured Grid CONNECTIONS'
         call InputReadInt(input,option,num_connections)
-        call InputErrorMsg(input,option,'number of connections',card)
+        call InputErrorMsg(input,option,'number of connections',hint)
         allocate(explicit_grid%connections(2,num_connections))
         explicit_grid%connections = 0
         allocate(explicit_grid%face_areas(num_connections))
@@ -134,25 +134,25 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
         enddo
         do iconn = 1, num_connections
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadStringErrorMsg(input,option,hint)  
           call InputReadInt(input,option, &
                             explicit_grid%connections(1,iconn))
-          call InputErrorMsg(input,option,'cell id upwind',card)
+          call InputErrorMsg(input,option,'cell id upwind',hint)
           call InputReadInt(input,option, &
                             explicit_grid%connections(2,iconn))
-          call InputErrorMsg(input,option,'cell id downwind',card)
+          call InputErrorMsg(input,option,'cell id downwind',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%face_centroids(iconn)%x)
-          call InputErrorMsg(input,option,'face x coordinate',card)
+          call InputErrorMsg(input,option,'face x coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%face_centroids(iconn)%y)
-          call InputErrorMsg(input,option,'face y coordinate',card)
+          call InputErrorMsg(input,option,'face y coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%face_centroids(iconn)%z)
-          call InputErrorMsg(input,option,'face z coordinate',card)
+          call InputErrorMsg(input,option,'face z coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_grid%face_areas(iconn))
-          call InputErrorMsg(input,option,'face area',card)
+          call InputErrorMsg(input,option,'face area',hint)
         enddo
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -186,8 +186,8 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word, card
   PetscInt :: fileid, icell, iconn, irank, remainder, temp_int, num_to_read
   
   PetscInt :: num_cells, num_connections
@@ -240,9 +240,9 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       call printErrMsgByRank(option)
     endif
   
-    card = 'Explicit Unstructured Grid CELLS'
+    hint = 'Explicit Unstructured Grid CELLS'
     call InputReadInt(input,option,temp_int)
-    call InputErrorMsg(input,option,'number of cells',card)
+    call InputErrorMsg(input,option,'number of cells',hint)
   endif
   
   call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%io_rank, &
@@ -279,18 +279,18 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
         call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadStringErrorMsg(input,option,hint)  
         call InputReadInt(input,option,temp_int)
-        call InputErrorMsg(input,option,'cell id',card)
+        call InputErrorMsg(input,option,'cell id',hint)
         temp_real_array(1,icell) = dble(temp_int)
         call InputReadDouble(input,option,temp_real_array(2,icell))
-        call InputErrorMsg(input,option,'cell x coordinate',card)
+        call InputErrorMsg(input,option,'cell x coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(3,icell))
-        call InputErrorMsg(input,option,'cell y coordinate',card)
+        call InputErrorMsg(input,option,'cell y coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(4,icell))
-        call InputErrorMsg(input,option,'cell z coordinate',card)
+        call InputErrorMsg(input,option,'cell z coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(5,icell))
-        call InputErrorMsg(input,option,'cell volume',card)
+        call InputErrorMsg(input,option,'cell volume',hint)
       enddo
 
       ! if the cells reside on io_rank
@@ -360,9 +360,9 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       call printErrMsgByRank(option)
     endif
   
-    card = 'Explicit Unstructured Grid CONNECTIONS'
+    hint = 'Explicit Unstructured Grid CONNECTIONS'
     call InputReadInt(input,option,temp_int)
-    call InputErrorMsg(input,option,'number of connections',card)
+    call InputErrorMsg(input,option,'number of connections',hint)
   endif
   
   int_mpi = 1
@@ -400,21 +400,21 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       if (irank < remainder) num_to_read = num_to_read + 1
       do iconn = 1, num_to_read
         call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadStringErrorMsg(input,option,hint)  
         call InputReadInt(input,option,temp_int)
-        call InputErrorMsg(input,option,'cell id upwind',card)
+        call InputErrorMsg(input,option,'cell id upwind',hint)
         temp_real_array(1,iconn) = dble(temp_int)
         call InputReadInt(input,option,temp_int)
-        call InputErrorMsg(input,option,'cell id downwind',card)
+        call InputErrorMsg(input,option,'cell id downwind',hint)
         temp_real_array(2,iconn) = dble(temp_int)
         call InputReadDouble(input,option,temp_real_array(3,iconn))
-        call InputErrorMsg(input,option,'face x coordinate',card)
+        call InputErrorMsg(input,option,'face x coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(4,iconn))
-        call InputErrorMsg(input,option,'face y coordinate',card)
+        call InputErrorMsg(input,option,'face y coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(5,iconn))
-        call InputErrorMsg(input,option,'face z coordinate',card)
+        call InputErrorMsg(input,option,'face z coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(6,iconn))
-        call InputErrorMsg(input,option,'face area',card)
+        call InputErrorMsg(input,option,'face area',hint)
       enddo
 
       ! if the cells reside on io_rank
