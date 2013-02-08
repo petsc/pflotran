@@ -637,7 +637,7 @@ where
 \EQ
 \omega_n \eq \frac{d_n}{d_{n'}+d_n} \eq 1-\omega_{n'}.
 \EN
-The quantity in brackets is evaluated using the harmonic mean for permeability and unwinding for mobility $\lambda = k_r/\mu$
+The quantity in brackets is evaluated using the harmonic mean for permeability and upwinding for mobility $\lambda = k_r/\mu$
 \EQ
 \Big(\frac{kk_r}{\mu}\Big)_{nn'} \eq \frac{k_n k_{n'} (d_{n'}+d_n)}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'},
 \EN
@@ -1046,11 +1046,18 @@ Additional constitutive relations are needed to close the set of governing equat
 %\subsubsection{Thermal Conductivity} 
  
 Thermal conductivity is determined from the equation (Somerton et al., 1974)  
+%\EQ\label{cond1} 
+%\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+%\EN 
 \EQ\label{cond1} 
-\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+\kappa \eq \kappa_{\rm dry} + K_e (\kappa_{\rm sat} - \kappa_{\rm dry}), 
 \EN 
-where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
-
+where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities,
+and $K_e$ is the Kersten number given by,
+\EQ
+K_e = s_l^{\alpha},
+\EN
+where $s_l$ is liquid saturation.
 
 \subsection{Finite Volume Discretization}
 
@@ -1129,20 +1136,121 @@ with
 \EQ
 \frac{\p q_{nn'}}{\p T_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
 \lambda_{nn'} \left\{W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial T_n} \right\}
-+ \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
++ \frac{\p \ln\lambda_{nn'}}{\p T_{n}} q_{nn'}
 ,
 \EN
 and
 \EQ
 \frac{\p q_{nn'}}{\p T_{n'}} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
 \lambda_{nn'} \left\{ W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial T_{n'}} \right\}
- + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
+ + \frac{\p \ln\lambda_{nn'}}{\p T_{n'}} q_{nn'}
 .
 \EN
 
 \paragraph{Derivative of energy residual equation w.r.t. Pressure }
 
+For $n \eq n' $
+\EQ
+\frac{\p R^E_n}{\p P_n} \eq
+  \frac{V_n \varphi_n}{\Delta t} \frac{\p }{\p P_n} (s_n\rho_nU_n) +
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p P_n} A_{nn'} - 
+  \frac{\p Q_{en}}{\p P_n} V_n,
+\EN
+
+and for $n \neq n' $
+
+\EQ
+\frac{\p R^E_n}{\p P_{n'}} \eq
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p P_{n'}} A_{nn'} - 
+  \frac{\p Q_{en}}{\p P_{n'}} V_n
+\EN
+
+For the accumulation term one has
+\EQ
+\frac{\p }{\p P_n} (s_n\rho_nU_n) \eq
+	\rho_nU_n \frac{\p }{\p P_n} (s_n) +
+	s_nU_n \frac{\p }{\p P_n} (\rho_n) +
+	s_n\rho_n\frac{\p }{\p P_n} (U_n) 
+\EN
+
+The derivative of the flux term is computed as
+
+\EQ
+\frac{\p F_{nn'}}{\p P_n} \eq 
+	q_{nn'} H_{nn'} \frac{\p \rho_{nn'}}{\p P_n} +
+	\rho_{nn'} H_{nn'} \frac{\p q_{nn'}}{\p P_n} +
+	\rho_{nn'} q_{nn'}\frac{\p H_{nn'}}{\p P_n} -
+	\frac{\p \kappa_{nn'}}{\p P_n} \Big[  \frac{T_{n} - T_{n'}}{d_n + d_{n'}} \Big]
+\EN
+
+Interface density, $\rho_{nn'}$, thermal conductivity of porous media, $\kappa_{nn'}$, and 
+enthalpy, $H_{nn'}$ are computed as inverse distance mean, distance weighted harmonic
+mean and upwind quantity, respectively.
+
+\EQ
+\frac{\p \kappa_{nn'}}{\p P_n} \eq
+	\frac{\kappa_{nn'}^2}{\kappa_n^2} \left( \frac{d_n}{d_n + d_{n'}} \right)
+	\frac{\p \kappa_{n}}{\p P_n}
+\EN
+
+\EQ
+\frac{\p \kappa_{n}}{\p P_n} \eq (\kappa_{sat,n} - \kappa_{dry,n}) 
+	\alpha s_l^{\alpha - 1}\frac{\p s_l}{\p P_n}
+\EN
+
 \paragraph{Derivative of energy residual equation w.r.t. Temperature }
+
+For $n \eq n' $
+\EQ
+\frac{\p R^E_n}{\p T_n} \eq
+  \frac{V_n }{\Delta t} 
+  	\Big[ \varphi_n \frac{\p }{\p T_n} (s_n\rho_nU_n) +
+			(1- \varphi_n)\rho_{p,n} c_{p,n}\Big] +
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p T_n} A_{nn'} - 
+  \frac{\p Q_{en}}{\p T_n} V_n,
+\EN
+
+and for $n \neq n' $
+
+\EQ
+\frac{\p R^E_n}{\p T_{n'}} \eq
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p T_{n'}} A_{nn'} - 
+  \frac{\p Q_{en}}{\p T_{n'}} V_n
+\EN
+
+For the accumulation term one has
+\EQ
+\frac{\p }{\p T_n} (s_n\rho_nU_n) \eq
+	\rho_nU_n \frac{\p }{\p T_n} (s_n) +
+	s_nU_n \frac{\p }{\p T_n} (\rho_n) +
+	s_n\rho_n\frac{\p }{\p T_n} (U_n) 
+\EN
+
+The derivative of the flux term is computed as
+
+\EQ
+\frac{\p F_{nn'}}{\p T_n} \eq 
+	q_{nn'} H_{nn'} \frac{\p \rho_{nn'}}{\p T_n} +
+	\rho_{nn'} H_{nn'} \frac{\p q_{nn'}}{\p T_n} +
+	\rho_{nn'} q_{nn'}\frac{\p H_{nn'}}{\p T_n} -
+	\frac{\p \kappa_{nn'}}{\p T_n} \Big[  \frac{T_{n} - T_{n'}}{d_n + d_{n'}} \Big] -
+	\frac{\kappa_{nn'}}{d_n + d_{n'}}
+\EN
+
+Interface density, $\rho_{nn'}$, thermal conductivity of porous media, $\kappa_{nn'}$, and 
+enthalpy, $H_{nn'}$ are computed as inverse distance mean, distance weighted harmonic
+mean and upwind quantity, respectively.
+
+\EQ
+\frac{\p \kappa_{nn'}}{\p T_n} \eq
+	\frac{\kappa_{nn'}^2}{\kappa_n^2} \left( \frac{d_n}{d_n + d_{n'}} \right)
+	\frac{\p \kappa_{n}}{\p T_n}
+\EN
+
+\EQ
+\frac{\p \kappa_{n}}{\p T_n} \eq (\kappa_{sat,n} - \kappa_{dry,n}) 
+	\alpha s_l^{\alpha - 1}\frac{\p s_l}{\p T_n}
+\EN
 
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
