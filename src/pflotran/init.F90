@@ -2287,7 +2287,7 @@ subroutine setFlowMode(option)
   call StringToUpper(option%flowmode)
   select case(option%flowmode)
     case('TH')
-      option%iflowmode = THC_MODE
+      option%iflowmode = TH_MODE
       option%nphase = 1
       option%liquid_phase = 1      
       option%gas_phase = 2      
