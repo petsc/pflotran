@@ -1457,7 +1457,7 @@ The governing equations for mass and energy are given by
 \EN
 and
 \EQ
-\frac{\p}{\p t}\big(\varphi s\rho U + (1-\varphi) c_p T\big) + \bnabla\cdot\big(\rho\bq H -\kappa \bnabla T\big) = Q_e,
+\frac{\p}{\p t}\big(\varphi s\rho U + (1-\varphi) \rho_p c_p T\big) + \bnabla\cdot\big(\rho\bq H -\kappa \bnabla T\big) = Q_e,
 \EN
 coupled to nonreactive solute transport equations representing e.g. NaCl with the form
 \EQ\label{thc}
@@ -1468,7 +1468,7 @@ In these equations the Darcy flow velocity $\bq$ is given by
 \EQ
 \bq = -\frac{kk_r}{\mu}\bnabla\left(P-W\rho g z\right).
 \EN
-Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantity $\kappa$ denotes the thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantities  $\rho_p$, $c_p$, and $\kappa$ denotes the  density, heat capacity, and thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
 \EQ
 U \eq H -\frac{P}{\rho}.
 \EN
