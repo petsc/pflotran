@@ -2079,8 +2079,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       call THMaxChange(realization)
       if (option%print_screen_flag) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax, option%dcmax
+          & " dtmpmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax
       endif
     case(THC_MODE)
       call THCMaxChange(realization)

@@ -309,7 +309,7 @@ subroutine Init(simulation)
         case(MIS_MODE)
           write(*,'(" mode = MIS: p, Xs")')
         case(TH_MODE)
-          write(*,'(" mode = THC: p, T, s/X")')
+          write(*,'(" mode = THC: p, T")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(THMC_MODE)
@@ -2290,9 +2290,9 @@ subroutine setFlowMode(option)
       option%iflowmode = TH_MODE
       option%nphase = 1
       option%liquid_phase = 1      
-      option%gas_phase = 2      
-      option%nflowdof = 3
-      option%nflowspec = 2
+      option%gas_phase = 2
+      option%nflowdof = 2
+      option%nflowspec = 1
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1

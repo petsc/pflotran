@@ -528,7 +528,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 
 
   PetscInt :: local_id, ghosted_id
-  PetscReal :: Res(3)
+  PetscReal :: Res(2)
   PetscReal :: inf_norm
   PetscErrorCode :: ierr
   PetscReal :: vol_frac_prim
@@ -578,7 +578,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
       inf_norm = max(inf_norm,min(dabs(dP_p(istart)/P1_p(istart)), &
                                   dabs(r_p(istart)/Res(1)), &
                                   dabs(dP_p(iend)/P1_p(iend)), &
-                                  dabs(r_p(iend)/Res(3))))
+                                  dabs(r_p(iend)/Res(2))))
     enddo
     call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
@@ -1391,7 +1391,9 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   PetscInt :: iphase, ideriv
   type(TH_auxvar_type) :: TH_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
-  PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
+  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), pert
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: J_pert(option%nflowdof,option%nflowdof)
   PetscReal :: vol_frac_prim, tempreal
   
 #ifdef ICE
@@ -1407,7 +1409,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 #endif
 
   
-  ! X = {p, T, x_2}; R = {R_x1, R_x2, R_T} = {R_p, R_x2, R_T}
+  ! X = {p, T}; R = {R_p, R_T}
   
   
 #ifndef USE_COMPRESSIBILITY
@@ -1439,19 +1441,19 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 #endif
 
   J(1,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol !*TH_aux_var%xmol(1)
-  J(1,3) = 0.d0 !-global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
+!GB  J(1,3) = 0.d0 !-global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   J(2,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
            TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol*TH_aux_var%xmol(2)
-  J(2,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol*TH_aux_var%xmol(2)
-  J(2,3) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
-  J(3,1) = (TH_aux_var%dsat_dp*global_aux_var%den(1)*TH_aux_var%u + &
+!GB  J(2,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol*TH_aux_var%xmol(2)
+!GB  J(2,3) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
+  J(2,1) = (TH_aux_var%dsat_dp*global_aux_var%den(1)*TH_aux_var%u + &
             global_aux_var%sat(1)*TH_aux_var%dden_dp*TH_aux_var%u + &
             global_aux_var%sat(1)*global_aux_var%den(1)*TH_aux_var%du_dp)*porXvol
-  J(3,2) = global_aux_var%sat(1)* &
+  J(2,2) = global_aux_var%sat(1)* &
            (TH_aux_var%dden_dt*TH_aux_var%u + &  ! pull %sat outside
             global_aux_var%den(1)*TH_aux_var%du_dt)*porXvol +  &
            (1.d0 - por)*vol*rock_dencpr 
-  J(3,3) = 0.d0
+!GB  J(3,3) = 0.d0
 
 #ifdef ICE 
   ! SK, 11/17/11
@@ -1483,19 +1485,19 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
                     dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
                     sat_g*den_g*dmolg_dt + dsati_dt*den_i + sat_i*ddeni_dt)* &
                     porXvol
-  J(2,2) = J(2,2) + TH_aux_var%dsat_dt*global_aux_var%den(1)* &
-                    TH_aux_var%xmol(2)*porXvol
-  J(3,1) = J(3,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
+!GB  J(2,2) = J(2,2) + TH_aux_var%dsat_dt*global_aux_var%den(1)* &
+!GB                    TH_aux_var%xmol(2)*porXvol
+  J(2,1) = J(2,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
                     sat_i*ddeni_dp*u_i)*porXvol
-  J(3,2) = J(3,2) + (TH_aux_var%dsat_dt*global_aux_var%den(1)*TH_aux_var%u + &
+  J(2,2) = J(2,2) + (TH_aux_var%dsat_dt*global_aux_var%den(1)*TH_aux_var%u + &
                     dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
                     
 #ifdef REMOVE_SATURATION
-  J(2,1) = TH_aux_var%dden_dp*porXvol*TH_aux_var%xmol(2)
-  J(2,2) = TH_aux_var%dden_dt*porXvol*TH_aux_var%xmol(2)            
-  J(2,3) = global_aux_var%den(1)*porXvol
+!GB  J(2,1) = TH_aux_var%dden_dp*porXvol*TH_aux_var%xmol(2)
+!GB  J(2,2) = TH_aux_var%dden_dt*porXvol*TH_aux_var%xmol(2)
+!GB  J(2,3) = global_aux_var%den(1)*porXvol
 #endif                    
 #endif
 
@@ -1510,19 +1512,16 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 
     x(1) = global_aux_var%pres(1)
     x(2) = global_aux_var%temp(1)
-    x(3) = TH_aux_var%xmol(2)
+!GB    x(3) = TH_aux_var%xmol(2)
     
-
     call THAccumulation(TH_aux_var,global_aux_var, &
                          por,vol,rock_dencpr,option, &
                          vol_frac_prim,res)
     
-    do ideriv = 1,3
+    do ideriv = 1,option%nflowdof
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
-      
 #ifdef ICE
-      
       if (ideriv == 1) then
         if (x_pert(ideriv) < option%reference_pressure) then
           pert = - pert
@@ -1539,16 +1538,12 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
         endif
           x_pert(ideriv) = x_pert(ideriv) + pert
       endif
-      
-      if (ideriv == 3) then
-        x_pert(ideriv) = x_pert(ideriv) + pert
-      endif
-      
+!GB      if (ideriv == 3) then
+!GB        x_pert(ideriv) = x_pert(ideriv) + pert
+!GB      endif
 #else
       x_pert(ideriv) = x_pert(ideriv) + pert
-      
 #endif
-
 
 #ifdef ICE
       call THAuxVarComputeIce(x_pert,TH_aux_var_pert,global_aux_var_pert,iphase,sat_func, &
@@ -1557,35 +1552,6 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
       call THAuxVarCompute(x_pert,TH_aux_var_pert,global_aux_var_pert,iphase,sat_func, &
                                  0.d0,0.d0,option)
 #endif
-
-#if 0      
-      select case(ideriv)
-        case(1)
-          print *, 'dsat_dp:', TH_aux_var%dsat_dp, (global_aux_var_pert%sat(1)-global_aux_var%sat(1))/pert
-          print *, 'dden_dp:', TH_aux_var%dden_dp, (global_aux_var_pert%den(1)-global_aux_var%den(1))/pert
-          print *, 'dkvr_dp:', TH_aux_var%dkvr_dp, (TH_aux_var_pert%kvr-TH_aux_var%kvr)/pert
-          print *, 'dh_dp:', TH_aux_var%dh_dp, (TH_aux_var_pert%h-TH_aux_var%h)/pert
-          print *, 'du_dp:', TH_aux_var%du_dp, (TH_aux_var_pert%u-TH_aux_var%u)/pert
-#ifdef ICE
-          print *, 'dsati_dp:', TH_aux_var%dsat_ice_dp, (TH_aux_var_pert%sat_ice - TH_aux_var%sat_ice)/pert
-          print *, 'dsatg_dp:', TH_aux_var%dsat_gas_dp, (TH_aux_var_pert%sat_gas - TH_aux_var%sat_gas)/pert
-          print *, 'ddeni_dp:', TH_aux_var%dden_ice_dp, (TH_aux_var_pert%den_ice - TH_aux_var%den_ice)/pert
-#endif
-          
-        case(2)
-          print *, 'dden_dt:', TH_aux_var%dden_dt, (global_aux_var_pert%den(1)-global_aux_var%den(1))/pert
-          print *, 'dkvr_dt:', TH_aux_var%dkvr_dt, (TH_aux_var_pert%kvr-TH_aux_var%kvr)/pert
-          print *, 'dh_dt:', TH_aux_var%dh_dt, (TH_aux_var_pert%h-TH_aux_var%h)/pert
-          print *, 'du_dt:', TH_aux_var%du_dt, (TH_aux_var_pert%u-TH_aux_var%u)/pert
-#ifdef ICE
-          print *, 'ddeni_dt:', TH_aux_var%dden_ice_dt, (TH_aux_var_pert%den_ice - TH_aux_var%den_ice)/pert
-          print *, 'dsati_dt:', TH_aux_var%dsat_ice_dt, (TH_aux_var_pert%sat_ice - TH_aux_var%sat_ice)/pert
-          print *, 'dsatg_dt:', TH_aux_var%dsat_gas_dt, (TH_aux_var_pert%sat_gas - TH_aux_var%sat_gas)/pert
-          print *, 'dsat_dt:', TH_aux_var%dsat_dt, (global_aux_var_pert%sat(1) - global_aux_var%sat(1))/pert
-          print *, 'dui_dt:', TH_aux_var%du_ice_dt, (TH_aux_var_pert%u_ice - TH_aux_var%u_ice)/pert
-#endif
-      end select     
-#endif     
       call THAccumulation(TH_aux_var_pert,global_aux_var_pert, &
                            por,vol,rock_dencpr,option,vol_frac_prim, &
                            res_pert)
@@ -1648,7 +1614,7 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*por1*vol
 #endif
     
-  mol(2) = global_aux_var%sat(1)*global_aux_var%den(1)*aux_var%xmol(2)*porXvol
+!  mol(2) = global_aux_var%sat(1)*global_aux_var%den(1)*aux_var%xmol(2)*porXvol
 
 ! TechNotes, TH Mode: First term of Equation 9
   eng = global_aux_var%sat(1) * &
@@ -1671,7 +1637,7 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
   mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
   eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
 #ifdef REMOVE_SATURATION
-  mol(2) = global_aux_var%den(1)*aux_var%xmol(2)*porXvol
+  !mol(2) = global_aux_var%den(1)*aux_var%xmol(2)*porXvol
 #endif
 #endif
 
@@ -1749,8 +1715,14 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscInt :: iphase, ideriv
   type(TH_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
-  PetscReal :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert_up, pert_dn, &
-            res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
+  PetscReal :: x_up(option%nflowdof), x_dn(option%nflowdof)
+  PetscReal :: x_pert_up(option%nflowdof), x_pert_dn(option%nflowdof)
+  PetscReal :: pert_up, pert_dn
+  PetscReal :: res(option%nflowdof)
+  PetscReal :: res_pert_up(option%nflowdof)
+  PetscReal :: res_pert_dn(option%nflowdof)
+  PetscReal :: J_pert_up(option%nflowdof,option%nflowdof)
+  PetscReal :: J_pert_dn(option%nflowdof,option%nflowdof)
 
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
@@ -1899,13 +1871,13 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
       Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
 
-      Jup(2,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(2)
-      Jup(2,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(2)
-      Jup(2,3) = q*density_ave*duxmol_dxmol_up
+!GB      Jup(2,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(2)
+!GB      Jup(2,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(2)
+!GB      Jup(2,3) = q*density_ave*duxmol_dxmol_up
 
-      Jdn(2,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(2)
-      Jdn(2,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(2)
-      Jdn(2,3) = q*density_ave*duxmol_dxmol_dn
+!GB      Jdn(2,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(2)
+!GB      Jdn(2,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(2)
+!GB      Jdn(2,3) = q*density_ave*duxmol_dxmol_dn
      
       ! based on flux = q*density_ave*uh
       Jup(option%nflowdof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
@@ -1929,19 +1901,18 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                                     
 ! SK   
 
-    Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-    Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
-    Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
+!GB    Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB    Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB    Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
+!GB
+!GB    Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB    Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB    Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
 
-    Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-    Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-    Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
-    
- 
 
 #ifdef ICE
   ! Added by Satish Karra, updated 11/11/11
@@ -2049,10 +2020,10 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   ddifff_dt_dn = diffdp*0.25d0*(aux_var_dn%dsat_dt)*&
                  (global_aux_var_up%den(1) + global_aux_var_dn%den(1))
 
-  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+!                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+!                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
                          
 #ifdef REMOVE_SATURATION 
 
@@ -2063,17 +2034,17 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   ddifff_dt_up = diffdp * 0.5d0 * aux_var_up%dden_dt
   ddifff_dt_dn = diffdp * 0.5d0 * aux_var_dn%dden_dt
   
-  Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
-  Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
+!GB  Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB  Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
 
-  Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
-                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-  Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
+!GB  Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+!GB                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+!GB  Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
 
 #endif                         
 #endif 
@@ -2182,11 +2153,10 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
     x_up(2) = global_aux_var_up%temp(1)
-    x_up(3) = aux_var_up%xmol(2)
+!GB    x_up(3) = aux_var_up%xmol(2)
     x_dn(1) = global_aux_var_dn%pres(1)
     x_dn(2) = global_aux_var_dn%temp(1)
-    x_dn(3) = aux_var_dn%xmol(2)
-    
+!GB    x_dn(3) = aux_var_dn%xmol(2)
 
     call THFlux( &
       aux_var_up,global_aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
@@ -2196,14 +2166,14 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       Dk_ice_up,Dk_ice_dn, &
       alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
       res)
-    do ideriv = 1,3
+
+    do ideriv = 1,option%nflowdof
       pert_up = x_up(ideriv)*perturbation_tolerance
       pert_dn = x_dn(ideriv)*perturbation_tolerance
       x_pert_up = x_up
       x_pert_dn = x_dn
 
 #ifdef ICE
-      
       if (ideriv == 1) then
         if (x_pert_up(ideriv) < option%reference_pressure) then
           pert_up = - pert_up
@@ -2232,13 +2202,11 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
           x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
       endif
       
-      if (ideriv == 3) then
-        x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
-        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-      endif
-      
+!GB      if (ideriv == 3) then
+!GB        x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+!GB        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+!GB      endif
 #else
-      
       x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
 
@@ -2396,7 +2364,7 @@ subroutine THFlux(aux_var_up,global_aux_var_up, &
       q = v_darcy * area
         
       fluxm(1) = fluxm(1) + q*density_ave
-      fluxm(2) = fluxm(2) + q*density_ave*uxmol(2)
+      !fluxm(2) = fluxm(2) + q*density_ave*uxmol(2)
       fluxe = fluxe + q*density_ave*uh 
     endif
   endif 
@@ -2404,8 +2372,8 @@ subroutine THFlux(aux_var_up,global_aux_var_up, &
   
   difff = diffdp * 0.25D0*(global_aux_var_up%sat(1)+global_aux_var_dn%sat(1))* &
                             (global_aux_var_up%den(1)+global_aux_var_dn%den(1))
-  fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
-                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
+  !fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
+  !               (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
 
 
 #ifdef ICE
@@ -2456,8 +2424,8 @@ fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
 #ifdef REMOVE_SATURATION 
   difff = diffdp * 0.5D0* &
             (global_aux_var_up%den(1)+global_aux_var_dn%den(1))
-  fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
-                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
+!  fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
+!                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
 #endif
 #endif 
 
@@ -2487,6 +2455,7 @@ fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
 
   Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
   Res(option%nflowdof) = fluxe * option%flow_dt
+  
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
  
@@ -2545,8 +2514,13 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
   type(TH_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
   type(global_auxvar_type) :: global_aux_var_pert_dn, global_aux_var_pert_up
   PetscReal :: perturbation
-  PetscReal :: x_dn(3), x_up(3), x_pert_dn(3), x_pert_up(3), pert_dn, res(3), &
-               res_pert_dn(3), J_pert_dn(3,3)
+  PetscReal :: x_up(option%nflowdof), x_dn(option%nflowdof)
+  PetscReal :: x_pert_up(option%nflowdof), x_pert_dn(option%nflowdof)
+  PetscReal :: pert_up, pert_dn
+  PetscReal :: res(option%nflowdof)
+  PetscReal :: res_pert_up(option%nflowdof)
+  PetscReal :: res_pert_dn(option%nflowdof)
+  PetscReal :: J_pert_dn(option%nflowdof,option%nflowdof)
 
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
@@ -2695,19 +2669,18 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
-!  Jdn(1,3:option%nflowdof) = 0.d0
-  do ispec=2,option%nflowspec 
-    ! based on flux = q*density_ave*uxmol
-    Jdn(ispec,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(ispec)
-    Jdn(ispec,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(ispec)
-    Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
-  enddo
-      ! based on flux = q*density_ave*uh
+!GB  do ispec=2,option%nflowspec
+!GB    ! based on flux = q*density_ave*uxmol
+!GB    Jdn(ispec,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(ispec)
+!GB    Jdn(ispec,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(ispec)
+!GB    Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
+!GB  enddo
+      
+  ! based on flux = q*density_ave*uh
   Jdn(option%nflowdof,1) =  &
      ((dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn)
   Jdn(option%nflowdof,2) =  &
      ((dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn)
-!  Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
   ! Diffusion term   
   select case(ibndtype(TH_CONCENTRATION_DOF))
@@ -2718,11 +2691,11 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
                                 global_aux_var_dn%sat(1)*aux_var_dn%dden_dp)
       ddiff_dt_dn = diffdp * global_aux_var_dn%sat(1)*aux_var_dn%dden_dt
 ! SK
-      Jdn(2,1) = Jdn(2,1) + ddiff_dp_dn*Diff_dn* &
-                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
-      Jdn(2,2) = Jdn(2,2) + ddiff_dt_dn*Diff_dn* &
-                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
-      Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
+!GB      Jdn(2,1) = Jdn(2,1) + ddiff_dp_dn*Diff_dn* &
+!GB                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+!GB      Jdn(2,2) = Jdn(2,2) + ddiff_dt_dn*Diff_dn* &
+!GB                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+!GB      Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
 
 #ifdef ICE
 #ifdef REMOVE_SATURATION
@@ -2731,11 +2704,11 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
       ddiff_dp_dn = diffdp * aux_var_dn%dden_dp
       ddiff_dt_dn = diffdp * aux_var_dn%dden_dt
 
-      Jdn(2,1) = Jdn(2,1) + ddiff_dp_dn*Diff_dn* &
-                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
-      Jdn(2,2) = Jdn(2,2) + ddiff_dt_dn*Diff_dn* &
-                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
-      Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
+!GB      Jdn(2,1) = Jdn(2,1) + ddiff_dp_dn*Diff_dn* &
+!GB                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+!GB      Jdn(2,2) = Jdn(2,2) + ddiff_dt_dn*Diff_dn* &
+!GB                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+!GB      Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
       
 #endif
 #endif
@@ -2814,10 +2787,10 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
     
     x_up(1) = global_aux_var_up%pres(1)
     x_up(2) = global_aux_var_up%temp(1)
-    x_up(3) = aux_var_up%xmol(2)
+!GB    x_up(3) = aux_var_up%xmol(2)
     x_dn(1) = global_aux_var_dn%pres(1)
     x_dn(2) = global_aux_var_dn%temp(1)
-    x_dn(3) = aux_var_dn%xmol(2)
+!GB    x_dn(3) = aux_var_dn%xmol(2)
     do ideriv = 1,3
       if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
         x_up(ideriv) = x_dn(ideriv)
@@ -2849,7 +2822,8 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
         ibndtype(TH_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
-    do ideriv = 1,3
+
+    do ideriv = 1,option%nflowdof
       pert_dn = x_dn(ideriv)*perturbation_tolerance    
       x_pert_dn = x_dn
      
@@ -2870,16 +2844,12 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
         endif
         x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
       endif
-      
-      if (ideriv == 3) then
-        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-      endif
-      
+!GB      if (ideriv == 3) then
+!GB        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+!GB      endif
 #else
-      
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-
-#endif    
+#endif
         
       x_pert_up = x_up
       if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
@@ -3050,14 +3020,14 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
         diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
  !         fluxm(ispec) = fluxm(ispec) + diff*aux_var_dn%diff(ispec)* &
 !                          (aux_var_up%xmol(ispec)-aux_var_dn%xmol(ispec))
-        fluxm(2) = fluxm(2) + diff*Diff_dn* &
-                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+!!GB        fluxm(2) = fluxm(2) + diff*Diff_dn* &
+!!GB                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
 !pcl  endif
 #ifdef ICE
 #ifdef REMOVE_SATURATION
         diff = diffdp*global_aux_var_dn%den(1)
-        fluxm(2) = fluxm(2) + diff*Diff_dn* &
-                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+!!GB        fluxm(2) = fluxm(2) + diff*Diff_dn* &
+!!GB                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
 #endif
 #endif
   end select
@@ -3185,7 +3155,8 @@ subroutine THResidual(snes,xx,r,realization,ierr)
     cur_level => cur_level%next
   enddo
 
-  ! Now make a second pass and compute everything that isn't an internal 
+#if 0
+  ! Now make a second pass and compute everything that isn't an internal
   ! or boundary flux term
   cur_level => realization%level_list%first
   do
@@ -3199,6 +3170,7 @@ subroutine THResidual(snes,xx,r,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+#endif
 
 end subroutine THResidual
 
@@ -3333,7 +3305,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
   vol_frac_prim = 1.d0
   r_p = 0.d0
-#if 1
+
   ! Accumulation terms ------------------------------------
   r_p = - accum_p
 
@@ -3355,14 +3327,12 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                        option,vol_frac_prim,Res) 
+                        option,vol_frac_prim,Res)
     r_p(istart:iend) = r_p(istart:iend) + Res
-  enddo 
-#endif
+  enddo
+
 
 ! ================== Secondary continuum heat source terms =====================
-
-#if 1
   if (option%use_mc) then
   ! Secondary continuum contribution (Added by SK 06/02/2012)
   ! only one secondary continuum for now for each primary continuum node
@@ -3395,11 +3365,10 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
-#endif
+
 
 ! ============== end secondary continuum heat source ===========================
 
-#if 1
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   sum_connection = 0
@@ -3415,11 +3384,9 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
     qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-    csrc1 = csrc1 / FMWCO2
       
     cur_connection_set => source_sink%connection_set
     
@@ -3436,14 +3403,10 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
-        !call wateos_noderiv(tsrc1,global_aux_vars(ghosted_id)%pres(1), &
-        !                    dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
-                                               - qsrc1 *option%flow_dt
-        !r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+        r_p((local_id-1)*option%nflowdof + jh2o) = &
+          r_p((local_id-1)*option%nflowdof + jh2o) - qsrc1 *option%flow_dt
+        r_p(local_id*option%nflowdof) = &
+          r_p(local_id*option%nflowdof) - &
           qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt
       else
         ! extraction
@@ -3453,16 +3416,11 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                                         qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
       endif  
     
-      if (csrc1 > 0.d0) then ! injection
-        call printErrMsg(option,"concentration source not yet implemented in TH")
-      endif
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
+
     enddo
     source_sink => source_sink%next
   enddo
-#endif
-#if 1
+
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -3538,7 +3496,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       Diff_up = TH_parameter%diffusion_coefficient(1)
       Diff_dn = TH_parameter%diffusion_coefficient(1)
       
-
       call THFlux(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                   porosity_loc_p(ghosted_id_up), &
                   tor_loc_p(ghosted_id_up),TH_parameter%sir(1,icap_up), &
@@ -3570,8 +3527,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
-#endif
-#if 1
+
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -3633,7 +3589,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif  
 
   do local_id = 1, grid%nlmax
     if (associated(patch%imat)) then
@@ -3651,7 +3606,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      istart = 3 + (local_id-1)*option%nflowdof
+      istart = TWO_INTEGER + (local_id-1)*option%nflowdof
       r_p(istart)=xx_loc_p(2 + (ghosted_id-1)*option%nflowdof)-yy_p(istart-1)
     enddo
   endif
@@ -3887,11 +3842,10 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   vol_frac_prim = 1.d0
 
-#if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
+    ! Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
@@ -3902,7 +3856,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (option%use_mc) then    
       vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
     endif
-    
+
     call THAccumDerivative(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
@@ -3921,13 +3875,14 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                jac_sec_heat*option%flow_dt*volume_p(local_id)
     endif
                             
-! scale by the volume of the cell
+    ! scale by the volume of the cell
     Jup = Jup/volume_p(local_id)
                            
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr)
   enddo
-#endif
+
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -3935,7 +3890,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-#if 1
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   sum_connection = 0
@@ -3951,15 +3906,14 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
     qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-    csrc1 = csrc1 / FMWCO2
       
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
+
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -3968,22 +3922,12 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-!      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
-!      endif         
-
       if (qsrc1 > 0.d0) then ! injection
-        !call wateos(tsrc1,global_aux_vars(ghosted_id)%pres(1),dw_kg,dw_mol,dw_dp,dw_dt, &
-        !      enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
         !dresT_dp = -qsrc1*hw_dp*option%flow_dt
         dresT_dp = -qsrc1*aux_vars_ss(sum_connection)%dh_dp*option%flow_dt
         ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
-        ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       else
         ! extraction
         dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp*option%flow_dt
@@ -3993,15 +3937,10 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       endif
     
-      if (csrc1 > 0.d0) then ! injection
-        call printErrMsg(option,"concentration source not yet implemented in TH")
-      endif
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
     enddo
     source_sink => source_sink%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -4009,7 +3948,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-#if 1
+
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -4085,7 +4024,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
-	  
 
       call THFluxDerivative(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                              porosity_loc_p(ghosted_id_up), &
@@ -4124,7 +4062,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -4132,7 +4070,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-#if 1
+
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -4171,7 +4109,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                      cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 	  
-
       call THBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
@@ -4188,15 +4125,17 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 Jdn)
       Jdn = -Jdn
   
-!  scale by the volume of the cell
-        Jdn = Jdn/volume_p(local_id)
+      !  scale by the volume of the cell
+      Jdn = Jdn/volume_p(local_id)
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif
+!  option%io_buffer='stopping'
+!  call printErrMsg(option)
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -4710,7 +4649,6 @@ end subroutine THSetPlotVariables
 ! Date: 2/20/12
 !
 ! ************************************************************************** !
-
 
 subroutine THComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
                               option) 
