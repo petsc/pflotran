@@ -914,37 +914,9 @@ subroutine Init(simulation)
   call RealizationPrintGridStatistics(realization)
 #endif
   
-  ! check that material properties have been set at all grid cells
-  ! right now, we check just perms; maybe more needed later
-  call VecMin(field%porosity0,temp_int,r1,ierr)
-  if (r1 < -998.d0) then
-    ! if less than 10M grid cells, print porosities
-    if (grid%nmax < 10000000) then
-      string = 'porosity-uninitialized.tec'
-      call OutputVectorTecplot(string,string,realization,field%porosity0)
-    endif
-    write(string,*) temp_int, r1
-    option%io_buffer = 'Porosity not initialized at cell ' // &
-                       trim(adjustl(string)) // ' (note PETSc numbering).' // &
-                       '  Ensure that REGIONS cover entire domain!!!'
-    call printErrMsg(option)
-  endif
-  if (option%iflowmode /= NULL_MODE) then
-    min_value = 1.d20
-    call VecMin(field%perm0_xx,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    call VecMin(field%perm0_yy,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    call VecMin(field%perm0_zz,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    if (min_value < 1.d-60) then
-      option%io_buffer = &
-        'A positive non-zero permeability must be defined throughout ' // &
-        'domain in X, Y and Z.'
-      call printErrMsg(option)
-    endif
-  endif
-  
+  ! check for non-initialized data sets, e.g. porosity, permeability
+  call RealizationNonInitializedData(realization)
+
 #if defined(PETSC_HAVE_HDF5)
 #if !defined(HDF5_BROADCAST)
   call printMsg(option,"Default HDF5 method is used in Initialization")
