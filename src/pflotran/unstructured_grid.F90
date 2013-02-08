@@ -3968,21 +3968,13 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
     call MatGetRowIJF90(Mat_cell_to_proc_loc, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
     ! Get values stored in the local-matrix
-#ifdef HAVE_PETSC_API_3_3      
-    call MatGetArray(Mat_cell_to_proc_loc, aa, aaa, ierr)
-#else
     call MatSeqAIJGetArray(Mat_cell_to_proc_loc, aa, aaa, ierr)
-#endif
   else
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(Mat_cell_to_proc, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
     ! Get values stored in the local-matrix
-#ifdef HAVE_PETSC_API_3_3      
-    call MatGetArray(Mat_cell_to_proc, aa, aaa, ierr)
-#else
     call MatSeqAIJGetArray(Mat_cell_to_proc, aa, aaa, ierr)
-#endif
   endif
 
   ! Obtain the PETSc index of all cells required.
