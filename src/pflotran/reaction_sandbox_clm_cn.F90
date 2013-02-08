@@ -687,7 +687,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     iresC_pool_up = reaction%offset_immobile + ispecC_pool_up
     ! scaled by negative one since it is a reactant 
     Res(iresC_pool_up) = Res(iresC_pool_up) - &
-      -1.d0 * stoich_upstreamC_pool * rate
+      (-1.d0) * stoich_upstreamC_pool * rate
     sumC = sumC - stoich_upstreamC_pool * rate
     
     ! N species in upstream pool (litter only)
@@ -696,7 +696,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       iresN_pool_up = reaction%offset_immobile + ispecN_pool_up
       ! scaled by negative one since it is a reactant 
       Res(iresN_pool_up) = Res(iresN_pool_up) - &
-        -1.d0 * stoich_upstreamN_pool * rate
+        (-1.d0) * stoich_upstreamN_pool * rate
       sumN = sumN - stoich_upstreamN_pool * rate
     else
       sumN = sumN - ((CN_ratio_up + 1.d0)/CN_ratio_up - 1.d0) * rate
@@ -722,13 +722,13 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       ! upstream C pool
       Jac(iresC_pool_up,iresC_pool_up) = Jac(iresC_pool_up,iresC_pool_up) - &
         ! scaled by negative one since it is a reactant 
-        -1.d0 * stoich_upstreamC_pool * drate
+        (-1.d0) * stoich_upstreamC_pool * drate
       if (use_N_inhibition) then
         drate_dN_inhibition = rate / N_inhibition * d_N_inhibition
         ! scaled by negative one since it is a reactant 
         Jac(iresC_pool_up,ires_N) = &
           Jac(iresC_pool_up,ires_N) - &
-          -1.d0 * stoich_upstreamC_pool * drate_dN_inhibition
+          (-1.d0) * stoich_upstreamC_pool * drate_dN_inhibition
       endif
       
       ! downstream pool
@@ -747,11 +747,11 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
         ! derivative of upstream N pool with respect to upstream C pool
         ! scaled by negative one since it is a reactant 
         Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) - &
-          -1.d0 * stoich_upstreamN_pool * drate
+          (-1.d0) * stoich_upstreamN_pool * drate
         if (use_N_inhibition) then
           ! scaled by negative one since it is a reactant 
           Jac(iresN_pool_up,ires_N) = Jac(iresN_pool_up,ires_N) - &
-            -1.d0 * stoich_upstreamN_pool * drate_dN_inhibition
+            (-1.d0) * stoich_upstreamN_pool * drate_dN_inhibition
         endif
 
         ! Since CN_ratio is a function of unknowns, other derivatives to 
@@ -769,10 +769,10 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
 
         Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) - &
           ! scaled by negative one since it is a reactant 
-          -1.d0 * dstoich_upstreamN_pool_dC_pool_up * rate
+          (-1.d0) * dstoich_upstreamN_pool_dC_pool_up * rate
         Jac(iresN_pool_up,iresN_pool_up) = Jac(iresN_pool_up,iresN_pool_up) - &
           ! scaled by negative one since it is a reactant 
-          -1.d0 * dstoich_upstreamN_pool_dN_pool_up * rate
+          (-1.d0) * dstoich_upstreamN_pool_dN_pool_up * rate
 
         ! stoich_C = resp_frac * stoich_upstreamC_pool
         ! dstoichC_dC_pool_up = 0.
