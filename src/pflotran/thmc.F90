@@ -2985,22 +2985,7 @@ subroutine THMCResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  ! Compute internal and boundary flux terms
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THMCResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  ! Now make a second pass and compute everything that isn't an internal 
-  ! or boundary flux term
+  ! Compute internal and boundary flux terms as well as source/sink terms
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit

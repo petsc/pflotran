@@ -1267,11 +1267,14 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
 
   write(option%fid_out,99)
 101 format(5x,'     Flow Condition: ',2x,a)
-  if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
+  if (associated(flow_condition)) &
+    write(option%fid_out,101) trim(flow_condition%name)
 102 format(5x,'Transport Condition: ',2x,a)
-  if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
+  if (associated(tran_condition)) &
+    write(option%fid_out,102) trim(tran_condition%name)
 103 format(5x,'             Region: ',2x,a)
-  if (associated(region)) write(option%fid_out,103) trim(region%name)
+  if (associated(region)) &
+    write(option%fid_out,103) trim(region%name)
   write(option%fid_out,99)
   
   if (associated(flow_condition)) then
