@@ -464,7 +464,8 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           field.o saturation.o surface_field.o mineral.o output_aux.o \
           variables.o constraint.o general_aux.o reaction_aux.o richards_aux.o \
           reactive_transport_aux.o dataset_aux.o thc_aux.o thmc_aux.o \
-          global_aux.o mphase_aux.o immis_aux.o miscible_aux.o 
+          global_aux.o mphase_aux.o immis_aux.o miscible_aux.o mineral_aux.o \
+          surface_complexation_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o

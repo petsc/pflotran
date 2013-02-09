@@ -12,7 +12,12 @@ module Surface_Complexation_Aux_module
   PetscInt, parameter, public :: SRFCMPLX_RXN_EQUILIBRIUM = 1
   PetscInt, parameter, public :: SRFCMPLX_RXN_MULTIRATE_KINETIC = 2
   PetscInt, parameter, public :: SRFCMPLX_RXN_KINETIC = 3
-  
+
+  ! surface complexation surface types
+  PetscInt, parameter, public :: NULL_SURFACE = 0
+  PetscInt, parameter, public :: COLLOID_SURFACE = 1
+  PetscInt, parameter, public :: MINERAL_SURFACE = 2
+
   type, public :: surface_complex_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name

@@ -128,11 +128,6 @@ PetscInt, parameter :: SCALE_BY_PERM = 1
 PetscInt, parameter :: SCALE_BY_NEIGHBOR_PERM = 2
 PetscInt, parameter :: SCALE_BY_VOLUME = 3
 
-! surface complexation surface types
-PetscInt, parameter :: NULL_SURFACE = 0
-PetscInt, parameter :: COLLOID_SURFACE = 1
-PetscInt, parameter :: MINERAL_SURFACE = 2
-
 ! connection types
 PetscInt, parameter :: INTERNAL_CONNECTION_TYPE = 1
 PetscInt, parameter :: BOUNDARY_CONNECTION_TYPE = 2

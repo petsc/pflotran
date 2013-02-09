@@ -1905,9 +1905,10 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use THC_Aux_module
   use THMC_Aux_module
   use Richards_Aux_module
-  use Reactive_Transport_Aux_module  
-  use Reaction_module
   use Mineral_module
+  use Reaction_module
+  use Reactive_Transport_Aux_module  
+  use Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
   
@@ -2728,8 +2729,10 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Richards_Aux_module
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
-  use Reaction_module
   use Mineral_module
+  use Reaction_module
+  use Mineral_Aux_module
+  use Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
 
