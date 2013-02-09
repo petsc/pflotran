@@ -1018,6 +1018,18 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             ut = min(up,utmp,uc,uus)
           endif
           dtt = fac * dt * (1.d0 + ut)
+        case(TH_MODE)
+          fac = 0.5d0
+          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+            fac = 0.33d0
+            ut = 0.d0
+          else
+            up = option%dpmxe/(option%dpmax+0.1)
+            utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+            uus= option%dsmxe/(option%dsmax+1.d-6)
+            ut = min(up,utmp,uus)
+          endif
+          dtt = fac * dt * (1.d0 + ut)
         case(THC_MODE)
           fac = 0.5d0
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
@@ -1639,6 +1651,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
                            MiscibleTimeCut
   use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
                              RichardsTimeCut, RichardsResidual
+  use TH_module, only : THMaxChange, THInitializeTimestep, THTimeCut
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
   use THMC_module, only : THMCMaxChange, THMCInitializeTimestep, THMCTimeCut
 
@@ -1743,6 +1756,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     select case(option%iflowmode)
       case(THMC_MODE)
         call THMCInitializeTimestep(realization)
+      case(TH_MODE)
+        call THInitializeTimestep(realization)
       case(THC_MODE)
         call THCInitializeTimestep(realization)
       case(RICHARDS_MODE)
@@ -1765,7 +1780,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       call PetscGetTime(log_start_time, ierr)
 
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
@@ -1837,6 +1852,11 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             endif
           case(FLASH2_MODE)
 !           call Flash2UpdateReason(update_reason,realization)
+          case(TH_MODE)
+            update_reason=1
+            if (option%use_mc) then
+              option%sec_vars_update = PETSC_TRUE
+            endif
           case(THC_MODE)
             update_reason=1
             if (option%use_mc) then
@@ -1894,6 +1914,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
         stepper%target_time = stepper%target_time + option%flow_dt
 
         select case(option%iflowmode)
+          case(TH_MODE)
+            call THTimeCut(realization)
           case(THC_MODE)
             call THCTimeCut(realization)
           case(THMC_MODE)
@@ -2053,6 +2075,13 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   endif
   
   select case(option%iflowmode)
+    case(TH_MODE)
+      call THMaxChange(realization)
+      if (option%print_screen_flag) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax
+      endif
     case(THC_MODE)
       call THCMaxChange(realization)
       if (option%print_screen_flag) then
@@ -3251,6 +3280,7 @@ subroutine StepperUpdateFlowSolution(realization)
   use Immis_module, only: ImmisUpdateSolution
   use Miscible_module, only: MiscibleUpdateSolution 
   use Richards_module, only : RichardsUpdateSolution
+  use TH_module, only : THUpdateSolution
   use THC_module, only : THCUpdateSolution
   use THMC_module, only : THMCUpdateSolution
   use General_module, only : GeneralUpdateSolution
@@ -3277,6 +3307,8 @@ subroutine StepperUpdateFlowSolution(realization)
       call MiscibleUpdateSolution(realization)
     case(FLASH2_MODE)
       call Flash2UpdateSolution(realization)
+    case(TH_MODE)
+      call THUpdateSolution(realization)
     case(THC_MODE)
       call THCUpdateSolution(realization)
     case(THMC_MODE)
@@ -3386,6 +3418,7 @@ subroutine StepperUpdateFlowAuxVars(realization)
   use Immis_module, only: ImmisUpdateAuxVars
   use Miscible_module, only: MiscibleUpdateAuxVars
   use Richards_module, only : RichardsUpdateAuxVars
+  use TH_module, only : THUpdateAuxVars
   use THC_module, only : THCUpdateAuxVars
   use THMC_module, only : THMCUpdateAuxVars
   use General_module, only : GeneralUpdateAuxVars
@@ -3412,6 +3445,8 @@ subroutine StepperUpdateFlowAuxVars(realization)
       call MphaseUpdateAuxVars(realization)
     case(MIS_MODE)
       call MiscibleUpdateAuxVars(realization)
+    case(TH_MODE)
+      call THUpdateAuxVars(realization)
     case(THC_MODE)
       call THCUpdateAuxVars(realization)
     case(THMC_MODE)

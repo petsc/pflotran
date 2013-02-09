@@ -1089,7 +1089,67 @@ subroutine FlowConditionRead(condition,input,option)
       condition%itype(THREE_INTEGER) = concentration%itype
       if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
 
-!#if 0      
+    case(TH_MODE)
+      if (.not.associated(pressure) .and. .not.associated(rate)&
+           .and. .not.associated(well) .and. .not.associated(saturation)) then
+        option%io_buffer = 'pressure, rate and saturation condition null in ' // &
+                           'condition: ' // trim(condition%name)
+        call printErrMsg(option)
+      endif
+
+      if (associated(pressure)) then
+        condition%pressure => pressure
+      endif
+      if (associated(rate)) then
+        condition%rate => rate
+      endif
+      if (associated(well)) then
+        condition%well => well
+      endif
+      if (associated(saturation)) then
+        condition%saturation => saturation
+      endif
+
+      if (.not.associated(temperature)) then
+        option%io_buffer = 'temperature condition null in condition: ' // &
+                            trim(condition%name)
+        call printErrMsg(option)
+      endif
+      condition%temperature => temperature
+
+      if (.not.associated(enthalpy)) then
+        option%io_buffer = 'enthalpy condition null in condition: ' // &
+                            trim(condition%name)
+        call printErrMsg(option)
+      endif
+      condition%enthalpy => enthalpy
+      
+      condition%num_sub_conditions = THREE_INTEGER
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      do idof = 1, 3
+        nullify(condition%sub_condition_ptr(idof)%ptr)
+      enddo
+
+      ! must be in this order, which matches the dofs i problem
+      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      if (associated(well)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
+      if (associated(saturation)) condition%sub_condition_ptr(ONE_INTEGER)%ptr &
+                                  => saturation
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+      if (associated(enthalpy)) condition%sub_condition_ptr(THREE_INTEGER)%ptr => enthalpy
+
+      allocate(condition%itype(THREE_INTEGER))
+      condition%itype = 0
+      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
+      if (associated(well)) condition%itype(ONE_INTEGER) = well%itype
+      if (associated(saturation)) condition%itype(ONE_INTEGER) = &
+                                    saturation%itype
+      condition%itype(TWO_INTEGER) = temperature%itype
+      if (associated(enthalpy)) condition%itype(THREE_INTEGER) = enthalpy%itype
+
+!#if 0
     case(MIS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)&
            .and. .not.associated(well)) then
