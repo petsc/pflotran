@@ -10,7 +10,13 @@ module Coupler_module
   private
  
 #include "definitions.h"
- 
+
+  ! coupler types
+  PetscInt, parameter, public :: INITIAL_COUPLER_TYPE = 1
+  PetscInt, parameter, public :: BOUNDARY_COUPLER_TYPE = 2
+  PetscInt, parameter, public :: SRC_SINK_COUPLER_TYPE = 3
+  PetscInt, parameter, public :: COUPLER_IPHASE_INDEX = 1
+
   type, public :: coupler_type
     PetscInt :: id                                      ! id of coupler
     character(len=MAXWORDLENGTH) :: name                ! name of coupler

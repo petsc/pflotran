@@ -46,6 +46,8 @@ subroutine CondControlAssignFlowInitCond(realization)
 #ifdef DASVYAT
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
+
+  use General_Aux_module
   
   implicit none
 

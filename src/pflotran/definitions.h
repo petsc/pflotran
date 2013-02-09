@@ -128,34 +128,10 @@ PetscInt, parameter :: SCALE_BY_PERM = 1
 PetscInt, parameter :: SCALE_BY_NEIGHBOR_PERM = 2
 PetscInt, parameter :: SCALE_BY_VOLUME = 3
 
-! concentration subcondition types
-PetscInt, parameter :: CONSTRAINT_NULL = 0
-PetscInt, parameter :: CONSTRAINT_FREE = 1
-PetscInt, parameter :: CONSTRAINT_TOTAL = 2
-PetscInt, parameter :: CONSTRAINT_LOG = 3
-PetscInt, parameter :: CONSTRAINT_PH = 4
-PetscInt, parameter :: CONSTRAINT_MINERAL = 5
-PetscInt, parameter :: CONSTRAINT_GAS = 6
-PetscInt, parameter :: CONSTRAINT_CHARGE_BAL = 7
-PetscInt, parameter :: CONSTRAINT_TOTAL_SORB_AQ_BASED = 8
-PetscInt, parameter :: CONSTRAINT_TOTAL_SORB = 9
-PetscInt, parameter :: CONSTRAINT_SUPERCRIT_CO2 = 10
-
-! mineral types
-PetscInt, parameter :: MINERAL_REFERENCE = 1
-PetscInt, parameter :: MINERAL_KINETIC = 2
-PetscInt, parameter :: MINERAL_EQUILIBRIUM = 3
-
 ! surface complexation surface types
 PetscInt, parameter :: NULL_SURFACE = 0
 PetscInt, parameter :: COLLOID_SURFACE = 1
 PetscInt, parameter :: MINERAL_SURFACE = 2
-
-! coupler types
-PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1
-PetscInt, parameter :: BOUNDARY_COUPLER_TYPE = 2
-PetscInt, parameter :: SRC_SINK_COUPLER_TYPE = 3
-PetscInt, parameter :: COUPLER_IPHASE_INDEX = 1
 
 ! connection types
 PetscInt, parameter :: INTERNAL_CONNECTION_TYPE = 1
@@ -191,53 +167,9 @@ PetscInt, parameter :: RICHARDS_CONDUCTANCE_DOF = 2
 PetscInt, parameter :: MIS_PRESSURE_DOF = 1
 PetscInt, parameter :: MIS_CONCENTRATION_DOF = 2
 
-PetscInt, parameter :: GENERAL_LIQUID_PRESSURE_DOF = 1
-PetscInt, parameter :: GENERAL_GAS_PRESSURE_DOF = 1
-PetscInt, parameter :: GENERAL_AIR_PRESSURE_DOF = 2
-PetscInt, parameter :: GENERAL_GAS_SATURATION_DOF = 3
-PetscInt, parameter :: GENERAL_LIQUID_FLUX_DOF = 1
-PetscInt, parameter :: GENERAL_GAS_FLUX_DOF = 1
-PetscInt, parameter :: GENERAL_TEMPERATURE_DOF = 3
-PetscInt, parameter :: GENERAL_MOLE_FRACTION_DOF = 2
-PetscInt, parameter :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
-PetscInt, parameter :: GENERAL_GAS_CONDUCTANCE_DOF = -2
-PetscInt, parameter :: GENERAL_FLUX_DOF = 4
-
-! activity coefficients
-PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
-PetscInt, parameter :: ACT_COEF_FREQUENCY_TIMESTEP = 1
-PetscInt, parameter :: ACT_COEF_FREQUENCY_NEWTON_ITER = 2
-PetscInt, parameter :: ACT_COEF_ALGORITHM_LAG = 3
-PetscInt, parameter :: ACT_COEF_ALGORITHM_NEWTON = 4
-PetscInt, parameter :: NO_BDOT = 5
-
-! structured grid faces
-PetscInt, parameter :: NULL_FACE = 0
-PetscInt, parameter :: WEST_FACE = 1
-PetscInt, parameter :: EAST_FACE = 2
-PetscInt, parameter :: SOUTH_FACE = 3
-PetscInt, parameter :: NORTH_FACE = 4
-PetscInt, parameter :: BOTTOM_FACE = 5
-PetscInt, parameter :: TOP_FACE = 6
-
 ! mphase equation of state
 PetscInt, parameter :: EOS_SPAN_WAGNER = 1
 PetscInt, parameter :: EOS_MRK = 2
-
-! HDF5 stuff
-PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
-!#define HDF5_BROADCAST
-
-! Tecplot stuff
-PetscInt, parameter :: TECPLOT_POINT_FORMAT = 1
-PetscInt, parameter :: TECPLOT_BLOCK_FORMAT = 2
-PetscInt, parameter :: TECPLOT_FEBRICK_FORMAT = 3
-PetscInt, parameter :: TECPLOT_FEQUADRILATERAL_FORMAT = 4
-
-PetscInt, parameter :: OBSERVATION_SCALAR = 1
-PetscInt, parameter :: OBSERVATION_FLUX = 2
-PetscInt, parameter :: OBSERVATION_AT_CELL_CENTER = 1
-PetscInt, parameter :: OBSERVATION_AT_COORDINATE = 2
 
 ! phase ids
 PetscInt, parameter :: LIQUID_PHASE = 1
@@ -248,29 +180,9 @@ PetscInt, parameter :: LIQUID_STATE = 1
 PetscInt, parameter :: GAS_STATE = 2
 PetscInt, parameter :: TWO_PHASE_STATE = 3
 
-! variable centerings
-PetscInt, parameter :: CELL_CENTERED = 0
-PetscInt, parameter :: SIDE_CENTERED = 1
-
 ! approaches to coupling reactive transport
 PetscInt, parameter :: GLOBAL_IMPLICIT = 0
 PetscInt, parameter :: OPERATOR_SPLIT = 1
-
-! grid cell type
-PetscInt, parameter :: HEX_TYPE          = 1
-PetscInt, parameter :: TET_TYPE          = 2
-PetscInt, parameter :: WEDGE_TYPE        = 3
-PetscInt, parameter :: PYR_TYPE          = 4
-! 2D cell types:
-PetscInt, parameter :: TRI_TYPE          = 5
-PetscInt, parameter :: QUAD_TYPE         = 6
-
-! grid cell properties
-PetscInt, parameter :: LINE_FACE_TYPE    = 1
-PetscInt, parameter :: TRI_FACE_TYPE     = 2
-PetscInt, parameter :: QUAD_FACE_TYPE    = 3
-PetscInt, parameter :: MAX_VERT_PER_FACE = 4
-PetscInt, parameter :: MAX_FACE_PER_CELL = 6
 
 ! ids of non-petsc arrays
 PetscInt, parameter :: MATERIAL_ID_ARRAY = 1

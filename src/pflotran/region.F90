@@ -234,6 +234,8 @@ end function RegionCreateWithList
 ! ************************************************************************** !
 function RegionCreateWithRegion(region)
 
+  use Unstructured_Cell_module
+
   implicit none
   
   type(region_type), pointer :: RegionCreateWithRegion
@@ -377,6 +379,7 @@ subroutine RegionRead(region,input,option)
   use Input_module
   use String_module
   use Option_module
+  use Structured_Grid_module
   
   implicit none
   
@@ -541,6 +544,7 @@ subroutine RegionReadFromFileId(region,input,option)
   use Option_module
   use Utility_module
   use Logging_module
+  use Unstructured_Cell_module
   
   implicit none
   

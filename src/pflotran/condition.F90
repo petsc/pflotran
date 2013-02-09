@@ -1317,7 +1317,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   use Option_module
   use Input_module
   use String_module
-  use Logging_module  
+  use Logging_module
+  
+  use General_Aux_module
   
   implicit none
   

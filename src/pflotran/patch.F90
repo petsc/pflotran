@@ -890,6 +890,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Saturation_module
   use water_eos_module
   use Dataset_Aux_module
+  
+  use General_Aux_module
 
   implicit none
   

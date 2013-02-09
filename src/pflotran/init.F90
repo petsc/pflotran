@@ -60,6 +60,7 @@ subroutine Init(simulation)
   use General_module
   
   use Reactive_Transport_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
   use Global_module
   use Variables_module
@@ -67,7 +68,6 @@ subroutine Init(simulation)
 !  use Utility_module
   use Output_module
   use Output_Aux_module
-  use Output_Tecplot_module, only : OutputVectorTecplot
   use Regression_module
     
 #ifdef SURFACE_FLOW
@@ -1253,6 +1253,7 @@ subroutine InitReadInput(simulation)
   use Mineral_module
   use Regression_module
   use Output_Aux_module
+  use Output_Tecplot_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module

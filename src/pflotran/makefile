@@ -328,11 +328,11 @@ checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.o dataset.o time_series.o \
-              reactive_transport_aux.o constraint.o
+              reactive_transport_aux.o constraint.o general_aux.o
 condition_control.o : realization.o discretization.o region.o option.o grid.o \
                       field.o coupler.o condition.o connection.o reaction.o \
                       hdf5.o mfd.o dataset_aux.o surface_realization.o \
-                      constraint.o
+                      constraint.o general_aux.o
 convergence.o : option.o solver.o grid.o
 ifdef PFLOTRAN_RXN_FLAG
 constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
@@ -370,7 +370,9 @@ general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
             discretization.o water_eos.o debug.o saturation_function.o
 general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
                 global_aux.o
-general_grid.o : grid.o realization.o hdf5.o logging.o
+general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
+                 option.o logging.o hdf5_aux.o discretization.o field.o \
+                 patch.o
 geometry.o : input.o option.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o
@@ -382,7 +384,7 @@ hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o \
 hdf5_aux.o : option.o logging.o dataset_aux.o units.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o dataset.o time_series.o water_eos.o \
-                utility.o dataset_aux.o
+                utility.o dataset_aux.o general_aux.o
 immis.o : immis_aux.o realization.o global_aux.o variables.o output_aux.o
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
               co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
@@ -398,7 +400,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
-         output.o output_surface.o
+         output.o output_surface.o reaction_aux.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -434,7 +436,7 @@ output.o : realization_base.o output_aux.o output_hdf5.o output_observation.o \
 output_aux.o :
 output_common.o : output_aux.o option.o grid.o field.o connection.o coupler.o \
                   patch.o realization_base.o variables.o logging.o \
-                  unstructured_grid_aux.o 
+                  unstructured_grid_aux.o unstructured_cell.o 
 output_hdf5.o : realization_base.o output_aux.o output_common.o logging.o \
                 option.o discretization.o grid.o field.o patch.o \
                 hdf5.o hdf5_aux.o variables.o connection.o \
@@ -452,14 +454,17 @@ output_surface.o : realization_base.o logging.o output_common.o output_hdf5.o \
                    connection.o utility.o hdf5.o hdf5_aux.o output_aux.o
 output_tecplot.o : realization_base.o logging.o output_aux.o output_common.o \
                    grid.o option.o patch.o discretization.o structured_grid.o \
-                   unstructured_grid_aux.o field.o variables.o 
+                   unstructured_grid_aux.o field.o variables.o \
+                   unstructured_cell.o
 output_vtk.o : realization_base.o output_aux.o output_common.o grid.o \
                discretization.o option.o structured_grid.o field.o patch.o \
                reaction_aux.o variables.o 
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxiliary.o reaction.o condition.o connection.o hydrostatic.o \
           field.o saturation.o surface_field.o mineral.o output_aux.o \
-          variables.o constraint.o
+          variables.o constraint.o general_aux.o reaction_aux.o richards_aux.o \
+          reactive_transport_aux.o dataset_aux.o thc_aux.o thmc_aux.o \
+          global_aux.o mphase_aux.o immis_aux.o miscible_aux.o 
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o
@@ -502,7 +507,8 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
                 dataset.o surface_field.o surface_material.o output_aux.o \
                 constraint.o realization_base.o
-region.o : input.o utility.o logging.o string.o geometry.o
+region.o : input.o utility.o logging.o string.o geometry.o option.o \
+           unstructured_cell.o structured_grid.o
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
                utility.o grid.o output.o output_aux.o output_common.o
 richards.o : richards_aux.o realization.o saturation_function.o \
@@ -547,14 +553,14 @@ timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 input.o string.o reactive_transport.o condition_control.o \
-                surface_flow.o output_aux.o output_surface.o
+                surface_flow.o output_aux.o output_surface.o reaction_aux.o
 time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
 unstructured_cell.o : option.o utility.o 
 unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
-                      unstructured_grid_aux.o geometry.o
+                      unstructured_grid_aux.o geometry.o reaction_aux.o
 unstructured_grid_aux.o : unstructured_cell.o geometry.o option.o utility.o
 utility.o : string.o input.o option.o
 variables.o :

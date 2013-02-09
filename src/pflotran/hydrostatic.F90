@@ -34,6 +34,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Dataset_module
   use Dataset_Aux_module
   
+  use General_Aux_module
+  
   implicit none
 
   type(coupler_type) :: coupler
