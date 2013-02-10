@@ -60,7 +60,6 @@ module Secondary_Continuum_Aux_module
     PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
     PetscBool :: log_spacing                   ! flag to check if log spacing is set
     PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
-    PetscReal, pointer :: updated_conc(:,:)    ! This stores the secondary concentration update values from secondary NR iteration  (naqcomp x ncells)
     PetscReal, pointer :: sec_jac(:,:)         ! stores the secondary continuum jacobian value (naqcomp x naqcomp)
     PetscBool :: sec_jac_update                ! flag to check if secondary jacobian is updated
     PetscReal, pointer :: cxm(:,:,:)           ! stores the coeff of left diag in block triag system (ncomp x ncomp x ncells-1)
@@ -179,7 +178,6 @@ subroutine SecondaryAuxVarRTDestroy(aux_var)
   call DeallocateArray(aux_var%vol)
   call DeallocateArray(aux_var%dm_plus)
   call DeallocateArray(aux_var%dm_minus)
-  call DeallocateArray(aux_var%updated_conc)
   call DeallocateArray(aux_var%sec_jac)
   call DeallocateArray(aux_var%cxm)
   call DeallocateArray(aux_var%cxp)

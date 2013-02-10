@@ -468,7 +468,7 @@ reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-					   secondary_continuum.o blksolv.o
+                       secondary_continuum.o blksolv.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
