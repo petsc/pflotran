@@ -489,7 +489,7 @@ saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
                         material.o option.o reactive_transport_aux.o\
                         blksolv.o global_aux.o mphase_aux.o reaction.o
-secondary_continuum_aux.o : option.o reactive_transport_aux.o  
+secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o

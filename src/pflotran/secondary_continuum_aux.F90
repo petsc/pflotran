@@ -157,6 +157,36 @@ function SecondaryAuxRTCreate(option)
   SecondaryAuxRTCreate => aux
   
 end function SecondaryAuxRTCreate  
+
+! ************************************************************************** !
+!
+! SecondaryAuxVarRTDestroy: Deallocates a secondary continuum reactive 
+! transport auxiliary variable object
+! author: Satish Karra
+! date: 02/10/13
+!
+! ************************************************************************** !
+subroutine SecondaryAuxVarRTDestroy(aux_var)
+
+  use Utility_module, only: DeallocateArray
+
+  implicit none
+  
+  type(sec_transport_type) :: aux_var
+  
+  call RTAuxVarDestroy(aux_var%sec_rt_auxvar)
+  call DeallocateArray(aux_var%area)
+  call DeallocateArray(aux_var%vol)
+  call DeallocateArray(aux_var%dm_plus)
+  call DeallocateArray(aux_var%dm_minus)
+  call DeallocateArray(aux_var%updated_conc)
+  call DeallocateArray(aux_var%sec_jac)
+  call DeallocateArray(aux_var%cxm)
+  call DeallocateArray(aux_var%cxp)
+  call DeallocateArray(aux_var%cdl)
+  call DeallocateArray(aux_var%r)
+  
+end subroutine SecondaryAuxVarRTDestroy
   
 ! ************************************************************************** !
 !
@@ -171,8 +201,13 @@ subroutine SecondaryAuxRTDestroy(aux)
   implicit none
 
   type(sc_rt_type), pointer :: aux
+  PetscInt :: iaux
    
   if (.not.associated(aux)) return
+  
+  do iaux = 1, size(aux%sec_transport_vars)
+    call SecondaryAuxVarRTDestroy(aux%sec_transport_vars(iaux))
+  enddo
   
   deallocate(aux)
   nullify(aux)  
