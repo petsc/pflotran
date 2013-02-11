@@ -738,7 +738,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   coeff_left = coeff_left*global_aux_var%den_kg(1)
   coeff_diag = coeff_diag*global_aux_var%den_kg(1)
   
-  
   ! Reaction 
   do i = 1, ngcells
     res_react = 0.d0
@@ -892,7 +891,9 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
   PetscInt :: d
-  
+  PetscReal :: res_react(reaction%naqcomp)
+  PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
+    
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
   vol = sec_transport_vars%vol          
@@ -941,10 +942,15 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
       sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) = conc_upd(j,i)
     enddo
   enddo
-  
+    
+  res_react = 0.d0
+  jac_react = 0.d0 ! These are not used anyway
   do i = 1, ngcells
     call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_aux_var, &
                 reaction,option)
+    call RReaction(res_react,jac_react,PETSC_FALSE, &
+                   sec_transport_vars%sec_rt_auxvar(i), &
+                   global_aux_var,porosity,vol(i),reaction,option)
   enddo
   
   if (reaction%mineral%nkinmnrl > 0) then
