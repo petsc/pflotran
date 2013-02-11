@@ -748,7 +748,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! area: m^2 mnrl/m^3 bulk
       ! volume: m^3 bulk
       Im_const = -rt_auxvar%mnrl_area(imnrl)
-
+      
       ! units: mol/sec/m^3 bulk
       if (associated(mineral%kinmnrl_affinity_power)) then
         ! Im_const: m^2 mnrl/m^3 bulk

@@ -642,13 +642,13 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   pordiff = porosity*diffusion_coefficient
   
   call RTAuxVarInit(rt_auxvar,reaction,option)
-  
   do i = 1, ngcells
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i),option)
     rt_auxvar%pri_molal = conc_upd(:,i)
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
     total_upd(:,i) = rt_auxvar%total(:,1)
   enddo
+  call RTAuxVarStrip(rt_auxvar)
                           
               
 !================ Calculate the secondary residual =============================        
@@ -743,25 +743,20 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   do i = 1, ngcells
     res_react = 0.d0
     jac_react = 0.d0
+    call RTAuxVarInit(rt_auxvar,reaction,option)
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
                       option)
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
-!    For a more general case    
-!    call RReaction(res_react,jac_react,PETSC_TRUE, &
-!                  sec_transport_vars%sec_rt_auxvar(i), &
-!                  global_aux_var,porosity,vol(i),reaction,option)
-    if (reaction%mineral%nkinmnrl > 0) then
-      call RKineticMineral(res_react,jac_react,PETSC_TRUE, &
-                           rt_auxvar, &
-                           global_aux_var,vol(i),reaction,option)
-      ! Note jac_react here is in kg water/s                     
-    endif
+    call RReaction(res_react,jac_react,PETSC_TRUE, &
+                   rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)
+    call RTAuxVarStrip(rt_auxvar)
     do j = 1, ncomp
-      res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j)
+      res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j) 
     enddo
-    coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react
+    coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
   enddo
+
   
          
 !===============================================================================        
@@ -797,12 +792,13 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   enddo
   
   ! Update the secondary continuum totals at the outer matrix node
+  call RTAuxVarInit(rt_auxvar,reaction,option)
   call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(ngcells), &
                     option)
   rt_auxvar%pri_molal = conc_current_M ! in mol/kg
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
-  
   total_current_M = rt_auxvar%total(:,1)
+  call RTAuxVarStrip(rt_auxvar)
   
   b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M
   
@@ -838,7 +834,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
   
-  call RTAuxVarStrip(rt_auxvar)
 
 end subroutine SecondaryRTResJacMulti
 
