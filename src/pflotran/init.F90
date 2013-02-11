@@ -55,11 +55,13 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
+  use TH_module
   use THC_module
   use THMC_module
   use General_module
   
   use Reactive_Transport_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
   use Global_module
   use Variables_module
@@ -67,7 +69,6 @@ subroutine Init(simulation)
 !  use Utility_module
   use Output_module
   use Output_Aux_module
-  use Output_Tecplot_module, only : OutputVectorTecplot
   use Regression_module
     
 #ifdef SURFACE_FLOW
@@ -288,7 +289,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -307,6 +308,8 @@ subroutine Init(simulation)
           write(*,'(" mode = IMS: p, T, s")')
         case(MIS_MODE)
           write(*,'(" mode = MIS: p, Xs")')
+        case(TH_MODE)
+          write(*,'(" mode = THC: p, T")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(THMC_MODE)
@@ -352,6 +355,9 @@ subroutine Init(simulation)
     endif
     
     select case(option%iflowmode)
+      case(TH_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,THResidual, &
+                             realization,ierr)
       case(THC_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
@@ -391,6 +397,9 @@ subroutine Init(simulation)
     endif
 
     select case(option%iflowmode)
+      case(TH_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             THJacobian,realization,ierr)
       case(THC_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THCJacobian,realization,ierr)
@@ -472,6 +481,15 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
+      case(TH_MODE)
+        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+            dabs(option%pressure_change_limit) > 0.d0 .or. &
+            dabs(option%temperature_change_limit) > 0.d0) then
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch, &
+                                         THCheckUpdatePre, &
+                                         realization,ierr)
+        endif
       case(THC_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
@@ -490,6 +508,11 @@ subroutine Init(simulation)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
+                                          realization,ierr)
+        case(TH_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          THCheckUpdatePost, &
                                           realization,ierr)
         case(THC_MODE)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
@@ -730,6 +753,8 @@ subroutine Init(simulation)
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
+      case(TH_MODE)
+        call THSetup(realization)
       case(THC_MODE)
         call THCSetup(realization)
       case(THMC_MODE)
@@ -758,6 +783,8 @@ subroutine Init(simulation)
     endif
   
     select case(option%iflowmode)
+      case(TH_MODE)
+        call THUpdateAuxVars(realization)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
       case(THMC_MODE)
@@ -914,37 +941,9 @@ subroutine Init(simulation)
   call RealizationPrintGridStatistics(realization)
 #endif
   
-  ! check that material properties have been set at all grid cells
-  ! right now, we check just perms; maybe more needed later
-  call VecMin(field%porosity0,temp_int,r1,ierr)
-  if (r1 < -998.d0) then
-    ! if less than 10M grid cells, print porosities
-    if (grid%nmax < 10000000) then
-      string = 'porosity-uninitialized.tec'
-      call OutputVectorTecplot(string,string,realization,field%porosity0)
-    endif
-    write(string,*) temp_int, r1
-    option%io_buffer = 'Porosity not initialized at cell ' // &
-                       trim(adjustl(string)) // ' (note PETSc numbering).' // &
-                       '  Ensure that REGIONS cover entire domain!!!'
-    call printErrMsg(option)
-  endif
-  if (option%iflowmode /= NULL_MODE) then
-    min_value = 1.d20
-    call VecMin(field%perm0_xx,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    call VecMin(field%perm0_yy,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    call VecMin(field%perm0_zz,temp_int,r1,ierr)
-    min_value = min(min_value,r1)
-    if (min_value < 1.d-60) then
-      option%io_buffer = &
-        'A positive non-zero permeability must be defined throughout ' // &
-        'domain in X, Y and Z.'
-      call printErrMsg(option)
-    endif
-  endif
-  
+  ! check for non-initialized data sets, e.g. porosity, permeability
+  call RealizationNonInitializedData(realization)
+
 #if defined(PETSC_HAVE_HDF5)
 #if !defined(HDF5_BROADCAST)
   call printMsg(option,"Default HDF5 method is used in Initialization")
@@ -1281,6 +1280,7 @@ subroutine InitReadInput(simulation)
   use Mineral_module
   use Regression_module
   use Output_Aux_module
+  use Output_Tecplot_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -2259,6 +2259,13 @@ subroutine setFlowMode(option)
   
   call StringToUpper(option%flowmode)
   select case(option%flowmode)
+    case('TH')
+      option%iflowmode = TH_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2
+      option%nflowdof = 2
+      option%nflowspec = 1
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1

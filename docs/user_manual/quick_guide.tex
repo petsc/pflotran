@@ -35,7 +35,9 @@
 
 %\usepackage[tikz]{bclogo}
 
-\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
+\usepackage{url}
+
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=red]{hyperref}
 
 \textwidth 6.5in
 \textheight 9.5in
@@ -4716,17 +4718,50 @@ END
 \protect\hypertarget{target_strata}{}
 
 \subsection{Keyword: STRATIGRAPHY (STRATA)}
+
+Couples material IDs and/or properties with a region in the problem domain.
+
 %\shadowbox{
 %\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[STRATIGRAPHY (STRATA)]
-\item  REGION region\_name
-\item  MATERIAL material\_name
-\item  INACTIVE
+\begin{deflist}{00}
+\item[STRATIGRAPHY (STRATA)] ~
+\begin{deflist}{000}
+\item[MATERIAL] <string> \ name of the material property to be associated with a region
+\item[REGION] <string> \ name of region associated with a material property
+%\item  INACTIVE
+\end{deflist}
 \item[\keyend]
 \end{deflist}
 %\end{minipage}
 %}
+
+\noindent
+Note: a filename can be provided instead of a material property name from which material IDs are read on a cell by cell basis. In this case there is no need for the {\tt REGION} keyword.
+
+\noindent {\bf Examples:}
+
+\begin{mdframed}
+\noindent
+Assign {\tt hanford\_unit} material properties to the region {\tt source\_zone}
+
+\begin{verbatim}
+STRATA
+  MATERIAL hanford_unit
+  REGION source_zone
+/
+\end{verbatim}
+
+\noindent
+Assign material properties through material IDs read from an HDF5 formatted file. In this case there is no need to specify a region as material IDs are assigned to the entire grid on a cell by cell basis.
+
+\begin{verbatim}
+STRATA
+  MATERIAL ../../field_material_ids.h5
+/
+\end{verbatim}
+
+\noindent For a detailed example on creating the .h5 file see the PFLOTRAN wiki: \href{https://bitbucket.org/pflotran/pflotran-dev/wiki/Documentation/Strata}{Strata}.
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 

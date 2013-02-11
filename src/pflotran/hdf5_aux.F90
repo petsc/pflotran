@@ -10,7 +10,10 @@ module HDF5_Aux_module
 #include "definitions.h"
 
   private
-  
+
+  PetscInt, parameter, public :: HDF5_READ_BUFFER_SIZE = 1000000
+!#define HDF5_BROADCAST
+
   PetscErrorCode :: ierr
 
 #if defined(PETSC_HAVE_HDF5)

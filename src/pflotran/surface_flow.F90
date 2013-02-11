@@ -213,6 +213,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   use Patch_module
   use Solver_module
   use Output_Aux_module
+  use Output_Tecplot_module
 
   implicit none
 

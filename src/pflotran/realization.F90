@@ -82,7 +82,8 @@ private
             RealizationSetUpBC4Faces, &
             RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
-            RealizationCalculateCFL1Timestep
+            RealizationCalculateCFL1Timestep, &
+            RealizationNonInitializedData
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -1923,6 +1924,11 @@ subroutine RealizationUpdatePropertiesPatch(realization)
         scale = ((porosity_loc_p(ghosted_id)-material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por) &
         /(porosity0_p(local_id)-material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por))** &
         material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
+
+#ifdef PERM
+        scale = scale*((1.001-porosity0_p(local_id)**2)/(1.001-porosity_loc_p(ghosted_id)**2))
+#endif
+
         if (scale < material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac) &
           scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
       else
@@ -2379,6 +2385,83 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
   max_dt_cfl_1 = tempreal
 
 end subroutine RealizationCalculateCFL1Timestep
+
+! ************************************************************************** !
+!
+! RealizationNonInitializedData: Checks for non-initialized data sets
+!                                i.e. porosity, permeability
+! author: Glenn Hammond
+! date: 02/08/13
+!
+! ************************************************************************** !
+subroutine RealizationNonInitializedData(realization)
+
+  use Grid_module
+  use Patch_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  PetscReal, pointer :: vec_p(:), vecy_p(:), vecz_p(:)
+  PetscReal :: min_value, global_value
+  PetscInt :: local_id
+  PetscErrorCode :: ierr
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  
+  ! cannot use VecMin as there may be inactive cells without data assigned.
+  
+  min_value = 1.d20
+  ! porosity
+  call GridVecGetArrayF90(grid,field%porosity0,vec_p,ierr)
+  do local_id = 1, grid%nlmax
+    if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    min_value = min(min_value,vec_p(local_id)) 
+  enddo
+  call GridVecRestoreArrayF90(grid,field%porosity0,vec_p,ierr)
+  call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+  
+  if (global_value < -998.d0) then
+    option%io_buffer = 'Porosity not initialized at all cells.  ' // &
+                       'Ensure that REGIONS cover entire domain!!!'
+    call printErrMsg(option)
+  endif
+  
+  if (option%iflowmode /= NULL_MODE) then
+    call GridVecGetArrayF90(grid,field%perm0_xx,vec_p,ierr)
+    call GridVecGetArrayF90(grid,field%perm0_yy,vecy_p,ierr)
+    call GridVecGetArrayF90(grid,field%perm0_zz,vecz_p,ierr)
+    min_value = 1.d20
+    do local_id = 1, grid%nlmax
+      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+      min_value = min(min_value,vec_p(local_id),vecy_p(local_id), &
+                      vecz_p(local_id)) 
+    enddo        
+    call GridVecRestoreArrayF90(grid,field%perm0_xx,vec_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%perm0_yy,vecy_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%perm0_zz,vecz_p,ierr)
+    call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    if (global_value < 1.d-60) then
+      option%io_buffer = &
+        'A positive non-zero permeability must be defined throughout ' // &
+        'domain in X, Y and Z.'
+      call printErrMsg(option)
+    endif
+  endif
+
+end subroutine RealizationNonInitializedData
 
 ! ************************************************************************** !
 !

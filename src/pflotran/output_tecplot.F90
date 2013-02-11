@@ -9,6 +9,11 @@ module Output_Tecplot_module
   private
 
 #include "definitions.h"
+  PetscInt, parameter, public :: TECPLOT_POINT_FORMAT = 1
+  PetscInt, parameter, public :: TECPLOT_BLOCK_FORMAT = 2
+  PetscInt, parameter, public :: TECPLOT_FEBRICK_FORMAT = 3
+  PetscInt, parameter, public :: TECPLOT_FEQUADRILATERAL_FORMAT = 4  
+
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"
@@ -1385,7 +1390,8 @@ subroutine GetCellConnectionsTecplot(grid, vec)
 
   use Grid_module
   use Unstructured_Grid_Aux_module
-
+  use Unstructured_Cell_module
+  
   implicit none
   
   type(grid_type) :: grid

@@ -46,6 +46,8 @@ subroutine CondControlAssignFlowInitCond(realization)
 #ifdef DASVYAT
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
+
+  use General_Aux_module
   
   implicit none
 
@@ -974,13 +976,14 @@ subroutine CondControlScaleSourceSink(realization)
                              grid%structured_grid%dy(neighbor_ghosted_id)
                enddo
                vec_ptr(local_id) = vec_ptr(local_id) + sum
+            case(TH_MODE)
             case(THC_MODE)
             case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
             case(FLASH2_MODE)
-          end select 
+          end select
 
         enddo
         
@@ -996,13 +999,14 @@ subroutine CondControlScaleSourceSink(realization)
             case(RICHARDS_MODE,G_MODE)
               cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
                 vec_ptr(local_id)
+            case(TH_MODE)
             case(THC_MODE)
             case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
             case(FLASH2_MODE)
-          end select 
+          end select
 
         enddo
         call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)

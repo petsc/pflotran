@@ -15,7 +15,15 @@ module Reaction_Aux_module
   private 
 
 #include "definitions.h"
-  
+
+  ! activity coefficients
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_OFF = 0
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_TIMESTEP = 1
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_NEWTON_ITER = 2
+  PetscInt, parameter, public :: ACT_COEF_ALGORITHM_LAG = 3
+  PetscInt, parameter, public :: ACT_COEF_ALGORITHM_NEWTON = 4
+  PetscInt, parameter, public :: NO_BDOT = 5
+
   type, public :: species_idx_type
     PetscInt :: h2o_aq_id
     PetscInt :: h_ion_id
