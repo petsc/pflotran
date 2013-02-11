@@ -739,24 +739,22 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   coeff_diag = coeff_diag*global_aux_var%den_kg(1)
   
   ! Reaction 
+  call RTAuxVarInit(rt_auxvar,reaction,option)
   do i = 1, ngcells
     res_react = 0.d0
     jac_react = 0.d0
-    call RTAuxVarInit(rt_auxvar,reaction,option)
     call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
                       option)
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
     call RReaction(res_react,jac_react,PETSC_TRUE, &
                    rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)
-    call RTAuxVarStrip(rt_auxvar)
     do j = 1, ncomp
       res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j) 
     enddo
     coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
-  enddo
-
-  
+  enddo  
+  call RTAuxVarStrip(rt_auxvar)
          
 !===============================================================================        
                         
