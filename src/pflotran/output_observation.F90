@@ -371,17 +371,19 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
                                          icolumn)
   use Realization_Base_class, only : realization_base_type
   use Option_module
+  use Reaction_Aux_module
 
   implicit none
   
   PetscInt :: fid
   class(realization_base_type) :: realization_base
+  type(reaction_type), pointer :: reaction 
   PetscBool :: print_velocities
   PetscBool :: print_secondary_data(3)
   character(len=MAXSTRINGLENGTH) :: cell_string
   PetscInt :: icolumn
   
-  PetscInt :: i
+  PetscInt :: i,j
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
@@ -421,26 +423,35 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
   endif
   
   ! add secondary concentrations to header
-  if (print_secondary_data(2)) then
-        header = ''
-        do i = 1, option%nsec_cells
-          write(string,'(i2)') i
-          string = 'C_sec(' // trim(adjustl(string)) // ')'
-          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-        enddo
-    write(fid,'(a)',advance="no") trim(header)
-  endif
+  if (option%ntrandof > 0) then 
+    reaction => realization_base%reaction
+    if (print_secondary_data(2)) then
+          header = ''
+          do j = 1, reaction%naqcomp
+            do i = 1, option%nsec_cells
+              write(string,'(i2)') i
+              string = 'C_sec(' // trim(adjustl(string)) // ') ' &
+                         // trim(reaction%primary_species_names(j))
+              call OutputAppendToHeader(header,string,'mol','',icolumn)
+            enddo
+          enddo
+      write(fid,'(a)',advance="no") trim(header)
+    endif
   
   ! add secondary mineral volume fractions to header
-  if (print_secondary_data(3)) then
-        header = ''
-        do i = 1, option%nsec_cells
-          write(string,'(i2)') i
-          string = 'min_vol_frac_sec(' // trim(adjustl(string)) // ')'
-          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-        enddo
-    write(fid,'(a)',advance="no") trim(header)
-  endif  
+    if (print_secondary_data(3)) then
+          header = ''
+          do j = 1, reaction%mineral%nkinmnrl
+            do i = 1, option%nsec_cells
+              write(string,'(i2)') i
+              string = 'VF_sec(' // trim(adjustl(string)) // ') ' &
+                       // trim(reaction%mineral%mineral_names(j))
+              call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+            enddo
+          enddo
+      write(fid,'(a)',advance="no") trim(header)
+    endif  
+  endif 
   
 end subroutine WriteObservationHeader
 
@@ -1117,10 +1128,11 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
   use Field_module
   use Patch_module
   use Variables_module
+  use Reaction_Aux_module
 
   implicit none
   
-  PetscInt :: fid, i
+  PetscInt :: fid,i,naqcomp,nkinmnrl
   class(realization_base_type) :: realization_base
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -1128,7 +1140,8 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(output_option_type), pointer :: output_option    
+  type(output_option_type), pointer :: output_option 
+  type(reaction_type), pointer :: reaction   
   PetscInt :: ivar
   
   option => realization_base%option
@@ -1155,20 +1168,27 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
           enddo
         end select
      endif
-     if (ivar == PRINT_SEC_CONC) then
-       do i = 1, option%nsec_cells 
-         write(fid,110,advance="no") &
-           RealizGetDatasetValueAtCell(realization_base,SECONDARY_CONCENTRATION,i, &
-                                       ghosted_id)
-       enddo
-     endif
-     if (ivar == PRINT_SEC_MIN_VOLFRAC) then
-       do i = 1, option%nsec_cells 
-         write(fid,110,advance="no") &
-           RealizGetDatasetValueAtCell(realization_base,SEC_MIN_VOLFRAC,i, &
-                                       ghosted_id)
-       enddo
-     endif
+    if (option%ntrandof > 0) then
+      reaction => realization_base%reaction 
+      if (ivar == PRINT_SEC_CONC) then
+        do naqcomp = 1, reaction%naqcomp
+          do i = 1, option%nsec_cells 
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization_base,SECONDARY_CONCENTRATION,i, &
+                                          ghosted_id,naqcomp)
+          enddo
+        enddo 
+      endif
+      if (ivar == PRINT_SEC_MIN_VOLFRAC) then
+        do nkinmnrl = 1, reaction%mineral%nkinmnrl
+          do i = 1, option%nsec_cells 
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization_base,SEC_MIN_VOLFRAC,i, &
+                                          ghosted_id,nkinmnrl)
+          enddo
+        enddo
+      endif
+    endif 
    endif 
    
 end subroutine WriteObservationSecondaryDataAtCell
