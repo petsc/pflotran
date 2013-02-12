@@ -1152,7 +1152,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc = m^3/sec
           qsrc = qsrc_flow*area_p(local_id)
-        case(DISTRIBUTED_VOLUMETRIC_RATE_SS)
+        case(HET_VOL_RATE_SS)
           ! qsrc = m^3/sec
           qsrc = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)*area_p(local_id)
         case default
