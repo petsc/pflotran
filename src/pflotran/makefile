@@ -155,7 +155,9 @@ util_obj  = \
 	${common_src}string.o \
 	${common_src}units.o \
 	${common_src}utility.o \
-	${common_src}variables.o
+	${common_src}variables.o\
+	${common_src}blksolv.o\
+  ${common_src}blaslapack.o
 
 eos_obj = \
 	${common_src}co2eos.o \
@@ -330,6 +332,7 @@ auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o reactive_transport_au
               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
               secondary_continuum_aux.o
+blksolv.o: blaslapack.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
@@ -351,8 +354,7 @@ constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                immobile.o \
                units.o string.o logging.o
 endif
-coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
-            auxiliary.o
+coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
 co2_span_wagner.o : co2_sw_rtsafe.o
 co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
@@ -505,7 +507,7 @@ reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-                       secondary_continuum.o
+                       secondary_continuum.o blksolv.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -524,9 +526,10 @@ richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
-secondary_continuum.o : string.o secondary_continuum_aux.o
-secondary_continuum_aux.o : option.o global_aux.o reaction_aux.o\
-                            reactive_transport_aux.o mphase_aux.o
+secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
+                        material.o option.o reactive_transport_aux.o\
+                        blksolv.o global_aux.o mphase_aux.o reaction.o
+secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o
@@ -551,7 +554,7 @@ surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         string.o grid.o strata.o unstructured_grid.o dataset.o \
                         unstructured_grid_aux.o realization_base.o
 th.o : secondary_continuum.o th_aux.o realization.o saturation_function.o \
-        variables.o secondary_continuum_aux.o
+       variables.o secondary_continuum_aux.o 
 th_aux.o : option.o material.o water_eos.o \
             saturation_function.o grid.o global_aux.o
 thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \

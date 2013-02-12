@@ -36,6 +36,7 @@ private
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
     
+    type(tran_constraint_type), pointer :: sec_transport_constraint
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
     type(fluid_property_type), pointer :: fluid_properties
@@ -150,7 +151,8 @@ function RealizationCreate2(option)
   nullify(realization%saturation_function_array)
   nullify(realization%datasets)
   nullify(realization%velocity_dataset)
-  
+  nullify(realization%sec_transport_constraint)
+
   nullify(realization%waypoints)
 
   RealizationCreate2 => realization
@@ -1067,6 +1069,17 @@ subroutine RealProcessTranConditions(realization)
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
+  
+  if (option%use_mc) then
+    call ReactionProcessConstraint(realization%reaction, &
+                                   realization%sec_transport_constraint%name, &
+                                   realization%sec_transport_constraint%aqueous_species, &
+                                   realization%sec_transport_constraint%minerals, &
+                                   realization%sec_transport_constraint%surface_complexes, &
+                                   realization%sec_transport_constraint%colloids, &
+                                   realization%sec_transport_constraint%immobile_species, &
+                                   realization%option)
+  endif
   
   ! tie constraints to couplers, if not already associated
   cur_condition => realization%transport_conditions%first
@@ -2515,6 +2528,8 @@ subroutine RealizationDestroy(realization)
   call DiscretizationDestroy(realization%discretization)
   
   call ReactionDestroy(realization%reaction)
+  
+  call TranConstraintDestroy(realization%sec_transport_constraint)  
   
 end subroutine RealizationDestroy
 

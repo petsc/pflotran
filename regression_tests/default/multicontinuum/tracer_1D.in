@@ -59,7 +59,7 @@ NEWTON_SOLVER TRANSPORT
   RTOL 1D-10
   STOL 1D-30
   MAX_NORM 1D30
-  ITOL 1D-10
+  ITOL 1D-8
   MAXIT 100
   MAXF 100
 END
@@ -88,11 +88,8 @@ MATERIAL_PROPERTY soil1
     AREA 1.75e-6
     NUM_CELLS 5
     EPSILON 0.4167d0
-    CONCENTRATION 1.d-1
     DIFFUSION_COEFFICIENT 0.8d-9
     POROSITY 0.4464
-    MINERAL_VOLFRAC 0.5d5
-    MINERAL_AREA    17.857d2
    /
 /
 
@@ -232,3 +229,15 @@ CONCENTRATIONS
 A(aq)  1.E-02  T
 /
 /
+
+:==================== secondary continuum initial constraint ==================
+SECONDARY_CONSTRAINT sec
+CONCENTRATIONS
+A(aq)  0.1  M A(s)
+/
+MINERALS
+:mineral vol. frac. area
+A(s)      0.5d5    17.857d2
+/
+/
+
