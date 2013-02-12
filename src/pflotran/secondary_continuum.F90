@@ -694,7 +694,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 
   do j = 1, ncomp
     do k = 1, ncomp  
-      if (k == j) then
         ! Accumulation
         do i = 1, ngcells 
           coeff_diag(j,k,i) = coeff_diag(j,k,i) + pordt*vol(i)
@@ -729,7 +728,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                   pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
                                   dm_plus(ngcells-1)) 
 
-      endif
     enddo    
   enddo
 
