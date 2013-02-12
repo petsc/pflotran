@@ -748,9 +748,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
     call RReaction(res_react,jac_react,PETSC_TRUE, &
-                   rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)
+                   rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)                     
     do j = 1, ncomp
-      res(j+(i-1)*ngcells) = res(j+(i-1)*ngcells) + res_react(j) 
+      res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
     coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
   enddo  
@@ -759,7 +759,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 !===============================================================================        
                         
   rhs = -res                 
- 
+
   call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)
   
   call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
@@ -816,7 +816,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                   
   ! Calculate the jacobian contribution due to coupling term
   sec_jac = area_fm*pordiff/dm_plus(ngcells)*(b_m - identity)
-    
+      
   ! Store the contribution to the primary jacobian term
   sec_transport_vars%sec_jac = sec_jac 
   sec_transport_vars%sec_jac_update = PETSC_TRUE
