@@ -155,7 +155,6 @@ subroutine RTSetupPatch(realization)
   sec_tran_constraint => realization%sec_transport_constraint
 
   patch%aux%RT => RTAuxCreate(option)
-  patch%aux%SC_RT => SecondaryAuxRTCreate(option)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%offset_aqueous = reaction%offset_aqueous
@@ -182,6 +181,7 @@ subroutine RTSetupPatch(realization)
 
   
   if (option%use_mc) then
+    patch%aux%SC_RT => SecondaryAuxRTCreate(option)
     initial_condition => patch%initial_conditions%first
     allocate(rt_sec_transport_vars(grid%ngmax))  
     do ghosted_id = 1, grid%ngmax
@@ -687,7 +687,9 @@ subroutine RTUpdateSolutionPatch(realization)
 
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
 
   ! update:                             cells      bcs         act. coefs.
   call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
@@ -803,7 +805,9 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   global_aux_vars => patch%aux%Global%aux_vars
   grid => patch%grid
   reaction => realization%reaction
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
 
   ! cannot use tran_xx_loc vector here as it has not yet been updated.
   call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr)
@@ -1940,7 +1944,9 @@ subroutine RTReactPatch(realization)
   rt_aux_vars => patch%aux%RT%aux_vars
   grid => patch%grid
   reaction => realization%reaction
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
@@ -2428,7 +2434,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
 
   
   if (.not.patch%aux%RT%aux_vars_up_to_date) then
@@ -2728,7 +2736,9 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   rt_aux_vars_ss => patch%aux%RT%aux_vars_ss
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
   
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,r, r_p, ierr)
@@ -3145,7 +3155,9 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
 
 
   ! Get pointer to Vector data
@@ -3392,7 +3404,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
+  endif
 
   vol_frac_prim = 1.d0
   
