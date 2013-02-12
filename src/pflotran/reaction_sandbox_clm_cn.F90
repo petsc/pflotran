@@ -564,8 +564,6 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: dCN_ratio_up_dC_pool_up, dCN_ratio_up_dN_pool_up
   PetscReal :: dstoich_upstreamN_pool_dC_pool_up
   PetscReal :: dstoich_upstreamN_pool_dN_pool_up
-  PetscReal :: fraction_C_up
-  PetscReal :: fraction_C_down
   PetscReal :: dstoichN_dC_pool_up
   PetscReal :: dstoichN_dN_pool_up
   
@@ -611,11 +609,6 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       ispecN_pool_up = this%pool_id_to_species_id(NITROGEN_INDEX,ipool_up)
       CN_ratio_up = rt_auxvar%immobile(ispecC_pool_up) / &
                     rt_auxvar%immobile(ispecN_pool_up)
-      fraction_C_up = 1.d0
-      ! a = fraction_C_up = 1.
-      stoich_upstreamC_pool = fraction_C_up
-      ! b = a / CN_ratio_up
-      stoich_upstreamN_pool = stoich_upstreamC_pool / CN_ratio_up
     else
       ! upstream pool is an SOM pool with one species
       !
@@ -623,13 +616,12 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       !
       ispecC_pool_up = this%pool_id_to_species_id(SOM_INDEX,ipool_up)
       CN_ratio_up = this%CN_ratio(ipool_up)
-      ! split stoichiometry into fractions of C and N in SOM_i
-      fraction_C_up = CN_ratio_up / (1.d0 + CN_ratio_up)
-      ! a = fraction_C_up
-      stoich_upstreamC_pool = fraction_C_up
-      ! b = 1 - a
-      stoich_upstreamN_pool = 1.d0 - stoich_upstreamC_pool
     endif
+
+    ! a = fraction_C_up = 1.
+    stoich_upstreamC_pool = 1.d0
+    ! b = a / CN_ratio_up
+    stoich_upstreamN_pool = stoich_upstreamC_pool / CN_ratio_up
 
     ! downstream pool
     ipool_down = this%downstream_pool_id(irxn)
@@ -640,22 +632,18 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       ! as a litter would be).
       ispec_pool_down = this%pool_id_to_species_id(SOM_INDEX,ipool_down)
       CN_ratio_down = this%CN_ratio(ipool_down)
-      fraction_C_down = CN_ratio_down / (1.d0 + CN_ratio_down)
-      ! c = (1-resp_frac) * a / fraction_C_down
-      stoich_downstream_pool = (1.d0-resp_frac) * stoich_upstreamC_pool / &
-                              fraction_C_down
+      ! c = (1-resp_frac) * a
+      stoich_downstream_pool = (1.d0-resp_frac) * stoich_upstreamC_pool
     else    
       ispec_pool_down = 0
       stoich_downstream_pool = 0.d0
       CN_ratio_down = 1.d0 ! to prevent divide by zero below.
-      fraction_C_down = 0.d0
     endif
       
-    ! d = (1-resp_frac) * a
+    ! d = resp_frac * a
     stoich_C = resp_frac * stoich_upstreamC_pool
     ! e = b - c / CN_ratio_dn
-    stoich_N = stoich_upstreamN_pool - stoich_downstream_pool * &
-                                       (1.d0 - fraction_C_down)
+    stoich_N = stoich_upstreamN_pool - stoich_downstream_pool / CN_ratio_down
  
     ! Inhibition by nitrogen (inhibition concentration > 0 and N is a reactant)
     ! must be calculated here as the sign on the stoichiometry for N is 
@@ -674,7 +662,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ! residual units: (mol/sec) = (m^3 bulk/s) * (mol/m^3 bulk)
-    rate = fraction_C_up * rt_auxvar%immobile(ispecC_pool_up) * &
+    rate = rt_auxvar%immobile(ispecC_pool_up) * &
            scaled_rate_const * N_inhibition
 
     ! calculation of residual
@@ -708,8 +696,8 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       ! downstream pool
       ires_pool_down = reaction%offset_immobile + ispec_pool_down
       Res(ires_pool_down) = Res(ires_pool_down) - stoich_downstream_pool * rate
-      sumC = sumC + stoich_downstream_pool * fraction_C_down * rate
-      sumN = sumN + stoich_downstream_pool * (1.d0 - fraction_C_down) * rate
+      sumC = sumC + stoich_downstream_pool * rate
+      sumN = sumN + stoich_downstream_pool / CN_ratio_down * rate
     endif
     
     if (dabs(sumC) > 1.d-40 .or. dabs(sumN) > 1.d-40) then
@@ -720,7 +708,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     
     if (compute_derivative) then
     
-      drate = fraction_C_up * scaled_rate_const * N_inhibition
+      drate = scaled_rate_const * N_inhibition
       
       ! upstream C pool
       Jac(iresC_pool_up,iresC_pool_up) = Jac(iresC_pool_up,iresC_pool_up) - &
