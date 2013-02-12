@@ -31,7 +31,7 @@ contains
 ! ************************************************************************** !
 subroutine CondControlAssignFlowInitCond(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -46,6 +46,8 @@ subroutine CondControlAssignFlowInitCond(realization)
 #ifdef DASVYAT
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
+
+  use General_Aux_module
   
   implicit none
 
@@ -227,7 +229,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                       initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
                       iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                  iphase_loc_p(ghosted_id)
+                  int(iphase_loc_p(ghosted_id))
               enddo
             endif
             initial_condition => initial_condition%next
@@ -364,7 +366,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                   initial_condition%flow_condition%iphase
                 if (option%iflowmode == G_MODE) then
                   cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                    iphase_loc_p(ghosted_id)
+                    int(iphase_loc_p(ghosted_id))
                 endif
               enddo
             end if
@@ -428,7 +430,7 @@ end subroutine CondControlAssignFlowInitCond
 ! ************************************************************************** !
 subroutine CondControlAssignTranInitCond(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -453,7 +455,7 @@ subroutine CondControlAssignTranInitCond(realization)
   
   type(realization_type) :: realization
   
-  PetscInt :: icell, iconn, idof, isub_condition, temp_int
+  PetscInt :: icell, iconn, idof, isub_condition, temp_int, iimmobile
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite, imnrl, ikinrxn
   PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
@@ -563,15 +565,15 @@ subroutine CondControlAssignTranInitCond(realization)
           enddo
         endif
           
-        ! read in heterogeneous biomass
-        if (associated(constraint_coupler%biomass)) then
-          do idof = 1, reaction%microbial%nbiomass
-            if (constraint_coupler%biomass%external_dataset(idof)) then
+        ! read in heterogeneous immobile
+        if (associated(constraint_coupler%immobile_species)) then
+          do iimmobile = 1, reaction%immobile%nimmobile
+            if (constraint_coupler%immobile_species%external_dataset(iimmobile)) then
               ! no need to requilibrate at each cell
               string = 'constraint ' // trim(constraint_coupler%constraint_name)
               dataset => DatasetGetPointer(realization%datasets, &
-                           constraint_coupler%biomass%constraint_aux_string(idof), &
-                           string,option)
+                  constraint_coupler%immobile_species%constraint_aux_string(iimmobile), &
+                  string,option)
               string = '' ! group name
               string2 = dataset%h5_dataset_name ! dataset name
               call HDF5ReadCellIndexedRealArray(realization,field%work, &
@@ -583,7 +585,7 @@ subroutine CondControlAssignTranInitCond(realization)
               do icell=1,initial_condition%region%num_cells
                 local_id = initial_condition%region%cell_ids(icell)
                 ghosted_id = grid%nL2G(local_id)
-                rt_aux_vars(ghosted_id)%immobile(idof) = vec_p(ghosted_id)
+                rt_aux_vars(ghosted_id)%immobile(iimmobile) = vec_p(ghosted_id)
               enddo
               call GridVecRestoreArrayF90(grid,field%work_loc,vec_p,ierr)
             endif
@@ -628,7 +630,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
-                constraint_coupler%biomass, &
+                constraint_coupler%immobile_species, &
                 porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
                 PETSC_FALSE,option)
@@ -645,7 +647,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
-                constraint_coupler%biomass, &
+                constraint_coupler%immobile_species, &
                 porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
                 PETSC_TRUE,option)
@@ -715,19 +717,19 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%colloids%basis_conc_imb(idof)
             enddo
           endif
-          ! biomass
-          if (reaction%microbial%nbiomass > 0) then
+          ! immobile
+          if (associated(constraint_coupler%immobile_species)) then
             offset = ibegin + reaction%offset_immobile - 1
-            do idof = 1, reaction%microbial%nbiomass
-              if (constraint_coupler%biomass%external_dataset(idof)) then
+            do iimmobile = 1, reaction%immobile%nimmobile
+              if (constraint_coupler%immobile_species%external_dataset(iimmobile)) then
                 ! already read into rt_aux_vars above.
-                xx_p(offset+idof) = &
-                  rt_aux_vars(ghosted_id)%immobile(idof)
+                xx_p(offset+iimmobile) = &
+                  rt_aux_vars(ghosted_id)%immobile(iimmobile)
               else
-                xx_p(offset+idof) = &
-                  constraint_coupler%biomass%constraint_conc(idof)
-                rt_aux_vars(ghosted_id)%immobile(idof) = &
-                  constraint_coupler%biomass%constraint_conc(idof)
+                xx_p(offset+iimmobile) = &
+                  constraint_coupler%immobile_species%constraint_conc(iimmobile)
+                rt_aux_vars(ghosted_id)%immobile(iimmobile) = &
+                  constraint_coupler%immobile_species%constraint_conc(iimmobile)
               endif
             enddo
           endif
@@ -768,10 +770,16 @@ subroutine CondControlAssignTranInitCond(realization)
       call VecStrideMin(field%tran_xx,idof-1,offset,tempreal,ierr)
       if (tempreal <= 0.d0) then
         write(string,*) tempreal
-        option%io_buffer = '  Species "' // &
-          trim(reaction%primary_species_names(idof)) // &
-          '" has zero concentration (' // &
-          trim(adjustl(string)) // ').'
+        if (idof <= reaction%naqcomp) then
+          string2 = '  Aqueous species "' // &
+            trim(reaction%primary_species_names(idof))
+        else
+          string2 = '  Immobile species "' // &
+            trim(reaction%immobile%names(idof-reaction%offset_immobile))
+        endif
+          string2 = trim(string2) // &
+            '" has zero concentration (' // &
+            trim(adjustl(string)) // ').'
         call printMsg(option)
       endif
     enddo
@@ -797,7 +805,7 @@ end subroutine CondControlAssignTranInitCond
 ! ************************************************************************** !
 subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                            mdof_vec,vec_type)
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Dataset_Aux_module
@@ -854,7 +862,7 @@ end subroutine ConditionControlMapDatasetToVec
 ! ************************************************************************** !
 subroutine CondControlScaleSourceSink(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -904,6 +912,8 @@ subroutine CondControlScaleSourceSink(realization)
   field => realization%field
   patch => realization%patch
 
+  ! GB: grid was uninitialized
+  grid => patch%grid
   call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_loc_ptr,ierr)
 
   cur_level => realization%level_list%first
@@ -966,13 +976,14 @@ subroutine CondControlScaleSourceSink(realization)
                              grid%structured_grid%dy(neighbor_ghosted_id)
                enddo
                vec_ptr(local_id) = vec_ptr(local_id) + sum
+            case(TH_MODE)
             case(THC_MODE)
             case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
             case(FLASH2_MODE)
-          end select 
+          end select
 
         enddo
         
@@ -988,13 +999,14 @@ subroutine CondControlScaleSourceSink(realization)
             case(RICHARDS_MODE,G_MODE)
               cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
                 vec_ptr(local_id)
+            case(TH_MODE)
             case(THC_MODE)
             case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
             case(FLASH2_MODE)
-          end select 
+          end select
 
         enddo
         call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
@@ -1014,7 +1026,7 @@ end subroutine CondControlScaleSourceSink
 #ifdef SURFACE_FLOW
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -1105,7 +1117,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                   iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
                   if (option%iflowmode == G_MODE) then
                       cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                          iphase_loc_p(ghosted_id)
+                          int(iphase_loc_p(ghosted_id))
                   endif
                 enddo
               else
@@ -1126,7 +1138,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                   xx_p(ibegin:iend) = 0.d0
                   if (option%iflowmode == G_MODE) then
                     cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                        iphase_loc_p(ghosted_id)
+                        int(iphase_loc_p(ghosted_id))
                   endif
                 enddo
               endif
@@ -1148,6 +1160,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   !call VecCopy(surf_field%flow_xx, surf_field%flow_yy, ierr)
 
 end subroutine CondControlAssignFlowInitCondSurface
-#endif ! SURFACE_FLOW
+#endif
+! SURFACE_FLOW
 
 end module Condition_Control_module

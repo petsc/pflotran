@@ -6,8 +6,8 @@ module Output_Aux_module
 
 #include "definitions.h"
 
-  PetscInt, parameter, public :: INST_VARS = 1
-  PetscInt, parameter, public :: AVEG_VARS = 2
+  PetscInt, parameter, public :: INSTANTANEOUS_VARS = 1
+  PetscInt, parameter, public :: AVERAGED_VARS = 2
 
   type, public :: output_option_type
 
@@ -47,6 +47,7 @@ module Output_Aux_module
     
     PetscBool :: print_permeability
     PetscBool :: print_porosity
+    PetscBool :: print_iproc
 
     PetscInt :: xmf_vert_len
     
@@ -164,6 +165,7 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
+  output_option%print_iproc = PETSC_FALSE
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
   

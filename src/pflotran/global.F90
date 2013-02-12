@@ -22,7 +22,7 @@ contains
 ! ************************************************************************** !
 subroutine GlobalSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   
@@ -57,7 +57,7 @@ end subroutine GlobalSetup
 ! ************************************************************************** !
 subroutine GlobalSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -153,7 +153,7 @@ end subroutine GlobalSetupPatch
 ! ************************************************************************** !
 subroutine GlobalSetAuxVarScalar(realization,value,ivar)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -191,7 +191,7 @@ end subroutine GlobalSetAuxVarScalar
 ! ************************************************************************** !
 subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
@@ -257,7 +257,7 @@ end subroutine GlobalSetAuxVarScalarPatch
 ! ************************************************************************** !
 subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -299,7 +299,7 @@ end subroutine GlobalSetAuxVarVecLoc
 ! ************************************************************************** !
 subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -506,7 +506,7 @@ end subroutine GlobalSetAuxVarVecLocPatch
 ! ************************************************************************** !
 subroutine GlobalUpdateDenAndSat(realization,weight)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -541,7 +541,7 @@ end subroutine GlobalUpdateDenAndSat
 ! ************************************************************************** !
 subroutine GlobalUpdateDenAndSatPatch(realization,weight)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   
@@ -620,7 +620,8 @@ end subroutine GlobalUpdateDenAndSatPatch
 ! ************************************************************************** !
 subroutine GlobalUpdateAuxVars(realization,time_level)
 
-  use Realization_module
+  use Realization_class
+  use Realization_Base_class, only : RealizationGetDataset
   use Field_module
   use Option_module
   use Discretization_module
@@ -701,6 +702,22 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF,time_level)       
+    case(TH_MODE)
+      ! pressure
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
+ 
+      ! temperature
+      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
+      
+
     case(THC_MODE)
 #if 0
       ! Gas density

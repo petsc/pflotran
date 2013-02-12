@@ -31,7 +31,7 @@ contains
 #if !defined(PETSC_HAVE_HDF5)
 subroutine ReadStructuredGridHDF5(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   
   implicit none
@@ -58,7 +58,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   use hdf5
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Grid_module
@@ -410,6 +410,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   use Grid_module
   use Option_module
   use Logging_module
+  use HDF5_Aux_module
   
   implicit none
   
@@ -481,7 +482,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   memory_space_id = -1
   do
     if (connection_count >= num_connections_in_file) exit
-    temp_int = num_connections_in_file-connection_count
+    temp_int = int(num_connections_in_file)-connection_count
     temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
@@ -527,7 +528,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
                      option%mycomm,ierr)
     endif
 #endif    
-    do i=1,dims(1)
+    do i=1,int(dims(1))
       connection_count = connection_count + 1
       natural_id_up = upwind_ids_i4(i)
       natural_id_down = downwind_ids_i4(i)

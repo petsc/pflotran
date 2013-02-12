@@ -43,6 +43,8 @@ module Material_module
     !PetscReal :: mnrl_surf_area_volfrac_pwr
     !PetscReal :: mnrl_surf_area_porosity_pwr
     PetscReal :: permeability_pwr
+    PetscReal :: permeability_crit_por
+    PetscReal :: permeability_min_scale_fac
     character(len=MAXWORDLENGTH) :: secondary_continuum_name
     PetscReal :: secondary_continuum_length
     PetscReal :: secondary_continuum_matrix_block_size
@@ -100,6 +102,8 @@ function MaterialPropertyCreate()
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_scaling_factor = 0.d0
   material_property%permeability_pwr = 0.d0
+  material_property%permeability_crit_por = 0.d0
+  material_property%permeability_min_scale_fac = 1.d0
   material_property%permeability_dataset_name = ''
   nullify(material_property%permeability_dataset)
   material_property%porosity = 0.d0
@@ -359,6 +363,14 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option, &
                              material_property%permeability_pwr)
         call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY')
+      case('PERMEABILITY_CRIT_POROSITY')
+        call InputReadDouble(input,option, &
+                             material_property%permeability_crit_por)
+        call InputErrorMsg(input,option,'permeability critical porosity','MATERIAL_PROPERTY')
+      case('PERMEABILITY_MIN_SCALE_FAC')
+        call InputReadDouble(input,option, &
+                             material_property%permeability_min_scale_fac)
+        call InputErrorMsg(input,option,'permeability min scale factor','MATERIAL_PROPERTY')
       case('TORTUOSITY_POWER')
         call InputReadDouble(input,option, &
                              material_property%tortuosity_pwr)

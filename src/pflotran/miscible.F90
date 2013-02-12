@@ -57,7 +57,7 @@ contains
 ! ************************************************************************** !
 subroutine MiscibleTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -87,7 +87,7 @@ end subroutine MiscibleTimeCut
 ! ************************************************************************** !
 subroutine MiscibleSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
    
@@ -122,7 +122,7 @@ end subroutine MiscibleSetup
 ! ************************************************************************** !
 subroutine MiscibleSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -224,7 +224,7 @@ end subroutine MiscibleSetupPatch
 ! ************************************************************************** !
 subroutine MiscibleComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -261,7 +261,7 @@ end subroutine MiscibleComputeMassBalance
 ! ************************************************************************** !
 subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -328,7 +328,7 @@ end subroutine MiscibleComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine MiscibleZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -380,7 +380,7 @@ end subroutine MiscibleZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine MiscibleUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -438,7 +438,7 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! ************************************************************************** !
   function MiscibleInitGuessCheck(realization)
  
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Option_module
@@ -491,7 +491,7 @@ end subroutine MiscibleUpdateMassBalancePatch
    
      use span_wagner_module
      
-    use Realization_module
+    use Realization_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -530,7 +530,7 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine MiscibleUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -564,7 +564,7 @@ end subroutine MiscibleUpdateAuxVars
 ! ************************************************************************** !
 subroutine MiscibleUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -690,7 +690,7 @@ end subroutine MiscibleUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine MiscibleInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -709,7 +709,7 @@ end subroutine MiscibleInitializeTimestep
 ! ************************************************************************** !
 subroutine MiscibleUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -755,7 +755,7 @@ end subroutine MiscibleUpdateSolution
 ! ************************************************************************** !
 subroutine MiscibleUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -777,7 +777,7 @@ end subroutine MiscibleUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine MiscibleUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -811,7 +811,7 @@ end subroutine MiscibleUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine MiscibleUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1332,7 +1332,7 @@ end subroutine MiscibleBCFlux
 ! ************************************************************************** !
 subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -1459,7 +1459,7 @@ end subroutine MiscibleResidual
 subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1752,7 +1752,7 @@ end subroutine MiscibleResidualPatch1
 subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1921,7 +1921,7 @@ end subroutine MiscibleResidualPatch0
 subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2169,7 +2169,7 @@ end subroutine MiscibleResidualPatch2
 ! ************************************************************************** !
 subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -2278,7 +2278,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -2668,7 +2668,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3068,7 +3068,7 @@ end subroutine MiscibleCreateZeroArray
 ! ************************************************************************** !
 subroutine MiscibleMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Field_module
@@ -3118,7 +3118,7 @@ end subroutine MiscibleMaxChange
 ! ************************************************************************** !
 function MiscibleGetTecplotHeader(realization, icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -3187,7 +3187,7 @@ end function MiscibleGetTecplotHeader
 ! ************************************************************************** !
 subroutine MiscibleSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 

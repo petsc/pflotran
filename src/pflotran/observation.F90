@@ -9,6 +9,11 @@ module Observation_module
   
 #include "definitions.h"
 
+  PetscInt, parameter, public :: OBSERVATION_SCALAR = 1
+  PetscInt, parameter, public :: OBSERVATION_FLUX = 2
+  PetscInt, parameter, public :: OBSERVATION_AT_CELL_CENTER = 1
+  PetscInt, parameter, public :: OBSERVATION_AT_COORDINATE = 2
+
   type, public :: observation_type
     ! all added variables must be included in ObservationCreateFromObservation
     PetscInt :: id

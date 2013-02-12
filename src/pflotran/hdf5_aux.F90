@@ -10,7 +10,10 @@ module HDF5_Aux_module
 #include "definitions.h"
 
   private
-  
+
+  PetscInt, parameter, public :: HDF5_READ_BUFFER_SIZE = 1000000
+!#define HDF5_BROADCAST
+
   PetscErrorCode :: ierr
 
 #if defined(PETSC_HAVE_HDF5)
@@ -32,7 +35,8 @@ module HDF5_Aux_module
             HDF5ReadDataset, &
             HDF5ReadDatasetMap, &
             HDF5GroupExists, &
-#endif ! PARALLELIO_LIB
+#endif
+! PARALLELIO_LIB
             HDF5MakeStringCompatible
 
 contains
@@ -90,7 +94,7 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   allocate(max_dims_h5(ndims))
   allocate(dims(ndims))
   call h5sget_simple_extent_dims_f(file_space_id,dims_h5,max_dims_h5,hdf5_err)
-  dims = dims_h5
+  dims = int(dims_h5)
   call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_dataset,hdf5_err)
   temp_int = dims(1)
   do i = 2, ndims
@@ -360,7 +364,7 @@ subroutine HDF5ReadDataset(dataset,option)
     dataset%ndims = ndims_hdf5
     ! have to invert dimensions
     do i = 1, dataset%ndims
-      dataset%dims(i) = dims_h5(dataset%ndims-i+1)
+      dataset%dims(i) = int(dims_h5(dataset%ndims-i+1))
     enddo
     deallocate(dims_h5)
     deallocate(max_dims_h5) 
@@ -424,11 +428,11 @@ subroutine HDF5ReadDataset(dataset,option)
   
   !geh: for some reason, we have to invert here.  Perhaps because the
   !     dataset was generated in C???
-  temp_array(1:dataset%ndims) = length(1:dataset%ndims)
+  temp_array(1:dataset%ndims) = int(length(1:dataset%ndims))
   do i = 1, dataset%ndims
     length(i) = temp_array(dataset%ndims-i+1)
   enddo
-  temp_array(1:dataset%ndims) = offset(1:dataset%ndims)
+  temp_array(1:dataset%ndims) = int(offset(1:dataset%ndims))
   do i = 1, dataset%ndims
     offset(i) = temp_array(dataset%ndims-i+1)
   enddo
@@ -549,8 +553,8 @@ subroutine HDF5ReadDatasetMap(dataset,option)
   allocate(max_dims_h5(ndims_hdf5))
   call h5sget_simple_extent_dims_f(file_space_id,dims_h5,max_dims_h5,hdf5_err)
   
-  nids_local=dims_h5(2)/option%mycommsize
-  remainder =dims_h5(2)-nids_local*option%mycommsize
+  nids_local=int(dims_h5(2)/option%mycommsize)
+  remainder =int(dims_h5(2))-nids_local*option%mycommsize
   if(option%myrank<remainder) nids_local=nids_local+1
 
   ! Find istart and iend
@@ -576,8 +580,8 @@ subroutine HDF5ReadDatasetMap(dataset,option)
 !  offset(:) = 0
   
   ! Save dimension size
-  dataset%dataset_map%map_dims_global(:) = dims_h5(:)
-  dataset%dataset_map%map_dims_local(:) = length(:)
+  dataset%dataset_map%map_dims_global(:) = int(dims_h5(:))
+  dataset%dataset_map%map_dims_local(:) = int(length(:))
   
   ! Create data space for dataset
   array_rank_mpi=2
@@ -698,7 +702,8 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
 
 end subroutine HDF5ReadDatasetInteger2D
-#endif ! PARALLELIO_LIB
+#endif
+! PARALLELIO_LIB
 
 #if defined(PARALLELIO_LIB)
 
@@ -782,7 +787,8 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
 
 end subroutine HDF5ReadDatasetReal2D
-#endif ! PARALLELIO_LIB
+#endif
+! PARALLELIO_LIB
 
 ! ************************************************************************** !
 !
@@ -873,6 +879,7 @@ subroutine HDF5MakeStringCompatible(name)
 
 end subroutine HDF5MakeStringCompatible
 
-#endif ! defined(PETSC_HAVE_HDF5)
+#endif
+! defined(PETSC_HAVE_HDF5)
 
 end module HDF5_Aux_module

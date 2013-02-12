@@ -48,7 +48,7 @@ contains
 ! ************************************************************************** !
 subroutine THMCTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -78,7 +78,7 @@ end subroutine THMCTimeCut
 ! ************************************************************************** !
 subroutine THMCSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -111,7 +111,7 @@ end subroutine THMCSetup
 ! ************************************************************************** !
 subroutine THMCSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -252,7 +252,7 @@ end subroutine THMCSetupPatch
 ! ************************************************************************** !
 subroutine THMCComputeMassBalance(realization, mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -288,7 +288,7 @@ end subroutine THMCComputeMassBalance
 ! ************************************************************************** !
 subroutine THMCComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -347,7 +347,7 @@ end subroutine THMCComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine THMCZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -394,7 +394,7 @@ end subroutine THMCZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine THMCUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -446,7 +446,7 @@ end subroutine THMCUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine THMCUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -480,7 +480,7 @@ end subroutine THMCUpdateAuxVars
 ! ************************************************************************** !
 subroutine THMCUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -656,7 +656,7 @@ end subroutine THMCUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine THMCInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -675,7 +675,7 @@ end subroutine THMCInitializeTimestep
 ! ************************************************************************** !
 subroutine THMCUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -719,7 +719,7 @@ end subroutine THMCUpdateSolution
 ! ************************************************************************** !
 subroutine THMCUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -741,7 +741,7 @@ end subroutine THMCUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine THMCUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -775,7 +775,7 @@ end subroutine THMCUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine THMCUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -882,7 +882,7 @@ end subroutine THMCUpdateFixedAccumPatch
 ! ************************************************************************** !
 subroutine THMCNumericalJacobianTest(xx,realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -2949,7 +2949,7 @@ end subroutine THMCBCFlux
 ! ************************************************************************** !
 subroutine THMCResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -2985,22 +2985,7 @@ subroutine THMCResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  ! Compute internal and boundary flux terms
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THMCResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  ! Now make a second pass and compute everything that isn't an internal 
-  ! or boundary flux term
+  ! Compute internal and boundary flux terms as well as source/sink terms
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -3029,7 +3014,7 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3470,7 +3455,7 @@ end subroutine THMCResidualPatch
 ! ************************************************************************** !
 subroutine THMCJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -3554,7 +3539,7 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3807,8 +3792,8 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
+      iphas_up = int(iphase_loc_p(ghosted_id_up))
+      iphas_dn = int(iphase_loc_p(ghosted_id_dn))
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
@@ -4168,7 +4153,7 @@ end subroutine THMCCreateZeroArray
 ! ************************************************************************** !
 subroutine THMCMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   
@@ -4203,7 +4188,7 @@ end subroutine THMCMaxChange
 ! ************************************************************************** !
 subroutine THMCResidualToMass(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -4551,7 +4536,7 @@ end subroutine THMCComputeDisplacementGradientPert
 ! ************************************************************************** !
 function THMCGetTecplotHeader(realization,icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 

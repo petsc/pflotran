@@ -609,6 +609,128 @@ of the liquid phase, $n_l$, is represented on a molar basis.
 
 \subsection{Finite Volume Discretization}
 
+The number of degrees of freedom is equal to the number of control volumes $N$ with one degree of freedom, fluid pressure $P$, per control volume. The following applies to both structured and unstructured grids assuming a two-point flux approximation. For accuracy this requires in the case of an unstructured grid that the line connecting neighboring control volumes be perpendicular to their common interface.
+
+\subsubsection{Residual Function}
+\label{sec:rich_res_fn}
+
+The residual function for the Richards equation at the $k+1$st time level is given by
+\EQ
+R_n \eq \varphi\Big((s\rho)_n^{k+1} - (s\rho)_n^k\Big)\frac{V_n}{\Delta t} + \sum_{n' \ne n} F_{nn'}^{k+1} A_{nn'}^{} - Q_{wn}^{} V_n^{},
+\EN
+for the $n$th control volume with volume $V_n$ and interfacial area $A_{nn'}$, where the sum over $n'$ is over all control volumes connecting with the $n$th control volume. The finite volume form of the flux $F_{nn'}$ is given by
+\EQ
+F_{nn'}^{k+1} \eq \big(\rho_{nn'}\big)_{nn'}^{k+1} \, \big(q\big)_{nn'}^{k+1}.
+\EN
+The Darcy velocity $q_{nn'}$ is evaluated as (the superscript $k+1$ is omitted in the following)
+%\EQ
+%q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n}{d_{n'}+d_n}-W_w \rho_{nn'} g z_{nn'}\right],
+%\EN
+\EQ
+q_{nn'}\eq -\Big(\frac{kk_r}{\mu}\Big)_{nn'} \left[\frac{P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'}}{d_{n'}+d_n}\right],
+\EN
+where the subscript $nn'$ implies the quantity is evaluated at the interface between $n$ and $n'$. The density $\rho_{nn'}$ is set equal to the inverse distance mean ({\em not} arithmetic mean)
+\EQ
+\rho_{nn'} \eq \omega_{n'} \rho_n + (1-\omega_{n'}) \rho_{n'},
+\EN
+where
+\EQ
+\omega_n \eq \frac{d_n}{d_{n'}+d_n} \eq 1-\omega_{n'}.
+\EN
+The quantity in brackets is evaluated using the harmonic mean for permeability and upwinding for mobility $\lambda = k_r/\mu$
+\EQ
+\Big(\frac{kk_r}{\mu}\Big)_{nn'} \eq \frac{k_n k_{n'} (d_{n'}+d_n)}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'},
+\EN
+where
+\EQ
+\lambda_{nn'} \eq \left\{
+\begin{array}{ll}
+\lambda_n, & q_{nn'} > 0,\\
+\lambda_{n'}, & q_{nn'} < 0,
+\end{array} \right.
+\EN
+where $q_{nn'} > 0$ for flow from $n$ to $n'$, and $q_{nn'} < 0$ for flow from $n'$ to $n$. Combining these relations it follows that
+%\EQ
+%q_{nn'}\eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big[P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'} (d_{n'}+d_n)\Big].
+%\EN
+\EQ
+q_{nn'}\eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big[P_{n'} - P_n -W_w \rho_{nn'} g z_{nn'}\Big].
+\EN
+
+\subsubsection{Jacobian}
+
+The Jacobian $J_{nn'}$ is given by the derivatives of the residual function with respect to pressure as
+\BA
+J_{nn'} &\eq \frac{\p R_n}{\p P_{n'}}.
+\EA
+From the expression for the residual function it follows that
+\EQ
+\label{eq:rich_jac_n}
+\frac{\p R_n}{\p P_n} \eq \frac{V_n \varphi}{\Delta t} \frac{\p}{\p P_n} \big(s_n\rho_n\big) + \sum_{n' \ne n} \frac{\p F_{nn'}}{\p P_n} A_{nn'}^{} - \frac{\p Q_{wn}^{}}{\p P_n} V_n^{},
+\EN
+and for $n' \ne n$
+\EQ
+\label{eq:rich_jac_np}
+\frac{\p R_n}{\p P_{n'}} \eq \sum_{n' \ne n} \frac{\p F_{nn'}}{\p P_{n'}} A_{nn'}^{} - \frac{\p Q_{wn}^{}}{\p P_{n'}} V_n^{}.
+\EN
+For the accumulation term one has
+\EQ
+\frac{\p}{\p P_n} \big(s_n\rho_n\big) \eq \rho_n \frac{\p s_n}{\p P_n} + s_n \frac{\p\rho_n}{\p P_n}.
+\EN
+The derivative of the flux terms is found to be
+\EQ
+\frac{\p F_{nn'}}{\p P_n} \eq \omega_n \frac{\p\rho_{nn'}}{\p P_n} q_{nn'} + \rho_{nn'} \frac{\p q_{nn'}}{\p P_n},
+\EN
+and
+\EQ
+\frac{\p F_{nn'}}{\p P_{n'}} \eq \omega_{n'} \frac{\p\rho_{nn'}}{\p P_{n'}} q_{nn'} + \rho_{nn'} \frac{\p q_{nn'}}{\p P_{n'}},
+\EN
+with
+%\EQ
+%\frac{\p q_{nn'}}{\p P_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
+%\lambda_{nn'} - \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
+%\right\},
+%\EN
+%and
+%\EQ
+%\frac{\p q_{nn'}}{\p P_{n'}} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \left\{
+%\lambda_{nn'} + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
+%\right\}.
+%\EN
+\EQ
+\frac{\p q_{nn'}}{\p P_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
+\lambda_{nn'} \left\{ 1 + W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial P_n} \right\}
++ \frac{\p \ln\lambda_{nn'}}{\p P_{n}} q_{nn'}
+,
+\EN
+and
+\EQ
+\frac{\p q_{nn'}}{\p P_{n'}} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
+\lambda_{nn'} \left\{ -1 + W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial P_{n'}} \right\}
+ + \frac{\p \ln\lambda_{nn'}}{\p P_{n'}} q_{nn'}
+.
+\EN
+
+\begin{comment}
+For a 1D system the Jacobian reduces to
+\EQ
+J_{nn'} \eq \delta_{n-1,n'} \frac{\p R_n}{\p P_{n-1}} 
++ \delta_{nn'} \frac{\p R_n}{\p P_{n}} 
++ \delta_{n+1,n'} \frac{\p R_n}{\p P_{n+1}}.
+\EN
+It follows that
+\EQ
+J_{n,n-1} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'},
+\EN
+\EQ
+J_{n,n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'} \Big(1+d_n\frac{\p\rho_n}{\p P_n}W_w g z_{nn'}\Big),
+\EN
+and
+\EQ
+J_{n,n+1} \eq -\frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} \lambda_{nn'}.
+\EN
+\end{comment}
+
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 \section{Supercritical CO$_2$}
@@ -799,6 +921,7 @@ w_i \eq \frac{M_i}{M} \eq \frac{W_i n_i}{\sum W_l n_l} \eq \frac{W_i x_i}{\sum W
 
 \subsection{EOS}
 
+\begin{comment}
 \subsubsection{Supercritical CO$_2$}
 
 Span-Wagner EOS for supercritical CO$_2$
@@ -884,6 +1007,8 @@ sg <= 0
 
 sg >= 1
 
+\end{comment}
+
 \subsection{FLASH Method}
 
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -898,13 +1023,13 @@ The governing equations for mass and energy are given by
 \EN
 and
 \EQ
-\frac{\p}{\p t}\left(\varphi s\rho U + (1-\varphi) c_p T\right) + \bnabla\cdot\left(\rho\bq H -\kappa \bnabla T\right) = Q_e,
+\frac{\p}{\p t}\left(\varphi s\rho U + (1-\varphi) \rho_p c_p T\right) + \bnabla\cdot\left(\rho\bq H -\kappa \bnabla T\right) = Q_e,
 \EN
 with the Darcy flow velocity $\bq$ given by
 \EQ
 \bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
 \EN
-Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantity $\kappa$ denotes the thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantities $\rho_p$, $c_p$, and $\kappa$ denotes the density, heat capacity, and thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
 \EQ
 U \eq H -\frac{P}{\rho}.
 \EN
@@ -921,13 +1046,211 @@ Additional constitutive relations are needed to close the set of governing equat
 %\subsubsection{Thermal Conductivity} 
  
 Thermal conductivity is determined from the equation (Somerton et al., 1974)  
+%\EQ\label{cond1} 
+%\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+%\EN 
 \EQ\label{cond1} 
-\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+\kappa \eq \kappa_{\rm dry} + K_e (\kappa_{\rm sat} - \kappa_{\rm dry}), 
 \EN 
-where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
-
+where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities,
+and $K_e$ is the Kersten number given by,
+\EQ
+K_e = s_l^{\alpha},
+\EN
+where $s_l$ is liquid saturation.
 
 \subsection{Finite Volume Discretization}
+
+\subsubsection{Residual Function}
+
+The residual function for the mass equation, $R^M_n$, in {\tt TH} mode is same as described in 
+section \ref{sec:rich_res_fn}; while the residual function for the energy equation, $R^E_n$
+at $k+1$st time level is given by
+
+\EQ
+R^E_n \eq 
+\Big(  ( \A_n^{k+1} - \A_n^{k}   \Big) \frac{V_n}{\Delta t} +
+    \sum_{n' \ne n} F_{nn'}^{k+1} A_{nn'}^{} - Q_{en}^{} V_n^{},
+\EN
+where
+\EQ
+\A_n^{k+1} = \Big( \varphi s\rho U + (1-\varphi) \rho_p c_p T \Big)_n^{k+1}
+\EN
+and 
+\EQ
+F_{nn'}^{k+1} = (\rho\bq H)_{nn'}^{k+1} -\kappa_{nn'}\Big[ \frac{T_n^{k+1} - T_{n'}^{k+1}}{d_n+d_{n'}} \Big]
+\EN
+
+\EQ
+\kappa_{nn'} = \frac{\kappa_n \kappa_{n'} (d_n + d_{n'}) }{\kappa_n d_{n'} + \kappa_{n'} d_n}
+\EN
+
+\subsubsection{Jacobian}
+
+\EQ
+J_{nn'} = \begin{bmatrix}
+\dfrac{\partial R^M_n}{\partial P_{n'}} & \dfrac{\partial R^M_n}{\partial T_{n'}} \\[1em]
+\dfrac{\partial R^E_n}{\partial P_{n'}} & \dfrac{\partial R^E_n}{\partial T_{n'}} \\[1em]
+\end{bmatrix}
+\EN
+
+\paragraph{Derivative of mass residual equation w.r.t. Pressure}
+
+The term $\dfrac{\partial R^M_n}{\partial P_{n'}}$ for $n = n'$ and $n \neq n'$ is given by equation~\ref{eq:rich_jac_n} and ~\ref{eq:rich_jac_np}
+
+\paragraph{Derivative of mass residual equation w.r.t. Temperature }
+
+For $n \eq n' $
+\EQ
+\label{eq:rich_jac_n}
+\frac{\p R^M_n}{\p T_n} \eq 
+	\frac{V_n \varphi}{\Delta t} \frac{\p}{\p T_n} \big(s_n\rho_n\big) 
+	+ \sum_{n' \ne n} \frac{\p F_{nn'}}{\p T_n} A_{nn'}^{} 
+	- \frac{\p Q_{wn}^{}}{\p T_n} V_n^{},
+\EN
+and for $n' \ne n$
+\EQ
+\label{eq:rich_jac_np}
+\frac{\p R^M_n}{\p T_{n'}} \eq 
+	\sum_{n' \ne n} \frac{\p F_{nn'}}{\p T_{n'}} A_{nn'}^{} 
+	- \frac{\p Q_{wn}^{}}{\p T_{n'}} V_n^{}.
+\EN
+For the accumulation term one has
+\EQ
+\frac{\p}{\p T_n} \big(s_n\rho_n\big) \eq \rho_n \frac{\p s_n}{\p T_n} + s_n \frac{\p\rho_n}{\p T_n}.
+\EN
+The derivative of the flux terms is found to be
+\EQ
+\frac{\p F_{nn'}}{\p T_n} \eq 
+	\omega_n \frac{\p\rho_{nn'}}{\p T_n} q_{nn'} + 
+	\rho_{nn'} \frac{\p q_{nn'}}{\p T_n},
+\EN
+and
+\EQ
+\frac{\p F_{nn'}}{\p T_{n'}} \eq 
+	\omega_{n'} \frac{\p\rho_{nn'}}{\p T_{n'}} q_{nn'} + 
+	\rho_{nn'} \frac{\p q_{nn'}}{\p T_{n'}},
+\EN
+
+with
+\EQ
+\frac{\p q_{nn'}}{\p T_n} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
+\lambda_{nn'} \left\{W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial T_n} \right\}
++ \frac{\p \ln\lambda_{nn'}}{\p T_{n}} q_{nn'}
+,
+\EN
+and
+\EQ
+\frac{\p q_{nn'}}{\p T_{n'}} \eq \frac{k_n k_{n'}}{d_n k_{n'}+d_{n'}k_n} 
+\lambda_{nn'} \left\{ W_w  g z_{nn'} \frac{\partial \rho_{nn'}}{\partial T_{n'}} \right\}
+ + \frac{\p \ln\lambda_{nn'}}{\p T_{n'}} q_{nn'}
+.
+\EN
+
+\paragraph{Derivative of energy residual equation w.r.t. Pressure }
+
+For $n \eq n' $
+\EQ
+\frac{\p R^E_n}{\p P_n} \eq
+  \frac{V_n \varphi_n}{\Delta t} \frac{\p }{\p P_n} (s_n\rho_nU_n) +
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p P_n} A_{nn'} - 
+  \frac{\p Q_{en}}{\p P_n} V_n,
+\EN
+
+and for $n \neq n' $
+
+\EQ
+\frac{\p R^E_n}{\p P_{n'}} \eq
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p P_{n'}} A_{nn'} - 
+  \frac{\p Q_{en}}{\p P_{n'}} V_n
+\EN
+
+For the accumulation term one has
+\EQ
+\frac{\p }{\p P_n} (s_n\rho_nU_n) \eq
+	\rho_nU_n \frac{\p }{\p P_n} (s_n) +
+	s_nU_n \frac{\p }{\p P_n} (\rho_n) +
+	s_n\rho_n\frac{\p }{\p P_n} (U_n) 
+\EN
+
+The derivative of the flux term is computed as
+
+\EQ
+\frac{\p F_{nn'}}{\p P_n} \eq 
+	q_{nn'} H_{nn'} \frac{\p \rho_{nn'}}{\p P_n} +
+	\rho_{nn'} H_{nn'} \frac{\p q_{nn'}}{\p P_n} +
+	\rho_{nn'} q_{nn'}\frac{\p H_{nn'}}{\p P_n} -
+	\frac{\p \kappa_{nn'}}{\p P_n} \Big[  \frac{T_{n} - T_{n'}}{d_n + d_{n'}} \Big]
+\EN
+
+Interface density, $\rho_{nn'}$, thermal conductivity of porous media, $\kappa_{nn'}$, and 
+enthalpy, $H_{nn'}$ are computed as inverse distance mean, distance weighted harmonic
+mean and upwind quantity, respectively.
+
+\EQ
+\frac{\p \kappa_{nn'}}{\p P_n} \eq
+	\frac{\kappa_{nn'}^2}{\kappa_n^2} \left( \frac{d_n}{d_n + d_{n'}} \right)
+	\frac{\p \kappa_{n}}{\p P_n}
+\EN
+
+\EQ
+\frac{\p \kappa_{n}}{\p P_n} \eq (\kappa_{sat,n} - \kappa_{dry,n}) 
+	\alpha s_l^{\alpha - 1}\frac{\p s_l}{\p P_n}
+\EN
+
+\paragraph{Derivative of energy residual equation w.r.t. Temperature }
+
+For $n \eq n' $
+\EQ
+\frac{\p R^E_n}{\p T_n} \eq
+  \frac{V_n }{\Delta t} 
+  	\Big[ \varphi_n \frac{\p }{\p T_n} (s_n\rho_nU_n) +
+			(1- \varphi_n)\rho_{p,n} c_{p,n}\Big] +
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p T_n} A_{nn'} - 
+  \frac{\p Q_{en}}{\p T_n} V_n,
+\EN
+
+and for $n \neq n' $
+
+\EQ
+\frac{\p R^E_n}{\p T_{n'}} \eq
+  \sum_{n\ne n'} \frac{\p F_{nn'}}{\p T_{n'}} A_{nn'} - 
+  \frac{\p Q_{en}}{\p T_{n'}} V_n
+\EN
+
+For the accumulation term one has
+\EQ
+\frac{\p }{\p T_n} (s_n\rho_nU_n) \eq
+	\rho_nU_n \frac{\p }{\p T_n} (s_n) +
+	s_nU_n \frac{\p }{\p T_n} (\rho_n) +
+	s_n\rho_n\frac{\p }{\p T_n} (U_n) 
+\EN
+
+The derivative of the flux term is computed as
+
+\EQ
+\frac{\p F_{nn'}}{\p T_n} \eq 
+	q_{nn'} H_{nn'} \frac{\p \rho_{nn'}}{\p T_n} +
+	\rho_{nn'} H_{nn'} \frac{\p q_{nn'}}{\p T_n} +
+	\rho_{nn'} q_{nn'}\frac{\p H_{nn'}}{\p T_n} -
+	\frac{\p \kappa_{nn'}}{\p T_n} \Big[  \frac{T_{n} - T_{n'}}{d_n + d_{n'}} \Big] -
+	\frac{\kappa_{nn'}}{d_n + d_{n'}}
+\EN
+
+Interface density, $\rho_{nn'}$, thermal conductivity of porous media, $\kappa_{nn'}$, and 
+enthalpy, $H_{nn'}$ are computed as inverse distance mean, distance weighted harmonic
+mean and upwind quantity, respectively.
+
+\EQ
+\frac{\p \kappa_{nn'}}{\p T_n} \eq
+	\frac{\kappa_{nn'}^2}{\kappa_n^2} \left( \frac{d_n}{d_n + d_{n'}} \right)
+	\frac{\p \kappa_{n}}{\p T_n}
+\EN
+
+\EQ
+\frac{\p \kappa_{n}}{\p T_n} \eq (\kappa_{sat,n} - \kappa_{dry,n}) 
+	\alpha s_l^{\alpha - 1}\frac{\p s_l}{\p T_n}
+\EN
 
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

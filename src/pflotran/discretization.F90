@@ -310,9 +310,11 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call UGridReadHDF5PIOLib(un_str_grid,discretization%filename,option)
 #else
             call UGridReadHDF5(un_str_grid,discretization%filename,option)
-#endif ! #ifdef PARALLELIO_LIB
+#endif
+! #ifdef PARALLELIO_LIB
 
-#endif !#if !defined(PETSC_HAVE_HDF5)
+#endif
+!#if !defined(PETSC_HAVE_HDF5)
 
           else
             call UGridRead(un_str_grid,discretization%filename,option)
@@ -650,6 +652,10 @@ end subroutine DiscretizationRead
 ! ************************************************************************** !
 !
 ! DiscretizationCreateDMs: creates distributed, parallel meshes/grids
+! If there are multiple degrees of freedom per grid cell, this will call 
+! DiscretizationCreateDM() multiple times to create the DMs corresponding 
+! to one degree of freedom grid cell and those corresponding to multiple 
+! degrees of freedom per cell.
 ! author: Glenn Hammond
 ! date: 02/08/08
 !
@@ -676,6 +682,14 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
       discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
     case(UNSTRUCTURED_GRID)
+
+      ! petsc will call parmetis to calculate the graph/dual
+#if !defined(PETSC_HAVE_PARMETIS)
+      option%io_buffer = &
+        'Must compile with Parmetis in order to use unstructured grids.'
+      call printErrMsg(option)
+#endif
+    
       select case(discretization%grid%itype)
         case(IMPLICIT_UNSTRUCTURED_GRID)
           call UGridDecompose(discretization%grid%unstructured_grid, &

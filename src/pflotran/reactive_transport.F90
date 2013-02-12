@@ -55,7 +55,7 @@ contains
 ! ************************************************************************** !
 subroutine RTTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Field_module
   use Global_module
  
@@ -98,7 +98,7 @@ end subroutine RTTimeCut
 ! ************************************************************************** !
 subroutine RTSetup(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -116,7 +116,7 @@ end subroutine RTSetup
 ! ************************************************************************** !
 subroutine RTSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -261,32 +261,20 @@ end subroutine RTSetupPatch
 ! date: 03/16/09
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
-#else
-subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
-#endif
  
-  use Realization_module
+  use Realization_class
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: C
   Vec :: dC
   PetscBool :: changed
   type(realization_type) :: realization
   PetscErrorCode :: ierr
 
-#ifndef HAVE_SNES_API_3_2
   call RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
-#else
-  call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
-#endif
 
 end subroutine RTCheckUpdate
 
@@ -298,22 +286,14 @@ end subroutine RTCheckUpdate
 ! date: 03/16/09
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
-#else
-subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
-#endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: C
   Vec :: dC
   type(realization_type) :: realization
@@ -382,7 +362,7 @@ end subroutine RTCheckUpdatePatch
 ! ************************************************************************** !
 subroutine RTComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
@@ -403,7 +383,7 @@ end subroutine RTComputeMassBalance
 ! ************************************************************************** !
 subroutine RTComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -507,7 +487,7 @@ end subroutine RTComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine RTZeroMassBalanceDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -554,7 +534,7 @@ end subroutine RTZeroMassBalanceDeltaPatch
 ! ************************************************************************** !
 subroutine RTUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -607,7 +587,7 @@ end subroutine RTUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine RTInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -624,7 +604,7 @@ end subroutine RTInitializeTimestep
 ! ************************************************************************** !
 subroutine RTInitializeTimestepPatch(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -646,7 +626,7 @@ end subroutine RTInitializeTimestepPatch
 ! ************************************************************************** !
 subroutine RTUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Field_module
   
@@ -675,7 +655,7 @@ end subroutine RTUpdateSolution
 ! ************************************************************************** !
 subroutine RTUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -694,9 +674,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
-  PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
-  PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
-  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscInt :: ghosted_id, local_id
   PetscReal :: conc, max_conc, min_conc
   PetscErrorCode :: ierr
   PetscReal :: sec_diffusion_coefficient
@@ -737,87 +715,18 @@ subroutine RTUpdateSolutionPatch(realization)
 #endif
 
   if (.not.option%init_stage) then
-    ! update mineral volume fractions
-    if (reaction%mineral%nkinmnrl > 0) then
-    
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        if (patch%imat(ghosted_id) <= 0) cycle         
-        do imnrl = 1, reaction%mineral%nkinmnrl
-          ! rate = mol/m^3/sec
-          ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
-          !                                mol_vol (m^3 mnrl/mol mnrl)
-          rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
-            rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
-            rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-            reaction%mineral%kinmnrl_molar_vol(imnrl)* &
-            option%tran_dt
-          if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
-            rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
 
-#ifdef CHUAN_CO2
-          if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
-            ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
-            do iaqspec=1, ncomp  
-              icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
-              if (icomp == realization%reaction%species_idx%co2_aq_id) then
-                global_aux_vars(ghosted_id)%reaction_rate(2) &
-                  = global_aux_vars(ghosted_id)%reaction_rate(2)& 
-                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
-              else if (icomp == reaction%species_idx%h2o_aq_id) then
-                global_aux_vars(ghosted_id)%reaction_rate(1) &
-                  = global_aux_vars(ghosted_id)%reaction_rate(1)& 
-                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
-              endif
-            enddo 
-          endif   
-#endif
-
-        enddo
-      enddo
-    endif
+    ! update mineral volume fractions, multirate sorption concentrations, 
+    ! kinetic sorption concentration etc.  These updates must take place
+    ! within reaction so that auxiliary variables are updated when only
+    ! run in reaction mode.
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+      call RUpdateSolution(rt_aux_vars(ghosted_id), &
+                           global_aux_vars(ghosted_id),reaction,option)
+    enddo
   
-
-    ! update multirate sorption concentrations 
-  ! WARNING: below assumes site concentration multiplicative factor
-    if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then 
-      do ghosted_id = 1, grid%ngmax 
-        if (patch%imat(ghosted_id) <= 0) cycle
-        do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
-          do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
-            kdt = reaction%surface_complexation%kinmr_rate(irate,irxn) * &
-                  option%tran_dt 
-            one_plus_kdt = 1.d0 + kdt 
-            k_over_one_plus_kdt = &
-              reaction%surface_complexation%kinmr_rate(irate,irxn)/one_plus_kdt
-            rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) = & 
-              (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) + & 
-              kdt * reaction%surface_complexation%kinmr_frac(irate,irxn) * &
-              rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,0,irxn))/one_plus_kdt
-          enddo
-        enddo
-      enddo 
-    endif
-
-    ! update kinetic sorption concentrations
-    if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-      do ghosted_id = 1, grid%ngmax 
-        if (patch%imat(ghosted_id) <= 0) cycle
-        do ikinrxn = 1, reaction%surface_complexation%nkinsrfcplxrxn
-          irxn = reaction%surface_complexation%&
-                   kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
-          ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
-          do k = 1, ncplx ! ncplx in rxn
-            icplx = reaction%surface_complexation%srfcplxrxn_to_complex(k,irxn)
-            rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx,ikinrxn) = &
-              rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx,ikinrxn)
-          enddo
-        enddo
-      enddo
-    endif
-    
     ! update secondary continuum variables
     if (option%use_mc) then
       do ghosted_id = 1, grid%ngmax
@@ -858,7 +767,7 @@ end subroutine RTUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine RTUpdateFixedAccumulationPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Reactive_Transport_Aux_module
   use Option_module
@@ -940,6 +849,11 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     if (option%use_mc) then
       vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
     endif
+
+    if (.not.option%use_isothermal) then
+      call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                     PETSC_FALSE,option)
+    endif
     
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
@@ -978,7 +892,7 @@ end subroutine RTUpdateFixedAccumulationPatch
 ! ************************************************************************** !
 subroutine RTUpdateTransportCoefs(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -995,7 +909,7 @@ end subroutine RTUpdateTransportCoefs
 ! ************************************************************************** !
 subroutine RTUpdateTransportCoefsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1139,7 +1053,7 @@ end subroutine RTUpdateTransportCoefsPatch
 ! ************************************************************************** !
 subroutine RTUpdateRHSCoefs(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1157,7 +1071,7 @@ end subroutine RTUpdateRHSCoefs
 ! ************************************************************************** !
 subroutine RTUpdateRHSCoefsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1219,7 +1133,7 @@ end subroutine RTUpdateRHSCoefsPatch
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t0(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1237,7 +1151,7 @@ end subroutine RTCalculateRHS_t0
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t0Patch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1300,7 +1214,7 @@ end subroutine RTCalculateRHS_t0Patch
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t1(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1318,7 +1232,7 @@ end subroutine RTCalculateRHS_t1
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t1Patch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1538,7 +1452,7 @@ end subroutine RTCalculateRHS_t1Patch
 ! ************************************************************************** !
 subroutine RTCalculateTransportMatrix(realization,T)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Grid_module
 
@@ -1582,7 +1496,7 @@ end subroutine RTCalculateTransportMatrix
 ! ************************************************************************** !
 subroutine RTCalculateTranMatrixPatch1(realization,T)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1730,7 +1644,7 @@ end subroutine RTCalculateTranMatrixPatch1
 ! ************************************************************************** !
 subroutine RTCalculateTranMatrixPatch2(realization,T)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1864,7 +1778,7 @@ end subroutine RTCalculateTranMatrixPatch2
 ! ************************************************************************** !
 subroutine RTReact(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Discretization_module    
   use Option_module
@@ -1979,7 +1893,7 @@ end subroutine RTReact
 ! ************************************************************************** !
 subroutine RTReactPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -2110,7 +2024,7 @@ end subroutine RTReactPatch
 ! ************************************************************************** !
 subroutine RTComputeBCMassBalanceOSPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2269,7 +2183,7 @@ end subroutine RTComputeBCMassBalanceOSPatch
 ! ************************************************************************** !
 subroutine RTNumericalJacobianTest(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -2359,7 +2273,7 @@ end subroutine RTNumericalJacobianTest
 ! ************************************************************************** !
 subroutine RTResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2434,7 +2348,7 @@ end subroutine RTResidual
 ! ************************************************************************** !
 subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2741,7 +2655,7 @@ end subroutine RTResidualPatch1
 ! ************************************************************************** !
 subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3018,6 +2932,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       iendall = offset + reaction%ncomp
       Res = 0.d0
       Jup = 0.d0
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                       PETSC_FALSE,option)
+      endif      
       call RReaction(Res,Jup,PETSC_FALSE,rt_aux_vars(ghosted_id), &
                      global_aux_vars(ghosted_id), &
                      porosity_loc_p(ghosted_id), &
@@ -3058,7 +2976,7 @@ end subroutine RTResidualPatch2
 ! ************************************************************************** !
 subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3154,7 +3072,7 @@ end subroutine RTJacobian
 ! ************************************************************************** !
 subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3405,7 +3323,7 @@ end subroutine RTJacobianPatch1
 ! ************************************************************************** !
 subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3596,6 +3514,10 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
       Res = 0.d0
       Jup = 0.d0
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                       PETSC_FALSE,option)
+      endif      
       call RReactionDerivative(Res,Jup,rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
                                porosity_loc_p(ghosted_id), &
@@ -3671,7 +3593,7 @@ end subroutine RTJacobianPatch2
 subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
                            update_activity_coefs)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   PetscBool :: update_cells
@@ -3695,7 +3617,7 @@ end subroutine RTUpdateAuxVars
 subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
                                 compute_activity_coefs)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Coupler_module
@@ -3724,6 +3646,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   PetscInt :: istartcoll, iendcoll
   PetscInt :: istartaq_loc, iendaq_loc
   PetscInt :: istartcoll_loc, iendcoll_loc
+  PetscInt :: istartim, iendim
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal :: xxbc(realization%reaction%ncomp)
@@ -3762,13 +3685,23 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       iendaq = offset + reaction%offset_aqueous + reaction%naqcomp
       
       patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
+      if (reaction%nimcomp > 0) then
+        istartim = offset + reaction%offset_immobile + 1
+        iendim = offset + reaction%offset_immobile + reaction%nimcomp
+        patch%aux%RT%aux_vars(ghosted_id)%immobile = xx_loc_p(istartim:iendim)
+      endif
       if (reaction%ncoll > 0) then
         istartcoll = offset + reaction%offset_colloid + 1
         iendcoll = offset + reaction%offset_colloid + reaction%ncoll
-        patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
+        patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = &
+          xx_loc_p(istartcoll:iendcoll)* &
           patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
-      
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(patch%aux%Global%aux_vars(ghosted_id), &
+                                       reaction,PETSC_FALSE, &
+                                       option)
+      endif
       if (compute_activity_coefs) then
         call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
                                    patch%aux%Global%aux_vars(ghosted_id), &
@@ -3810,7 +3743,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
       basis_molarity_p => boundary_condition%tran_condition% &
         cur_constraint_coupler%aqueous_species%basis_molarity
-        
 
       if (reaction%ncoll > 0) then
         basis_coll_conc_p => boundary_condition%tran_condition% &
@@ -3896,6 +3828,12 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               xxbc(istartcoll_loc:iendcoll_loc)* &
               patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
           endif
+          if (.not.option%use_isothermal) then
+            call RUpdateTempDependentCoefs(patch%aux%Global% &
+                                             aux_vars_bc(sum_connection), &
+                                           reaction,PETSC_FALSE, &
+                                           option)
+          endif          
           if (compute_activity_coefs) then
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
                                         patch%aux%Global%aux_vars_bc(sum_connection), &
@@ -3964,7 +3902,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
-              boundary_condition%tran_condition%cur_constraint_coupler%biomass, &
+              boundary_condition%tran_condition%cur_constraint_coupler%immobile_species, &
               porosity_loc_p(ghosted_id), &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
@@ -4092,7 +4030,7 @@ end subroutine RTCreateZeroArray
 ! ************************************************************************** !
 subroutine RTMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Patch_module
@@ -4128,7 +4066,7 @@ end subroutine RTMaxChange
 ! ************************************************************************** !
 subroutine RTSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Option_module
   use Output_Aux_module
   use Variables_module
@@ -4243,7 +4181,7 @@ subroutine RTSetPlotVariables(realization)
   do i=1,reaction%mineral%nkinmnrl
     if (reaction%mineral%kinmnrl_print(i)) then
       name = trim(reaction%mineral%kinmnrl_names(i)) // ' Rate'
-      units = 'mol/sec'
+      units = 'mol/sec/m^3'
       call OutputVariableAddToList(list,name,OUTPUT_RATE,units, &
                                    MINERAL_RATE,i)      
     endif
@@ -4255,6 +4193,15 @@ subroutine RTSetPlotVariables(realization)
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                    MINERAL_SATURATION_INDEX,i)    
+    endif
+  enddo
+  
+  do i=1,reaction%immobile%nimmobile
+    if (reaction%immobile%print_me(i)) then
+      name = trim(reaction%immobile%names(i)) 
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   IMMOBILE_SPECIES,i)
     endif
   enddo
   
@@ -4388,7 +4335,7 @@ end subroutine RTSetPlotVariables
 ! ************************************************************************** !
 subroutine RTJumpStartKineticSorption(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -4408,7 +4355,7 @@ end subroutine RTJumpStartKineticSorption
 ! ************************************************************************** !
 subroutine RTJumpStartKineticSorptionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4458,7 +4405,7 @@ end subroutine RTJumpStartKineticSorptionPatch
 ! ************************************************************************** !
 subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4546,7 +4493,7 @@ end subroutine RTCheckpointKineticSorption
 ! ************************************************************************** !
 subroutine RTExplicitAdvection(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -4563,7 +4510,7 @@ end subroutine RTExplicitAdvection
 ! ************************************************************************** !
 subroutine RTExplicitAdvectionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -4611,7 +4558,6 @@ subroutine RTExplicitAdvectionPatch(realization)
   PetscErrorCode :: ierr
   PetscViewer :: viewer
 
-#ifdef FORTRAN_2003_COMPLIANT  
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
   
   select case(realization%option%tvd_flux_limiter)
@@ -4628,7 +4574,6 @@ subroutine RTExplicitAdvectionPatch(realization)
     case default
       TFluxLimitPtr => TFluxLimiter
   end select
-#endif
 
   option => realization%option
   field => realization%field
@@ -4770,9 +4715,7 @@ subroutine RTExplicitAdvectionPatch(realization)
                     rt_aux_vars(ghosted_id_up), &
                     rt_aux_vars(ghosted_id_dn), &
                     total_dn2, &
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif      
                     option,flux)
           
       ! contribution upwind
@@ -4821,9 +4764,7 @@ subroutine RTExplicitAdvectionPatch(realization)
                     rt_aux_vars_bc(sum_connection), &
                     rt_aux_vars(ghosted_id), &
                     total_dn2, &
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif      
                     option,flux)
 
       ! contribution downwind
@@ -4975,7 +4916,7 @@ end subroutine RTAppendToHeader
 ! ************************************************************************** !
 subroutine RTDestroy(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
 
@@ -5087,7 +5028,7 @@ end subroutine RTDestroy
 ! ************************************************************************** !
 subroutine RTDestroyPatch(realization)
 
-  use Realization_module
+  use Realization_class
 
   implicit none
 

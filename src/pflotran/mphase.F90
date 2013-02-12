@@ -61,7 +61,7 @@ contains
 ! ************************************************************************** !
 subroutine MphaseTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -92,7 +92,7 @@ end subroutine MphaseTimeCut
 !
 ! ************************************************************************** !
 subroutine init_span_wanger(realization)
-  use Realization_module
+  use Realization_class
   use span_wagner_module
   use co2_sw_module
   use span_wagner_spline_module 
@@ -129,7 +129,7 @@ end subroutine init_span_wanger
 ! ************************************************************************** !
 subroutine MphaseSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
    
@@ -165,7 +165,7 @@ end subroutine MphaseSetup
 ! ************************************************************************** !
 subroutine MphaseSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -376,7 +376,7 @@ end subroutine MphaseSetupPatch
 ! ************************************************************************** !
 subroutine MphaseComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -413,7 +413,7 @@ end subroutine MphaseComputeMassBalance
 ! ************************************************************************** !
 subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -480,7 +480,7 @@ end subroutine MphaseComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine MphaseZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -533,7 +533,7 @@ end subroutine MphaseZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine MphaseUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -592,7 +592,7 @@ end subroutine MphaseUpdateMassBalancePatch
 ! ************************************************************************** !
 function MphaseInitGuessCheck(realization)
  
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Option_module
@@ -636,7 +636,7 @@ end function MphaseInitGuessCheck
 !
 ! ************************************************************************** !
 subroutine MPhaseUpdateReasonPatch(reason,realization)
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -748,7 +748,7 @@ end subroutine MPhaseUpdateReasonPatch
 ! ************************************************************************** !
 subroutine MPhaseUpdateReason(reason, realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   implicit none
@@ -803,7 +803,7 @@ end subroutine MPhaseUpdateReason
    
      use span_wagner_module
      
-    use Realization_module
+    use Realization_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -866,7 +866,7 @@ end subroutine MPhaseUpdateReason
 ! ************************************************************************** !
 subroutine MphaseUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -900,7 +900,7 @@ end subroutine MphaseUpdateAuxVars
 ! ************************************************************************** !
 subroutine MphaseUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -1126,7 +1126,7 @@ end subroutine MphaseUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine MphaseInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -1145,7 +1145,7 @@ end subroutine MphaseInitializeTimestep
 ! ************************************************************************** !
 subroutine MphaseUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -1194,7 +1194,7 @@ end subroutine MphaseUpdateSolution
 ! ************************************************************************** !
 subroutine MphaseUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -1216,7 +1216,7 @@ end subroutine MphaseUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine MphaseUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -1250,7 +1250,7 @@ end subroutine MphaseUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine MphaseUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1983,7 +1983,7 @@ end subroutine MphaseBCFlux
 ! ************************************************************************** !
 subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -2085,7 +2085,7 @@ end subroutine MphaseResidual
 
 subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -2164,7 +2164,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     endif
     ipr=0 
     dof_offset=(local_id-1)* option%nflowdof
-    iipha=iphase_loc_p(ghosted_id)
+    iipha=int(iphase_loc_p(ghosted_id))
     p = xx_p(dof_offset+1)
     t = xx_p(dof_offset+2)
     den(1:option%nphase) = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%den(1:option%nphase)
@@ -2403,7 +2403,7 @@ end subroutine MphaseVarSwitchPatch
 subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3055,7 +3055,7 @@ end subroutine MphaseResidualPatch
 ! ************************************************************************** !
 subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -3137,7 +3137,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3574,8 +3574,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
+      iphas_up = int(iphase_loc_p(ghosted_id_up))
+      iphas_dn = int(iphase_loc_p(ghosted_id_dn))
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
@@ -3839,7 +3839,7 @@ end subroutine MphaseCreateZeroArray
 ! ************************************************************************** !
 subroutine MphaseMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Field_module
@@ -3904,7 +3904,7 @@ end subroutine MphaseMaxChange
 
 subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Patch_module
   use Field_module
@@ -3976,7 +3976,7 @@ end subroutine MphaseMaxChangePatch
 ! ************************************************************************** !
 function MphaseGetTecplotHeader(realization,icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -4141,7 +4141,7 @@ end function MphaseGetTecplotHeader
 ! ************************************************************************** !
 subroutine MphaseSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 

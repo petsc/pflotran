@@ -3,7 +3,7 @@
 The test manager for PFLOTRAN is a python program that is responsible
 for reading a configuration file, identifying the tests declared in
 the file, running PFLOTRAN on the appropriate input files, and then
-comparing the results to a known "gold standard" output file.
+comparing the results to a known ``gold standard'' output file.
 
 \subsection{Running the test manager}
 The test manager can be run in two ways, either as part of the build
@@ -103,18 +103,18 @@ concentration = 1.0e-10 absolute
 The data types and default tolerances are:
 \begin{itemize}
 \item time = 5 percent
-\item concentration = 1.0e-12 absolute
-\item generic = 1.0e-12 absolute
+\item concentration = $1\times 10^{-12}$ absolute
+\item generic = $1\times 10^{-12}$ absolute
 \item discrete = 0 absolute
-\item rate = 1.0e-12 absolute
-\item volume\_fraction = 1.0e-12 absolute
-\item pressure = 1.0e-12 absolute
-\item saturation = 1.0e-12 absolute
-\item residual = 1.0e-12 absolute
+\item rate = $1\times 10^{-12}$ absolute
+\item volume\_fraction = $1\times 10^{-12}$ absolute
+\item pressure = $1\times 10^{-12}$ absolute
+\item saturation = $1\times 10^{-12}$ absolute
+\item residual = $1\times 10^{-12}$ absolute
 \end{itemize}
 The default tolerances are deliberately set very tight, and are
 expected to be overridden on a per-test or per configuration file
-basis.  There are three known comparison: ``absolute'', for absolute
+basis.  There are three known comparisons: ``absolute'', for absolute
 differences ($\delta=|c-g|$), ``relative'' for relative differences ($\delta=\frac{|c-g|}{g}$), and ``percent''
 for specifying a percent difference ($\delta=100\cdot\frac{|c-g|}{g}$).
 
@@ -131,11 +131,11 @@ parallel = test-4 test-5 test-6
 
 \subsection{Creating new tests}
 
-We want running tests to become a habit for developers so that "make
-pflotran" is always followed by "make test". With that in mind, ideal
+We want running tests to become a habit for developers so that ``make
+pflotran'' is always followed by ``make test.'' With that in mind, ideal
 test cases are small and fast, and operate on a small subsection of
 the code so it is easier to diagnose where a problem has
-occurred. While it may(will) be necessary to create some platform
+occurred. While it may (will) be necessary to create some platform
 specific tests, we want as many tests as possible to be platform
 independent and widely used. There is a real danger in having test
 output become stale if it requires special access to a particular

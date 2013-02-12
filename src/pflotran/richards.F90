@@ -48,7 +48,7 @@ contains
 ! ************************************************************************** !
 subroutine RichardsTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -89,7 +89,7 @@ end subroutine RichardsTimeCut
 ! ************************************************************************** !
 subroutine RichardsSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
 
   type(realization_type) :: realization
@@ -108,7 +108,7 @@ end subroutine RichardsSetup
 ! ************************************************************************** !
 subroutine RichardsSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -189,13 +189,9 @@ end subroutine RichardsSetupPatch
 ! date: 02/13/12
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
-#else
-subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
-#endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Field_module
   use Option_module
@@ -204,11 +200,7 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: P
   Vec :: dP
   ! ignore changed flag for now.
@@ -322,26 +314,17 @@ end subroutine RichardsCheckUpdatePre
 ! date: 02/13/12
 !
 ! ************************************************************************** !
-#ifndef HAVE_SNES_API_3_2
 subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                    P1_changed,realization,ierr)
-#else
-subroutine RichardsCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
-                                   P1_changed,ierr)
-#endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Field_module
   use Option_module
  
   implicit none
   
-#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
-#else
-  SNES :: snes_
-#endif
   Vec :: P0
   Vec :: dP
   Vec :: P1
@@ -415,7 +398,7 @@ end subroutine RichardsCheckUpdatePost
 ! ************************************************************************** !
 subroutine RichardsComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
@@ -435,7 +418,7 @@ end subroutine RichardsComputeMassBalance
 ! ************************************************************************** !
 subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -487,7 +470,7 @@ end subroutine RichardsComputeMassBalancePatch
 subroutine RichardsCheckMassBalancePatch(realization)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -634,7 +617,7 @@ end subroutine RichardsCheckMassBalancePatch
 ! ************************************************************************** !
 subroutine RichardsZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -686,7 +669,7 @@ end subroutine RichardsZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine RichardsUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -747,7 +730,7 @@ end subroutine RichardsUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine RichardsUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   type(realization_type) :: realization
@@ -776,7 +759,7 @@ end subroutine RichardsUpdateAuxVars
 
 ! subroutine RichardsInitialPressureReconstruction(realization)
 ! 
-!   use Realization_module
+!   use Realization_class
 !   use Patch_module
 ! 
 !   type(realization_type) :: realization
@@ -814,7 +797,7 @@ end subroutine RichardsUpdateAuxVars
 
 subroutine RichardsUpdateCellPressure(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
 
@@ -835,7 +818,7 @@ end subroutine RichardsUpdateCellPressure
 ! ************************************************************************** !
 subroutine RichardsUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -982,7 +965,7 @@ end subroutine RichardsUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine RichardsUpdateLSMAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1117,7 +1100,7 @@ end subroutine RichardsUpdateLSMAuxVarsPatch
 ! subroutine RichardsInitialPressureReconstructionPatch(realization)
 ! 
 ! 
-!   use Realization_module
+!   use Realization_class
 !   use Discretization_module
 !   use Patch_module
 !   use Option_module
@@ -1257,7 +1240,7 @@ end subroutine RichardsUpdateLSMAuxVarsPatch
 subroutine RichardsUpdateCellPressurePatch(realization)
 
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -1406,7 +1389,7 @@ end subroutine RichardsUpdateCellPressurePatch
 
 subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1560,7 +1543,7 @@ end subroutine RichardsUpdateAuxVarsPatchMFDLP
 ! ************************************************************************** !
 subroutine RichardsInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module 
   
   implicit none
@@ -1601,7 +1584,7 @@ end subroutine RichardsInitializeTimestep
 ! ************************************************************************** !
 subroutine RichardsUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   
   implicit none
@@ -1636,7 +1619,7 @@ end subroutine RichardsUpdateSolution
 ! ************************************************************************** !
 subroutine RichardsUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -1658,7 +1641,7 @@ end subroutine RichardsUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine RichardsUpdateFixedAccum(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1676,7 +1659,7 @@ end subroutine RichardsUpdateFixedAccum
 ! ************************************************************************** !
 subroutine RichardsUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1774,7 +1757,7 @@ end subroutine RichardsUpdateFixedAccumPatch
 ! ************************************************************************** !
 subroutine RichardsNumericalJacTest(xx,realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -2993,7 +2976,7 @@ end subroutine RichardsBCFlux
 ! ************************************************************************** !
 subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Discretization_module
   use Option_module
@@ -3075,7 +3058,7 @@ end subroutine RichardsResidual
 subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
   use Logging_module
-  use Realization_module
+  use Realization_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -3207,7 +3190,7 @@ end subroutine RichardsResidualMFD
 subroutine RichardsResidualMFDLP(snes,xx,r,realization,ierr)
 
 use Logging_module
-  use Realization_module
+  use Realization_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -3364,7 +3347,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3640,7 +3623,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3825,7 +3808,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   use water_eos_module
   use Logging_module
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Patch_module
   use Grid_module
@@ -4098,7 +4081,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   use water_eos_module
   use Logging_module
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4415,7 +4398,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   use water_eos_module
   use Logging_module
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Patch_module
   use Grid_module
@@ -4718,7 +4701,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   use water_eos_module
   use Logging_module
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -5050,7 +5033,7 @@ end subroutine RichardsResidualPatchMFDLP2
 ! ************************************************************************** !
 subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -5146,7 +5129,7 @@ end subroutine RichardsJacobian
 ! ************************************************************************** !
 subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -5218,7 +5201,7 @@ end subroutine RichardsJacobianMFD
 
 subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -5320,7 +5303,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -5637,7 +5620,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -5827,7 +5810,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   use water_eos_module
   use mfd_aux_module
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -6061,7 +6044,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   use water_eos_module
   use mfd_aux_module
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -6274,7 +6257,7 @@ end subroutine RichardsJacobianPatchMFDLP
 ! ************************************************************************** !
 subroutine RichardsCreateZeroArray(patch,option)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -6349,7 +6332,7 @@ end subroutine RichardsCreateZeroArray
 ! ************************************************************************** !
 subroutine RichardsMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   
@@ -6402,7 +6385,7 @@ end subroutine RichardsMaxChange
 ! ************************************************************************** !
 function RichardsGetTecplotHeader(realization,icolumn)
   
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
     
@@ -6450,7 +6433,7 @@ end function RichardsGetTecplotHeader
 ! ************************************************************************** !
 subroutine RichardsSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
     
@@ -6517,7 +6500,7 @@ end subroutine RichardsPrintAuxVars
 ! ************************************************************************** !
 subroutine RichardsDestroy(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -6534,7 +6517,7 @@ end subroutine RichardsDestroy
 ! ************************************************************************** !
 subroutine RichardsDestroyPatch(realization)
 
-  use Realization_module
+  use Realization_class
 
   implicit none
 

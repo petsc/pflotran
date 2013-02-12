@@ -20,10 +20,8 @@ module Unstructured_Grid_Aux_module
   PetscInt, parameter, public :: TWO_DIM_GRID = 1
   PetscInt, parameter, public :: THREE_DIM_GRID = 2 
   
-  !geh: for debugging purposes make these large
-  !TODO(geh): change values to 1, 2 respectively.
-  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 98
-  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 99
+  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
+  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
 
   type, public :: unstructured_grid_type
     ! variables for all unstructured grids
@@ -662,11 +660,7 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
       case(MATAIJ)
         d_nnz = d_nnz*ugdm%ndof
         o_nnz = o_nnz*ugdm%ndof
-#ifdef MATCREATE_OLD      
-        call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
-#else
         call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
-#endif
                           PETSC_DETERMINE,PETSC_DETERMINE, &
                           PETSC_NULL_INTEGER,d_nnz, &
                           PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -675,11 +669,7 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
         call MatSetLocalToGlobalMappingBlock(J,ugdm%mapping_ltogb, &
                                              ugdm%mapping_ltogb,ierr)
       case(MATBAIJ)
-#ifdef MATCREATE_OLD      
-        call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-#else
         call MatCreateBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-#endif
                            PETSC_DETERMINE,PETSC_DETERMINE, &
                            PETSC_NULL_INTEGER,d_nnz, &
                            PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -827,10 +817,8 @@ end subroutine UGridMapIndices
 ! date: 10/05/12
 !
 ! ************************************************************************** !
-subroutine UGridPartition(ugrid,option, &
-                                 Adj_mat,num_common_vertices, &
-                                 Dual_mat,is_new, &
-                                 num_cells_local_new)
+subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
+                          num_cells_local_new)
 
   use Option_module
   
@@ -844,8 +832,6 @@ subroutine UGridPartition(ugrid,option, &
   
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
-  Mat :: Adj_mat
-  PetscInt :: num_common_vertices
   Mat :: Dual_mat
   IS :: is_new
   PetscInt :: num_cells_local_new
@@ -856,28 +842,6 @@ subroutine UGridPartition(ugrid,option, &
   PetscViewer :: viewer
   PetscInt :: local_vertex_offset
   PetscErrorCode :: ierr
-
-#if UGRID_DEBUG
-  call printMsg(option,'Dual matrix')
-#endif
-
-  ! petsc will call parmetis to calculate the graph/dual
-#if defined(PETSC_HAVE_PARMETIS)
-  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
-#else
-  option%io_buffer = 'Must compile with Parmetis in order to use unstructured grids.'
-  call printErrMsg(option)
-#endif
-  
-#if UGRID_DEBUG
-  if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
-  else
-    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
-  endif
-  call MatView(Dual_mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
 
 #if UGRID_DEBUG
   call printMsg(option,'Partitioning')
@@ -1058,7 +1022,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 
   ! scatter all the cell data from the old decomposition (as read in in 
   ! parallel) to the more parmetis-calculated decomposition
-  call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter, &
+  call VecScatterCreate(elements_old,PETSC_NULL_OBJECT,elements_natural,is_scatter, &
                         vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,elements_old,elements_natural, &
@@ -1118,7 +1082,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     ! It may match the first entry (the calculated natural id based on the
     ! order that cells were read), but it need not.
     ugrid%cell_ids_natural(local_id) = &
-      abs(vec_ptr((local_id-1)*stride+natural_id_offset))
+      int(abs(vec_ptr((local_id-1)*stride+natural_id_offset)))
   enddo
   call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
 
@@ -1169,7 +1133,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   do local_id=1, num_cells_local_new
     count = count + 1
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit ! here we hit the 0 at the end of last dual
       count = count + 1
     enddo
@@ -1182,7 +1146,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     count = count + 1
     int_array(count) = ugrid%cell_ids_natural(local_id)
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit ! again we hit the 0 
       count = count + 1
       int_array(count) = dual_id
@@ -1220,7 +1184,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     vec_ptr((local_id-1)*stride+1) = int_array(count)
     do idual = 1, ugrid%max_ndual_per_cell
 !geh      dual_id = vec_ptr2(idual + dual_offset + (local_id-1)*stride)
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit
       count = count + 1
       ! store the petsc numbered duals in the vector also
@@ -1259,7 +1223,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   ! end of a dual
   do local_id=1, num_cells_local_new
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       found = PETSC_FALSE
       if (dual_id < 1) exit
       if (dual_id <= global_offset_new .or. &
@@ -1354,7 +1318,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     do local_id=1, num_cells_local_new
       do idual = 1, ugrid%max_ndual_per_cell
         ! dual_id is now the negative of the local unsorted ghost cell id
-        dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+        dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
         ! dual_id = 0: not assigned
         ! dual_id > 0: assigned to local cell
         ! dual_id < 0: assigned to ghost cell
@@ -1408,11 +1372,11 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
   do local_id=1, ugrid%nlmax
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit
       if (dual_id > ugrid%nlmax) then
         ugrid%cell_ids_natural(dual_id) = &
-          vec_ptr2(idual + dual_offset + (local_id-1)*stride)
+          int(vec_ptr2(idual + dual_offset + (local_id-1)*stride))
       endif       
     enddo
   enddo
@@ -1440,7 +1404,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   do local_id=1, ugrid%nlmax
     count = 0
     do idual = 1, ugrid%max_ndual_per_cell
-      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      dual_id = int(vec_ptr(idual + dual_offset + (local_id-1)*stride))
       if (dual_id < 1) exit
       count = count + 1
       ! flag ghosted cells in dual as negative
