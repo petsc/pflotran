@@ -1924,6 +1924,11 @@ subroutine RealizationUpdatePropertiesPatch(realization)
         scale = ((porosity_loc_p(ghosted_id)-material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por) &
         /(porosity0_p(local_id)-material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por))** &
         material_property_array(patch%imat(ghosted_id))%ptr%permeability_pwr
+
+#ifdef PERM
+        scale = scale*((1.001-porosity0_p(local_id)**2)/(1.001-porosity_loc_p(ghosted_id)**2))
+#endif
+
         if (scale < material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac) &
           scale = material_property_array(patch%imat(ghosted_id))%ptr%permeability_min_scale_fac
       else

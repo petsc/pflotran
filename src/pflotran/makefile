@@ -43,6 +43,10 @@ ifdef pcl
   MYFLAGS += -DPCL -DMUALEM_SPLINE
 endif
 
+ifdef perm
+  MYFLAGS += -DPERM
+endif
+
 ifdef tab
   MYFLAGS += -DTABLE
 endif
