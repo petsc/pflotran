@@ -592,6 +592,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: dm_minus(sec_transport_vars%ncells)
   PetscReal :: res_react(reaction%naqcomp)
   PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: i, j, k, n
   PetscInt :: ngcells, ncomp
   PetscReal :: area_fm
@@ -619,7 +620,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
       conc_upd(j,i) = sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j)
     enddo
   enddo
-  
+    
   ! Note that sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) units are in mol/kg
   ! Need to convert to mol/L since the units of total. in the Thomas 
   ! algorithm are in mol/L 
@@ -647,10 +648,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     rt_auxvar%pri_molal = conc_upd(:,i)
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
     total_upd(:,i) = rt_auxvar%total(:,1)
+    dtotal(:,:,i) = sec_transport_vars%sec_rt_auxvar(i)%aqueous%dtotal(:,:,1)
   enddo
-  call RTAuxVarStrip(rt_auxvar)
                           
-              
 !================ Calculate the secondary residual =============================        
 
   do j = 1, ncomp
@@ -732,14 +732,42 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
       endif
     enddo    
   enddo
+
+!============================= Include dtotal ==================================        
   
-  ! Convert m3/s to kg water/s
-  coeff_right = coeff_right*global_aux_var%den_kg(1)
-  coeff_left = coeff_left*global_aux_var%den_kg(1)
-  coeff_diag = coeff_diag*global_aux_var%den_kg(1)
+  ! Include dtotal (units of kg water/ L water)  
+  do i = 1, ngcells
+    do j = 1, ncomp
+      do k = 1, ncomp
+        coeff_diag(j,k,i) = coeff_diag(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+      enddo
+    enddo
+  enddo
+  
+  do i = 2, ngcells
+    do j = 1, ncomp
+      do k = 1, ncomp
+        coeff_left(j,k,i-1) = coeff_left(j,k,i-1)*dtotal(j,k,i) ! m3/s*kg/L
+      enddo
+    enddo
+  enddo
+  
+  do i = 1, ngcells-1
+    do j = 1, ncomp
+      do k = 1, ncomp
+        coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+      enddo
+    enddo
+  enddo
+  
+  ! Convert m3/s*kg/L to kg water/s
+  coeff_right = coeff_right*1.d3
+  coeff_left = coeff_left*1.d3
+  coeff_diag = coeff_diag*1.d3
+  
+!====================== Add reaction contributions =============================        
   
   ! Reaction 
-  call RTAuxVarInit(rt_auxvar,reaction,option)
   do i = 1, ngcells
     res_react = 0.d0
     jac_react = 0.d0
@@ -754,9 +782,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     enddo
     coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
   enddo  
-  call RTAuxVarStrip(rt_auxvar)
          
-!===============================================================================        
+!============================== Forward solve ==================================        
                         
   rhs = -res                 
 
@@ -789,7 +816,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   enddo
   
   ! Update the secondary continuum totals at the outer matrix node
-  call RTAuxVarInit(rt_auxvar,reaction,option)
   call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(ngcells), &
                     option)
   rt_auxvar%pri_molal = conc_current_M ! in mol/kg
