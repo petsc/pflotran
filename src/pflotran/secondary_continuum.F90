@@ -551,7 +551,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use blksolv_module
+  use Block_Solve_module
   use Utility_module
   use Mineral_module
   use Reaction_module
@@ -878,7 +878,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,aux_var, &
   use Reaction_Aux_module
   use Reaction_module
   use Reactive_Transport_Aux_module
-  use blksolv_module
+  use Block_Solve_module
   use Utility_module
   
 

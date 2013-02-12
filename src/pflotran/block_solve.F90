@@ -1,9 +1,16 @@
-    module blksolv_module
+module Block_Solve_module
+
+#include "definitions.h"  
+  
+  private
+  
+  public :: bl3dfac, &
+            bl3dsolf, &
+            bl3dsolb
       
+contains
       
-    contains
-      
-    subroutine bl3dfac(n, k, E, D, F, pivot)
+subroutine bl3dfac(n, k, E, D, F, pivot)
 
 !	This version of bl3dfac dated March 15, 2000.
 
@@ -38,9 +45,9 @@
 
 !	Input variables:
 
-	integer n, k
-	integer pivot(k,n)
-	double precision E(k,k,n-1), D(k,k,n), F(k,k,n-1)
+	PetscInt :: n, k
+	PetscInt :: pivot(k,n)
+	PetscReal :: E(k,k,n-1), D(k,k,n), F(k,k,n-1)
 
 !	Input:
 
@@ -61,10 +68,9 @@
 
 !	Local variables:
 
-	integer j, info
-	character *1 trans
-	double precision one
-	parameter ( one = 1.0d0 )
+	PetscInt :: j, info
+	character(len=1) :: trans
+	PetscReal, parameter :: one = 1.d0
 
 !************************************************************************
 
@@ -114,11 +120,12 @@
 	endif
 
 	return
-	end subroutine bl3dfac
+  
+end subroutine bl3dfac
 
 !************************ END OF bl3dfac ********************************
 
-        subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
+subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
 !       This version of bl3dsol dated April 20, 2000.
 
@@ -151,11 +158,11 @@
 
 !       Input variables:
 
-        character *1 trans
-        integer n, k
-        double precision E(k,k,n-1), D(k,k,n), F(k,k,n-1)
-        integer pivot(k,n), nrhs
-        double precision rhs(k,nrhs,n)
+        character(len=1) :: trans
+        PetscInt :: n, k
+        PetscReal :: E(k,k,n-1), D(k,k,n), F(k,k,n-1)
+        PetscInt :: pivot(k,n), nrhs
+        PetscReal :: rhs(k,nrhs,n)
 
 !       Input:
 
@@ -195,9 +202,8 @@
 !       
 !       Local variables:
 
-        integer j, info
-        double precision one
-        parameter ( one = 1.0d0 )
+        PetscInt :: j, info
+        PetscReal, parameter :: one = 1.d0
 
 !************************************************************************
 
@@ -295,12 +301,13 @@
       endif
 
       return
-      end subroutine bl3dsol
+      
+end subroutine bl3dsol
 
 !************************ END OF bl3dsol ********************************
 
 
-        subroutine bl3dsolf(n, k, E, D, F, pivot, nrhs, rhs)
+subroutine bl3dsolf(n, k, E, D, F, pivot, nrhs, rhs)
 
 !       This version of bl3dsol dated April 20, 2000.
 
@@ -333,11 +340,11 @@
 
 !       Input variables:
 
-        character *1 trans
-        integer n, k
-        double precision E(k,k,n-1), D(k,k,n), F(k,k,n-1)
-        integer pivot(k,n), nrhs
-        double precision rhs(k,nrhs,n)
+        character(len=1) :: trans
+        PetscInt :: n, k
+        PetscReal :: E(k,k,n-1), D(k,k,n), F(k,k,n-1)
+        PetscInt :: pivot(k,n), nrhs
+        PetscReal :: rhs(k,nrhs,n)
 
 !       Input:
 
@@ -377,9 +384,8 @@
 !       
 !       Local variables:
 
-        integer j, info
-        double precision one
-        parameter ( one = 1.0d0 )
+        PetscInt :: j, info
+        PetscReal, parameter :: one = 1.d0
 
 !************************************************************************
 
@@ -424,9 +430,10 @@
            enddo
 
       return
-      end subroutine bl3dsolf
 
-        subroutine bl3dsolb(n, k, E, D, F, pivot, nrhs, rhs)
+end subroutine bl3dsolf
+
+subroutine bl3dsolb(n, k, E, D, F, pivot, nrhs, rhs)
 
 !       This version of bl3dsol dated April 20, 2000.
 
@@ -459,11 +466,11 @@
 
 !       Input variables:
 
-        character *1 trans
-        integer n, k
-        double precision E(k,k,n-1), D(k,k,n), F(k,k,n-1)
-        integer pivot(k,n), nrhs
-        double precision rhs(k,nrhs,n)
+        character(len=1) :: trans
+        PetscInt :: n, k
+        PetscReal :: E(k,k,n-1), D(k,k,n), F(k,k,n-1)
+        PetscInt :: pivot(k,n), nrhs
+        PetscReal :: rhs(k,nrhs,n)
 
 !       Input:
 
@@ -503,9 +510,8 @@
 !       
 !       Local variables:
 
-        integer j !, info
-        double precision one
-        parameter ( one = 1.0d0 )
+        PetscInt :: j !, info
+        PetscReal, parameter :: one = 1.d0
 
  	    trans = 'N'    
 
@@ -522,8 +528,9 @@
 
 
       return
-      end subroutine bl3dsolb
+
+end subroutine bl3dsolb
 
 !************************ END OF bl3dsol ********************************
-  end module blksolv_module
+end module Block_Solve_module
   

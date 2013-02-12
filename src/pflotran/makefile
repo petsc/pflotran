@@ -155,9 +155,7 @@ util_obj  = \
 	${common_src}string.o \
 	${common_src}units.o \
 	${common_src}utility.o \
-	${common_src}variables.o\
-	${common_src}blksolv.o\
-  ${common_src}blaslapack.o
+	${common_src}variables.o
 
 eos_obj = \
 	${common_src}co2eos.o \
@@ -258,6 +256,7 @@ io_obj = \
 	${common_src}output_vtk.o
 
 misc_obj = \
+	${common_src}block_solve.o \
 	${common_src}checkpoint.o \
 	${common_src}cf90bridge.o \
 	${common_src}condition.o \
@@ -328,11 +327,12 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
+auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o \
+              reactive_transport_aux.o \
               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
               secondary_continuum_aux.o
-blksolv.o: blaslapack.o
+block_solve.o:
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
@@ -507,7 +507,7 @@ reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-                       secondary_continuum.o blksolv.o
+                       secondary_continuum.o block_solve.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -528,11 +528,11 @@ saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
                         material.o option.o reactive_transport_aux.o\
-                        blksolv.o global_aux.o mphase_aux.o reaction.o
+                        block_solve.o global_aux.o mphase_aux.o reaction.o
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : timestepper.o realization.o regression.o
-solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
-                   utility.o mineral.o input.o
+solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o \
+                   mineral_aux.o utility.o mineral.o input.o
 solid_solution_aux.o : mineral_aux.o
 solver.o : option.o field.o input.o string.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
@@ -562,7 +562,8 @@ thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \
 thc_aux.o : option.o material.o water_eos.o \
             saturation_function.o grid.o global_aux.o
 thmc.o : thmc_aux.o realization.o saturation_function.o
-thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o global_aux.o
+thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o \
+             global_aux.o
 timestepper.o : th.o thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
