@@ -52,3 +52,7 @@ docs/user_manual/developer_guide.pdf
 *.bin
 *.bin.info
 *.xmf
+*.stdout
+*.regression
+regression_tests/ascem/batch/general-reaction.h5
+regression_tests/default/anisothermal/thc_1d.h5
