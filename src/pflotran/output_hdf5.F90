@@ -65,6 +65,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   use Field_module
   use Patch_module
   use Reaction_Aux_module
+  use String_module
   
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -324,6 +325,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
         call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
                                    cur_variable%isubvar)
         string = cur_variable%name
+        call StringSwapChar(string," ","_")
         if (len_trim(cur_variable%units) > 0) then
           word = cur_variable%units
           call HDF5MakeStringCompatible(word)
@@ -462,6 +464,7 @@ subroutine OutputHDF5UGrid(realization_base)
   use Patch_module
   use Reaction_Aux_module
   use Variables_module
+  use String_module
 
 #if  !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -684,6 +687,7 @@ subroutine OutputHDF5UGrid(realization_base)
     call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
     string = cur_variable%name
+    call StringSwapChar(string," ","_")
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
       call HDF5MakeStringCompatible(word)

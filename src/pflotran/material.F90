@@ -615,7 +615,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
   do i = 1, max_id
     if (id_count(i) > 1) then
       write(string,*) i
-      option%io_buffer = 'Material_ID ' // trim(adjustl(string)) // &
+      option%io_buffer = 'Material ID ' // trim(adjustl(string)) // &
         ' is duplicated in input file.'
       call printMsg(option)
       error_flag = PETSC_TRUE

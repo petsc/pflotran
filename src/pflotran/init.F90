@@ -872,7 +872,7 @@ subroutine Init(simulation)
   endif
 
   ! write material ids
-  output_variable => OutputVariableCreate('Material_ID',OUTPUT_DISCRETE,'', &
+  output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
                                           MATERIAL_ID)
   output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
   output_variable%iformat = 1 ! integer
