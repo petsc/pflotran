@@ -700,11 +700,11 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       sumN = sumN + stoich_downstream_pool / CN_ratio_down * rate
     endif
     
-    if (dabs(sumC) > 1.d-40 .or. dabs(sumN) > 1.d-40) then
-      !for debugging
-      print *, "sum C: ", sumC
-      print *, "sum N: ", sumN
-    endif
+    !for debugging
+!    if (dabs(sumC) > 1.d-40 .or. dabs(sumN) > 1.d-40) then
+!      print *, "sum C: ", sumC
+!      print *, "sum N: ", sumN
+!    endif
     
     if (compute_derivative) then
     
