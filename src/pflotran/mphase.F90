@@ -2411,6 +2411,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   use Secondary_Continuum_Aux_module
+  use Secondary_Continuum_module
   
   implicit none
 

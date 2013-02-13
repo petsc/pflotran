@@ -4903,9 +4903,15 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: imnrl, iaqspec, ncomp, icomp
   PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
-  
+  PetscReal :: res(reaction%ncomp)
+  PetscReal :: jac(reaction%ncomp,reaction%ncomp)
+    
   ! update mineral volume fractions
   if (reaction%mineral%nkinmnrl > 0) then
+  
+!   call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar,1.d0, &
+!                        reaction,option)  ! Updates the mineral rates, res is not needed
+                    
     do imnrl = 1, reaction%mineral%nkinmnrl
       ! rate = mol/m^3/sec
       ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
