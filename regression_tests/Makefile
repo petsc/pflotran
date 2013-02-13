@@ -33,7 +33,8 @@ STANDARD_TESTS = \
 	default-transport \
 	default-geochemistry \
 	default-parallel \
-	default-discretization-umesh
+	default-discretization-umesh \
+	ngee-biogeochemistry
 
 # regression tests for developers changing pflotran
 DEV_TESTS = \
@@ -95,3 +96,8 @@ endif
 cu-leaching :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		-c shortcourse/copper_leaching/cu_leaching.cfg --test cu_leaching
+
+ngee-biogeochemistry : 
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		-r ngee --suite biogeochemistry 
+
