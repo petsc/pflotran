@@ -4909,8 +4909,8 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
   ! update mineral volume fractions
   if (reaction%mineral%nkinmnrl > 0) then
   
-!   call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar,1.d0, &
-!                        reaction,option)  ! Updates the mineral rates, res is not needed
+    call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar,1.d0, &
+                         reaction,option)  ! Updates the mineral rates, res is not needed
                     
     do imnrl = 1, reaction%mineral%nkinmnrl
       ! rate = mol/m^3/sec
