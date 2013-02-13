@@ -127,8 +127,11 @@ subroutine RTSetupPatch(realization)
   use Constraint_module
   use Fluid_module
   use Material_module
-  use Secondary_Continuum_Aux_module
-  use Secondary_Continuum_module
+  !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
+  !      resolves a bug in the Intel Visual Fortran compiler.
+  use Secondary_Continuum_Aux_module, only : sec_transport_type, &
+                                             SecondaryAuxRTCreate
+  use Secondary_Continuum_module, only : SecondaryRTAuxVarInit
  
   implicit none
 
@@ -660,13 +663,15 @@ subroutine RTUpdateSolutionPatch(realization)
   use Option_module
   use Grid_module
   use Reaction_module
-  use Secondary_Continuum_Aux_module
-  use Secondary_Continuum_module
+  !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
+  !      resolves a bug in the Intel Visual Fortran compiler.
+  use Secondary_Continuum_Aux_module, only : sec_transport_type
+  use Secondary_Continuum_module, only : SecondaryRTAuxVarComputeMulti
  
   implicit none
 
   type(realization_type) :: realization
-  
+
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
@@ -756,7 +761,6 @@ subroutine RTUpdateSolutionPatch(realization)
   if (option%compute_mass_balance_new) then
     call RTUpdateMassBalancePatch(realization)
   endif
-  
 end subroutine RTUpdateSolutionPatch
 
 ! ************************************************************************** !
@@ -2673,8 +2677,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module
-  use Secondary_Continuum_Aux_module
-  use Secondary_Continuum_module
+  !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
+  !      resolves a bug in the Intel Visual Fortran compiler.
+  use Secondary_Continuum_Aux_module, only : sec_transport_type
+  use Secondary_Continuum_module, only : SecondaryRTResJacMulti
   
   implicit none
 
