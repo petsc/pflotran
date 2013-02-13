@@ -730,6 +730,12 @@ subroutine RTUpdateSolutionPatch(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
+
+      if (.not.option%use_isothermal) then
+        call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                     PETSC_FALSE,option)
+      endif
+
       call RUpdateSolution(rt_aux_vars(ghosted_id), &
                            global_aux_vars(ghosted_id),reaction,option)
     enddo

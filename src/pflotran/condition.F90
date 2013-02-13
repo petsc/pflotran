@@ -498,7 +498,7 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
 !    endif
   endif
   
-  if (associated(dataset%time_series)) then
+  if (associated(dataset%time_series).and.associated(default_dataset%time_series)) then
     call TimeSeriesVerify(option, default_time, dataset%time_series, &
                           default_dataset%time_series)
   endif
