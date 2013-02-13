@@ -491,10 +491,11 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
         .not.associated(dataset%dataset)) then
       dataset%dataset => default_dataset%dataset
     endif
-    if (associated(dataset%dataset) .and. &
-        .not.associated(default_dataset%dataset)) then
-      default_dataset%dataset => dataset%dataset
-    endif
+!geh: We cannot overwrite the default dataset pointer
+!    if (associated(dataset%dataset) .and. &
+!        .not.associated(default_dataset%dataset)) then
+!      default_dataset%dataset => dataset%dataset
+!    endif
   endif
   
   if (associated(dataset%time_series)) then
