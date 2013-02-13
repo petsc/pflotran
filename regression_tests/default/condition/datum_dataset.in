@@ -47,12 +47,12 @@ GRID
 END
 
 DATASET xy_dataset
-  FILENAME datum_dataset.h5
+  FILENAME datum_dataset_in.h5
   HDF5_DATASET_NAME test_surface
 END
 
 DATASET y_dataset
-  FILENAME datum_dataset.h5
+  FILENAME datum_dataset_in.h5
   HDF5_DATASET_NAME y_line
 END
 

@@ -31,7 +31,7 @@ END
 
 DATASET surface
   MAX_BUFFER_SIZE 5
-  FILENAME dataset.h5
+  FILENAME 543_datum_dataset_in.h5
   HDF5_DATASET_NAME test_surface
 END
 

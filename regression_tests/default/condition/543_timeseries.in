@@ -1,5 +1,27 @@
 :Description: 3D test problem for variably saturated flow and tracer transport
 
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    ! eight corners
+    1
+    5
+    16
+    20
+    41
+    45
+    56
+    60
+    ! center of each side
+    8 ! west
+    23 ! south
+    26 ! west
+    35 ! east
+    38 ! north
+    54 ! top
+  /
+END
+
 :=========================== flow mode ========================================
 MODE RICHARDS
 
