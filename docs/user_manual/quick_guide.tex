@@ -1726,6 +1726,30 @@ and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
+\paragraph{Rate Limiter}
+
+A rate-limited form of the mineral kinetic rate law can be devised according to the expression
+\EQ\label{ratemintran}
+\widehat I_m \eq -a_m^{} \left(\sum_l \P_{ml}^{} k_{ml}^{}\right) \left[ \dfrac{1-\left(K_m Q_m\right)^{1/\sigma_m}}{1+\dfrac{k_{ml}^{}}{k_{ml}^{\rm lim}} \left(K_m Q_m\right)^{1/\sigma_m}} \right],
+\EN
+with rate-limiter $r_{\rm lim}$. In the limit $K_mQ_m\rightarrow\infty$, the rate becomes
+\EQ
+\lim_{K_m Q_m\rightarrow\infty}\widehat I_m \eq k_{ml}^{\rm lim} a_m^{}\sum_l \P_{ml}^{}.
+\EN
+Defining the affinity factor
+\EQ
+\Omega_m \eq 1-\left(K_m Q_m\right)^{1/\sigma_m},
+\EN
+or
+\EQ
+K_mQ_m \eq \Big(1-\Omega_m\Big)^{\sigma_m},
+\EN
+the rate may be expressed alternatively as
+\EQ
+\widehat I_m \eq -a_m^{} \sum_l \P_{ml}^{} k_{ml}^{} 
+\dfrac{\Omega_m}{1+\dfrac{k_{ml}^{}}{k_{ml}^{\rm lim}} \big(1-\Omega_m\big)}.
+\EN
+
 \paragraph{Changes in Material Properties}
 
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
@@ -2891,7 +2915,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 \item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 ~\\
-\item [RATE\_LIMITER] \ {\tt <Value>} [---]
+\item [RATE\_LIMITER] \ {\tt <Value>} [mol/m$^2$/s] \ [see Eqn.\eqref{ratemintran}]
 ~\\
 \item [IRREVERSIBLE] \ 
 ~\\
