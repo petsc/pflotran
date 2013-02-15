@@ -4300,8 +4300,8 @@ subroutine RTSetPlotVariables(realization)
       if (reaction%total_sorb_print(i)) then
         name = 'Total Sorbed ' // trim(reaction%primary_species_names(i))
         units = 'mol/m^3'
-       call  OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
-                                     TOTAL_SORBED,i)        
+        call  OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                      TOTAL_SORBED,i)        
       endif
     enddo
   endif
@@ -4311,7 +4311,7 @@ subroutine RTSetPlotVariables(realization)
       if (reaction%total_sorb_mobile_print(i)) then
         name = 'Total Sorbed Mobile ' // &
                trim(reaction%colloid_species_names(i))
-        units = '??'
+        units = trim(tot_mol_char)
         call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
                                      TOTAL_SORBED_MOBILE,i)  
       endif
