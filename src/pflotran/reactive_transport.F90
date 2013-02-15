@@ -4207,7 +4207,7 @@ subroutine RTSetPlotVariables(realization)
   do i=1,reaction%mineral%nkinmnrl
     if (reaction%mineral%kinmnrl_print(i)) then
       name = trim(reaction%mineral%kinmnrl_names(i)) // ' Rate'
-      units = 'mol/sec/m^3'
+      units = 'mol/m^3/sec'
       call OutputVariableAddToList(list,name,OUTPUT_RATE,units, &
                                    MINERAL_RATE,i)      
     endif
@@ -4341,7 +4341,7 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_age) then
     if (reaction%species_idx%tracer_age_id > 0) then
       name = 'Tracer Age'
-      units = ''
+      units = 'sec-molar'
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                    AGE,reaction%species_idx%tracer_age_id, &
                                    reaction%species_idx%tracer_aq_id)       
