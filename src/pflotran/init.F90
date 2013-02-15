@@ -2298,6 +2298,7 @@ subroutine setFlowMode(option)
       option%gas_phase = 2
       option%nflowdof = 2
       option%nflowspec = 1
+      option%use_isothermal = PETSC_FALSE
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1
@@ -2305,6 +2306,7 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
+      option%use_isothermal = PETSC_FALSE
    case('THMC')
       option%iflowmode = THMC_MODE
       option%nphase = 1
@@ -2313,6 +2315,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 6
       option%nflowspec = 2
       option%nmechdof = 3
+      option%use_isothermal = PETSC_FALSE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
