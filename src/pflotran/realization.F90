@@ -15,7 +15,7 @@ module Realization_class
   use Discretization_module
   use Field_module
   use Debug_module
-  use Velocity_module
+  use Uniform_Velocity_module
   use Waypoint_module
   use Output_Aux_module
   
@@ -45,7 +45,8 @@ private
     type(dataset_type), pointer :: datasets
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
-    type(velocity_dataset_type), pointer :: velocity_dataset
+    type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
+    character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
     
     type(waypoint_list_type), pointer :: waypoints
     
@@ -150,8 +151,9 @@ function RealizationCreate2(option)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
   nullify(realization%datasets)
-  nullify(realization%velocity_dataset)
+  nullify(realization%uniform_velocity_dataset)
   nullify(realization%sec_transport_constraint)
+  realization%nonuniform_velocity_filename = ''
 
   nullify(realization%waypoints)
 
@@ -1379,9 +1381,7 @@ subroutine RealizationUpdate(realization)
                            realization%option, &
                            realization%option%time)
   call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
-  if (associated(realization%velocity_dataset)) then
-    call VelocityDatasetUpdate(realization%option,realization%option%time, &
-                               realization%velocity_dataset)
+  if (associated(realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(realization)
   endif
 ! currently don't use aux_vars, just condition for src/sinks
@@ -1444,9 +1444,12 @@ subroutine RealizUpdateUniformVelocity(realization)
   
   type(realization_type) :: realization
   
+  call UniformVelocityDatasetUpdate(realization%option, &
+                                    realization%option%time, &
+                                    realization%uniform_velocity_dataset)
   call PatchUpdateUniformVelocity(realization%patch, &
-                                  realization%velocity_dataset%cur_value, &
-                                      realization%option)
+                            realization%uniform_velocity_dataset%cur_value, &
+                            realization%option)
  
 end subroutine RealizUpdateUniformVelocity
 
@@ -1553,12 +1556,12 @@ subroutine RealizationAddWaypointsToList(realization)
   enddo
 
   ! add update of velocity fields
-  if (associated(realization%velocity_dataset)) then
-    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
-        size(realization%velocity_dataset%times) > 1) then
-      do itime = 1, size(realization%velocity_dataset%times)
+  if (associated(realization%uniform_velocity_dataset)) then
+    if (realization%uniform_velocity_dataset%times(1) > 1.d-40 .or. &
+        size(realization%uniform_velocity_dataset%times) > 1) then
+      do itime = 1, size(realization%uniform_velocity_dataset%times)
         waypoint => WaypointCreate()
-        waypoint%time = realization%velocity_dataset%times(itime)
+        waypoint%time = realization%uniform_velocity_dataset%times(itime)
         waypoint%update_conditions = PETSC_TRUE
         call WaypointInsertInList(waypoint,waypoint_list)
       enddo
@@ -2523,7 +2526,7 @@ subroutine RealizationDestroy(realization)
 
   call DatasetDestroy(realization%datasets)
   
-  call VelocityDatasetDestroy(realization%velocity_dataset)
+  call UniformVelocityDatasetDestroy(realization%uniform_velocity_dataset)
   
   call DiscretizationDestroy(realization%discretization)
   
