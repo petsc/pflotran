@@ -3454,7 +3454,8 @@ subroutine StepperUpdateFlowAuxVars(realization)
     case(RICHARDS_MODE)
       call RichardsUpdateAuxVars(realization)
     case(G_MODE)
-      call GeneralUpdateAuxVars(realization)
+                                            ! do not update state
+      call GeneralUpdateAuxVars(realization,PETSC_FALSE)
   end select    
 
 end subroutine StepperUpdateFlowAuxVars

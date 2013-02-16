@@ -29,7 +29,7 @@ module General_module
          GeneralInitializeTimestep, GeneralUpdateAuxVars, &
          GeneralMaxChange, GeneralUpdateSolution, &
          GeneralGetTecplotHeader, GeneralComputeMassBalance, &
-         GeneralDestroy
+         GeneralDestroy, GeneralSetPlotVariables
 
 contains
 
@@ -156,6 +156,8 @@ subroutine GeneralSetup(realization)
     enddo
     cur_level => cur_level%next
   enddo
+  
+  call GeneralSetPlotVariables(realization)  
 
 end subroutine GeneralSetup
 
@@ -449,13 +451,14 @@ end subroutine GeneralUpdateMassBalancePatch
 ! date: 03/10/11
 !
 ! ************************************************************************** !
-subroutine GeneralUpdateAuxVars(realization)
+subroutine GeneralUpdateAuxVars(realization,update_state)
 
   use Realization_class
   use Level_module
   use Patch_module
 
   type(realization_type) :: realization
+  PetscBool :: update_state
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -466,8 +469,8 @@ subroutine GeneralUpdateAuxVars(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch             ! do not update state
-      call GeneralUpdateAuxVarsPatch(realization,PETSC_FALSE)
+      realization%patch => cur_patch             
+      call GeneralUpdateAuxVarsPatch(realization,update_state)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -544,13 +547,15 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
-      call GeneralUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
-                              gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                              global_aux_vars(ghosted_id), &
-                              patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
-                              ghosted_id, &  ! for debugging
-                              option)
+      call GeneralAuxVarUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
+                                    gen_aux_vars(ZERO_INTEGER,ghosted_id), &
+                                    global_aux_vars(ghosted_id), &
+                                    patch%saturation_function_array( &
+                                      patch%sat_func_id(ghosted_id))%ptr, &
+                                    porosity_loc_p(ghosted_id), &
+                                    perm_xx_loc_p(ghosted_id), &
+                                    ghosted_id, &  ! for debugging
+                                    option)
     endif
   enddo
 
@@ -583,6 +588,13 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       ! set this based on data given 
       global_aux_vars_bc(sum_connection)%istate = &
         boundary_condition%flow_condition%iphase
+      ! update state and update aux var; this could result in two update to 
+      ! the aux var as update state updates if the state changes
+      call GeneralAuxVarUpdateState(xxbc,gen_aux_vars_bc(sum_connection), &
+                         global_aux_vars_bc(sum_connection), &
+                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                         porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
+                         ghosted_id,option)
       call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
                          patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
@@ -970,22 +982,22 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
        x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
+       x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
+       x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
        pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_MOLE_FRACTION_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_MOLE_FRACTION_DOF)
-       pert(GENERAL_TEMPERATURE_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
+       pert(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
+       pert(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
+       x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
        pert(GENERAL_GAS_PRESSURE_DOF) = 1.d0
        if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > 1.d0) then 
          pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
        else
          pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
        endif
-       pert(GENERAL_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
+       pert(GENERAL_GAS_STATE_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
     case(TWO_PHASE_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
@@ -1012,8 +1024,9 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_debug,option)
     call GeneralAuxVarCopy(gen_aux_var(idof),general_aux_var_debug,option)
-    call GeneralUpdateState(x_pert,general_aux_var_debug,global_aux_var,&
-                            saturation_function,0.d0,0.d0,ghosted_id,option)
+    call GeneralAuxVarUpdateState(x_pert,general_aux_var_debug, &
+                                  global_aux_var,saturation_function,0.d0, &
+                                  0.d0,ghosted_id,option)
     if (global_aux_var%istate /= global_aux_var_debug%istate) then
       write(option%io_buffer,'(''Change in state: '',i3,'' -> '',i3)') &
         global_aux_var%istate, global_aux_var_debug%istate
@@ -1503,7 +1516,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
               bc_type == CONDUCTANCE_BC) then
                 ! flow in         ! boundary cell is <= pref
             if (delta_pressure > 0.d0 .and. &
-                global_aux_var_up%pres(iphase)-option%reference_pressure < eps) then
+                gen_aux_var_up%pres(iphase)-option%reference_pressure < eps) then
               delta_pressure = 0.d0
             endif
           endif
@@ -1536,9 +1549,9 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         if (dabs(aux_vars(idof)) > floweps) then
           v_darcy(iphase) = aux_vars(idof)
           if (v_darcy(iphase) > 0.d0) then 
-            density_ave = global_aux_var_up%den(iphase)
+            density_ave = gen_aux_var_up%den(iphase)
           else 
-            density_ave = global_aux_var_dn%den(iphase)
+            density_ave = gen_aux_var_dn%den(iphase)
           endif 
         endif
     end select
@@ -2799,125 +2812,12 @@ subroutine GeneralMaxChange(realization)
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dcmax,ierr)
-  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
-  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
+!  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+!  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dcmax,ierr)
+!  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+!  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
 
 end subroutine GeneralMaxChange
-
-! ************************************************************************** !
-!
-! GeneralUpdateState: Updates the state and swaps primary variables
-! author: Glenn Hammond
-! date: 05/25/11
-!
-! ************************************************************************** !
-subroutine GeneralUpdateState(x,gen_aux_var,global_aux_var, &
-                              saturation_function,por,perm,ghosted_id,option)
-
-  use Option_module
-  use Global_Aux_module
-  use water_eos_module
-  use Gas_Eos_module
-  use Saturation_Function_module
-  
-  implicit none
-
-  type(option_type) :: option
-  PetscInt :: ghosted_id
-  type(saturation_function_type) :: saturation_function
-  type(general_auxvar_type) :: gen_aux_var
-  type(global_auxvar_type) :: global_aux_var
-
-  PetscReal, parameter :: epsilon = 1.d-6
-  PetscReal :: x(option%nflowdof)
-  PetscReal :: por, perm
-  PetscInt :: apid, cpid, vpid
-  PetscInt :: gid, lid, acid, wid, eid
-  PetscReal :: dummy, guess
-  PetscReal :: Ps
-  PetscBool :: flag
-  PetscErrorCode :: ierr
-
-  lid = option%liquid_phase
-  gid = option%gas_phase
-  apid = option%air_pressure_id
-  cpid = option%capillary_pressure_id
-  vpid = option%vapor_pressure_id
-
-  acid = option%air_id ! air component id
-  wid = option%water_id
-  eid = option%energy_id
-
-  flag = PETSC_FALSE
-  
-  select case(global_aux_var%istate)
-    case(LIQUID_STATE)
-      call psat(gen_aux_var%temp,Ps,ierr)
-      if (gen_aux_var%pres(vpid) <= Ps) then
-        global_aux_var%istate = TWO_PHASE_STATE
-!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-!geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
-        ! vapor pressure needs to be >= epsilon
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(lid)
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(lid) - Ps
-        x(GENERAL_GAS_SATURATION_DOF) = epsilon
-        flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''Liquid -> 2 Phase at Cell '',i11)') ghosted_id
-        call printMsg(option)
-#endif        
-      endif
-    case(GAS_STATE)
-      call psat(gen_aux_var%temp,Ps,ierr)
-      if (gen_aux_var%pres(vpid) >= Ps) then
-        global_aux_var%istate = TWO_PHASE_STATE
-!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
-        x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
-        flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''Gas -> 2 Phase at Cell '',i11)') ghosted_id
-        call printMsg(option)
-#endif        
-      endif
-    case(TWO_PHASE_STATE)
-      if (gen_aux_var%sat(gid) < 0.d0) then
-        ! convert to liquid state
-        global_aux_var%istate = LIQUID_STATE
-        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
-                                         gen_aux_var%pres(vpid)
-        x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var%xmol(acid,lid)
-        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
-        flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''2 Phase -> Liquid at Cell '',i11)') ghosted_id
-        call printMsg(option)
-#endif        
-      else if (gen_aux_var%sat(gid) > 1.d0) then
-        ! convert to gas state
-        global_aux_var%istate = GAS_STATE
-        x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
-                                      gen_aux_var%pres(vpid)
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
-        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
-        flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''2 Phase -> Gas at Cell '',i11)') ghosted_id
-        call printMsg(option)
-#endif        
-      endif
-  end select
-  
-  if (flag) then
-    call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
-                              saturation_function,por,perm,option)
-    option%variables_swapped = PETSC_TRUE
-  endif
-
-end subroutine GeneralUpdateState
 
 ! ************************************************************************** !
 !
@@ -3044,6 +2944,102 @@ function GeneralGetTecplotHeader(realization,icolumn)
   GeneralGetTecplotHeader = string
 
 end function GeneralGetTecplotHeader
+
+! ************************************************************************** !
+!
+! GeneralSetPlotVariables: Adds variables to be printed to list
+! author: Glenn Hammond
+! date: 02/15/13
+!
+! ************************************************************************** !
+subroutine GeneralSetPlotVariables(realization)
+  
+  use Realization_class
+  use Output_Aux_module
+  use Variables_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_list_type), pointer :: list
+  type(output_variable_type), pointer :: output_variable
+  
+  list => realization%output_option%output_variable_list
+
+  if (associated(list%first)) then
+    return
+  endif
+  
+  name = 'Temperature'
+  units = 'C'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               TEMPERATURE)
+
+  name = 'Liquid Pressure'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+                               LIQUID_PRESSURE)
+
+  name = 'Gas Pressure'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+                               GAS_PRESSURE)
+
+  name = 'Liquid Saturation'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+                               LIQUID_SATURATION)
+  
+  name = 'Gas Saturation'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+                               GAS_SATURATION)
+  
+  name = 'Liquid Density'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_DENSITY)
+  
+  name = 'Gas Density'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_DENSITY)
+  
+  name = 'X_g^l'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_MOLE_FRACTION, &
+                               realization%option%air_id)
+  
+  name = 'X_l^l'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_MOLE_FRACTION, &
+                               realization%option%water_id)
+  
+  name = 'X_g^g'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_MOLE_FRACTION, &
+                               realization%option%air_id)
+  
+  name = 'X_l^g'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_MOLE_FRACTION, &
+                               realization%option%water_id)
+  
+  name = 'Thermodynamic State'
+  units = ''
+  output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE,units,STATE)
+  output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList( &
+         realization%output_option%output_variable_list,output_variable)   
+  
+end subroutine GeneralSetPlotVariables
 
 ! ************************************************************************** !
 !

@@ -6,14 +6,24 @@ module General_Aux_module
 
 #include "definitions.h"
 
+  ! thermodynamic state of fluid ids
+  PetscInt, parameter, public :: LIQUID_STATE = 1
+  PetscInt, parameter, public :: GAS_STATE = 2
+  PetscInt, parameter, public :: TWO_PHASE_STATE = 3
+
   PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_AIR_PRESSURE_DOF = 2
   PetscInt, parameter, public :: GENERAL_GAS_SATURATION_DOF = 3
   PetscInt, parameter, public :: GENERAL_LIQUID_FLUX_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_FLUX_DOF = 1
-  PetscInt, parameter, public :: GENERAL_TEMPERATURE_DOF = 3
-  PetscInt, parameter, public :: GENERAL_MOLE_FRACTION_DOF = 2
+  
+  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_TEMPERATURE_DOF = 3
+  PetscInt, parameter, public :: GENERAL_GAS_STATE_TEMPERATURE_DOF = 3
+  PetscInt, parameter, public :: GENERAL_2PHASE_STATE_TEMPERATURE_DOF = 2
+  
+  PetscInt, parameter, public :: GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF = 2
+  
   PetscInt, parameter, public :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
   PetscInt, parameter, public :: GENERAL_GAS_CONDUCTANCE_DOF = -2
   PetscInt, parameter, public :: GENERAL_FLUX_DOF = 4
@@ -63,7 +73,7 @@ module General_Aux_module
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
             GeneralAuxVarCompute, GeneralAuxVarInit, &
             GeneralAuxVarCopy, GeneralAuxVarDestroy, &
-            GeneralAuxVarStrip
+            GeneralAuxVarStrip, GeneralAuxVarUpdateState
 
 contains
 
@@ -134,6 +144,8 @@ subroutine GeneralAuxVarInit(aux_var,option)
   aux_var%den = 0.d0
   allocate(aux_var%den_kg(option%nphase))
   aux_var%den_kg = 0.d0
+  ! keep at 25 C.
+  aux_var%temp = 25.d0
   allocate(aux_var%xmol(option%nflowspec,option%nphase))
   aux_var%xmol = 0.d0
   allocate(aux_var%H(option%nphase))
@@ -259,8 +271,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
       gen_aux_var%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
-      gen_aux_var%xmol(acid,lid) = x(GENERAL_MOLE_FRACTION_DOF)
-      gen_aux_var%temp = x(GENERAL_TEMPERATURE_DOF)
+      gen_aux_var%xmol(acid,lid) = x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
+      gen_aux_var%temp = x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
 
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
       gen_aux_var%sat(lid) = 1.d0
@@ -275,7 +287,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
     case(GAS_STATE)
       gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
       gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
-      gen_aux_var%temp = x(GENERAL_TEMPERATURE_DOF)
+      gen_aux_var%temp = x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
 
       gen_aux_var%sat(lid) = 0.d0
       gen_aux_var%sat(gid) = 1.d0
@@ -357,6 +369,122 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
 end subroutine GeneralAuxVarCompute
 
+
+! ************************************************************************** !
+!
+! GeneralUpdateState: Updates the state and swaps primary variables
+! author: Glenn Hammond
+! date: 05/25/11
+!
+! ************************************************************************** !
+subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
+                                    saturation_function,por,perm,ghosted_id, &
+                                    option)
+
+  use Option_module
+  use Global_Aux_module
+  use water_eos_module
+  use Gas_Eos_module
+  use Saturation_Function_module
+  
+  implicit none
+
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  type(saturation_function_type) :: saturation_function
+  type(general_auxvar_type) :: gen_aux_var
+  type(global_auxvar_type) :: global_aux_var
+
+  PetscReal, parameter :: epsilon = 1.d-6
+  PetscReal :: x(option%nflowdof)
+  PetscReal :: por, perm
+  PetscInt :: apid, cpid, vpid
+  PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: dummy, guess
+  PetscReal :: Ps
+  PetscBool :: flag
+  PetscErrorCode :: ierr
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
+
+  flag = PETSC_FALSE
+  
+  select case(global_aux_var%istate)
+    case(LIQUID_STATE)
+      call psat(gen_aux_var%temp,Ps,ierr)
+      if (gen_aux_var%pres(vpid) <= Ps) then
+        global_aux_var%istate = TWO_PHASE_STATE
+!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+!geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
+        ! vapor pressure needs to be >= epsilon
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(lid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(lid) - Ps
+        x(GENERAL_GAS_SATURATION_DOF) = epsilon
+        flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''Liquid -> 2 Phase at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
+      endif
+    case(GAS_STATE)
+      call psat(gen_aux_var%temp,Ps,ierr)
+      if (gen_aux_var%pres(vpid) >= Ps) then
+        global_aux_var%istate = TWO_PHASE_STATE
+!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
+        flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''Gas -> 2 Phase at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
+      endif
+    case(TWO_PHASE_STATE)
+      if (gen_aux_var%sat(gid) < 0.d0) then
+        ! convert to liquid state
+        global_aux_var%istate = LIQUID_STATE
+        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
+                                         gen_aux_var%pres(vpid)
+        x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
+          gen_aux_var%xmol(acid,lid)
+        x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
+        flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''2 Phase -> Liquid at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
+      else if (gen_aux_var%sat(gid) > 1.d0) then
+        ! convert to gas state
+        global_aux_var%istate = GAS_STATE
+        x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
+                                      gen_aux_var%pres(vpid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
+        flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''2 Phase -> Gas at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
+      endif
+  end select
+  
+  if (flag) then
+    call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
+                              saturation_function,por,perm,option)
+    option%variables_swapped = PETSC_TRUE
+  endif
+
+end subroutine GeneralAuxVarUpdateState
+
 ! ************************************************************************** !
 !
 ! GeneralAuxVarSingleDestroy: Deallocates a mode auxiliary object
@@ -421,7 +549,7 @@ subroutine GeneralAuxVarArray2Destroy(aux_vars)
   if (associated(aux_vars)) then
     do iaux = 1, size(aux_vars,2)
       do idof = 1, size(aux_vars,1)
-        call GeneralAuxVarStrip(aux_vars(idof,iaux))
+        call GeneralAuxVarStrip(aux_vars(idof-1,iaux))
       enddo
     enddo  
     deallocate(aux_vars)
