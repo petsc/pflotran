@@ -8,8 +8,8 @@
 %\usepackage{fancyheadings}
 \usepackage{fancyhdr}
 \usepackage{tabularx}
-\usepackage{verbatim}
-\usepackage{moreverb}
+\usepackage{comment}
+
 \usepackage{float}
 \usepackage{fancybox}
 \usepackage{graphicx}
@@ -23,6 +23,12 @@
 \usepackage{color}
 \usepackage[table]{xcolor}
 %\usepackage{toc_entr}
+
+%\usepackage{verbatim}
+%\usepackage{moreverb}
+%\usepackage{sverb}
+\usepackage{fancyvrb}
+
 \usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
 
 \definecolor{lightgray}{gray}{0.9}
@@ -334,8 +340,7 @@ Flow diagram definitions:
 \item {\bf Auxiliary Data} object: Pointer to auxiliary data within a realization/patch
 \end{enumerate}
 
-
-\begin{figure}[t]\centering
+\begin{figure}[ht]\centering
 \includegraphics[width=0.8\textwidth]{./figs/multi-realization_flowchart}
 
 \vspace{3mm}
@@ -343,6 +348,14 @@ Flow diagram definitions:
 \caption{PFLOTRAN flow chart.}
 \label{fchart}
 \end{figure}
+
+\noindent
+The calling sequence to major subroutines is given below. This list is still incomplete.
+
+\fvset{formatcom=\color{teal},numbers=left,fontfamily=helvetica,fontsize=\footnotesize,fontshape=it,fontseries=b}
+\VerbatimInput{./pflotran_flow_diag.tex}
+
+\normalsize
 
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
