@@ -219,7 +219,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: krg, visg, dkrg_Se
-  PetscReal :: K_H, Ps
+  PetscReal :: K_H_tilde, Ps
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid
   PetscErrorCode :: ierr
@@ -280,8 +280,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
       call psat(gen_aux_var%temp,Ps,ierr)
       call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
-                             Ps,K_H)
-      gen_aux_var%pres(apid) = K_H*gen_aux_var%xmol(acid,lid)
+                             Ps,K_H_tilde)
+      gen_aux_var%pres(apid) = K_H_tilde*gen_aux_var%xmol(acid,lid)
       gen_aux_var%pres(vpid) = gen_aux_var%pres(lid) - gen_aux_var%pres(apid)
 
     case(GAS_STATE)
@@ -313,9 +313,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cpid)
 
       call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
-                             gen_aux_var%pres(vpid),K_H)
-      gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / &
-                                  (gen_aux_var%pres(gid)*K_H)
+                             gen_aux_var%pres(vpid),K_H_tilde)
+      gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / K_H_tilde
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
       gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
