@@ -219,7 +219,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: krg, visg, dkrg_Se
-  PetscReal :: K_H_tilde, Ps
+  PetscReal :: K_H_tilde, P_sat
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid
   PetscErrorCode :: ierr
@@ -275,15 +275,19 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%temp = x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
 
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
+      gen_aux_var%xmol(:,gid) = 0.d0
       gen_aux_var%sat(lid) = 1.d0
       gen_aux_var%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,Ps,ierr)
-      call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
-                             Ps,K_H_tilde)
+      call psat(gen_aux_var%temp,P_sat,ierr)
+      call Henry_air_noderiv(dummy,gen_aux_var%temp, &
+                             P_sat,K_H_tilde)
+      gen_aux_var%pres(gid) = gen_aux_var%pres(lid)
       gen_aux_var%pres(apid) = K_H_tilde*gen_aux_var%xmol(acid,lid)
+      ! need vpres for liq -> 2ph check
       gen_aux_var%pres(vpid) = gen_aux_var%pres(lid) - gen_aux_var%pres(apid)
-
+      gen_aux_var%pres(cpid) = 0.d0
+      
     case(GAS_STATE)
       gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
       gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
@@ -292,9 +296,11 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(lid) = 0.d0
       gen_aux_var%sat(gid) = 1.d0
       gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
+      gen_aux_var%xmol(:,lid) = 0.d0
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
       gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
-
+      gen_aux_var%pres(lid) = 0.d0
+      
     case(TWO_PHASE_STATE)
       gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
       gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
@@ -303,17 +309,18 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(lid) = 1.d0 - gen_aux_var%sat(gid)
       gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
       
+      P_sat = gen_aux_var%pres(vpid)
       guess = gen_aux_var%temp
-      call Tsat(gen_aux_var%temp,gen_aux_var%pres(vpid),dummy,guess,ierr)
-
+      call Tsat(gen_aux_var%temp,P_sat,dummy,guess,ierr)
+      
       call SatFuncGetCapillaryPressure(gen_aux_var%pres(cpid), &
                                        gen_aux_var%sat(lid), &
                                        saturation_function,option)      
 
       gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cpid)
 
-      call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
-                             gen_aux_var%pres(vpid),K_H_tilde)
+      call Henry_air_noderiv(dummy,gen_aux_var%temp, &
+                             P_sat,K_H_tilde)
       gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / K_H_tilde
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
       gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
@@ -333,11 +340,11 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                          ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
                          (gen_aux_var%pres(lid) / gen_aux_var%den(lid) * &
                           option%scale)
-                         
+    ! this does not need to be calculated for LIQUID_STATE (=1)                     
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
     call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                      gen_aux_var%pres(vpid),visl,ierr)
+                      P_sat,visl,ierr)
     gen_aux_var%kvr(lid) = krl/visl
   endif
 
@@ -345,7 +352,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       global_aux_var%istate == TWO_PHASE_STATE) then
     call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
                               option%scale,den_air,h_air,u)
-    call steameos(gen_aux_var%temp,gen_aux_var%pres(vpid), &
+    call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
                   gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
                   h_wat_vap,hgp,hgt,option%scale,ierr)      
     
@@ -359,6 +366,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                          (gen_aux_var%pres(gid) / gen_aux_var%den(gid) * &
                           option%scale)
 
+    ! this does not need to be calculated for GAS_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(gid),krg,dkrg_Se, &
                                   saturation_function,gid,PETSC_FALSE,option)
     call visgas_noderiv(gen_aux_var%temp,gen_aux_var%pres(apid), &
@@ -400,7 +408,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   PetscInt :: apid, cpid, vpid
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: dummy, guess
-  PetscReal :: Ps
+  PetscReal :: P_sat
   PetscBool :: flag
   PetscErrorCode :: ierr
 
@@ -418,14 +426,14 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-      call psat(gen_aux_var%temp,Ps,ierr)
-      if (gen_aux_var%pres(vpid) <= Ps) then
+      call psat(gen_aux_var%temp,P_sat,ierr)
+      if (gen_aux_var%pres(vpid) <= P_sat) then
         global_aux_var%istate = TWO_PHASE_STATE
 !geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
 !geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
         ! vapor pressure needs to be >= epsilon
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(lid)
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(lid) - Ps
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(apid) + P_sat
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
@@ -434,12 +442,14 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #endif        
       endif
     case(GAS_STATE)
-      call psat(gen_aux_var%temp,Ps,ierr)
-      if (gen_aux_var%pres(vpid) >= Ps) then
+      call psat(gen_aux_var%temp,P_sat,ierr)
+      if (gen_aux_var%pres(vpid) >= P_sat) then
         global_aux_var%istate = TWO_PHASE_STATE
 !geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+!        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
+        ! first two primary dep vars do not change
+        !x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(gid)
+        !x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
@@ -451,8 +461,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
       if (gen_aux_var%sat(gid) < 0.d0) then
         ! convert to liquid state
         global_aux_var%istate = LIQUID_STATE
-        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
-                                         gen_aux_var%pres(vpid)
+!        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
+!                                         gen_aux_var%pres(lid)
+        x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var%pres(gid)
         x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
           gen_aux_var%xmol(acid,lid)
         x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
@@ -464,9 +475,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
       else if (gen_aux_var%sat(gid) > 1.d0) then
         ! convert to gas state
         global_aux_var%istate = GAS_STATE
-        x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
-                                      gen_aux_var%pres(vpid)
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        ! first two pdv do not change
+        !x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
+        !                              gen_aux_var%pres(vpid)
+        !x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
