@@ -489,12 +489,91 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   end select
   
   if (flag) then
+#ifdef DEBUG_GENERAL
+    call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+                             'Before Update',option)
+#endif
     call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                               saturation_function,por,perm,option)
+#ifdef DEBUG_GENERAL
+    call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+                             'After Update',option)
+#endif
     option%variables_swapped = PETSC_TRUE
   endif
 
 end subroutine GeneralAuxVarUpdateState
+
+! ************************************************************************** !
+!
+! GeneralPrintAuxVars: Prints out the contents of an auxvar
+! author: Glenn Hammond
+! date: 02/18/13
+!
+! ************************************************************************** !
+subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
+                               string,option)
+
+  use Global_Aux_module
+  use Option_module
+
+  implicit none
+
+  type(general_auxvar_type) :: general_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscInt :: ghosted_id
+  character(len=*) :: string
+  type(option_type) :: option
+
+  PetscInt :: apid, cpid, vpid
+  PetscInt :: gid, lid, acid, wid, eid
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
+
+  print *, '--------------------------------------------------------'
+  print *, trim(string)
+  print *, '             cell id: ', ghosted_id
+  select case(global_auxvar%istate)
+    case(LIQUID_STATE)
+      print *, ' Thermodynamic state: Liquid phase'
+    case(GAS_STATE)
+      print *, ' Thermodynamic state: Gas phase'
+    case(TWO_PHASE_STATE)
+      print *, ' Thermodynamic state: Two phase'
+  end select
+  print *, '     liquid pressure: ', general_auxvar%pres(lid)
+  print *, '        gas pressure: ', general_auxvar%pres(gid)
+  print *, '        air pressure: ', general_auxvar%pres(apid)
+  print *, '  capillary pressure: ', general_auxvar%pres(cpid)
+  print *, '      vapor pressure: ', general_auxvar%pres(vpid)
+  print *, '   liquid saturation: ', general_auxvar%sat(lid)
+  print *, '      gas saturation: ', general_auxvar%sat(gid)
+  print *, 'liquid density [mol]: ', general_auxvar%den(lid)
+  print *, '   gas density [mol]: ', general_auxvar%den(gid)
+  print *, ' liquid density [kg]: ', general_auxvar%den_kg(lid)
+  print *, '    gas density [kg]: ', general_auxvar%den_kg(gid)
+  print *, '     temperature [C]: ', general_auxvar%temp
+  print *, '  liquid H [MJ/kmol]: ', general_auxvar%H(lid)
+  print *, '     gas H [MJ/kmol]: ', general_auxvar%H(gid)
+  print *, '  liquid U [MJ/kmol]: ', general_auxvar%U(lid)
+  print *, '     gas U [MJ/kmol]: ', general_auxvar%U(gid)
+  print *, ' X (water in liquid): ', general_auxvar%xmol(lid,lid)
+  print *, '   X (air in liquid): ', general_auxvar%xmol(gid,lid)
+  print *, '    X (water in gas): ', general_auxvar%xmol(lid,gid)
+  print *, '      X (air in gas): ', general_auxvar%xmol(gid,gid)
+  print *, '          liquid kvr: ', general_auxvar%kvr(lid)
+  print *, '             gas kvr: ', general_auxvar%kvr(gid)
+  print *, '--------------------------------------------------------'
+
+end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
 !
