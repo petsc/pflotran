@@ -365,6 +365,23 @@ The calling sequence to major subroutines is given below. This list is still inc
 
 \subsection{Unstructured Grids}
 
+\begin{figure}\centering
+\includegraphics[width=0.6\textwidth]{./figs/5x4x3_domain}
+\caption{
+(a) Example of a 5$\times$4$\times$3 unstructured grid problem 
+with default decomposition across two processors. Cells labelled in natural ID.
+(b) ParMETIS decomposition of the domain; 
+(c) Representation of a global PETSc vector}
+\label{fig:543_domain_decomp}
+\end{figure}
+
+\begin{figure}\centering
+\includegraphics[width=1\textwidth]{./figs/5x4x3_local_domain}
+\caption{(a-b) Local and ghost cells on proc-0 and proc-1 with cell IDs in PETSc order.
+(c-d) Local PETSc Vector with cell IDs in local ghosted order.}
+\label{fig:543_local_vec}
+\end{figure}
+
 %+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 \section{Method of Solution}
