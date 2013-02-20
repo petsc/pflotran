@@ -649,7 +649,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     rt_auxvar%pri_molal = conc_upd(:,i)
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
     total_upd(:,i) = rt_auxvar%total(:,1)
-    dtotal(:,:,i) = sec_transport_vars%sec_rt_auxvar(i)%aqueous%dtotal(:,:,1)
+    dtotal(:,:,i) = rt_auxvar%aqueous%dtotal(:,:,1)
   enddo
                           
 !================ Calculate the secondary residual =============================        
