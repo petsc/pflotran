@@ -684,14 +684,22 @@ PFLOTRAN can be run from the command line as
 A number of command line options are available:
 
 \begin{tabular}{ll}
-{\tt -pflotranin} <input file name> & specify an input file [Default: {\tt pflotran.in}]\\
-{\tt -file\_prefix} <output file name> & specify an output file [Default: {\tt pflotran.out, \,\ldots}]\\
+\toprule
+\multicolumn{2}{c}{PFLOTRAN}\\
+\midrule
+{\tt -pflotranin} <input file name> & specify input file [Default: {\tt pflotran.in}]\\
+{\tt -file\_prefix} <output file name> & specify output file [Default: {\tt pflotran.out}]\\
 {\tt -screen\_output off} & turn off screen output\\
 %{\tt -v} &\\
 {\tt -realization\_id <integer>} & run specified realization ID\\
 {\tt -multisimulation} & run multiple input files in one run\\
 {\tt -stochastic} & Monte Carlo multiple realization run\\
-{\tt -log\_summary} & print out run performance (PETSc option)
+\midrule
+\multicolumn{2}{c}{PETSc}\\
+\midrule
+{\tt -log\_summary} & print out run performance (PETSc option)\\
+{\tt -on\_error\_abort} & aborts run on hitting NaNs\\
+\bottomrule
 \end{tabular}
 
 \subsection*{Updating PFLOTRAN}
@@ -2472,15 +2480,15 @@ Quantity & \multicolumn{1}{c}{Units}\\
 Pressure: & Pascal [Pa] (absolute)\\
 %\rowcolor[rgb]{0.5}
 Temperature: & Celcius [C]\\
-Distance: & Meter [m]\\
-Volume: & Meter$^3$ [m$^3$]\\
-Time: & Second [s]\\
-Velocity: & Meter/Second [m/s]\\
-Concentration: & Molarity [M] or Molality [m] (see MOLAL keyword)\\
-Enthalpy: & KiloJoule/mole [kJ/mol]\\
-Mass: & Kilogram [kg]\\
-Rate: & Kilogram/Second [kg/s] or Cubic Meter/Second [m$^3$/s]\\
-Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
+Distance: & meter [m]\\
+Volume: & meter$^3$ [m$^3$]\\
+Time: & second [s]\\
+Velocity: & meter/second [m/s]\\
+Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
+Enthalpy: & kiloJoule/mole [kJ/mol]\\
+Mass: & kilogram [kg]\\
+Rate: & kilogram/second [kg/s] or cubic meter/second [m$^3$/s]\\
+Surface Site Density: & mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \bottomrule[1.5pt]
 %\hline
 \end{tabular}
@@ -2537,7 +2545,7 @@ PRIMARY\_SPECIES\\
   Tracer\\
 /\\
 SECONDARY\_SPECIES\\
-  OH-\\
+  OH$-$\\
   HCO3$-$\\
   CO3$-$$-$\\
   CaHCO3+\\
@@ -2552,7 +2560,7 @@ MINERALS\\
 :\\
 MINERAL\_KINETICS\\
 Calcite\\
-RATE\_CONSTANT 1.e-8 ! [mol/cm$^3$/s]\\
+RATE\_CONSTANT 1.e-8 ! [mol/m$^2$/s]\\
 /\\
 /\\
 :\\
@@ -2796,12 +2804,12 @@ REGION all\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Initial\\
 CONCENTRATIONS\\
 Ca++    1.d-4   M  Calcite\\
-H+      8.0d0  pH\\
+H+      8.d0   pH\\
 CO2(aq) 1.d-2   G  CO2(g)\\
 Tracer  1.d-8   T\\
 /\\
-MINERALS\\
-Calcite    0.75  1.\\
+MINERALS ! vol. frac.  area\\
+Calcite      0.75      1.d2\\
 /\\
 /
 
@@ -2809,7 +2817,7 @@ Calcite    0.75  1.\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Inlet\\
 CONCENTRATIONS\\
 Ca++    1.d-6   T\\
-H+      3.0d0  pH\\
+H+      3.d0   pH\\
 CO2(aq) 1.d-3   G  CO2(g)\\
 Tracer  1.d-0   T\\
 /\\
@@ -4199,14 +4207,14 @@ LINEAR_SOLVER TRANSPORT
 \item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
 \item[TYPE] \ {\tt <char>} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
-\item[LOG\_GRID\_SPACING] \ Toggle to use logarithmic grid spacing in secondary continua
+\item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
+\item[LOG\_GRID\_SPACING] \ Toggle to use logarithmic grid spacing in secondary continua (applies to nested spheres and cubes only)
 \item[OUTER\_SPACING] \ {\tt <float>} [m] \ Outer matrix node grid spacing for logarithmic grid \ (see Eqns.\eqref{eqnloggrid})
 \item[LENGTH] \ {\tt <float>} [m] \ length of SLAB type
 \item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type
 \item[MATRIX\_BLOCK\_SIZE] \ {\tt <float>} [m] \ matrix block size for NESTED\_CUBES type
 \item[FRACTURE\_SPACING] \ {\tt <float>} [m] \ fracture spacing for NESTED\_CUBES type
 \item[RADIUS] \ {\tt <float>} [m] \ radius for NESTED\_SPHERES type
-\item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
 \item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in REV
 \item[APERTURE] \ {\tt <float>} \ Fracture aperture (if specified overrides epsilon---applicable for nested cubes only)
 \end{deflist}
