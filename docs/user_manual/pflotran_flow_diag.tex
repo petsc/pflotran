@@ -200,9 +200,11 @@ program pflotran
 		TimestepperEnforceCFLLimit
 	
 		OutputPrintCouplers
+		
 		StepperUpdateSolution
 			StepperUpdateFlowSolution
 			StepperUpdateTransportSolution
+				RTUpdateSolution
 				RealizationUpdateProperties
 					RealizationUpdatePropertiesPatch
 						RUpdateSolution
