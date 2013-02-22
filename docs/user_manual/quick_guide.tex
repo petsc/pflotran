@@ -568,16 +568,112 @@ PFLOTRAN is compiled with the command:
 where several possible options are: 
 
 \begin{tabular}{ll}
-\verb|scco2|: & --enable two-phase supercritical CO$_2$ mode\\
+\verb|scco2=1|: & --enable two-phase supercritical CO$_2$ mode\\
 %\verb|hdf5|: & --enable HDF5 I/O capability\\
-\verb|coll|: & --enable colloid-facilitated transport option\\
-\verb|temp|: & --enable temperature dependent log $K$ capability\\
-\verb|mfd|: & --enable MFD full permeability tensor capability
+\verb|coll=1|: & --enable colloid-facilitated transport option\\
+%\verb|temp|: & --enable temperature dependent log $K$ capability\\
+\verb|mfd=1|: & --enable MFD full permeability tensor capability (not operational)
 %\verb|ice|:& --enable permafrost hydrology (works only in THC mode)
 \end{tabular}
 
 \noindent
+Thus for compiling with the supercritical CO$_2$ option use: {\tt make ssco2=1 pflotran}.
 See the PFLOTRAN \verb|makefile| for additional options.
+
+\subsection{Parallel I/O using Sarat's PARALLELIO\_LIB with PFLOTRAN}
+
+Instructions for downloading and installing a parallel I/O library for use with PFLOTRAN is provided below. Note that this software is separate from PFLOTRAN and under a LGPL.
+\begin{enumerate}
+
+\item Download parallelio\_lib source code for PARALLELIO library:
+
+{\small\tt svn co blockedhttp://ascem-io.secure-water.org/ascem-io/trunk DIRNAME}
+
+where {\tt DIRNAME} is the installation directory. The username and password are:
+%\href{https://bitbucket.org/pflotran/pflotran-dev/wiki/Documentation/Strata}{Strata}
+
+username: {\tt pflotran\_dev}
+
+password: {\tt gr0undw@t3r}
+
+\item Compile PARALLELIO library:
+
+{\tt cd DIRNAME/src}
+
+{\tt make} \hfill {\it (should compile with {\tt mpicc} or equivalent)}
+
+\item Compile PFLOTRAN:
+
+Define environmental variable: {\tt PARALLELIO\_LIB} giving path to PARALLELIO library:
+
+{\tt export PARALLELIO\_LIB=\$PWD} \hfill {\it (bash shell)}
+
+or
+
+{\tt setenv PARALLELIO\_LIB \$PWD} \hfill {\it (tcsh/csh shell)}
+
+{\tt cd PFLOTRAN\_DIR/src/pflotran}
+
+{\tt make have\_parallelio\_lib=1 pflotran}
+
+\end{enumerate}
+
+\scriptsize
+\begin{verbatim}
+README
+-------------------------------------------------------------------------------
+ASCEM-IO
+Scalable Parallel I/O module for Environmental Management Applications
+-------------------------------------------------------------------------------
+This library provides software that read/write data sets from/to parallel file 
+systems in an efficient and scalable manner. 
+In this context, scalable means that the simulators read/write 
+performance does not degrade significantly as the number of cores grows.
+
+-------------------------------------------------------------------------------
+COPYRIGHT AND LICENSE 
+-------------------------------------------------------------------------------
+ASCEM-IO is distrubuted under the terms of the GNU Lesser General Public 
+License (LGPL). The copyright is held jointly by North Carolina State University 
+and Pacific Northwest National Laboratory. 
+
+The copyright and license information is specified in the included file 
+COPYRIGHT. 
+
+-------------------------------------------------------------------------------
+Repository Access
+-------------------------------------------------------------------------------
+Please request write access by contacting Kumar Mahinthakumar (gmkumar@ncsu.edu). 
+Use the following command to access repository:
+	svn co http://ascem-io.secure-water.org/ascem-io
+
+-------------------------------------------------------------------------------
+Building Library
+-------------------------------------------------------------------------------
+The current stable release is 2.2.
+
+--------------
+Prerequisites:
+--------------
+MPI
+C compiler
+HDF5 libraries (preferably with parallel(MPI) support)
+Optional: Fortran (for Fortran example)
+
+After downloading ASCEM-IO and gathering details of HDF5 installation, 
+the following commands can be used to build and install ASCEM-IO: 
+
+	cd <ASCEM-IO check out directory>/src
+	make CC=<C-compiler> HDF5_INCLUDE_DIR=<location of the HDF5 include directory>
+	make ASCEMIO_INSTALL_DIR=<user defined install location> install
+
+In this case, CC refers to C compiler with MPI support, e.g., mpicc.
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+\end{verbatim}
+
+\normalsize
 
 \section{Running PFLOTRAN}
 
@@ -3949,10 +4045,12 @@ END
 
 \begin{deflist}{000}
 \item[NONE (PREONLY)]
+\item[DIRECT] \ (LU decomposition)
+\item[ITERATIVE] \ (Bi-CGStab (BCGS) and block Jacobi preconditioning with ILU[0] in each block)
 \item[GMRES]
 \item[FGMRES]
-\item[BCGS] \ (BICGSTAB, BI-CGSTAB)
-\item[IBCGS] \ (IBICGSTAB, IBI-CGSTAB)
+\item[BCGS] \ (BICGSTAB, BI-CGSTAB) 
+\item[IBCGS] \ (IBICGSTAB, IBI-CGSTAB) \ (Improved BCGS)
 \item[RICHARDSON]
 \item[CG]
 \end{deflist}
@@ -3961,7 +4059,7 @@ END
 
 \begin{deflist}{000}
 \item[NONE (PCNONE)]
-\item[ILU (PCILU)]
+\item[ILU (PCILU)] 
 \item[LU (PCLU)]
 \item[BJACOBI (BLOCK\_JACOBI)]
 \item[ASM (ADDITIVE\_SCHWARTZ)]
@@ -4001,10 +4099,13 @@ END
 \item[BOOMERAMG\_NODAL\_RELAXATION] \ {\tt <Value>}
 \end{deflist}
 
-\item[ATOL] \ {\tt <Value>}
-\item[RTOL] \ {\tt <Value>}
-\item[DTOL] \ {\tt <Value>}
-\item[MAXIT] \ {\tt <Value>}
+\item[ATOL] \ {\tt <float>} \ (Absolute tolerance: $||b-Ax_n|| < \epsilon$)
+\item[RTOL] \ {\tt <float>} \ (Relative tolerance: $||b-Ax_n||/||b-Ax_0||<\epsilon$)
+\item[DTOL] \ {\tt <float>} \ (Divergence tolerance: $||b-Ax_n||/||b-Ax_0||>\epsilon$)
+\item[MAXIT] \ {\tt <int>} \ (Maximum number of linear solver iterations)
+\item[LU\_ZERO\_PIVOT\_TOL] \ {\tt <float>} \
+Specifies zero pivot tolerance for ILU/LU preconditioners
+
 
 \end{deflist}
 \item[\keyend]
@@ -4012,7 +4113,36 @@ END
 
 \noindent{\bf Explanation:}
 
-\noindent{\bf Example:}
+\begin{mdframed}
+
+\noindent{\bf Examples:}
+\begin{verbatim}
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+/
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER ITERATIVE
+/
+
+LINEAR_SOLVER FLOW
+  SOLVER GMRES
+  PRECONDITIONER ILU
+/
+Advanced PETSc options
+
+LINEAR_SOLVER FLOW
+  KSP_TYPE IBCGS
+  PC_TYPE ASM
+/
+
+LINEAR_SOLVER TRANSPORT
+  KSP_TYPE PCNONE
+  PC_TYPE LU
+  LU_ZERO_PIVOT_TOL 1d-15
+/
+\end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
