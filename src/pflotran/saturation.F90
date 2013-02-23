@@ -21,7 +21,7 @@ contains
 subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
                                    sat_func_id)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Option_module
   use Grid_module

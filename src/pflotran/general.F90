@@ -1832,7 +1832,7 @@ end subroutine GeneralResidual
 ! ************************************************************************** !
 subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -2073,7 +2073,7 @@ end subroutine GeneralResidualPatch1
 ! ************************************************************************** !
 subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -2317,7 +2317,7 @@ end subroutine GeneralJacobian
 ! ************************************************************************** !
 subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -2562,7 +2562,7 @@ end subroutine GeneralJacobianPatch1
 ! ************************************************************************** !
 subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -2818,8 +2818,8 @@ subroutine GeneralUpdateState(x,gen_aux_var,global_aux_var, &
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
-  use Gas_Eos_module
+  use Water_EOS_module
+  use Gas_EOS_module
   use Saturation_Function_module
   
   implicit none

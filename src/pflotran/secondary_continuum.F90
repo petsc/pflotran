@@ -387,7 +387,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   use Reaction_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none 
   
