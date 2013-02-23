@@ -93,9 +93,9 @@ end subroutine MphaseTimeCut
 ! ************************************************************************** !
 subroutine init_span_wanger(realization)
   use Realization_class
-  use span_wagner_module
+  use co2_span_wagner_module
   use co2_sw_module
-  use span_wagner_spline_module 
+  use co2_span_wagner_spline_module
 
   implicit none
   type(realization_type) :: realization
@@ -801,7 +801,7 @@ end subroutine MPhaseUpdateReason
 ! ************************************************************************** !
   function  MphaseInitGuessCheckPatch(realization)
    
-     use span_wagner_module
+    use co2_span_wagner_module
      
     use Realization_class
     use Patch_module
@@ -1428,12 +1428,12 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
                             qsrc_phase,energy_flag,option)
 
   use Option_module
-  use water_eos_module
-!   use gas_eos_module  
+  use Water_EOS_module
+!   use Gas_EOS_module  
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module 
+  use co2_span_wagner_module
   
   implicit none
 
@@ -2091,12 +2091,12 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   use Grid_module
   use Patch_module
   
-  use water_eos_module
-  use gas_eos_module  
+  use Water_EOS_module
+  use Gas_EOS_module  
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module
+  use co2_span_wagner_module
 
   implicit none
   

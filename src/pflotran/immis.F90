@@ -93,9 +93,9 @@ subroutine ImmisSetup(realization)
   use Realization_class
   use Level_module
   use Patch_module
-  use span_wagner_module
+  use co2_span_wagner_module
   use co2_sw_module
-  use span_wagner_spline_module 
+  use co2_span_wagner_spline_module
    
   type(realization_type) :: realization
   
@@ -601,7 +601,7 @@ end subroutine ImmisUpdateReason
 ! ************************************************************************** !
   function  ImmisInitGuessCheckPatch(realization)
    
-     use span_wagner_module
+    use co2_span_wagner_module
      
     use Realization_class
     use Patch_module
@@ -1148,12 +1148,12 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
                            qsrc_phase,energy_flag,option)
 
   use Option_module
-  use water_eos_module
-! use gas_eos_module  
+  use Water_EOS_module
+! use Gas_EOS_module  
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module 
+  use co2_span_wagner_module 
   
   implicit none
 
