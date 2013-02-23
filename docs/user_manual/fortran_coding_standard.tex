@@ -1,0 +1,189 @@
+%Wiki home Clone wiki  History Documentation / FortranCodingStandard
+
+\section*{PFLOTRAN Fortran Formatting Protocol}
+
+\subsection*{Guidelines}
+
+\begin{itemize}
+\item Free format
+
+\item Use \& for continuation
+
+\item No tabs whatsoever, 2-space indentation, i.e.
+\begin{Verbatim}
+Level 1
+  Level 2
+    Level 3
+      Level 4
+        Level 5
+        ...
+\end{Verbatim}
+\item Maximum source width is 80 characters. Use a continuation line beyond
+
+\begin{Verbatim}
+123456789+123456789+123456789+123456789+123456789+123456789+123456789+123456789+
+                 print \*, 'This sentence is just barely too long for a single &
+                          &line.'
+                 call subroutine_with_many_arguments(argument1, argument2, &
+                                                     argument3, argument4)
+\end{Verbatim}
+\item Maximum of 31 characters for subroutine/variable/etc. names. Try to be as concise as possible.
+
+\item Capitalization
+\begin{itemize}
+\item All fortran syntax should be lower case, i.e. subroutine, module, contains, use, etc.
+\item All variable names should be lower case.
+
+\item All module names should be lower case with `\_module` appended.
+
+\item Use PETSc-style capitalization in subroutine/function names, i.e.
+
+VecGetArrayF90, VecDestroy
+For example, the following changes should take place:
+
+\begin{Verbatim}
+Grid_get_t -> GridGetTime
+Grid_setvel -> GridSetVel or GridSetVelocity
+Grid_update_dt -> GridUpdateDt or GridUpdateTimestep
+\end{Verbatim}
+
+\end{itemize}
+
+\item Pin all module, subroutine, function, and contains declarations up against the left side. 
+This leaves more room for indentation later on and is not confusing.
+\item The default private/public attribute for modules is `private`
+\item `implicit none` at top of every file, subroutine, function, interface
+\item `PetscReal` instead of `double precision` or `real*8`
+\item `PetscInt` instead of `integer`
+\item `PetscBool` instead of `logical`
+\item All pointers have `\_p` appended (i.e. `array\_p`)
+\item NEVER use PETSc's F77 approach to pointers: a PetscInt/PetscReal array sized to 1 combined with a PetscOffset. 
+If you are not sure, ask.
+\item No goto's (this may not be possible with legacy portions)
+
+\item User appropriate spacing to improve readability:
+
+if(OneNumber>AnotherNumber.and.ALogical==.true.)then
+
+is better viewed as
+
+if (OneNumber > AnotherNumber .and. ALogical == .true.) then
+
+\item Distinguish between natural, local, and local-ghosted coordinate indices: e.g. na, n, ng, respectively. (GEH: This needs go be revised).
+
+\item For field variables that are time-stepped, repeat the first letter of the variable name to 
+distinguish the field at time k+1 from the value at time k. E.g., `density` refers to 
+density at time k, and `ddensity` refers to density at time k+1.
+\end{itemize}
+
+\subsection*{Filename and Module/Class Naming Convention}
+
+\begin{itemize}
+\item Modules and Classes are mixed case with underscores between words and `\_module` (or `\_class` for F03 classes) appended.
+
+\begin{Verbatim}
+Reaction_Sandbox_module
+Reaction_Sandbox_Base_class
+\end{Verbatim}
+
+\item The corresponding filename is the module name with (1) `\_module` or `\_class` removed, (2) all lower case, and (3) `.F90` appended.
+
+\begin{Verbatim}
+reaction_sandbox.F90
+reaction_sandbox_base.F90
+\end{Verbatim}
+\end{itemize}
+
+\subsection*{Example Fortran Source Code}
+
+An example source would be (!comment denotes all commentary on example)
+
+\begin{Verbatim}
+module Example_module
+
+  implicit none
+
+  private  !comment: all variables/subroutines, etc. are private by default
+
+#include ``whatever.h''
+
+  public :: GridCreate, GridGetTime
+
+  PetscReal, save :: file_global_variable
+
+contains
+!************************************************************************** !
+!
+! GridSetup: Initializes the grid.
+! author: John Doe
+! date: 01/01/07
+!
+!************************************************************************** !
+subroutine GridSetup(integer_in, real_in)
+
+  use whatever_module
+
+  implicit none
+
+#include "whatever.h"
+
+  PetscInt :: integer_in  !comment: note that the subroutine arguments are
+  PetscReal :: real_in      !comment: declared first
+
+  PetscBool :: whatever    !comment: note that declarations are group by type
+  PetscInt :: i
+  PetscInt :: integer1, integer2
+  PetscReal  :: real1, real2
+  PetscReal  :: real3, real4
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal, pointer :: real_p(:)
+
+  ...
+  ! use the newer relational operators in logical expressions
+  if (grid%ndof >= 2 .and. (.not.logical_whatever .or. &
+      integer1 /= integer2)) then
+    do i=1,2
+      call Whatever
+    enddo
+  endif
+
+  ! fortran switch
+  select case (word)
+    case ('flow')
+      call Whatever
+    case ('transport')
+      call Whatever2(argument1, argument2, argument3, argument4, &
+                     argument5)
+  end select
+  ...
+  nullify(real_p)
+
+end subroutine GridSetup
+
+!************************************************************************** !
+!
+! GridGetTime: Returns the current time in the simulation.
+! author: John Doe
+! date: 01/01/07
+!
+!************************************************************************** !
+PetscReal function GridGetTime(...)
+
+  use another_module
+
+  implicit none
+
+#include "whatever.h"
+
+  PetscInt :: integer1
+  PetscReal :: real1
+  character(len=MAXWORDLENGTH) :: word
+
+  ...
+  ...
+  GridGetTime = x
+
+end function GridGetTime
+
+end module Example_module
+\end{Verbatim}
