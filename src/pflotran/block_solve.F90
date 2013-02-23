@@ -45,81 +45,81 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
 !	Input variables:
 
-	PetscInt :: n, k
-	PetscInt :: pivot(k,n)
-	PetscReal :: E(k,k,n-1), D(k,k,n), F(k,k,n-1)
+  PetscInt :: n, k
+  PetscInt :: pivot(k,n)
+  PetscReal :: E(k,k,n-1), D(k,k,n), F(k,k,n-1)
 
-!	Input:
+! Input:
 
-!	k           Integer, the size of the blocks.
-!	n           Integer, the number of blocks.
-!	E(k,k,n-1)  Double precision, the sub-diagonal blocks.
-!	D(k,k,n)    Double precision, the diagonal blocks.
-!	F(k,k,n-1)  Double precision, the super-diagonal blocks.
+! k           Integer, the size of the blocks.
+! n           Integer, the number of blocks.
+! E(k,k,n-1)  Double precision, the sub-diagonal blocks.
+! D(k,k,n)    Double precision, the diagonal blocks.
+! F(k,k,n-1)  Double precision, the super-diagonal blocks.
 
-!	Output:
+! Output:
 
-!	E(k,k,n-1)  The lower triangular blocks of L in the LU factorization.
-!	F(k,k,n-1)  The upper triangular blocks of U in the LU factorization.
-!	D(k,k,n)    The diagonal blocks of L in the LU factorization.
+! E(k,k,n-1)  The lower triangular blocks of L in the LU factorization.
+! F(k,k,n-1)  The upper triangular blocks of U in the LU factorization.
+! D(k,k,n)    The diagonal blocks of L in the LU factorization.
 !                   The diagonal blocks of U are unit upper triangular.
-!	pivot(k,n)  Integer pivot vector used in factoring the diagonal blocks.
-!		    pivot(1:k,p) records the pivoting done in diagonal block p.
+! pivot(k,n)  Integer pivot vector used in factoring the diagonal blocks.
+! 	    pivot(1:k,p) records the pivoting done in diagonal block p.
 
-!	Local variables:
+! Local variables:
 
-	PetscInt :: j, info
-	character(len=1) :: trans
-	PetscReal, parameter :: one = 1.d0
-
-!************************************************************************
-
-!	Executable statements.
+  PetscInt :: j, info
+  character(len=1) :: trans
+  PetscReal, parameter :: one = 1.d0
 
 !************************************************************************
 
-!	First, in main blocks 1 to n-1:
+! Executable statements.
 
-	trans = 'N'    
+!************************************************************************
+
+! First, in main blocks 1 to n-1:
+
+  trans = 'N'
         
-	do j = 1,n-1
+  do j = 1,n-1
 
 !      First, factor D(j).
            
-	   call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
+     call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
 
-	   if ( info .ne. 0 ) then
-	      print *,'At block ',j,','
-	      print *,'problem, info = ', info   ! make this better later.
-          return
-	   endif
+     if ( info .ne. 0 ) then
+        print *,'At block ',j,','
+        print *,'problem, info = ', info   ! make this better later.
+        return
+     endif
 
 !      Now, compute E(j) from D(j) * E(j) = E(j).
-	   
-	   call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
+
+     call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
                        E(1,1,j), k, info)
-	   if ( info .lt. 0 ) then
-	      print *,'Illegal parameter number ',-info
-	      return
-	   endif
+     if ( info .lt. 0 ) then
+        print *,'Illegal parameter number ',-info
+        return
+     endif
 
-!	   Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
+!    Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
 
-	   call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
+     call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
                       E(1,1,j), k, one, D(1,1,j+1), k)
 
     enddo
 
-!	Finally, obtain the LU factorization of D(n).
+! Finally, obtain the LU factorization of D(n).
 
-	call dgetrf(k, k, D(1,1,n), k, pivot(1,n), info)
-	if ( info .ne. 0 ) then
-	   print *,'At block ',j,','
-	   print *,'problem, info = ', info   ! make this better later.
-       return
-	endif
+  call dgetrf(k, k, D(1,1,n), k, pivot(1,n), info)
+  if ( info .ne. 0 ) then
+     print *,'At block ',j,','
+     print *,'problem, info = ', info   ! make this better later.
+    return
+  endif
 
-	return
+  return
   
 end subroutine bl3dfac
 
@@ -215,7 +215,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 !       block bi-diagonal lower triangular system L.x = b, overwriting
 !       b with the solution.
 
-	    trans = 'N'    
+        trans = 'N'
 
 
         if ( trans .eq. 'n' .or. trans .eq. 'N' ) then 
@@ -247,7 +247,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
            enddo
 
-!	       Now, the back substitution.
+!        Now, the back substitution.
 
            do j = n-1,1,-1
    
@@ -258,23 +258,23 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
            enddo
 
-	   else
+     else
 
-!	   Solve the transposed system.
+!    Solve the transposed system.
 
-!	   First, the right hand side modification.
+!    First, the right hand side modification.
 
          do j = 2,n
 
-  !	      Form rhs(:,:,j) = rhs(:,:,j) - E(j-1)^T*rhs(:,:,j-1)
+  !       Form rhs(:,:,j) = rhs(:,:,j) - E(j-1)^T*rhs(:,:,j-1)
             call dgemm(trans, 'N', k, nrhs, k, -one, E(1,1,j-1), k, &
                            rhs(1,1,j-1), k, one, rhs(1,1,j), k)
          enddo
 
-!	     Now, the back substitution.
+!      Now, the back substitution.
 
-!	     First, solve D(n)^T.rhs(:,:,n) = rhs(:,:,n)
-	   
+!      First, solve D(n)^T.rhs(:,:,n) = rhs(:,:,n)
+
          call dgetrs(trans, k, nrhs, D(1,1,n), k, pivot(1,n), &
                      rhs(1,1,n), k, info)
          if ( info .lt. 0 ) then
@@ -287,7 +287,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
          do j = n-1,1,-1
 
-  !	      Form rhs(:,:,j) = rhs(:,:,j) - F(j)^T*rhs(:,:,j+1)
+  !       Form rhs(:,:,j) = rhs(:,:,j) - F(j)^T*rhs(:,:,j+1)
             call dgemm(trans, 'N', k, nrhs, k, -one, F(1,1,j), k, &
                            rhs(1,1,j+1), k, one, rhs(1,1,j), k)
 
@@ -397,7 +397,7 @@ subroutine bl3dsolf(n, k, E, D, F, pivot, nrhs, rhs)
 !       block bi-diagonal lower triangular system L.x = b, overwriting
 !       b with the solution.
 
- 	    trans = 'N'    
+          trans = 'N'
 
 
 !       if ( trans .eq. 'n' .or. trans .eq. 'N' ) then 
@@ -513,9 +513,9 @@ subroutine bl3dsolb(n, k, E, D, F, pivot, nrhs, rhs)
         PetscInt :: j !, info
         PetscReal, parameter :: one = 1.d0
 
- 	    trans = 'N'    
+        trans = 'N'
 
-!	       Now, the back substitution.
+!        Now, the back substitution.
 
            do j = n-1,1,-1
    
