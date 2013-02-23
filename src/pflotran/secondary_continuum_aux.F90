@@ -66,6 +66,7 @@ module Secondary_Continuum_Aux_module
     PetscReal, pointer :: cxp(:,:,:)           ! stores the coeff of right diag in block triag system (ncomp x ncomp x ncells-1)
     PetscReal, pointer :: cdl(:,:,:)           ! stores the coeff of central diag in block triag system (ncomp x ncomp x ncells)
     PetscReal, pointer :: r(:)                 ! stores the solution of the forward solve
+    PetscReal, pointer :: updated_conc(:,:)    ! stores the update of molalities at end of each primary iteration
   end type sec_transport_type  
         
 

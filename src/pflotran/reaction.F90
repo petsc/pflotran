@@ -1281,7 +1281,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         ! free_conc guess set above
     end select
   enddo
-  
+
   rt_auxvar%pri_molal = free_conc
 
   num_iterations = 0
