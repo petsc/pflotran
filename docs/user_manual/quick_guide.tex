@@ -3119,15 +3119,15 @@ COMPUTE_STATISTICS
 
 \noindent
 {\bf Description:}
-The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constraint conditions chosen by the user.
+The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constraint conditions chosen by the user. Use {\bf SECONDARY\_CONSTRAINT} for constraining secondary continua initial concentrations.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item [CONSTRAINT] \ {\tt constraint\_name}
+\item [CONSTRAINT (SECONDARY\_CONSTRAINT)] \ {\tt constraint\_name}
 \begin{deflist}{000}
 \item[CONC, CONCENTRATIONS] ~
 \begin{deflist}{000}
-\item[{\tt Name, Concentration\_Value, Constraint, Name}] ~
+\item[{\footnotesize\tt Primary Species Name, Concentration\_Value, Constraint, Name (mineral, gas)}] ~
 \end{deflist}
 \item[\keyend] ~
 
@@ -3136,7 +3136,7 @@ The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constra
 \item[MNRL, MINERALS] ~
 
 \begin{deflist}{000}
-\item[{\tt mineral\_name}, \ {\tt volume\_fraction} {[---]}, \ {\tt surface\_area} [cm$^{-1}$]]
+\item[{\tt mineral\_name}, \ {\tt volume\_fraction} {[---]}, \ {\tt surface\_area} [m$^{-1}$]]
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -3194,6 +3194,28 @@ CONSTRAINT initial
   /
 END
 \end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
+\begin{Verbatim}
+:====== secondary constraint ===================
+SECONDARY_CONSTRAINT sec
+CONCENTRATIONS
+Ca++          1.e-3    M Calcite
+H+            7.      pH
+SO4--         1.e-3    M Gypsum
+HCO3-        -3.5      G CO2(g)
+Cl-           1.e-3    Z
+SiO2(aq)      1.e-4    M Quartz
+Tracer        1.d-8    F
+/
+MINERALS
+Quartz      0.019175   1.d2
+Calcite     0.730825   1.d2
+Gypsum      0.0        1.d2
+/
+/
+\end{Verbatim}
 
 \end{mdframed}
 
@@ -3821,9 +3843,7 @@ END
 \item[RTOL] \ {\tt <float>} \ (Relative tolerance: $||b-Ax_n||/||b-Ax_0||<\epsilon$)
 \item[DTOL] \ {\tt <float>} \ (Divergence tolerance: $||b-Ax_n||/||b-Ax_0||>\epsilon$)
 \item[MAXIT] \ {\tt <int>} \ (Maximum number of linear solver iterations)
-\item[LU\_ZERO\_PIVOT\_TOL] \ {\tt <float>} \
-Specifies zero pivot tolerance for ILU/LU preconditioners
-
+\item[LU\_ZERO\_PIVOT\_TOL] \ {\tt <float>} \ Specifies zero pivot tolerance for ILU/LU preconditioners
 
 \end{deflist}
 \item[\keyend]
@@ -3882,7 +3902,7 @@ LINEAR_SOLVER TRANSPORT
 \item[ROCK\_DENSITY] \ {\tt <float>} \ [kg/m$^3$]
 \item[SPECIFIC\_HEAT] \ {\tt <float>} \ [J/kg/K]
 \item[LONGITUDINAL\_DISPERSIVITY] \ {\tt <float>} \ [m]
-\item[TRANSVERSE\_DISPERSIVITY] \ (not implemented) \ [m]
+\item[TRANSVERSE\_DISPERSIVITY] \ {\tt <float>} \ (not implemented) \ [m]
 \item[THERMAL\_CONDUCTIVITY\_DRY] \ {\tt <float>} \ [W/m/K]
 \item[THERMAL\_CONDUCTIVITY\_WET] \ {\tt <float>} \ [W/m/K]
 \item[PORE\_COMPRESSIBILITY] \ {\tt <float>} \ (not implemented) \ [bar$^{-1}$]
@@ -4183,6 +4203,8 @@ The user must specify either a region or boundary condition to which the observa
 \item[VELOCITY]
 \item[AT\_CELL\_CENTER]
 \item[SECONDARY\_TEMPERATURE]
+\item[SECONDARY\_CONCENTRATION]
+\item[SECONDARY\_MINERAL\_VOLFRAC]
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -4193,7 +4215,9 @@ The user must specify either a region or boundary condition to which the observa
 \item[Keyword REGION] (optional) defines the name of the region (usually a point in space) to which the observation point is linked.
 \item[Keyword BOUNDARY\_CONDITION] (optional) specifies the name of a boundary condition to which the observation point is tied (e.g. to monitor fluxes across a boundary face).
 \item[Keyword VELOCITY] (optional) toggles on the printing of Darcy velocities at the observation point.
-\item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodal) temperatures.
+\item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodes) temperatures.
+\item[Keyword SECONDARY\_CONCENTRATION] (optional) toggles on the printing of the secondary continuum (matrix nodes) concentration.
+\item[Keyword SECONDARY\_MINERAL\_VOLFRAC] (optional) toggles on the printing of the secondary continuum (matrix nodes) mineral volume fraction.
 \end{description}
 
 \begin{mdframed}
