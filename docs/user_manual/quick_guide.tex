@@ -2607,7 +2607,7 @@ END
 \subsection{Keyword: BRINE (BRIN)}
 
 \begin{deflist}{000}
-\item[BRINE, BRIN] {\tt <Value> m\_nacl} [MOLAL, MASS, MOLE]
+\item[BRINE, BRIN] {\tt <float> m\_nacl} [MOLAL, MASS, MOLE]
 \end{deflist}
 
 \hyperlink{target_key}{\return}
@@ -2718,34 +2718,34 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{0000}
 \item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt <Value>} $<$ 0, {\tt <Value>} = 10$^{\tt <Value>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
+\item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
-\item [AFFINITY\_THRESHOLD] \ {\tt <Value>} [---]
-\item [AFFINITY\_POWER] \ {\tt <Value>} [---]
+\item [AFFINITY\_THRESHOLD] \ {\tt <float>} [---]
+\item [AFFINITY\_POWER] \ {\tt <float>} [---]
 ~\\
-\item [TEMPKINS\_CONSTANT] \ {\tt <Value>} [---]
+\item [TEMPKINS\_CONSTANT] \ {\tt <float>} [---]
 ~\\
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <float>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <float>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 ~\\
-\item [RATE\_LIMITER] \ {\tt <Value>} [mol/m$^2$/s] \ [see Eqn.\eqref{ratemintran}]
+\item [RATE\_LIMITER] \ {\tt <float>} [mol/m$^2$/s] \ [see Eqn.\eqref{ratemintran}]
 ~\\
 \item [IRREVERSIBLE] \ 
 ~\\
 \item[ARMOR\_MINERAL] \ {\tt <Char>} \ [See Eqn.\eqref{surface_armoring}]
-\item[ARMOR\_PWR] \ {\tt <Value>} [---] \ [See Eqn.\eqref{surface_armoring}]
-\item[ARMOR\_CRIT\_VOL\_FRAC] \ {\tt <Value>} [---] \ [See Eqn.\eqref{surface_armoring}]
+\item[ARMOR\_PWR] \ {\tt <float>} [---] \ [See Eqn.\eqref{surface_armoring}]
+\item[ARMOR\_CRIT\_VOL\_FRAC] \ {\tt <float>} [---] \ [See Eqn.\eqref{surface_armoring}]
 ~\\
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt <Value>} $<$ 0, {\tt <Value>} = 10$^{\tt <Value>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K] 
+\item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K] 
 \item [PREFACTOR\_SPECIES] \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [ALPHA] \ {\tt <Value>} [---]
-\item [BETA] \ {\tt <Value>} [---]
-\item [ATTENUATION\_COEF] \ {\tt <Value>}
+\item [ALPHA] \ {\tt <float>} [---]
+\item [BETA] \ {\tt <float>} [---]
+\item [ATTENUATION\_COEF] \ {\tt <float>}
 \end{deflist}
 \item [\keyend]
 \end{deflist}
@@ -2773,9 +2773,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[KINETIC]
 
 
-\item [SITE\_FRACTION] \ {\tt <Value>}[---] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [RATE, RATES] \ {\tt <Value>} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [MULTIRATE\_SCALE\_FACTOR] {\tt <Value>} [---]
+\item [SITE\_FRACTION] \ {\tt <float>}[---] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [RATE, RATES] \ {\tt <float>} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [MULTIRATE\_SCALE\_FACTOR] {\tt <float>} [---]
 
 ~\\
 
@@ -2793,8 +2793,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[COMPLEX\_KINETICS] ~
 \begin{deflist}{000}
 \item[COMPLEX] {\tt name}
-\item[FORWARD\_RATE\_CONSTANT] {\tt <Value>} [1/s]
-\item[BACKWARD\_RATE\_CONSTANT] {\tt <Value>} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
+\item[FORWARD\_RATE\_CONSTANT] {\tt <float>} [1/s]
+\item[BACKWARD\_RATE\_CONSTANT] {\tt <float>} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2825,7 +2825,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item [EQUILIBRIUM]
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
-\item [CEC] {\tt <Value>} \ [mol/m$^3$]
+\item [CEC] {\tt <float>} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
@@ -2847,9 +2847,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \begin{deflist}{000}
 \item [TYPE] LINEAR, \ LANGMUIR, \ FREUNDLICH
-\item [DISTRIBUTION\_COEF, KD] \ {\tt <Value>} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
-\item [LANGMUIR\_B] \ {\tt <Value>} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
-\item [FREUNDLICH\_N] \ {\tt <Value>} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
+\item [DISTRIBUTION\_COEF, KD] \ {\tt <float>} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
+\item [LANGMUIR\_B] \ {\tt <float>} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
+\item [FREUNDLICH\_N] \ {\tt <float>} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
 \end{deflist}
 \item [\keyend] ~
 
@@ -2883,7 +2883,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
 \item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
-\item[MINIMUM\_POROSITY] {\tt <Value>}
+\item[MINIMUM\_POROSITY] {\tt <float>}
 \item[UPDATE\_ARMOR\_MINERAL\_SURFACE] \ [See Eqn.\eqref{surface_armoring}]
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
@@ -3324,11 +3324,11 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \begin{deflist}{000}
 \item [FLOW\_CONDITION] \ {\tt flow\_condition\_name}
 \begin{deflist}{000}
-\item [UNITS] {\tt <Value>} (not currently supported)
+\item [UNITS] {\tt <char>} (not currently supported)
 \begin{deflist}{000000000}
-{\tt <Value>} is one of the following entries:
-\item[s, sec, min, hr, d, day, w, week, mo, month, y, yr] (time)
-\item[mm, cm, m, met, meter, dm, km] (length)
+{\tt <char>} is one of the following entries:
+\item[s, min, h (hr), d, day, w, week, mo, month, y (yr)] (time)
+\item[mm, cm, m, dm, km] (length)
 \item[kg/s, kg/yr] (rate)
 \item[Pa, KPa] (pressure)
 \item[m/s, m/yr] (velocity)
@@ -3362,7 +3362,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[\keyend]
 \item[TIME] (not currently supported)
 
-\item[IPHASE] {\tt <Value>[integer]}
+\item[IPHASE] {\tt <int>}
 
 \item[DATUM] ~
 \begin{deflist}{000}
@@ -3385,7 +3385,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[TEMPERATURE, \ TEMP] \ {\tt <float>}
 \item[ENTHALPY, H] \ {\tt <float>}
 \item[PRESSURE, \ PRES, \ RESS] \ {\tt <float>}
-\item[RATE] \ {\tt <Value>}
+\item[RATE] \ {\tt <float>}
 \item[FLUX, \ VELOCITY, \ VEL] \ {\tt <float>}
 \item[CONC, \ CONCENTRATION] \ {\tt <float>}
 \item[SAT, \ SATURATION] \ {\tt <float>}
@@ -3789,18 +3789,18 @@ END
 \item[HYPRE\_OPTIONS]
 \begin{deflist}{000}
 \item[TYPE] \ [{\tt pilut, parasails, boomeramg, euclid}]
-\item[BOOMERAMG\_CYCLE\_TYPE] / [{\tt V, W}]
-\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt <Value>}
-\item[BOOMERAMG\_MAX\_ITER] \ {\tt <Value>}
-\item[BOOMERAMG\_TOL] \ {\tt <Value>}
-\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt <Value>}
-\item[BOOMERAMG\_AGG\_NL] \ {\tt <Value>}
-\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt <Value>}
-\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt <Value>}
+\item[BOOMERAMG\_CYCLE\_TYPE] \ <char> \ [{\tt V, W}]
+\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt <int>}
+\item[BOOMERAMG\_MAX\_ITER] \ {\tt <int>}
+\item[BOOMERAMG\_TOL] \ {\tt <float>}
+\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt <float>}
+\item[BOOMERAMG\_AGG\_NL] \ {\tt <float>}
+\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt <int>}
+\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt <float>}
 \item[BOOMERAMG\_RELAX\_TYPE\_ALL] \ {\tt <Value>}
 \item[BOOMERAMG\_RELAX\_TYPE\_DOWN] \ {\tt <Value>}
 \item[BOOMERAMG\_RELAX\_TYPE\_UP] \ {\tt <Value>}
@@ -4240,9 +4240,9 @@ END
 \begin{deflist}{000}
 \item[OUTPUT] ~
 \begin{deflist}{000}
-\item[TIMES] {\tt Unit (s, h, y)} \ \ \ {\tt <float>} 
+\item[TIMES] {\tt Unit (s, min, h (hr), d, w, mo, y (yr))} \ \ \ {\tt <float>} 
 \item[SCREEN \ OFF] \ suppress screen output
-\item[SCREEN \ PERIODIC] {\tt <integer>}: print to screen every <integer> time steps.
+\item[SCREEN \ PERIODIC] {\tt <int>}: print to screen every <integer> time steps.
 \item[PERIODIC \ TIME] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC \ TIMESTEP] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC\_OBSERVATION \ TIME] \ {\tt <float>} \ {\tt <unit>}: \ output the results at observation points and mass balance output at specified output times
@@ -4285,12 +4285,12 @@ PERIODIC TIMESTEP: & controls frequency of output time steps.\\
 PERIODIC\_OBSERVATION TIME: & frequency of output time.\\
 PERIODIC\_OBSERVATION TIMESTEP: & frequency of output time step.\\
 NO\_FINAL, NO\_PRINT\_FINAL: & \\
-FORMAT TECPLOT POINT: & Tecplot POINT output, valid for 1D and 2D problems.\\
-FORMAT TECPLOT BLOCK: & Tecplot BLOCK output.\\
-FORMAT HDF5: & HDF5 output format written to a .h5 file which can be read by Visit.\\
+FORMAT TECPLOT POINT: & Tecplot POINT output, valid for 1D and 2D problems on a single processor core.\\
+FORMAT TECPLOT BLOCK: & Tecplot BLOCK output for multi-processor core runs.\\
+FORMAT HDF5: & HDF5 output format written to a .h5 file which can be read by VisIt and ParaView.\\
 FORMAT MAD: & MAD (Method of Anchored Distributions) format.\\
-FORMAT VTK: & VTK format.\\
-UNIT: & time units of seconds (s), days (d), and years (y).\\
+FORMAT VTK: & VTK format which can be read by VisIt and ParaView.\\
+UNIT: & time units of seconds (s), minutes (min), hours (h, hr), days (d), weeks (w), months (mo), and years (y, yr).\\
 PERMEABILITY: & \\
 POROSITY: & \\
 FLUXES: & \\
@@ -4700,23 +4700,81 @@ END
 \begin{deflist}{000}
 \item[TIMESTEPPER] [{\bf FLOW, TRAN, TRANSPORT}]
 \begin{deflist}{000}
-\item[NUM\_STEPS\_AFTER\_TS\_CUT] [5]
-\item[MAX\_STEPS] [999999]
-\item[TS\_ACCELERATION] [5]
-\item[MAX\_TS\_CUTS] [16]
-\item[INITIALIZE\_TO\_STEADY\_STATE]
-\item[RUN\_AS\_STEADY\_STATE]
-\item[MAX\_PRESSURE\_CHANGE] [5.d4]
-\item[MAX\_TEMPERATURE\_CHANGE] [5.d0]
-\item[MAX\_CONCENTRATION\_CHANGE] [1.d0]
-\item[MAX\_SATURATION\_CHANGE] [0.5d0]
+\item[NUM\_STEPS\_AFTER\_CUT] \ {\tt <int>} 
+
+Number of time steps after a time step cut that the time step size is held constant [5].
+
+\item[MAX\_STEPS] \ {\tt <int>} 
+
+Maximum time step after which the simulation will be terminated [999999].
+
+\item[TS\_ACCELERATION] \ {\tt <int>} 
+
+Integer indexing time step acceleration ramp {\em (expert users only)} [5].
+
+\item[MAX\_TS\_CUTS] \ {\tt <int>} 
+
+Maximum number of consecutive time step cuts before the simulation is terminated with plot of the current solution printed to a XXX\_cut\_to\_failure.tec file for debugging [16].
+
+\item[CFL\_LIMITER] \ {\tt <float>}
+
+The maximum CFL number allowed for transport. Enables Courant (CFL) number limiting on the transport time step.
+
+\item[DT\_FACTOR] \ {\tt <float>} 
+
+Array of floating point numbers of tfac array {\em (expert users only)}.
+
+\item[INITIALIZE\_TO\_STEADY\_STATE] ~
+
+Flag indicating that the simulation is to be run as steady state {\em (Warning: not robust)}.
+
+\item[RUN\_AS\_STEADY\_STATE] ~
+
+Flag requesting that a steady state solution be computed based on boundary and initial conditions at the beginning of the simulation {\em (Warning: not robust)}.
+
+\item[MAX\_PRESSURE\_CHANGE] \ {\tt <float>} 
+
+Maximum change in pressure for a time step [5.d4 Pa].
+
+\item[MAX\_TEMPERATURE\_CHANGE] \ {\tt <float>} 
+
+Maximum change in temperature for a time step [5 C].
+
+\item[MAX\_CONCENTRATION\_CHANGE] \ {\tt <float>} 
+
+Maximum change in pressure for a time step [1. mol/L].
+
+\item[MAX\_SATURATION\_CHANGE] \ {\tt <float>} 
+
+Maximum change in pressure for a time step [0.5].
+
+\item[PRESSURE\_DAMPENING\_FACTOR] \ {\tt <float>}
+\item[SATURATION\_CHANGE\_LIMIT] \ {\tt <float>}
+\item[PRESSURE\_CHANGE\_LIMIT] \ {\tt <float>}
+\item[TEMPERATURE\_CHANGE\_LIMIT] \ {\tt <float>}
 \end{deflist}
 \item[\keyend]
 \end{deflist}
 
-\noindent{\bf Explanation:}
+%\noindent{\bf Explanation:}
 
-\noindent{\bf Example:}
+\noindent{\bf Examples:}
+
+\begin{mdframed}
+\footnotesize
+\begin{Verbatim}
+TIMESTEPPER
+  TS_ACCELERATION 8
+  MAX_STEPS 10000 ! terminates simulation after 10,000 time steps
+  MAX_TS_CUTS 5 ! terminates simulation after 5 consecutive time step cuts
+END
+
+TIMESTEPPER
+  CFL_LIMITER 1. ! limits time step size to enforce a CFL # of 1.
+END
+\end{Verbatim}
+\normalsize
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
