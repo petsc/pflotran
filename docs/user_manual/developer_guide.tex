@@ -72,6 +72,81 @@ The calling sequence to major subroutines is given below. This list is still inc
 \subsection{Structured Grids}
 
 \subsection{Unstructured Grids}
+Following two types of unstructured grid formats are supported by PFLOTRAN.
+
+\subsubsection{Implicit Unstructured Grids}
+
+In this format, the grid is defined by 
+({\romannumeral 1}) nodal set for each control volume; and 
+({\romannumeral 2}) coordinates of cell nodes (or cell vertices). 
+Control volumes in an implicit unstructured grid can be comprised of the following
+cell types:
+({\romannumeral 1}) tetrahedron,
+({\romannumeral 2}) pyramid,
+({\romannumeral 3}) wedge, 
+({\romannumeral 4}) hexadron, and
+({\romannumeral 5}) a mix of above mentioned four cell types.
+The local number of cell nodes and faces is shown in Figure~\ref{fig:umesh_cell_types};
+while Table~\ref{tab:sideset} summarizes the side set node order for the four supported
+cell types.
+
+\begin{figure}[H]\centering
+\includegraphics[width=1\textwidth]{./figs/pflotran_umesh_cell_types}
+\caption{Side set numbering of supported cell types within unstructured grid}
+\label{fig:umesh_cell_types}
+\end{figure}
+
+\begin{table}[H]\centering
+\caption{Side set node ordering}
+\label{tab:sideset}
+\begin{tabular}{ccc}
+\toprule
+Element type & Side \# & Node order\\
+\midrule
+Tetrahedron & 1 & 1--2--4 \\
+ & 2 & 2--3--4 \\
+ & 3 & 1--4--3 \\
+ & 4 & 1--3--2\\
+\midrule
+Pyramid & 1 & 1--2--5 \\
+ & 2 & 2--3--5 \\
+ & 3 & 3--4--5 \\
+ & 4 & 4--1--5 \\
+ & 5 & 1--4--3--2 \\
+\midrule
+Wedge & 1  & 1--2--5--4\\
+ & 2 & 2--3--6--5 \\
+ & 3 & 3--1--4--6 \\
+ & 4 & 1--3--2 \\
+ & 5 & 4--5--6\\
+\midrule
+Hexahedron & 1 & 1--2--6--5 \\
+ & 2 & 2--3--7--6 \\
+ & 3 & 3--4--8--7 \\
+ & 4 & 4--1--5--8 \\
+ & 5 & 1--4--3--2 \\
+ & 6 & 5--6--7--8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsubsection{Explicit Unstructured Grids}
+The explicit unstructured grid format comprises of information about 
+({\romannumeral 1}) cells ( id, x, y, z, and volume), and
+({\romannumeral 2}) cell connections (upstream and downstream cell
+ids, centroid and area of side joining cells).
+
+{\tt
+\hspace{-0.8cm}CELLS NUM\_CELLS\\
+CELL\_ID X Y Z VOLUME\\
+%CELL\_ID X Y Z VOLUME\\
+\dots\\
+CONNECTIONS NUM\_CONNECTIONS \\
+CELL\_ID\_UP CELL\_ID\_DOWN FACE\_X FACE\_Y FACE\_Z AREA \\
+%CELL\_ID\_UP CELL\_ID\_DOWN FACE\_X FACE\_Y FACE\_Z AREA \\
+\dots\\
+}
 
 \begin{figure}[H]\centering
 \includegraphics[width=0.6\textwidth]{./figs/5x4x3_domain}
