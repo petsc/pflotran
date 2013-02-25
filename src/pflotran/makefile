@@ -35,6 +35,10 @@ ifdef petsc_api_3_3
   MYFLAGS += -DHAVE_PETSC_API_3_3
 endif
 
+ifdef have_petscpcmg_h
+	MYFLAGS += -DHAVE_PETSCPCMG_H
+endif
+
 ifdef dbl
   MYFLAGS += -DDOUBLE_LAYER
 endif
