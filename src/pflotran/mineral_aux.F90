@@ -7,7 +7,12 @@ module Mineral_Aux_module
   private 
 
 #include "definitions.h"
-  
+
+  ! mineral types
+  PetscInt, parameter, public :: MINERAL_REFERENCE = 1
+  PetscInt, parameter, public :: MINERAL_KINETIC = 2
+  PetscInt, parameter, public :: MINERAL_EQUILIBRIUM = 3
+
   type, public :: mineral_rxn_type
     PetscInt :: id
     PetscInt :: itype

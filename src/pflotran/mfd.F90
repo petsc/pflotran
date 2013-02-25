@@ -1456,7 +1456,7 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  use Water_EOS_module
 
 
 

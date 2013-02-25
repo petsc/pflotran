@@ -6,6 +6,15 @@ module Structured_Grid_module
  
 #include "definitions.h"
 
+! structured grid faces
+  PetscInt, parameter, public :: NULL_FACE = 0
+  PetscInt, parameter, public :: WEST_FACE = 1
+  PetscInt, parameter, public :: EAST_FACE = 2
+  PetscInt, parameter, public :: SOUTH_FACE = 3
+  PetscInt, parameter, public :: NORTH_FACE = 4
+  PetscInt, parameter, public :: BOTTOM_FACE = 5
+  PetscInt, parameter, public :: TOP_FACE = 6
+
   PetscInt, parameter, public :: CARTESIAN_GRID = 3
   PetscInt, parameter, public :: CYLINDRICAL_GRID = 4
   PetscInt, parameter, public :: SPHERICAL_GRID = 5

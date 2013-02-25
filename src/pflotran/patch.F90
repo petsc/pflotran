@@ -894,8 +894,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use water_eos_module
+  use Water_EOS_module
   use Dataset_Aux_module
+  
+  use General_Aux_module
 
   implicit none
   
@@ -1729,7 +1731,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reaction_Aux_module
   use Global_Aux_module
   use Constraint_module
-  use water_eos_module
+  use Water_EOS_module
     
   implicit none
 
@@ -1954,9 +1956,10 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use THC_Aux_module
   use THMC_Aux_module
   use Richards_Aux_module
-  use Reactive_Transport_Aux_module  
-  use Reaction_module
   use Mineral_module
+  use Reaction_module
+  use Reactive_Transport_Aux_module  
+  use Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
   
@@ -2836,8 +2839,10 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Richards_Aux_module
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
-  use Reaction_module
   use Mineral_module
+  use Reaction_module
+  use Mineral_Aux_module
+  use Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
 
@@ -3336,13 +3341,15 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
       value = option%myrank
+    ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
+      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+              sec_rt_auxvar(isubvar)%pri_molal(isubvar1)
     case(SEC_MIN_VOLFRAC)
       value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
-              sec_mnrl_volfrac(isubvar)
-    case default
+              sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
+     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
             ivar

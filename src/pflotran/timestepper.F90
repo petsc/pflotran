@@ -2461,6 +2461,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   use Level_module
   use Patch_module
   use Global_module  
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
   implicit none
 
@@ -3225,6 +3226,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
     
   use Global_module, only : GlobalUpdateDenAndSat
   use Reactive_Transport_module, only : RTUpdateAuxVars  
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
 
   implicit none
 

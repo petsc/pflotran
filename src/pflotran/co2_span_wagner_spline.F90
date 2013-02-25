@@ -1,4 +1,4 @@
-  module span_wagner_spline_module
+  module co2_span_wagner_spline_module
 
   implicit none
 
@@ -201,4 +201,4 @@ subroutine sw_prop(tx,px,rho,h,u,fg)
     return
 end subroutine sw_prop
     
-end module span_wagner_spline_module
+end module co2_span_wagner_spline_module

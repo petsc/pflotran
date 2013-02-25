@@ -410,6 +410,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   use Grid_module
   use Option_module
   use Logging_module
+  use HDF5_Aux_module
   
   implicit none
   

@@ -1,4 +1,4 @@
-module water_eos_module
+module Water_EOS_module
 
   implicit none
 
@@ -1839,4 +1839,4 @@ end subroutine wateos_simple
 
 
 
-end module water_eos_module
+end module Water_EOS_module

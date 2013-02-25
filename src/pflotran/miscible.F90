@@ -489,7 +489,7 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! ************************************************************************** !
   function MiscibleInitGuessCheckPatch(realization)
    
-     use span_wagner_module
+    use co2_span_wagner_module
      
     use Realization_class
     use Patch_module
@@ -973,11 +973,11 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
 
   use Option_module
   
-  use water_eos_module
+  use Water_EOS_module
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module 
+  use co2_span_wagner_module 
   
   implicit none
 

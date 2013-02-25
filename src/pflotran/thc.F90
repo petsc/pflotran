@@ -1374,7 +1374,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 
   use Option_module
   use Saturation_Function_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 
@@ -1611,7 +1611,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
                            rock_dencpr,option,vol_frac_prim,Res)
 
   use Option_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 
@@ -1701,7 +1701,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-  use water_eos_module       
+  use Water_EOS_module       
   
   implicit none
   
@@ -2313,7 +2313,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
                   Res)
                   
   use Option_module                              
-  use water_eos_module
+  use Water_EOS_module
 
   implicit none
   
@@ -2506,10 +2506,10 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                               aux_var_dn,global_aux_var_dn, &
                               por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                               area,dist_gravity,option, &
-                              sat_func_dn,Jdn)
+                              sat_func_dn,Diff_dn,Jdn)
   use Option_module
   use Saturation_Function_module
-  use water_eos_module
+  use Water_EOS_module
  
   implicit none
   
@@ -2930,7 +2930,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
                     Res)
   use Option_module
-  use water_eos_module 
+  use Water_EOS_module 
  
   implicit none
   
@@ -3196,7 +3196,7 @@ end subroutine THCResidual
 ! ************************************************************************** !
 subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -3207,6 +3207,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   use Secondary_Continuum_Aux_module
+  use Secondary_Continuum_module
   
   implicit none
 
@@ -3762,7 +3763,7 @@ end subroutine THCJacobian
 ! ************************************************************************** !
 subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Option_module
@@ -4156,6 +4157,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                      cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 	  
+      Diff_dn = thc_parameter%diffusion_coefficient(1)
 
       call THCBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -4170,7 +4172,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
-                                Jdn)
+                                Diff_dn,Jdn)
+                                
       Jdn = -Jdn
   
 !  scale by the volume of the cell

@@ -14,6 +14,19 @@ module Constraint_module
   
 #include "definitions.h"
 
+  ! concentration subcondition types
+  PetscInt, parameter, public :: CONSTRAINT_NULL = 0
+  PetscInt, parameter, public :: CONSTRAINT_FREE = 1
+  PetscInt, parameter, public :: CONSTRAINT_TOTAL = 2
+  PetscInt, parameter, public :: CONSTRAINT_LOG = 3
+  PetscInt, parameter, public :: CONSTRAINT_PH = 4
+  PetscInt, parameter, public :: CONSTRAINT_MINERAL = 5
+  PetscInt, parameter, public :: CONSTRAINT_GAS = 6
+  PetscInt, parameter, public :: CONSTRAINT_CHARGE_BAL = 7
+  PetscInt, parameter, public :: CONSTRAINT_TOTAL_SORB_AQ_BASED = 8
+  PetscInt, parameter, public :: CONSTRAINT_TOTAL_SORB = 9
+  PetscInt, parameter, public :: CONSTRAINT_SUPERCRIT_CO2 = 10
+
   type, public :: tran_constraint_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name         

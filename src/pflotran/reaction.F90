@@ -935,7 +935,8 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   use Option_module
   use Input_module
   use String_module
-  use Utility_module  
+  use Utility_module
+  use Constraint_module
   
   implicit none
   
@@ -1075,17 +1076,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
                                          immobile_constraint, &
-                                         porosity1, &
+                                         porosity, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
   use Option_module
   use Input_module
   use String_module  
-  use Utility_module  
+  use Utility_module
+  use Constraint_module
 #ifdef CHUAN_CO2
   use co2eos_module, only: Henry_duan_sun
-  use span_wagner_module, only: co2_span_wagner
-  use water_eos_module
+  use co2_span_wagner_module, only: co2_span_wagner
+  use Water_EOS_module
 #endif  
   implicit none
   
@@ -1098,13 +1100,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   type(immobile_constraint_type), pointer :: immobile_constraint
+  PetscReal :: porosity
   PetscInt :: num_iterations
   
-! *****************************
-! pcl: using 'porosity' does not compile on Mac with gfortran 4.6.0
-  PetscReal :: porosity1
-! *****************************
-
   PetscBool :: use_prev_soln_as_guess
   type(option_type) :: option
   
@@ -1340,7 +1338,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
         
           ! conversion from m^3 bulk -> L water
-          tempreal = porosity1*global_auxvar%sat(iphase)*1000.d0
+          tempreal = porosity*global_auxvar%sat(iphase)*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
           Res(icomp) = rt_auxvar%total(icomp,1) + &
             rt_auxvar%total_sorb_eq(icomp)/tempreal - total_conc(icomp)
@@ -3648,7 +3646,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   use Option_module
 #ifdef CHUAN_CO2  
   use co2eos_module, only: Henry_duan_sun
-  use water_eos_module
+  use Water_EOS_module
 #endif  
   
   implicit none
@@ -4905,9 +4903,15 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: imnrl, iaqspec, ncomp, icomp
   PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
-  
+  PetscReal :: res(reaction%ncomp)
+  PetscReal :: jac(reaction%ncomp,reaction%ncomp)
+    
   ! update mineral volume fractions
   if (reaction%mineral%nkinmnrl > 0) then
+  
+    call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar,1.d0, &
+                         reaction,option)  ! Updates the mineral rates, res is not needed
+                    
     do imnrl = 1, reaction%mineral%nkinmnrl
       ! rate = mol/m^3/sec
       ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *

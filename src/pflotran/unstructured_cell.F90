@@ -6,6 +6,21 @@ module Unstructured_Cell_module
 
 #include "definitions.h"
 
+  ! grid cell type
+  PetscInt, parameter, public :: HEX_TYPE          = 1
+  PetscInt, parameter, public :: TET_TYPE          = 2
+  PetscInt, parameter, public :: WEDGE_TYPE        = 3
+  PetscInt, parameter, public :: PYR_TYPE          = 4
+  ! 2D cell types:
+  PetscInt, parameter, public :: TRI_TYPE          = 5
+  PetscInt, parameter, public :: QUAD_TYPE         = 6
+
+  ! grid cell properties
+  PetscInt, parameter, public :: LINE_FACE_TYPE    = 1
+  PetscInt, parameter, public :: TRI_FACE_TYPE     = 2
+  PetscInt, parameter, public :: QUAD_FACE_TYPE    = 3
+  PetscInt, parameter, public :: MAX_VERT_PER_FACE = 4
+  PetscInt, parameter, public :: MAX_FACE_PER_CELL = 6
 
   type, public :: point_type
     PetscInt :: id

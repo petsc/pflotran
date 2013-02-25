@@ -491,13 +491,14 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
         .not.associated(dataset%dataset)) then
       dataset%dataset => default_dataset%dataset
     endif
-    if (associated(dataset%dataset) .and. &
-        .not.associated(default_dataset%dataset)) then
-      default_dataset%dataset => dataset%dataset
-    endif
+!geh: We cannot overwrite the default dataset pointer
+!    if (associated(dataset%dataset) .and. &
+!        .not.associated(default_dataset%dataset)) then
+!      default_dataset%dataset => dataset%dataset
+!    endif
   endif
   
-  if (associated(dataset%time_series)) then
+  if (associated(dataset%time_series).and.associated(default_dataset%time_series)) then
     call TimeSeriesVerify(option, default_time, dataset%time_series, &
                           default_dataset%time_series)
   endif
@@ -1377,7 +1378,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   use Option_module
   use Input_module
   use String_module
-  use Logging_module  
+  use Logging_module
+  
+  use General_Aux_module
   
   implicit none
   

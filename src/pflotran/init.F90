@@ -62,14 +62,14 @@ subroutine Init(simulation)
   use General_module
   
   use Reactive_Transport_module
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
   use Global_module
   use Variables_module
-  use water_eos_module
+  use Water_EOS_module
 !  use Utility_module
   use Output_module
   use Output_Aux_module
-  use Output_Tecplot_module, only : OutputVectorTecplot
   use Regression_module
     
 #ifdef SURFACE_FLOW
@@ -832,6 +832,10 @@ subroutine Init(simulation)
       case(G_MODE)
         call GeneralUpdateAuxVars(realization)
     end select
+  else ! no flow mode specified
+    if (len_trim(realization%nonuniform_velocity_filename) > 0) then
+      call InitReadVelocityField(realization)
+    endif
   endif
 
   if (option%ntrandof > 0) then
@@ -1307,10 +1311,11 @@ subroutine InitReadInput(simulation)
   use Input_module
   use String_module
   use Units_module
-  use Velocity_module
+  use Uniform_Velocity_module
   use Mineral_module
   use Regression_module
   use Output_Aux_module
+  use Output_Tecplot_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -1342,6 +1347,7 @@ subroutine InitReadInput(simulation)
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(tran_constraint_type), pointer :: tran_constraint
+  type(tran_constraint_type), pointer :: sec_tran_constraint
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation
@@ -1365,7 +1371,7 @@ subroutine InitReadInput(simulation)
   type(stepper_type), pointer :: default_stepper
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
-  type(velocity_dataset_type), pointer :: velocity_dataset
+  type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
   type(dataset_type), pointer :: dataset
   type(input_type), pointer :: input
 
@@ -1434,35 +1440,41 @@ subroutine InitReadInput(simulation)
         call ReactionReadPass2(reaction,input,option)
 
 !....................
+      case ('NONUNIFORM_VELOCITY')
+        call InputReadNChars(input,option, &
+                             realization%nonuniform_velocity_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'filename','NONUNIFORM_VELOCITY') 
+
       case ('UNIFORM_VELOCITY')
-        velocity_dataset => VelocityDatasetCreate()
-        velocity_dataset%rank = 3
-        velocity_dataset%interpolation_method = 1 ! 1 = STEP
-        velocity_dataset%is_cyclic = PETSC_FALSE
-        allocate(velocity_dataset%times(1))
-        velocity_dataset%times = 0.d0
-        allocate(velocity_dataset%values(3,1))
-        velocity_dataset%values = 0.d0
-        call InputReadDouble(input,option,velocity_dataset%values(1,1))
+        uniform_velocity_dataset => UniformVelocityDatasetCreate()
+        uniform_velocity_dataset%rank = 3
+        uniform_velocity_dataset%interpolation_method = 1 ! 1 = STEP
+        uniform_velocity_dataset%is_cyclic = PETSC_FALSE
+        allocate(uniform_velocity_dataset%times(1))
+        uniform_velocity_dataset%times = 0.d0
+        allocate(uniform_velocity_dataset%values(3,1))
+        uniform_velocity_dataset%values = 0.d0
+        call InputReadDouble(input,option,uniform_velocity_dataset%values(1,1))
         call InputErrorMsg(input,option,'velx','UNIFORM_VELOCITY')
-        call InputReadDouble(input,option,velocity_dataset%values(2,1))
+        call InputReadDouble(input,option,uniform_velocity_dataset%values(2,1))
         call InputErrorMsg(input,option,'vely','UNIFORM_VELOCITY')
-        call InputReadDouble(input,option,velocity_dataset%values(3,1))
+        call InputReadDouble(input,option,uniform_velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
         ! read units, if present
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           units_conversion = UnitsConvertToInternal(word,option) 
-          velocity_dataset%values(:,1) = velocity_dataset%values(:,1) * &
-                                         units_conversion
+          uniform_velocity_dataset%values(:,1) = &
+            uniform_velocity_dataset%values(:,1) * units_conversion
         endif
-        call VelocityDatasetVerify(option,velocity_dataset)
-        realization%velocity_dataset => velocity_dataset
+        call UniformVelocityDatasetVerify(option,uniform_velocity_dataset)
+        realization%uniform_velocity_dataset => uniform_velocity_dataset
       
       case ('VELOCITY_DATASET')
-        velocity_dataset => VelocityDatasetCreate()
-        call VelocityDatasetRead(velocity_dataset,input,option)
-        realization%velocity_dataset => velocity_dataset
+        uniform_velocity_dataset => UniformVelocityDatasetCreate()
+        call UniformVelocityDatasetRead(uniform_velocity_dataset,input,option)
+        realization%uniform_velocity_dataset => uniform_velocity_dataset
 
 !....................
       case ('DEBUG')
@@ -1542,6 +1554,7 @@ subroutine InitReadInput(simulation)
         call TranConstraintRead(tran_constraint,reaction,input,option)
         call TranConstraintAddToList(tran_constraint,realization%transport_constraints)
         nullify(tran_constraint)
+
 
 !....................
       case ('BOUNDARY_CONDITION')
@@ -1645,6 +1658,26 @@ subroutine InitReadInput(simulation)
 
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
+        
+!....................
+      case('SECONDARY_CONSTRAINT')
+        if (.not.option%use_mc) then
+          option%io_buffer = 'SECONDARY_CONSTRAINT can only be used with ' // &
+                             'MULTIPLE_CONTINUUM keyword.'
+          call printErrMsg(option)
+        endif
+        if (.not.associated(reaction)) then
+          option%io_buffer = 'SECONDARY_CONSTRAINT not supported without' // &
+                             'CHEMISTRY.'
+          call printErrMsg(option)
+        endif
+        sec_tran_constraint => TranConstraintCreate(option)
+        call InputReadWord(input,option,sec_tran_constraint%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'secondary constraint','name') 
+        call printMsg(option,sec_tran_constraint%name)
+        call TranConstraintRead(sec_tran_constraint,reaction,input,option)
+        realization%sec_transport_constraint => sec_tran_constraint
+        nullify(sec_tran_constraint)        
 
 !......................
 
@@ -2303,6 +2336,7 @@ subroutine setFlowMode(option)
       option%gas_phase = 2
       option%nflowdof = 2
       option%nflowspec = 1
+      option%use_isothermal = PETSC_FALSE
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1
@@ -2310,6 +2344,7 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
+      option%use_isothermal = PETSC_FALSE
    case('THMC')
       option%iflowmode = THMC_MODE
       option%nphase = 1
@@ -2318,6 +2353,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 6
       option%nflowspec = 2
       option%nmechdof = 3
+      option%use_isothermal = PETSC_FALSE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
@@ -3871,7 +3907,7 @@ end subroutine InitPrintPFLOTRANHeader
 ! date: 02/05/13
 !
 ! ************************************************************************** !
-subroutine InitReadVelocityField(realization,filename)
+subroutine InitReadVelocityField(realization)
 
   use Realization_class
   use Patch_module
@@ -3910,6 +3946,8 @@ subroutine InitReadVelocityField(realization,filename)
   grid => patch%grid
   option => realization%option
   discretization => realization%discretization
+  
+  filename = realization%nonuniform_velocity_filename
 
   group_name = ''
   do idir = 1, 3
@@ -3935,7 +3973,7 @@ subroutine InitReadVelocityField(realization,filename)
         sum_connection = sum_connection + 1
         ghosted_id_up = cur_connection_set%id_up(iconn)
         if (cur_connection_set%dist(idir,iconn) > 0.9d0) then
-          patch%internal_velocities(1,sum_connection) = vec_p(ghosted_id_up)
+          patch%internal_velocities(1,sum_connection) = vec_loc_p(ghosted_id_up)
         endif
       enddo
       cur_connection_set => cur_connection_set%next
@@ -3947,8 +3985,7 @@ subroutine InitReadVelocityField(realization,filename)
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
-    group_name = boundary_condition%name
-    dataset_name = 'Velocity'
+    dataset_name = boundary_condition%name
     call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
                                       group_name,dataset_name,PETSC_FALSE)
     call GridVecGetArrayF90(grid,field%work,vec_p,ierr)

@@ -67,6 +67,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   
   use Option_module
   use Grid_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -389,6 +390,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   use hdf5
   
   use Option_module
+  use HDF5_Aux_module
   
   implicit none
   
@@ -664,6 +666,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   
   use Grid_module
   use Option_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -1900,6 +1903,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   use Grid_module
   use Region_module
   use Patch_module
+  use HDF5_Aux_module
+  use Unstructured_Cell_module
   
   implicit none
 

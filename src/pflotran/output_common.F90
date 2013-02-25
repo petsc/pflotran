@@ -582,6 +582,7 @@ subroutine GetCellConnections(grid, vec)
 
   use Grid_module
   use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
 
   implicit none
   

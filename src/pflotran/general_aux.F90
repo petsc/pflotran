@@ -6,6 +6,18 @@ module General_Aux_module
 
 #include "definitions.h"
 
+  PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
+  PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
+  PetscInt, parameter, public :: GENERAL_AIR_PRESSURE_DOF = 2
+  PetscInt, parameter, public :: GENERAL_GAS_SATURATION_DOF = 3
+  PetscInt, parameter, public :: GENERAL_LIQUID_FLUX_DOF = 1
+  PetscInt, parameter, public :: GENERAL_GAS_FLUX_DOF = 1
+  PetscInt, parameter, public :: GENERAL_TEMPERATURE_DOF = 3
+  PetscInt, parameter, public :: GENERAL_MOLE_FRACTION_DOF = 2
+  PetscInt, parameter, public :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
+  PetscInt, parameter, public :: GENERAL_GAS_CONDUCTANCE_DOF = -2
+  PetscInt, parameter, public :: GENERAL_FLUX_DOF = 4
+
   type, public :: general_auxvar_type
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
@@ -176,8 +188,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
-  use Gas_Eos_module
+  use Water_EOS_module
+  use Gas_EOS_module
   use Saturation_Function_module
   
   implicit none

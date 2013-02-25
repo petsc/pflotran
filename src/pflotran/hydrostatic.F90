@@ -21,7 +21,7 @@ contains
 ! ************************************************************************** !
 subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Option_module
   use Grid_module
@@ -33,6 +33,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Utility_module, only : DotProduct
   use Dataset_module
   use Dataset_Aux_module
+  
+  use General_Aux_module
   
   implicit none
 
@@ -489,7 +491,7 @@ end subroutine HydrostaticUpdateCoupler
 ! ************************************************************************** !
 subroutine HydrostaticTest()
 
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
   

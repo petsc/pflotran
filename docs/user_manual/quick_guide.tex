@@ -1,299 +1,9 @@
 \documentclass[12pt]{article}
-\usepackage{times}
-%\usepackage{palatino}
-%\usepackage{fourier}  % Looks nice but isn't present in many LaTeX distros.
-\usepackage[T1]{fontenc}
-\usepackage{amsmath,amsbsy,amssymb}
-\usepackage{deflist}
-%\usepackage{fancyheadings}
-\usepackage{fancyhdr}
-\usepackage{colortbl}
-\usepackage{color}
-\usepackage[table]{xcolor}
 
-\usepackage{fancybox}
-
-\usepackage{tabularx}
-\usepackage{verbatim}
-\usepackage{moreverb}
-\usepackage{float}
-\usepackage{graphicx}
-\usepackage{longtable}
-\usepackage{subfigure}
-%\usepackage{ssss}
-\usepackage{fancybox}
-\usepackage{booktabs}
-\usepackage{array}
-%\usepackage{toc_entr}
-
-\definecolor{lightgray}{gray}{0.9}
-\definecolor{lightblue}{rgb}{0.93,0.95,1.0}
-\definecolor{lightteal}{rgb}{0.95, 1.38, 1.39}
-
-%\usepackage[framemethod=tikz,outerlinewidth=2,outerlinecolor=blue,backgroundcolor=lightblue]{mdframed}
-\usepackage[framemethod=tikz,outerlinewidth=2,outerlinecolor=teal,backgroundcolor=lightteal]{mdframed}
-
-%\usepackage[tikz]{bclogo}
-
-\usepackage{url}
-
-\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=red]{hyperref}
-
-\textwidth 6.5in
-\textheight 9.5in
-\topmargin -1.0in
-%\topmargin -3.280cm
-\newlength{\boxwidth}
-\setlength{\boxwidth}{5.8in}
-\oddsidemargin 0.in
-\evensidemargin 0.in
-\headheight 0.25in
-\lhead{\sl PFLOTRAN: Quick Reference User Guide}
-\chead{\sl DRAFT}
-\chead{\S\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
-%\rhead{DRAFT \qquad \qquad \ \today}
-\rhead{\today}
-%\rfoot{\today--[\thepage]}
-\rfoot{}
-\cfoot{\rm < \thepage\ >}
-%\cfoot{}
-%\footrulewidth 0.4pt
-\newcommand\keyend{{END \, [/ \, .]}}
-\newcommand\return{{\hfill$\hookrightarrow$} Return to Keyword List}
-\newcommand\returnb{{\hfill$\nearrow$}}
-%\newcommand\return{{\hfill\bf RETURN}}
-
-\newcommand{\negsp}{\vspace{-4mm}}
-\newcommand\secsp{\vspace{-3 mm}}
-\newcommand\secspb{\vspace{-2 mm}}
-\newcommand\subsecsp{\vspace{-0.0 mm}}
-\newcommand\pflotran{{\bf\sl PFLOTRAN}}
-\newcommand\pflow{{\bf\sl PFLOW}}
-\newcommand\ptran{{\bf\sl PTRAN}}
-\renewcommand{\baselinestretch}{1.01}
-%\setlength{\baselineskip}{13pt}
-\def\EQ#1\EN{\begin{equation}#1\end{equation}}
-\def\BA#1\EA{\begin{align}#1\end{align}}
-\def\BS#1\ES{\begin{split}#1\end{split}}
-%\newcommand{\EQ}{\begin{equation}}
-%\newcommand{\EN}{\end{equation}}
-\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
-\newcommand{\bc}{\begin{center}}
-\newcommand{\ec}{\end{center}}
-\newcommand{\degc}{$^\circ$C}
-\newcommand{\eq}{\ =\ }
-\newcommand{\eff}{{\rm eff}}
-\newcommand{\eqr}{{\rm le}}
-\newcommand{\equ}{{\rm eq}}
-\newcommand{\kin}{{\rm kin}}
-\newcommand{\rdx}{{\rm rdx}}
-\newcommand{\ind}{{\rm id}}
-\newcommand{\dep}{{\rm dp}}
-\newcommand{\e}{{\rm{e}}}
-\newcommand{\erf}{{\rm{erf}}}
-\newcommand{\erfc}{{\rm{erfc}}}
-\renewcommand{\sc}{{\rm sc}}
-\newcommand{\sign}{{\rm{sign}}}
-\newcommand{\p}{{\partial}}
-\newcommand{\im}{{\rm im}}
-\newcommand{\m}{{\rm m}}
-\newcommand{\A}{{\mathcal A}}
-\newcommand{\B}{{\mathcal B}}
-\newcommand{\C}{{\mathcal C}}
-\newcommand{\D}{{\mathcal D}}
-\newcommand{\E}{{\mathcal E}}
-\newcommand{\F}{{\mathcal F}}
-\newcommand{\G}{{\mathcal G}}
-\newcommand{\J}{{\mathcal J}}
-\newcommand{\jo}{{j_o}}
-\newcommand{\M}{{\mathcal M}}
-\newcommand{\N}{{\mathcal N}}
-\newcommand{\mO}{{\mathcal O}}
-\renewcommand{\P}{{{\mathcal P}}}
-\newcommand{\Q}{{\mathcal Q}}
-\newcommand{\R}{{{\mathcal R}}}
-\newcommand{\mcS}{{\mathcal S}}
-\newcommand{\T}{{\mathcal T}}
-\newcommand{\W}{{\mathcal W}}
-\newcommand{\X}{{\mathcal X}}
-\newcommand{\Y}{{\mathcal Y}}
-\newcommand{\Z}{{\mathcal Z}}
-\newcommand{\rev}{{\rm rev}}
-\newcommand{\irr}{{\rm irr}}
-\renewcommand{\a}{{\alpha}}
-\newcommand{\abar}{{\bar \alpha}}
-\renewcommand{\b}{{\beta}}
-\renewcommand{\c}{{\rm CO_2}}
-\newcommand{\w}{{\rm H_2O}}
-\newcommand{\air}{{\rm N_2}}
-\newcommand{\pe}{{\rm Pe}}
-\newcommand{\da}{{\rm Da}}
-\renewcommand{\k}{{\dot R}^0}
-\renewcommand{\L}{\widehat{\mathcal L}}
-\renewcommand{\bar}{\overline}
-\newcommand{\dsty}{{\displaystyle}}
-\newcommand{\diff}{{\mathcal D}}
-\newcommand{\surf}{\equiv \!\!\!}
-\newcommand{\bnabla}{\boldsymbol{\nabla}}
-\newcommand{\bA}{\boldsymbol{A}}
-\newcommand{\ba}{\boldsymbol{a}}
-\newcommand{\bB}{\boldsymbol{B}}
-\newcommand{\bC}{\boldsymbol{C}}
-\newcommand{\bD}{\boldsymbol{D}}
-\newcommand{\bE}{\boldsymbol{E}}
-\newcommand{\bF}{\boldsymbol{F}}
-\newcommand{\bi}{\boldsymbol{i}}
-\newcommand{\bI}{\boldsymbol{I}}
-\newcommand{\bJ}{\boldsymbol{J}}
-\newcommand{\bK}{\boldsymbol{K}}
-\newcommand{\bM}{\boldsymbol{M}}
-\newcommand{\bg}{\boldsymbol{g}}
-\newcommand{\bGamma}{\boldsymbol{\Gamma}}
-\newcommand{\bOmega}{\boldsymbol{\Omega}}
-\newcommand{\bPsi}{\boldsymbol{\Psi}}
-\newcommand{\bO}{\boldsymbol{O}}
-\newcommand{\bnu}{\boldsymbol{\nu}}
-\newcommand{\bdS}{\boldsymbol{dS}}
-\newcommand{\bq}{\boldsymbol{q}}
-\newcommand{\br}{\boldsymbol{r}}
-\newcommand{\bR}{\boldsymbol{R}}
-\newcommand{\bS}{\boldsymbol{S}}
-\newcommand{\bu}{\boldsymbol{u}}
-\newcommand{\bv}{\boldsymbol{v}}
-\newcommand{\bx}{\boldsymbol{x}}
-\newcommand{\by}{\boldsymbol{y}}
-\newcommand{\bz}{\boldsymbol{z}}
-\newcommand{\bzero}{\boldsymbol{0}}
-\newcommand{\arrows}{~\rightleftharpoons~}
-\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
-\newcommand{\CA}{C_{\rm A}}
-\newcommand{\CB}{C_{\rm B}}
-\newcommand{\CC}{C_{\rm C}}
-\newcommand{\CAB}{C_{\rm AB}}
-\newcommand{\CBC}{C_{\rm BC}}
-\newcommand{\RA}{\R_{\rm A}}
-\newcommand{\RB}{\R_{\rm B}}
-\newcommand{\RC}{\R_{\rm C}}
-\newcommand{\RAB}{\R_{\rm AB}}
-\newcommand{\RBC}{\R_{\rm BC}}
-%\newcommand{\kdsc}{K^{DS}}
-%\newcommand{\kdec}{K^{DE}}
-%\newcommand{\kdsm}{\overline K^{DS}}
-%\newcommand{\kdem}{\overline K^{DE}}
-\newcommand{\kdsc}{K^{sc}}
-\newcommand{\kdec}{K^{ec}}
-\newcommand{\kdsm}{K^{sm}}
-\newcommand{\kdem}{K^{em}}
-\newcommand{\csm}{S}
-\renewcommand{\csc}{S}
-\newcommand{\cem}{\E}
-\newcommand{\cec}{\E}
-\renewcommand{\min}{{\rm min}}
-\newcommand{\coll}{{\rm coll}}
-\newcommand{\ex}{{\rm ex}}
-\newcommand{\srf}{{\rm srf}}
-\def\dbar{{\mkern2mu\mathchar'26\mkern-11mu\mathrm{d}}}
-
-\renewcommand{\contentsname}{TABLE OF CONTENTS}
-\renewcommand{\listfigurename}{{LIST OF FIGURES}}
-\renewcommand{\listtablename}{{LIST OF TABLES}}
-
-\renewcommand{\arraystretch}{1.3}
-
-\setlength{\parindent}{0.3125in}
-\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
-
-\setcounter{secnumdepth}{4}
-\setcounter{tocdepth}{4}
-
-\pagestyle{fancy}
-%\pagestyle{empty}
-
-\thispagestyle{empty}
-
-%\renewcommand{\theequation}{\arabic{equation}}
-%\renewcommand{\thetable}{{\protect\bf\arabic{table}}}
-%\renewcommand{\thefigure}{{\protect\bf\arabic{figure}}}
-%\renewcommand{\thepage}{\roman{page}}
-
-\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
-
-\setlongtables
+\input{local.tex}
+%\input{laur.tex}
 
 \begin{document}
-
-%begin title page
-\begin{comment}
-\noindent
-{\large\sffamily LA-UR-06-7048}
-
-\medskip
-
-\noindent
-\scriptsize
-{\em Approved for public release;}\\
-{\em distribution is unlimited.}
-\end{comment}
-
-\normalsize
-
-\bc
-\begin{tabular}{r|l}
-~ & ~\\
-%{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 1.0 (LA-CC 06-093)}\\
-{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 2.0 (LA-CC-09-047)}\\
-~ & {\sl Multiphase-Multicomponent-Multiscale Massively Parallel} \\
-~ & {\sl Reactive Transport Code}\\
-~ & ~\\
-~ & ~\\
-{\em Author(s):} & Peter C. Lichtner (peter.lichtner@gmail.com)\\
-~  & Glenn Hammond (glenn.hammond@pnnl.gov)\\
-~ & ~\\
-~ & ~\\
-{\em Contacts:}  & Richard Mills (rmills@ornl.gov)\\
-~ & Chuan Lu (Chuan.Lu@inl.gov)\\
-%~ & %David Moulton (moulton@lanl.gov)\\
-%~ & Bobby Philip (bphilip@lanl.gov)\\
-~ & Satish Karra (satkarra@lanl.gov)\\
-~ & Jitendra Kumar (jitu1503@gmail.com)\\
-%~ & Barry Smith (bsmith@anl.gov)\\
-~ & \\%Albert Valocchi (clu@lanl.gov)\\
-~ & ~\\
-%{\em Submitted to:} & \\
-~ & ~\\
-{\em Date:} & \today \\
-~ & ~\\
-~ & ~\\
-~ & {\bf \large Work in Progress}\\
-~ & ~\\
-\end{tabular}
-\ec
-
-\vfill
-
-\begin{comment}
-\noindent
-{\Huge\sffamily Los Alamos}
-
-\vspace{-8pt}
-
-\noindent
-{\sffamily NATIONAL LABORATORY}
-
-\vspace{-6pt}
-
-\noindent
-\scriptsize
-Los Alamos National Laboratory, an affirmative action/equal opportunity employer, is operated by the Los Alamos National Security, LLC
-for the National Nuclear Security Administration of the U.S. Department of Energy under contract DE-AC52-06NA25396. By acceptance
-of this article, the publisher recognizes that the U.S. Government retains a nonexclusive, royalty-free license to publish or reproduce the
-published form of this contribution, or to allow others to do so, for U.S. Government purposes. Los Alamos National Laboratory requests
-that the publisher identify this article as work performed under the auspices of the U.S. Department of Energy. Los Alamos National
-Laboratory strongly supports academic freedom and a researcher�s right to publish; as an institution, however, the Laboratory does not
-endorse the viewpoint of a publication or guarantee its technical correctness.
-
-\hfill Form 836 (7/06)
-\end{comment}
 
 \normalsize
 
@@ -302,9 +12,9 @@ endorse the viewpoint of a publication or guarantee its technical correctness.
 \tableofcontents
 %\clearpage
 
-%\listoffigures
+\listoffigures
 
-%\listoftables
+\listoftables
 
 \clearpage
 
@@ -354,7 +64,7 @@ The installation of PFLOTRAN on MacOSX requires compiler versions 4.7 or later f
 \begin{comment}
 \subsection{MacOSX}
 
-The installation of PFLOTRAN on MacOSX requires compiler versions 4.4 or later for gfortran and gcc. 
+The installation of PFLOTRAN on MacOSX requires compiler versions 4.7.2 or later for gfortran and gcc and must be compatible with object oriented features in Fortran 2003. 
 %The compiler g++ is needed for installing SAMRAI.
 %Define environment variables: {\tt MPI\_HOME}, {\tt PKGS}, \linebreak {\tt HYPRE\_INSTALL\_DIR}
 
@@ -568,16 +278,112 @@ PFLOTRAN is compiled with the command:
 where several possible options are: 
 
 \begin{tabular}{ll}
-\verb|scco2|: & --enable two-phase supercritical CO$_2$ mode\\
+\verb|scco2=1|: & --enable two-phase supercritical CO$_2$ mode\\
 %\verb|hdf5|: & --enable HDF5 I/O capability\\
-\verb|coll|: & --enable colloid-facilitated transport option\\
-\verb|temp|: & --enable temperature dependent log $K$ capability\\
-\verb|mfd|: & --enable MFD full permeability tensor capability
+\verb|coll=1|: & --enable colloid-facilitated transport option\\
+%\verb|temp|: & --enable temperature dependent log $K$ capability\\
+\verb|mfd=1|: & --enable MFD full permeability tensor capability (not operational)
 %\verb|ice|:& --enable permafrost hydrology (works only in THC mode)
 \end{tabular}
 
 \noindent
+Thus for compiling with the supercritical CO$_2$ option use: {\tt make ssco2=1 pflotran}.
 See the PFLOTRAN \verb|makefile| for additional options.
+
+\subsection{Parallel I/O using Sarat's PARALLELIO\_LIB with PFLOTRAN}
+
+Instructions for downloading and installing a parallel I/O library for use with PFLOTRAN is provided below. Note that this software is separate from PFLOTRAN and under a LGPL.
+\begin{enumerate}
+
+\item Download parallelio\_lib source code for PARALLELIO library:
+
+{\small\tt svn co blockedhttp://ascem-io.secure-water.org/ascem-io/trunk DIRNAME}
+
+where {\tt DIRNAME} is the installation directory. The username and password are:
+%\href{https://bitbucket.org/pflotran/pflotran-dev/wiki/Documentation/Strata}{Strata}
+
+username: {\tt pflotran\_dev}
+
+password: {\tt gr0undw@t3r}
+
+\item Compile PARALLELIO library:
+
+{\tt cd DIRNAME/src}
+
+{\tt make} \hfill {\it (should compile with {\tt mpicc} or equivalent)}
+
+\item Compile PFLOTRAN:
+
+Define environmental variable: {\tt PARALLELIO\_LIB} giving path to PARALLELIO library:
+
+{\tt export PARALLELIO\_LIB=\$PWD} \hfill {\it (bash shell)}
+
+or
+
+{\tt setenv PARALLELIO\_LIB \$PWD} \hfill {\it (tcsh/csh shell)}
+
+{\tt cd PFLOTRAN\_DIR/src/pflotran}
+
+{\tt make have\_parallelio\_lib=1 pflotran}
+
+\end{enumerate}
+
+\scriptsize
+\begin{verbatim}
+README
+-------------------------------------------------------------------------------
+ASCEM-IO
+Scalable Parallel I/O module for Environmental Management Applications
+-------------------------------------------------------------------------------
+This library provides software that read/write data sets from/to parallel file 
+systems in an efficient and scalable manner. 
+In this context, scalable means that the simulators read/write 
+performance does not degrade significantly as the number of cores grows.
+
+-------------------------------------------------------------------------------
+COPYRIGHT AND LICENSE 
+-------------------------------------------------------------------------------
+ASCEM-IO is distrubuted under the terms of the GNU Lesser General Public 
+License (LGPL). The copyright is held jointly by North Carolina State University 
+and Pacific Northwest National Laboratory. 
+
+The copyright and license information is specified in the included file 
+COPYRIGHT. 
+
+-------------------------------------------------------------------------------
+Repository Access
+-------------------------------------------------------------------------------
+Please request write access by contacting Kumar Mahinthakumar (gmkumar@ncsu.edu). 
+Use the following command to access repository:
+	svn co http://ascem-io.secure-water.org/ascem-io
+
+-------------------------------------------------------------------------------
+Building Library
+-------------------------------------------------------------------------------
+The current stable release is 2.2.
+
+--------------
+Prerequisites:
+--------------
+MPI
+C compiler
+HDF5 libraries (preferably with parallel(MPI) support)
+Optional: Fortran (for Fortran example)
+
+After downloading ASCEM-IO and gathering details of HDF5 installation, 
+the following commands can be used to build and install ASCEM-IO: 
+
+	cd <ASCEM-IO check out directory>/src
+	make CC=<C-compiler> HDF5_INCLUDE_DIR=<location of the HDF5 include directory>
+	make ASCEMIO_INSTALL_DIR=<user defined install location> install
+
+In this case, CC refers to C compiler with MPI support, e.g., mpicc.
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+\end{verbatim}
+
+\normalsize
 
 \section{Running PFLOTRAN}
 
@@ -588,14 +394,22 @@ PFLOTRAN can be run from the command line as
 A number of command line options are available:
 
 \begin{tabular}{ll}
-{\tt -pflotranin} <input file name> & specify an input file [Default: {\tt pflotran.in}]\\
-{\tt -file\_prefix} <output file name> & specify an output file [Default: {\tt pflotran.out, \,\ldots}]\\
+\toprule
+\multicolumn{2}{c}{PFLOTRAN}\\
+\midrule
+{\tt -pflotranin} <input file name> & specify input file [Default: {\tt pflotran.in}]\\
+{\tt -file\_prefix} <output file name> & specify output file [Default: {\tt pflotran.out}]\\
 {\tt -screen\_output off} & turn off screen output\\
 %{\tt -v} &\\
 {\tt -realization\_id <integer>} & run specified realization ID\\
 {\tt -multisimulation} & run multiple input files in one run\\
 {\tt -stochastic} & Monte Carlo multiple realization run\\
-{\tt -log\_summary} & print out run performance (PETSc option)
+\midrule
+\multicolumn{2}{c}{PETSc}\\
+\midrule
+{\tt -log\_summary} & print out run performance (PETSc option)\\
+{\tt -on\_error\_abort} & aborts run on hitting NaNs\\
+\bottomrule
 \end{tabular}
 
 \subsection*{Updating PFLOTRAN}
@@ -1726,6 +1540,30 @@ and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
+\paragraph{Rate Limiter}
+
+A rate-limited form of the mineral kinetic rate law can be devised according to the expression
+\EQ\label{ratemintran}
+\widehat I_m \eq -a_m^{} \left(\sum_l \P_{ml}^{} k_{ml}^{}\right) \left[ \dfrac{1-\left(K_m Q_m\right)^{1/\sigma_m}}{1+\dfrac{k_{ml}^{}}{k_{ml}^{\rm lim}} \left(K_m Q_m\right)^{1/\sigma_m}} \right],
+\EN
+with rate-limiter $r_{\rm lim}$. In the limit $K_mQ_m\rightarrow\infty$, the rate becomes
+\EQ
+\lim_{K_m Q_m\rightarrow\infty}\widehat I_m \eq k_{ml}^{\rm lim} a_m^{}\sum_l \P_{ml}^{}.
+\EN
+Defining the affinity factor
+\EQ
+\Omega_m \eq 1-\left(K_m Q_m\right)^{1/\sigma_m},
+\EN
+or
+\EQ
+K_mQ_m \eq \Big(1-\Omega_m\Big)^{\sigma_m},
+\EN
+the rate may be expressed alternatively as
+\EQ
+\widehat I_m \eq -a_m^{} \sum_l \P_{ml}^{} k_{ml}^{} 
+\dfrac{\Omega_m}{1+\dfrac{k_{ml}^{}}{k_{ml}^{\rm lim}} \big(1-\Omega_m\big)}.
+\EN
+
 \paragraph{Changes in Material Properties}
 
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
@@ -2352,15 +2190,15 @@ Quantity & \multicolumn{1}{c}{Units}\\
 Pressure: & Pascal [Pa] (absolute)\\
 %\rowcolor[rgb]{0.5}
 Temperature: & Celcius [C]\\
-Distance: & Meter [m]\\
-Volume: & Meter$^3$ [m$^3$]\\
-Time: & Second [s]\\
-Velocity: & Meter/Second [m/s]\\
-Concentration: & Molarity [M] or Molality [m] (see MOLAL keyword)\\
-Enthalpy: & KiloJoule/mole [kJ/mol]\\
-Mass: & Kilogram [kg]\\
-Rate: & Kilogram/Second [kg/s] or Cubic Meter/Second [m$^3$/s]\\
-Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
+Distance: & meter [m]\\
+Volume: & meter$^3$ [m$^3$]\\
+Time: & second [s]\\
+Velocity: & meter/second [m/s]\\
+Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
+Enthalpy: & kiloJoule/mole [kJ/mol]\\
+Mass: & kilogram [kg]\\
+Rate: & kilogram/second [kg/s] or cubic meter/second [m$^3$/s]\\
+Surface Site Density: & mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \bottomrule[1.5pt]
 %\hline
 \end{tabular}
@@ -2417,7 +2255,7 @@ PRIMARY\_SPECIES\\
   Tracer\\
 /\\
 SECONDARY\_SPECIES\\
-  OH-\\
+  OH$-$\\
   HCO3$-$\\
   CO3$-$$-$\\
   CaHCO3+\\
@@ -2432,7 +2270,7 @@ MINERALS\\
 :\\
 MINERAL\_KINETICS\\
 Calcite\\
-RATE\_CONSTANT 1.e-8 ! [mol/cm$^3$/s]\\
+RATE\_CONSTANT 1.e-8 ! [mol/m$^2$/s]\\
 /\\
 /\\
 :\\
@@ -2676,12 +2514,12 @@ REGION all\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Initial\\
 CONCENTRATIONS\\
 Ca++    1.d-4   M  Calcite\\
-H+      8.0d0  pH\\
+H+      8.d0   pH\\
 CO2(aq) 1.d-2   G  CO2(g)\\
 Tracer  1.d-8   T\\
 /\\
-MINERALS\\
-Calcite    0.75  1.\\
+MINERALS ! vol. frac.  area\\
+Calcite      0.75      1.d2\\
 /\\
 /
 
@@ -2689,7 +2527,7 @@ Calcite    0.75  1.\\
 \hyperlink{target_constraint}{\bf CONSTRAINT} Inlet\\
 CONCENTRATIONS\\
 Ca++    1.d-6   T\\
-H+      3.0d0  pH\\
+H+      3.d0   pH\\
 CO2(aq) 1.d-3   G  CO2(g)\\
 Tracer  1.d-0   T\\
 /\\
@@ -2769,7 +2607,7 @@ END
 \subsection{Keyword: BRINE (BRIN)}
 
 \begin{deflist}{000}
-\item[BRINE, BRIN] {\tt <Value> m\_nacl} [MOLAL, MASS, MOLE]
+\item[BRINE, BRIN] {\tt <float> m\_nacl} [MOLAL, MASS, MOLE]
 \end{deflist}
 
 \hyperlink{target_key}{\return}
@@ -2880,34 +2718,34 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{0000}
 \item [Mineral Name]  \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt <Value>} $<$ 0, {\tt <Value>} = 10$^{\tt <Value>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
+\item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
 ~\\
-\item [AFFINITY\_THRESHOLD] \ {\tt <Value>} [---]
-\item [AFFINITY\_POWER] \ {\tt <Value>} [---]
+\item [AFFINITY\_THRESHOLD] \ {\tt <float>} [---]
+\item [AFFINITY\_POWER] \ {\tt <float>} [---]
 ~\\
-\item [TEMPKINS\_CONSTANT] \ {\tt <Value>} [---]
+\item [TEMPKINS\_CONSTANT] \ {\tt <float>} [---]
 ~\\
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <Value>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt <float>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt <float>} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 ~\\
-\item [RATE\_LIMITER] \ {\tt <Value>} [---]
+\item [RATE\_LIMITER] \ {\tt <float>} [mol/m$^2$/s] \ [see Eqn.\eqref{ratemintran}]
 ~\\
 \item [IRREVERSIBLE] \ 
 ~\\
 \item[ARMOR\_MINERAL] \ {\tt <Char>} \ [See Eqn.\eqref{surface_armoring}]
-\item[ARMOR\_PWR] \ {\tt <Value>} [---] \ [See Eqn.\eqref{surface_armoring}]
-\item[ARMOR\_CRIT\_VOL\_FRAC] \ {\tt <Value>} [---] \ [See Eqn.\eqref{surface_armoring}]
+\item[ARMOR\_PWR] \ {\tt <float>} [---] \ [See Eqn.\eqref{surface_armoring}]
+\item[ARMOR\_CRIT\_VOL\_FRAC] \ {\tt <float>} [---] \ [See Eqn.\eqref{surface_armoring}]
 ~\\
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt <Value>} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt <Value>} $<$ 0, {\tt <Value>} = 10$^{\tt <Value>}$
-\item [ACTIVATION\_ENERGY] \ {\tt <Value>} [kJ/mol/K] 
+\item [RATE\_CONSTANT] \ {\tt <float>} [mol/m$^2$/s], \ \ \ \ {\em If} \ {\tt <float>} $<$ 0, {\tt <float>} = 10$^{\tt <float>}$
+\item [ACTIVATION\_ENERGY] \ {\tt <float>} [kJ/mol/K] 
 \item [PREFACTOR\_SPECIES] \ {\tt <Char>}
 \begin{deflist}{0000}
-\item [ALPHA] \ {\tt <Value>} [---]
-\item [BETA] \ {\tt <Value>} [---]
-\item [ATTENUATION\_COEF] \ {\tt <Value>}
+\item [ALPHA] \ {\tt <float>} [---]
+\item [BETA] \ {\tt <float>} [---]
+\item [ATTENUATION\_COEF] \ {\tt <float>}
 \end{deflist}
 \item [\keyend]
 \end{deflist}
@@ -2935,9 +2773,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[KINETIC]
 
 
-\item [SITE\_FRACTION] \ {\tt <Value>}[---] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [RATE, RATES] \ {\tt <Value>} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [MULTIRATE\_SCALE\_FACTOR] {\tt <Value>} [---]
+\item [SITE\_FRACTION] \ {\tt <float>}[---] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [RATE, RATES] \ {\tt <float>} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [MULTIRATE\_SCALE\_FACTOR] {\tt <float>} [---]
 
 ~\\
 
@@ -2955,8 +2793,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[COMPLEX\_KINETICS] ~
 \begin{deflist}{000}
 \item[COMPLEX] {\tt name}
-\item[FORWARD\_RATE\_CONSTANT] {\tt <Value>} [1/s]
-\item[BACKWARD\_RATE\_CONSTANT] {\tt <Value>} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
+\item[FORWARD\_RATE\_CONSTANT] {\tt <float>} [1/s]
+\item[BACKWARD\_RATE\_CONSTANT] {\tt <float>} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2987,7 +2825,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item [EQUILIBRIUM]
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
-\item [CEC] {\tt <Value>} \ [mol/m$^3$]
+\item [CEC] {\tt <float>} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
@@ -3009,9 +2847,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \begin{deflist}{000}
 \item [TYPE] LINEAR, \ LANGMUIR, \ FREUNDLICH
-\item [DISTRIBUTION\_COEF, KD] \ {\tt <Value>} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
-\item [LANGMUIR\_B] \ {\tt <Value>} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
-\item [FREUNDLICH\_N] \ {\tt <Value>} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
+\item [DISTRIBUTION\_COEF, KD] \ {\tt <float>} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
+\item [LANGMUIR\_B] \ {\tt <float>} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
+\item [FREUNDLICH\_N] \ {\tt <float>} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
 \end{deflist}
 \item [\keyend] ~
 
@@ -3045,7 +2883,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
 \item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
-\item[MINIMUM\_POROSITY] {\tt <Value>}
+\item[MINIMUM\_POROSITY] {\tt <float>}
 \item[UPDATE\_ARMOR\_MINERAL\_SURFACE] \ [See Eqn.\eqref{surface_armoring}]
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
@@ -3281,15 +3119,15 @@ COMPUTE_STATISTICS
 
 \noindent
 {\bf Description:}
-The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constraint conditions chosen by the user.
+The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constraint conditions chosen by the user. Use {\bf SECONDARY\_CONSTRAINT} for constraining secondary continua initial concentrations.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item [CONSTRAINT] \ {\tt constraint\_name}
+\item [CONSTRAINT (SECONDARY\_CONSTRAINT)] \ {\tt constraint\_name}
 \begin{deflist}{000}
 \item[CONC, CONCENTRATIONS] ~
 \begin{deflist}{000}
-\item[{\tt Name, Concentration\_Value, Constraint, Name}] ~
+\item[{\footnotesize\tt Primary Species Name, Concentration\_Value, Constraint, Name (mineral, gas)}] ~
 \end{deflist}
 \item[\keyend] ~
 
@@ -3298,7 +3136,7 @@ The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constra
 \item[MNRL, MINERALS] ~
 
 \begin{deflist}{000}
-\item[{\tt mineral\_name}, \ {\tt volume\_fraction} {[---]}, \ {\tt surface\_area} [cm$^{-1}$]]
+\item[{\tt mineral\_name}, \ {\tt volume\_fraction} {[---]}, \ {\tt surface\_area} [m$^{-1}$]]
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -3356,6 +3194,28 @@ CONSTRAINT initial
   /
 END
 \end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
+\begin{Verbatim}
+:====== secondary constraint ===================
+SECONDARY_CONSTRAINT sec
+CONCENTRATIONS
+Ca++          1.e-3    M Calcite
+H+            7.      pH
+SO4--         1.e-3    M Gypsum
+HCO3-        -3.5      G CO2(g)
+Cl-           1.e-3    Z
+SiO2(aq)      1.e-4    M Quartz
+Tracer        1.d-8    F
+/
+MINERALS
+Quartz      0.019175   1.d2
+Calcite     0.730825   1.d2
+Gypsum      0.0        1.d2
+/
+/
+\end{Verbatim}
 
 \end{mdframed}
 
@@ -3486,11 +3346,11 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \begin{deflist}{000}
 \item [FLOW\_CONDITION] \ {\tt flow\_condition\_name}
 \begin{deflist}{000}
-\item [UNITS] {\tt <Value>} (not currently supported)
+\item [UNITS] {\tt <char>} (not currently supported)
 \begin{deflist}{000000000}
-{\tt <Value>} is one of the following entries:
-\item[s, sec, min, hr, d, day, w, week, mo, month, y, yr] (time)
-\item[mm, cm, m, met, meter, dm, km] (length)
+{\tt <char>} is one of the following entries:
+\item[s, min, h (hr), d, day, w, week, mo, month, y (yr)] (time)
+\item[mm, cm, m, dm, km] (length)
 \item[kg/s, kg/yr] (rate)
 \item[Pa, KPa] (pressure)
 \item[m/s, m/yr] (velocity)
@@ -3524,7 +3384,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[\keyend]
 \item[TIME] (not currently supported)
 
-\item[IPHASE] {\tt <Value>[integer]}
+\item[IPHASE] {\tt <int>}
 
 \item[DATUM] ~
 \begin{deflist}{000}
@@ -3547,7 +3407,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[TEMPERATURE, \ TEMP] \ {\tt <float>}
 \item[ENTHALPY, H] \ {\tt <float>}
 \item[PRESSURE, \ PRES, \ RESS] \ {\tt <float>}
-\item[RATE] \ {\tt <Value>}
+\item[RATE] \ {\tt <float>}
 \item[FLUX, \ VELOCITY, \ VEL] \ {\tt <float>}
 \item[CONC, \ CONCENTRATION] \ {\tt <float>}
 \item[SAT, \ SATURATION] \ {\tt <float>}
@@ -3925,10 +3785,12 @@ END
 
 \begin{deflist}{000}
 \item[NONE (PREONLY)]
+\item[DIRECT] \ (LU decomposition)
+\item[ITERATIVE] \ (Bi-CGStab (BCGS) and block Jacobi preconditioning with ILU[0] in each block)
 \item[GMRES]
 \item[FGMRES]
-\item[BCGS] \ (BICGSTAB, BI-CGSTAB)
-\item[IBCGS] \ (IBICGSTAB, IBI-CGSTAB)
+\item[BCGS] \ (BICGSTAB, BI-CGSTAB) 
+\item[IBCGS] \ (IBICGSTAB, IBI-CGSTAB) \ (Improved BCGS)
 \item[RICHARDSON]
 \item[CG]
 \end{deflist}
@@ -3937,7 +3799,7 @@ END
 
 \begin{deflist}{000}
 \item[NONE (PCNONE)]
-\item[ILU (PCILU)]
+\item[ILU (PCILU)] 
 \item[LU (PCLU)]
 \item[BJACOBI (BLOCK\_JACOBI)]
 \item[ASM (ADDITIVE\_SCHWARTZ)]
@@ -3949,18 +3811,18 @@ END
 \item[HYPRE\_OPTIONS]
 \begin{deflist}{000}
 \item[TYPE] \ [{\tt pilut, parasails, boomeramg, euclid}]
-\item[BOOMERAMG\_CYCLE\_TYPE] / [{\tt V, W}]
-\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt <Value>}
-\item[BOOMERAMG\_MAX\_ITER] \ {\tt <Value>}
-\item[BOOMERAMG\_TOL] \ {\tt <Value>}
-\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt <Value>}
-\item[BOOMERAMG\_AGG\_NL] \ {\tt <Value>}
-\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt <Value>}
-\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt <Value>}
-\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt <Value>}
+\item[BOOMERAMG\_CYCLE\_TYPE] \ <char> \ [{\tt V, W}]
+\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt <int>}
+\item[BOOMERAMG\_MAX\_ITER] \ {\tt <int>}
+\item[BOOMERAMG\_TOL] \ {\tt <float>}
+\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt <float>}
+\item[BOOMERAMG\_AGG\_NL] \ {\tt <float>}
+\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt <int>}
+\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt <float>}
+\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt <float>}
 \item[BOOMERAMG\_RELAX\_TYPE\_ALL] \ {\tt <Value>}
 \item[BOOMERAMG\_RELAX\_TYPE\_DOWN] \ {\tt <Value>}
 \item[BOOMERAMG\_RELAX\_TYPE\_UP] \ {\tt <Value>}
@@ -3977,10 +3839,11 @@ END
 \item[BOOMERAMG\_NODAL\_RELAXATION] \ {\tt <Value>}
 \end{deflist}
 
-\item[ATOL] \ {\tt <Value>}
-\item[RTOL] \ {\tt <Value>}
-\item[DTOL] \ {\tt <Value>}
-\item[MAXIT] \ {\tt <Value>}
+\item[ATOL] \ {\tt <float>} \ (Absolute tolerance: $||b-Ax_n|| < \epsilon$)
+\item[RTOL] \ {\tt <float>} \ (Relative tolerance: $||b-Ax_n||/||b-Ax_0||<\epsilon$)
+\item[DTOL] \ {\tt <float>} \ (Divergence tolerance: $||b-Ax_n||/||b-Ax_0||>\epsilon$)
+\item[MAXIT] \ {\tt <int>} \ (Maximum number of linear solver iterations)
+\item[LU\_ZERO\_PIVOT\_TOL] \ {\tt <float>} \ Specifies zero pivot tolerance for ILU/LU preconditioners
 
 \end{deflist}
 \item[\keyend]
@@ -3988,7 +3851,36 @@ END
 
 \noindent{\bf Explanation:}
 
-\noindent{\bf Example:}
+\begin{mdframed}
+
+\noindent{\bf Examples:}
+\begin{verbatim}
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+/
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER ITERATIVE
+/
+
+LINEAR_SOLVER FLOW
+  SOLVER GMRES
+  PRECONDITIONER ILU
+/
+Advanced PETSc options
+
+LINEAR_SOLVER FLOW
+  KSP_TYPE IBCGS
+  PC_TYPE ASM
+/
+
+LINEAR_SOLVER TRANSPORT
+  KSP_TYPE PCNONE
+  PC_TYPE LU
+  LU_ZERO_PIVOT_TOL 1d-15
+/
+\end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4010,7 +3902,7 @@ END
 \item[ROCK\_DENSITY] \ {\tt <float>} \ [kg/m$^3$]
 \item[SPECIFIC\_HEAT] \ {\tt <float>} \ [J/kg/K]
 \item[LONGITUDINAL\_DISPERSIVITY] \ {\tt <float>} \ [m]
-\item[TRANSVERSE\_DISPERSIVITY] \ (not implemented) \ [m]
+\item[TRANSVERSE\_DISPERSIVITY] \ {\tt <float>} \ (not implemented) \ [m]
 \item[THERMAL\_CONDUCTIVITY\_DRY] \ {\tt <float>} \ [W/m/K]
 \item[THERMAL\_CONDUCTIVITY\_WET] \ {\tt <float>} \ [W/m/K]
 \item[PORE\_COMPRESSIBILITY] \ {\tt <float>} \ (not implemented) \ [bar$^{-1}$]
@@ -4045,14 +3937,14 @@ END
 \item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
 \item[TYPE] \ {\tt <char>} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
-\item[LOG\_GRID\_SPACING] \ Toggle to use logarithmic grid spacing in secondary continua
+\item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
+\item[LOG\_GRID\_SPACING] \ Toggle to use logarithmic grid spacing in secondary continua (applies to nested spheres and cubes only)
 \item[OUTER\_SPACING] \ {\tt <float>} [m] \ Outer matrix node grid spacing for logarithmic grid \ (see Eqns.\eqref{eqnloggrid})
 \item[LENGTH] \ {\tt <float>} [m] \ length of SLAB type
 \item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type
 \item[MATRIX\_BLOCK\_SIZE] \ {\tt <float>} [m] \ matrix block size for NESTED\_CUBES type
 \item[FRACTURE\_SPACING] \ {\tt <float>} [m] \ fracture spacing for NESTED\_CUBES type
 \item[RADIUS] \ {\tt <float>} [m] \ radius for NESTED\_SPHERES type
-\item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
 \item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in REV
 \item[APERTURE] \ {\tt <float>} \ Fracture aperture (if specified overrides epsilon---applicable for nested cubes only)
 \end{deflist}
@@ -4311,6 +4203,8 @@ The user must specify either a region or boundary condition to which the observa
 \item[VELOCITY]
 \item[AT\_CELL\_CENTER]
 \item[SECONDARY\_TEMPERATURE]
+\item[SECONDARY\_CONCENTRATION]
+\item[SECONDARY\_MINERAL\_VOLFRAC]
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -4321,7 +4215,9 @@ The user must specify either a region or boundary condition to which the observa
 \item[Keyword REGION] (optional) defines the name of the region (usually a point in space) to which the observation point is linked.
 \item[Keyword BOUNDARY\_CONDITION] (optional) specifies the name of a boundary condition to which the observation point is tied (e.g. to monitor fluxes across a boundary face).
 \item[Keyword VELOCITY] (optional) toggles on the printing of Darcy velocities at the observation point.
-\item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodal) temperatures.
+\item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodes) temperatures.
+\item[Keyword SECONDARY\_CONCENTRATION] (optional) toggles on the printing of the secondary continuum (matrix nodes) concentration.
+\item[Keyword SECONDARY\_MINERAL\_VOLFRAC] (optional) toggles on the printing of the secondary continuum (matrix nodes) mineral volume fraction.
 \end{description}
 
 \begin{mdframed}
@@ -4368,9 +4264,9 @@ END
 \begin{deflist}{000}
 \item[OUTPUT] ~
 \begin{deflist}{000}
-\item[TIMES] {\tt Unit (s, h, y)} \ \ \ {\tt <float>} 
+\item[TIMES] {\tt Unit (s, min, h (hr), d, w, mo, y (yr))} \ \ \ {\tt <float>} 
 \item[SCREEN \ OFF] \ suppress screen output
-\item[SCREEN \ PERIODIC] {\tt <integer>}: print to screen every <integer> time steps.
+\item[SCREEN \ PERIODIC] {\tt <int>}: print to screen every <integer> time steps.
 \item[PERIODIC \ TIME] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC \ TIMESTEP] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC\_OBSERVATION \ TIME] \ {\tt <float>} \ {\tt <unit>}: \ output the results at observation points and mass balance output at specified output times
@@ -4413,12 +4309,12 @@ PERIODIC TIMESTEP: & controls frequency of output time steps.\\
 PERIODIC\_OBSERVATION TIME: & frequency of output time.\\
 PERIODIC\_OBSERVATION TIMESTEP: & frequency of output time step.\\
 NO\_FINAL, NO\_PRINT\_FINAL: & \\
-FORMAT TECPLOT POINT: & Tecplot POINT output, valid for 1D and 2D problems.\\
-FORMAT TECPLOT BLOCK: & Tecplot BLOCK output.\\
-FORMAT HDF5: & HDF5 output format written to a .h5 file which can be read by Visit.\\
+FORMAT TECPLOT POINT: & Tecplot POINT output, valid for 1D and 2D problems on a single processor core.\\
+FORMAT TECPLOT BLOCK: & Tecplot BLOCK output for multi-processor core runs.\\
+FORMAT HDF5: & HDF5 output format written to a .h5 file which can be read by VisIt and ParaView.\\
 FORMAT MAD: & MAD (Method of Anchored Distributions) format.\\
-FORMAT VTK: & VTK format.\\
-UNIT: & time units of seconds (s), days (d), and years (y).\\
+FORMAT VTK: & VTK format which can be read by VisIt and ParaView.\\
+UNIT: & time units of seconds (s), minutes (min), hours (h, hr), days (d), weeks (w), months (mo), and years (y, yr).\\
 PERMEABILITY: & \\
 POROSITY: & \\
 FLUXES: & \\
@@ -4828,23 +4724,81 @@ END
 \begin{deflist}{000}
 \item[TIMESTEPPER] [{\bf FLOW, TRAN, TRANSPORT}]
 \begin{deflist}{000}
-\item[NUM\_STEPS\_AFTER\_TS\_CUT] [5]
-\item[MAX\_STEPS] [999999]
-\item[TS\_ACCELERATION] [5]
-\item[MAX\_TS\_CUTS] [16]
-\item[INITIALIZE\_TO\_STEADY\_STATE]
-\item[RUN\_AS\_STEADY\_STATE]
-\item[MAX\_PRESSURE\_CHANGE] [5.d4]
-\item[MAX\_TEMPERATURE\_CHANGE] [5.d0]
-\item[MAX\_CONCENTRATION\_CHANGE] [1.d0]
-\item[MAX\_SATURATION\_CHANGE] [0.5d0]
+\item[NUM\_STEPS\_AFTER\_CUT] \ {\tt <int>} 
+
+Number of time steps after a time step cut that the time step size is held constant [5].
+
+\item[MAX\_STEPS] \ {\tt <int>} 
+
+Maximum time step after which the simulation will be terminated [999999].
+
+\item[TS\_ACCELERATION] \ {\tt <int>} 
+
+Integer indexing time step acceleration ramp {\em (expert users only)} [5].
+
+\item[MAX\_TS\_CUTS] \ {\tt <int>} 
+
+Maximum number of consecutive time step cuts before the simulation is terminated with plot of the current solution printed to a XXX\_cut\_to\_failure.tec file for debugging [16].
+
+\item[CFL\_LIMITER] \ {\tt <float>}
+
+The maximum CFL number allowed for transport. Enables Courant (CFL) number limiting on the transport time step.
+
+\item[DT\_FACTOR] \ {\tt <float>} 
+
+Array of floating point numbers of tfac array {\em (expert users only)}.
+
+\item[INITIALIZE\_TO\_STEADY\_STATE] ~
+
+Flag indicating that the simulation is to be run as steady state {\em (Warning: not robust)}.
+
+\item[RUN\_AS\_STEADY\_STATE] ~
+
+Flag requesting that a steady state solution be computed based on boundary and initial conditions at the beginning of the simulation {\em (Warning: not robust)}.
+
+\item[MAX\_PRESSURE\_CHANGE] \ {\tt <float>} 
+
+Maximum change in pressure for a time step [5.d4 Pa].
+
+\item[MAX\_TEMPERATURE\_CHANGE] \ {\tt <float>} 
+
+Maximum change in temperature for a time step [5 C].
+
+\item[MAX\_CONCENTRATION\_CHANGE] \ {\tt <float>} 
+
+Maximum change in pressure for a time step [1. mol/L].
+
+\item[MAX\_SATURATION\_CHANGE] \ {\tt <float>} 
+
+Maximum change in pressure for a time step [0.5].
+
+\item[PRESSURE\_DAMPENING\_FACTOR] \ {\tt <float>}
+\item[SATURATION\_CHANGE\_LIMIT] \ {\tt <float>}
+\item[PRESSURE\_CHANGE\_LIMIT] \ {\tt <float>}
+\item[TEMPERATURE\_CHANGE\_LIMIT] \ {\tt <float>}
 \end{deflist}
 \item[\keyend]
 \end{deflist}
 
-\noindent{\bf Explanation:}
+%\noindent{\bf Explanation:}
 
-\noindent{\bf Example:}
+\noindent{\bf Examples:}
+
+\begin{mdframed}
+\footnotesize
+\begin{Verbatim}
+TIMESTEPPER
+  TS_ACCELERATION 8
+  MAX_STEPS 10000 ! terminates simulation after 10,000 time steps
+  MAX_TS_CUTS 5 ! terminates simulation after 5 consecutive time step cuts
+END
+
+TIMESTEPPER
+  CFL_LIMITER 1. ! limits time step size to enforce a CFL # of 1.
+END
+\end{Verbatim}
+\normalsize
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -5889,7 +5843,7 @@ The input file for the simulation is listed in Table~\ref{tionex}.
 
 \newpage
 \footnotesize
-\verbatiminput{./inputfiles/ionex.in}\label{tionex}
+\VerbatimInput{./inputfiles/ionex.in}\label{tionex}
 \normalsize
 
 \newpage
@@ -6067,7 +6021,7 @@ Listing of PFLOTRAN input file including a tracer. Note that the stratigraphic z
 
 \noindent PFLOTRAN input file {\tt pflotran.in}: 
 \footnotesize
-\verbatiminput{./inputfiles/sx115/sx115.in}
+\VerbatimInput{./inputfiles/sx115/sx115.in}
 
 \clearpage
 
@@ -6075,7 +6029,7 @@ Listing of PFLOTRAN input file including a tracer. Note that the stratigraphic z
 \noindent
 Source/sink file {\tt src.dat}:
 \footnotesize
-\verbatiminput{./inputfiles/sx115/src.dat}
+\VerbatimInput{./inputfiles/sx115/src.dat}
 \normalsize
 
 

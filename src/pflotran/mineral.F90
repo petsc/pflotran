@@ -746,7 +746,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! area: m^2 mnrl/m^3 bulk
       ! volume: m^3 bulk
       Im_const = -rt_auxvar%mnrl_area(imnrl)
-
+      
       ! units: mol/sec/m^3 bulk
       if (associated(mineral%kinmnrl_affinity_power)) then
         ! Im_const: m^2 mnrl/m^3 bulk
@@ -760,6 +760,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! store volumetric rate to be used in updating mineral volume fractions
       ! at end of time step
       rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3 bulk
+
     else ! rate is already zero by default; move on to next mineral
       cycle
     endif
@@ -1179,7 +1180,7 @@ subroutine MineralUpdateTempDepCoefs(temp,pres,mineral,use_geothermal_hpt, &
     if (update_mnrl .and. associated(mineral%mnrl_logKcoef)) then
       call ReactionInterpolateLogK(mineral%mnrl_logKcoef, &
                                    mineral%mnrl_logK, &
-                                    temp, &
+                                   temp, &
                                    mineral%nmnrl)
     endif  
   else

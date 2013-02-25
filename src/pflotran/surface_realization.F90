@@ -1267,7 +1267,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use water_eos_module
+  use Water_EOS_module
   use Discretization_module
 
   implicit none
@@ -1384,7 +1384,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use water_eos_module
+  use Water_EOS_module
   use Discretization_module
   use Connection_module
 
@@ -1703,10 +1703,10 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use water_eos_module
+  use Water_EOS_module
   use Discretization_module
   use Connection_module
-  use water_eos_module
+  use Water_EOS_module
   use Saturation_Function_module
   
   implicit none
@@ -1905,7 +1905,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use water_eos_module
+  use Water_EOS_module
   use Discretization_module
 
   implicit none
