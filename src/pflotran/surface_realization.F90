@@ -1809,6 +1809,12 @@ subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
           ' a distributed flow condition associated with it'
         call printErrMsg(option)
       endif
+
+      if(coupler%flow_condition%rate%itype/=DISTRIBUTED_VOLUMETRIC_RATE_SS) then
+        option%io_buffer = 'Flow condition from_subsurface_ss should be ' // &
+          'distributed_volumetric_rate'
+        call printErrMsg(option)
+      endif
       
       do local_id=1,surf_grid%nlmax
         press_surf=hw_p(local_id)*(abs(option%gravity(3)))*den+option%reference_pressure

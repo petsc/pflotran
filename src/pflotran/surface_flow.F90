@@ -2219,8 +2219,14 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   type(option_type), pointer           :: option
   character(len=MAXSTRINGLENGTH)       :: string,string2
 
-  write(*,*),'In SurfaceFlowRHSFunction:           ',t
+  surf_field      => surf_realization%surf_field
+  discretization  => surf_realization%discretization
+  option          => surf_realization%option
 
+  !write(*,*),'In SurfaceFlowRHSFunction:           ',t
+  write(string,*),t
+  call printMsg(option,"In SurfaceFlowRHSFunction: " // string)
+  
   surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%iter_count < 10) then
     write(string2,'("00",i1)') surf_realization%iter_count
@@ -2231,12 +2237,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   else if (surf_realization%iter_count < 10000) then
     write(string2,'(i4)') surf_realization%iter_count
   endif 
-
-!  call VecView(ff,PETSC_VIEWER_STDOUT_WORLD,ierr)
-
-  surf_field      => surf_realization%surf_field
-  discretization  => surf_realization%discretization
-  option          => surf_realization%option
 
   call DiscretizationGlobalToLocal(discretization,xx,surf_field%flow_xx_loc,NFLOWDOF)
 

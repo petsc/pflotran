@@ -960,8 +960,8 @@ subroutine Init(simulation)
     if (OptionPrintToScreen(option)) then
       write(*,*),' '
       write(*,*),string
-      call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
     endif
+    call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
   endif
 #endif
 
