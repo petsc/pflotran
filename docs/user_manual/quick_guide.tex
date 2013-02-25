@@ -2141,6 +2141,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_mode}{\bf MODE} & \\
 \hyperlink{target_mc}{\bf MULTIPLE\_CONTINUUM} & \\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} & \\
+\hyperlink{target_nonuniform_vel}{\bf NONUNIFORM\_VELOCITY} & \\ 
 \hyperlink{target_numjac}{\bf NUMERICAL\_JACOBIAN} & \\
 \hyperlink{target_observation}{\bf OBSERVATION} & \\
 \hyperlink{target_orig}{\bf ORIG, ORIGIN} & \\
@@ -4168,6 +4169,107 @@ specified under the MATERIAL\_PROPERTY keyword.
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_nonuniform_vel}{}
+
+\subsection{Keyword: NONUNIFORM\_VELOCITY}
+\begin{deflist}{0000000000}
+\item[NONUNIFORM\_VELOCITY] <file name>
+\end{deflist}
+
+{\bf Explanation:} Name of HDF5 file for specifying nonuniform velocities including boundary velocities. Only applies to structured grids. The velocity must be specified in SI units (m/s).
+
+Internal velocities are specified for each cell corresponding to the downwind face and read in separately for $v_x$, $v_y$, and $v_z$.
+Boundary velocities are read in at all cells for each boundary condition (cells not in boundary condition region are ignored, but need a value to be read nonetheless).  
+
+A boundary condition may not wrap around a corner. Corner cells should be mapped to multiple boundary conditions with their boundary faces residing in different regions.  
+%If the user creates a user defined list of cells/faces for a region, the boundary condition could wrap around a corner.
+Below is an example python script for generating an HDF5 velocity file.
+
+\begin{mdframed}
+\underline{Python script for generating an HDF5 velocity file read by PFLOTRAN.}
+\footnotesize
+\begin{Verbatim}
+import sys
+import math
+from h5py import *
+import numpy
+import random
+
+filename = 'velocity.h5'
+h5file = File(filename,mode='w')
+
+nx = 100
+ny = 2
+nz = 2
+nxXny = nx*ny
+n = nx*ny*nz
+
+iarray = numpy.zeros((n),'=i4')
+
+# add cell ids to file
+for i in range(n):
+  iarray[i] = i+1
+dataset_name = 'Cell Ids'
+h5dset = h5file.create_dataset(dataset_name, data=iarray)
+
+rarray = numpy.zeros((n),'=f8')
+
+# x velocity
+for i in range(n):
+  rarray[i] = 3.171e-8
+dataset_name = 'Internal Velocity X'
+h5dset = h5file.create_dataset(dataset_name, data=rarray)
+
+# y velocity
+for i in range(n):
+  rarray[i] = 0.
+dataset_name = 'Internal Velocity Y'
+h5dset = h5file.create_dataset(dataset_name, data=rarray)
+
+# z velocity
+dataset_name = 'Internal Velocity Z'
+h5dset = h5file.create_dataset(dataset_name, data=rarray)
+
+# west boundary velocity
+i = 0
+for index in range(n):
+  rarray[index] = 0.
+for k in range(nz):
+  for j in range(ny):
+    index = k*(nx*ny) + j*nx + i
+    rarray[index] = 3.171e-8
+dataset_name = 'West'
+h5dset = h5file.create_dataset(dataset_name, data=rarray)
+
+# east boundary
+i = nx-1
+for index in range(n):
+  rarray[index] = 0.
+for k in range(nz):
+  for j in range(ny):
+    index = k*(nx*ny) + j*nx + i
+    rarray[index] = -3.171e-8
+dataset_name = 'East'
+h5dset = h5file.create_dataset(dataset_name, data=rarray)
+
+h5file.close()
+print('done with everything')
+\end{Verbatim}
+\end{mdframed}
+
+\begin{mdframed}
+{\bf Example: }
+
+\begin{Verbatim}
+NONUNIFORM\_VELOCITY velocity.h5
+\end{Verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
