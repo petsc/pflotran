@@ -14,6 +14,8 @@ module Solver_module
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
 
+!#include "finclude/petscpcmg.h"
+
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
     PetscReal :: linear_atol       ! absolute tolerance
