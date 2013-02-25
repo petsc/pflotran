@@ -1374,7 +1374,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 
   use Option_module
   use Saturation_Function_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 
@@ -1577,7 +1577,7 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
                            rock_dencpr,option,vol_frac_prim,Res)
 
   use Option_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 
@@ -1667,7 +1667,7 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-  use water_eos_module       
+  use Water_EOS_module       
   
   implicit none
   
@@ -2281,7 +2281,7 @@ subroutine THFlux(aux_var_up,global_aux_var_up, &
                   Res)
                   
   use Option_module                              
-  use water_eos_module
+  use Water_EOS_module
 
   implicit none
   
@@ -2478,7 +2478,7 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
                               sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
-  use water_eos_module
+  use Water_EOS_module
  
   implicit none
   
@@ -2900,7 +2900,7 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
                     Res)
   use Option_module
-  use water_eos_module 
+  use Water_EOS_module 
  
   implicit none
   
@@ -3183,7 +3183,7 @@ end subroutine THResidual
 ! ************************************************************************** !
 subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -3733,7 +3733,7 @@ end subroutine THJacobian
 ! ************************************************************************** !
 subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Option_module

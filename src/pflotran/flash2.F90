@@ -435,7 +435,7 @@ end subroutine Flash2UpdateReason
 ! ************************************************************************** !
   function  Flash2InitGuessCheckPatch(realization)
    
-     use span_wagner_module
+     use co2_span_wagner_module
      
     use Realization_class
     use Patch_module
@@ -925,12 +925,12 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 
   use Option_module
   
-   use water_eos_module
-!   use gas_eos_module  
+   use Water_EOS_module
+!   use Gas_EOS_module  
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module 
+  use co2_span_wagner_module 
   
   implicit none
 

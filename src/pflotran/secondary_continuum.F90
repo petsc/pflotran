@@ -387,7 +387,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   use Reaction_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none 
   
@@ -544,7 +544,7 @@ end subroutine SecondaryRTAuxVarInit
 !
 ! ************************************************************************** !
 subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
-                                  global_aux_var, &
+                                  global_aux_var,prim_vol, &
                                   reaction,diffusion_coefficient, &
                                   porosity,option,res_transport)
                                
@@ -602,6 +602,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal, parameter :: rgas = 8.3144621d-3
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
+  PetscReal :: prim_vol ! volume of primary grid cell
   
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
@@ -822,7 +823,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   total_current_M = rt_auxvar%total(:,1)
   call RTAuxVarStrip(rt_auxvar)
   
-  b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M
+  b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M*global_aux_var%den_kg(1)
   
   ! Reset identity matrix
   do i = 1, ncomp
@@ -837,10 +838,11 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
-                  (total_current_M - total_primary_node)
+                  (total_current_M - total_primary_node)*prim_vol*1.d3 ! in mol/s
                   
   ! Calculate the jacobian contribution due to coupling term
-  sec_jac = area_fm*pordiff/dm_plus(ngcells)*(b_m - identity)
+  sec_jac = area_fm*pordiff/dm_plus(ngcells)*(b_m - identity)*prim_vol* &
+              global_aux_var%den_kg(1) ! in kg water/s
       
   ! Store the contribution to the primary jacobian term
   sec_transport_vars%sec_jac = sec_jac 

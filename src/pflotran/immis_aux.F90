@@ -239,11 +239,11 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
                                    fluid_properties,option)
 
   use Option_module
-  use water_eos_module
-  use gas_eos_module
+  use Water_EOS_module
+  use Gas_EOS_module
   use co2eos_module
-  use span_wagner_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_module
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
   use Saturation_Function_module
   use Fluid_module
@@ -439,7 +439,7 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
-  use water_eos_module
+  use Water_EOS_module
   use Saturation_Function_module
   use Fluid_module
   

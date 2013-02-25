@@ -725,7 +725,7 @@ subroutine RTotalChunk(auxvar,vector_length,ithread,reaction,option)
 
   use Option_module
   use co2eos_module, only: Henry_duan_sun
-  use water_eos_module
+  use Water_EOS_module
   
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar

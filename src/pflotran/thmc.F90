@@ -979,7 +979,7 @@ subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
 
   use Option_module
   use Saturation_Function_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 
@@ -1179,7 +1179,7 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
                             rock_den,option,Res)
 
   use Option_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 
@@ -1259,7 +1259,7 @@ subroutine THMCFluxDerivative1(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-  use water_eos_module       
+  use Water_EOS_module       
   
   implicit none
   
@@ -1849,7 +1849,7 @@ subroutine THMCFluxDerivative2(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-  use water_eos_module       
+  use Water_EOS_module       
   
   implicit none
   
@@ -1959,7 +1959,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
                   Jup,Jdn)
                   
   use Option_module                              
-  use water_eos_module
+  use Water_EOS_module
   use Grid_module
 
   implicit none
@@ -2139,7 +2139,7 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
                   Res)
                   
   use Option_module                              
-  use water_eos_module
+  use Water_EOS_module
 
   implicit none
   
@@ -2352,7 +2352,7 @@ subroutine THMCBCFluxDerivative(ibndtype,aux_vars, &
                               sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
-  use water_eos_module
+  use Water_EOS_module
  
   implicit none
   
@@ -2760,7 +2760,7 @@ subroutine THMCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
 !                  youngs_modulus_up,poissons_ratio_up, &
 !                  youngs_modulus_dn,poissons_ratio_dn, &Res)
   use Option_module
-  use water_eos_module 
+  use Water_EOS_module 
  
   implicit none
   
@@ -3011,7 +3011,7 @@ end subroutine THMCResidual
 ! ************************************************************************** !
 subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_class
@@ -3534,7 +3534,7 @@ end subroutine THMCJacobian
 ! ************************************************************************** !
 subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Option_module

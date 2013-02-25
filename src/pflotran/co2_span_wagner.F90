@@ -1,4 +1,4 @@
-  module span_wagner_module
+  module co2_span_wagner_module
 
 
   ! module contains only 1 interface with other part, read as:
@@ -1510,4 +1510,4 @@ subroutine dissco2(p,t,mco2,fg,mol)
 
 end subroutine dissco2
 
-end module span_wagner_module
+end module co2_span_wagner_module

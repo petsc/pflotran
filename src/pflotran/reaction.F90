@@ -1086,8 +1086,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use Constraint_module
 #ifdef CHUAN_CO2
   use co2eos_module, only: Henry_duan_sun
-  use span_wagner_module, only: co2_span_wagner
-  use water_eos_module
+  use co2_span_wagner_module, only: co2_span_wagner
+  use Water_EOS_module
 #endif  
   implicit none
   
@@ -3646,7 +3646,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   use Option_module
 #ifdef CHUAN_CO2  
   use co2eos_module, only: Henry_duan_sun
-  use water_eos_module
+  use Water_EOS_module
 #endif  
   
   implicit none

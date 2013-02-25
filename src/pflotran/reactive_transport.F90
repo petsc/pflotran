@@ -2828,14 +2828,14 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       call SecondaryRTResJacMulti(rt_sec_transport_vars(ghosted_id), &
                                   rt_aux_vars(ghosted_id), &
                                   global_aux_vars(ghosted_id), &
+                                  volume_p(local_id), &
                                   reaction, &
                                   sec_diffusion_coefficient, &
                                   sec_porosity, &
                                   option,res_sec_transport)
 
       r_p(istartall:iendall) = r_p(istartall:iendall) - &
-                               res_sec_transport(1:reaction%ncomp)&
-                               *volume_p(local_id)*1.d3 ! convert vol to L from m3
+                               res_sec_transport(1:reaction%ncomp) ! in mol/s
 
     enddo   
   endif
@@ -3474,7 +3474,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           call printErrMsg(option)
         endif
          
-        Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L                                                                    
+        Jup = Jup - jac_transport                                                                   
                                                                                 
       endif
 

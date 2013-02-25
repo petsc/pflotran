@@ -818,7 +818,7 @@ end subroutine SurfaceFlowResidual
 ! ************************************************************************** !
 subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Surface_Realization_class
@@ -1036,7 +1036,7 @@ end subroutine SurfaceFlowResidualPatch1
 ! ************************************************************************** !
 subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Surface_Realization_class
@@ -1272,7 +1272,7 @@ end subroutine SurfaceFlowJacobian
 
 subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Surface_Realization_class
@@ -1477,7 +1477,7 @@ end subroutine SurfaceFlowJacobianPatch1
 
 subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Surface_Realization_class
@@ -2040,7 +2040,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
   use Option_module
   use Grid_module
   use Surface_Field_module
-  use water_eos_module
+  use Water_EOS_module
 
   implicit none
 
