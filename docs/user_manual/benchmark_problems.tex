@@ -1,0 +1,214 @@
+\section{Benchmark Problems}
+
+In this section several benchmark problems are introduced illustrating the capabilities of PFLOTRAN.
+
+\subsection{Ion Exchange}
+
+Voegelin et al. (2000) present results of ion exchange in a soil column for the system Ca-Mg-Na. Here PFLOTRAN is applied to this problem using the Gaines-Thomas exchange model. Soil column C1 with length 48.1 cm and diameter 0.3 cm was used for the simulations. A flow rate of 5.6 cm/min was used in the experiment. The inlet solution was changed during the coarse of the experiment at 20 and 65 pore volumes with cation compositions listed in Table 2 of Voegelin et al. (2000). The CEC of the soil used in the experiments was determined to have a value of 0.06$\pm$0.002 mol/kg. As PFLOTRAN requires the CEC in units of mol/m$^3$ this was obtained from the formula
+\begin{subequations}
+\BA
+\omega &\eq \frac{N_s}{V} \eq \frac{N_s}{M_s} \frac{M_s}{V_s}\frac{V_s}{V},\\\
+&\eq \rho_s (1-\varphi) {\rm CEC}.
+\EA
+\end{subequations}
+Using a porosity of 0.61 and solid grain density of 3.0344 g/cm$^3$, yielded $\omega = 71.004$ mol/m$^3$. The results of the simulation are shown in Figure~\ref{fionex} along with data reported by Voegelin et al. (2000). Self-sharpening fronts can be observed at approximately 10 and 71 at pore volumes, and a self-broadening front from 30-55 pore volumes where agreement with experiment is not as good.
+
+The input file for the simulation is listed in Table~\ref{tionex}.
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.5]{./figs/ionex}
+\caption{Breakthrough curves for Ca$^{2+}$, Mg$^{2+}$ and Na$^+$ compared with experimental results from Voegelin et al. (2000).}\label{fionex}
+\end{figure}
+
+\newpage
+\footnotesize
+\VerbatimInput{./inputfiles/ionex.in}\label{tionex}
+\normalsize
+
+\newpage
+
+\subsection{SX-115 Hanford Tank Farm}
+
+\subsubsection{Problem Description}
+
+The saturation profile is computed for both steady-state and transient conditions in a 1D vertical column consisting of a layered porous medium representing the Hanford sediment in the vicinity of the S/SX tank farm. The transient case simulates a leak from the base of the SX-115 tank. This problem description is taken from Lichtner et al. (2004).
+
+\subsubsection{Governing Equations}
+
+The moisture profile is calculated using parameters related to the Hanford sediment at the S/SX tank farm based on the Richards equation for variably saturated porous media. The Hanford sediment is composed of five layers with the properties listed in Tables~\ref{t1} and \ref{t2}. The governing equations consist of Richards equation for variably saturated fluid flow given by
+\EQ
+\frac{\p}{\p t} \varphi s\rho + \bnabla\cdot\bq\rho \eq Q,
+\EN
+and solute transport of a tracer
+\EQ
+\frac{\p}{\p t}\varphi C + \bnabla\cdot\big(\bq C - \varphi s \tau D \bnabla C\big) \eq Q_C.
+\EN
+In these equations $\varphi$ denotes the spatially variable porosity of the porous medium assumed to constant within each stratigraphic layer, $s$ gives the saturation state of the porous medium, $\rho$ represents the fluid density in general a function of pressure and temperature, $C$ denotes the solute concentration, $D$ denotes the diffusion/dispersion coefficient, $\tau$ represents tortuosity, $Q$ and $Q_C$ denote source/sink terms, and $\bq$ denotes the Darcy velocity defined by
+\EQ
+\bq\eq - \frac{k_{\rm sat}k_r}{\mu} \bnabla (p-\rho g z),
+\EN
+with saturated permeability $k_{\rm sat}$, relative permeability $k_r$, fluid viscosity $\mu$, pressure $p$, formula weight of water $W$, acceleration of gravity $g$, and height $z$. Van Genuchten capillary properties are used for relative relative permeability according to the relation
+\EQ\label{kr}
+k_{r} \eq \sqrt{s_{\rm eff}} \left\{1 - \left[1- \left( s_l^{\rm 
+eff} \right)^{1/m} \right]^m \right\}^2, 
+\EN
+where $s_{\rm eff}$ is related to capillary pressure $P_c$ by the equation
+\EQ\label{sat}
+s_{\rm eff} \eq \left[1+\left( \alpha |P_c| \right)^n 
+\right]^{-m}, 
+\EN 
+where $s_{\rm 
+eff}$ is defined by 
+\EQ\label{seff1}
+s_{\rm eff} \eq \frac{s - s_r}{1 - s_r}, 
+\EN 
+and where $s_r$ denotes the residual saturation. The quantity $n$ is related to $m$ by the expression 
+\EQ\label{lambda} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
+\EN 
+The capillary pressure $P_c$ and fluid pressure $p$ are related by the (constant) gas pressure $p_g^0$
+\EQ
+P_c \eq p_g^0-p,
+\EN
+where $p_g^0 \!=\! 101,325$ Pa is set to atmospheric pressure.
+
+\paragraph{Semi-Analytical Solution for Steady-State Conditions}
+
+For steady-state conditions the saturation profile satisfies the equation
+\EQ
+\frac{d}{dz} \rho q_z \eq 0,
+\EN
+or assuming an incompressible fluid
+\EQ
+q_z \eq q_z^0,
+\EN
+where $q_z^0$ denotes infiltration at the surface. Thus the pressure is obtained as a function of $z$ by solving the ODE
+\EQ\label{dpdz}
+\frac{dp}{dz} \eq -\frac{\mu q_z^0}{k_{\rm sat} k_r} - \rho g,
+\EN
+using Eqns.\eqref{kr} and \eqref{sat} to express the relative permeability $k_r$ as a function of pressure. For the special case of zero infiltration it follows that
+\EQ
+p(z) \eq p_0 - \rho g (z-z_0),
+\EN
+with $p(z_0)\!=\!p_0$. The saturation profile is obtained from Eqns.\eqref{sat} and \eqref{seff}.
+
+\paragraph{Watertable}
+
+The position of the watertable is defined by vanishing of the capillary pressure
+\EQ
+P_c(z_{\rm wt}) \eq 0,
+\EN
+where $z_{\rm wt}$ denotes the height of the watertable. For the case with no infiltration at the surface it follows that
+\EQ
+z_{\rm wt} \eq z_0 + \frac{p_0-p_g}{\rho g},
+\EN
+with the boundary condition $p(z_0) = p_0$ and $z_0$ denotes the datum. If $p_0$ is set equal to $p_g$, then $z_{\rm wt} = z_0$, or the height of the watertable is equal to the datum.
+The same holds true also with constant nonzero infiltration. 
+
+\begin{comment}
+To see this note that the pressure satisfies Eqn.\eqref{dpdz}. Integrating this equation yields
+\EQ
+p(z) \eq p_0 - \rho g (z-z_0) -\frac{\mu q_z^0}{k_{\rm sat}} \int_{z_0}^z \frac{dz'}{k_r}.
+\EN
+Thus the watertable is determined implicitly from the equation
+\EQ\label{wt}
+z_{\rm wt} \eq z_0 + \frac{p_0 -p_g}{\rho g} + \frac{\mu q_z^0}{\rho g k_{\rm sat}} \int_{z_0}^{z_{\rm wt}} \frac{dz}{k_r}.
+\EN
+Note that if $z_{\rm wt} = z_0$, the integral on the right-hand side vanishes.
+Expanding the integral on the right-hand side yields
+\BA
+\int_{z_0}^{z_{\rm wt}} \F dz' &\eq \frac{\G_0}{\rho g} \int_{z_0}^{z_{\rm wt}} \Big[\F_0 + \frac{1}{1!}\F_0' z' + \frac{1}{2!} \F_0'' (z')^2 + \cdots \Big] dz',\\
+&\eq \frac{\G_0}{\rho g} \Big[\F_0 (z_{\rm wt}-z_0) + \frac{1}{1! 2}\F_0' (z_{\rm wt}^2-z_0^2) + \frac{1}{2! 3} \F_0'' (z_{\rm wt}^3-z_0^3) + \cdots  \Big].
+\EA
+Consequently, it is clear that for $p_0=p_g$, $z_{\rm wt}=z_0$ satisfies Eqn.\eqref{wt}. For $p_0\ne p_g$, the watertable height depends on $q_z^0$.
+\end{comment}
+
+\subsubsection{Model Parameters}
+
+Model parameters used in the simulations are listed in Tables~\ref{t1} and \ref{t2}. Although not needed here, thermal properties are also listed. Diffusivity was set to $10^{-9}$ m$^2$ s$^{-1}$ and tortuosity was set to one.
+
+\renewcommand{\tabcolsep}{1.7mm}
+
+\begin{table}[H]\centering
+\caption{Stratigraphic sequence used in the calculations, after Ward et al. (1996).}\label{t1}
+
+\vspace{3mm}
+
+\begin{tabular}{lcr}
+\toprule
+Formation & Abbrev. & Thickness [m]\\
+\midrule
+Backfill & BF & 16.0\\
+Hanford Fine Sand & HF & 23.0\\
+Plio-Pleistocene & PP & 6.0\\
+Upper Ringold Gravel & URG & 3.0\\
+Middle Ringold Gravel & MRG & 20.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering
+\caption{Parameters for material and thermal properties for intrinsic rock density $\rho_s$, heat capacity $c$, thermal conductivity $\kappa$, porosity $\varphi$, residual water saturation $s_r$, van Genuchten parameters $\alpha$ and $\lambda$, and vertical water saturated permeability $k_{\rm sat}$. Data taken from Khaleel and Freeman (1995), Khaleel et al. (2001), and Pruess et al. (2002).}\label{t2}
+
+\vspace{3mm}
+
+\begin{tabular}{lccccccccc}
+\toprule
+Formation & $\rho_s$ & $c$ & $\kappa_{\rm dry}$ & $\kappa_{\rm wet}$ & $\varphi$ & $s_r$ & $\alpha$ & $m$ & $k_{\rm sat}$\\
+& g cm$^{-3}$ & J kg$^{-1}$ K$^{-1}$ & \multicolumn{2}{c}{W m$^{-1}$} & --- & --- & Pa$^{-1}$ & --- & m$^2$\\
+\midrule
+BF  & 2.8 & 800 & 0.5 & 2 & 0.2585 & 0.0774 & 1.008e-3 & 0.6585  &1.240e-12\\
+HF  & 2.8 & 800 & 0.5 & 2 & 0.3586 & 0.0837 & 9.408e-5 & 0.4694  &3.370e-13\\
+PP  & 2.8 & 800 & 0.5 & 2 & 0.4223 & 0.2595 & 6.851e-5 & 0.4559  &3.735e-14\\
+URG & 2.8 & 800 & 0.5 & 2 & 0.2625 & 0.2130 & 2.966e-5 & 0.3859  &1.439e-13\\
+MRG & 2.8 & 800 & 0.5 & 2 & 0.1643 & 0.0609 & 6.340e-5 & 0.3922  &2.004e-13\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Simulation Results}
+
+The calculations are carried out for an isothermal system using Richards equation. First, the steady-state saturation profile is obtained without the tank leak present. Then using the steady-state profile as the initial condition the tank leak is turned on. The results for the steady-state saturation and pressure profiles are shown in Figure~\ref{f1} for infiltration rates at the surface of 0, 8 and 80 mm/y. The mean infiltration rate at the Hanford site is approximately 8 mm/y. A 1D column 68 m heigh with the water table located at a height of 6 m from the bottom is used in the simulation. A uniform grid spacing of 0.5 m is used to discretize Richards equation.
+
+Shown in Figure~\ref{f2} is the saturation at different times following a two week leak releasing 60,000 gallons from the SX-115 tank at a depth of 16 m. In the simulation a release rate of $1.87\!\times\! 10^{-3}$ kg/s is used.
+
+
+\clearpage
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.45]{./figs/ps}
+\caption{Steady-state saturation and pressure profiles for infiltration rates of 0, 8 and 80 mm/y. The water table is located at 6 m from the bottom of the computational domain.}\label{f1}
+\end{figure}
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.45]{./figs/sat_leak}
+\caption{Simulation of a tank leak with a duration of two weeks showing the saturation profile for different times indicated in the figure.}\label{f2}
+\end{figure}
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.45]{./figs/conc}
+\caption{The solute concentration profile corresponding to Figure~\ref{t2} for different times indicated in the figure.}\label{f3}
+\end{figure}
+
+\clearpage
+
+\subsubsection{PFLOTRAN Input Files}
+
+Listing of PFLOTRAN input file including a tracer. Note that the stratigraphic zone specification in {\tt REGION} is grid independent as is the grid size specification in keyword {\tt GRID}. Therefore to change the grid spacing only the line: {\tt NXYZ 1 1 136}, needs to be changed. Also note that a line beginning with a colon (:) is read as a comment.
+
+\bigskip
+
+\noindent PFLOTRAN input file {\tt pflotran.in}: 
+\footnotesize
+\VerbatimInput{./inputfiles/sx115/sx115.in}
+
+\clearpage
+
+\normalsize
+\noindent
+Source/sink file {\tt src.dat}:
+\footnotesize
+\VerbatimInput{./inputfiles/sx115/src.dat}
+\normalsize
+
+
