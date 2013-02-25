@@ -1296,6 +1296,7 @@ subroutine SurfRealizUpdateSubsurfBC(realization,surf_realization,dt)
   PetscReal :: dt
   PetscInt :: local_id
   PetscInt :: iconn
+  PetscReal :: den
   
   PetscBool :: coupler_found = PETSC_FALSE
 
@@ -1307,6 +1308,8 @@ subroutine SurfRealizUpdateSubsurfBC(realization,surf_realization,dt)
   surf_field => surf_realization%surf_field
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
+
+  call density(option%reference_temperature,option%reference_pressure,den)
 
   coupler_list => patch%source_sinks
   coupler => coupler_list%first
@@ -1332,7 +1335,7 @@ subroutine SurfRealizUpdateSubsurfBC(realization,surf_realization,dt)
 
         call VecGetArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
         do iconn=1,coupler%connection_set%num_connections
-          coupler%flow_aux_real_var(ONE_INTEGER,iconn)=-vec_p(iconn)/dt
+          coupler%flow_aux_real_var(ONE_INTEGER,iconn)=-vec_p(iconn)/dt*den
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
 
@@ -1413,7 +1416,6 @@ subroutine SurfRealizUpdateSurfBC(realization,surf_realization)
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal, pointer :: qsrc_p(:),vec_p(:)
-  PetscReal :: rho          ! density      [kg/m^3]
   PetscInt :: local_id,iconn,sum_connection,ghosted_id
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: xx_p(:)
@@ -1661,9 +1663,6 @@ subroutine SurfRealizUpdateSurfBC(realization,surf_realization)
       dist_p(local_id) = dist*(dist_x*option%gravity(1)+ &
                                dist_y*option%gravity(2)+ &
                                dist_z*option%gravity(3))
-      !write(*,*),'Dq : ',Dq_p(local_id),Dq_p(local_id)*dist
-      !write(*,*),'perm: ',perm_xx_p(local_id),perm_yy_p(local_id),perm_zz_p(local_id)
-      !write(*,*),'dist: ',dist_x,dist_y,dist_z,dist
     enddo
 
     call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
@@ -1733,7 +1732,7 @@ subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
   
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
-  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: den          ! density      [kg/m^3]
   PetscInt :: local_id,iconn
   
   PetscReal, pointer :: hw_p(:)   ! head [m]
@@ -1775,7 +1774,7 @@ subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
   surf_grid  => surf_realization%discretization%grid
   surf_field => surf_realization%surf_field
 
-  call density(option%reference_temperature,option%reference_pressure,rho)
+  call density(option%reference_temperature,option%reference_pressure,den)
 
   call GridVecGetArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%flow_xx_loc,hw_p,ierr)
@@ -1812,11 +1811,11 @@ subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
       endif
       
       do local_id=1,surf_grid%nlmax
-        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*rho+option%reference_pressure
+        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*den+option%reference_pressure
 
         press_up = press_sub_p(local_id)
         press_dn = press_surf
-        gravity = dist_p(local_id)*rho
+        gravity = dist_p(local_id)*den
         
         dphi = press_up - press_dn + gravity
         
@@ -1931,7 +1930,7 @@ subroutine SurfRealizCreateSurfSubsurfVec(realization,surf_realization)
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal, pointer :: xx_loc_p(:),vec_p(:)
-  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: den          ! density      [kg/m^3]
   PetscInt :: local_id,i
   PetscInt :: iconn
   
@@ -1952,6 +1951,11 @@ subroutine SurfRealizCreateSurfSubsurfVec(realization,surf_realization)
     if (associated(coupler%flow_aux_real_var)) then
       ! Find the BC from the list of BCs
       if(StringCompare(coupler%name,'from_surface_ss')) then
+        if(coupler%flow_condition%rate%itype/=DISTRIBUTED_MASS_RATE_SS) then
+          option%io_buffer = 'Flow condition from_surface_ss should be ' // &
+            'distributed_mass_rate'
+          call printErrMsg(option)
+        endif
         coupler_found = PETSC_TRUE
         if(surf_realization%first_time) then
           call VecCreate(option%mycomm,surf_field%subsurf_temp_vec,ierr)
