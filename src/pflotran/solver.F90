@@ -13,7 +13,6 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
-#include "finclude/petscpcmg.h"
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
