@@ -1,4 +1,4 @@
-module Gas_Eos_Module
+module Gas_EOS_module
   implicit none
 
 #include "definitions.h"
@@ -182,4 +182,4 @@ subroutine Henry_air(p,tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    return 
 end subroutine Henry_air
 
-end module Gas_Eos_Module
+end module Gas_EOS_module

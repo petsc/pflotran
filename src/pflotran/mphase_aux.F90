@@ -242,11 +242,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
-  use gas_eos_module
+  use Water_EOS_module
+  use Gas_EOS_module
   use co2eos_module
-  use span_wagner_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_module
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
   use Saturation_Function_module
   use Fluid_module
@@ -533,7 +533,7 @@ subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturati
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  use Water_EOS_module
   use Saturation_Function_module
   use Fluid_module
   

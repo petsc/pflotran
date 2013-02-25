@@ -1455,7 +1455,7 @@ end subroutine GeneralPhaseResidual
 ! ************************************************************************** !
 subroutine GeneralPhaseResidualPatch(snes,xx,r,realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_module
@@ -1887,7 +1887,7 @@ end subroutine GeneralPhaseJacobian
 ! ************************************************************************** !
 subroutine GeneralPhaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
-  use water_eos_module
+  use Water_EOS_module
 
   use Connection_module
   use Realization_module

@@ -67,7 +67,7 @@ subroutine Init(simulation)
   
   use Global_module
   use Variables_module
-  use water_eos_module
+  use Water_EOS_module
 !  use Utility_module
   use Output_module
   use Output_Aux_module
