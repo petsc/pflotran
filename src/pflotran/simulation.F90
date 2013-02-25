@@ -88,7 +88,7 @@ function SimulationCreate2(option)
   simulation%tran_stepper => TimestepperCreate()
 #ifdef SURFACE_FLOW
   simulation%surf_flow_stepper => TimestepperCreate()
-  simulation%surf_realization => SurfaceRealizationCreate(option)
+  simulation%surf_realization => SurfRealizCreate(option)
 #endif
   nullify(simulation%regression)
   
@@ -257,7 +257,7 @@ subroutine SimulationDestroy(simulation)
 #endif
 
 #ifdef SURFACE_FLOW
-  call SurfaceRealizationDestroy(simulation%surf_realization)
+  call SurfRealizDestroy(simulation%surf_realization)
 #endif
 
   call RegressionDestroy(simulation%regression)

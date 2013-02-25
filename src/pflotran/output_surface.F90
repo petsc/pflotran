@@ -1217,7 +1217,7 @@ end subroutine WriteHDF5CoordinatesUGridXDMF
 subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubvar1)
 
   use Surface_Realization_class, only : surface_realization_type, &
-                                        SurfaceRealizationGetDataset
+                                        SurfRealizGetDataset
   use Grid_module
   use Option_module
   use Field_module
@@ -1238,7 +1238,7 @@ subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubva
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
-  call SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+  call SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   

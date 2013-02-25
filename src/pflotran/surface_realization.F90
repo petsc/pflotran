@@ -53,26 +53,27 @@ private
 
   end type surface_realization_type
 
-  public :: SurfaceRealizationCreate, &
-            SurfaceRealizationDestroy, &
-            SurfaceRealizationCreateDiscretization, &
-            SurfaceRealizationAddCoupler, &
-            SurfaceRealizationAddStrata, &
-            SurfaceRealizationLocalizeRegions, &
-            SurfaceRealizatonPassFieldPtrToPatches, &
-            SurfaceRealizationProcessCouplers, &
-            SurfaceRealizationLocalToLocalWithArray, &
-            SurfaceRealizationProcessConditions, &
-            SurfaceRealizationProcessFlowConditions, &
-            SurfaceRealizationMapSurfSubsurfaceGrids, &
-            SurfaceRealizationInitAllCouplerAuxVars, &
-            SurfaceRealizationProcessMatProp, &
-            SurfaceRealizationUpdate, &
-            SurfaceRealizationCreateSurfaceSubsurfaceVec, &
-            SurfaceRealizationUpdateSubsurfaceBC, &
-            SurfaceRealizationUpdateSurfaceBC, &
-            SurfaceRealizationComputeSurfaceSubsurfFlux, &
-            SurfaceRealizationGetDataset
+  !         123456789+123456789+123456789+1
+  public :: SurfRealizCreate, &
+            SurfRealizDestroy, &
+            SurfRealizCreateDiscretization, &
+            SurfRealizAddCoupler, &
+            SurfRealizAddStrata, &
+            SurfRealizLocalizeRegions, &
+            SurfRealizPassFieldPtrToPatches, &
+            SurfRealizProcessCouplers, &
+            SurfRealizLocalToLocalWithArray, &
+            SurfRealizProcessConditions, &
+            SurfRealizProcessFlowConditions, &
+            SurfRealizMapSurfSubsurfGrids, &
+            SurfRealizInitAllCouplerAuxVars, &
+            SurfRealizProcessMatProp, &
+            SurfRealizUpdate, &
+            SurfRealizCreateSurfSubsurfVec, &
+            SurfRealizUpdateSubsurfBC, &
+            SurfRealizUpdateSurfBC, &
+            SurfRealizSurf2SubsurfFlux, &
+            SurfRealizGetDataset
 
   !TODO(intel)
 !  public :: SurfaceRealizationGetDataset     
@@ -91,12 +92,12 @@ contains
 !!
 !! date: 02/16/12
 ! ************************************************************************** !
-function SurfaceRealizationCreate(option)
+function SurfRealizCreate(option)
 
   implicit none
 
   type(option_type), pointer             :: option
-  type(surface_realization_type),pointer :: SurfaceRealizationCreate
+  type(surface_realization_type),pointer :: SurfRealizCreate
   type(surface_realization_type),pointer :: surf_realization
   
   allocate(surf_realization)
@@ -128,9 +129,9 @@ function SurfaceRealizationCreate(option)
   surf_realization%dt_coupling = 0.d0
   
   surf_realization%first_time = PETSC_TRUE
-  SurfaceRealizationCreate => surf_realization
+  SurfRealizCreate => surf_realization
 
-end function SurfaceRealizationCreate
+end function SurfRealizCreate
 
 ! ************************************************************************** !
 !> This routine adds a copy of a coupler to a list
@@ -140,7 +141,7 @@ end function SurfaceRealizationCreate
 !!
 !! date: 02/10/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationAddCoupler(surf_relation,coupler)
+subroutine SurfRealizAddCoupler(surf_relation,coupler)
 
   use Coupler_module
 
@@ -177,7 +178,7 @@ subroutine SurfaceRealizationAddCoupler(surf_relation,coupler)
 
   call CouplerDestroy(coupler)
  
-end subroutine SurfaceRealizationAddCoupler
+end subroutine SurfRealizAddCoupler
 
 ! ************************************************************************** !
 !> This routine sets connectivity and pointers for couplers related to 
@@ -188,7 +189,7 @@ end subroutine SurfaceRealizationAddCoupler
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessCouplers(surf_realization)
+subroutine SurfRealizProcessCouplers(surf_realization)
 
   use Option_module
 
@@ -212,7 +213,7 @@ subroutine SurfaceRealizationProcessCouplers(surf_realization)
     cur_level => cur_level%next
   enddo
 
-end subroutine SurfaceRealizationProcessCouplers
+end subroutine SurfRealizProcessCouplers
 
 ! ************************************************************************** !
 !> This routine sets up linkeage between surface material properties
@@ -222,7 +223,7 @@ end subroutine SurfaceRealizationProcessCouplers
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessMatProp(surf_realization)
+subroutine SurfRealizProcessMatProp(surf_realization)
 
   use String_module
   
@@ -263,7 +264,7 @@ subroutine SurfaceRealizationProcessMatProp(surf_realization)
     cur_level => cur_level%next
   enddo 
   
-end subroutine SurfaceRealizationProcessMatProp
+end subroutine SurfRealizProcessMatProp
 
 ! ************************************************************************** !
 !
@@ -276,7 +277,7 @@ end subroutine SurfaceRealizationProcessMatProp
 !! date: 02/17/12
 !
 ! ************************************************************************** !
-subroutine SurfaceRealizationLocalizeRegions(surf_realization)
+subroutine SurfRealizLocalizeRegions(surf_realization)
 
   use Option_module
   use String_module
@@ -308,7 +309,7 @@ subroutine SurfaceRealizationLocalizeRegions(surf_realization)
     cur_level => cur_level%next
   enddo
 
-end subroutine SurfaceRealizationLocalizeRegions
+end subroutine SurfRealizLocalizeRegions
 
 
 ! ************************************************************************** !
@@ -319,7 +320,7 @@ end subroutine SurfaceRealizationLocalizeRegions
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationAddStrata(surf_realization,strata)
+subroutine SurfRealizAddStrata(surf_realization,strata)
 
   use Strata_module
 
@@ -348,7 +349,7 @@ subroutine SurfaceRealizationAddStrata(surf_realization,strata)
   
   call StrataDestroy(strata)
  
-end subroutine SurfaceRealizationAddStrata
+end subroutine SurfRealizAddStrata
 
 ! ************************************************************************** !
 !> This routine creates grid
@@ -358,7 +359,7 @@ end subroutine SurfaceRealizationAddStrata
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationCreateDiscretization(surf_realization)
+subroutine SurfRealizCreateDiscretization(surf_realization)
 
   use Grid_module
   use Unstructured_Grid_Aux_module, only : UGridMapIndices
@@ -449,7 +450,7 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
   call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
   call GridComputeAreas(grid,surf_field%area,option)
 
-end subroutine SurfaceRealizationCreateDiscretization
+end subroutine SurfRealizCreateDiscretization
 
 ! ************************************************************************** !
 !> This routine 
@@ -459,7 +460,7 @@ end subroutine SurfaceRealizationCreateDiscretization
 !!
 !! date: 02/19/12
 ! ************************************************************************** !
-subroutine SurfaceRealizatonPassFieldPtrToPatches(surf_realization)
+subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
 
   use Option_module
 
@@ -482,7 +483,7 @@ subroutine SurfaceRealizatonPassFieldPtrToPatches(surf_realization)
     cur_level => cur_level%next
   enddo
   
-end subroutine SurfaceRealizatonPassFieldPtrToPatches
+end subroutine SurfRealizPassFieldPtrToPatches
 
 ! ************************************************************************** !
 !> This routine 
@@ -492,20 +493,20 @@ end subroutine SurfaceRealizatonPassFieldPtrToPatches
 !!
 !! date: 02/19/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessConditions(surf_realization)
+subroutine SurfRealizProcessConditions(surf_realization)
 
   implicit none
   
   type(surface_realization_type) :: surf_realization
   
   if (surf_realization%option%nflowdof > 0) then
-    call SurfaceRealizationProcessFlowConditions(surf_realization)
+    call SurfRealizProcessFlowConditions(surf_realization)
   endif
   if (surf_realization%option%ntrandof > 0) then
     !call SurfaceRealProcessTranConditions(surf_realization)
   endif
  
-end subroutine SurfaceRealizationProcessConditions
+end subroutine SurfRealizProcessConditions
 
 ! ************************************************************************** !
 !> This routine takes an F90 array that is ghosted and updates the ghosted
@@ -516,7 +517,7 @@ end subroutine SurfaceRealizationProcessConditions
 !!
 !! date: 02/13/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationLocalToLocalWithArray(surf_realization,array_id)
+subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
 
   use Grid_module
   use Surface_Field_module
@@ -570,7 +571,7 @@ subroutine SurfaceRealizationLocalToLocalWithArray(surf_realization,array_id)
     cur_level => cur_level%next
   enddo
 
-end subroutine SurfaceRealizationLocalToLocalWithArray
+end subroutine SurfRealizLocalToLocalWithArray
 
 ! ************************************************************************** !
 !> This routine sets linkage of flow conditions to dataset
@@ -580,7 +581,7 @@ end subroutine SurfaceRealizationLocalToLocalWithArray
 !!
 !! date: 02/20/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessFlowConditions(surf_realization)
+subroutine SurfRealizProcessFlowConditions(surf_realization)
 
   use Dataset_module
 
@@ -658,7 +659,7 @@ subroutine SurfaceRealizationProcessFlowConditions(surf_realization)
     cur_surf_flow_condition => cur_surf_flow_condition%next
   enddo
 
-end subroutine SurfaceRealizationProcessFlowConditions
+end subroutine SurfRealizProcessFlowConditions
 
 ! ************************************************************************** !
 !> This routine initializez coupler auxillary variables within list
@@ -668,7 +669,7 @@ end subroutine SurfaceRealizationProcessFlowConditions
 !!
 !! date: 02/21/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationInitAllCouplerAuxVars(surf_realization)
+subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
 
   use Option_module
 
@@ -692,7 +693,7 @@ subroutine SurfaceRealizationInitAllCouplerAuxVars(surf_realization)
     cur_level => cur_level%next
   enddo
    
-end subroutine SurfaceRealizationInitAllCouplerAuxVars
+end subroutine SurfRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !> This routine creates vector scatter contexts between surface and subsurface 
@@ -708,7 +709,7 @@ end subroutine SurfaceRealizationInitAllCouplerAuxVars
 !!
 !! date: 01/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization)
+subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -947,8 +948,8 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call PetscViewerDestroy(viewer,ierr)
 #endif  
 
-  call SurfaceRealizationMapSurfSubsurfaceGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
-                                        surf_petsc_ids)
+  call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
+                                     surf_petsc_ids)
   call MatDestroy(prod,ierr)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
@@ -960,7 +961,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call MatView(prod,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
-  call SurfaceRealizationMapSurfSubsurfaceGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
+  call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
                                         subsurf_petsc_ids)
 
   call MatDestroy(prod,ierr)
@@ -973,7 +974,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call VecDestroy(subsurf_petsc_ids,ierr)
   call VecDestroy(surf_petsc_ids,ierr)
   
-end subroutine SurfaceRealizationMapSurfSubsurfaceGrids
+end subroutine SurfRealizMapSurfSubsurfGrids
 
 ! ************************************************************************** !
 !
@@ -987,7 +988,7 @@ end subroutine SurfaceRealizationMapSurfSubsurfaceGrids
 !!
 !! date: 01/18/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
+subroutine SurfRealizMapSurfSubsurfGrid( &
               realization, &       !<
               surf_realization, &  !<
               prod_mat, &          !< Mat-Mat-Mult matrix
@@ -1153,17 +1154,17 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-end subroutine SurfaceRealizationMapSurfSubsurfaceGrid
+end subroutine SurfRealizMapSurfSubsurfGrid
 
 ! ************************************************************************** !
-!> This routine destroys SurfaceRealization object
+!> This routine destroys SurfRealiz object
 !!
 !> @author
 !! Gautam Bisht, ORNL
 !!
 !! date: 02/16/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationDestroy(surf_realization)
+subroutine SurfRealizDestroy(surf_realization)
 
   implicit none
   
@@ -1189,7 +1190,7 @@ subroutine SurfaceRealizationDestroy(surf_realization)
   
   call DiscretizationDestroy(surf_realization%discretization)
 
-end subroutine SurfaceRealizationDestroy
+end subroutine SurfRealizDestroy
 
 
 ! ************************************************************************** !
@@ -1200,7 +1201,7 @@ end subroutine SurfaceRealizationDestroy
 !!
 !! date: 05/22/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationUpdate(surf_realization)
+subroutine SurfRealizUpdate(surf_realization)
 
   implicit none
   
@@ -1210,7 +1211,7 @@ subroutine SurfaceRealizationUpdate(surf_realization)
   call FlowConditionUpdate(surf_realization%surf_flow_conditions,surf_realization%option, &
                            surf_realization%option%time)
 
-end subroutine SurfaceRealizationUpdate
+end subroutine SurfRealizUpdate
 
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar and isubvar from surface
@@ -1221,7 +1222,7 @@ end subroutine SurfaceRealizationUpdate
 !!
 !! date: 05/22/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+subroutine SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
 
   use Option_module
   use Surface_Field_module
@@ -1241,7 +1242,7 @@ subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubva
                        surf_realization%output_option, &
                        vec,ivar,isubvar,isubvar1)
 
-end subroutine SurfaceRealizationGetDataset
+end subroutine SurfRealizGetDataset
 
 ! ************************************************************************** !
 !> This routine prescribes the strength of source/sink between surface and
@@ -1252,7 +1253,7 @@ end subroutine SurfaceRealizationGetDataset
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
+subroutine SurfRealizUpdateSubsurfBC(realization,surf_realization,dt)
 
   use Grid_module
   use String_module
@@ -1349,7 +1350,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
     call printErrMsg(option)
   endif
   
-end subroutine SurfaceRealizationUpdateSubsurfaceBC
+end subroutine SurfRealizUpdateSubsurfBC
 
 
 ! ************************************************************************** !
@@ -1368,7 +1369,7 @@ end subroutine SurfaceRealizationUpdateSubsurfaceBC
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
+subroutine SurfRealizUpdateSurfBC(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -1677,7 +1678,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
     surf_realization%first_time=PETSC_FALSE
   endif
 
-end subroutine SurfaceRealizationUpdateSurfaceBC
+end subroutine SurfRealizUpdateSurfBC
 
 ! ************************************************************************** !
 !> This routine computes flux between surface and subsurface model.
@@ -1687,7 +1688,7 @@ end subroutine SurfaceRealizationUpdateSurfaceBC
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realization)
+subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -1880,7 +1881,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx_loc,hw_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
 
-end subroutine SurfaceRealizationComputeSurfaceSubsurfFlux
+end subroutine SurfRealizSurf2SubsurfFlux
 
 ! ************************************************************************** !
 !> This routine creates a MPI vector to keep accumulated volume of water
@@ -1891,7 +1892,7 @@ end subroutine SurfaceRealizationComputeSurfaceSubsurfFlux
 !!
 !! date: 10/05/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realization)
+subroutine SurfRealizCreateSurfSubsurfVec(realization,surf_realization)
   use Grid_module
   use String_module
   use Unstructured_Grid_module
@@ -1970,7 +1971,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
     call printErrMsg(option)
   endif
 
-end subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec
+end subroutine SurfRealizCreateSurfSubsurfVec
 
 end module Surface_Realization_class
 

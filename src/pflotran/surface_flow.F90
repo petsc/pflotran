@@ -336,14 +336,14 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Boundary Condition name')
         call CouplerRead(coupler,input,option)
-        call SurfaceRealizationAddCoupler(surf_realization,coupler)
+        call SurfRealizAddCoupler(surf_realization,coupler)
         nullify(coupler)
 
       !.........................................................................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
         call StrataRead(strata,input,option)
-        call SurfaceRealizationAddStrata(surf_realization,strata)
+        call SurfRealizAddStrata(surf_realization,strata)
         nullify(strata)
         
       !.........................................................................
@@ -352,7 +352,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Initial Condition name') 
         call CouplerRead(coupler,input,option)
-        call SurfaceRealizationAddCoupler(surf_realization,coupler)
+        call SurfRealizAddCoupler(surf_realization,coupler)
         nullify(coupler)        
 
       !.........................................................................
@@ -361,7 +361,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Source Sink name') 
         call CouplerRead(coupler,input,option)
-        call SurfaceRealizationAddCoupler(surf_realization,coupler)
+        call SurfRealizAddCoupler(surf_realization,coupler)
         nullify(coupler)        
 
       !.........................................................................

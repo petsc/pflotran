@@ -259,7 +259,7 @@ subroutine Init(simulation)
   call RealizationCreateDiscretization(realization)
 #ifdef SURFACE_FLOW
   if (option%nsurfflowdof>0) then
-    call SurfaceRealizationCreateDiscretization(simulation%surf_realization)
+    call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
 
@@ -991,15 +991,15 @@ subroutine Init(simulation)
 #ifdef SURFACE_FLOW
   if(option%nsurfflowdof > 0) then
     call readSurfaceRegionFiles(simulation%surf_realization)
-    call SurfaceRealizationMapSurfSubsurfaceGrids(realization,simulation%surf_realization)
-    call SurfaceRealizationLocalizeRegions(simulation%surf_realization)
-    call SurfaceRealizatonPassFieldPtrToPatches(simulation%surf_realization)
-    call SurfaceRealizationProcessMatProp(simulation%surf_realization)
-    call SurfaceRealizationProcessCouplers(simulation%surf_realization)
-    call SurfaceRealizationProcessConditions(simulation%surf_realization)
+    call SurfRealizMapSurfSubsurfGrids(realization,simulation%surf_realization)
+    call SurfRealizLocalizeRegions(simulation%surf_realization)
+    call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
+    call SurfRealizProcessMatProp(simulation%surf_realization)
+    call SurfRealizProcessCouplers(simulation%surf_realization)
+    call SurfRealizProcessConditions(simulation%surf_realization)
     !call RealProcessFluidProperties(simulation%surf_realization)
     call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
-    call SurfaceRealizationInitAllCouplerAuxVars(simulation%surf_realization)
+    call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
     !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
 
     ! initialize plot variables
@@ -1034,7 +1034,7 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
     if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-      call SurfaceRealizationCreateSurfaceSubsurfaceVec( &
+      call SurfRealizCreateSurfSubsurfVec( &
                       simulation%realization, simulation%surf_realization)
     endif
   endif ! option%nsurfflowdof > 0
@@ -3761,7 +3761,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
 
   if (update_ghosted_material_ids) then
     ! update ghosted material ids
-    call SurfaceRealizationLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
+    call SurfRealizLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
   endif
 
   ! set cell by cell material properties

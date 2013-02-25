@@ -595,7 +595,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
         ! Update subsurface pressure of top soil layer for surface flow model
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
+          call SurfRealizUpdateSurfBC(realization,surf_realization)
         endif
 
         surf_failure = PETSC_FALSE
@@ -604,7 +604,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
           ! Compute flux between surface-subsurface model
           if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-            call SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realization)
+            call SurfRealizSurf2SubsurfFlux(realization,surf_realization)
           endif
           
           ! Solve surface flow
@@ -639,7 +639,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
 
         ! Update source/sink condition for subsurface flow model
-        call SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization, &
+        call SurfRealizUpdateSubsurfBC(realization,surf_realization, &
               option%surf_subsurf_coupling_time-option%flow_time)
 
         do
@@ -3353,7 +3353,7 @@ subroutine StepperUpdateSolution(realization)
     call StepperUpdateTransportSolution(realization)
 
 #ifdef SURFACE_FLOW
-  call SurfaceRealizationUpdate(surf_realization)
+  call SurfRealizUpdate(surf_realization)
   if (surf_realization%option%nsurfflowdof > 0) &
     call StepperUpdateSurfaceFlowSolution(surf_realization)
 #endif
