@@ -320,9 +320,9 @@ endif
 CC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpicc
 FC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpif90
 LINKER=${FC}
-CFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -I../../src -O3 
+CFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include 
 FFLAGS+= -O3 
-LDFLAGS+= -L../../src -lparallelio -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
+LDFLAGS+= -lparallelio -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
 \end{Verbatim}
 
 {\tt cd DIRNAME/src}
