@@ -35,6 +35,10 @@ ifdef petsc_api_3_3
   MYFLAGS += -DHAVE_PETSC_API_3_3
 endif
 
+ifdef have_petscpcmg_h
+	MYFLAGS += -DHAVE_PETSCPCMG_H
+endif
+
 ifdef dbl
   MYFLAGS += -DDOUBLE_LAYER
 endif
@@ -163,7 +167,7 @@ eos_obj = \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
 	${common_src}co2_span_wagner_spline.o \
-	${common_src}gaseos_mod.o \
+	${common_src}gas_eos_mod.o \
 	${common_src}water_eos.o 
 
 mode_aux_obj = \
@@ -232,7 +236,7 @@ grid_obj = \
 relations_obj = \
 	${common_src}saturation.o \
 	${common_src}saturation_function.o \
-	${common_src}pckr_mod.o 
+	${common_src}mphase_pckr_mod.o
 
 properties_obj = \
 	${common_src}fluid.o \
@@ -258,7 +262,6 @@ io_obj = \
 misc_obj = \
 	${common_src}block_solve.o \
 	${common_src}checkpoint.o \
-	${common_src}cf90bridge.o \
 	${common_src}condition.o \
 	${common_src}condition_control.o \
 	${common_src}convergence.o \
@@ -370,13 +373,13 @@ discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
 flash2.o : flash2_aux.o realization.o fluid.o global_aux.o variables.o \
            output_aux.o
 flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
-               co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
+               co2eos.o co2_span_wagner_spline.o co2_sw.o mphase_pckr_mod.o fluid.o \
                saturation_function.o
 fluid.o : option.o input.o string.o
 general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
             field.o coupler.o grid.o connection.o material.o material_aux.o \
             discretization.o water_eos.o debug.o saturation_function.o
-general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
+general_aux.o : option.o water_eos.o gas_eos_mod.o saturation_function.o \
                 global_aux.o
 general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
                  option.o logging.o hdf5_aux.o discretization.o field.o \
@@ -395,7 +398,7 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 utility.o dataset_aux.o general_aux.o
 immis.o : immis_aux.o realization.o global_aux.o variables.o output_aux.o
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
-              co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
+              co2eos.o co2_span_wagner_spline.o co2_sw.o mphase_pckr_mod.o fluid.o \
               saturation_function.o
 immobile.o : immobile_aux.o option.o string.o input.o utility.o
 immobile_aux.o : option.o utility.o
@@ -403,7 +406,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          simulation.o input.o material.o region.o condition.o convergence.o \
          waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
          co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
-         coupler.o strata.o pckr_mod.o mphase.o flash2.o \
+         coupler.o strata.o mphase_pckr_mod.o mphase.o flash2.o \
          richards.o th.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          uniform_velocity.o dataset.o condition_control.o surface_flow.o \
@@ -432,7 +435,7 @@ mphase.o : mphase_aux.o realization.o fluid.o global_aux.o \
            secondary_continuum.o secondary_continuum_aux.o variables.o \
            output_aux.o
 mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
-               co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
+               co2eos.o co2_span_wagner_spline.o co2_sw.o mphase_pckr_mod.o \
                fluid.o saturation_function.o 
 observation.o : region.o option.o input.o
 output_aux.o : variables.o
@@ -541,7 +544,7 @@ stochastic.o : simulation.o option.o realization.o timestepper.o \
 stochastic_aux.o : simulation.o input.o option.o
 strata.o : input.o region.o material.o
 string.o :
-structured_grid.o : connection.o option.o input.o cf90bridge.o
+structured_grid.o : connection.o option.o input.o
 surface_complexation.o : surface_complexation_aux.o reaction_aux.o \
                          global_aux.o  reactive_transport_aux.o option.o \
                          string.o input.o utility.o

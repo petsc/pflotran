@@ -1,0 +1,244 @@
+program pflotran
+
+	MPI_Init
+	MPI_Comm_rank
+	MPI_Comm_size
+	MPI_Comm_group
+
+	InputGetCommandLineString
+	InputGetCommandLineString
+
+	InitReadStochasticCardFromInput
+	StochasticInit
+	StochasticRun
+
+	PetscInitialize
+
+	InitReadInputFilenames
+
+	SimulationCreateProcessorGroups
+
+	OptionCheckCommandLine
+
+	PetscGetTime
+
+	Init
+		InitPrintPFLOTRANHeader
+		InitReadRequiredCardsFromInput
+		OptionCheckCommandLine
+		setFlowMode
+		InitReadInput
+		
+		wateos
+		
+		DatabaseRead
+		BasisInit
+		
+		init_span_wanger
+		
+		RealizationCreateDiscretization
+		
+		RegressionCreateMapping
+		
+		SolverCreateSNES
+		SNESSetOptionsPrefix
+		SolverCheckCommandLine
+		DiscretizationCreateJacobian
+		MatSetOptionsPrefix
+		DiscretizationCreateInterpolation
+		SNESSetFunction
+		MatCreateSNESMF
+		SNESSetJacobian
+		
+		SNESGetSNESLineSearch
+		SNESLineSearchSetType
+		
+		SolverSetSNESOptions
+		
+		PCSetDM
+		
+		SNESSetConvergenceTest
+		
+		SNESGetSNESLineSearch
+		SNESLineSearchSetPreCheck
+		SNESLineSearchSetPostCheck
+		
+		SolverCreateSNES
+		DiscretizationCreateJacobian
+		SNESSetFunction
+		MatCreateSNESMF
+		SNESSetJacobian
+		
+		readRegionFiles
+		RealizationLocalizeRegions
+		RealizatonPassPtrsToPatches
+		RealProcessMatPropAndSatFunc
+		RealizationProcessCouplers
+		RealizationProcessConditions
+		RealProcessFluidProperties
+		assignMaterialPropToRegions
+		GridComputeMinv
+		RealizationInitAllCouplerAuxVars
+		RealizationPrintCouplers
+		ReadStructuredGridHDF5
+		RealizationAddWaypointsToList
+		WaypointListFillIn
+		WaypointListRemoveExtraWaypnts
+		
+		GlobalSetup
+		CondControlAssignFlowInitCond
+		
+		readFlowInitialCondition
+		
+		RichardsUpdateAuxVars
+		MphaseUpdateAuxVars
+		ImmisUpdateAuxVars
+		MiscibleUpdateAuxVars
+		Flash2UpdateAuxVars
+		GeneralUpdateAuxVars
+		
+		InitReadVelocityField
+		
+		RTSetup
+		
+		GlobalSetAuxVarScalar
+		
+		CondControlAssignTranInitCond
+		readTransportInitialCondition
+		
+		RTUpdateAuxVars
+		
+		OutputVariableAddToList
+		
+		TimestepperPrintInfo
+		SolverPrintNewtonInfo
+		
+		RealizationPrintGridStatistics
+
+	StepperRun
+
+		PetscOptionsHasName
+		StepperRunSteadyState
+
+		StepperRestart
+	
+		StepperUpdateFlowAuxVars
+		StepperUpdateTranAuxVars
+
+		StepperUpdateSolution
+			RealizationUpdate
+			StepperUpdateFlowSolution
+			StepperUpdateTransportSolution
+				RTUpdateSolution
+					RTUpdateSolutionPatch
+						RTUpdateAuxVarsPatch
+						RUpdateTempDependentCoefs
+						RUpdateSolution
+						SecondaryRTAuxVarComputeMulti
+						RTUpdateMassBalancePatch
+
+				RealizationUpdateProperties
+	
+		StepperStepFlowDT
+			GlobalUpdateAuxVars
+			RichardsInitializeTimestep
+			MphaseInitializeTimestep
+			
+			SNESSolve
+			
+			Output
+			
+			RichardsTimeCut
+			MphaseTimeCut
+			GeneralTimeCut
+			
+			SNESGetSolutionUpdate
+			
+			StepperUpdateFlowSolution
+			
+			RichardsMaxChange
+			MphaseMaxChange
+			GeneralMaxChange
+			
+		TimestepperCheckCFLLimit
+		TimestepperEnforceCFLLimit
+	
+		RealizationRevertFlowParameters
+		CondControlAssignTranInitCond
+	
+		StepperJumpStart
+	
+		OutputInit
+	
+		StepperSetTargetTimes
+	
+		StepperStepTransportDT_GI
+			TimestepperSetTranWeights
+			GlobalUpdateDenAndSat
+			RTInitializeTimestep
+			GlobalUpdateDenAndSat
+			RTUpdateTransportCoefs
+			
+			RTUpdateAuxVars
+			
+			SNESSolve
+			
+			VecCopy
+			VecExp
+			
+			RTTimeCut
+			
+			SNESGetFunctionNorm
+			
+			RTMaxChange
+			
+		StepperStepTransportDT_OS
+	
+		StepperUpdateTransportSolution
+	
+		StepperUpdateDT
+		TimestepperEnforceCFLLimit
+	
+		OutputPrintCouplers
+		
+		StepperUpdateSolution
+			StepperUpdateFlowSolution
+			StepperUpdateTransportSolution
+				RTUpdateSolution
+				RealizationUpdateProperties
+					RealizationUpdatePropertiesPatch
+						RUpdateSolution
+							RKineticMineral
+	
+		Output
+			OutputHDF5UGridXDMF
+			OutputHDF5
+			OutputTecplotPoint
+			OutputTecplotBlock
+			OutputVTK
+			OutputMAD
+			
+			ComputeFlowCellVelocityStats
+			ComputeFlowFluxVelocityStats
+			
+			OutputMassBalance
+			OutputObservation
+			
+			OutputAvegVars
+			
+		StepperUpdateDTMax
+		StepperUpdateDT
+	
+		StepperCheckpoint
+
+	RegressionOutput
+
+	SimulationDestroy
+
+	PetscGetTime
+
+	PetscFinalize
+
+	MPI_Finalize
+
+end program pflotran

@@ -1823,35 +1823,43 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif      
 
   if (reaction%update_mineral_surface_area) then
-    porosity_scale = 1.d0
+
     if (reaction%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will
       ! avoid improper access.
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
     endif
+
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (reaction%update_mnrl_surf_with_porosity) then
-        porosity_scale = vec_p(local_id)** &
-             reaction%mineral%kinmnrl_surf_area_porosity_pwr(imnrl)
-!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
-!     solely material type.
-!          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
-      endif
       do imnrl = 1, reaction%mineral%nkinmnrl
+
+        porosity_scale = 1.d0
+        if (reaction%update_mnrl_surf_with_porosity) then
+          porosity_scale = vec_p(local_id)** &
+             reaction%mineral%kinmnrl_surf_area_porosity_pwr(imnrl)
+!       geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!       solely material type.
+!       material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
+        endif
+
+        volfrac_scale = 1.d0
         if (rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) > 0.d0) then
           volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
                          rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl))** &
              reaction%mineral%kinmnrl_surf_area_vol_frac_pwr(imnrl)
-!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
-!     solely material type.
-!            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
-          rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-            rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
-        else
-          rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-            rt_auxvars(ghosted_id)%mnrl_area0(imnrl)
+!       geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!       solely material type.
+!       material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
+!         rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+!           rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
+!       else
+!         rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+!           rt_auxvars(ghosted_id)%mnrl_area0(imnrl)
         endif
+
+        rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+            rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
 
         if (reaction%update_armor_mineral_surface .and. &
             reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) > 0.d0) then
@@ -1864,9 +1872,10 @@ subroutine RealizationUpdatePropertiesPatch(realization)
             endif
           enddo
 
-!         print *,'update-armor: ',imnrl,imnrl_armor,reaction%mineral%kinmnrl_armor_min_names(imnrl_armor)
+!         print *,'update-armor: ',imnrl,imnrl_armor, &
+!         reaction%mineral%kinmnrl_armor_min_names(imnrl_armor)
 
-!            check for negative surface area armoring correction
+!       check for negative surface area armoring correction
           if (reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) > &
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl_armor)) then
 

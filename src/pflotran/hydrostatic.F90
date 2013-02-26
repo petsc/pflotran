@@ -21,7 +21,7 @@ contains
 ! ************************************************************************** !
 subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Option_module
   use Grid_module
@@ -493,7 +493,7 @@ end subroutine HydrostaticUpdateCoupler
 ! ************************************************************************** !
 subroutine HydrostaticTest()
 
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
   

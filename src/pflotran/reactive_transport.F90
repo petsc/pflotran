@@ -2828,14 +2828,14 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       call SecondaryRTResJacMulti(rt_sec_transport_vars(ghosted_id), &
                                   rt_aux_vars(ghosted_id), &
                                   global_aux_vars(ghosted_id), &
+                                  volume_p(local_id), &
                                   reaction, &
                                   sec_diffusion_coefficient, &
                                   sec_porosity, &
                                   option,res_sec_transport)
 
       r_p(istartall:iendall) = r_p(istartall:iendall) - &
-                               res_sec_transport(1:reaction%ncomp)&
-                               *volume_p(local_id)*1.d3 ! convert vol to L from m3
+                               res_sec_transport(1:reaction%ncomp) ! in mol/s
 
     enddo   
   endif
@@ -3474,7 +3474,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           call printErrMsg(option)
         endif
          
-        Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L                                                                    
+        Jup = Jup - jac_transport                                                                   
                                                                                 
       endif
 
@@ -4207,7 +4207,7 @@ subroutine RTSetPlotVariables(realization)
   do i=1,reaction%mineral%nkinmnrl
     if (reaction%mineral%kinmnrl_print(i)) then
       name = trim(reaction%mineral%kinmnrl_names(i)) // ' Rate'
-      units = 'mol/sec/m^3'
+      units = 'mol/m^3/sec'
       call OutputVariableAddToList(list,name,OUTPUT_RATE,units, &
                                    MINERAL_RATE,i)      
     endif
@@ -4341,7 +4341,7 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_age) then
     if (reaction%species_idx%tracer_age_id > 0) then
       name = 'Tracer Age'
-      units = ''
+      units = 'sec-molar'
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                    AGE,reaction%species_idx%tracer_age_id, &
                                    reaction%species_idx%tracer_aq_id)       

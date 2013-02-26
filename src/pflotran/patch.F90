@@ -894,7 +894,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use water_eos_module
+  use Water_EOS_module
   use Dataset_Aux_module
   
   use General_Aux_module
@@ -1753,7 +1753,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reaction_Aux_module
   use Global_Aux_module
   use Constraint_module
-  use water_eos_module
+  use Water_EOS_module
     
   implicit none
 
