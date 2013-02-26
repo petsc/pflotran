@@ -15,11 +15,6 @@ PFLOTRAN = ../src/pflotran/pflotran
 
 TEST_OPTIONS =
 
-# make VERBOSE=true check
-ifdef VERBOSE
-	TEST_OPTIONS += --verbose
-endif
-
 # make PERFORMANCE=true check
 ifdef PERFORMANCE
 	TEST_OPTIONS += --check-performance
