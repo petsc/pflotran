@@ -3470,7 +3470,9 @@ subroutine Create_IOGroups(option)
             & its value is less than or equal to ZERO. &
             & HDF5_READ_GROUP_SIZE =  ",i6)') &
              option%hdf5_read_group_size
-    call printErrMsg(option)      
+    !call printErrMsg(option)
+    call printMsg(option)
+    option%hdf5_read_group_size = option%mycommsize
   endif         
  
   if (option%hdf5_write_group_size <= 0) then
@@ -3480,7 +3482,9 @@ subroutine Create_IOGroups(option)
             &its value is less than or equal to ZERO. &
             &HDF5_WRITE_GROUP_SIZE =  ",i6)') &
              option%hdf5_write_group_size
-    call printErrMsg(option)      
+    !call printErrMsg(option)
+    call printMsg(option)
+    option%hdf5_write_group_size = option%mycommsize
   endif                    
 
   if ( mod(option%mycommsize , option%hdf5_read_group_size) /= 0) then
