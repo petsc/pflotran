@@ -267,43 +267,86 @@ Values for the {\tt HDF5\_READ\_GROUP\_SIZE} and {\tt HDF5\_WRITE\_GROUP\_SIZE} 
 Typical values are to set the
 write group size equal to the number of processes on a compute node (typically 16 or 32). If that still results in a penalty, decrease it further. 
 A much higher read group size is preferred, e.g. use 512 when running on 512 cores and then one process reads the input file and broadcasts relevant sections.
+Put {\tt HDF5\_WRITE\_GROUP\_SIZE} under the {\tt OUTPUT} keyword:
+\footnotesize
+\begin{Verbatim}
+:=========================== output options ===================================
+OUTPUT
+  TIMES y 5. 10. 15. 20.
+  FORMAT TECPLOT POINT
+  HDF5_WRITE_GROUP_SIZE 16
+END
+\end{Verbatim}
+\normalsize
+and {\tt HDF5\_READ\_GROUP\_SIZE} in the main body of the input file:
+\footnotesize
+\begin{Verbatim}
+HDF5_READ_GROUP_SIZE 1024
+\end{Verbatim}
+\normalsize
+Number of MPI tasks should be an exact multiple of {\tt HDF\_READ\_GROUP\_SIZE}.
 
 For more details on the I/O library, please see Appendix A (Figs. A4, A5) in Sarat Sreepathi <admin@sarats.com> \href{http://www.lib.ncsu.edu/resolver/1840.16/8317}{dissertation}.
 
-Instructions for downloading and installing a parallel I/O library for use with PFLOTRAN is provided below. Note that this software is separate from PFLOTRAN and under a LGPL.
+Instructions for downloading and installing the parallel I/O library for use with PFLOTRAN is provided below. Note that this software is separate from PFLOTRAN and under a LGPL.
 \begin{enumerate}
 
 \item Download parallelio\_lib source code for PARALLELIO library:
 
 {\small\tt svn co http://ascem-io.secure-water.org/ascem-io/trunk DIRNAME}
 
-where {\tt DIRNAME} is the installation directory. The username and password are:
+where {\tt DIRNAME} is the installation directory. 
+%The username and password are:
 %\href{https://bitbucket.org/pflotran/pflotran-dev/wiki/Documentation/Strata}{Strata}
 
-username: {\tt pflotran\_dev}
+%username: {\tt pflotran\_dev}
 
-password: {\tt gr0undw@t3r}
+%password: {\tt gr0undw@t3r}
 
 \item Compile PARALLELIO library:
 
+To compile the parallel library first modify the Makefile by adding the lines following the {\tt endif} statement:
+\footnotesize
+\begin{Verbatim}
+ifeq ($(MACHINE),jaguarpf)
+	CC=cc
+	FC=ftn
+	LINKER=ftn
+	CFLAGS+= -O3 
+	FFLAGS+= -O3 
+	LDFLAGS+= -lhdf5 -lz
+endif
+
+CC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpicc
+FC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpif90
+LINKER=${FC}
+CFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -I../../src -O3 
+FFLAGS+= -O3 
+LDFLAGS+= -L../../src -lparallelio -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
+\end{Verbatim}
+
 {\tt cd DIRNAME/src}
 
-{\tt make} \hfill {\it (should compile with {\tt mpicc} or equivalent)}
+{\tt make} \hfill {\it (compile with {\tt mpicc})}
+\normalsize
 
 \item Compile PFLOTRAN:
 
 Define environmental variable: {\tt PARALLELIO\_LIB} giving path to PARALLELIO library:
 
+\footnotesize
 {\tt export PARALLELIO\_LIB=\$PWD} \hfill {\it (bash shell)}
+\normalsize
 
 or
 
+\footnotesize
 {\tt setenv PARALLELIO\_LIB \$PWD} \hfill {\it (tcsh/csh shell)}
 
 {\tt cd PFLOTRAN\_DIR/src/pflotran}
 
 {\tt make have\_parallelio\_lib=1 pflotran}
-
+\normalsize
 \end{enumerate}
 
 \scriptsize
