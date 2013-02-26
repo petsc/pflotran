@@ -3489,13 +3489,13 @@ subroutine Create_IOGroups(option)
 
   if ( mod(option%mycommsize , option%hdf5_read_group_size) /= 0) then
     write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
-                of HDF_READ_GROUP_SIZE = ", i6)')  option%hdf5_read_group_size
+              & of HDF_READ_GROUP_SIZE = ", i6)')  option%hdf5_read_group_size
     call printErrMsg(option)      
   endif         
 
   if ( mod(option%mycommsize , option%hdf5_write_group_size) /= 0) then
     write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
-                of HDF_WRITE_GROUP_SIZE = ", i6)')  option%hdf5_write_group_size
+              & of HDF_WRITE_GROUP_SIZE = ", i6)')  option%hdf5_write_group_size
     call printErrMsg(option)      
   endif         
 
