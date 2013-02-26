@@ -3400,7 +3400,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -3411,7 +3411,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt
       else
         ! extraction
-        r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
+        r_p((local_id-1)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
                                                - qsrc1 *option%flow_dt
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
                                         qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
