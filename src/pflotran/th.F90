@@ -1442,8 +1442,8 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 
   J(1,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol !*TH_aux_var%xmol(1)
 !GB  J(1,3) = 0.d0 !-global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
-  J(2,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
-           TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol*TH_aux_var%xmol(2)
+!GB  J(2,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
+!GB           TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol*TH_aux_var%xmol(2)
 !GB  J(2,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol*TH_aux_var%xmol(2)
 !GB  J(2,3) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   J(2,1) = (TH_aux_var%dsat_dp*global_aux_var%den(1)*TH_aux_var%u + &
