@@ -1036,7 +1036,7 @@ def commandline_options():
     parser.add_argument('--advanced', action='store_true',
                         help="enable advanced options for developers")
 
-    parser.add_argument('-c', '--config-file', nargs=1, default=None,
+    parser.add_argument('-c', '--config-files', nargs="+", default=None,
                         help='test configuration file to use')
 
     parser.add_argument('--check-only', action='store_true', default=False,
@@ -1127,8 +1127,8 @@ def generate_config_file_list(options):
                                 "directory.".format(base_dir))
 
     # add the explicitly listed config files
-    if options.config_file is not None:
-        for f in options.config_file:
+    if options.config_files is not None:
+        for f in options.config_files:
             if not os.path.isabs(f):
                 f = os.path.abspath(f)
             if os.path.isfile(f):
