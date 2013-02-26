@@ -1187,10 +1187,12 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)
+  PetscReal :: den
   PetscReal :: density_ave
   PetscReal :: H_ave
   PetscReal :: perm_ave_over_dist
   PetscReal :: delta_pressure, delta_xmol, delta_temp
+  PetscReal :: pressure_ave
   PetscReal :: gravity
   PetscReal :: ukvr, mole_flux, q
   PetscReal :: stp_up, stp_dn
@@ -1237,10 +1239,12 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       if (delta_pressure >= 0.D0) then
         ukvr = gen_aux_var_up%kvr(iphase)
         xmol(:) = gen_aux_var_up%xmol(:,iphase)
+        den = gen_aux_var_up%den(iphase)
         uH = gen_aux_var_up%H(iphase)
       else
         ukvr = gen_aux_var_dn%kvr(iphase)
         xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+        den = gen_aux_var_dn%den(iphase)
         uH = gen_aux_var_dn%H(iphase)
       endif      
 
@@ -1252,7 +1256,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
         q = v_darcy(iphase) * area  
         ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
         !                             density_ave[kmol phase/m^3 phase]        
-        mole_flux = q*density_ave       
+        mole_flux = q*den       
         do icomp = 1, option%nflowspec
           ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
           !                      xmol[kmol comp/kmol phase]
@@ -1287,7 +1291,9 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       temp_ave = upweight_adj*gen_aux_var_up%temp + &
                  (1.d0-upweight_adj)*gen_aux_var_dn%temp
       density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)             
+                    (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
+      pressure_ave = upweight_adj*gen_aux_var_up%pres(iphase)+ &
+                    (1.D0-upweight_adj)*gen_aux_var_dn%pres(iphase)
       stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
       delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
                    gen_aux_var_dn%xmol(air_comp_id,iphase)
@@ -1301,7 +1307,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 (temp_ave/273.15d0)**theta * &
-                option%reference_pressure / gen_aux_var_dn%pres(iphase) * &
+                option%reference_pressure / pressure_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif      
       q =  v_air * area
