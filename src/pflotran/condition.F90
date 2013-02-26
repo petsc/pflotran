@@ -486,7 +486,10 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
   if (associated(dataset%dataset) .or. &
       associated(default_dataset%dataset)) then
     call TimeSeriesDestroy(dataset%time_series)
-    call TimeSeriesDestroy(default_dataset%time_series)
+    !GB: Do not destroy default_dataset. For those modes, that have more
+    !    more than 1 DOF, flow_condition for different DOFs could be 
+    !    specified via dataset or values
+    !call TimeSeriesDestroy(default_dataset%time_series)
     if (associated(default_dataset%dataset) .and. &
         .not.associated(dataset%dataset)) then
       dataset%dataset => default_dataset%dataset
