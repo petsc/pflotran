@@ -15,7 +15,7 @@ module Realization_class
   use Discretization_module
   use Field_module
   use Debug_module
-  use Velocity_module
+  use Uniform_Velocity_module
   use Waypoint_module
   use Output_Aux_module
   
@@ -45,7 +45,8 @@ private
     type(dataset_type), pointer :: datasets
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
-    type(velocity_dataset_type), pointer :: velocity_dataset
+    type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
+    character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
     
     type(waypoint_list_type), pointer :: waypoints
     
@@ -150,8 +151,9 @@ function RealizationCreate2(option)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
   nullify(realization%datasets)
-  nullify(realization%velocity_dataset)
+  nullify(realization%uniform_velocity_dataset)
   nullify(realization%sec_transport_constraint)
+  realization%nonuniform_velocity_filename = ''
 
   nullify(realization%waypoints)
 
@@ -1379,9 +1381,7 @@ subroutine RealizationUpdate(realization)
                            realization%option, &
                            realization%option%time)
   call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
-  if (associated(realization%velocity_dataset)) then
-    call VelocityDatasetUpdate(realization%option,realization%option%time, &
-                               realization%velocity_dataset)
+  if (associated(realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(realization)
   endif
 ! currently don't use aux_vars, just condition for src/sinks
@@ -1444,9 +1444,12 @@ subroutine RealizUpdateUniformVelocity(realization)
   
   type(realization_type) :: realization
   
+  call UniformVelocityDatasetUpdate(realization%option, &
+                                    realization%option%time, &
+                                    realization%uniform_velocity_dataset)
   call PatchUpdateUniformVelocity(realization%patch, &
-                                  realization%velocity_dataset%cur_value, &
-                                      realization%option)
+                            realization%uniform_velocity_dataset%cur_value, &
+                            realization%option)
  
 end subroutine RealizUpdateUniformVelocity
 
@@ -1553,12 +1556,12 @@ subroutine RealizationAddWaypointsToList(realization)
   enddo
 
   ! add update of velocity fields
-  if (associated(realization%velocity_dataset)) then
-    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
-        size(realization%velocity_dataset%times) > 1) then
-      do itime = 1, size(realization%velocity_dataset%times)
+  if (associated(realization%uniform_velocity_dataset)) then
+    if (realization%uniform_velocity_dataset%times(1) > 1.d-40 .or. &
+        size(realization%uniform_velocity_dataset%times) > 1) then
+      do itime = 1, size(realization%uniform_velocity_dataset%times)
         waypoint => WaypointCreate()
-        waypoint%time = realization%velocity_dataset%times(itime)
+        waypoint%time = realization%uniform_velocity_dataset%times(itime)
         waypoint%update_conditions = PETSC_TRUE
         call WaypointInsertInList(waypoint,waypoint_list)
       enddo
@@ -1820,35 +1823,43 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif      
 
   if (reaction%update_mineral_surface_area) then
-    porosity_scale = 1.d0
+
     if (reaction%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will
       ! avoid improper access.
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
     endif
+
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (reaction%update_mnrl_surf_with_porosity) then
-        porosity_scale = vec_p(local_id)** &
-             reaction%mineral%kinmnrl_surf_area_porosity_pwr(imnrl)
-!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
-!     solely material type.
-!          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
-      endif
       do imnrl = 1, reaction%mineral%nkinmnrl
+
+        porosity_scale = 1.d0
+        if (reaction%update_mnrl_surf_with_porosity) then
+          porosity_scale = vec_p(local_id)** &
+             reaction%mineral%kinmnrl_surf_area_porosity_pwr(imnrl)
+!       geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!       solely material type.
+!       material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
+        endif
+
+        volfrac_scale = 1.d0
         if (rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) > 0.d0) then
           volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
                          rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl))** &
              reaction%mineral%kinmnrl_surf_area_vol_frac_pwr(imnrl)
-!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
-!     solely material type.
-!            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
-          rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-            rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
-        else
-          rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-            rt_auxvars(ghosted_id)%mnrl_area0(imnrl)
+!       geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!       solely material type.
+!       material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
+!         rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+!           rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
+!       else
+!         rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+!           rt_auxvars(ghosted_id)%mnrl_area0(imnrl)
         endif
+
+        rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+            rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
 
         if (reaction%update_armor_mineral_surface .and. &
             reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) > 0.d0) then
@@ -1861,9 +1872,10 @@ subroutine RealizationUpdatePropertiesPatch(realization)
             endif
           enddo
 
-!         print *,'update-armor: ',imnrl,imnrl_armor,reaction%mineral%kinmnrl_armor_min_names(imnrl_armor)
+!         print *,'update-armor: ',imnrl,imnrl_armor, &
+!         reaction%mineral%kinmnrl_armor_min_names(imnrl_armor)
 
-!            check for negative surface area armoring correction
+!       check for negative surface area armoring correction
           if (reaction%mineral%kinmnrl_armor_crit_vol_frac(imnrl) > &
               rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl_armor)) then
 
@@ -2523,7 +2535,7 @@ subroutine RealizationDestroy(realization)
 
   call DatasetDestroy(realization%datasets)
   
-  call VelocityDatasetDestroy(realization%velocity_dataset)
+  call UniformVelocityDatasetDestroy(realization%uniform_velocity_dataset)
   
   call DiscretizationDestroy(realization%discretization)
   

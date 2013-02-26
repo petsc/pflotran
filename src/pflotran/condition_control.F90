@@ -42,7 +42,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Grid_module
   use Level_module
   use Patch_module
-  use water_eos_module
+  use Water_EOS_module
 #ifdef DASVYAT
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
@@ -1036,7 +1036,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   use Grid_module
   use Level_module
   use Patch_module
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
 

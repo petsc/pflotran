@@ -1,0 +1,12 @@
+
+\section{Visualization}
+
+Visualization of the results produced by PFLOTRAN can be achieved using several different utilities: {\bf Tecplot}, {\bf VisIt}, and {\bf gnuplot}. Plotting 2D or 3D output files can be done using the commercial package {\bf Tecplot}, or the opensource packages {\bf VisIt} and {\bf ParaView}. {\bf Paraview} is similar to {\bf visit} but has not been tested with PFLOTRAN. For 1D problems the opensource software packages {\bf gnuplot} and {\bf matplotlib} are recommended.
+
+The plot package {\bf gnuplot} is useful for plotting observation and mass balance output. With {\bf gnuplot} it is possible to plot data from several files in the same plot.
+To do this it is necessary that the files have the same number of rows, e.g. time history points. The files can be merged during input by using the {\tt paste} command as a pipe: e.g.
+
+\verb|plot '< paste file1.dat file2.dat' using 1:($n1*$n2)|
+
+\noindent
+plots the product of variable in file 1 in column {\tt n1} times the variable in file 2 in column {\tt n2} of the merged file.
