@@ -818,6 +818,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = HET_VOL_RATE_SS
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
+            case('heterogeneous_dirichlet')
+              sub_condition_ptr%itype = HET_DIRICHLET
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -1501,6 +1503,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = HET_VOL_RATE_SS
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
+            case('heterogeneous_dirichlet')
+              sub_condition_ptr%itype = HET_DIRICHLET
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -2422,6 +2426,8 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'heterogeneous volumetric rate'
     case(HET_MASS_RATE_SS)
       string = 'heterogeneous mass rate'
+    case(HET_DIRICHLET)
+      string = 'heterogeneous dirichlet'
   end select
   100 format(6x,'Type: ',a)  
   write(option%fid_out,100) trim(string)
