@@ -1158,7 +1158,8 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   PetscReal,pointer :: double_buffer(:,:)
   PetscInt          :: ii, jj
   PetscInt          :: dims(2), dataset_dims(2)
-  PetscInt, parameter :: max_nvert_per_cell = 8  
+  PetscInt, parameter :: max_nvert_per_cell = 8
+  PetscInt          :: num_cells_local
 
   character(len=MAXSTRINGLENGTH) :: cell_dataset_name = &
                                                        '/Domain/Cells'//CHAR(0)
