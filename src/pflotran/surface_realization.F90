@@ -1806,13 +1806,13 @@ subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
 
       if (.not.associated(coupler%flow_aux_real_var)) then
         option%io_buffer='SURF_SOURCE_SINK: from_subsurface_ss was does not ' //&
-          ' a distributed flow condition associated with it'
+          ' a heterogeneous flow condition associated with it'
         call printErrMsg(option)
       endif
 
-      if(coupler%flow_condition%rate%itype/=DISTRIBUTED_VOLUMETRIC_RATE_SS) then
+      if(coupler%flow_condition%rate%itype/=HET_VOL_RATE_SS) then
         option%io_buffer = 'Flow condition from_subsurface_ss should be ' // &
-          'distributed_volumetric_rate'
+          'heterogeneous_volumetric_rate'
         call printErrMsg(option)
       endif
       
@@ -1957,9 +1957,9 @@ subroutine SurfRealizCreateSurfSubsurfVec(realization,surf_realization)
     if (associated(coupler%flow_aux_real_var)) then
       ! Find the BC from the list of BCs
       if(StringCompare(coupler%name,'from_surface_ss')) then
-        if(coupler%flow_condition%rate%itype/=DISTRIBUTED_MASS_RATE_SS) then
+        if(coupler%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
           option%io_buffer = 'Flow condition from_surface_ss should be ' // &
-            'distributed_mass_rate'
+            'heterogeneous_mass_rate'
           call printErrMsg(option)
         endif
         coupler_found = PETSC_TRUE
