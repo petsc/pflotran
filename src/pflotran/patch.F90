@@ -740,7 +740,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
           (coupler%itype == INITIAL_COUPLER_TYPE .or. &
            coupler%itype == BOUNDARY_COUPLER_TYPE)) then
 
-
         if (associated(coupler%flow_condition%pressure) .or. &
             associated(coupler%flow_condition%concentration) .or. &
             associated(coupler%flow_condition%saturation) .or. &
@@ -809,8 +808,11 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
             case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS, &
                  HET_VOL_RATE_SS,HET_MASS_RATE_SS)
               select case(option%iflowmode)
-                case(RICHARDS_MODE,TH_MODE)
+                case(RICHARDS_MODE)
                   allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+                case(TH_MODE)
+                  allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
                   coupler%flow_aux_real_var = 0.d0
                 case default
                   write(string,*),coupler%flow_condition%rate%itype
@@ -1146,7 +1148,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case (HET_MASS_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                             flow_condition%rate%flow_dataset, &
-                            TH_PRESSURE_DOF,sum_connection,option)
+                            sum_connection,TH_PRESSURE_DOF,option)
                 case (MASS_RATE_SS)
                     coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
                             flow_condition%rate%flow_dataset%time_series%cur_value(1)
@@ -1307,7 +1309,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case (HET_VOL_RATE_SS,HET_MASS_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                           flow_condition%rate%flow_dataset, &
-                          TH_PRESSURE_DOF,sum_connection,option)
+                          RICHARDS_PRESSURE_DOF,sum_connection,option)
               end select
             endif
           
