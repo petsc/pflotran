@@ -2894,8 +2894,6 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
         point3%x = point2%x
         point3%y = point2%y
         point3%z = point2%z + 1.d0
-        call UCellComputePlane(plane1,point1,point2,point3)
-        distance = UCellComputeDistanceFromPlane(plane1,point) 
       else
         point3 = &
           unstructured_grid%vertices(cell_vertex_ids_before(face_vertex_ids(3)))
