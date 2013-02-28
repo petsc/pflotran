@@ -990,6 +990,14 @@ subroutine Init(simulation)
 
 #ifdef SURFACE_FLOW
   if(option%nsurfflowdof > 0) then
+    ! Check if surface-flow is compatible with the given flowmode
+    select case(option%iflowmode)
+      case(RICHARDS_MODE,TH_MODE)
+      case default
+        option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
+        call printErrMsgByRank(option)
+    end select
+
     call readSurfaceRegionFiles(simulation%surf_realization)
     call SurfRealizMapSurfSubsurfGrids(realization,simulation%surf_realization)
     call SurfRealizLocalizeRegions(simulation%surf_realization)
@@ -1009,16 +1017,10 @@ subroutine Init(simulation)
     !call GlobalSetup(simulation%surf_realization)
     ! initialize FLOW
     ! set up auxillary variable arrays
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        !call SurfaceSetup(realization)
-      case default
-        option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
-        call printErrMsgByRank(option)
-    end select
 
     ! assign initial conditionsRealizAssignFlowInitCond
     call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
+    call printErrMsg(option)
 
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%surf_initialize_flow_filename) > 1) then
@@ -1027,10 +1029,10 @@ subroutine Init(simulation)
     endif
   
     select case(option%iflowmode)
-      case(RICHARDS_MODE)
+      case(RICHARDS_MODE,TH_MODE)
         !call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
       case default
-        option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
+        option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
     end select
     if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
