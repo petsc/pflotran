@@ -2,6 +2,12 @@
 
 \setcounter{equation}{0}
 
+The source code for PFLOTRAN can be downloaded from the bitbucket.org web site using \href{http://mercurial.selenic.com/}{Mercurial} (hg):
+
+\verb|hg clone https://bitbucket.org/pflotran/pflotran-dev|.
+
+This requires first creating a free account on bitbucket.
+
 It should be possible to build and run PFLOTRAN on essentially any system with 
 modern C and Fortran (2003 standard or later) compilers and an available 
 implementation of the Message Passing Interface (MPI) system that has been 
@@ -241,8 +247,7 @@ then compile with \verb|make all|.
 The user will need to load the following HDF5 module beforehand: \ \verb|module load hdf5-parallel|.
 
 \subsection{Building PFLOTRAN}
-
-The source code for PFLOTRAN can be downloaded from the web site: \verb|hg clone https://bitbucket.org/pflotran/pflotran-dev| using Mercurial. 
+ 
 PFLOTRAN is compiled with the command:
 
 \verb|make [options] pflotran|
