@@ -116,7 +116,7 @@ ifdef ugrid_debug
 endif
 
 ifdef surface_flow
-  MYFLAGS += -DSURFACE_FLOW
+  MYFLAGS += -DSURFACE_FLOW -w
 endif
 
 ifdef amanzi_bgd
@@ -300,6 +300,7 @@ surface_obj = \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_flow_aux.o \
+	${common_src}surface_init.o \
 	${common_src}surface_material.o \
 	${common_src}surface_realization.o 
 
@@ -414,7 +415,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          uniform_velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
-         output.o output_surface.o reaction_aux.o
+         output.o output_surface.o reaction_aux.o surface_init.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -554,6 +555,11 @@ surface_complexation.o : surface_complexation_aux.o reaction_aux.o \
 surface_complexation_aux.o : option.o string.o database_aux.o 
 surface_flow.o : surface_flow_aux.o surface_realization.o surface_field.o \
                  surface_material.o solver.o
+surface_init.o : option.o input.o string.o surface_material.o \
+                 surface_realization.o grid.o structured_grid.o \
+                 unstructured_grid.o unstructured_grid_aux.o region.o \
+                 condition.o dataset_aux.o coupler.o strata.o units.o \
+                 waypoint.o debug.o patch.o output_aux.o
 surface_material.o : string.o option.o input.o
 surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         option.o patch.o region.o surface_field.o \
