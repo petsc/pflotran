@@ -605,8 +605,7 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
     if (.not.associated(cur_surf_flow_condition)) exit
     !TODO(geh): could destroy the time_series here if dataset allocated
     select case(option%iflowmode)
-      case(G_MODE)
-      case(RICHARDS_MODE)
+      case(RICHARDS_MODE,TH_MODE)
         do i = 1, size(cur_surf_flow_condition%sub_condition_ptr)
           ! check for dataset in flow_dataset
           if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
@@ -655,6 +654,9 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
             call DatasetLoad(dataset,option)
           endif
         enddo
+      case default
+        option%io_buffer='SurfRealizProcessFlowConditions not implemented in this mode'
+        call printErrMsg(option)
     end select
     cur_surf_flow_condition => cur_surf_flow_condition%next
   enddo
@@ -692,7 +694,7 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
     enddo
     cur_level => cur_level%next
   enddo
-   
+
 end subroutine SurfRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
