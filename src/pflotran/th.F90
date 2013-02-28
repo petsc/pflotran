@@ -3664,7 +3664,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'THxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-  endif 
+  endif
 
 end subroutine THResidualPatch
 
@@ -4170,8 +4170,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-!  option%io_buffer='stopping'
-!  call printErrMsg(option)
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)

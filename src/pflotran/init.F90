@@ -917,7 +917,7 @@ subroutine Init(simulation)
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_stepper)) then
+   if (option%nsurfflowdof>0) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif

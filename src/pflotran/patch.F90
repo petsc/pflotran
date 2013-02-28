@@ -1120,7 +1120,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case (HET_DIRICHLET)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                           flow_condition%temperature%flow_dataset, &
-                          sum_connection,TH_TEMPERATURE_DOF,option)
+                          num_connections,TH_TEMPERATURE_DOF,option)
                 case default
                   write(string,*),flow_condition%temperature%itype
                   option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
@@ -1135,7 +1135,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case (HET_DIRICHLET)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                           flow_condition%temperature%flow_dataset, &
-                          sum_connection,TH_TEMPERATURE_DOF,option)
+                          num_connections,TH_TEMPERATURE_DOF,option)
                 case default
                   write(string,*),flow_condition%temperature%itype
                   option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
@@ -1148,7 +1148,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case (HET_MASS_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                             flow_condition%rate%flow_dataset, &
-                            sum_connection,TH_PRESSURE_DOF,option)
+                            num_connections,TH_PRESSURE_DOF,option)
                 case (MASS_RATE_SS)
                     coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
                             flow_condition%rate%flow_dataset%time_series%cur_value(1)
@@ -1309,7 +1309,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case (HET_VOL_RATE_SS,HET_MASS_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                           flow_condition%rate%flow_dataset, &
-                          RICHARDS_PRESSURE_DOF,sum_connection,option)
+                          num_connections,RICHARDS_PRESSURE_DOF,option)
               end select
             endif
           
