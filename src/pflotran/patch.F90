@@ -1145,7 +1145,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
-                case (HET_MASS_RATE_SS)
+                case (HET_MASS_RATE_SS,HET_VOL_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                             flow_condition%rate%flow_dataset, &
                             num_connections,TH_PRESSURE_DOF,option)
