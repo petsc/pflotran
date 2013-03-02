@@ -109,6 +109,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   integer:: prop_id
   PetscMPIInt :: rank
   integer:: dims(3)
+  integer:: pio_dataset_groupid
 #else
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
@@ -511,6 +512,7 @@ subroutine OutputHDF5UGrid(realization_base)
   integer :: rank_mpi,file_space_rank_mpi
   integer:: dims(3)
   integer :: start(3), length(3), stride(3),istart
+  integer :: pio_dataset_groupid
 #else
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -1839,7 +1841,11 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   write(*,*),'PARALLELIO_LIB_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
   call printErrMsg(option)
-#endif
+#else
+
+  !
+  !        not(PARALLELIO_LIB_WRITE)
+  !
 
   ! memory space which is a 1D vector
   rank_mpi = 1
@@ -1883,7 +1889,6 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   stride = 1
   call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                              hdf5_err,stride,stride)
-
     ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
@@ -2029,6 +2034,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
+
+#endif
+!if defined(PARALLELIO_LIB_WRITE)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
 #endif

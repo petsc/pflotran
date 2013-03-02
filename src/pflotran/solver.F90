@@ -13,6 +13,14 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
+! If the PETSc release is 3.3 or lower, then include petscpcmg.h.
+! If using an older version of petsc-dev and petscpcmg.h is required, 
+! it can be used by having the makefile turn on HAVE_PETSCPCMG_H.
+#if (((PETSC_VERSION_RELEASE) && ((PETSC_VERSION_MAJOR<3) || ((PETSC_VERSION_MAJOR==3) && (PETSC_VERSION_MINOR<=3)))) || (HAVE_PETSCPCMG_H))
+#include "finclude/petscpcmg.h"
+#endif
+
+!#include "finclude/petscpcmg.h"
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
