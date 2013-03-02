@@ -299,7 +299,7 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
     case("SLAB")
       sec_continuum%itype = 0
       sec_continuum%slab%length = sec_continuum_length
-      if(sec_continuum_area == 0.d0) then
+      if (sec_continuum_area == 0.d0) then
         option%io_buffer = 'Keyword "AREA" not specified for SLAB type ' // &
                            'under SECONDARY_CONTINUUM'
         call printErrMsg(option)
@@ -608,7 +608,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: res_react(reaction%naqcomp)
   PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp,sec_transport_vars%ncells)
-  PetscInt :: i, j, k, n
+  PetscReal :: dtotal_prim(reaction%naqcomp,reaction%naqcomp)
+  PetscInt :: i, j, k, n, l
   PetscInt :: ngcells, ncomp
   PetscReal :: area_fm
   PetscReal :: diffusion_coefficient
@@ -617,6 +618,10 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
   PetscReal :: prim_vol ! volume of primary grid cell
+  PetscReal :: dCsec_dCprim(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: dPsisec_dCprim(reaction%naqcomp,reaction%naqcomp)
+  PetscInt :: jcomp, lcomp
+  PetscReal :: sec_sec_molal_M(reaction%neqcplx)   ! secondary species molality of secondary continuum
   
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
@@ -651,9 +656,11 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   b_M = 0.d0
   inv_D_M = 0.d0
   total_current_M = 0.d0
+  dPsisec_dCprim = 0.d0
+  dCsec_dCprim = 0.d0
   
-  
-  total_primary_node = aux_var%total(:,1)                             ! in mol/L 
+  total_primary_node = aux_var%total(:,1)                         ! in mol/L 
+  dtotal_prim = aux_var%aqueous%dtotal(:,:,1)
   pordt = porosity/option%tran_dt
   pordiff = porosity*diffusion_coefficient
   
@@ -805,6 +812,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
     
   ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp
+  
   do i = 1, ncomp
     do j = 1, ncomp
       D_M(i,j) = coeff_diag(i,j,ngcells)
@@ -815,7 +823,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
       endif
     enddo
   enddo
-
+  
   ! Find the inverse of D_M
   call ludcmp(D_M,ncomp,indx,d) 
   do j = 1, ncomp
@@ -827,35 +835,52 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   do i = 1, ncomp
     conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
   enddo
-  
+
   ! Update the secondary continuum totals at the outer matrix node
   call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(ngcells), &
                     option)
   rt_auxvar%pri_molal = conc_current_M ! in mol/kg
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
   total_current_M = rt_auxvar%total(:,1)
+  sec_sec_molal_M = rt_auxvar%sec_molal
   call RTAuxVarStrip(rt_auxvar)
   
-  b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M*global_aux_var%den_kg(1)
+  b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M ! in m3/kg
+  b_m = b_m*1.d3 ! in L/kg
   
-  ! Reset identity matrix
-  do i = 1, ncomp
-    do j = 1, ncomp
-      if (j == i) then
-        identity(i,j) = 1.d0
-      else
-        identity(i,j) = 0.d0
-      endif
+  dCsec_dCprim = b_m*dtotal_prim
+    
+!  area_fm = 0.d0
+  
+  ! Calculate the dervative of outer matrix node total with respect to the 
+  ! primary node concentration
+  dPsisec_dCprim = dCsec_dCprim
+  do j = 1, ncomp
+    do l = 1, ncomp
+      do i = 1, reaction%neqcplx
+        jcomp = reaction%eqcplxspecid(j,i)
+        lcomp = reaction%eqcplxspecid(l,i)
+        do k = 1, reaction%neqcplx
+          dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
+                                        reaction%eqcplxstoich(j,i)* &
+                                        reaction%eqcplxstoich(k,i)* &
+                                        dCsec_dCprim(k,l)*sec_sec_molal_M(i)/ &
+                                        sec_sec_molal_M(k)
+        enddo
+      enddo      
     enddo
   enddo
   
+  dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3
+  
+    
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
                   (total_current_M - total_primary_node)*prim_vol*1.d3 ! in mol/s
                   
   ! Calculate the jacobian contribution due to coupling term
-  sec_jac = area_fm*pordiff/dm_plus(ngcells)*(b_m - identity)*prim_vol* &
-              global_aux_var%den_kg(1) ! in kg water/s
+  sec_jac = area_fm*pordiff/dm_plus(ngcells)*(dPsisec_dCprim - dtotal_prim)* &
+            prim_vol*1.d3 ! in kg water/s
       
   ! Store the contribution to the primary jacobian term
   sec_transport_vars%sec_jac = sec_jac 

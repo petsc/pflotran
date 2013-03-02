@@ -2770,7 +2770,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       if (option%use_mc) then
         vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
       endif  
-        
       call RTAccumulation(rt_aux_vars(ghosted_id), &
                           global_aux_vars(ghosted_id), &
                           porosity_loc_p(ghosted_id), &
