@@ -410,6 +410,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   PetscReal :: dummy, guess
   PetscReal :: P_sat
   PetscBool :: flag
+  character(len=MAXSTRINGLENGTH) :: state_change_string
   PetscErrorCode :: ierr
 
   lid = option%liquid_phase
@@ -437,8 +438,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''Liquid -> 2 Phase at Cell '',i11)') ghosted_id
-        call printMsg(option)
+        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i)') &
+          ghosted_id
 #endif        
       endif
     case(GAS_STATE)
@@ -453,8 +454,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''Gas -> 2 Phase at Cell '',i11)') ghosted_id
-        call printMsg(option)
+        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i)') &
+          ghosted_id
 #endif        
       endif
     case(TWO_PHASE_STATE)
@@ -469,8 +470,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''2 Phase -> Liquid at Cell '',i11)') ghosted_id
-        call printMsg(option)
+        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i)') &
+          ghosted_id
 #endif        
       else if (gen_aux_var%sat(gid) > 1.d0) then
         ! convert to gas state
@@ -482,8 +483,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
-        write(option%io_buffer,'(''2 Phase -> Gas at Cell '',i11)') ghosted_id
-        call printMsg(option)
+        write(state_change_string,'(''2 Phase -> Gas at Cell '',i)') &
+          ghosted_id
 #endif        
       endif
   end select
@@ -492,6 +493,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
     call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                              'Before Update',option)
+    call printMsg(option,state_change_string)
 #endif
     call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                               saturation_function,por,perm,option)
