@@ -55,6 +55,7 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
+  use Richards_MFD_module
   use TH_module
   use THC_module
   use THMC_module
