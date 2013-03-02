@@ -620,7 +620,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: prim_vol ! volume of primary grid cell
   PetscReal :: dCsec_dCprim(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: dPsisec_dCprim(reaction%naqcomp,reaction%naqcomp)
-  PetscInt :: jcomp, lcomp
+  PetscInt :: jcomp, lcomp, kcomp
   PetscReal :: sec_sec_molal_M(reaction%neqcplx)   ! secondary species molality of secondary continuum
   
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
@@ -860,12 +860,14 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
       do i = 1, reaction%neqcplx
         jcomp = reaction%eqcplxspecid(j,i)
         lcomp = reaction%eqcplxspecid(l,i)
-        do k = 1, reaction%neqcplx
+        do k = 1, ncomp
+          kcomp = reaction%eqcplxspecid(k,i)
           dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
                                         reaction%eqcplxstoich(j,i)* &
                                         reaction%eqcplxstoich(k,i)* &
-                                        dCsec_dCprim(k,l)*sec_sec_molal_M(i)/ &
-                                        sec_sec_molal_M(k)
+                                        dCsec_dCprim(kcomp,lcomp)* &
+                                        sec_sec_molal_M(i)/ &
+                                        conc_current_M(k)
         enddo
       enddo      
     enddo
