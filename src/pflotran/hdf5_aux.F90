@@ -816,6 +816,28 @@ function HDF5GroupExists(filename,group_name,option)
   
   PetscBool :: HDF5GroupExists
 
+#ifdef PARALLELIO_LIB
+
+  ! Open file collectively
+  filename = trim(filename) // CHAR(0)
+  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+  call parallelIO_group_exists(file_id, option%ioread_group_id, ierr)
+  group_exists = ierr;
+
+  if (group_exists) then
+    HDF5GroupExists = PETSC_TRUE
+    option%io_buffer = 'Group "' // trim(group_name) // '" in HDF5 file "' // &
+      trim(filename) // '" found in file.'
+  else
+    HDF5GroupExists = PETSC_FALSE
+    option%io_buffer = 'Group "' // trim(group_name) // '" in HDF5 file "' // &
+      trim(filename) // '" not found in file.  Therefore, assuming a ' // &
+      'cell-indexed dataset.'
+  endif
+  call printMsg(option)
+
+  call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
+#else
   ! open the file
   call h5open_f(hdf5_err)
   ! set read file access property
@@ -850,7 +872,9 @@ function HDF5GroupExists(filename,group_name,option)
 
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)  
-  
+#endif 
+!PARALLELIO_LIB
+
 end function HDF5GroupExists
 
 ! ************************************************************************** !
