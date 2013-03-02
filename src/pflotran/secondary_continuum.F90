@@ -867,7 +867,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                         reaction%eqcplxstoich(k,i)* &
                                         dCsec_dCprim(kcomp,lcomp)* &
                                         sec_sec_molal_M(i)/ &
-                                        conc_current_M(k)
+                                        conc_current_M(kcomp)
         enddo
       enddo      
     enddo
