@@ -414,7 +414,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          uniform_velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
-         output.o output_surface.o reaction_aux.o richards_mdf.o
+         output.o output_surface.o reaction_aux.o richards_mfd.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -529,16 +529,16 @@ regression.o : realization.o discretization.o timestepper.o option.o string.o \
                utility.o grid.o output.o output_aux.o output_common.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o logging.o output_aux.o variables.o richards_lsm.o \
-             richards_mdf.o
+             richards_mfd.o richards_common.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 richards_common.o : richards_aux.o global_aux.o saturation_function.o option.o \
                     water_eos.o
 richards_lsm.o : richards_aux.o global_aux.o realization.o patch.o option.o \
                  field.o grid.o coupler.o connection.o material.o logging.o \
-                 saturation_function.o 
+                 saturation_function.o richards_common.o
 richards_mfd.o : richards_aux.o realization.o saturation_function.o \
-                 matrix_buffer.o logging.o mdf.o mdf_aux.o
+                 matrix_buffer.o logging.o mfd.o mfd_aux.o richards_common.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
