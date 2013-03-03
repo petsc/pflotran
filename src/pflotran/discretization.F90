@@ -22,6 +22,11 @@ module Discretization_module
 #include "finclude/petscdm.h90"
 #include "finclude/petscdmda.h"
 #include "finclude/petscdmshell.h90"
+
+! RTM: Pasting this Interface block in here is horrible!  This is temporary 
+! while I work on DMShell.  I will come up with a better way to get the 
+! necessary interface stuff in here when PETSc has not been configured with 
+! --with-fortran-interfaces.
        Interface
         subroutine DMShellDefaultGlobalToLocalBegin(dm, g, mode, l ,ierr&
      &)
