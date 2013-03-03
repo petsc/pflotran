@@ -31,6 +31,7 @@ module HDF5_Aux_module
 #ifdef PARALLELIO_LIB
             HDF5ReadDatasetInteger2D, &
             HDF5ReadDatasetReal2D, &
+            HDF5GroupExists, &
 #else
             HDF5ReadDataset, &
             HDF5ReadDatasetMap, &
@@ -803,6 +804,10 @@ function HDF5GroupExists(filename,group_name,option)
   use Option_module
   
   implicit none
+
+#if defined(PARALLELIO_LIB)
+  include "piof.h"  
+#endif
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: group_name
@@ -816,13 +821,13 @@ function HDF5GroupExists(filename,group_name,option)
   
   PetscBool :: HDF5GroupExists
 
-#ifdef PARALLELIO_LIB
+#if defined(PARALLELIO_LIB)
 
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
   call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
   call parallelIO_group_exists(file_id, option%ioread_group_id, ierr)
-  group_exists = ierr;
+  group_exists = (ierr == 1);
 
   if (group_exists) then
     HDF5GroupExists = PETSC_TRUE
