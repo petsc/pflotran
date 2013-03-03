@@ -142,7 +142,10 @@ LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz
 endif
 
 ifdef have_parallelio_lib
-LIBS += -L${PARALLELIO_LIB} -lparallelio
+  LIBS += -L${PARALLELIO_LIB} -lparallelio
+  MYFLAGS += -DPARALLELIO_LIB 
+  MYFLAGS += -DPARALLELIO_LIB_WRITE 
+  MYFLAGS += -I${PARALLELIO_LIB}
 endif
 
 ifdef tau
@@ -590,7 +593,7 @@ units.o : option.o
 unstructured_cell.o : option.o utility.o 
 unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
-                      unstructured_grid_aux.o geometry.o reaction_aux.o
+                      unstructured_grid_aux.o geometry.o reaction_aux.o hdf5_aux.o
 unstructured_grid_aux.o : unstructured_cell.o geometry.o option.o utility.o
 utility.o : string.o input.o option.o
 variables.o :
