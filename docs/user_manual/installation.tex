@@ -274,7 +274,7 @@ See the PFLOTRAN \verb|makefile| for additional options.
 The parallel I/O library enables a scalable general purpose parallel I/O capability for HPC by taking advantage of existing parallel I/O libraries, such as HDF5 which are being widely used by scientific applications, and modifying these algorithms to better scale to larger number of processors. The library has been tested with MPICH-3.0.2 and OpenMPI-1.6.
 
 \normalsize
-It is recommended that values for the variables {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} and {\footnotesize\tt HDF5\_WRITE\_GROUP\_SIZE} be set in the input file. 
+It is recommended that values for the variables {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} and \linebreak {\footnotesize\tt HDF5\_WRITE\_GROUP\_SIZE} be set in the input file. 
 If they are unset, {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} is set to total MPI ranks and {\footnotesize\tt HDF5\_WRITE\_GROUP\_SIZE} is set to 1 by default.
 
 Typical values are to set the write group size equal to the number of processes on a compute node (typically 16 or 32). 
@@ -291,7 +291,7 @@ OUTPUT
 END
 \end{Verbatim}
 \normalsize
-and {\tt HDF5\_READ\_GROUP\_SIZE} in the main body of the input file:
+and {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} in the main body of the input file:
 \footnotesize
 \begin{Verbatim}
 HDF5_READ_GROUP_SIZE 1024
@@ -299,7 +299,7 @@ HDF5_READ_GROUP_SIZE 1024
 \normalsize
 % (Sarat: Not necessary) Number of MPI tasks should be an exact multiple of {\footnotesize\tt HDF\_READ\_GROUP\_SIZE}.
 
-For more details on the I/O library, please see Appendix A in Sarat Sreepathi's <admin@sarats.com> \href{http://www.lib.ncsu.edu/resolver/1840.16/8317}{dissertation}.
+For more details on the I/O library, please see Appendix A in Sarat Sreepathi's \linebreak <admin@sarats.com> \href{http://www.lib.ncsu.edu/resolver/1840.16/8317}{dissertation}.
 
 Instructions for downloading and installing the parallel I/O library for use with PFLOTRAN is provided below. Note that this software is separate from PFLOTRAN and under a LGPL.
 \begin{enumerate}
@@ -343,11 +343,11 @@ So just uncomment the line {\small\tt MACHINE=pflotran\_machine}.
 {\tt make ASCEMIO\_INSTALL\_DIR=<your-iolib-install-dir> install} \hfill {\it (compile with {\tt mpicc})}
 \normalsize
 
-This will build the library {\tt libparallelio.a} and copy that to {\tt <your-iolib-install-dir>/lib} and copy the include files to {\tt <your-iolib-install-dir>/include} .
+This will build the library {\footnotesize\tt libparallelio.a} and copy that to \linebreak {\footnotesize\tt <your-iolib-install-dir>/lib} and copy the include files to \linebreak {\footnotesize\tt <your-iolib-install-dir>/include}.
 
 \item Compile PFLOTRAN:
 
-Define environmental variable: {\tt PARALLELIO\_DIR} giving path to {\tt <your-iolib-install-dir>}:
+Define environmental variable: {\footnotesize\tt PARALLELIO\_DIR} giving path to \linebreak {\footnotesize\tt <your-iolib-install-dir>}:
 
 \footnotesize
 {\tt export PARALLELIO\_DIR=<your-iolib-install-dir>} \hfill {\it (bash shell)}
