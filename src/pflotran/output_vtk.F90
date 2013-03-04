@@ -19,9 +19,9 @@ contains
 
 ! ************************************************************************** !
 !
-! OutputVTK: Print to Tecplot file in BLOCK format
-! author: Glenn Hammond
-! date: 10/25/07
+! OutputVTK: 
+! author: ???
+! date: 
 !
 ! ************************************************************************** !  
 subroutine OutputVTK(realization_base)
@@ -95,8 +95,10 @@ subroutine OutputVTK(realization_base)
   ! write out coordinates
   call WriteVTKGrid(OUTPUT_UNIT,realization_base)
 
-  write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
-
+  if (option%myrank == option%io_rank) then
+    write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
+  endif
+  
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
@@ -165,8 +167,8 @@ end subroutine OutputVTK
 ! ************************************************************************** !
 !
 ! OutputVelocitiesVTK: Print velocities to Tecplot file in BLOCK format
-! author: Glenn Hammond
-! date: 10/25/07
+! author: ???
+! date: 
 !
 ! ************************************************************************** !
 subroutine OutputVelocitiesVTK(realization_base)
@@ -284,8 +286,8 @@ end subroutine OutputVelocitiesVTK
 ! ************************************************************************** !
 !
 ! WriteVTKGrid: Writes a grid in VTK format
-! author: Glenn Hammond
-! date: 11/05/08
+! author: ???
+! date: 
 !
 ! ************************************************************************** !
 subroutine WriteVTKGrid(fid,realization_base)
@@ -394,8 +396,8 @@ end subroutine WriteVTKGrid
 !
 ! WriteVTKDataSetFromVec: Writes data from a Petsc Vec within a block
 !                             of a VTK file
-! author: Glenn Hammond
-! date: 10/25/07
+! author: 
+! date: 
 !
 ! ************************************************************************** !
 subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype)
@@ -426,8 +428,8 @@ end subroutine WriteVTKDataSetFromVec
 !
 ! WriteVTKDataSet: Writes data from an array within a block
 !                      of a VTK file
-! author: Glenn Hammond
-! date: 10/25/07
+! author: ???
+! date: 
 !
 ! ************************************************************************** !
 subroutine WriteVTKDataSet(fid,realization_base,dataset_name,array,datatype, &

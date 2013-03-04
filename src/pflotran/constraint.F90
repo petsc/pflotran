@@ -23,7 +23,6 @@ module Constraint_module
   PetscInt, parameter, public :: CONSTRAINT_MINERAL = 5
   PetscInt, parameter, public :: CONSTRAINT_GAS = 6
   PetscInt, parameter, public :: CONSTRAINT_CHARGE_BAL = 7
-  PetscInt, parameter, public :: CONSTRAINT_TOTAL_SORB_AQ_BASED = 8
   PetscInt, parameter, public :: CONSTRAINT_TOTAL_SORB = 9
   PetscInt, parameter, public :: CONSTRAINT_SUPERCRIT_CO2 = 10
 
@@ -252,8 +251,9 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                 aq_species_constraint%constraint_type(icomp) = &
                   CONSTRAINT_TOTAL_SORB
               case('S')
-                aq_species_constraint%constraint_type(icomp) = &
-                  CONSTRAINT_TOTAL_SORB_AQ_BASED
+                option%io_buffer = '"S" constraint type no longer ' // &
+                  'supported as of March 4, 2013.'
+                call printErrMsg(option)
               case('P','PH')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_PH
               case('L','LOG')
