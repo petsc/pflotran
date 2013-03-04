@@ -3377,7 +3377,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
       enthalpy_flag = PETSC_TRUE
     else
       enthalpy_flag = PETSC_FALSE
@@ -3899,7 +3899,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
       enthalpy_flag = PETSC_TRUE
     else
       enthalpy_flag = PETSC_FALSE
