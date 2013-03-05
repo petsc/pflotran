@@ -1087,7 +1087,7 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   call GridCreateNaturalToGhostedHash(grid,option)
 #endif
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
       option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
       call printMsg(option)
@@ -1147,7 +1147,7 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
 
   call GridDestroyHashTable(grid)
 
-! PARALLELIO_LIB
+! SCORPIO
 #else   
 
   ! initialize fortran hdf5 interface 

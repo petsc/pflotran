@@ -13,7 +13,7 @@ module Unstructured_Grid_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   include "scorpiof.h"
 #endif
 
@@ -29,7 +29,7 @@ module Unstructured_Grid_module
 #if defined(PETSC_HAVE_HDF5)
             UGridReadHDF5, &
 #endif
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
             UGridReadHDF5PIOLib, &
 #endif
 #ifdef SURFACE_FLOW
@@ -1124,7 +1124,7 @@ end subroutine UGridReadHDF5
 ! date: 05/13/11
 !
 ! ************************************************************************** !
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
                                           option)

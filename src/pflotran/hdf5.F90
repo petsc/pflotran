@@ -12,7 +12,7 @@ module HDF5_module
 
   PetscBool, public :: trick_hdf5 = PETSC_FALSE
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   include "scorpiof.h"  
 #endif
 
@@ -71,7 +71,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   
   implicit none
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 ! Using Parallel IO library
  
@@ -372,7 +372,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 ! End of Default & Glenn's HDF5 Broadcast Mechanism
 
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
 end subroutine HDF5MapLocalToNaturalIndices
    
@@ -402,7 +402,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: num_indices
   PetscReal, pointer :: real_array(:)
   
-#if defined(PARALLELIO_LIB)    
+#if defined(SCORPIO)    
   integer:: file_space_id
   integer:: memory_space_id
   integer:: data_set_id
@@ -432,7 +432,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 
   call PetscLogEventBegin(logging%event_read_real_array_hdf5,ierr)
                           
-#if defined(PARALLELIO_LIB)    
+#if defined(SCORPIO)    
   read_block_size = HDF5_READ_BUFFER_SIZE
   ! should be a rank=1 data space (i.e., one dimensional dataset)
   call scorpio_get_dataset_size( num_reals_in_file, file_id, dataset_name, &
@@ -508,7 +508,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   endif
   
 #else
-!PARALLELIO_LIB is not defined
+!SCORPIO is not defined
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -646,7 +646,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 #endif
-!PARALLELIO_LIB
+!SCORPIO
 
   call PetscLogEventEnd(logging%event_read_real_array_hdf5,ierr)
                           
@@ -670,7 +670,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   
   implicit none
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: dataset_size
@@ -780,7 +780,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr)
 
 #else
-! PARALLELIO_LIB is not defined
+! SCORPIO is not defined
 
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
@@ -925,7 +925,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 ! Default & Glenn's HDF5 Broadcast Mechanism (uses HDF5 Independent I/O mode)
                           
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
 end subroutine HDF5ReadIntegerArray
 
@@ -951,7 +951,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   character(len=*) :: name
   PetscReal :: array(:)
 
-#if defined(PARALLELIO_LIB_WRITE)    
+#if defined(SCORPIO_WRITE)    
   integer:: file_id
   integer:: data_type
   integer:: file_space_id
@@ -991,7 +991,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   integer, pointer :: int_array_i4(:)
   PetscReal, pointer :: double_array(:)
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
 
 !  write(option%io_buffer,'(" Writing dataset block: ", a, " type - ", i, ".")') trim(name), data_type
 !  call printMsg(option)
@@ -1085,7 +1085,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
 
 #else
-! PARALLELIO_LIB_WRITE is not defined  
+! SCORPIO_WRITE is not defined  
 
 ! Default HDF5 Write
 
@@ -1192,7 +1192,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
                           
 #endif
-! PARALLELIO_LIB_WRITE vs previous
+! SCORPIO_WRITE vs previous
 
 end subroutine HDF5WriteStructuredDataSet
       
@@ -1216,7 +1216,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   
   implicit none
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
   type(grid_type) :: grid
   type(option_type) :: option
@@ -1225,7 +1225,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   PetscInt, pointer :: indices(:)
   PetscInt :: num_indices
     
-#if defined(PARALLELIO_LIB)    
+#if defined(SCORPIO)    
   integer :: file_id
   integer:: file_space_id
   integer:: memory_space_id
@@ -1311,7 +1311,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   call PetscLogEventEnd(logging%event_read_indices_hdf5,ierr)
 
 #else
-! PARALLELIO_LIB is not defined
+! SCORPIO is not defined
 
 ! Default HDF5 Mechanism 
 
@@ -1405,7 +1405,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
 ! End of Default HDF5 Mechanism  
   
 #endif
-! PARALLELIO_LIB
+! SCORPIO
   
 end subroutine HDF5ReadIndices
 
@@ -1432,7 +1432,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
  
   type(discretization_type) :: discretization
   type(grid_type) :: grid
@@ -1544,7 +1544,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
 
 #else
-! PARALLELIO_LIB is not defined
+! SCORPIO is not defined
 
 ! Default HDF5 Mechanism 
  
@@ -1664,7 +1664,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 ! End of Default HDF5 Mechanism
 
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
 end subroutine HDF5ReadArray
 
@@ -1734,7 +1734,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   call GridCreateNaturalToGhostedHash(grid,option)
 #endif
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
       option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
       call printMsg(option)
@@ -1794,7 +1794,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   call GridDestroyHashTable(grid)
 
-! PARALLELIO_LIB
+! SCORPIO
 #else   
 
   ! initialize fortran hdf5 interface 
@@ -1872,7 +1872,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   call GridDestroyHashTable(grid)
 #endif  
-! if PARALLELIO_LIB is not defined
+! if SCORPIO is not defined
 
 #endif
 !PETSC_HAVE_HDF5
@@ -2212,7 +2212,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
 
   call PetscLogEventBegin(logging%event_cell_indx_int_read_hdf5,ierr)
   
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
      call printMsg(option) 
@@ -2271,7 +2271,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   endif
 
 #else
-! if PARALLELIO_LIB is not defined
+! if SCORPIO is not defined
 
  ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -2346,7 +2346,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
 #endif  
-! if PARALLELIO_LIB is not defined
+! if SCORPIO is not defined
 
 #endif
 ! PETSC_HAVE_HDF5
@@ -2426,7 +2426,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 
   call PetscLogEventBegin(logging%event_cell_indx_real_read_hdf5,ierr)
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
      call printMsg(option) 
@@ -2487,7 +2487,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   endif
 
 #else
-! if PARALLELIO_LIB is not defined
+! if SCORPIO is not defined
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -2561,7 +2561,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   call h5close_f(hdf5_err)
 
 #endif  
-! if PARALLELIO_LIB is not defined
+! if SCORPIO is not defined
 
 #endif
 ! PETSC_HAVE_HDF5

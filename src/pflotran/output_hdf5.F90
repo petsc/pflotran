@@ -10,7 +10,7 @@ module Output_HDF5_module
 
 #include "definitions.h"
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   include "scorpiof.h"
 #endif
 
@@ -101,7 +101,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: grp_id
   integer:: file_space_id
@@ -190,7 +190,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
 
   grid => patch%grid
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
     call scorpio_open_file(filename, option%iowrite_group_id, &
@@ -204,7 +204,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
 
 #else
-! PARALLELIO_LIB_WRITE is not defined
+! SCORPIO_WRITE is not defined
 
     ! initialize fortran interface
   call h5open_f(hdf5_err)
@@ -225,7 +225,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
   call h5pclose_f(prop_id,hdf5_err)
 #endif
-! PARALLELIO_LIB_WRITE
+! SCORPIO_WRITE
 
   if (first) then
     option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
@@ -237,7 +237,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   if (first) then
 
     ! create a group for the coordinates data set
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
     string = "Coordinates" // CHAR(0)
     call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                         option%iowrite_group_id, ierr)
@@ -279,7 +279,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     deallocate(array)
     !GEH - Structured Grid Dependence - End
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
     call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
                                         option%iowrite_group_id, ierr)
 #else
@@ -295,7 +295,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     string = trim(string) // ' ' // output_option%plot_name
   endif
   !string = trim(string3) // ' ' // trim(string)
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   string = trim(string) //CHAR(0)
     ! This opens existing dataset and creates it if needed
   call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
@@ -309,7 +309,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
   endif
   call h5eset_auto_f(ON,hdf5_err)
 #endif
-! PARALLELIO_LIB_WRITE
+! SCORPIO_WRITE
   
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -430,7 +430,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
   call VecDestroy(global_vec,ierr)
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
     call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
             option%iowrite_group_id, ierr)
     call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
@@ -439,7 +439,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     call h5fclose_f(file_id,hdf5_err)
      call h5close_f(hdf5_err)
 #endif
-!PARALLELIO_LIB_WRITE
+!SCORPIO_WRITE
 #endif
 !PETSC_HAVE_HDF5
 
@@ -499,7 +499,7 @@ subroutine OutputHDF5UGrid(realization_base)
 
   class(realization_base_type) :: realization_base
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: data_type
   integer:: grp_id
@@ -580,7 +580,7 @@ subroutine OutputHDF5UGrid(realization_base)
 
   grid => patch%grid
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
 
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
@@ -617,7 +617,7 @@ subroutine OutputHDF5UGrid(realization_base)
 #else
 
   !
-  !        not(PARALLELIO_LIB_WRITE)
+  !        not(SCORPIO_WRITE)
   !
 
   ! initialize fortran interface
@@ -654,7 +654,7 @@ subroutine OutputHDF5UGrid(realization_base)
     call h5gclose_f(grp_id,hdf5_err)
   endif
 #endif
-! PARALLELIO_LIB_WRITE
+! SCORPIO_WRITE
 
     ! create a group for the data set
     write(string,'(''Time:'',es13.5,x,a1)') &
@@ -662,7 +662,7 @@ subroutine OutputHDF5UGrid(realization_base)
     if (len_trim(output_option%plot_name) > 2) then
       string = trim(string) // ' ' // output_option%plot_name
     endif
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
     string = trim(string) //CHAR(0)
       ! This opens existing dataset and creates it if needed
     call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
@@ -676,7 +676,7 @@ subroutine OutputHDF5UGrid(realization_base)
     endif
     call h5eset_auto_f(ON,hdf5_err)
 #endif
-! PARALLELIO_LIB_WRITE
+! SCORPIO_WRITE
 
   ! write out data sets
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -774,7 +774,7 @@ subroutine OutputHDF5UGrid(realization_base)
 
   call VecDestroy(global_vec,ierr)
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
 !    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
 !            option%iowrite_group_id, ierr)
 !    call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
@@ -783,7 +783,7 @@ subroutine OutputHDF5UGrid(realization_base)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
 #endif
-!PARALLELIO_LIB_WRITE
+!SCORPIO_WRITE
 
   hdf5_first = PETSC_FALSE
 
@@ -846,7 +846,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: data_type
   integer:: grp_id
@@ -948,8 +948,8 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 
   grid => patch%grid
 
-#ifdef PARALLELIO_LIB_WRITE
-   option%io_buffer='OutputHDF5UGridXDMF not supported with PARALLELIO_LIB_WRITE'
+#ifdef SCORPIO_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with SCORPIO_WRITE'
    call printErrMsg(option)
 #endif
 
@@ -1334,7 +1334,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   
   implicit none
   
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   character(len=32) :: name
   type(option_type) :: option
   PetscInt :: length
@@ -1366,7 +1366,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   PetscErrorCode :: ierr
   
   call PetscLogEventBegin(logging%event_output_coordinates_hdf5,ierr) 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
 
   name = trim(name) // CHAR(0)
   ! write out grid structure
@@ -1391,7 +1391,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
 
 #else
-!PARALLELIO_LIB_WRITE is not defined
+!SCORPIO_WRITE is not defined
 
   ! write out grid structure
   rank = 1
@@ -1419,7 +1419,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5sclose_f(file_space_id,hdf5_err)
 
 #endif
-! PARALLELIO_LIB_WRITE
+! SCORPIO_WRITE
 
   call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
 
@@ -1451,7 +1451,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: data_type
   integer:: grp_id
@@ -1518,14 +1518,14 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
 
-#if defined(PARALLELIO_LIB_WRITE)
-  write(*,*),'PARALLELIO_LIB_WRITE'
-  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
 
   !
-  !        not(PARALLELIO_LIB_WRITE)
+  !        not(SCORPIO_WRITE)
   !
    
   ! memory space which is a 1D vector
@@ -1632,14 +1632,14 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
 
   local_size = grid%unstructured_grid%nlmax
-#if defined(PARALLELIO_LIB_WRITE)
-  write(*,*),'PARALLELIO_LIB_WRITE'
-  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
 
   !
-  !        not(PARALLELIO_LIB_WRITE)
+  !        not(SCORPIO_WRITE)
   !
    
   ! memory space which is a 1D vector
@@ -1762,7 +1762,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: data_type
   integer:: grp_id
@@ -1837,14 +1837,14 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
 
-#if defined(PARALLELIO_LIB_WRITE)
-  write(*,*),'PARALLELIO_LIB_WRITE'
-  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #else
 
   !
-  !        not(PARALLELIO_LIB_WRITE)
+  !        not(SCORPIO_WRITE)
   !
 
   ! memory space which is a 1D vector
@@ -2036,7 +2036,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call UGridDMDestroy(ugdm_element)
 
 #endif
-!if defined(PARALLELIO_LIB_WRITE)
+!if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
 #endif

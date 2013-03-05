@@ -13,7 +13,7 @@ module Unstructured_Grid_Aux_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   include "scorpiof.h"
 #endif
 

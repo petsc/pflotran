@@ -306,12 +306,12 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call printErrMsg(option)
 #else
 
-#ifdef PARALLELIO_LIB
+#ifdef SCORPIO
             call UGridReadHDF5PIOLib(un_str_grid,discretization%filename,option)
 #else
             call UGridReadHDF5(un_str_grid,discretization%filename,option)
 #endif
-! #ifdef PARALLELIO_LIB
+! #ifdef SCORPIO
 
 #endif
 !#if !defined(PETSC_HAVE_HDF5)

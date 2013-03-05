@@ -28,7 +28,7 @@ module HDF5_Aux_module
 #endif
 
   public :: HDF5ReadNDimRealArray, &
-#ifdef PARALLELIO_LIB
+#ifdef SCORPIO
             HDF5ReadDatasetInteger2D, &
             HDF5ReadDatasetReal2D, &
             HDF5GroupExists, &
@@ -37,7 +37,7 @@ module HDF5_Aux_module
             HDF5ReadDatasetMap, &
             HDF5GroupExists, &
 #endif
-! PARALLELIO_LIB
+! SCORPIO
             HDF5MakeStringCompatible
 
 contains
@@ -622,7 +622,7 @@ subroutine HDF5ReadDatasetMap(dataset,option)
 
 end subroutine HDF5ReadDatasetMap
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 ! ************************************************************************** !
 !
@@ -639,7 +639,7 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   implicit none
   
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   include "scorpiof.h"  
 #endif
 
@@ -704,9 +704,9 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
 
 end subroutine HDF5ReadDatasetInteger2D
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 ! ************************************************************************** !
 !
@@ -724,7 +724,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   implicit none
   
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   include "scorpiof.h"  
 #endif
 
@@ -789,7 +789,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
 
 end subroutine HDF5ReadDatasetReal2D
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
 ! ************************************************************************** !
 !
@@ -805,7 +805,7 @@ function HDF5GroupExists(filename,group_name,option)
   
   implicit none
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   include "scorpiof.h"  
 #endif
   
@@ -821,7 +821,7 @@ function HDF5GroupExists(filename,group_name,option)
   
   PetscBool :: HDF5GroupExists
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
@@ -878,7 +878,7 @@ function HDF5GroupExists(filename,group_name,option)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)  
 #endif 
-!PARALLELIO_LIB
+!SCORPIO
 
 end function HDF5GroupExists
 

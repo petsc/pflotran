@@ -215,7 +215,7 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   call Create_IOGroups(option)
 #endif    
 
@@ -3445,7 +3445,7 @@ subroutine Create_IOGroups(option)
   use Option_module
   use Logging_module
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   use hdf5
 #endif
 
@@ -3454,7 +3454,7 @@ subroutine Create_IOGroups(option)
   type(option_type) :: option
   PetscErrorCode :: ierr
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
   PetscMPIInt :: numiogroups
 
@@ -3508,7 +3508,7 @@ subroutine Create_IOGroups(option)
     call printMsg(option)      
   call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #endif
-! PARALLELIO_LIB
+! SCORPIO
  
 end subroutine Create_IOGroups
 
