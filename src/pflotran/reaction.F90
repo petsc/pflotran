@@ -1229,7 +1229,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   total_conc = 0.d0
   do icomp = 1, reaction%naqcomp
     select case(constraint_type(icomp))
-      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB_AQ_BASED)
+      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
         ! units = mol/L
         total_conc(icomp) = conc(icomp)*convert_molal_to_molar
         ! free_conc guess set above
@@ -1335,6 +1335,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! Jac units = kg water/L water
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
           
+#if 0   
+!geh: deprecated 03/04/13
         case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
         
           ! conversion from m^3 bulk -> L water
@@ -1348,6 +1350,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1) + &
           ! dtotal_sorb units = kg water/m^3 bulk
                          rt_auxvar%dtotal_sorb_eq(icomp,:)/tempreal
+#endif          
 
         case(CONSTRAINT_TOTAL_SORB)
         
@@ -2025,8 +2028,11 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
           string = 'total aq'
         case(CONSTRAINT_TOTAL_SORB)
           string = 'total sorb'
+#if 0   
+!geh: deprecated 03/04/13          
         case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
           string = 'total aq+sorb'
+#endif
         case(CONSTRAINT_FREE)
           string = 'free'
         case(CONSTRAINT_CHARGE_BAL)

@@ -163,13 +163,9 @@ function DatasetIsCellIndexed(dataset,option)
   
 #if defined(PETSC_HAVE_HDF5)
 
-#ifdef PARALLELIO_LIB
-  option%io_buffer='HDF5GroupExists() not supported with PARALLELIO_LIB'
-  call printErrMsg(option)
-#else
   DatasetIsCellIndexed = &
     .not.HDF5GroupExists(dataset%filename,dataset%h5_dataset_name,option)
-#endif
+
 #endif
  
 end function DatasetIsCellIndexed
