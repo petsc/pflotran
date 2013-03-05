@@ -18,6 +18,8 @@ module Secondary_Continuum_module
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
 
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  
   public :: SecondaryContinuumType, &
             SecondaryContinuumSetProperties, &
             SecondaryRTAuxVarInit, &
@@ -620,9 +622,21 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: prim_vol ! volume of primary grid cell
   PetscReal :: dCsec_dCprim(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: dPsisec_dCprim(reaction%naqcomp,reaction%naqcomp)
-  PetscInt :: jcomp, lcomp, kcomp
+  PetscInt :: jcomp, lcomp, kcomp, icplx, ncompeq
   PetscReal :: sec_sec_molal_M(reaction%neqcplx)   ! secondary species molality of secondary continuum
   
+#ifdef MULTI_DEBUG  
+  ! Numerical jacobian of the coupling term
+  PetscReal :: conc_prim_pert(reaction%naqcomp)
+  PetscReal :: conc_prim(reaction%naqcomp)
+  PetscReal :: total_prim_pert(reaction%naqcomp)
+  PetscReal :: pert(reaction%naqcomp)
+  PetscReal :: sec_jac_num(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: total_current_M_pert(reaction%naqcomp)
+  PetscReal :: res_transport_pert(reaction%naqcomp)
+  PetscReal :: conc_current_M_pert(reaction%naqcomp)
+#endif
+
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
   PetscInt :: d
@@ -843,8 +857,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
   total_current_M = rt_auxvar%total(:,1)
   sec_sec_molal_M = rt_auxvar%sec_molal
-  call RTAuxVarStrip(rt_auxvar)
-  
+  call RTAuxVarStrip(rt_auxvar)        
+
   b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M ! in m3/kg
   b_m = b_m*1.d3 ! in L/kg
   
@@ -855,26 +869,25 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   ! Calculate the dervative of outer matrix node total with respect to the 
   ! primary node concentration
   dPsisec_dCprim = dCsec_dCprim
-  do j = 1, ncomp
-    do l = 1, ncomp
-      do i = 1, reaction%neqcplx
-        jcomp = reaction%eqcplxspecid(j,i)
-        lcomp = reaction%eqcplxspecid(l,i)
-        do k = 1, ncomp
-          kcomp = reaction%eqcplxspecid(k,i)
+  do icplx = 1, reaction%neqcplx
+    ncompeq = reaction%eqcplxspecid(0,icplx)
+    do j = 1, ncompeq
+      jcomp = reaction%eqcplxspecid(j,icplx)
+      do l = 1, ncompeq
+        lcomp = reaction%eqcplxspecid(l,icplx)
+        do k = 1, ncompeq
+          kcomp = reaction%eqcplxspecid(k,icplx)
           dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
-                                        reaction%eqcplxstoich(j,i)* &
-                                        reaction%eqcplxstoich(k,i)* &
+                                        reaction%eqcplxstoich(j,icplx)* &
+                                        reaction%eqcplxstoich(k,icplx)* &
                                         dCsec_dCprim(kcomp,lcomp)* &
-                                        sec_sec_molal_M(i)/ &
+                                        sec_sec_molal_M(icplx)/ &
                                         conc_current_M(kcomp)
         enddo
       enddo      
     enddo
   enddo
-  
-  dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3
-  
+
     
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
@@ -897,6 +910,193 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
+  
+  
+#ifdef MULTI_DEBUG
+  ! Numerical jacobian
+  
+  res = 0.d0
+  coeff_diag = 0.d0
+  coeff_left = 0.d0
+  coeff_right = 0.d0
+
+  conc_prim = aux_var%pri_molal
+  pert = conc_prim*perturbation_tolerance
+  conc_prim_pert = conc_prim + pert
+  ! Update the primary perturbed total
+  call RTAuxVarInit(rt_auxvar,reaction,option)  
+  call RTAuxVarCopy(rt_auxvar,aux_var,option)
+  rt_auxvar%pri_molal = conc_prim_pert ! in mol/kg
+  call RTotal(rt_auxvar,global_aux_var,reaction,option)
+  total_prim_pert = rt_auxvar%total(:,1)  
+  
+!================ Calculate the secondary residual =============================        
+
+  do j = 1, ncomp
+      
+    ! Accumulation
+    do i = 1, ngcells
+      n = j + (i-1)*ncomp
+      res(n) = pordt*(total_upd(j,i) - total_prev(j,i))*vol(i)    ! in mol/L*m3/s
+    enddo
+  
+    ! Flux terms
+    do i = 2, ngcells - 1
+      n = j + (i-1)*ncomp
+      res(n) = res(n) - pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))* &
+                        (total_upd(j,i+1) - total_upd(j,i))
+      res(n) = res(n) + pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))* &
+                        (total_upd(j,i) - total_upd(j,i-1))                      
+    enddo
+         
+              
+    ! Apply boundary conditions
+    ! Inner boundary
+    res(j) = res(j) - pordiff*area(1)/(dm_minus(2) + dm_plus(1))* &
+                      (total_upd(j,2) - total_upd(j,1))
+                                      
+    ! Outer boundary
+    res(j+(ngcells-1)*ncomp) = res(j+(ngcells-1)*ncomp) - &
+                               pordiff*area(ngcells)/dm_plus(ngcells)* &
+                               (total_prim_pert(j) - total_upd(j,ngcells))
+    res(j+(ngcells-1)*ncomp) = res(j+(ngcells-1)*ncomp) + &
+                               pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                               + dm_plus(ngcells-1))*(total_upd(j,ngcells) - &
+                               total_upd(j,ngcells-1))  
+                               
+  enddo
+                         
+  res = res*1.d3 ! Convert mol/L*m3/s to mol/s 
+  
+!================ Calculate the secondary jacobian =============================        
+
+
+  do j = 1, ncomp
+    do k = 1, ncomp  
+        ! Accumulation
+        do i = 1, ngcells 
+          coeff_diag(j,k,i) = coeff_diag(j,k,i) + pordt*vol(i)
+        enddo
+  
+        ! Flux terms
+        do i = 2, ngcells-1
+          coeff_diag(j,k,i) = coeff_diag(j,k,i) + &
+                              pordiff*area(i)/(dm_minus(i+1) + dm_plus(i)) + &
+                              pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))
+          coeff_left(j,k,i-1) = coeff_left(j,k,i-1) - &
+                              pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))
+          coeff_right(j,k,i) = coeff_right(j,k,i) - &
+                               pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
+        enddo
+  
+  
+        ! Apply boundary conditions
+        ! Inner boundary
+        coeff_diag(j,k,1) = coeff_diag(j,k,1) + &
+                            pordiff*area(1)/(dm_minus(2) + dm_plus(1))
+                   
+        coeff_right(j,k,1) = coeff_right(j,k,1) - &
+                             pordiff*area(1)/(dm_minus(2) + dm_plus(1))
+  
+        ! Outer boundary -- closest to primary node
+        coeff_diag(j,k,ngcells) = coeff_diag(j,k,ngcells) + &
+                                  pordiff*area(ngcells-1)/(dm_minus(ngcells) &
+                                  + dm_plus(ngcells-1)) + &
+                                  pordiff*area(ngcells)/dm_plus(ngcells)
+        coeff_left(j,k,ngcells-1) = coeff_left(j,k,ngcells-1) - &
+                                  pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
+                                  dm_plus(ngcells-1)) 
+
+    enddo    
+  enddo
+
+!============================= Include dtotal ==================================        
+  
+  ! Include dtotal (units of kg water/ L water)  
+  do i = 1, ngcells
+    do j = 1, ncomp
+      do k = 1, ncomp
+        coeff_diag(j,k,i) = coeff_diag(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+      enddo
+    enddo
+  enddo
+  
+  do i = 2, ngcells
+    do j = 1, ncomp
+      do k = 1, ncomp
+        coeff_left(j,k,i-1) = coeff_left(j,k,i-1)*dtotal(j,k,i) ! m3/s*kg/L
+      enddo
+    enddo
+  enddo
+  
+  do i = 1, ngcells-1
+    do j = 1, ncomp
+      do k = 1, ncomp
+        coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+      enddo
+    enddo
+  enddo
+  
+  ! Convert m3/s*kg/L to kg water/s
+  coeff_right = coeff_right*1.d3
+  coeff_left = coeff_left*1.d3
+  coeff_diag = coeff_diag*1.d3
+  
+!====================== Add reaction contributions =============================        
+  
+  ! Reaction 
+  do i = 1, ngcells
+    res_react = 0.d0
+    jac_react = 0.d0
+    call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
+                      option)
+    rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
+    call RTotal(rt_auxvar,global_aux_var,reaction,option)
+    call RReaction(res_react,jac_react,PETSC_TRUE, &
+                   rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)                     
+    do j = 1, ncomp
+      res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
+    enddo
+    coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
+  enddo  
+         
+!============================== Forward solve ==================================        
+                        
+  rhs = -res                 
+
+  call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)
+  
+  call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+  
+  ! Update the secondary concentrations
+  do i = 1, ncomp
+    conc_current_M_pert(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
+  enddo
+
+  ! Update the secondary continuum totals at the outer matrix node
+  call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(ngcells), &
+                    option)
+  rt_auxvar%pri_molal = conc_current_M_pert ! in mol/kg
+  call RTotal(rt_auxvar,global_aux_var,reaction,option)
+  total_current_M_pert = rt_auxvar%total(:,1)
+  call RTAuxVarStrip(rt_auxvar)        
+                    
+  ! Calculate the coupling term
+  res_transport_pert = pordiff/dm_plus(ngcells)*area_fm* &
+                       (total_current_M_pert - total_prim_pert)*prim_vol*1.d3 ! in mol/s
+                  
+  do j = 1, ncomp
+    sec_jac_num(:,j) = (res_transport_pert - res_transport)/pert(j)                  
+  enddo
+
+!  print *, 'analytical sec_jac:', sec_jac
+!  print *, 'numerical sec_jac:', sec_jac_num
+!  print *, '==================================================================='
+  
+  sec_transport_vars%sec_jac = sec_jac_num 
+  
+#endif
+
 
 end subroutine SecondaryRTResJacMulti
 

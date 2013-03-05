@@ -115,6 +115,10 @@ ifdef ugrid_debug
   MYFLAGS += -DUGRID_DEBUG
 endif
 
+ifdef multi_debug
+  MYFLAGS += -DMULTI_DEBUG
+endif
+
 ifdef surface_flow
   MYFLAGS += -DSURFACE_FLOW
 endif
