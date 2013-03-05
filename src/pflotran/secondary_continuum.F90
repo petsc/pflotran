@@ -620,7 +620,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: prim_vol ! volume of primary grid cell
   PetscReal :: dCsec_dCprim(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: dPsisec_dCprim(reaction%naqcomp,reaction%naqcomp)
-  PetscInt :: jcomp, lcomp, kcomp
+  PetscInt :: jcomp, lcomp, kcomp, icplx, ncompeq
   PetscReal :: sec_sec_molal_M(reaction%neqcplx)   ! secondary species molality of secondary continuum
   
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
@@ -855,18 +855,19 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   ! Calculate the dervative of outer matrix node total with respect to the 
   ! primary node concentration
   dPsisec_dCprim = dCsec_dCprim       ! dimensionless
-  do j = 1, ncomp
-    do l = 1, ncomp
-      do i = 1, reaction%neqcplx
-        jcomp = reaction%eqcplxspecid(j,i)
-        lcomp = reaction%eqcplxspecid(l,i)
-        do k = 1, ncomp
-          kcomp = reaction%eqcplxspecid(k,i)
+  do icplx = 1, reaction%neqcplx
+    ncompeq = reaction%eqcplxspecid(0,icplx)
+    do j = 1, ncompeq
+      jcomp = reaction%eqcplxspecid(j,icplx)
+      do l = 1, ncompeq
+        lcomp = reaction%eqcplxspecid(l,icplx)
+        do k = 1, ncompeq
+          kcomp = reaction%eqcplxspecid(k,icplx)
           dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
-                                        reaction%eqcplxstoich(j,i)* &
-                                        reaction%eqcplxstoich(k,i)* &
+                                        reaction%eqcplxstoich(j,icplx)* &
+                                        reaction%eqcplxstoich(k,icplx)* &
                                         dCsec_dCprim(kcomp,lcomp)* &
-                                        sec_sec_molal_M(i)/ &
+                                        sec_sec_molal_M(icplx)/ &
                                         conc_current_M(kcomp)
         enddo
       enddo      
