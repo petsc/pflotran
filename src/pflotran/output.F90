@@ -21,7 +21,7 @@ module Output_module
 #include "finclude/petsclog.h"
 
 #if defined(PARALLELIO_LIB_WRITE)
-  include "piof.h"
+  include "scorpiof.h"
 #endif
 
   PetscInt, parameter :: TECPLOT_INTEGER = 0

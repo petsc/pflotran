@@ -19,7 +19,7 @@ module Output_Surface_module
 #include "finclude/petsclog.h"
 
 #if defined(PARALLELIO_LIB_WRITE)
-  include "piof.h"
+  include "scorpiof.h"
 #endif
 
   ! flags signifying the first time a routine is called during a given

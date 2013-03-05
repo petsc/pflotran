@@ -14,7 +14,7 @@ module Unstructured_Grid_Aux_module
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #if defined(PARALLELIO_LIB)
-  include "piof.h"
+  include "scorpiof.h"
 #endif
 
   PetscInt, parameter, public :: TWO_DIM_GRID = 1

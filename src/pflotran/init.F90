@@ -3491,7 +3491,7 @@ subroutine Create_IOGroups(option)
 
   ! create read IO groups
   numiogroups = option%mycommsize/option%hdf5_read_group_size
-  call parallelio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
+  call scorpio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
 
   if ( option%hdf5_read_group_size == option%hdf5_write_group_size ) then
     ! reuse read_group to use for writing too as both groups are same size
@@ -3499,7 +3499,7 @@ subroutine Create_IOGroups(option)
   else   
       ! create write IO groups
       numiogroups = option%mycommsize/option%hdf5_write_group_size
-      call parallelio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
+      call scorpio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
   end if
 
     write(option%io_buffer, '(" Read group id :  ", i6)') option%ioread_group_id

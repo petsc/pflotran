@@ -11,7 +11,7 @@ module Output_HDF5_module
 #include "definitions.h"
 
 #if defined(PARALLELIO_LIB_WRITE)
-  include "piof.h"
+  include "scorpiof.h"
 #endif
 
   ! flags signifying the first time a routine is called during a given
@@ -193,13 +193,13 @@ subroutine OutputHDF5(realization_base,var_list_type)
 #if defined(PARALLELIO_LIB_WRITE)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
-    call parallelio_open_file(filename, option%iowrite_group_id, &
+    call scorpio_open_file(filename, option%iowrite_group_id, &
                               FILE_READWRITE, file_id, ierr)
     if (file_id == -1) first = PETSC_TRUE
   endif
   if (first) then
     filename = trim(filename) // CHAR(0)
-    call parallelio_open_file(filename, option%iowrite_group_id, &
+    call scorpio_open_file(filename, option%iowrite_group_id, &
                               FILE_CREATE, file_id, ierr)
   endif
 
@@ -239,7 +239,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     ! create a group for the coordinates data set
 #if defined(PARALLELIO_LIB_WRITE)
     string = "Coordinates" // CHAR(0)
-    call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+    call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                         option%iowrite_group_id, ierr)
         ! set grp_id here
         ! As we already created the group, we will use file_id as group_id
@@ -280,7 +280,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     !GEH - Structured Grid Dependence - End
 
 #if defined(PARALLELIO_LIB_WRITE)
-    call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
                                         option%iowrite_group_id, ierr)
 #else
     call h5gclose_f(grp_id,hdf5_err)
@@ -298,7 +298,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 #if defined(PARALLELIO_LIB_WRITE)
   string = trim(string) //CHAR(0)
     ! This opens existing dataset and creates it if needed
-  call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+  call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                         option%iowrite_group_id, ierr)
   grp_id = file_id
 #else
@@ -431,9 +431,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   call VecDestroy(global_vec,ierr)
 
 #if defined(PARALLELIO_LIB_WRITE)
-    call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
             option%iowrite_group_id, ierr)
-    call parallelio_close_file(file_id, option%iowrite_group_id, ierr)
+    call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
 #else
     call h5gclose_f(grp_id,hdf5_err)
     call h5fclose_f(file_id,hdf5_err)
@@ -584,13 +584,13 @@ subroutine OutputHDF5UGrid(realization_base)
 
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
-    call parallelio_open_file(filename, option%iowrite_group_id, &
+    call scorpio_open_file(filename, option%iowrite_group_id, &
                               FILE_READWRITE, file_id, ierr)
     if (file_id == -1) first = PETSC_TRUE
   endif
   if (first) then
     filename = trim(filename) // CHAR(0)
-    call parallelio_open_file(filename, option%iowrite_group_id, &
+    call scorpio_open_file(filename, option%iowrite_group_id, &
                               FILE_CREATE, file_id, ierr)
   endif
 
@@ -604,13 +604,13 @@ subroutine OutputHDF5UGrid(realization_base)
   if (first) then
     ! create a group for the coordinates data set
     string = "Domain" // CHAR(0)
-    call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+    call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                          option%iowrite_group_id, ierr)
     ! set grp_id here
     ! As we already created the group, we will use file_id as group_id
     grp_id = file_id
     call WriteHDF5CoordinatesUGrid(grid,option,grp_id)
-    call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
             option%iowrite_group_id, ierr)
   endif
 
@@ -665,7 +665,7 @@ subroutine OutputHDF5UGrid(realization_base)
 #if defined(PARALLELIO_LIB_WRITE)
     string = trim(string) //CHAR(0)
       ! This opens existing dataset and creates it if needed
-    call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+    call scorpio_create_dataset_group(pio_dataset_groupid, string, file_id, &
                                           option%iowrite_group_id, ierr)
     grp_id = file_id
 #else
@@ -775,9 +775,9 @@ subroutine OutputHDF5UGrid(realization_base)
   call VecDestroy(global_vec,ierr)
 
 #if defined(PARALLELIO_LIB_WRITE)
-!    call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+!    call scorpio_close_dataset_group(pio_dataset_groupid, file_id, &
 !            option%iowrite_group_id, ierr)
-!    call parallelio_close_file(file_id, option%iowrite_group_id, ierr)
+!    call scorpio_close_file(file_id, option%iowrite_group_id, ierr)
 #else
   call h5gclose_f(grp_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
@@ -1385,7 +1385,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   endif
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
-  call parallelio_write_dataset(array, PIO_DOUBLE, rank, globaldims, dims, &
+  call scorpio_write_dataset(array, SCORPIO_DOUBLE, rank, globaldims, dims, &
        file_id, name, option%iowrite_group_id, NONUNIFORM_CONTIGUOUS_WRITE, &
        ierr)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)

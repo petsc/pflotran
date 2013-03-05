@@ -1094,7 +1094,7 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
           file_id, ierr)
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
   option%io_buffer = 'Reading dataset: ' // trim(string)
@@ -1143,7 +1143,7 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
        option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
        call printMsg(option)   
    endif
-   call parallelio_close_file(file_id, option%ioread_group_id, ierr)
+   call scorpio_close_file(file_id, option%ioread_group_id, ierr)
 
   call GridDestroyHashTable(grid)
 

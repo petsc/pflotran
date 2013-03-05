@@ -13,7 +13,7 @@ module HDF5_module
   PetscBool, public :: trick_hdf5 = PETSC_FALSE
 
 #if defined(PARALLELIO_LIB)
-  include "piof.h"  
+  include "scorpiof.h"  
 #endif
 
 #if defined(PETSC_HAVE_HDF5)
@@ -109,7 +109,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 
   read_block_size = HDF5_READ_BUFFER_SIZE
 
-  call parallelIO_get_dataset_size( num_cells_in_file, file_id, dataset_name, &
+  call scorpio_get_dataset_size( num_cells_in_file, file_id, dataset_name, &
           option%ioread_group_id, ierr)
   !>>>> get size of dataset call h5sget_simple_extent_npoints_f(file_space_id,num_cells_in_file,hdf5_err)
   !if (dataset_size > 0 .and. num_cells_in_file /= dataset_size) then
@@ -150,7 +150,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     call PetscLogEventBegin(logging%event_h5dread_f,ierr)
 
     ! rank_mpi = 1 ! This is in fact number of dimensions
-    call parallelIO_read_same_sub_dataset(cell_ids_i4, PIO_INTEGER, rank_mpi, dims, & 
+    call scorpio_read_same_sub_dataset(cell_ids_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
             offset, file_id, dataset_name, option%ioread_group_id, ierr)
 
     !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids_i4,dims,hdf5_err, &
@@ -435,7 +435,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 #if defined(PARALLELIO_LIB)    
   read_block_size = HDF5_READ_BUFFER_SIZE
   ! should be a rank=1 data space (i.e., one dimensional dataset)
-  call parallelIO_get_dataset_size( num_reals_in_file, file_id, dataset_name, &
+  call scorpio_get_dataset_size( num_reals_in_file, file_id, dataset_name, &
           option%ioread_group_id, ierr)
 !???? get size of dataset  call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_file,hdf5_err)
 #if 0
@@ -478,7 +478,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
         call PetscLogEventBegin(logging%event_h5dread_f,ierr)
 
         ! rank_mpi = 1 ! This is in fact number of dimensions
-        call parallelIO_read_same_sub_dataset(real_buffer, PIO_DOUBLE, rank_mpi, dims, & 
+        call scorpio_read_same_sub_dataset(real_buffer, SCORPIO_DOUBLE, rank_mpi, dims, & 
                 offset, file_id, dataset_name, option%ioread_group_id, ierr)
 
         !call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
@@ -502,7 +502,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
     offset(1) = 0
     length(1) = dims(1)
       call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-      call parallelIO_read_same_sub_dataset(real_buffer, PIO_DOUBLE, rank_mpi, dims, & 
+      call scorpio_read_same_sub_dataset(real_buffer, SCORPIO_DOUBLE, rank_mpi, dims, & 
               offset, file_id, dataset_name, option%ioread_group_id, ierr)
       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
   endif
@@ -710,7 +710,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   length = 0
   num_integers_in_file = 0
 
-  call parallelIO_get_dataset_size( num_integers, file_id, dataset_name, &
+  call scorpio_get_dataset_size( num_integers, file_id, dataset_name, &
           option%ioread_group_id, ierr)
   num_integers_in_file = int(num_integers) 
 #if 0  
@@ -742,7 +742,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
            offset(1) = integer_count
            length(1) = dims(1)
            call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-           call parallelIO_read_same_sub_dataset(integer_buffer_i4, PIO_INTEGER, rank_mpi, dims, & 
+           call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
                 offset, file_id, dataset_name, option%ioread_group_id, ierr)
            !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                           !hdf5_err,memory_space_id,file_space_id,prop_id)   
@@ -767,7 +767,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
        offset(1) = integer_count
        length(1) = dims(1)
        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-       call parallelIO_read_same_sub_dataset(integer_buffer_i4, PIO_INTEGER, rank_mpi, dims, & 
+       call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
                 offset, file_id, dataset_name, option%ioread_group_id, ierr)
        !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                       !hdf5_err,memory_space_id,file_space_id,prop_id)   
@@ -1046,9 +1046,9 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)         
        !write(option%io_buffer, &
        !   '(a," Writing double dataset1: dimensions: ",i9,i9,i9, " Data type and ndims: ",i9, i9)') & 
-       !trim(name), dims(1), dims(2), dims(3), PIO_DOUBLE, rank_mpi
+       !trim(name), dims(1), dims(2), dims(3), SCORPIO_DOUBLE, rank_mpi
        !call printMsg(option)   
-       call parallelIO_write_dataset_block(double_array, PIO_DOUBLE, rank_mpi, &
+       call scorpio_write_dataset_block(double_array, SCORPIO_DOUBLE, rank_mpi, &
               dims, length, start, file_id, name, &
               option%iowrite_group_id, ierr)
       !call h5dwrite_f(data_set_id,data_type,double_array,dims, &
@@ -1070,9 +1070,9 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)                              
        !write(option%io_buffer, &
        !   '(a," Writing integer dataset1: dimensions: ",i9,i9,i9, " Data type and ndims: ",i9, i9)') & 
-       !trim(name), dims(1), dims(2), dims(3), PIO_INTEGER, rank_mpi
+       !trim(name), dims(1), dims(2), dims(3), SCORPIO_INTEGER, rank_mpi
        !call printMsg(option)   
-      call parallelIO_write_dataset_block(int_array_i4, PIO_INTEGER, rank_mpi, &
+      call scorpio_write_dataset_block(int_array_i4, SCORPIO_INTEGER, rank_mpi, &
               dims, length, start, file_id, name, &
               option%iowrite_group_id, ierr)
       !!call h5dwrite_f(data_set_id,data_type,int_array_i4,dims, &
@@ -1262,7 +1262,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   istart = iend - grid%nlmax
   
   ! should be a rank=1 data space
-  call parallelIO_get_dataset_size( num_data_in_file, file_id, dataset_name, &
+  call scorpio_get_dataset_size( num_data_in_file, file_id, dataset_name, &
           option%ioread_group_id, ierr)
   globaldims(1) = num_data_in_file 
 !???? get size of dataset  call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
@@ -1299,7 +1299,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     length(1) = iend-istart
     call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
                                
-    call parallelIO_read_dataset(indices_i4(1:iend-istart), PIO_INTEGER, rank_mpi, globaldims, dims, & 
+    call scorpio_read_dataset(indices_i4(1:iend-istart), SCORPIO_INTEGER, rank_mpi, globaldims, dims, & 
             file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
     !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,indices_i4(1:iend-istart), &
                    !dims,hdf5_err,memory_space_id,file_space_id,prop_id)                     
@@ -1466,7 +1466,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   
   ! should be a rank=1 data space
 
-  call parallelIO_get_dataset_size( num_data_in_file, file_id, dataset_name, &
+  call scorpio_get_dataset_size( num_data_in_file, file_id, dataset_name, &
           option%ioread_group_id, ierr)
   globaldims(1) = num_data_in_file
 !???? get size   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
@@ -1506,7 +1506,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
     if (data_type == H5T_NATIVE_DOUBLE) then
       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
     
-      call parallelIO_read_dataset(real_buffer, PIO_DOUBLE, rank_mpi, globaldims, dims, & 
+      call scorpio_read_dataset(real_buffer, SCORPIO_DOUBLE, rank_mpi, globaldims, dims, & 
             file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
       !call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                      !hdf5_err,memory_space_id,file_space_id,prop_id)
@@ -1515,7 +1515,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
       allocate(integer_buffer_i4(iend-istart))
       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
 
-      call parallelIO_read_dataset(integer_buffer_i4, PIO_INTEGER, rank_mpi, globaldims, dims, & 
+      call scorpio_read_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, globaldims, dims, & 
             file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
       !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                      !hdf5_err,memory_space_id,file_space_id,prop_id)
@@ -1741,7 +1741,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
           file_id, ierr)
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
   option%io_buffer = 'Reading dataset: ' // trim(string)
@@ -1790,7 +1790,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
        option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
        call printMsg(option)   
    endif
-   call parallelio_close_file(file_id, option%ioread_group_id, ierr)
+   call scorpio_close_file(file_id, option%ioread_group_id, ierr)
 
   call GridDestroyHashTable(grid)
 
@@ -2218,7 +2218,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
      call printMsg(option) 
   end if   
   filename = trim(filename) //CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
           file_id, ierr)
 
   ! Read Cell Ids
@@ -2267,7 +2267,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
     option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
     call printMsg(option)   
-    call parallelio_close_file(file_id, option%ioread_group_id, ierr)
+    call scorpio_close_file(file_id, option%ioread_group_id, ierr)
   endif
 
 #else
@@ -2432,7 +2432,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
      call printMsg(option) 
   end if   
   filename = trim(filename) //CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
           file_id, ierr)
 
 
@@ -2483,7 +2483,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
     option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
     call printMsg(option)   
-    call parallelio_close_file(file_id, option%ioread_group_id, ierr)
+    call scorpio_close_file(file_id, option%ioread_group_id, ierr)
   endif
 
 #else
