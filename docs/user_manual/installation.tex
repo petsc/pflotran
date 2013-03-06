@@ -268,7 +268,7 @@ where several possible options are:
 Thus for compiling with the supercritical CO$_2$ option use: {\tt make ssco2=1 pflotran}.
 See the PFLOTRAN \verb|makefile| for additional options.
 
-\subsection{Parallel I/O using Sarat Sreepathi's PARALLELIO\_LIB with PFLOTRAN}
+\subsection{Parallel I/O using Sarat Sreepathi's SCORPIO library with PFLOTRAN}
 \label{parallelio}
 
 The parallel I/O library enables a scalable general purpose parallel I/O capability for HPC by taking advantage of existing parallel I/O libraries, such as HDF5 which are being widely used by scientific applications, and modifying these algorithms to better scale to larger number of processors. The library has been tested with MPICH-3.0.2 and OpenMPI-1.6.
@@ -304,7 +304,7 @@ For more details on the I/O library, please see Appendix A in Sarat Sreepathi's 
 Instructions for downloading and installing the parallel I/O library for use with PFLOTRAN is provided below. Note that this software is separate from PFLOTRAN and under a LGPL.
 \begin{enumerate}
 
-\item Download parallelio\_lib source code for building the PARALLELIO library:
+\item Download parallelio\_lib source code for building the SCORPIO library:
 
 {\small\tt svn co http://ascem-io.secure-water.org/ascem-io DIRNAME}
 
@@ -317,58 +317,61 @@ username: {\footnotesize\tt pflotran\_dev}
 
 password: {\footnotesize\tt gr0undw@t3r}
 
-\item Compile PARALLELIO library:
-
-To compile the parallel library, check to make sure that the Makefile has the right settings for your machine.
-Typically, the current configuration suffices.
-So just uncomment the line {\small\tt MACHINE=pflotran\_machine}.
-\footnotesize
-\begin{Verbatim}
-66 # Note: PFLOTRAN USERS: Make sure to uncomment line below
-67 MACHINE=pflotran_machine
-...
-73 ifeq ($(MACHINE),pflotran_machine)
-74     CC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpicc
-75     FC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpif90
-76     LINKER=${FC}
-77     CFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -O3
-78     FFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -O3 
-79     LDFLAGS+= -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
-80 endif
-\end{Verbatim}
-
-\footnotesize
-{\tt cd DIRNAME/src}
-
-{\tt make ASCEMIO\_INSTALL\_DIR=<your-iolib-install-dir> install} \hfill {\it (compile with {\tt mpicc})}
-\normalsize
-
-This will build the library {\footnotesize\tt libparallelio.a} and copy that to \linebreak {\footnotesize\tt <your-iolib-install-dir>/lib} and copy the include files to \linebreak {\footnotesize\tt <your-iolib-install-dir>/include}.
-
-\item Compile PFLOTRAN:
-
-Define environmental variable: {\footnotesize\tt PARALLELIO\_DIR} giving path to \linebreak {\footnotesize\tt <your-iolib-install-dir>}:
-
-\footnotesize
-{\tt export PARALLELIO\_DIR=<your-iolib-install-dir>} \hfill {\it (bash shell)}
+\item Compile SCORPIO library:
+First, set the environment variable {\footnotesize\tt SCORPIO\_DIR} to a directory where you wish to install the library files. 
+Please make sure that you have the correct permissions to write to that location. E.g., you can use something like {\footnotesize\tt \$\{HOME\}/soft/scorpio}.
+\footnotesize {\tt export SCORPIO\_DIR=<your-iolib-install-dir>} \hfill {\it (bash shell)}
 \normalsize
 
 or
 
 \footnotesize
-{\tt setenv PARALLELIO\_DIR <your-iolib-install-dir>} \hfill {\it (tcsh/csh shell)}
+{\tt setenv SCORPIO\_DIR <your-iolib-install-dir>} \hfill {\it (tcsh/csh shell)}
+
+To compile the parallel library, check to make sure that the Makefile has the right settings for your machine.
+Typically, the current configuration suffices.
+% So just uncomment the line {\small\tt MACHINE=pflotran\_machine}.
+% \footnotesize
+% \begin{Verbatim}
+% 66 # Note: PFLOTRAN USERS: Make sure to uncomment line below 
+%    OR use make MACHINE=pflotran_machine
+% 67 MACHINE=pflotran_machine
+% ...
+% 73 ifeq ($(MACHINE),pflotran_machine)
+% 74     CC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpicc
+% 75     FC=${PETSC_DIR}/${PETSC_ARCH}/bin/mpif90
+% 76     LINKER=${FC}
+% 77     CFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -O3
+% 78     FFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -O3 
+% 79     LDFLAGS+= -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
+% 80 endif
+% \end{Verbatim}
+
+\footnotesize
+{\tt cd DIRNAME/src}
+
+
+{\tt make MACHINE=pflotran\_machine}
+
+{\tt make install} \hfill {\it (compile with {\tt mpicc})}
+\normalsize
+
+This will build the library {\footnotesize\tt libscorpio.a} and copy corresponding files to {\footnotesize\tt SCORPIO\_DIR/lib} and {\footnotesize\tt SCORPIO\_DIR/include} directories.
+
+\item Compile PFLOTRAN:
+
+Please ensure that environmental variable: {\footnotesize\tt SCORPIO\_DIR} is pointed to \linebreak {\footnotesize\tt <your-iolib-install-dir>}:
 
 {\tt cd PFLOTRAN\_DIR/src/pflotran}
 
-{\tt make have\_parallelio\_lib=1 pflotran}
+{\tt make scorpio=1 pflotran}
 \normalsize
 \end{enumerate}
 
 \scriptsize
 \begin{verbatim}
-README
 -------------------------------------------------------------------------------
-ASCEM-IO
+SCORPIO
 Scalable Parallel I/O module for Environmental Management Applications
 -------------------------------------------------------------------------------
 This library provides software that read/write data sets from/to parallel file 
@@ -379,7 +382,7 @@ performance does not degrade significantly as the number of cores grows.
 -------------------------------------------------------------------------------
 COPYRIGHT AND LICENSE 
 -------------------------------------------------------------------------------
-ASCEM-IO is distrubuted under the terms of the GNU Lesser General Public 
+SCORPIO is distrubuted under the terms of the GNU Lesser General Public 
 License (LGPL). The copyright is held jointly by North Carolina State University 
 and Pacific Northwest National Laboratory. 
 
@@ -406,12 +409,12 @@ C compiler
 HDF5 libraries (preferably with parallel(MPI) support)
 Optional: Fortran (for Fortran example)
 
-After downloading ASCEM-IO and gathering details of HDF5 installation, 
-the following commands can be used to build and install ASCEM-IO: 
+After downloading SCORPIO and gathering details of HDF5 installation, 
+the following commands can be used to build and install SCORPIO: 
 
-	cd <ASCEM-IO check out directory>/src
+	cd <SCORPIO check out directory>/src
 	make CC=<C-compiler> HDF5_INCLUDE_DIR=<location of the HDF5 include directory>
-	make ASCEMIO_INSTALL_DIR=<user defined install location> install
+	make SCORPIO_INSTALL_DIR=<user defined install location> install
 
 In this case, CC refers to C compiler with MPI support, e.g., mpicc.
 
