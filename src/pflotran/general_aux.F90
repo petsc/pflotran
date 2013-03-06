@@ -73,7 +73,8 @@ module General_Aux_module
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
             GeneralAuxVarCompute, GeneralAuxVarInit, &
             GeneralAuxVarCopy, GeneralAuxVarDestroy, &
-            GeneralAuxVarStrip, GeneralAuxVarUpdateState
+            GeneralAuxVarStrip, GeneralAuxVarUpdateState, &
+            GeneralPrintAuxVars, GeneralOutputAuxVars
 
 contains
 
@@ -112,7 +113,8 @@ function GeneralAuxCreate(option)
 
   allocate(aux%general_parameter)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
-  aux%general_parameter%diffusion_coefficient = 1.d-9
+  aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = 1.d-9
+  aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 1.d-5
   allocate(aux%general_parameter%thermal_conductivity(option%nphase))
   aux%general_parameter%thermal_conductivity = 0.d0
 
@@ -576,6 +578,108 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
   print *, '--------------------------------------------------------'
 
 end subroutine GeneralPrintAuxVars
+
+! ************************************************************************** !
+!
+! GeneralOutputAuxVars: Prints out the contents of an auxvar to a file
+! author: Glenn Hammond
+! date: 02/18/13
+!
+! ************************************************************************** !
+subroutine GeneralOutputAuxVars(general_auxvar,global_auxvar,ghosted_id, &
+                                string,option)
+
+  use Global_Aux_module
+  use Option_module
+
+  implicit none
+
+  type(general_auxvar_type) :: general_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscInt :: ghosted_id
+  character(len=*) :: string
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string2
+  PetscInt :: apid, cpid, vpid
+  PetscInt :: gid, lid, acid, wid, eid
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
+  
+  write(string2,*) ghosted_id
+  string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
+  open(unit=86,file=string2)
+
+  write(86,*) '--------------------------------------------------------'
+  write(86,*) trim(string)
+  write(86,*) '             cell id: ', ghosted_id
+  select case(global_auxvar%istate)
+    case(LIQUID_STATE)
+      write(86,*) ' Thermodynamic state: Liquid phase'
+    case(GAS_STATE)
+      write(86,*) ' Thermodynamic state: Gas phase'
+    case(TWO_PHASE_STATE)
+      write(86,*) ' Thermodynamic state: Two phase'
+  end select
+  write(86,*) '     liquid pressure: ', general_auxvar%pres(lid)
+  write(86,*) '        gas pressure: ', general_auxvar%pres(gid)
+  write(86,*) '        air pressure: ', general_auxvar%pres(apid)
+  write(86,*) '  capillary pressure: ', general_auxvar%pres(cpid)
+  write(86,*) '      vapor pressure: ', general_auxvar%pres(vpid)
+  write(86,*) '     temperature [C]: ', general_auxvar%temp
+  write(86,*) '   liquid saturation: ', general_auxvar%sat(lid)
+  write(86,*) '      gas saturation: ', general_auxvar%sat(gid)
+  write(86,*) 'liquid density [mol]: ', general_auxvar%den(lid)
+  write(86,*) '   gas density [mol]: ', general_auxvar%den(gid)
+  write(86,*) ' liquid density [kg]: ', general_auxvar%den_kg(lid)
+  write(86,*) '    gas density [kg]: ', general_auxvar%den_kg(gid)
+  write(86,*) ' X (water in liquid): ', general_auxvar%xmol(lid,lid)
+  write(86,*) '   X (air in liquid): ', general_auxvar%xmol(gid,lid)
+  write(86,*) '    X (water in gas): ', general_auxvar%xmol(lid,gid)
+  write(86,*) '      X (air in gas): ', general_auxvar%xmol(gid,gid)
+  write(86,*) '  liquid H [MJ/kmol]: ', general_auxvar%H(lid)
+  write(86,*) '     gas H [MJ/kmol]: ', general_auxvar%H(gid)
+  write(86,*) '  liquid U [MJ/kmol]: ', general_auxvar%U(lid)
+  write(86,*) '     gas U [MJ/kmol]: ', general_auxvar%U(gid)
+  write(86,*) '          liquid kvr: ', general_auxvar%kvr(lid)
+  write(86,*) '             gas kvr: ', general_auxvar%kvr(gid)
+  write(86,*) '...'
+  write(86,*) general_auxvar%pres(lid)
+  write(86,*) general_auxvar%pres(gid)
+  write(86,*) general_auxvar%pres(apid)
+  write(86,*) general_auxvar%pres(cpid)
+  write(86,*) general_auxvar%pres(vpid)
+  write(86,*) general_auxvar%temp
+  write(86,*) general_auxvar%sat(lid)
+  write(86,*) general_auxvar%sat(gid)
+  write(86,*) general_auxvar%den(lid)
+  write(86,*) general_auxvar%den(gid)
+  write(86,*) general_auxvar%den_kg(lid)
+  write(86,*) general_auxvar%den_kg(gid)
+  write(86,*) general_auxvar%xmol(lid,lid)
+  write(86,*) general_auxvar%xmol(gid,lid)
+  write(86,*) general_auxvar%xmol(lid,gid)
+  write(86,*) general_auxvar%xmol(gid,gid)
+  write(86,*) general_auxvar%H(lid)
+  write(86,*) general_auxvar%H(gid)
+  write(86,*) general_auxvar%U(lid)
+  write(86,*) general_auxvar%U(gid)
+  write(86,*) ''
+  write(86,*) general_auxvar%kvr(lid)
+  write(86,*) general_auxvar%kvr(gid)
+  write(86,*) '--------------------------------------------------------'
+  
+  close(86)
+
+end subroutine GeneralOutputAuxVars
 
 ! ************************************************************************** !
 !

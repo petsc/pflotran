@@ -973,6 +973,7 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   PetscInt :: idof
 
 #ifdef DEBUG_GENERAL
+  character(len=MAXWORDLENGTH) :: word
   type(global_auxvar_type) :: global_aux_var_debug
   type(general_auxvar_type) :: general_aux_var_debug
   call GlobalAuxVarInit(global_aux_var_debug,option)
@@ -1024,9 +1025,15 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_debug,option)
     call GeneralAuxVarCopy(gen_aux_var(idof),general_aux_var_debug,option)
+#ifdef DEBUG_GENERAL_LOCAL
+    write(word,*) idof
+    word = 'pert_' // adjustl(word)
+    call GeneralOutputAuxVars(general_aux_var_debug,global_aux_var_debug, &
+                              ghosted_id,word,option)
+#endif    
     call GeneralAuxVarUpdateState(x_pert,general_aux_var_debug, &
-                                  global_aux_var,saturation_function,0.d0, &
-                                  0.d0,ghosted_id,option)
+                                  global_aux_var_debug,saturation_function, &
+                                  0.d0,0.d0,ghosted_id,option)
     if (global_aux_var%istate /= global_aux_var_debug%istate) then
       write(option%io_buffer,'(''Change in state: '',i3,'' -> '',i3)') &
         global_aux_var%istate, global_aux_var_debug%istate
@@ -1193,12 +1200,20 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscReal :: perm_ave_over_dist
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: pressure_ave
-  PetscReal :: gravity
+  PetscReal :: gravity_term
   PetscReal :: ukvr, mole_flux, q
   PetscReal :: stp_up, stp_dn
   PetscReal :: temp_ave, stp_ave, theta, v_air
   PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
+#ifdef DEBUG_GENERAL_LOCAL 
+  PetscReal :: flux(option%nflowdof)
+  call GeneralPrintAuxVars(gen_aux_var_up,global_aux_var_up,-999, &
+                           'Upwind',option)  
+  call GeneralPrintAuxVars(gen_aux_var_dn,global_aux_var_dn,-999, &
+                           'Downwind',option)  
+#endif
+
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
@@ -1211,6 +1226,9 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   Res = 0.d0
   v_darcy = 0.d0
   
+#ifdef DEBUG_GENERAL_LOCAL
+  flux = 0.d0
+#endif
   do iphase = 1, option%nphase
     
     ! using residual saturation cannot be correct! - geh
@@ -1225,27 +1243,29 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
       ! MJ/kmol
- !geh     H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
- !geh             (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
+      H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
+              (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
 
-      gravity = (upweight_adj*gen_aux_var_up%den(iphase) + &
-                (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
-                * fmw_phase(iphase) * dist_gravity 
+      !geh: dist_gravity is the distance * gravity in the direction of 
+      !     gravity (negative if gravity is down)      
+      gravity_term = (upweight_adj*gen_aux_var_up%den(iphase) + &
+                     (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
+                     * fmw_phase(iphase) * dist_gravity 
 
       delta_pressure = gen_aux_var_up%pres(iphase) - &
-             gen_aux_var_dn%pres(iphase) + &
-             gravity
+                       gen_aux_var_dn%pres(iphase) + &
+                       gravity_term
 
       if (delta_pressure >= 0.D0) then
         ukvr = gen_aux_var_up%kvr(iphase)
         xmol(:) = gen_aux_var_up%xmol(:,iphase)
-        den = gen_aux_var_up%den(iphase)
-        uH = gen_aux_var_up%H(iphase)
+        den = density_ave
+        uH = H_ave
       else
         ukvr = gen_aux_var_dn%kvr(iphase)
         xmol(:) = gen_aux_var_dn%xmol(:,iphase)
-        den = gen_aux_var_dn%den(iphase)
-        uH = gen_aux_var_dn%H(iphase)
+        den = density_ave
+        uH = H_ave
       endif      
 
       if (ukvr > floweps) then
@@ -1260,9 +1280,15 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
         do icomp = 1, option%nflowspec
           ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
           !                      xmol[kmol comp/kmol phase]
+#ifdef DEBUG_GENERAL_LOCAL 
+          flux(icomp) = flux(icomp) + mole_flux * xmol(icomp)
+#endif
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
         enddo
         ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#ifdef DEBUG_GENERAL_LOCAL 
+        flux(energy_id) = flux(energy_id) + mole_flux * uH
+#endif
         Res(energy_id) = Res(energy_id) + mole_flux * uH
       endif                   
     endif ! sat > eps
@@ -1272,11 +1298,16 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
     ! Res[kmol total/sec] = sum(Res[kmol comp/sec])  
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
+  
+#ifdef DEBUG_GENERAL_LOCAL 
+  print *, 'Darcy flux: ', flux(1:3)
+  flux = 0.d0
+#endif  
 
-#if 1
+#if 0
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
-    theta = 1.d0
+    theta = 1.8d0
     if (gen_aux_var_up%sat(iphase) > eps .and. &
         gen_aux_var_dn%sat(iphase) > eps) then
       upweight_adj = upweight
@@ -1285,16 +1316,16 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       else if (gen_aux_var_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
       endif         
-      stp_up = gen_aux_var_up%sat(iphase)*tor_up*por_up
-      stp_dn = gen_aux_var_dn%sat(iphase)*tor_dn*por_dn
+! not useing harmonic mean
+!      stp_up = gen_aux_var_up%sat(iphase)*tor_up*por_up
+!      stp_dn = gen_aux_var_dn%sat(iphase)*tor_dn*por_dn
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      temp_ave = upweight_adj*gen_aux_var_up%temp + &
-                 (1.d0-upweight_adj)*gen_aux_var_dn%temp
       density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
-      pressure_ave = upweight_adj*gen_aux_var_up%pres(iphase)+ &
-                    (1.D0-upweight_adj)*gen_aux_var_dn%pres(iphase)
-      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
+!      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
+      stp_ave = sqrt(gen_aux_var_up%sat(iphase)*gen_aux_var_dn%sat(iphase))* &
+                sqrt(tor_up*tor_dn)* &
+                sqrt(por_up*por_dn)
       delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
                    gen_aux_var_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
@@ -1304,28 +1335,41 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
         v_air = stp_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol
       else
+        temp_ave = upweight_adj*gen_aux_var_up%temp + &
+                   (1.d0-upweight_adj)*gen_aux_var_dn%temp
+        pressure_ave = upweight_adj*gen_aux_var_up%pres(iphase)+ &
+                      (1.D0-upweight_adj)*gen_aux_var_dn%pres(iphase)
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
-                (temp_ave/273.15d0)**theta * &
+                ((temp_ave+273.15)/273.15d0)**theta * &
                 option%reference_pressure / pressure_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif      
       q =  v_air * area
       mole_flux = q * density_ave
+#ifdef DEBUG_GENERAL_LOCAL 
+      flux(air_comp_id) = flux(air_comp_id) + mole_flux
+#endif
       Res(air_comp_id) = Res(air_comp_id) + mole_flux
     endif
   enddo
 #endif
+
+#ifdef DEBUG_GENERAL_LOCAL 
+  print *, 'Gas diffusive flux: ', flux(air_comp_id)
+  flux = 0.d0
+#endif  
     
+#if 0
   ! add heat conduction flux
   k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
-             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+             general_parameter%thermal_conductivity(option%liquid_phase) + &
              gen_aux_var_up%sat(option%gas_phase) * &
-             general_parameter%diffusion_coefficient(option%gas_phase)
+             general_parameter%thermal_conductivity(option%gas_phase)
   k_eff_dn = gen_aux_var_dn%sat(option%liquid_phase) * &
-             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+             general_parameter%thermal_conductivity(option%liquid_phase) + &
              gen_aux_var_dn%sat(option%gas_phase) * &
-             general_parameter%diffusion_coefficient(option%gas_phase)
+             general_parameter%thermal_conductivity(option%gas_phase)
   if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
     k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
   else
@@ -1333,8 +1377,18 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   endif
   delta_temp = gen_aux_var_up%temp - gen_aux_var_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
+#ifdef DEBUG_GENERAL_LOCAL 
+  flux(energy_id) = flux(energy_id) + heat_flux
+#endif 
   Res(energy_id) = Res(energy_id) + heat_flux
     
+#ifdef DEBUG_GENERAL_LOCAL 
+  print *, 'Energy conductive flux: ', flux(energy_id)
+#endif
+
+! if 0
+#endif
+  
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
