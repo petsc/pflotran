@@ -1300,7 +1300,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
                                
     call scorpio_read_dataset(indices_i4(1:iend-istart), SCORPIO_INTEGER, rank_mpi, globaldims, dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
     !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,indices_i4(1:iend-istart), &
                    !dims,hdf5_err,memory_space_id,file_space_id,prop_id)                     
     call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
@@ -1507,7 +1507,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
     
       call scorpio_read_dataset(real_buffer, SCORPIO_DOUBLE, rank_mpi, globaldims, dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
       !call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                      !hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
@@ -1516,7 +1516,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
 
       call scorpio_read_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, globaldims, dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
       !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                      !hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
@@ -1741,7 +1741,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
           file_id, ierr)
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
   option%io_buffer = 'Reading dataset: ' // trim(string)
@@ -2218,7 +2218,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
      call printMsg(option) 
   end if   
   filename = trim(filename) //CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
           file_id, ierr)
 
   ! Read Cell Ids
@@ -2432,7 +2432,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
      call printMsg(option) 
   end if   
   filename = trim(filename) //CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
           file_id, ierr)
 
 

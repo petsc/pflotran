@@ -1169,7 +1169,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   ! Read Domain/Cells
   call HDF5ReadDatasetInteger2D(filename, &
                                 cell_dataset_name, &
-                                NONUNIFORM_CONTIGUOUS_READ, &
+                                SCORPIO_NONUNIFORM_CONTIGUOUS_READ, &
                                 option, &
                                 int_buffer, &
                                 dims, &
@@ -1192,7 +1192,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   ! Read Vertices
   call HDF5ReadDatasetReal2D(filename, &
                              vert_dataset_name, &
-                             NONUNIFORM_CONTIGUOUS_READ, &
+                             SCORPIO_NONUNIFORM_CONTIGUOUS_READ, &
                              option, &
                              double_buffer, &
                              dims, &

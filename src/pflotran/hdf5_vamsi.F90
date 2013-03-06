@@ -1094,7 +1094,7 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
           file_id, ierr)
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
   option%io_buffer = 'Reading dataset: ' // trim(string)

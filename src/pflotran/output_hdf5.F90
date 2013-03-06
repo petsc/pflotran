@@ -194,13 +194,13 @@ subroutine OutputHDF5(realization_base,var_list_type)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
     call scorpio_open_file(filename, option%iowrite_group_id, &
-                              FILE_READWRITE, file_id, ierr)
+                              SCORPIO_FILE_READWRITE, file_id, ierr)
     if (file_id == -1) first = PETSC_TRUE
   endif
   if (first) then
     filename = trim(filename) // CHAR(0)
     call scorpio_open_file(filename, option%iowrite_group_id, &
-                              FILE_CREATE, file_id, ierr)
+                              SCORPIO_FILE_CREATE, file_id, ierr)
   endif
 
 #else
@@ -585,13 +585,13 @@ subroutine OutputHDF5UGrid(realization_base)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
     call scorpio_open_file(filename, option%iowrite_group_id, &
-                              FILE_READWRITE, file_id, ierr)
+                              SCORPIO_FILE_READWRITE, file_id, ierr)
     if (file_id == -1) first = PETSC_TRUE
   endif
   if (first) then
     filename = trim(filename) // CHAR(0)
     call scorpio_open_file(filename, option%iowrite_group_id, &
-                              FILE_CREATE, file_id, ierr)
+                              SCORPIO_FILE_CREATE, file_id, ierr)
   endif
 
   if (first) then
@@ -1386,7 +1386,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
   call scorpio_write_dataset(array, SCORPIO_DOUBLE, rank, globaldims, dims, &
-       file_id, name, option%iowrite_group_id, NONUNIFORM_CONTIGUOUS_WRITE, &
+       file_id, name, option%iowrite_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_WRITE, &
        ierr)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
 

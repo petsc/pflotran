@@ -663,7 +663,7 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
 
   ! Get dataset dimnesions
   call scorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
@@ -689,7 +689,7 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
 
   ! Read the dataset collectively
   call scorpio_read_dataset( data, SCORPIO_INTEGER, ndims, dataset_dims, data_dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
   
   data_dims(1) = data_dims(1) + data_dims(2)
   data_dims(2) = data_dims(1) - data_dims(2)
@@ -748,7 +748,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
 
   ! Get dataset dimnesions
   call scorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
@@ -774,7 +774,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
 
   ! Read the dataset collectively
   call scorpio_read_dataset( data, SCORPIO_DOUBLE, ndims, dataset_dims, data_dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
   
   data_dims(1) = data_dims(1) + data_dims(2)
   data_dims(2) = data_dims(1) - data_dims(2)
@@ -825,7 +825,7 @@ function HDF5GroupExists(filename,group_name,option)
 
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
   call scorpio_group_exists(file_id, option%ioread_group_id, ierr)
   group_exists = (ierr == 1);
 
