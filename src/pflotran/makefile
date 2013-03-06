@@ -5,7 +5,7 @@ common_src   = ./
 pflotran_test_dir = ../../regression_tests
 
 
-MYFLAGS = -I${objdir} 
+MYFLAGS = -I.
 
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
