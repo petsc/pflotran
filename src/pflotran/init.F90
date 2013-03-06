@@ -215,10 +215,6 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
-#if defined(SCORPIO)
-  call Create_IOGroups(option)
-#endif    
-
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
@@ -1167,6 +1163,28 @@ subroutine InitReadRequiredCardsFromInput(realization)
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
   endif
+
+!.........................................................................
+#if defined(SCORPIO)
+  string = "HDF5_WRITE_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputReadInt(input,option,option%hdf5_write_group_size)
+    call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+    call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
+  endif
+
+  string = "HDF5_READ_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputReadInt(input,option,option%hdf5_read_group_size)
+    call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+  endif
+ rewind(input%fid)
+
+  call Create_IOGroups(option)
+
+#endif
 
 !.........................................................................
 
