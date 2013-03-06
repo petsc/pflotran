@@ -1211,6 +1211,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   enddo
 
   unstructured_grid%max_nvert_per_cell = max_nvert_per_cell
+  unstructured_grid%nlmax = num_cells_local
 
 end subroutine UGridReadHDF5PIOLib
 
