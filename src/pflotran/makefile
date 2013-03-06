@@ -145,8 +145,8 @@ endif
 # PARALLELIO_DIR=${HOME}/soft/ascem-io/default
 ifdef have_parallelio_lib
   LIBS += -L${PARALLELIO_DIR}/lib -lparallelio
-  MYFLAGS += -DPARALLELIO_DIR 
-  MYFLAGS += -DPARALLELIO_DIR_WRITE 
+  MYFLAGS += -DPARALLELIO_LIB 
+  MYFLAGS += -DPARALLELIO_LIB_WRITE
   MYFLAGS += -I${PARALLELIO_DIR}/include
 endif
 
