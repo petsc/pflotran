@@ -825,8 +825,9 @@ function HDF5GroupExists(filename,group_name,option)
 
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
+  group_name = trim(group_name) // CHAR(0)
   call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
-  call scorpio_group_exists(file_id, option%ioread_group_id, ierr)
+  call scorpio_group_exists(group_name, file_id, option%ioread_group_id, ierr)
   group_exists = (ierr == 1);
 
   if (group_exists) then
