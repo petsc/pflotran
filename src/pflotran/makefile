@@ -1,10 +1,7 @@
 # $Id: makefile,v 1.3 2004/07/31 01:16:44 lichtner Exp $
 
-objdir = ./${PETSC_ARCH}/obj
-srcdir = ./
 pflotran_src = ./
 common_src   = ./
-bindir = ./${PETSC_ARCH}/bin
 pflotran_test_dir = ../../regression_tests
 
 
