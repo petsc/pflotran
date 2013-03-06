@@ -3377,7 +3377,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
       enthalpy_flag = PETSC_TRUE
     else
       enthalpy_flag = PETSC_FALSE
@@ -3400,21 +3400,25 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
+                                        option%flow_dt*volume_p(local_id)   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
         r_p((local_id-1)*option%nflowdof + jh2o) = &
-          r_p((local_id-1)*option%nflowdof + jh2o) - qsrc1 *option%flow_dt
+          r_p((local_id-1)*option%nflowdof + jh2o) - qsrc1*option%flow_dt* &
+          volume_p(local_id)
         r_p(local_id*option%nflowdof) = &
           r_p(local_id*option%nflowdof) - &
-          qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt
+          qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
       else
         ! extraction
         r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
-                                               - qsrc1 *option%flow_dt
+                                               - qsrc1*option%flow_dt* &
+                                                 volume_p(local_id)
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-                                        qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
+                                        qsrc1*aux_vars(ghosted_id)%h* &
+                                        option%flow_dt*volume_p(local_id)
       endif  
     
 
@@ -3899,7 +3903,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
       enthalpy_flag = PETSC_TRUE
     else
       enthalpy_flag = PETSC_FALSE

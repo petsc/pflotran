@@ -1,14 +1,11 @@
 # $Id: makefile,v 1.3 2004/07/31 01:16:44 lichtner Exp $
 
-objdir = ./${PETSC_ARCH}/obj
-srcdir = ./
 pflotran_src = ./
 common_src   = ./
-bindir = ./${PETSC_ARCH}/bin
 pflotran_test_dir = ../../regression_tests
 
 
-MYFLAGS = -I${objdir} 
+MYFLAGS = -I.
 
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
@@ -141,11 +138,13 @@ ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif
 
-ifdef have_parallelio_lib
-  LIBS += -L${PARALLELIO_LIB} -lparallelio
-  MYFLAGS += -DPARALLELIO_LIB 
-  MYFLAGS += -DPARALLELIO_LIB_WRITE 
-  MYFLAGS += -I${PARALLELIO_LIB}
+# Set this accordingly on your platform
+# SCORPIO_DIR=${HOME}/soft/scorpio
+ifdef scorpio
+  LIBS += -L${SCORPIO_DIR}/lib -lscorpio
+  MYFLAGS += -DSCORPIO
+  MYFLAGS += -DSCORPIO_WRITE 
+  MYFLAGS += -I${SCORPIO_DIR}/include
 endif
 
 ifdef tau

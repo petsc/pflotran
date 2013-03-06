@@ -12,8 +12,8 @@ module Unstructured_Explicit_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
-#if defined(PARALLELIO_LIB)
-  include "piof.h"
+#if defined(SCORPIO)
+  include "scorpiof.h"
 #endif
 
   public :: ExplicitUGridRead, &
