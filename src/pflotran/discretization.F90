@@ -23,28 +23,6 @@ module Discretization_module
 #include "finclude/petscdmda.h"
 #include "finclude/petscdmshell.h90"
 
-! RTM: Pasting this Interface block in here is horrible!  This is temporary 
-! while I work on DMShell.  I will come up with a better way to get the 
-! necessary interface stuff in here when PETSc has not been configured with 
-! --with-fortran-interfaces.
-       Interface
-        subroutine DMShellDefaultGlobalToLocalBegin(dm, g, mode, l ,ierr&
-     &)
-       DM dm ! DM
-       Vec g ! Vec
-       InsertMode mode ! InsertMode
-       Vec l ! Vec
-       integer ierr
-       end subroutine
-        subroutine DMShellDefaultGlobalToLocalEnd(dm, g, mode, l ,ierr)
-       DM dm ! DM
-       Vec g ! Vec
-       InsertMode mode ! InsertMode
-       Vec l ! Vec
-       integer ierr
-       end subroutine
-       End Interface
-
   type, public :: dm_ptr_type
     DM :: dm  ! PETSc DM
     type(ugdm_type), pointer :: ugdm
@@ -818,7 +796,6 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
                            dm_ptr%ugdm,ndof,option)
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr)
       call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_gtol,ierr)
-      call DMShellSetGlobalToLocal(dm_ptr%dm,DMShellDefaultGlobalToLocalBegin,DMShellDefaultGlobalToLocalEnd,ierr)
   end select
 
 end subroutine DiscretizationCreateDM
