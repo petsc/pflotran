@@ -1195,7 +1195,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
     enddo
   enddo                          
     
-  if (maxval(res) > 1.d-12) print *, 'WARNING: Secondary solution not converged'
+  if (maxval(abs(res)) > 1.d-12) print *, 'WARNING: Secondary solution not converged'
                                     
 end subroutine SecondaryRTCheckResidual                                    
 
