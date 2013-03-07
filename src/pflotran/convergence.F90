@@ -195,13 +195,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   if (option%out_of_table) then
     reason = -9
   endif
-  
-  ! This is to check if the secondary continuum residual convergences
-  ! for nonlinear problems
-  if (option%use_mc .and. option%infnorm_res_sec > &
-      solver%newton_inf_res_tol_sec) then
-    reason = -11
-  endif  
+   
   
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
@@ -229,6 +223,15 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = -10
     endif
     
+    ! This is to check if the secondary continuum residual convergences
+    ! for nonlinear problems
+    if (option%use_mc .and. reason > 0) then
+      if (option%infnorm_res_sec > solver%newton_inf_res_tol_sec) then
+        reason = 0
+      else
+        reason = 13
+      endif
+    endif
   
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
@@ -249,7 +252,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_upd'
         case(12)
           string = 'itol_stomp'
-        case(-11)
+        case(13)
           string = 'itol_res_sec'
         case default
           write(string,'(i3)') reason
@@ -280,7 +283,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_upd'
         case(12)
           string = 'itol_stomp'
-        case(-11)
+        case(13)
           string = 'itol_res_sec'
         case default
           write(string,'(i3)') reason
