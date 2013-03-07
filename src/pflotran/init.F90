@@ -482,6 +482,11 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
+      case(G_MODE)
+        call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetPreCheck(linesearch, &
+                                       GeneralCheckUpdatePre, &
+                                       realization,ierr)
       case(TH_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
@@ -509,6 +514,11 @@ subroutine Init(simulation)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
+                                          realization,ierr)
+        case(G_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          GeneralCheckUpdatePost, &
                                           realization,ierr)
         case(TH_MODE)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
@@ -3473,6 +3483,7 @@ subroutine Create_IOGroups(option)
              option%hdf5_read_group_size
     !call printErrMsg(option)
     call printMsg(option)
+    ! default is to let one process read and broadcast to everyone
     option%hdf5_read_group_size = option%mycommsize
   endif         
  
@@ -3485,20 +3496,9 @@ subroutine Create_IOGroups(option)
              option%hdf5_write_group_size
     !call printErrMsg(option)
     call printMsg(option)
-    option%hdf5_write_group_size = option%mycommsize
+    ! default is to let everyone write separately 
+    option%hdf5_write_group_size = 1
   endif                    
-
-  if ( mod(option%mycommsize , option%hdf5_read_group_size) /= 0) then
-    write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
-              & of HDF_READ_GROUP_SIZE = ", i6)')  option%hdf5_read_group_size
-    call printErrMsg(option)      
-  endif         
-
-  if ( mod(option%mycommsize , option%hdf5_write_group_size) /= 0) then
-    write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
-              & of HDF_WRITE_GROUP_SIZE = ", i6)')  option%hdf5_write_group_size
-    call printErrMsg(option)      
-  endif         
 
   ! create read IO groups
   numiogroups = option%mycommsize/option%hdf5_read_group_size

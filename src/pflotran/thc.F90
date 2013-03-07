@@ -3418,7 +3418,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
+                                          option%flow_dt*volume_p(local_id)   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -3426,17 +3427,21 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
         !                    dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
-                                               - qsrc1 *option%flow_dt
+        r_p((local_id-1)*option%nflowdof + jh2o) =  &
+                                     r_p((local_id-1)*option%nflowdof + jh2o) &
+                                     - qsrc1*option%flow_dt*volume_p(local_id)
         !r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-          qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt
+          qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
       else
         ! extraction
         r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
-                                               - qsrc1 *option%flow_dt
+                                               - qsrc1*option%flow_dt* &
+                                                 volume_p(local_id)
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-                                        qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
+                                        qsrc1*aux_vars(ghosted_id)%h* &
+                                        option%flow_dt*volume_p(local_id)
+                                        
       endif  
     
       if (csrc1 > 0.d0) then ! injection

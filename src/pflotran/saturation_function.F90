@@ -979,6 +979,16 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   
   Sr = saturation_function%Sr(iphase)
   Se = (saturation-Sr)/(1.d0-Sr)
+  
+  ! if saturation is below residual saturation (this is possible with 
+  ! two-phase with dry-out), need to bail out.
+  if (Se <= 0.d0) then
+    relative_perm = 0.d0
+    dkr_Se = 0.d0
+    return
+  else if (Se > 1.d0) then
+    Se = 1.d0
+  endif
     
   ! compute relative permeability
   select case(saturation_function%permeability_function_itype)

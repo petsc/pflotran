@@ -141,11 +141,13 @@ ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif
 
+# Set this accordingly on your platform
+# PARALLELIO_DIR=${HOME}/soft/ascem-io/default
 ifdef have_parallelio_lib
-  LIBS += -L${PARALLELIO_LIB} -lparallelio
-  MYFLAGS += -DPARALLELIO_LIB 
-  MYFLAGS += -DPARALLELIO_LIB_WRITE 
-  MYFLAGS += -I${PARALLELIO_LIB}
+  LIBS += -L${PARALLELIO_DIR}/lib -lparallelio
+  MYFLAGS += -DPARALLELIO_DIR 
+  MYFLAGS += -DPARALLELIO_DIR_WRITE 
+  MYFLAGS += -I${PARALLELIO_DIR}/include
 endif
 
 ifdef tau
