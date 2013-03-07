@@ -216,10 +216,6 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
-#if defined(PARALLELIO_LIB)
-  call Create_IOGroups(option)
-#endif    
-
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
@@ -1178,6 +1174,28 @@ subroutine InitReadRequiredCardsFromInput(realization)
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
   endif
+
+!.........................................................................
+#if defined(SCORPIO)
+  string = "HDF5_WRITE_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputReadInt(input,option,option%hdf5_write_group_size)
+    call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+    call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
+  endif
+
+  string = "HDF5_READ_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputReadInt(input,option,option%hdf5_read_group_size)
+    call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+  endif
+ rewind(input%fid)
+
+  call Create_IOGroups(option)
+
+#endif
 
 !.........................................................................
 
@@ -3456,7 +3474,7 @@ subroutine Create_IOGroups(option)
   use Option_module
   use Logging_module
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   use hdf5
 #endif
 
@@ -3465,7 +3483,7 @@ subroutine Create_IOGroups(option)
   type(option_type) :: option
   PetscErrorCode :: ierr
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
   PetscMPIInt :: numiogroups
 
@@ -3502,7 +3520,7 @@ subroutine Create_IOGroups(option)
 
   ! create read IO groups
   numiogroups = option%mycommsize/option%hdf5_read_group_size
-  call parallelio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
+  call scorpio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
 
   if ( option%hdf5_read_group_size == option%hdf5_write_group_size ) then
     ! reuse read_group to use for writing too as both groups are same size
@@ -3510,7 +3528,7 @@ subroutine Create_IOGroups(option)
   else   
       ! create write IO groups
       numiogroups = option%mycommsize/option%hdf5_write_group_size
-      call parallelio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
+      call scorpio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
   end if
 
     write(option%io_buffer, '(" Read group id :  ", i6)') option%ioread_group_id
@@ -3519,7 +3537,7 @@ subroutine Create_IOGroups(option)
     call printMsg(option)      
   call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #endif
-! PARALLELIO_LIB
+! SCORPIO
  
 end subroutine Create_IOGroups
 

@@ -82,9 +82,9 @@ subroutine DatasetLoad(dataset,option)
   endif
 #else
 
-#ifdef PARALLELIO_LIB
+#ifdef SCORPIO
       option%io_buffer='In DataLoad: HDF5ReadDataset() not supported with ' // &
-        ' PARALLELIO_LIB'
+        ' SCORPIO'
 #else
     if(.not.associated(dataset%dataset_map)) then
       call HDF5ReadDataset(dataset,option)
