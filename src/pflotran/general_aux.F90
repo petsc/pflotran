@@ -70,6 +70,11 @@ module General_Aux_module
     module procedure GeneralAuxVarArray2Destroy
   end interface GeneralAuxVarDestroy
   
+  interface GeneralOutputAuxVars
+    module procedure GeneralOutputAuxVars1
+    module procedure GeneralOutputAuxVars2
+  end interface GeneralOutputAuxVars
+  
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
             GeneralAuxVarCompute, GeneralAuxVarInit, &
             GeneralAuxVarCopy, GeneralAuxVarDestroy, &
@@ -431,6 +436,12 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
     case(LIQUID_STATE)
       call psat(gen_aux_var%temp,P_sat,ierr)
       if (gen_aux_var%pres(vpid) <= P_sat) then
+#ifdef DEBUG_GENERAL
+        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+                                 'Before Update',option)
+        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i)') &
+          ghosted_id
+#endif      
         global_aux_var%istate = TWO_PHASE_STATE
 !geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
 !geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
@@ -439,14 +450,16 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i)') &
-          ghosted_id
-#endif        
       endif
     case(GAS_STATE)
       call psat(gen_aux_var%temp,P_sat,ierr)
       if (gen_aux_var%pres(vpid) >= P_sat) then
+#ifdef DEBUG_GENERAL
+        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+                                 'Before Update',option)
+        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i)') &
+          ghosted_id
+#endif      
         global_aux_var%istate = TWO_PHASE_STATE
 !geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
 !        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
@@ -455,13 +468,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         !x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i)') &
-          ghosted_id
-#endif        
       endif
     case(TWO_PHASE_STATE)
       if (gen_aux_var%sat(gid) < 0.d0) then
+#ifdef DEBUG_GENERAL
+        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+                                 'Before Update',option)
+        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i)') &
+          ghosted_id
+#endif      
         ! convert to liquid state
         global_aux_var%istate = LIQUID_STATE
 !        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
@@ -469,37 +484,31 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var%pres(gid)
         x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
           gen_aux_var%xmol(acid,lid)
-        x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
+        x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var%temp - epsilon
         flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i)') &
-          ghosted_id
-#endif        
       else if (gen_aux_var%sat(gid) > 1.d0) then
+#ifdef DEBUG_GENERAL
+        call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
+                                 'Before Update',option)
+        write(state_change_string,'(''2 Phase -> Gas at Cell '',i)') &
+          ghosted_id
+#endif      
         ! convert to gas state
         global_aux_var%istate = GAS_STATE
         ! first two pdv do not change
         !x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
         !                              gen_aux_var%pres(vpid)
         !x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
-        x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var%temp
+        x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var%temp + epsilon
         flag = PETSC_TRUE
-#ifdef DEBUG_GENERAL
-        write(state_change_string,'(''2 Phase -> Gas at Cell '',i)') &
-          ghosted_id
-#endif        
       endif
   end select
   
   if (flag) then
-#ifdef DEBUG_GENERAL
-    call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
-                             'Before Update',option)
-    call printMsg(option,state_change_string)
-#endif
     call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                               saturation_function,por,perm,option)
 #ifdef DEBUG_GENERAL
+    call printMsg(option,state_change_string)
     call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                              'After Update',option)
 #endif
@@ -581,12 +590,12 @@ end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
 !
-! GeneralOutputAuxVars: Prints out the contents of an auxvar to a file
+! GeneralOutputAuxVars1: Prints out the contents of an auxvar to a file
 ! author: Glenn Hammond
 ! date: 02/18/13
 !
 ! ************************************************************************** !
-subroutine GeneralOutputAuxVars(general_auxvar,global_auxvar,ghosted_id, &
+subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
                                 string,option)
 
   use Global_Aux_module
@@ -638,8 +647,8 @@ subroutine GeneralOutputAuxVars(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) '   liquid saturation: ', general_auxvar%sat(lid)
   write(86,*) '      gas saturation: ', general_auxvar%sat(gid)
   write(86,*) 'liquid density [mol]: ', general_auxvar%den(lid)
-  write(86,*) '   gas density [mol]: ', general_auxvar%den(gid)
   write(86,*) ' liquid density [kg]: ', general_auxvar%den_kg(lid)
+  write(86,*) '   gas density [mol]: ', general_auxvar%den(gid)
   write(86,*) '    gas density [kg]: ', general_auxvar%den_kg(gid)
   write(86,*) ' X (water in liquid): ', general_auxvar%xmol(lid,lid)
   write(86,*) '   X (air in liquid): ', general_auxvar%xmol(gid,lid)
@@ -661,8 +670,8 @@ subroutine GeneralOutputAuxVars(general_auxvar,global_auxvar,ghosted_id, &
   write(86,*) general_auxvar%sat(lid)
   write(86,*) general_auxvar%sat(gid)
   write(86,*) general_auxvar%den(lid)
-  write(86,*) general_auxvar%den(gid)
   write(86,*) general_auxvar%den_kg(lid)
+  write(86,*) general_auxvar%den(gid)
   write(86,*) general_auxvar%den_kg(gid)
   write(86,*) general_auxvar%xmol(lid,lid)
   write(86,*) general_auxvar%xmol(gid,lid)
@@ -679,7 +688,101 @@ subroutine GeneralOutputAuxVars(general_auxvar,global_auxvar,ghosted_id, &
   
   close(86)
 
-end subroutine GeneralOutputAuxVars
+end subroutine GeneralOutputAuxVars1
+
+! ************************************************************************** !
+!
+! GeneralOutputAuxVars2: Prints out the contents of an auxvar to a file
+! author: Glenn Hammond
+! date: 02/18/13
+!
+! ************************************************************************** !
+subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
+
+  use Global_Aux_module
+  use Option_module
+
+  implicit none
+
+  type(general_auxvar_type) :: general_auxvars(0:,:)
+  type(global_auxvar_type) :: global_auxvars(:)
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: apid, cpid, vpid
+  PetscInt :: gid, lid, acid, wid, eid
+  PetscInt :: i, n, idof
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
+  
+  string = 'general_auxvar.txt'
+  open(unit=86,file=string)
+  
+  n = size(global_auxvars)
+
+  write(86,'(a,100('','',i))') '             cell id: ', &
+    ((i,i=1,n),idof=0,3)
+  write(86,'(a,100('','',i))') '                idof: ', &
+    ((idof,i=1,n),idof=0,3)
+  write(86,'(a,100('','',i))') '               state: ', &
+    (global_auxvars(i)%istate,i=1,n)
+  write(86,'(a,100('','',f))') '     liquid pressure: ', &
+    ((general_auxvars(idof,i)%pres(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '        gas pressure: ', &
+    ((general_auxvars(idof,i)%pres(gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '        air pressure: ', &
+    ((general_auxvars(idof,i)%pres(apid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '  capillary pressure: ', &
+    ((general_auxvars(idof,i)%pres(cpid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '      vapor pressure: ', &
+    ((general_auxvars(idof,i)%pres(vpid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '     temperature [C]: ', &
+    ((general_auxvars(idof,i)%temp,i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '   liquid saturation: ', &
+    ((general_auxvars(idof,i)%sat(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '      gas saturation: ', &
+    ((general_auxvars(idof,i)%sat(gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') 'liquid density [mol]: ', &
+    ((general_auxvars(idof,i)%den(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') ' liquid density [kg]: ', &
+    ((general_auxvars(idof,i)%den_kg(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '   gas density [mol]: ', &
+    ((general_auxvars(idof,i)%den(gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '    gas density [kg]: ', &
+    ((general_auxvars(idof,i)%den_kg(gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') ' X (water in liquid): ', &
+    ((general_auxvars(idof,i)%xmol(lid,lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '   X (air in liquid): ', &
+    ((general_auxvars(idof,i)%xmol(gid,lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '    X (water in gas): ', &
+    ((general_auxvars(idof,i)%xmol(lid,gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '      X (air in gas): ', &
+    ((general_auxvars(idof,i)%xmol(gid,gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '  liquid H [MJ/kmol]: ', &
+    ((general_auxvars(idof,i)%H(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '     gas H [MJ/kmol]: ', &
+    ((general_auxvars(idof,i)%H(gid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '  liquid U [MJ/kmol]: ', &
+    ((general_auxvars(idof,i)%U(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '     gas U [MJ/kmol]: ', &
+    ((general_auxvars(idof,i)%U(gid),i=1,n),idof=0,3)
+  write(86,*)
+  write(86,'(a,100('','',f))') '          liquid kvr: ', &
+    ((general_auxvars(idof,i)%kvr(lid),i=1,n),idof=0,3)
+  write(86,'(a,100('','',f))') '             gas kvr: ', &
+    ((general_auxvars(idof,i)%kvr(gid),i=1,n),idof=0,3)
+  
+  close(86)
+
+end subroutine GeneralOutputAuxVars2
 
 ! ************************************************************************** !
 !

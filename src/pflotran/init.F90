@@ -482,6 +482,11 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
+      case(G_MODE)
+        call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetPreCheck(linesearch, &
+                                       GeneralCheckUpdatePre, &
+                                       realization,ierr)
       case(TH_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
@@ -509,6 +514,11 @@ subroutine Init(simulation)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
+                                          realization,ierr)
+        case(G_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          GeneralCheckUpdatePost, &
                                           realization,ierr)
         case(TH_MODE)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
