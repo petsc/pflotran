@@ -805,14 +805,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
          
 !============================== Forward solve ==================================        
                         
-  rhs = -res            
-
-  call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)
+  rhs = -res   
   
-  call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
-    
-  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp
-  
+  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
   do i = 1, ncomp
     do j = 1, ncomp
       D_M(i,j) = coeff_diag(i,j,ngcells)
@@ -829,7 +824,13 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   do j = 1, ncomp
     call lubksb(D_M,ncomp,indx,identity(1,j))
   enddo  
-  inv_D_M = identity 
+  inv_D_M = identity          
+                             
+
+  call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)
+  
+  call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+
   
   ! Update the secondary concentrations
   do i = 1, ncomp
