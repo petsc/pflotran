@@ -1105,6 +1105,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
   PetscReal :: porosity
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
+  PetscReal :: itol_res_sec
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -1201,7 +1202,10 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
     enddo
   enddo
     
-  if (maxval(abs(res)) > 1.d-12) print *, 'WARNING: Secondary solution not converged'
+  itol_res_sec = maxval(abs(res))  
+  if (itol_res_sec > 1.d-8) print *,  &
+    'WARNING: Secondary solution not converged  ', 'itol_res_sec: ', &
+       itol_res_sec 
                                     
 end subroutine SecondaryRTCheckResidual                                    
 
