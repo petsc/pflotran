@@ -130,6 +130,8 @@ module Option_module
     PetscReal :: stomp_norm
     PetscBool :: check_stomp_norm
     
+    PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
+    
     PetscReal :: minimum_hydrostatic_pressure
     
     PetscBool :: jumpstart_kinetic_sorption
@@ -400,6 +402,8 @@ subroutine OptionInitRealization(option)
   option%temperature_change_limit = 0.d0
   option%stomp_norm = 0.d0
   option%check_stomp_norm = PETSC_FALSE
+  
+  option%infnorm_res_sec = 0.d0
   
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE

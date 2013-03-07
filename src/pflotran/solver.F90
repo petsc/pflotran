@@ -37,6 +37,7 @@ module Solver_module
     PetscReal :: newton_stomp_tol  ! tolerance based on STOMP convergence
     PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
     PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
+    PetscReal :: newton_inf_res_tol_sec  ! infinity tolerance for secondary continuum residual
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
     PetscReal :: max_norm          ! maximum norm for divergence
@@ -125,6 +126,7 @@ function SolverCreate()
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
+  solver%newton_inf_res_tol_sec = 1.d-50
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
 
@@ -668,6 +670,15 @@ subroutine SolverReadNewton(solver,input,option)
         option%check_stomp_norm = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_stomp_tol)
         call InputDefaultMsg(input,option,'newton_stomp_tol')
+
+      case('ITOL_SEC','ITOL_RES_SEC','INF_TOL_SEC')
+        if (.not.option%use_mc) then
+          option%io_buffer = 'NEWTON ITOL_SEC supported without ' // &
+            'MULTIPLE_CONTINUUM.'
+          call printErrMsg(option)
+        endif         
+        call InputReadDouble(input,option,solver%newton_inf_res_tol_sec)
+        call InputDefaultMsg(input,option,'newton_inf_res_tol_sec')
    
       case('MAXIT')
         call InputReadInt(input,option,solver%newton_maxit)

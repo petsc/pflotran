@@ -937,6 +937,8 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
   PetscReal :: sec_diffusion_coefficient
   PetscReal :: sec_porosity
   PetscInt :: ierr
+  PetscReal :: inf_norm_sec
+  PetscReal :: max_inf_norm_sec
   
   option => realization%option
   grid => realization%patch%grid
@@ -950,6 +952,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
   dP_changed = PETSC_FALSE
   P1_changed = PETSC_FALSE
   
+  max_inf_norm_sec = 0.d0
   
   if (option%use_mc) then
     do ghosted_id = 1, grid%ngmax
@@ -965,11 +968,22 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
                                       global_aux_vars(ghosted_id), &
                                       reaction, &
                                       option)              
+ 
+        call SecondaryRTCheckResidual(rt_sec_transport_vars(ghosted_id), &
+                                      rt_aux_vars(ghosted_id), &
+                                      global_aux_vars(ghosted_id), &
+                                      reaction,sec_diffusion_coefficient, &
+                                      sec_porosity,option,inf_norm_sec)
                                       
-    enddo
+        max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                               
+    enddo 
+    call MPI_Allreduce(max_inf_norm_sec,option%infnorm_res_sec,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION, &
+                       MPI_MAX,option%mycomm,ierr)
+    
   endif
-
   
+      
 end subroutine SecondaryRTUpdateIterate
 
 
@@ -981,10 +995,8 @@ end subroutine SecondaryRTUpdateIterate
 ! date: 02/22/13
 !
 ! ************************************************************************** !
-subroutine SecondaryRTUpdateTimestep(sec_transport_vars,aux_var, &
-                                     global_aux_vars, &
-                                     reaction,diffusion_coefficient, &
-                                     porosity,option) 
+subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
+                                     reaction,porosity,option) 
                                      
 
   use Realization_class
@@ -1002,26 +1014,17 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,aux_var, &
   type(sec_transport_type) :: sec_transport_vars
   type(global_auxvar_type) :: global_aux_vars
   type(reaction_type), pointer :: reaction
-  type(reactive_transport_auxvar_type) :: aux_var
   PetscReal :: porosity
   PetscInt :: ngcells,ncomp
   PetscReal :: vol(sec_transport_vars%ncells)
   PetscReal :: res_react(reaction%naqcomp)
   PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: i,j
-  PetscReal :: diffusion_coefficient
   
   ngcells = sec_transport_vars%ncells
   ncomp = reaction%naqcomp
   vol = sec_transport_vars%vol     
-  
-  
-  call SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
-                                global_aux_vars, &
-                                reaction,diffusion_coefficient, &
-                                porosity,option)
-                 
-
+                   
   do j = 1, ncomp
     do i = 1, ngcells
       sec_transport_vars%sec_rt_auxvar(i)%pri_molal(j) = sec_transport_vars%&
@@ -1067,7 +1070,7 @@ end subroutine SecondaryRTUpdateTimestep
 subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
                                     global_aux_var, &
                                     reaction,diffusion_coefficient, &
-                                    porosity,option)
+                                    porosity,option,inf_norm_sec)
                                     
   use Option_module 
   use Global_Aux_module
@@ -1105,7 +1108,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
   PetscReal :: porosity
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
-  PetscReal :: itol_res_sec
+  PetscReal :: inf_norm_sec
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -1202,10 +1205,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
     enddo
   enddo
     
-  itol_res_sec = maxval(abs(res))  
-  if (itol_res_sec > 1.d-8) print *,  &
-    'WARNING: Secondary solution not converged  ', 'itol_res_sec: ', &
-       itol_res_sec 
+  inf_norm_sec = maxval(abs(res))  
                                     
 end subroutine SecondaryRTCheckResidual                                    
 

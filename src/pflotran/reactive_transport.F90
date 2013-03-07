@@ -682,7 +682,6 @@ subroutine RTUpdateSolutionPatch(realization)
   PetscInt :: ghosted_id, local_id
   PetscReal :: conc, max_conc, min_conc
   PetscErrorCode :: ierr
-  PetscReal :: sec_diff_coeff
   PetscReal :: sec_porosity
   
   option => realization%option
@@ -746,22 +745,18 @@ subroutine RTUpdateSolutionPatch(realization)
         if (patch%imat(ghosted_id) <= 0) cycle
           sec_porosity = realization%material_property_array(1)%ptr% &
                          secondary_continuum_porosity
-          sec_diff_coeff = realization%material_property_array(1)%ptr% &
-                         secondary_continuum_diff_coeff
 
           call SecondaryRTUpdateTimestep(rt_sec_transport_vars(ghosted_id), &
-                                         rt_aux_vars(ghosted_id), &
                                          global_aux_vars(ghosted_id), &
-                                         reaction,sec_diff_coeff, &
-                                         sec_porosity,option)                     
+                                         reaction,sec_porosity,option)                     
       enddo
     endif
-
   endif
 
   if (option%compute_mass_balance_new) then
     call RTUpdateMassBalancePatch(realization)
   endif
+  
 end subroutine RTUpdateSolutionPatch
 
 ! ************************************************************************** !

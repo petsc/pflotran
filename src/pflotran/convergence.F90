@@ -196,6 +196,13 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     reason = -9
   endif
   
+  ! This is to check if the secondary continuum residual convergences
+  ! for nonlinear problems
+  if (option%use_mc .and. option%infnorm_res_sec > &
+      solver%newton_inf_res_tol_sec) then
+    reason = -11
+  endif  
+  
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
   
@@ -221,7 +228,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     if (inorm_residual > solver%max_norm) then
       reason = -10
     endif
-
+    
+  
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
@@ -241,6 +249,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_upd'
         case(12)
           string = 'itol_stomp'
+        case(-11)
+          string = 'itol_res_sec'
         case default
           write(string,'(i3)') reason
       end select
@@ -270,6 +280,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_upd'
         case(12)
           string = 'itol_stomp'
+        case(-11)
+          string = 'itol_res_sec'
         case default
           write(string,'(i3)') reason
       end select
