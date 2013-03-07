@@ -1193,7 +1193,13 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
-  enddo                          
+  enddo           
+  
+  do i = 1, ngcells
+    do j = 1, ncomp
+      res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
+    enddo
+  enddo
     
   if (maxval(abs(res)) > 1.d-12) print *, 'WARNING: Secondary solution not converged'
                                     
