@@ -443,11 +443,10 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
           ghosted_id
 #endif      
         global_aux_var%istate = TWO_PHASE_STATE
-!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-!geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
-        ! vapor pressure needs to be >= epsilon
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(apid) + P_sat
-        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        x(GENERAL_GAS_PRESSURE_DOF) = &
+          gen_aux_var%pres(lid) * (1.d0 + epsilon)
+        x(GENERAL_AIR_PRESSURE_DOF) = &
+          gen_aux_var%pres(apid) * (1.d0 + epsilon)
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
       endif
@@ -461,11 +460,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
           ghosted_id
 #endif      
         global_aux_var%istate = TWO_PHASE_STATE
-!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-!        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
-        ! first two primary dep vars do not change
-        !x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(gid)
-        !x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        ! first two primary dependent variables do not change
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
       endif
@@ -479,12 +474,12 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #endif      
         ! convert to liquid state
         global_aux_var%istate = LIQUID_STATE
-!        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
-!                                         gen_aux_var%pres(lid)
-        x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var%pres(gid)
+        x(GENERAL_LIQUID_PRESSURE_DOF) = &
+          gen_aux_var%pres(gid) * (1.d0 + epsilon)
         x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
-          gen_aux_var%xmol(acid,lid)
-        x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var%temp - epsilon
+          gen_aux_var%xmol(acid,lid) * (1+epsilon)
+        x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
+          gen_aux_var%temp * (1.d0 - epsilon)
         flag = PETSC_TRUE
       else if (gen_aux_var%sat(gid) > 1.d0) then
 #ifdef DEBUG_GENERAL
@@ -495,11 +490,9 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #endif      
         ! convert to gas state
         global_aux_var%istate = GAS_STATE
-        ! first two pdv do not change
-        !x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
-        !                              gen_aux_var%pres(vpid)
-        !x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
-        x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var%temp + epsilon
+        ! first two primary dependent variables do not change
+        x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
+          gen_aux_var%temp * (1.d0 + epsilon)
         flag = PETSC_TRUE
       endif
   end select
