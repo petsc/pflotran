@@ -62,7 +62,7 @@ class RegressionTest(object):
         self._debug = False
         self._executable = None
         self._input_arg = "-input_prefix"
-        self._input_suffix = "in -malloc 0"
+        self._input_suffix = "in"
         self._np = None
         self._timeout = 60.0
         self._check_performance = False
@@ -145,6 +145,8 @@ class RegressionTest(object):
                                 "provided.".format(self.name()))
 
         command.append(executable)
+        #geh: kludge for -malloc 0
+        command.append("-malloc 0")
         if self._input_arg != None:
             command.append(self._input_arg)
             command.append(self.name())
