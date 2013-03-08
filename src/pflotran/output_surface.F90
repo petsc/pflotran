@@ -217,7 +217,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+    call OutputSurfaceGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
     call DiscretizationGlobalToNatural(discretization,global_vec, &
                                         natural_vec,ONEDOF)
@@ -872,7 +872,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
+    call OutputSurfaceGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
     call DiscretizationGlobalToNatural(surf_discretization,global_vec, &
                                         natural_vec,ONEDOF)
@@ -1206,5 +1206,44 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
 
+! ************************************************************************** !
+!> This routine extracts variables indexed by ivar from a multivar array
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 01/30/13
+! ************************************************************************** !
+subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubvar1)
+
+  use Surface_Realization_class, only : surface_realization_type, &
+                                        SurfRealizGetDataset
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+
+  class(surface_realization_type) :: surf_realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+  
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
+                        
+  call SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+
+  call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
+  
+end subroutine OutputSurfaceGetVarFromArray
+
 end module Output_Surface_module
+
 #endif

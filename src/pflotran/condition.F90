@@ -486,7 +486,10 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
   if (associated(dataset%dataset) .or. &
       associated(default_dataset%dataset)) then
     call TimeSeriesDestroy(dataset%time_series)
-    call TimeSeriesDestroy(default_dataset%time_series)
+    !GB: Do not destroy default_dataset. For those modes, that have more
+    !    more than 1 DOF, flow_condition for different DOFs could be 
+    !    specified via dataset or values
+    !call TimeSeriesDestroy(default_dataset%time_series)
     if (associated(default_dataset%dataset) .and. &
         .not.associated(dataset%dataset)) then
       dataset%dataset => default_dataset%dataset
@@ -811,10 +814,12 @@ subroutine FlowConditionRead(condition,input,option)
                 call printErrMsg(option)
               endif
               sub_condition_ptr%itype = UNIT_GRADIENT_BC
-            case('distributed_volumetric_rate')
-              sub_condition_ptr%itype = DISTRIBUTED_VOLUMETRIC_RATE_SS
-            case('distributed_mass_rate')
-              sub_condition_ptr%itype = DISTRIBUTED_MASS_RATE_SS
+            case('heterogeneous_volumetric_rate')
+              sub_condition_ptr%itype = HET_VOL_RATE_SS
+            case('heterogeneous_mass_rate')
+              sub_condition_ptr%itype = HET_MASS_RATE_SS
+            case('heterogeneous_dirichlet')
+              sub_condition_ptr%itype = HET_DIRICHLET
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -1494,10 +1499,12 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-            case('distributed_volumetric_rate')
-              sub_condition_ptr%itype = DISTRIBUTED_VOLUMETRIC_RATE_SS
-            case('distributed_mass_rate')
-              sub_condition_ptr%itype = DISTRIBUTED_MASS_RATE_SS
+            case('heterogeneous_volumetric_rate')
+              sub_condition_ptr%itype = HET_VOL_RATE_SS
+            case('heterogeneous_mass_rate')
+              sub_condition_ptr%itype = HET_MASS_RATE_SS
+            case('heterogeneous_dirichlet')
+              sub_condition_ptr%itype = HET_DIRICHLET
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -2415,10 +2422,12 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'scaled mass rate'
     case(SCALED_VOLUMETRIC_RATE_SS)
       string = 'scaled volumetric rate'
-    case(DISTRIBUTED_VOLUMETRIC_RATE_SS)
-      string = 'distributed volumetric rate'
-    case(DISTRIBUTED_MASS_RATE_SS)
-      string = 'distributed mass rate'
+    case(HET_VOL_RATE_SS)
+      string = 'heterogeneous volumetric rate'
+    case(HET_MASS_RATE_SS)
+      string = 'heterogeneous mass rate'
+    case(HET_DIRICHLET)
+      string = 'heterogeneous dirichlet'
   end select
   100 format(6x,'Type: ',a)  
   write(option%fid_out,100) trim(string)

@@ -12,6 +12,7 @@ module Init_module
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
+#include "finclude/petscts.h"
 
 
   public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
@@ -201,6 +202,8 @@ subroutine Init(simulation)
   ! initialize surface-flow mode
   if (option%nsurfflowdof > 0) then
     surf_flow_solver => surf_flow_stepper%solver
+    waypoint_list => WaypointListCreate()
+    surf_realization%waypoints => waypoint_list
   else
     call TimestepperDestroy(simulation%surf_flow_stepper)
     nullify(surf_flow_solver)
@@ -252,7 +255,7 @@ subroutine Init(simulation)
   call RealizationCreateDiscretization(realization)
 #ifdef SURFACE_FLOW
   if (option%nsurfflowdof>0) then
-    call SurfaceRealizationCreateDiscretization(simulation%surf_realization)
+    call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
 
@@ -522,69 +525,89 @@ subroutine Init(simulation)
 
 #ifdef SURFACE_FLOW
     if(option%nsurfflowdof>0) then
-      call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
-      call SolverCreateSNES(surf_flow_solver,option%mycomm)
-      call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
-      call SolverCheckCommandLine(surf_flow_solver)
 
-      if (surf_flow_solver%Jpre_mat_type == '') then
-        if (surf_flow_solver%J_mat_type /= MATMFFD) then
-          surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
-        else
-          surf_flow_solver%Jpre_mat_type = MATBAIJ
+
+      if(option%surf_flow_explicit) then
+
+        ! Setup PETSc TS for explicit surface flow solution
+        call printMsg(option,"  Beginning setup of SURF FLOW TS ")
+
+        call SolverCreateTS(surf_flow_solver,option%mycomm)
+        call TSSetProblemType(surf_flow_solver%ts,TS_NONLINEAR,ierr)
+        call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                              SurfaceFlowRHSFunction, &
+                              simulation%surf_realization,ierr)
+        call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
+                           simulation%surf_realization%waypoints%last%time,ierr)
+
+      else
+
+        ! Setup PETSc SNES for implicit surface flow solution
+        call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
+
+        call SolverCreateSNES(surf_flow_solver,option%mycomm)
+        call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
+        call SolverCheckCommandLine(surf_flow_solver)
+
+        if (surf_flow_solver%Jpre_mat_type == '') then
+          if (surf_flow_solver%J_mat_type /= MATMFFD) then
+            surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
+          else
+            surf_flow_solver%Jpre_mat_type = MATBAIJ
+          endif
         endif
-      endif
 
-      call DiscretizationCreateJacobian( &
-                                        simulation%surf_realization%discretization, &
-                                        NFLOWDOF, &
-                                        surf_flow_solver%Jpre_mat_type, &
-                                        surf_flow_solver%Jpre, &
-                                        option)
+        call DiscretizationCreateJacobian( &
+                                  simulation%surf_realization%discretization, &
+                                  NFLOWDOF, &
+                                  surf_flow_solver%Jpre_mat_type, &
+                                  surf_flow_solver%Jpre, &
+                                  option)
 
-      call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
-      call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+        call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+        call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
-      call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
+        call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
 
-      if (surf_flow_solver%J_mat_type /= MATMFFD) then
-        surf_flow_solver%J = surf_flow_solver%Jpre
-      endif
+        if (surf_flow_solver%J_mat_type /= MATMFFD) then
+          surf_flow_solver%J = surf_flow_solver%Jpre
+        endif
 
-      call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
-                            SurfaceFlowResidual, &
-                            simulation%surf_realization,ierr)
+        call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
+                              SurfaceFlowResidual, &
+                              simulation%surf_realization,ierr)
 
-      call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
-                          surf_flow_solver%Jpre, &
-                          SurfaceFlowJacobian,simulation%surf_realization,ierr)
-      ! by default turn off line search
-      call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
-      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+        call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
+                            surf_flow_solver%Jpre, &
+                            SurfaceFlowJacobian,simulation%surf_realization,ierr)
+        ! by default turn off line search
+        call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 
-      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-      if (option%verbosity >= 1) then
-        string = '-surf_flow_snes_view'
-        call PetscOptionsInsertString(string, ierr)
-      endif
+        ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+        if (option%verbosity >= 1) then
+          string = '-surf_flow_snes_view'
+          call PetscOptionsInsertString(string, ierr)
+        endif
 
-      call SolverSetSNESOptions(surf_flow_solver)
+        call SolverSetSNESOptions(surf_flow_solver)
 
-      option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
-      call printMsg(option)
-      option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
-      call printMsg(option)
+        option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
+        call printMsg(option)
+        option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
+        call printMsg(option)
 
-      ! shell for custom convergence test.  The default SNES convergence test  
-      ! is call within this function. 
-      surf_flow_stepper%convergence_context => &
-        ConvergenceContextCreate(surf_flow_solver,option,grid)
-      call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
-                                  surf_flow_stepper%convergence_context, &
-                                  PETSC_NULL_FUNCTION,ierr) 
-
-    endif
+        ! shell for custom convergence test.  The default SNES convergence test
+        ! is call within this function.
+        surf_flow_stepper%convergence_context => &
+          ConvergenceContextCreate(surf_flow_solver,option,grid)
+        call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
+                                    surf_flow_stepper%convergence_context, &
+                                    PETSC_NULL_FUNCTION,ierr)
+      endif ! if(option%surface_flow_explicit)
+    endif ! if(option%nsurfflowdof>0)
 #endif
+
   endif
 
   
@@ -890,7 +913,7 @@ subroutine Init(simulation)
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_stepper)) then
+   if (option%nsurfflowdof>0) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -908,7 +931,7 @@ subroutine Init(simulation)
                                string)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_solver)) then
+  if (associated(surf_flow_solver).and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Newton Solver:'
     call SolverPrintNewtonInfo(surf_flow_solver,OptionPrintToScreen(option), &
                                OptionPrintToFile(option),option%fid_out, &
@@ -924,9 +947,17 @@ subroutine Init(simulation)
     call SolverPrintLinearInfo(tran_solver,string,option)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_solver)) then
+  if (associated(surf_flow_solver).and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Linear Solver:'
     call SolverPrintLinearInfo(surf_flow_solver,string,option)
+  endif
+  if (associated(surf_flow_solver).and.option%surf_flow_explicit) then
+    string = 'Surface Flow TS Solver:'
+    if (OptionPrintToScreen(option)) then
+      write(*,*),' '
+      write(*,*),string
+    endif
+    call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
   endif
 #endif
 
@@ -956,15 +987,15 @@ subroutine Init(simulation)
 #ifdef SURFACE_FLOW
   if(option%nsurfflowdof > 0) then
     call readSurfaceRegionFiles(simulation%surf_realization)
-    call SurfaceRealizationMapSurfSubsurfaceGrids(realization,simulation%surf_realization)
-    call SurfaceRealizationLocalizeRegions(simulation%surf_realization)
-    call SurfaceRealizatonPassFieldPtrToPatches(simulation%surf_realization)
-    call SurfaceRealizationProcessMatProp(simulation%surf_realization)
-    call SurfaceRealizationProcessCouplers(simulation%surf_realization)
-    call SurfaceRealizationProcessConditions(simulation%surf_realization)
+    call SurfRealizMapSurfSubsurfGrids(realization,simulation%surf_realization)
+    call SurfRealizLocalizeRegions(simulation%surf_realization)
+    call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
+    call SurfRealizProcessMatProp(simulation%surf_realization)
+    call SurfRealizProcessCouplers(simulation%surf_realization)
+    call SurfRealizProcessConditions(simulation%surf_realization)
     !call RealProcessFluidProperties(simulation%surf_realization)
     call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
-    call SurfaceRealizationInitAllCouplerAuxVars(simulation%surf_realization)
+    call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
     !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
 
     ! initialize plot variables
@@ -986,7 +1017,7 @@ subroutine Init(simulation)
     call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
 
     ! override initial conditions if they are to be read from a file
-    if (len_trim(option%initialize_flow_filename) > 1) then
+    if (len_trim(option%surf_initialize_flow_filename) > 1) then
       option%io_buffer = 'For surface-flow initial conditions cannot be read from file'
       call printErrMsgByRank(option)
     endif
@@ -999,7 +1030,7 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
     if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-      call SurfaceRealizationCreateSurfaceSubsurfaceVec( &
+      call SurfRealizCreateSurfSubsurfVec( &
                       simulation%realization, simulation%surf_realization)
     endif
   endif ! option%nsurfflowdof > 0
@@ -2266,6 +2297,13 @@ subroutine InitReadInput(simulation)
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
         option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+
+        ! Add final_time waypoint to surface_realization
+        waypoint => WaypointCreate()
+        waypoint%final = PETSC_TRUE
+        waypoint%time = realization%waypoints%last%time
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 #endif
 
 !......................
@@ -3735,7 +3773,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
 
   if (update_ghosted_material_ids) then
     ! update ghosted material ids
-    call SurfaceRealizationLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
+    call SurfRealizLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
   endif
 
   ! set cell by cell material properties

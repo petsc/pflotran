@@ -53,25 +53,27 @@ private
 
   end type surface_realization_type
 
-  public :: SurfaceRealizationCreate, &
-            SurfaceRealizationDestroy, &
-            SurfaceRealizationCreateDiscretization, &
-            SurfaceRealizationAddCoupler, &
-            SurfaceRealizationAddStrata, &
-            SurfaceRealizationLocalizeRegions, &
-            SurfaceRealizatonPassFieldPtrToPatches, &
-            SurfaceRealizationProcessCouplers, &
-            SurfaceRealizationLocalToLocalWithArray, &
-            SurfaceRealizationProcessConditions, &
-            SurfaceRealizationProcessFlowConditions, &
-            SurfaceRealizationMapSurfSubsurfaceGrids, &
-            SurfaceRealizationInitAllCouplerAuxVars, &
-            SurfaceRealizationProcessMatProp, &
-            SurfaceRealizationUpdate, &
-            SurfaceRealizationCreateSurfaceSubsurfaceVec, &
-            SurfaceRealizationUpdateSubsurfaceBC, &
-            SurfaceRealizationUpdateSurfaceBC, &
-            SurfaceRealizationComputeSurfaceSubsurfFlux
+  !         123456789+123456789+123456789+1
+  public :: SurfRealizCreate, &
+            SurfRealizDestroy, &
+            SurfRealizCreateDiscretization, &
+            SurfRealizAddCoupler, &
+            SurfRealizAddStrata, &
+            SurfRealizLocalizeRegions, &
+            SurfRealizPassFieldPtrToPatches, &
+            SurfRealizProcessCouplers, &
+            SurfRealizLocalToLocalWithArray, &
+            SurfRealizProcessConditions, &
+            SurfRealizProcessFlowConditions, &
+            SurfRealizMapSurfSubsurfGrids, &
+            SurfRealizInitAllCouplerAuxVars, &
+            SurfRealizProcessMatProp, &
+            SurfRealizUpdate, &
+            SurfRealizCreateSurfSubsurfVec, &
+            SurfRealizUpdateSubsurfBC, &
+            SurfRealizUpdateSurfBC, &
+            SurfRealizSurf2SubsurfFlux, &
+            SurfRealizGetDataset
 
   !TODO(intel)
 !  public :: SurfaceRealizationGetDataset     
@@ -90,12 +92,12 @@ contains
 !!
 !! date: 02/16/12
 ! ************************************************************************** !
-function SurfaceRealizationCreate(option)
+function SurfRealizCreate(option)
 
   implicit none
 
   type(option_type), pointer             :: option
-  type(surface_realization_type),pointer :: SurfaceRealizationCreate
+  type(surface_realization_type),pointer :: SurfRealizCreate
   type(surface_realization_type),pointer :: surf_realization
   
   allocate(surf_realization)
@@ -127,9 +129,9 @@ function SurfaceRealizationCreate(option)
   surf_realization%dt_coupling = 0.d0
   
   surf_realization%first_time = PETSC_TRUE
-  SurfaceRealizationCreate => surf_realization
+  SurfRealizCreate => surf_realization
 
-end function SurfaceRealizationCreate
+end function SurfRealizCreate
 
 ! ************************************************************************** !
 !> This routine adds a copy of a coupler to a list
@@ -139,7 +141,7 @@ end function SurfaceRealizationCreate
 !!
 !! date: 02/10/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationAddCoupler(surf_relation,coupler)
+subroutine SurfRealizAddCoupler(surf_relation,coupler)
 
   use Coupler_module
 
@@ -176,7 +178,7 @@ subroutine SurfaceRealizationAddCoupler(surf_relation,coupler)
 
   call CouplerDestroy(coupler)
  
-end subroutine SurfaceRealizationAddCoupler
+end subroutine SurfRealizAddCoupler
 
 ! ************************************************************************** !
 !> This routine sets connectivity and pointers for couplers related to 
@@ -187,7 +189,7 @@ end subroutine SurfaceRealizationAddCoupler
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessCouplers(surf_realization)
+subroutine SurfRealizProcessCouplers(surf_realization)
 
   use Option_module
 
@@ -211,7 +213,7 @@ subroutine SurfaceRealizationProcessCouplers(surf_realization)
     cur_level => cur_level%next
   enddo
 
-end subroutine SurfaceRealizationProcessCouplers
+end subroutine SurfRealizProcessCouplers
 
 ! ************************************************************************** !
 !> This routine sets up linkeage between surface material properties
@@ -221,7 +223,7 @@ end subroutine SurfaceRealizationProcessCouplers
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessMatProp(surf_realization)
+subroutine SurfRealizProcessMatProp(surf_realization)
 
   use String_module
   
@@ -262,7 +264,7 @@ subroutine SurfaceRealizationProcessMatProp(surf_realization)
     cur_level => cur_level%next
   enddo 
   
-end subroutine SurfaceRealizationProcessMatProp
+end subroutine SurfRealizProcessMatProp
 
 ! ************************************************************************** !
 !
@@ -275,7 +277,7 @@ end subroutine SurfaceRealizationProcessMatProp
 !! date: 02/17/12
 !
 ! ************************************************************************** !
-subroutine SurfaceRealizationLocalizeRegions(surf_realization)
+subroutine SurfRealizLocalizeRegions(surf_realization)
 
   use Option_module
   use String_module
@@ -307,7 +309,7 @@ subroutine SurfaceRealizationLocalizeRegions(surf_realization)
     cur_level => cur_level%next
   enddo
 
-end subroutine SurfaceRealizationLocalizeRegions
+end subroutine SurfRealizLocalizeRegions
 
 
 ! ************************************************************************** !
@@ -318,7 +320,7 @@ end subroutine SurfaceRealizationLocalizeRegions
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationAddStrata(surf_realization,strata)
+subroutine SurfRealizAddStrata(surf_realization,strata)
 
   use Strata_module
 
@@ -347,7 +349,7 @@ subroutine SurfaceRealizationAddStrata(surf_realization,strata)
   
   call StrataDestroy(strata)
  
-end subroutine SurfaceRealizationAddStrata
+end subroutine SurfRealizAddStrata
 
 ! ************************************************************************** !
 !> This routine creates grid
@@ -357,7 +359,7 @@ end subroutine SurfaceRealizationAddStrata
 !!
 !! date: 02/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationCreateDiscretization(surf_realization)
+subroutine SurfRealizCreateDiscretization(surf_realization)
 
   use Grid_module
   use Unstructured_Grid_Aux_module, only : UGridMapIndices
@@ -423,6 +425,8 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
                                      surf_field%subsurf_yy)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%subsurf_zz)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%surf2subsurf_dist_gravity)
 
   ! Create ghosted-local vectors
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%flow_xx_loc, &
@@ -446,7 +450,7 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
   call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
   call GridComputeAreas(grid,surf_field%area,option)
 
-end subroutine SurfaceRealizationCreateDiscretization
+end subroutine SurfRealizCreateDiscretization
 
 ! ************************************************************************** !
 !> This routine 
@@ -456,7 +460,7 @@ end subroutine SurfaceRealizationCreateDiscretization
 !!
 !! date: 02/19/12
 ! ************************************************************************** !
-subroutine SurfaceRealizatonPassFieldPtrToPatches(surf_realization)
+subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
 
   use Option_module
 
@@ -479,7 +483,7 @@ subroutine SurfaceRealizatonPassFieldPtrToPatches(surf_realization)
     cur_level => cur_level%next
   enddo
   
-end subroutine SurfaceRealizatonPassFieldPtrToPatches
+end subroutine SurfRealizPassFieldPtrToPatches
 
 ! ************************************************************************** !
 !> This routine 
@@ -489,20 +493,20 @@ end subroutine SurfaceRealizatonPassFieldPtrToPatches
 !!
 !! date: 02/19/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessConditions(surf_realization)
+subroutine SurfRealizProcessConditions(surf_realization)
 
   implicit none
   
   type(surface_realization_type) :: surf_realization
   
   if (surf_realization%option%nflowdof > 0) then
-    call SurfaceRealizationProcessFlowConditions(surf_realization)
+    call SurfRealizProcessFlowConditions(surf_realization)
   endif
   if (surf_realization%option%ntrandof > 0) then
     !call SurfaceRealProcessTranConditions(surf_realization)
   endif
  
-end subroutine SurfaceRealizationProcessConditions
+end subroutine SurfRealizProcessConditions
 
 ! ************************************************************************** !
 !> This routine takes an F90 array that is ghosted and updates the ghosted
@@ -513,7 +517,7 @@ end subroutine SurfaceRealizationProcessConditions
 !!
 !! date: 02/13/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationLocalToLocalWithArray(surf_realization,array_id)
+subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
 
   use Grid_module
   use Surface_Field_module
@@ -567,7 +571,7 @@ subroutine SurfaceRealizationLocalToLocalWithArray(surf_realization,array_id)
     cur_level => cur_level%next
   enddo
 
-end subroutine SurfaceRealizationLocalToLocalWithArray
+end subroutine SurfRealizLocalToLocalWithArray
 
 ! ************************************************************************** !
 !> This routine sets linkage of flow conditions to dataset
@@ -577,7 +581,7 @@ end subroutine SurfaceRealizationLocalToLocalWithArray
 !!
 !! date: 02/20/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationProcessFlowConditions(surf_realization)
+subroutine SurfRealizProcessFlowConditions(surf_realization)
 
   use Dataset_module
 
@@ -655,7 +659,7 @@ subroutine SurfaceRealizationProcessFlowConditions(surf_realization)
     cur_surf_flow_condition => cur_surf_flow_condition%next
   enddo
 
-end subroutine SurfaceRealizationProcessFlowConditions
+end subroutine SurfRealizProcessFlowConditions
 
 ! ************************************************************************** !
 !> This routine initializez coupler auxillary variables within list
@@ -665,7 +669,7 @@ end subroutine SurfaceRealizationProcessFlowConditions
 !!
 !! date: 02/21/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationInitAllCouplerAuxVars(surf_realization)
+subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
 
   use Option_module
 
@@ -689,7 +693,7 @@ subroutine SurfaceRealizationInitAllCouplerAuxVars(surf_realization)
     cur_level => cur_level%next
   enddo
    
-end subroutine SurfaceRealizationInitAllCouplerAuxVars
+end subroutine SurfRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !> This routine creates vector scatter contexts between surface and subsurface 
@@ -705,7 +709,7 @@ end subroutine SurfaceRealizationInitAllCouplerAuxVars
 !!
 !! date: 01/17/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization)
+subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -944,8 +948,8 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call PetscViewerDestroy(viewer,ierr)
 #endif  
 
-  call SurfaceRealizationMapSurfSubsurfaceGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
-                                        surf_petsc_ids)
+  call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
+                                     surf_petsc_ids)
   call MatDestroy(prod,ierr)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
@@ -957,7 +961,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call MatView(prod,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
-  call SurfaceRealizationMapSurfSubsurfaceGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
+  call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
                                         subsurf_petsc_ids)
 
   call MatDestroy(prod,ierr)
@@ -970,7 +974,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call VecDestroy(subsurf_petsc_ids,ierr)
   call VecDestroy(surf_petsc_ids,ierr)
   
-end subroutine SurfaceRealizationMapSurfSubsurfaceGrids
+end subroutine SurfRealizMapSurfSubsurfGrids
 
 ! ************************************************************************** !
 !
@@ -984,7 +988,7 @@ end subroutine SurfaceRealizationMapSurfSubsurfaceGrids
 !!
 !! date: 01/18/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
+subroutine SurfRealizMapSurfSubsurfGrid( &
               realization, &       !<
               surf_realization, &  !<
               prod_mat, &          !< Mat-Mat-Mult matrix
@@ -1150,17 +1154,17 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-end subroutine SurfaceRealizationMapSurfSubsurfaceGrid
+end subroutine SurfRealizMapSurfSubsurfGrid
 
 ! ************************************************************************** !
-!> This routine destroys SurfaceRealization object
+!> This routine destroys SurfRealiz object
 !!
 !> @author
 !! Gautam Bisht, ORNL
 !!
 !! date: 02/16/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationDestroy(surf_realization)
+subroutine SurfRealizDestroy(surf_realization)
 
   implicit none
   
@@ -1186,7 +1190,7 @@ subroutine SurfaceRealizationDestroy(surf_realization)
   
   call DiscretizationDestroy(surf_realization%discretization)
 
-end subroutine SurfaceRealizationDestroy
+end subroutine SurfRealizDestroy
 
 
 ! ************************************************************************** !
@@ -1197,7 +1201,7 @@ end subroutine SurfaceRealizationDestroy
 !!
 !! date: 05/22/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationUpdate(surf_realization)
+subroutine SurfRealizUpdate(surf_realization)
 
   implicit none
   
@@ -1207,9 +1211,8 @@ subroutine SurfaceRealizationUpdate(surf_realization)
   call FlowConditionUpdate(surf_realization%surf_flow_conditions,surf_realization%option, &
                            surf_realization%option%time)
 
-end subroutine SurfaceRealizationUpdate
+end subroutine SurfRealizUpdate
 
-#if 0
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar and isubvar from surface
 !! realization.
@@ -1219,7 +1222,7 @@ end subroutine SurfaceRealizationUpdate
 !!
 !! date: 05/22/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+subroutine SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
 
   use Option_module
   use Surface_Field_module
@@ -1239,8 +1242,7 @@ subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubva
                        surf_realization%output_option, &
                        vec,ivar,isubvar,isubvar1)
 
-end subroutine SurfaceRealizationGetDataset
-#endif
+end subroutine SurfRealizGetDataset
 
 ! ************************************************************************** !
 !> This routine prescribes the strength of source/sink between surface and
@@ -1251,7 +1253,7 @@ end subroutine SurfaceRealizationGetDataset
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
+subroutine SurfRealizUpdateSubsurfBC(realization,surf_realization,dt)
 
   use Grid_module
   use String_module
@@ -1294,6 +1296,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
   PetscReal :: dt
   PetscInt :: local_id
   PetscInt :: iconn
+  PetscReal :: den
   
   PetscBool :: coupler_found = PETSC_FALSE
 
@@ -1305,6 +1308,8 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
   surf_field => surf_realization%surf_field
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
+
+  call density(option%reference_temperature,option%reference_pressure,den)
 
   coupler_list => patch%source_sinks
   coupler => coupler_list%first
@@ -1330,7 +1335,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
 
         call VecGetArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
         do iconn=1,coupler%connection_set%num_connections
-          coupler%flow_aux_real_var(ONE_INTEGER,iconn)=-vec_p(iconn)/dt
+          coupler%flow_aux_real_var(ONE_INTEGER,iconn)=-vec_p(iconn)/dt*den
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
 
@@ -1348,7 +1353,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
     call printErrMsg(option)
   endif
   
-end subroutine SurfaceRealizationUpdateSubsurfaceBC
+end subroutine SurfRealizUpdateSubsurfBC
 
 
 ! ************************************************************************** !
@@ -1367,7 +1372,7 @@ end subroutine SurfaceRealizationUpdateSubsurfaceBC
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
+subroutine SurfRealizUpdateSurfBC(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -1411,7 +1416,6 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal, pointer :: qsrc_p(:),vec_p(:)
-  PetscReal :: rho          ! density      [kg/m^3]
   PetscInt :: local_id,iconn,sum_connection,ghosted_id
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: xx_p(:)
@@ -1421,6 +1425,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
   PetscReal, pointer :: Dq_p(:)
+  PetscReal, pointer :: dist_p(:)
   PetscReal :: dist_x,dist_y,dist_z,dist
   
   PetscBool :: coupler_found = PETSC_FALSE
@@ -1460,10 +1465,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
         call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
 
         ! Scatter the data
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
-                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                        surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                        surf_field%subsurf_temp_vec,surf_field%press_subsurf, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
 
         ! If entering this subroutine for the first time, also scatter a few
@@ -1482,10 +1489,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%perm_xx_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
-                              surf_field%perm_xx, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                               surf_field%subsurf_temp_vec, &
+                               surf_field%perm_xx, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%perm_xx, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1500,10 +1509,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%perm_yy_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%perm_yy, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%perm_yy, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1518,10 +1529,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%perm_zz_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%perm_zz, &
-                              INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+                              INSERT_VALUES, SCATTER_FORWARD,ierr)
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%perm_zz, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1536,10 +1549,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           call GridVecRestoreArrayF90(grid,field%porosity_loc,xx_loc_p, ierr)
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%por, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%por, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1552,10 +1567,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%sat_func_id, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%sat_func_id, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
           ! x
@@ -1567,10 +1584,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%subsurf_xx, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%subsurf_xx, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1583,10 +1602,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%subsurf_yy, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%subsurf_yy, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1599,10 +1620,12 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
           enddo
           call VecRestoreArrayF90(surf_field%subsurf_temp_vec,vec_p,ierr)
           ! Scatter the data
-          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids, &
+                              surf_field%subsurf_temp_vec, &
                               surf_field%subsurf_zz, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,surf_field%subsurf_temp_vec, &
+          call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids, &
+                             surf_field%subsurf_temp_vec, &
                              surf_field%subsurf_zz, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1625,20 +1648,24 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
     call GridVecGetArrayF90(surf_grid,surf_field%perm_yy,perm_yy_p,ierr)
     call GridVecGetArrayF90(surf_grid,surf_field%perm_zz,perm_zz_p,ierr)
     call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
+    call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
 
     do local_id=1,surf_grid%nlmax
-      dist_x = abs(xx_p(local_id) - surf_grid%x(local_id))
-      dist_y = abs(yy_p(local_id) - surf_grid%y(local_id))
-      dist_z = abs(zz_p(local_id) - surf_grid%z(local_id))
+      dist_x = (xx_p(local_id) - surf_grid%x(local_id))
+      dist_y = (yy_p(local_id) - surf_grid%y(local_id))
+      dist_z = (zz_p(local_id) - surf_grid%z(local_id))
       
       dist = sqrt(dist_x*dist_x + dist_y*dist_y + dist_z*dist_z)
       
-      Dq_p(local_id) = (perm_xx_p(local_id)*dist_x/dist + &
-                        perm_yy_p(local_id)*dist_y/dist + &
-                        perm_zz_p(local_id)*dist_z/dist)/dist
-      
+      Dq_p(local_id) = (perm_xx_p(local_id)*abs(dist_x)/dist + &
+                        perm_yy_p(local_id)*abs(dist_y)/dist + &
+                        perm_zz_p(local_id)*abs(dist_z)/dist)/dist
+      dist_p(local_id) = dist*(dist_x*option%gravity(1)+ &
+                               dist_y*option%gravity(2)+ &
+                               dist_z*option%gravity(3))
     enddo
 
+    call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
     call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_xx,xx_p,ierr)
     call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_yy,yy_p,ierr)
     call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_zz,zz_p,ierr)
@@ -1650,7 +1677,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
     surf_realization%first_time=PETSC_FALSE
   endif
 
-end subroutine SurfaceRealizationUpdateSurfaceBC
+end subroutine SurfRealizUpdateSurfBC
 
 ! ************************************************************************** !
 !> This routine computes flux between surface and subsurface model.
@@ -1660,7 +1687,7 @@ end subroutine SurfaceRealizationUpdateSurfaceBC
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realization)
+subroutine SurfRealizSurf2SubsurfFlux(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -1705,7 +1732,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
-  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: den          ! density      [kg/m^3]
   PetscInt :: local_id,iconn
   
   PetscReal, pointer :: hw_p(:)   ! head [m]
@@ -1714,7 +1741,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   PetscReal, pointer :: Dq_p(:)
   PetscReal, pointer :: vol_p(:)
   PetscReal, pointer :: area_p(:)
-  
+  PetscReal, pointer :: dist_p(:)
   
   PetscReal :: press_surf
   PetscReal :: dphi
@@ -1733,6 +1760,8 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   PetscReal :: dvis_dt
   PetscReal :: v_darcy
   PetscReal :: v_darcy_max
+  PetscReal :: gravity
+  PetscReal :: press_up, press_dn
     
   PetscBool :: coupler_found = PETSC_FALSE
   PetscBool :: v_darcy_limit
@@ -1745,13 +1774,14 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   surf_grid  => surf_realization%discretization%grid
   surf_field => surf_realization%surf_field
 
-  call density(option%reference_temperature,option%reference_pressure,rho)
+  call density(option%reference_temperature,option%reference_pressure,den)
 
   call GridVecGetArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%flow_xx_loc,hw_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%sat_func_id,sat_func_id_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%vol_subsurf_2_surf,vol_p,ierr)
+  call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
 
   ! Update the surface BC
@@ -1759,6 +1789,14 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   coupler => coupler_list%first
   v_darcy_max=0.d0
   v_darcy_limit=PETSC_FALSE
+  
+  !
+  !            SURFACE
+  !              (DN)
+  !   ---------------------------------
+  !           SUBSURFACE         ///\\\
+  !              (UP)
+  !
 
   do
     if (.not.associated(coupler)) exit
@@ -1768,21 +1806,40 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
 
       if (.not.associated(coupler%flow_aux_real_var)) then
         option%io_buffer='SURF_SOURCE_SINK: from_subsurface_ss was does not ' //&
-          ' a distributed flow condition associated with it'
+          ' a heterogeneous flow condition associated with it'
+        call printErrMsg(option)
+      endif
+
+      if(coupler%flow_condition%rate%itype/=HET_VOL_RATE_SS) then
+        option%io_buffer = 'Flow condition from_subsurface_ss should be ' // &
+          'heterogeneous_volumetric_rate'
         call printErrMsg(option)
       endif
       
       do local_id=1,surf_grid%nlmax
-        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*rho + option%reference_pressure
-        dphi = press_sub_p(local_id) - press_surf
-        if (dphi<0.d0 .and. press_surf - option%reference_pressure<eps) then
+        press_surf=hw_p(local_id)*(abs(option%gravity(3)))*den+option%reference_pressure
+
+        press_up = press_sub_p(local_id)
+        press_dn = press_surf
+        gravity = dist_p(local_id)*den
+        
+        dphi = press_up - press_dn + gravity
+        
+        ! check if there is standing water on the surface
+        if (dphi<0.d0 .and. press_dn - option%reference_pressure<eps) then
           dphi= 0.d0
         endif
         
+        ! exfiltration will only occur if subsurface pressure is greater
+        ! than reference pressure
+        if (dphi>=0 .and. press_up-option%reference_pressure<eps ) then
+          dphi = 0.d0
+        endif
+        
         if(dphi>0.d0) then
-          press = press_sub_p(local_id)
+          press = press_up
         else
-          press = press_surf
+          press = press_dn
         endif
         
         call SaturationFunctionCompute( &
@@ -1803,11 +1860,13 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
         if (v_darcy<=0.d0) then
           ! Flow is happening from surface to subsurface
           if ( abs(v_darcy) > hw_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = hw_p(local_id)/option%surf_flow_dt
+            v_darcy = -hw_p(local_id)/option%surf_flow_dt
             v_darcy_limit=PETSC_TRUE
           endif
+!          write(*,*),'infiltration is occuring: ',local_id,v_darcy,v_darcy_limit
         else
           ! Exfiltration is occuring
+ !         write(*,*),'exfiltration is occuring: ',local_id,v_darcy
         endif
         vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
@@ -1820,13 +1879,14 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   enddo
   
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+  call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%vol_subsurf_2_surf,vol_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)  
   call GridVecRestoreArrayF90(surf_grid,surf_field%sat_func_id,sat_func_id_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx_loc,hw_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
 
-end subroutine SurfaceRealizationComputeSurfaceSubsurfFlux
+end subroutine SurfRealizSurf2SubsurfFlux
 
 ! ************************************************************************** !
 !> This routine creates a MPI vector to keep accumulated volume of water
@@ -1837,7 +1897,7 @@ end subroutine SurfaceRealizationComputeSurfaceSubsurfFlux
 !!
 !! date: 10/05/12
 ! ************************************************************************** !
-subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realization)
+subroutine SurfRealizCreateSurfSubsurfVec(realization,surf_realization)
   use Grid_module
   use String_module
   use Unstructured_Grid_module
@@ -1876,7 +1936,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal, pointer :: xx_loc_p(:),vec_p(:)
-  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: den          ! density      [kg/m^3]
   PetscInt :: local_id,i
   PetscInt :: iconn
   
@@ -1897,6 +1957,11 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
     if (associated(coupler%flow_aux_real_var)) then
       ! Find the BC from the list of BCs
       if(StringCompare(coupler%name,'from_surface_ss')) then
+        if(coupler%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
+          option%io_buffer = 'Flow condition from_surface_ss should be ' // &
+            'heterogeneous_mass_rate'
+          call printErrMsg(option)
+        endif
         coupler_found = PETSC_TRUE
         if(surf_realization%first_time) then
           call VecCreate(option%mycomm,surf_field%subsurf_temp_vec,ierr)
@@ -1916,7 +1981,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
     call printErrMsg(option)
   endif
 
-end subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec
+end subroutine SurfRealizCreateSurfSubsurfVec
 
 end module Surface_Realization_class
 

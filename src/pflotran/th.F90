@@ -921,10 +921,6 @@ subroutine THUpdateAuxVarsPatch(realization)
         option)
 #endif
 
-!    call THComputeGradient(grid, global_aux_vars, ghosted_id, &
-!                       gradient(ghosted_id,:), option) 
-
-
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
@@ -943,7 +939,7 @@ subroutine THUpdateAuxVarsPatch(realization)
 
       do idof=1,option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -994,7 +990,11 @@ subroutine THUpdateAuxVarsPatch(realization)
       istart = iend-option%nflowdof+1
       iphase = int(iphase_loc_p(ghosted_id))
 
-      tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+      if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
+        tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+      else
+        tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+      endif
       xx = xx_loc_p(istart:iend)
       xx(2) = tsrc1
 
@@ -1442,8 +1442,8 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 
   J(1,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol !*TH_aux_var%xmol(1)
 !GB  J(1,3) = 0.d0 !-global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
-  J(2,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
-           TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol*TH_aux_var%xmol(2)
+!GB  J(2,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
+!GB           TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol*TH_aux_var%xmol(2)
 !GB  J(2,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol*TH_aux_var%xmol(2)
 !GB  J(2,3) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   J(2,1) = (TH_aux_var%dsat_dp*global_aux_var%den(1)*TH_aux_var%u + &
@@ -3248,6 +3248,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set  
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
+  character(len=MAXSTRINGLENGTH) :: string
 
   PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof, istart, iend
@@ -3383,11 +3384,15 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       enthalpy_flag = PETSC_FALSE
     endif
 
-    qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
+      qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    endif
+    if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) &
+      tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
-    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection_set
     
@@ -3402,25 +3407,43 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       if (enthalpy_flag) then
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
                                         option%flow_dt*volume_p(local_id)   
-      endif         
+      endif
 
+      select case (source_sink%flow_condition%rate%itype)
+        case(MASS_RATE_SS)
+          r_p((local_id-1)*option%nflowdof + jh2o) = &
+            r_p((local_id-1)*option%nflowdof + jh2o) - &
+            qsrc1*option%flow_dt*volume_p(local_id)
+        case(HET_MASS_RATE_SS)
+          qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
+          r_p((local_id-1)*option%nflowdof + jh2o) = &
+            r_p((local_id-1)*option%nflowdof + jh2o) - &
+            qsrc1 *option%flow_dt*volume_p(local_id)
+        case default
+          write(string,*),source_sink%flow_condition%rate%itype
+          option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
+          trim(adjustl(string)) // ', not implemented.'
+      end select
+
+      select case (source_sink%flow_condition%temperature%itype)
+        case(HET_DIRICHLET)
+          tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+        case (DIRICHLET_BC)
+        case default
+          write(string,*),source_sink%flow_condition%temperature%itype
+          option%io_buffer='TH mode source_sink%flow_condition%temperature%itype = ' // &
+          trim(adjustl(string)) // ', not implemented.'
+      end select
+
+      ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
-        r_p((local_id-1)*option%nflowdof + jh2o) = &
-          r_p((local_id-1)*option%nflowdof + jh2o) - qsrc1*option%flow_dt* &
-          volume_p(local_id)
-        r_p(local_id*option%nflowdof) = &
-          r_p(local_id*option%nflowdof) - &
-          qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+              qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
       else
         ! extraction
-        r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
-                                               - qsrc1*option%flow_dt* &
-                                                 volume_p(local_id)
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-                                        qsrc1*aux_vars(ghosted_id)%h* &
-                                        option%flow_dt*volume_p(local_id)
-      endif  
-    
+              qsrc1*aux_vars(ghosted_id)%h*option%flow_dt*volume_p(local_id)
+      endif
 
     enddo
     source_sink => source_sink%next
@@ -3645,7 +3668,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'THxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-  endif 
+  endif
 
 end subroutine THResidualPatch
 
@@ -3806,6 +3829,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
 
   type(sec_heat_type), pointer :: sec_heat_vars(:)
+  character(len=MAXSTRINGLENGTH) :: string
 
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -3909,12 +3933,14 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       enthalpy_flag = PETSC_FALSE
     endif
 
-    qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
+      qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    endif
+    if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) &
+      tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
-    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-      
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
@@ -3927,6 +3953,16 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
+      select case (source_sink%flow_condition%rate%itype)
+        case(MASS_RATE_SS)
+        case(HET_MASS_RATE_SS)
+          qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
+        case default
+          write(string,*),source_sink%flow_condition%rate%itype
+          option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
+          trim(adjustl(string)) // ', not implemented.'
+      end select
+
       if (qsrc1 > 0.d0) then ! injection
         !dresT_dp = -qsrc1*hw_dp*option%flow_dt
         dresT_dp = -qsrc1*aux_vars_ss(sum_connection)%dh_dp*option%flow_dt
@@ -4138,8 +4174,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-!  option%io_buffer='stopping'
-!  call printErrMsg(option)
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
