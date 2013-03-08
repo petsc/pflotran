@@ -178,11 +178,6 @@ PetscInt, parameter :: EOS_MRK = 2
 PetscInt, parameter :: LIQUID_PHASE = 1
 PetscInt, parameter :: GAS_PHASE = 2
 
-! thermodynamic state of fluid ids
-PetscInt, parameter :: LIQUID_STATE = 1
-PetscInt, parameter :: GAS_STATE = 2
-PetscInt, parameter :: TWO_PHASE_STATE = 3
-
 ! approaches to coupling reactive transport
 PetscInt, parameter :: GLOBAL_IMPLICIT = 0
 PetscInt, parameter :: OPERATOR_SPLIT = 1

@@ -3378,7 +3378,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
       enthalpy_flag = PETSC_TRUE
     else
       enthalpy_flag = PETSC_FALSE
@@ -3405,17 +3405,20 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
+                                        option%flow_dt*volume_p(local_id)   
       endif
 
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           r_p((local_id-1)*option%nflowdof + jh2o) = &
-            r_p((local_id-1)*option%nflowdof + jh2o) - qsrc1 *option%flow_dt
+            r_p((local_id-1)*option%nflowdof + jh2o) - &
+            qsrc1*option%flow_dt*volume_p(local_id)
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
           r_p((local_id-1)*option%nflowdof + jh2o) = &
-            r_p((local_id-1)*option%nflowdof + jh2o) - qsrc1 *option%flow_dt
+            r_p((local_id-1)*option%nflowdof + jh2o) - &
+            qsrc1 *option%flow_dt*volume_p(local_id)
         case default
           write(string,*),source_sink%flow_condition%rate%itype
           option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
@@ -3431,15 +3434,16 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           option%io_buffer='TH mode source_sink%flow_condition%temperature%itype = ' // &
           trim(adjustl(string)) // ', not implemented.'
       end select
-      
+
+      ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-              qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt
+              qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
       else
         ! extraction
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-              qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
-      endif  
+              qsrc1*aux_vars(ghosted_id)%h*option%flow_dt*volume_p(local_id)
+      endif
 
     enddo
     source_sink => source_sink%next
@@ -3923,7 +3927,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
       enthalpy_flag = PETSC_TRUE
     else
       enthalpy_flag = PETSC_FALSE

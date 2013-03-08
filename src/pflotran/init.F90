@@ -56,6 +56,7 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
+  use Richards_MFD_module
   use TH_module
   use THC_module
   use THMC_module
@@ -220,10 +221,6 @@ subroutine Init(simulation)
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
-
-#if defined(PARALLELIO_LIB)
-  call Create_IOGroups(option)
-#endif    
 
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
@@ -487,6 +484,11 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
+      case(G_MODE)
+        call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetPreCheck(linesearch, &
+                                       GeneralCheckUpdatePre, &
+                                       realization,ierr)
       case(TH_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
@@ -514,6 +516,11 @@ subroutine Init(simulation)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
+                                          realization,ierr)
+        case(G_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          GeneralCheckUpdatePost, &
                                           realization,ierr)
         case(TH_MODE)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
@@ -840,7 +847,7 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
       case(G_MODE)
-        call GeneralUpdateAuxVars(realization)
+        call GeneralUpdateAuxVars(realization,PETSC_TRUE)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then
@@ -1218,6 +1225,28 @@ subroutine InitReadRequiredCardsFromInput(realization)
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
   endif
+
+!.........................................................................
+#if defined(SCORPIO)
+  string = "HDF5_WRITE_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputReadInt(input,option,option%hdf5_write_group_size)
+    call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+    call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
+  endif
+
+  string = "HDF5_READ_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then  
+    call InputReadInt(input,option,option%hdf5_read_group_size)
+    call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+  endif
+ rewind(input%fid)
+
+  call Create_IOGroups(option)
+
+#endif
 
 !.........................................................................
 
@@ -3504,7 +3533,7 @@ subroutine Create_IOGroups(option)
   use Option_module
   use Logging_module
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   use hdf5
 #endif
 
@@ -3513,7 +3542,7 @@ subroutine Create_IOGroups(option)
   type(option_type) :: option
   PetscErrorCode :: ierr
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
   PetscMPIInt :: numiogroups
 
@@ -3531,6 +3560,7 @@ subroutine Create_IOGroups(option)
              option%hdf5_read_group_size
     !call printErrMsg(option)
     call printMsg(option)
+    ! default is to let one process read and broadcast to everyone
     option%hdf5_read_group_size = option%mycommsize
   endif         
  
@@ -3543,24 +3573,13 @@ subroutine Create_IOGroups(option)
              option%hdf5_write_group_size
     !call printErrMsg(option)
     call printMsg(option)
-    option%hdf5_write_group_size = option%mycommsize
+    ! default is to let everyone write separately 
+    option%hdf5_write_group_size = 1
   endif                    
-
-  if ( mod(option%mycommsize , option%hdf5_read_group_size) /= 0) then
-    write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
-              & of HDF_READ_GROUP_SIZE = ", i6)')  option%hdf5_read_group_size
-    call printErrMsg(option)      
-  endif         
-
-  if ( mod(option%mycommsize , option%hdf5_write_group_size) /= 0) then
-    write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
-              & of HDF_WRITE_GROUP_SIZE = ", i6)')  option%hdf5_write_group_size
-    call printErrMsg(option)      
-  endif         
 
   ! create read IO groups
   numiogroups = option%mycommsize/option%hdf5_read_group_size
-  call parallelio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
+  call scorpio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
 
   if ( option%hdf5_read_group_size == option%hdf5_write_group_size ) then
     ! reuse read_group to use for writing too as both groups are same size
@@ -3568,7 +3587,7 @@ subroutine Create_IOGroups(option)
   else   
       ! create write IO groups
       numiogroups = option%mycommsize/option%hdf5_write_group_size
-      call parallelio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
+      call scorpio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
   end if
 
     write(option%io_buffer, '(" Read group id :  ", i6)') option%ioread_group_id
@@ -3577,7 +3596,7 @@ subroutine Create_IOGroups(option)
     call printMsg(option)      
   call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #endif
-! PARALLELIO_LIB
+! SCORPIO
  
 end subroutine Create_IOGroups
 

@@ -47,6 +47,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
 
+  use Global_Aux_module
   use General_Aux_module
   
   implicit none
@@ -61,7 +62,6 @@ subroutine CondControlAssignFlowInitCond(realization)
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:), xx_faces_p(:)
   PetscErrorCode :: ierr
   
-  PetscReal :: temperature, p_sat
   character(len=MAXSTRINGLENGTH) :: string
   
   type(option_type), pointer :: option
@@ -74,18 +74,26 @@ subroutine CondControlAssignFlowInitCond(realization)
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
   type(dataset_type), pointer :: dataset
+  type(global_auxvar_type) :: global_aux
+  type(general_auxvar_type) :: general_aux
   PetscBool :: use_dataset
   PetscBool :: dataset_flag(realization%option%nflowdof)
   PetscInt :: num_connections
   PetscInt, pointer :: conn_id_ptr(:)
   PetscInt :: ghosted_offset
+  PetscReal :: x(realization%option%nflowdof)
+  PetscReal :: temperature, p_sat
 
   option => realization%option
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
 
-
+  if (option%iflowmode == G_MODE) then
+    call GlobalAuxVarInit(global_aux,option)
+    call GeneralAuxVarInit(general_aux,option)
+  endif
+  
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
@@ -182,32 +190,34 @@ subroutine CondControlAssignFlowInitCond(realization)
                   iphase_loc_p(ghosted_id) = 0
                   cycle
                 endif
+                ! decrement ibegin to give a local offset of 0
+                ibegin = ibegin - 1
                 select case(initial_condition%flow_condition%iphase)
                   case(TWO_PHASE_STATE)
-                    xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
                       general%gas_pressure%flow_dataset%time_series%cur_value(1)
-                    xx_p(ibegin+GENERAL_GAS_SATURATION_DOF-1) = &
+                    xx_p(ibegin+GENERAL_GAS_SATURATION_DOF) = &
                       general%gas_saturation%flow_dataset%time_series%cur_value(1)
                     temperature = general%temperature%flow_dataset%time_series%cur_value(1)
                     call psat(temperature,p_sat,ierr)
                     ! p_a = p_g - p_s(T)
-                    xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
                       general%gas_pressure%flow_dataset%time_series%cur_value(1) - &
                       p_sat
                   case(LIQUID_STATE)
-                    xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF) = &
                       general%liquid_pressure%flow_dataset%time_series%cur_value(1)
-                    xx_p(ibegin+GENERAL_MOLE_FRACTION_DOF-1) = &
+                    xx_p(ibegin+GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
                       general%mole_fraction%flow_dataset%time_series%cur_value(1)
-                    xx_p(ibegin+GENERAL_TEMPERATURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
                       general%temperature%flow_dataset%time_series%cur_value(1)
                   case(GAS_STATE)
-                    xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
                       general%gas_pressure%flow_dataset%time_series%cur_value(1)
-                    xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
                       general%gas_pressure%flow_dataset%time_series%cur_value(1) * &
                       general%mole_fraction%flow_dataset%time_series%cur_value(1)
-                    xx_p(ibegin+GENERAL_TEMPERATURE_DOF-1) = &
+                    xx_p(ibegin+GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
                       general%temperature%flow_dataset%time_series%cur_value(1)
                 end select
                 iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
@@ -226,10 +236,10 @@ subroutine CondControlAssignFlowInitCond(realization)
                   cycle
                 endif
                 xx_p(ibegin:iend) = &
-                      initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-                      iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+                  initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+                iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                  int(iphase_loc_p(ghosted_id))
+                  initial_condition%flow_condition%iphase
               enddo
             endif
             initial_condition => initial_condition%next
@@ -381,6 +391,11 @@ subroutine CondControlAssignFlowInitCond(realization)
     enddo
     cur_level => cur_level%next
   enddo
+  
+  if (option%iflowmode == G_MODE) then
+    call GlobalAuxVarStrip(global_aux)
+    call GeneralAuxVarStrip(general_aux)
+  endif  
    
   ! update dependent vectors
   call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  

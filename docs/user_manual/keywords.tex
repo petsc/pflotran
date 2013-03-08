@@ -1805,7 +1805,7 @@ LINEAR_SOLVER TRANSPORT
 \item[TORTUOSITY] \ {\tt <float>} \ [---]
 \item[PERMEABILITY] ~
 \begin{deflist}{000}
-\item[ISOTROPIC] \ Toggles on isotropy
+\item[ISOTROPIC] \ Toggles on isotropy [Default]
 \item[ANISOTROPIC] \ Toggles on anisotropy
 \item[VERTICAL\_ANISOTROPY\_RATIO] \ {\tt <float>}
 \item[PERM\_X] \ {\tt <float>} \ Diagonal permeability $k_{xx}$ [m$^2$]
@@ -1891,6 +1891,8 @@ END
 {\scriptsize\tt mpirun -np 10000 ./pflotran -stochastic -num\_realizations 1000 -num\_groups 100}
 
 \begin{verbatim}
+PFLOTRAN input file:
+
 :=================== material properties ===================
 MATERIAL_PROPERTY rock
 ID 1
@@ -1902,6 +1904,7 @@ THERMAL_CONDUCTIVITY_DRY 2.5
 THERMAL_CONDUCTIVITY_WET 2.5 
 SATURATION_FUNCTION sf2
 PERMEABILITY
+ANISOTROPIC ! default is ISOTROPIC
 : PERM_X 100.d-12
 : PERM_Y 100.d-12
 : PERM_Z 100.d-12
@@ -1915,6 +1918,21 @@ DATASET Permeability
 /
 
 \end{verbatim}
+\noindent
+Python script fragment to generate permeability field:
+\begin{Verbatim}
+dataset_name = 'PermeabilityX'
+h5dset = h5file.create_dataset(dataset_name, data=rarray1)
+print 'done with ', dataset_name
+
+dataset_name = 'PermeabilityY'
+h5dset = h5file.create_dataset(dataset_name, data=rarray2)
+print 'done with ', dataset_name
+
+dataset_name = 'PermeabilityZ'
+h5dset = h5file.create_dataset(dataset_name, data=rarray3)
+print 'done with ', dataset_name
+\end{Verbatim}
 \end{mdframed}
 
 \hyperlink{target_key}{\return}

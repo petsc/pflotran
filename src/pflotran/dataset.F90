@@ -82,9 +82,9 @@ subroutine DatasetLoad(dataset,option)
   endif
 #else
 
-#ifdef PARALLELIO_LIB
+#ifdef SCORPIO
       option%io_buffer='In DataLoad: HDF5ReadDataset() not supported with ' // &
-        ' PARALLELIO_LIB'
+        ' SCORPIO'
 #else
     if(.not.associated(dataset%dataset_map)) then
       call HDF5ReadDataset(dataset,option)
@@ -163,13 +163,9 @@ function DatasetIsCellIndexed(dataset,option)
   
 #if defined(PETSC_HAVE_HDF5)
 
-#ifdef PARALLELIO_LIB
-  option%io_buffer='HDF5GroupExists() not supported with PARALLELIO_LIB'
-  call printErrMsg(option)
-#else
   DatasetIsCellIndexed = &
     .not.HDF5GroupExists(dataset%filename,dataset%h5_dataset_name,option)
-#endif
+
 #endif
  
 end function DatasetIsCellIndexed

@@ -3186,7 +3186,8 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
       
       if (enthalpy_flag) then
         r_p(local_id*(option%nflowdof-option%nmechdof)) = &
-                         r_p(local_id*(option%nflowdof-option%nmechdof)) - hsrc1 * option%flow_dt   
+                         r_p(local_id*(option%nflowdof-option%nmechdof)) - &
+                         hsrc1*option%flow_dt*volume_p(local_id)   
       endif         
 
 !      if (qsrc1 > 0.d0) then ! injection

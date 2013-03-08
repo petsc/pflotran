@@ -149,7 +149,58 @@ module Grid_module
             GridComputeMinv, &
             GridSaveBoundaryCellInfo
   
+!geh  public :: VecGetArrayReadF90, VecRestoreArrayReadF90
+  
 contains
+
+#if 0
+! ************************************************************************** !
+!
+! VecGetArrayReadF90: Redirects VecGetArrayReadF90 to VecGetArrayF90 for
+!                     older petsc-dev that lacks stubs for the read version
+! author: Glenn Hammond
+! date: 03/04/13
+!
+! ************************************************************************** !
+subroutine VecGetArrayReadF90(vec, f90ptr, ierr)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  PetscErrorCode :: ierr
+
+  call VecGetArrayF90(vec, f90ptr, ierr)
+
+end subroutine VecGetArrayReadF90
+      
+! ************************************************************************** !
+!
+! VecRestoreArrayReadF90: Redirects VecRestoreArrayReadF90 to VecGetArrayF90 
+!                         older petsc-dev that lacks stubs for the read 
+!                         for version
+! author: Glenn Hammond
+! date: 03/04/13
+!
+! ************************************************************************** !
+subroutine VecRestoreArrayReadF90(vec, f90ptr, ierr)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  PetscErrorCode :: ierr
+
+  call VecRestoreArrayF90(vec, f90ptr, ierr)
+  
+end subroutine VecRestoreArrayReadF90
+#endif
 
 ! ************************************************************************** !
 !

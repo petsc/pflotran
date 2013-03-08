@@ -33,7 +33,7 @@ module Option_module
     
     PetscInt :: reactive_transport_coupling
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
     PetscMPIInt :: ioread_group_id, iowrite_group_id
 #endif
 

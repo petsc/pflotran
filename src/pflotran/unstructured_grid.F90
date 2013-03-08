@@ -13,8 +13,8 @@ module Unstructured_Grid_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
-#if defined(PARALLELIO_LIB)
-  include "piof.h"
+#if defined(SCORPIO)
+  include "scorpiof.h"
 #endif
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -29,7 +29,7 @@ module Unstructured_Grid_module
 #if defined(PETSC_HAVE_HDF5)
             UGridReadHDF5, &
 #endif
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
             UGridReadHDF5PIOLib, &
 #endif
 #ifdef SURFACE_FLOW
@@ -1124,7 +1124,7 @@ end subroutine UGridReadHDF5
 ! date: 05/13/11
 !
 ! ************************************************************************** !
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
                                           option)
@@ -1169,7 +1169,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   ! Read Domain/Cells
   call HDF5ReadDatasetInteger2D(filename, &
                                 cell_dataset_name, &
-                                NONUNIFORM_CONTIGUOUS_READ, &
+                                SCORPIO_NONUNIFORM_CONTIGUOUS_READ, &
                                 option, &
                                 int_buffer, &
                                 dims, &
@@ -1192,7 +1192,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   ! Read Vertices
   call HDF5ReadDatasetReal2D(filename, &
                              vert_dataset_name, &
-                             NONUNIFORM_CONTIGUOUS_READ, &
+                             SCORPIO_NONUNIFORM_CONTIGUOUS_READ, &
                              option, &
                              double_buffer, &
                              dims, &
@@ -1211,6 +1211,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   enddo
 
   unstructured_grid%max_nvert_per_cell = max_nvert_per_cell
+  unstructured_grid%nlmax = num_cells_local
 
 end subroutine UGridReadHDF5PIOLib
 

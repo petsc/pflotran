@@ -20,8 +20,8 @@ module Output_module
 #include "finclude/petscdm.h90"
 #include "finclude/petsclog.h"
 
-#if defined(PARALLELIO_LIB_WRITE)
-  include "piof.h"
+#if defined(SCORPIO_WRITE)
+  include "scorpiof.h"
 #endif
 
   PetscInt, parameter :: TECPLOT_INTEGER = 0
@@ -122,7 +122,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       endif      
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
-#ifdef PARALLELIO_LIB_WRITE
+#ifdef SCORPIO_WRITE
       if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in & 
                                &writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') &
                                option%hdf5_write_group_size

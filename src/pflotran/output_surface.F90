@@ -18,8 +18,8 @@ module Output_Surface_module
 #include "finclude/petscdm.h90"
 #include "finclude/petsclog.h"
 
-#if defined(PARALLELIO_LIB_WRITE)
-  include "piof.h"
+#if defined(SCORPIO_WRITE)
+  include "scorpiof.h"
 #endif
 
   ! flags signifying the first time a routine is called during a given
@@ -716,7 +716,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
   class(surface_realization_type) :: surf_realization
   class(realization_type) :: realization
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: data_type
   integer:: grp_id
@@ -795,8 +795,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
   subsurf_grid => realization%patch%grid
   surf_grid    => surf_realization%patch%grid
 
-#ifdef PARALLELIO_LIB_WRITE
-   option%io_buffer='OutputHDF5UGridXDMF not supported with PARALLELIO_LIB_WRITE'
+#ifdef SCORPIO_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with SCORPIO_WRITE'
    call printErrMsg(option)
 #endif
 
@@ -938,7 +938,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   class(realization_type) :: realization
   type(option_type), pointer :: option
 
-#if defined(PARALLELIO_LIB_WRITE)
+#if defined(SCORPIO_WRITE)
   integer:: file_id
   integer:: data_type
   integer:: grp_id
@@ -1013,9 +1013,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
   call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
 
-#if defined(PARALLELIO_LIB_WRITE)
-  write(*,*),'PARALLELIO_LIB_WRITE'
-  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
   call printErrMsg(option)
 #endif
 

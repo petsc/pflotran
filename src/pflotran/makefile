@@ -1,14 +1,11 @@
 # $Id: makefile,v 1.3 2004/07/31 01:16:44 lichtner Exp $
 
-objdir = ./${PETSC_ARCH}/obj
-srcdir = ./
 pflotran_src = ./
 common_src   = ./
-bindir = ./${PETSC_ARCH}/bin
 pflotran_test_dir = ../../regression_tests
 
 
-MYFLAGS = -I${objdir} 
+MYFLAGS = -I.
 
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
@@ -141,11 +138,13 @@ ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif
 
-ifdef have_parallelio_lib
-  LIBS += -L${PARALLELIO_LIB} -lparallelio
-  MYFLAGS += -DPARALLELIO_LIB 
-  MYFLAGS += -DPARALLELIO_LIB_WRITE 
-  MYFLAGS += -I${PARALLELIO_LIB}
+# Set this accordingly on your platform
+# SCORPIO_DIR=${HOME}/soft/scorpio
+ifdef scorpio
+  LIBS += -L${SCORPIO_DIR}/lib -lscorpio
+  MYFLAGS += -DSCORPIO
+  MYFLAGS += -DSCORPIO_WRITE 
+  MYFLAGS += -I${SCORPIO_DIR}/include
 endif
 
 ifdef tau
@@ -194,6 +193,9 @@ mode_obj = \
 	${common_src}mphase.o \
 	${common_src}reactive_transport.o \
 	${common_src}richards.o \
+	${common_src}richards_common.o \
+	${common_src}richards_lsm.o \
+	${common_src}richards_mfd.o \
 	${common_src}th.o \
 	${common_src}thc.o \
 	${common_src}thmc.o 
@@ -420,8 +422,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          uniform_velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
-         output.o output_surface.o reaction_aux.o surface_init.o surface_th.o \
-         surface_global.o 
+         output.o output_surface.o reaction_aux.o richards_mfd.o \
+         surface_init.o surface_th.o surface_global.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -535,9 +537,17 @@ region.o : input.o utility.o logging.o string.o geometry.o option.o \
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
                utility.o grid.o output.o output_aux.o output_common.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o logging.o output_aux.o variables.o
+             matrix_buffer.o logging.o output_aux.o variables.o richards_lsm.o \
+             richards_mfd.o richards_common.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
+richards_common.o : richards_aux.o global_aux.o saturation_function.o option.o \
+                    water_eos.o
+richards_lsm.o : richards_aux.o global_aux.o realization.o patch.o option.o \
+                 field.o grid.o coupler.o connection.o material.o logging.o \
+                 saturation_function.o richards_common.o
+richards_mfd.o : richards_aux.o realization.o saturation_function.o \
+                 matrix_buffer.o logging.o mfd.o mfd_aux.o richards_common.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\

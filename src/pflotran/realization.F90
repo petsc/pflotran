@@ -341,7 +341,7 @@ subroutine RealizationCreateDiscretization(realization)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
-      call GridMapIndices(grid, discretization%dm_1dof%sgdm, &
+      call GridMapIndices(grid, discretization%dm_1dof%dm, &
                           discretization%stencil_type,&
                           discretization%lsm_flux_method, &
                           option)
@@ -349,7 +349,7 @@ subroutine RealizationCreateDiscretization(realization)
         call StructGridCreateTVDGhosts(grid%structured_grid, &
                                        realization%reaction%naqcomp, &
                                        field%tran_xx, &
-                                       discretization%dm_1dof%sgdm, &
+                                       discretization%dm_1dof%dm, &
                                        field%tvd_ghosts, &
                                        discretization%tvd_ghost_scatter, &
                                        option)
@@ -440,7 +440,7 @@ subroutine RealizationCreateDiscretization(realization)
 
 
      dm_ptr => DiscretizationGetDMPtrFromIndex(discretization, NFLOWDOF)
-     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, dm_ptr%sgdm, NFLOWDOF, option)
+     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, dm_ptr%dm, NFLOWDOF, option)
   
    end if
 #endif
