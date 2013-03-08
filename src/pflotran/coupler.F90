@@ -442,6 +442,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   use Region_module
   use Grid_module
   use MFD_Aux_module
+  use Structured_Grid_module
   
   implicit none
  

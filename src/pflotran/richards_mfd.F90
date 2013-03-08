@@ -1238,13 +1238,14 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   discretization => realization%discretization 
 
 !  call RichardsUpdateAuxVarsPatchMFD(realization)
-  call RichardsUpdateAuxVarsPatch(realization)
+!  call RichardsUpdateAuxVarsPatch(realization)
+  call RichardsUpdateAuxVarsPatchMFDLP(realization)
 
 
   patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
-    call RichardsZeroMassBalDeltaPatch(realization)
+!    call RichardsZeroMassBalDeltaPatch(realization)
   endif
 
 
@@ -1836,7 +1837,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 
   patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
-    call RichardsZeroMassBalDeltaPatch(realization)
+!    call RichardsZeroMassBalDeltaPatch(realization)
   endif
 
 !  write(*,*) "RichardsResidualPatchMFDLP1"
