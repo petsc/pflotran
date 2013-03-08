@@ -311,7 +311,7 @@ subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
   
   grid => realization%patch%grid
   
-  call GridVecGetArrayF90(grid,dC,dC_p,ierr)
+  call VecGetArrayF90(dC,dC_p,ierr)
 
   if (realization%reaction%use_log_formulation) then
     ! C and dC are actually lnC and dlnC
@@ -323,7 +323,7 @@ subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
   
   else
     call VecGetLocalSize(C,n,ierr)
-    call GridVecGetArrayF90(grid,C,C_p,ierr)
+    call VecGetArrayReadF90(C,C_p,ierr)
     
     ! C^p+1 = C^p - dC^p
     ! if dC is positive and abs(dC) larger than C
@@ -349,10 +349,10 @@ subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
       dC_p = dC_p*min_ratio*0.99d0
       changed = PETSC_TRUE
     endif
-    call GridVecRestoreArrayF90(grid,C,C_p,ierr)
+    call VecRestoreArrayReadF90(C,C_p,ierr)
   endif
 
-  call GridVecRestoreArrayF90(grid,dC,dC_p,ierr)
+  call VecRestoreArrayF90(dC,dC_p,ierr)
 
 end subroutine RTCheckUpdatePatch
 
@@ -425,8 +425,8 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
 
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -476,8 +476,8 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
     enddo
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
   
 end subroutine RTComputeMassBalancePatch
 
@@ -810,12 +810,12 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   endif
 
   ! cannot use tran_xx_loc vector here as it has not yet been updated.
-  call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%tran_xx,xx_p, ierr)
+  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
-  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
+  call VecGetArrayF90(field%tran_accum, accum_p, ierr)
   
   vol_frac_prim = 1.d0
   
@@ -878,12 +878,12 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     endif
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%tran_xx,xx_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
-  call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%tran_accum, accum_p, ierr)
 
 end subroutine RTUpdateFixedAccumulationPatch
 
@@ -951,8 +951,8 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
 
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1042,8 +1042,8 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   enddo
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
 
 end subroutine RTUpdateTransportCoefsPatch
 
@@ -1104,9 +1104,9 @@ subroutine RTUpdateRHSCoefsPatch(realization)
   grid => patch%grid
 
   ! Get vectors
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call VecGetArrayF90(field%tran_rhs_coef,rhs_coef_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   iphase = 1
   do local_id = 1, grid%nlmax
@@ -1121,9 +1121,9 @@ subroutine RTUpdateRHSCoefsPatch(realization)
   enddo
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call VecRestoreArrayF90(field%tran_rhs_coef,rhs_coef_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
 end subroutine RTUpdateRHSCoefsPatch
 
@@ -1189,8 +1189,8 @@ subroutine RTCalculateRHS_t0Patch(realization)
   reaction => realization%reaction
 
   ! Get vectors
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
+  call VecGetArrayReadF90(field%tran_rhs_coef,rhs_coef_p,ierr)
+  call VecGetArrayF90(field%tran_rhs,rhs_p,ierr)
 
   iphase = 1
   do local_id = 1, grid%nlmax
@@ -1203,8 +1203,8 @@ subroutine RTCalculateRHS_t0Patch(realization)
   enddo
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%tran_rhs,rhs_p,ierr)
+  call VecRestoreArrayReadF90(field%tran_rhs_coef,rhs_coef_p,ierr)
+  call VecRestoreArrayF90(field%tran_rhs,rhs_p,ierr)
 
 end subroutine RTCalculateRHS_t0Patch
 
@@ -1299,9 +1299,9 @@ subroutine RTCalculateRHS_t1Patch(realization)
   endif
 
   ! Get vectors
-  call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayF90(field%tran_rhs,rhs_p,ierr)
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   ! add in inflowing boundary conditions
   ! Boundary Flux Terms -----------------------------------
@@ -1441,9 +1441,9 @@ subroutine RTCalculateRHS_t1Patch(realization)
 #endif
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_rhs,rhs_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayF90(field%tran_rhs,rhs_p,ierr)
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
 end subroutine RTCalculateRHS_t1Patch
 
@@ -1539,8 +1539,8 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
   grid => patch%grid
 
   ! Get vectors
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1623,8 +1623,8 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
   enddo
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
   call MatAssemblyBegin(T,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(T,MAT_FINAL_ASSEMBLY,ierr)
@@ -1693,8 +1693,8 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   grid => patch%grid
 
   ! Get vectors
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   ! Accumulation term
   iphase = 1
@@ -1758,8 +1758,8 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   ! All CO2 source/sinks are handled on the RHS for now
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
   call MatAssemblyBegin(T,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(T,MAT_FINAL_ASSEMBLY,ierr)
@@ -1953,9 +1953,9 @@ subroutine RTReactPatch(realization)
   call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
 
   ! Get vectors
-  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%tran_xx,tran_xx_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
       
   vol_frac_prim = 1.d0    
   iphase = 1
@@ -2009,9 +2009,9 @@ subroutine RTReactPatch(realization)
 #endif
   
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%tran_xx,tran_xx_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
   if (option%compute_mass_balance_new) then
     call RTZeroMassBalanceDeltaPatch(realization)
@@ -2131,8 +2131,8 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
@@ -2175,8 +2175,8 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
     source_sink => source_sink%next
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
 end subroutine RTComputeBCMassBalanceOSPatch
 
@@ -2235,12 +2235,12 @@ subroutine RTNumericalJacobianTest(realization)
   call MatSetFromOptions(A,ierr)
     
   call RTResidual(PETSC_NULL_OBJECT,field%tran_xx,res,realization,ierr)
-  call GridVecGetArrayF90(grid,res,vec2_p,ierr)
+  call VecGetArrayF90(res,vec2_p,ierr)
   do idof = 1,grid%nlmax*option%ntrandof
     icell = (idof-1)/option%ntrandof+1
     if (patch%imat(grid%nL2G(icell)) <= 0) cycle
-    call veccopy(field%tran_xx,xx_pert,ierr)
-    call vecgetarrayf90(xx_pert,vec_p,ierr)
+    call VecCopy(field%tran_xx,xx_pert,ierr)
+    call VecGetArrayF90(xx_pert,vec_p,ierr)
     perturbation = vec_p(idof)*perturbation_tolerance
     vec_p(idof) = vec_p(idof)+perturbation
     call vecrestorearrayf90(xx_pert,vec_p,ierr)
@@ -2252,9 +2252,9 @@ subroutine RTNumericalJacobianTest(realization)
         call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
       endif
     enddo
-    call GridVecRestoreArrayF90(grid,res_pert,vec_p,ierr)
+    call VecRestoreArrayF90(res_pert,vec_p,ierr)
   enddo
-  call GridVecRestoreArrayF90(grid,res,vec2_p,ierr)
+  call VecRestoreArrayF90(res,vec2_p,ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2312,11 +2312,11 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! Communication -----------------------------------------
   if (realization%reaction%use_log_formulation) then
     ! have to convert the log concentration to non-log form
-    call GridVecGetArrayF90(patch%grid,field%tran_xx,xx_p,ierr)
-    call GridVecGetArrayF90(patch%grid,xx,log_xx_p,ierr)
+    call VecGetArrayF90(field%tran_xx,xx_p,ierr)
+    call VecGetArrayReadF90(xx,log_xx_p,ierr)
     xx_p(:) = exp(log_xx_p(:))
-    call GridVecRestoreArrayF90(patch%grid,field%tran_xx,xx_p,ierr)
-    call GridVecRestoreArrayF90(patch%grid,xx,log_xx_p,ierr)  
+    call VecRestoreArrayF90(field%tran_xx,xx_p,ierr)
+    call VecRestoreArrayReadF90(xx,log_xx_p,ierr)  
     call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)
   else
     call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
@@ -2455,10 +2455,10 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   endif
   
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
+  call VecGetArrayF90(r, r_p, ierr)
  
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
 
   r_p = 0.d0
   vol_frac_prim = 1.d0
@@ -2647,10 +2647,10 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   enddo
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr)
  
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
 
 end subroutine RTResidualPatch1
 
@@ -2743,11 +2743,11 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   endif
   
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
-  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
+  call VecGetArrayF90(r, r_p, ierr)
+  call VecGetArrayReadF90(field%tran_accum, accum_p, ierr)
  
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayReadF90(field%volume, volume_p, ierr)
   
   vol_frac_prim = 1.d0
 
@@ -2970,11 +2970,11 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   endif
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr)
+  call VecRestoreArrayReadF90(field%tran_accum, accum_p, ierr)
  
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
 
 end subroutine RTResidualPatch2
 
@@ -3162,8 +3162,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
 
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
   
   vol_frac_prim = 1.d0
 
@@ -3322,8 +3322,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call PetscLogEventEnd(logging%event_rt_jacobian_fluxbc,ierr)  
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
 
 end subroutine RTJacobianPatch1
 
@@ -3358,7 +3358,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: r_p(:), accum_p(:)
+  PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), work_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istartaq, iendaq
@@ -3412,10 +3412,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   vol_frac_prim = 1.d0
   
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
- 
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayReadF90(field%volume, volume_p, ierr)
     
   if (.not.option%steady_state) then
   call PetscLogEventBegin(logging%event_rt_jacobian_accum,ierr)  
@@ -3552,7 +3550,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
  
   if (reaction%use_log_formulation) then
     call PetscLogEventBegin(logging%event_rt_jacobian_zero_calc,ierr)  
-    call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
+    call VecGetArrayF90(field%tran_work_loc, work_loc_p, ierr)
     do ghosted_id = 1, grid%ngmax  ! For each local node do...
       offset = (ghosted_id-1)*reaction%ncomp
       istartaq = offset + reaction%offset_aqueous + 1
@@ -3573,15 +3571,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         endif
       endif
     enddo
-    call GridVecRestoreArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
+    call VecRestoreArrayF90(field%tran_work_loc, work_loc_p, ierr)
     call PetscLogEventEnd(logging%event_rt_jacobian_zero_calc,ierr)    
   endif
 
-  ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
- 
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -3682,8 +3677,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   field => realization%field
   reaction => realization%reaction
   
-  call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayReadF90(field%tran_xx_loc,xx_loc_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   if (update_cells) then
 
@@ -3946,8 +3941,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
   patch%aux%RT%aux_vars_up_to_date = update_cells .and. update_bcs
   
-  call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayReadF90(field%tran_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
   icall = icall+ 1
 
 end subroutine RTUpdateAuxVarsPatch
@@ -4472,24 +4467,24 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
       do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
         do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
           if (checkpoint) then
-            call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+            call VecGetArrayF90(field%work,vec_p,ierr)
             do local_id = 1, grid%nlmax
               vec_p(local_id) = &
                 rt_auxvars(grid%nL2G(local_id))% &
                   kinmr_total_sorb(icomp,irate,irxn)
             enddo
-            call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+            call VecRestoreArrayF90(field%work,vec_p,ierr)
             call VecView(field%work,viewer,ierr)
           else
             call VecLoad(field%work,viewer,ierr)
             if (.not.option%no_restart_kinetic_sorption) then
-              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+              call VecGetArrayF90(field%work,vec_p,ierr)
               do local_id = 1, grid%nlmax
                 rt_auxvars(grid%nL2G(local_id))% &
                   kinmr_total_sorb(icomp,irate,irxn) = &
                     vec_p(local_id)
               enddo
-              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+              call VecRestoreArrayF90(field%work,vec_p,ierr)
             endif
           endif
         enddo
@@ -4616,7 +4611,7 @@ subroutine RTExplicitAdvectionPatch(realization)
   ! load total component concentrations into tran_xx_p.  it will be used
   ! as local storage here and eventually be overwritten upon leaving 
   ! this routine
-  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call VecGetArrayF90(field%tran_xx,tran_xx_p,ierr)
   tran_xx_p = 0.d0
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -4628,14 +4623,14 @@ subroutine RTExplicitAdvectionPatch(realization)
         rt_aux_vars(ghosted_id)%total(:,iphase)
     enddo
   enddo
-  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call VecRestoreArrayF90(field%tran_xx,tran_xx_p,ierr)
   call VecScatterBegin(discretization%tvd_ghost_scatter,field%tran_xx, &
                        field%tvd_ghosts,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(discretization%tvd_ghost_scatter,field%tran_xx, &
                      field%tvd_ghosts,INSERT_VALUES,SCATTER_FORWARD,ierr)
 
 ! Update Boundary Concentrations------------------------------
-  call GridVecGetArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
+  call VecGetArrayF90(field%tvd_ghosts,tvd_ghosts_p,ierr)
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -4654,7 +4649,7 @@ subroutine RTExplicitAdvectionPatch(realization)
     endif
     boundary_condition => boundary_condition%next
   enddo  
-  call GridVecRestoreArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
+  call VecRestoreArrayF90(field%tvd_ghosts,tvd_ghosts_p,ierr)
 #if TVD_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'tvd_ghosts.out', &
                             viewer,ierr)
@@ -4686,7 +4681,7 @@ subroutine RTExplicitAdvectionPatch(realization)
   endif
   
 ! Interior Flux Terms -----------------------------------
-  call GridVecGetArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
+  call VecGetArrayF90(field%tvd_ghosts,tvd_ghosts_p,ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -4742,7 +4737,7 @@ subroutine RTExplicitAdvectionPatch(realization)
     enddo ! iconn
     cur_connection_set => cur_connection_set%next
   enddo
-  call GridVecRestoreArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
+  call VecRestoreArrayF90(field%tvd_ghosts,tvd_ghosts_p,ierr)
     
 ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
@@ -4835,10 +4830,10 @@ subroutine RTExplicitAdvectionPatch(realization)
     source_sink => source_sink%next
   enddo
   
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
+  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayReadF90(field%volume,volume_p,ierr)
+  call VecGetArrayF90(field%tran_xx,tran_xx_p,ierr)
+  call VecGetArrayReadF90(field%tran_rhs_coef,rhs_coef_p,ierr)
 
   
   ! update concentration
@@ -4870,10 +4865,10 @@ subroutine RTExplicitAdvectionPatch(realization)
   endif
   
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
+  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
+  call VecRestoreArrayF90(field%tran_xx,tran_xx_p,ierr)
+  call VecRestoreArrayReadF90(field%tran_rhs_coef,rhs_coef_p,ierr)
   
 end subroutine RTExplicitAdvectionPatch
 

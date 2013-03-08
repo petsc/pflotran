@@ -33,7 +33,7 @@ module Option_module
     
     PetscInt :: reactive_transport_coupling
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
     PetscMPIInt :: ioread_group_id, iowrite_group_id
 #endif
 
@@ -63,6 +63,8 @@ module Option_module
     PetscReal :: surf_flow_time, surf_flow_dt
     PetscReal :: surf_subsurf_coupling_time
     PetscReal :: surf_subsurf_coupling_flow_dt
+    PetscBool :: surf_flow_explicit
+    character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -359,6 +361,8 @@ subroutine OptionInitRealization(option)
    option%surf_flow_time =0.d0
    option%surf_subsurf_coupling_time = 0.d0
    option%surf_subsurf_coupling_flow_dt = 0.d0
+   option%surf_flow_explicit = PETSC_TRUE
+   option%surf_initialize_flow_filename =""
 #endif
 
   option%tranmode = ""

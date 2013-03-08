@@ -28,7 +28,7 @@ module HDF5_Aux_module
 #endif
 
   public :: HDF5ReadNDimRealArray, &
-#ifdef PARALLELIO_LIB
+#ifdef SCORPIO
             HDF5ReadDatasetInteger2D, &
             HDF5ReadDatasetReal2D, &
             HDF5GroupExists, &
@@ -37,7 +37,7 @@ module HDF5_Aux_module
             HDF5ReadDatasetMap, &
             HDF5GroupExists, &
 #endif
-! PARALLELIO_LIB
+! SCORPIO
             HDF5MakeStringCompatible
 
 contains
@@ -622,7 +622,7 @@ subroutine HDF5ReadDatasetMap(dataset,option)
 
 end subroutine HDF5ReadDatasetMap
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 ! ************************************************************************** !
 !
@@ -639,8 +639,8 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   implicit none
   
-#if defined(PARALLELIO_LIB)
-  include "piof.h"  
+#if defined(SCORPIO)
+  include "scorpiof.h"  
 #endif
 
   ! in
@@ -663,10 +663,10 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
 
   ! Get dataset dimnesions
-  call parallelIO_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call scorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
   if (ndims > 2) then
     option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
     ' is greater than to 2.'
@@ -674,7 +674,7 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   endif
   
   ! Get size of each dimension
-  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
   
   data_dims(1) = dataset_dims(1)/option%mycommsize
   data_dims(2) = dataset_dims(2)
@@ -685,11 +685,11 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   
   allocate(data(data_dims(2),dataset_dims(1)))
   
-  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
 
   ! Read the dataset collectively
-  call parallelIO_read_dataset( data, PIO_INTEGER, ndims, dataset_dims, data_dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+  call scorpio_read_dataset( data, SCORPIO_INTEGER, ndims, dataset_dims, data_dims, & 
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
   
   data_dims(1) = data_dims(1) + data_dims(2)
   data_dims(2) = data_dims(1) - data_dims(2)
@@ -700,13 +700,13 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   dataset_dims(1) = dataset_dims(1) - dataset_dims(2)
 
   ! Close file
-  call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
+  call scorpio_close_file( file_id, option%ioread_group_id, ierr)  
 
 end subroutine HDF5ReadDatasetInteger2D
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
 ! ************************************************************************** !
 !
@@ -724,8 +724,8 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   implicit none
   
-#if defined(PARALLELIO_LIB)
-  include "piof.h"  
+#if defined(SCORPIO)
+  include "scorpiof.h"  
 #endif
 
   ! in
@@ -748,10 +748,10 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
 
   ! Get dataset dimnesions
-  call parallelIO_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call scorpio_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
   if (ndims > 2) then
     option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
     ' is greater than to 2.'
@@ -759,7 +759,7 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   endif
   
   ! Get size of each dimension
-  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
   
   data_dims(1) = dataset_dims(1)/option%mycommsize
   data_dims(2) = dataset_dims(2)
@@ -770,11 +770,11 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   
   allocate(data(data_dims(2),dataset_dims(1)))
   
-  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  call scorpio_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
 
   ! Read the dataset collectively
-  call parallelIO_read_dataset( data, PIO_DOUBLE, ndims, dataset_dims, data_dims, & 
-            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+  call scorpio_read_dataset( data, SCORPIO_DOUBLE, ndims, dataset_dims, data_dims, & 
+            file_id, dataset_name, option%ioread_group_id, SCORPIO_NONUNIFORM_CONTIGUOUS_READ, ierr)
   
   data_dims(1) = data_dims(1) + data_dims(2)
   data_dims(2) = data_dims(1) - data_dims(2)
@@ -785,11 +785,11 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   dataset_dims(1) = dataset_dims(1) - dataset_dims(2)
 
   ! Close file
-  call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
+  call scorpio_close_file( file_id, option%ioread_group_id, ierr)  
 
 end subroutine HDF5ReadDatasetReal2D
 #endif
-! PARALLELIO_LIB
+! SCORPIO
 
 ! ************************************************************************** !
 !
@@ -805,8 +805,8 @@ function HDF5GroupExists(filename,group_name,option)
   
   implicit none
 
-#if defined(PARALLELIO_LIB)
-  include "piof.h"  
+#if defined(SCORPIO)
+  include "scorpiof.h"  
 #endif
   
   character(len=MAXSTRINGLENGTH) :: filename
@@ -821,12 +821,13 @@ function HDF5GroupExists(filename,group_name,option)
   
   PetscBool :: HDF5GroupExists
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
 
   ! Open file collectively
   filename = trim(filename) // CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
-  call parallelIO_group_exists(file_id, option%ioread_group_id, ierr)
+  group_name = trim(group_name) // CHAR(0)
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, file_id, ierr)
+  call scorpio_group_exists(group_name, file_id, option%ioread_group_id, ierr)
   group_exists = (ierr == 1);
 
   if (group_exists) then
@@ -841,7 +842,7 @@ function HDF5GroupExists(filename,group_name,option)
   endif
   call printMsg(option)
 
-  call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
+  call scorpio_close_file( file_id, option%ioread_group_id, ierr)  
 #else
   ! open the file
   call h5open_f(hdf5_err)
@@ -878,7 +879,7 @@ function HDF5GroupExists(filename,group_name,option)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)  
 #endif 
-!PARALLELIO_LIB
+!SCORPIO
 
 end function HDF5GroupExists
 

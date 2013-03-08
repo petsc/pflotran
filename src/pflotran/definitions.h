@@ -120,8 +120,9 @@ PetscInt, parameter :: EQUILIBRIUM_SS = 12
 PetscInt, parameter :: CONDUCTANCE_BC = 13
 PetscInt, parameter :: UNIT_GRADIENT_BC = 14
 PetscInt, parameter :: SATURATION_BC = 15
-PetscInt, parameter :: DISTRIBUTED_VOLUMETRIC_RATE_SS = 16
-PetscInt, parameter :: DISTRIBUTED_MASS_RATE_SS = 17
+PetscInt, parameter :: HET_VOL_RATE_SS = 16
+PetscInt, parameter :: HET_MASS_RATE_SS = 17
+PetscInt, parameter :: HET_DIRICHLET = 18
 PetscInt, parameter :: WELL_SS = 100
 
 ! source/sink scaling options
@@ -176,11 +177,6 @@ PetscInt, parameter :: EOS_MRK = 2
 ! phase ids
 PetscInt, parameter :: LIQUID_PHASE = 1
 PetscInt, parameter :: GAS_PHASE = 2
-
-! thermodynamic state of fluid ids
-PetscInt, parameter :: LIQUID_STATE = 1
-PetscInt, parameter :: GAS_STATE = 2
-PetscInt, parameter :: TWO_PHASE_STATE = 3
 
 ! approaches to coupling reactive transport
 PetscInt, parameter :: GLOBAL_IMPLICIT = 0
