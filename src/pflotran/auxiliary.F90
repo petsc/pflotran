@@ -13,9 +13,6 @@ module Auxiliary_module
   use General_Aux_module
   use Material_Aux_module
   use Secondary_Continuum_Aux_module
-#ifdef SURFACE_FLOW
-  !use Surface_Flow_Aux_module
-#endif
   
   implicit none
 
@@ -38,9 +35,6 @@ module Auxiliary_module
     type(material_type), pointer :: Material
     type(sc_heat_type), pointer :: SC_heat
     type(sc_rt_type), pointer :: SC_RT
-#ifdef SURFACE_FLOW
-    !type(surface_flow_type),pointer :: SurfaceFlow
-#endif
   end type auxiliary_type
   
   public :: AuxInit, &
