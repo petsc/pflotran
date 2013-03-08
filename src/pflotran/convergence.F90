@@ -266,6 +266,17 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
                               trim(string)
     endif
   else
+  
+    ! This is to check if the secondary continuum residual convergences
+    ! for nonlinear problems
+    if (option%use_mc .and. reason > 0) then
+      if (option%infnorm_res_sec > solver%newton_inf_res_tol_sec) then
+        reason = 0
+      else
+        reason = 13
+      endif
+    endif
+    
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
