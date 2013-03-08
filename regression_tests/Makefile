@@ -49,11 +49,6 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 
 	STANDARD_PARALLEL_CFG = \
 		default/discretization/discretization.cfg
-else
-	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
-	@echo "  Skipping unstructured mesh tests."
-	@echo "********************************************************"
 endif
 
 #
@@ -93,6 +88,13 @@ test : standard standard_parallel
 standard :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		 --suite standard --config-files $(STANDARD_CFG)
+ifeq ($(strip $(PARMETIS_LIB)),)
+	@echo "********************************************************"
+	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  Skipping unstructured mesh tests."
+	@echo "********************************************************"
+endif
+
 
 standard_parallel :
 ifneq ($(strip $(MPIEXEC)),)

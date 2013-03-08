@@ -56,6 +56,7 @@ subroutine Init(simulation)
   use Immis_module
   use Miscible_module
   use Richards_module
+  use Richards_MFD_module
   use TH_module
   use THC_module
   use THMC_module
@@ -480,6 +481,11 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
+      case(G_MODE)
+        call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetPreCheck(linesearch, &
+                                       GeneralCheckUpdatePre, &
+                                       realization,ierr)
       case(TH_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
@@ -507,6 +513,11 @@ subroutine Init(simulation)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
+                                          realization,ierr)
+        case(G_MODE)
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          GeneralCheckUpdatePost, &
                                           realization,ierr)
         case(TH_MODE)
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
@@ -826,7 +837,7 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
       case(G_MODE)
-        call GeneralUpdateAuxVars(realization)
+        call GeneralUpdateAuxVars(realization,PETSC_TRUE)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then

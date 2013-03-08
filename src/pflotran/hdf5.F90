@@ -1747,9 +1747,9 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)
 
- allocate(indices(grid%nlmax))
+  allocate(indices(grid%nlmax))
   ! Read Cell Ids  
-  string = 'Regions' // '/' // trim(region%name) // "/Cell Ids" // CHAR(0)
+  string = 'Regions/' // trim(region%name) // "/Cell Ids" // CHAR(0)
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1

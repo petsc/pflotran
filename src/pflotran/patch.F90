@@ -903,6 +903,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Dataset_Aux_module
   
   use General_Aux_module
+  use Grid_module
 
   implicit none
   
@@ -919,10 +920,12 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat
+  PetscReal :: x(option%nflowdof)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   
   PetscInt :: idof, num_connections,sum_connection
+  PetscInt :: iconn, local_id, ghosted_id
   
 
   if (.not.associated(coupler_list)) return
@@ -991,6 +994,27 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     call printErrMsg(option)
                   endif
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+#if 0                  
+                  do iconn=1,coupler%connection_set%num_connections
+                    local_id = coupler%connection_set%id_dn(iconn)
+                    ghosted_id = patch%grid%nL2G(local_id)
+                    x(1:option%nflowdof) = &
+                      coupler%flow_aux_real_var(1:option%nflowdof,iconn)
+                    patch%aux%Global%aux_vars(ghosted_id)%istate = LIQUID_STATE
+                    call GeneralAuxVarUpdateState(x, &
+                           patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id), &
+                           patch%aux%Global%aux_vars(ghosted_id), &
+                           patch%saturation_function_array( &
+                             patch%sat_func_id(ghosted_id))%ptr, &
+                           0.d0,0.d0,ghosted_id,option)
+                    coupler%flow_aux_real_var(1:option%nflowdof,iconn) = &
+                      x(1:option%nflowdof)
+                    coupler%flow_aux_int_var(ONE_INTEGER,iconn) = &
+                      patch%aux%Global%aux_vars(ghosted_id)%istate  
+                    patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                      patch%aux%Global%aux_vars(ghosted_id)%istate    
+                  enddo
+#endif                  
                 else
                   select case(general%liquid_pressure%itype)
                     case(DIRICHLET_BC)
@@ -1000,13 +1024,13 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   end select
                   select case(general%mole_fraction%itype)
                     case(DIRICHLET_BC)
-                      coupler%flow_aux_real_var(GENERAL_MOLE_FRACTION_DOF,1:num_connections) = &
+                      coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF,1:num_connections) = &
                         general%mole_fraction%flow_dataset%time_series%cur_value(1)
                       dof2 = PETSC_TRUE
                   end select
                   select case(general%temperature%itype)
                     case(DIRICHLET_BC)
-                      coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,1:num_connections) = &
+                      coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_TEMPERATURE_DOF,1:num_connections) = &
                         general%temperature%flow_dataset%time_series%cur_value(1)
                       dof3 = PETSC_TRUE
                   end select
@@ -1027,16 +1051,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 end select                
                 select case(general%temperature%itype)
                   case(DIRICHLET_BC)
-                    coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,1:num_connections) = &
+                    coupler%flow_aux_real_var(GENERAL_GAS_STATE_TEMPERATURE_DOF,1:num_connections) = &
                       general%temperature%flow_dataset%time_series%cur_value(1)
                     dof3 = PETSC_TRUE
                 end select
             end select  
-            if (.not.dof1 .and. .not.dof2 .and. .not.dof3 .and. &
-                general%liquid_pressure%itype /= HYDROSTATIC_BC) then
+            !geh: is this really correct, or should it be .or.
+            if (.not.dof1 .or. .not.dof2 .or. .not.dof3) then
               option%io_buffer = 'Error with general phase boundary condition'
-            else if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
-              call HydrostaticUpdateCoupler(coupler,option,patch%grid)
             endif
             
           case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE) ! updated 10/17/11
@@ -2011,6 +2033,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use Reaction_module
   use Reactive_Transport_Aux_module  
   use Surface_Complexation_Aux_module
+  use General_Aux_module
   use Output_Aux_module
   use Variables_module
   
@@ -2492,14 +2515,11 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              istate = patch%aux%Global%aux_vars(ghosted_id)%istate
-              select case(istate)
-                case(LIQUID_STATE,TWO_PHASE_STATE)
-                  vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase)
-                case(GAS_STATE)
-                  vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
-              end select
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%liquid_phase)
+            enddo
+          case(GAS_PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%gas_phase)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
@@ -2896,6 +2916,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Surface_Complexation_Aux_module
   use Output_Aux_module
   use Variables_module
+  use General_Aux_module  
 
   implicit none
 
@@ -3196,13 +3217,9 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(TEMPERATURE)
             value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%temp
           case(LIQUID_PRESSURE)
-            istate = patch%aux%Global%aux_vars(ghosted_id)%istate
-            select case(istate)
-              case(LIQUID_STATE,TWO_PHASE_STATE)
-                value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase)
-              case(GAS_STATE)
-                value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
-            end select
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase)
+          case(GAS_PRESSURE)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
           case(STATE)
             value = patch%aux%Global%aux_vars(ghosted_id)%istate
           case(LIQUID_SATURATION)
@@ -3424,6 +3441,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   use Option_module
   use Field_module
   use Variables_module
+  use General_Aux_module  
 
   implicit none
 
@@ -4174,14 +4192,11 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              istate = patch%aux%Global%aux_vars(ghosted_id)%istate
-              select case(istate)
-                case(LIQUID_STATE,TWO_PHASE_STATE)
-                  patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase) = vec_ptr(local_id)
-                case(GAS_STATE)
-                  patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase) = vec_ptr(local_id)
-              end select
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%liquid_phase) = vec_ptr(local_id)
+            enddo
+          case(GAS_PRESSURE)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%gas_phase) = vec_ptr(local_id)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
