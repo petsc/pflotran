@@ -635,7 +635,7 @@ subroutine SolverReadNewton(solver,input,option)
 
   input%ierr = 0
   do
-  
+
     call InputReadFlotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
@@ -699,9 +699,14 @@ subroutine SolverReadNewton(solver,input,option)
 
       case('ITOL_SEC','ITOL_RES_SEC','INF_TOL_SEC')
         if (.not.option%use_mc) then
-          option%io_buffer = 'NEWTON ITOL_SEC supported without ' // &
-            'MULTIPLE_CONTINUUM.'
+          option%io_buffer = 'NEWTON ITOL_SEC not supported without ' // &
+            'MULTIPLE_CONTINUUM keyword.'
           call printErrMsg(option)
+        endif
+        if (.not.solver%itype == TRANSPORT_CLASS) then
+          option%io_buffer = 'NEWTON ITOL_SEC supported in ' // &
+            'TRANSPORT only.'
+          call printErrMsg(option)        
         endif         
         call InputReadDouble(input,option,solver%newton_inf_res_tol_sec)
         call InputDefaultMsg(input,option,'newton_inf_res_tol_sec')
