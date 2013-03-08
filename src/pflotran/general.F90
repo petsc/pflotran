@@ -1769,14 +1769,14 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   implicit none
 
   type(option_type) :: option
-  PetscReal :: qsrc(option%nphase)
+  PetscReal :: qsrc(:)
   PetscInt :: flow_src_sink_type
   type(general_auxvar_type) :: gen_aux_var
   PetscReal :: scale
   PetscReal :: res(option%nflowdof)
       
   PetscReal :: fmw_phase(option%nphase)
-  PetscReal :: qsrc_mol
+  PetscReal :: qsrc_mol(option%nphase)
   PetscInt :: icomp
   
 
@@ -1787,22 +1787,68 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   do icomp = 1, option%nflowspec
     select case(flow_src_sink_type)
       case(MASS_RATE_SS)
-        qsrc_mol = qsrc(icomp)/fmw_phase(icomp) ! kg/sec -> kmol/sec
+        qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp) ! kg/sec -> kmol/sec
       case(SCALED_MASS_RATE_SS)
-        qsrc_mol = qsrc(icomp)/fmw_phase(icomp)*scale ! kg/sec -> kmol/sec
+        qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp)*scale ! kg/sec -> kmol/sec
       case(VOLUMETRIC_RATE_SS)  ! assume local density for now
         ! qsrc1 = m^3/sec
-        qsrc_mol = qsrc(icomp)*gen_aux_var%den(icomp) ! den = kmol/m^3
+        qsrc_mol(icomp) = qsrc(icomp)*gen_aux_var%den(icomp) ! den = kmol/m^3
       case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
         ! qsrc1 = m^3/sec
-        qsrc_mol = qsrc(icomp)*gen_aux_var%den(icomp)*scale ! den = kmol/m^3
+        qsrc_mol(icomp) = qsrc(icomp)*gen_aux_var%den(icomp)*scale ! den = kmol/m^3
     end select
-    res(icomp) = qsrc_mol
-    res(option%energy_id) = res(option%energy_id) ! * some sort of heat transfer
+    res(icomp) = qsrc_mol(icomp)
+    if (icomp == TWO_INTEGER) then
+      res(ONE_INTEGER) = res(ONE_INTEGER) + qsrc_mol(icomp)
+    endif
   enddo
-
+  if (size(qsrc) == THREE_INTEGER) then
+    if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
+      res(option%energy_id) = qsrc_mol(ONE_INTEGER) * gen_aux_var%H(ONE_INTEGER)
+    else
+      res(option%energy_id) = qsrc(THREE_INTEGER)
+    endif
+  endif
+  
 end subroutine GeneralSrcSink
   
+! ************************************************************************** !
+!
+! GeneralSrcSinkDerivative: Computes the source/sink terms for the residual
+! author: Glenn Hammond
+! date: 03/09/11
+!
+! ************************************************************************** !
+subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
+                                    gen_aux_vars,scale,Jac)
+
+  use Option_module
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: qsrc(:)
+  PetscInt :: flow_src_sink_type
+  type(general_auxvar_type) :: gen_aux_vars(0:)
+  PetscReal :: scale
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscInt :: idof, irow
+
+  call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                      gen_aux_vars(ZERO_INTEGER),scale,res)            
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+    call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                        gen_aux_vars(idof),scale,res_pert)            
+    do irow = 1, option%nflowdof
+      Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_vars(idof)%pert
+    enddo !irow
+  enddo ! idof
+  
+end subroutine GeneralSrcSinkDerivative
+
 ! ************************************************************************** !
 !
 ! GeneralResidual: Computes the residual equation 
@@ -1948,7 +1994,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
                                              ! do update state
-  call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
+call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
   patch%aux%General%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
     call GeneralZeroMassBalDeltaPatch(realization)
@@ -2212,7 +2258,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
     enddo
 
   endif
-#ifdef GENERAL
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   do 
@@ -2234,17 +2280,18 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
         scale = 1.d0
       endif
       
-      call GeneralSrcSink(option,source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:), &
-                        source_sink%flow_condition%rate%itype, &
+      call GeneralSrcSink(option,source_sink%flow_condition%general%rate% &
+                                  flow_dataset%time_series%cur_value(:), &
+                        source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                         scale,Res)
 
-      r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+      r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
 
     enddo
     source_sink => source_sink%next
   enddo
-#endif
+
   if (patch%aux%General%inactive_cells_exist) then
     do i=1,patch%aux%General%n_zero_rows
       r_p(patch%aux%General%zero_rows_local(i)) = 0.d0
@@ -2636,6 +2683,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(material_parameter_type), pointer :: material_parameter
   PetscInt :: flow_pc
+  PetscReal :: scale
   PetscViewer :: viewer
 
   patch => realization%patch
@@ -2677,30 +2725,33 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-  ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-
       if (patch%imat(ghosted_id) <= 0) cycle
+
+      if (associated(source_sink%flow_aux_real_var)) then
+        scale = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
+      else
+        scale = 1.d0
+      endif
       
       Jup = 0.d0
-      select case(source_sink%flow_condition%rate%itype)
-        case(MASS_RATE_SS)
-        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-#ifdef GENERAL2
-          Jup(1,1) = -qsrc*gen_aux_vars(ghosted_id)%dden_dp*FMWH2O
-#endif
-      end select
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
+      call GeneralSrcSinkDerivative(option, &
+                        source_sink%flow_condition%general%rate% &
+                                  flow_dataset%time_series%cur_value(:), &
+                        source_sink%flow_condition%general%rate%itype, &
+                        gen_aux_vars(:,ghosted_id), &
+                        scale,Jup)
+
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                    ADD_VALUES,ierr)  
 
     enddo
     source_sink => source_sink%next
@@ -2896,7 +2947,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
     print *, 'X'
     print *, X_p
     print *, 'dX_p'
-    print *, dX_p
+    print *, -1.d0*dX_p
     print *, '-----------------------------------------'  
   enddo
 
@@ -3212,12 +3263,12 @@ subroutine GeneralSetPlotVariables(realization)
                                GAS_SATURATION)
   
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
   
   name = 'Gas Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_DENSITY)
   
@@ -3244,6 +3295,16 @@ subroutine GeneralSetPlotVariables(realization)
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_MOLE_FRACTION, &
                                realization%option%water_id)
+  
+  name = 'Liquid Energy'
+  units = 'MJ/kmol'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_ENERGY)
+  
+  name = 'Gas Energy'
+  units = 'MJ/kmol'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_ENERGY)
   
   name = 'Thermodynamic State'
   units = ''

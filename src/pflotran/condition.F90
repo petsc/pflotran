@@ -58,6 +58,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: gas_saturation
     type(flow_sub_condition_type), pointer :: mole_fraction
     type(flow_sub_condition_type), pointer :: temperature
+    type(flow_sub_condition_type), pointer :: rate
     type(flow_sub_condition_type), pointer :: flux
   end type flow_general_condition_type
     
@@ -225,6 +226,7 @@ function FlowGeneralConditionCreate(option)
   nullify(general_condition%mole_fraction)
   nullify(general_condition%temperature)
   nullify(general_condition%flux)
+  nullify(general_condition%rate)
 
   FlowGeneralConditionCreate => general_condition
 
@@ -294,6 +296,13 @@ function FlowGeneralSubConditionPtr(sub_condition_name,general, &
       else
         sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
         general%flux => sub_condition_ptr
+      endif
+    case('RATE')
+      if (associated(general%rate)) then
+        sub_condition_ptr => general%rate
+      else
+        sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
+        general%rate => sub_condition_ptr
       endif
     case default
       option%io_buffer = 'keyword (' // trim(sub_condition_name) // &
@@ -1570,17 +1579,17 @@ subroutine FlowConditionGeneralRead(condition,input,option)
 
     condition%sub_condition_ptr(GENERAL_FLUX_DOF)%ptr => general%flux
     if (.not.associated(general%mole_fraction)) then
-      option%io_buffer = 'General Phase rate condition must include ' // &
+      option%io_buffer = 'General Phase flux condition must include ' // &
         'mole fraction '
       call printErrMsg(option)
     endif
     if (.not.associated(general%gas_saturation)) then
-      option%io_buffer = 'General Phase rate condition must include ' // &
+      option%io_buffer = 'General Phase flus condition must include ' // &
         'gas or liquid saturation'
       call printErrMsg(option)
     endif
     if (.not.associated(general%temperature)) then
-      option%io_buffer = 'General Phase rate condition must include ' // &
+      option%io_buffer = 'General Phase flux condition must include ' // &
         'temperature'
       call printErrMsg(option)
     endif
@@ -1592,36 +1601,40 @@ subroutine FlowConditionGeneralRead(condition,input,option)
 !geh      nullify(condition%sub_condition_ptr(idof)%ptr)
 !geh    enddo
 
-    ! some sort of dirichlet-based pressure, temperature, etc.
-    if (.not.associated(general%liquid_pressure) .and. &
-        .not.associated(general%gas_pressure)) then
-      option%io_buffer = 'General Phase non-rate condition must include ' // &
-        'a liquid or gas pressure'
-      call printErrMsg(option)
-    endif
-    if (.not.associated(general%mole_fraction) .and. &
-        .not.associated(general%gas_saturation)) then
-      option%io_buffer = 'General Phase non-rate condition must include ' // &
-        'mole fraction or gas/liquid saturation'
-      call printErrMsg(option)
-    endif
-    if (.not.associated(general%temperature)) then
-      option%io_buffer = 'General Phase non-rate condition must include ' // &
-        'temperature'
-      call printErrMsg(option)
+    if (.not.associated(general%rate)) then
+      ! some sort of dirichlet-based pressure, temperature, etc.
+      if (.not.associated(general%liquid_pressure) .and. &
+          .not.associated(general%gas_pressure)) then
+        option%io_buffer = 'General Phase non-rate condition must ' // &
+          'include a liquid or gas pressure'
+        call printErrMsg(option)
+      endif
+      if (.not.associated(general%mole_fraction) .and. &
+          .not.associated(general%gas_saturation)) then
+        option%io_buffer = 'General Phase non-rate condition must ' // &
+          'include mole fraction or gas/liquid saturation'
+        call printErrMsg(option)
+      endif
+      if (.not.associated(general%temperature)) then
+        option%io_buffer = 'General Phase non-rate condition must ' // &
+          'include temperature'
+        call printErrMsg(option)
+      endif
     endif
     if (associated(general%gas_pressure) .and. &
         associated(general%gas_saturation)) then
       ! two phase condition
       condition%iphase = TWO_PHASE_STATE
     else if (associated(general%liquid_pressure) .and. &
-              associated(general%mole_fraction)) then
+             associated(general%mole_fraction)) then
       ! liquid phase condition
       condition%iphase = LIQUID_STATE
     else if (associated(general%gas_pressure) .and. &
-              associated(general%mole_fraction)) then
+             associated(general%mole_fraction)) then
       ! gas phase condition
       condition%iphase = GAS_STATE
+    else if (associated(general%rate)) then
+      condition%iphase = ANY_STATE
     else 
       option%io_buffer = 'General Phase non-rate condition contains an ' // &
         'unsupported combination of primary dependent variables.'
@@ -1661,6 +1674,55 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                               default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
 
+  word = 'rate'
+  call FlowSubConditionVerify(option,condition,word,general%rate, &
+                              default_time, default_ctype, default_itype, &
+                              default_flow_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
+
+  condition%num_sub_conditions = 0
+  if (associated(general%liquid_pressure)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
+  if (associated(general%gas_pressure)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
+  if (associated(general%gas_saturation)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
+  if (associated(general%temperature)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
+  if (associated(general%flux)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
+  if (associated(general%rate)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
+  allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+  do idof = 1, condition%num_sub_conditions
+    nullify(condition%sub_condition_ptr(idof)%ptr)
+  enddo
+  i = 0
+  if (associated(general%liquid_pressure)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%liquid_pressure
+  endif
+  if (associated(general%gas_pressure)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%gas_pressure
+  endif  
+  if (associated(general%gas_saturation)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%gas_saturation
+  endif  
+  if (associated(general%temperature)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%temperature
+  endif  
+  if (associated(general%flux)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%flux
+  endif  
+  if (associated(general%rate)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%rate
+  endif  
+  
   call FlowConditionDatasetDestroy(default_flow_dataset)
   call FlowConditionDatasetDestroy(default_datum)
   call FlowConditionDatasetDestroy(default_gradient)
@@ -2954,6 +3016,7 @@ subroutine FlowGeneralConditionDestroy(general_condition)
   call FlowSubConditionDestroy(general_condition%mole_fraction)
   call FlowSubConditionDestroy(general_condition%temperature)
   call FlowSubConditionDestroy(general_condition%flux)
+  call FlowSubConditionDestroy(general_condition%rate)
 
   deallocate(general_condition)
   nullify(general_condition)

@@ -1141,6 +1141,10 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   iphase = 1
 
   Sr = saturation_function%Sr(iphase)
+  if (saturation <= Sr) then
+    capillary_pressure = saturation_function%pcwmax
+    return
+  endif
     
   ! compute saturation
   select case(saturation_function%saturation_function_itype)

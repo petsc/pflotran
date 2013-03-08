@@ -10,6 +10,7 @@ module General_Aux_module
   PetscInt, parameter, public :: LIQUID_STATE = 1
   PetscInt, parameter, public :: GAS_STATE = 2
   PetscInt, parameter, public :: TWO_PHASE_STATE = 3
+  PetscInt, parameter, public :: ANY_STATE = 4
 
   PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
@@ -445,8 +446,11 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         global_aux_var%istate = TWO_PHASE_STATE
         x(GENERAL_GAS_PRESSURE_DOF) = &
           gen_aux_var%pres(lid) * (1.d0 + epsilon)
+!        x(GENERAL_AIR_PRESSURE_DOF) = &
+!          gen_aux_var%pres(apid) * (1.d0 + epsilon)
         x(GENERAL_AIR_PRESSURE_DOF) = &
-          gen_aux_var%pres(apid) * (1.d0 + epsilon)
+          ! pa = pg - pv
+          x(GENERAL_GAS_PRESSURE_DOF) - P_sat
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
       endif
@@ -721,56 +725,58 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
   
   n = size(global_auxvars)
 
+100 format(a,100('','',i9))
+  
   write(86,'(a,100('','',i9))') '             cell id: ', &
     ((i,i=1,n),idof=0,3)
   write(86,'(a,100('','',i2))') '                idof: ', &
     ((idof,i=1,n),idof=0,3)
   write(86,'(a,100('','',i2))') '               state: ', &
     (global_auxvars(i)%istate,i=1,n)
-  write(86,'(a,100('','',es23.15))') '     liquid pressure: ', &
+  write(86,100) '     liquid pressure: ', &
     ((general_auxvars(idof,i)%pres(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '        gas pressure: ', &
+  write(86,100) '        gas pressure: ', &
     ((general_auxvars(idof,i)%pres(gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '        air pressure: ', &
+  write(86,100) '        air pressure: ', &
     ((general_auxvars(idof,i)%pres(apid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '  capillary pressure: ', &
+  write(86,100) '  capillary pressure: ', &
     ((general_auxvars(idof,i)%pres(cpid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '      vapor pressure: ', &
+  write(86,100) '      vapor pressure: ', &
     ((general_auxvars(idof,i)%pres(vpid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '     temperature [C]: ', &
+  write(86,100) '     temperature [C]: ', &
     ((general_auxvars(idof,i)%temp,i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '   liquid saturation: ', &
+  write(86,100) '   liquid saturation: ', &
     ((general_auxvars(idof,i)%sat(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '      gas saturation: ', &
+  write(86,100) '      gas saturation: ', &
     ((general_auxvars(idof,i)%sat(gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') 'liquid density [mol]: ', &
+  write(86,100) 'liquid density [mol]: ', &
     ((general_auxvars(idof,i)%den(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') ' liquid density [kg]: ', &
+  write(86,100) ' liquid density [kg]: ', &
     ((general_auxvars(idof,i)%den_kg(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '   gas density [mol]: ', &
+  write(86,100) '   gas density [mol]: ', &
     ((general_auxvars(idof,i)%den(gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '    gas density [kg]: ', &
+  write(86,100) '    gas density [kg]: ', &
     ((general_auxvars(idof,i)%den_kg(gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') ' X (water in liquid): ', &
+  write(86,100) ' X (water in liquid): ', &
     ((general_auxvars(idof,i)%xmol(lid,lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '   X (air in liquid): ', &
+  write(86,100) '   X (air in liquid): ', &
     ((general_auxvars(idof,i)%xmol(gid,lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '    X (water in gas): ', &
+  write(86,100) '    X (water in gas): ', &
     ((general_auxvars(idof,i)%xmol(lid,gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '      X (air in gas): ', &
+  write(86,100) '      X (air in gas): ', &
     ((general_auxvars(idof,i)%xmol(gid,gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '  liquid H [MJ/kmol]: ', &
+  write(86,100) '  liquid H [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%H(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '     gas H [MJ/kmol]: ', &
+  write(86,100) '     gas H [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%H(gid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '  liquid U [MJ/kmol]: ', &
+  write(86,100) '  liquid U [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%U(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '     gas U [MJ/kmol]: ', &
+  write(86,100) '     gas U [MJ/kmol]: ', &
     ((general_auxvars(idof,i)%U(gid),i=1,n),idof=0,3)
   write(86,*)
-  write(86,'(a,100('','',es23.15))') '          liquid kvr: ', &
+  write(86,100) '          liquid kvr: ', &
     ((general_auxvars(idof,i)%kvr(lid),i=1,n),idof=0,3)
-  write(86,'(a,100('','',es23.15))') '             gas kvr: ', &
+  write(86,100) '             gas kvr: ', &
     ((general_auxvars(idof,i)%kvr(gid),i=1,n),idof=0,3)
   
   close(86)
