@@ -126,7 +126,7 @@ function SolverCreate()
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
-  solver%newton_inf_res_tol_sec = 1.d-50
+  solver%newton_inf_res_tol_sec = 1.d-10
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
 
