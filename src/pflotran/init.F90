@@ -75,9 +75,11 @@ subroutine Init(simulation)
 #ifdef SURFACE_FLOW
   use Surface_Field_module
   use Surface_Flow_Module
-  use Unstructured_Grid_module
-  use Surface_Realization_class
+  use Surface_Global_module
   use Surface_Init_module
+  use Surface_Realization_class
+  use Surface_TH_module
+  use Unstructured_Grid_module
 #endif
 
   implicit none
@@ -539,9 +541,16 @@ subroutine Init(simulation)
 
         call SolverCreateTS(surf_flow_solver,option%mycomm)
         call TSSetProblemType(surf_flow_solver%ts,TS_NONLINEAR,ierr)
-        call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
-                              SurfaceFlowRHSFunction, &
-                              simulation%surf_realization,ierr)
+        select case(option%iflowmode)
+          case (RICHARDS_MODE)
+            call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                                  SurfaceFlowRHSFunction, &
+                                  simulation%surf_realization,ierr)
+          case (TH_MODE)
+            call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                                  SurfaceTHRHSFunction, &
+                                  simulation%surf_realization,ierr)
+        end select
         call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
                            simulation%surf_realization%waypoints%last%time,ierr)
 
@@ -1019,10 +1028,10 @@ subroutine Init(simulation)
         call SurfaceFlowSetup(simulation%surf_realization)
       case default
       case(TH_MODE)
-        !call SurfaceTHSetup(simulation%surf_realization)
+        call SurfaceTHSetup(simulation%surf_realization)
     end select
 
-    !call GlobalSetup(simulation%surf_realization)
+    call SurfaceGlobalSetup(simulation%surf_realization)
     ! initialize FLOW
     ! set up auxillary variable arrays
 
@@ -1036,16 +1045,22 @@ subroutine Init(simulation)
     endif
   
     select case(option%iflowmode)
-      case(RICHARDS_MODE,TH_MODE)
-        !call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+      case(RICHARDS_MODE)
+        call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+          call SurfaceFlowCreateSurfSubsurfVec( &
+                          simulation%realization, simulation%surf_realization)
+        endif
+      case(TH_MODE)
+        call SurfaceTHUpdateAuxVars(surf_realization)
+        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+          call SurfaceTHCreateSurfSubsurfVec( &
+                          simulation%realization, simulation%surf_realization)
+        endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
     end select
-    if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-      call SurfRealizCreateSurfSubsurfVec( &
-                      simulation%realization, simulation%surf_realization)
-    endif
   endif ! option%nsurfflowdof > 0
 #endif
 

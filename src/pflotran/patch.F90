@@ -14,6 +14,7 @@ module Patch_module
 #ifdef SURFACE_FLOW
   use Surface_field_module
   use Surface_Material_module
+  use Surface_Auxiliary_module
 #endif
   
   use Auxiliary_module
@@ -72,6 +73,8 @@ module Patch_module
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
     type(surface_field_type),pointer                  :: surf_field
+    type(surface_auxiliary_type) :: surf_aux
+    
     PetscReal,pointer :: surf_internal_fluxes(:)
     PetscReal,pointer :: surf_boundary_fluxes(:)
 #endif
@@ -179,6 +182,8 @@ function PatchCreate()
     nullify(patch%surf_field)
     nullify(patch%surf_internal_fluxes)
     nullify(patch%surf_boundary_fluxes)
+    call SurfaceAuxInit(patch%surf_aux)
+    write(*,*),'>>>>>>>>>>>>>>>>>>>>>> SurfaceAuxInit() >>>>>>>>>>>>>>>> done'
 #endif
 
   PatchCreate => patch
@@ -4689,18 +4694,8 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
   use Option_module
   use Output_Aux_module
   use Surface_Field_module
-  
-  use Immis_Aux_module
-  use Miscible_Aux_module
-  use Mphase_Aux_module
-  use TH_Aux_module
-  use THC_Aux_module
-  use THMC_Aux_module
-  use Richards_Aux_module
-  use Reactive_Transport_Aux_module  
-  use Reaction_module
   use Variables_module
-  
+
   implicit none
 
 #include "finclude/petscvec.h"
@@ -4733,18 +4728,20 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
   iphase = 1
   
   select case(ivar)
-    case(SURFACE_FLOW_PRESSURE)
-      call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
+    case(SURFACE_LIQUID_HEAD)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+        vec_ptr(local_id) = patch%surf_aux%SurfaceGlobal%aux_vars(grid%nL2G(local_id))%head(1)
       enddo
-      call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
+    case(SURFACE_LIQUID_TEMPERATURE)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = patch%surf_aux%SurfaceGlobal%aux_vars(grid%nL2G(local_id))%temp(1)
+      enddo
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
     case default
-    write(option%io_buffer, &
+      write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
       call printErrMsg(option)
   end select

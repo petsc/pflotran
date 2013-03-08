@@ -8,8 +8,8 @@ module Surface_Flow_Aux_module
   private
   
 #include "definitions.h"
-  PetscInt, parameter, public :: KINEMATIC_WAVE = 1
-  PetscInt, parameter, public :: DIFFUSION_WAVE = 2
+!  PetscInt, parameter, public :: KINEMATIC_WAVE = 1
+!  PetscInt, parameter, public :: DIFFUSION_WAVE = 2
   
   type, public :: surface_flow_type
     PetscInt :: formulation_type

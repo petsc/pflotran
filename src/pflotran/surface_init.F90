@@ -41,6 +41,7 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
   use Level_module
 
   use Surface_Realization_class
+  use Surface_Auxiliary_module
 
   implicit none
 

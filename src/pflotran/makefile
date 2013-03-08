@@ -297,12 +297,17 @@ misc_obj = \
 #	${common_src}reaction_chunk.o\
 
 surface_obj = \
+	${common_src}surface_auxiliary.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_flow_aux.o \
 	${common_src}surface_init.o \
+	${common_src}surface_global_aux.o \
+	${common_src}surface_global.o \
 	${common_src}surface_material.o \
-	${common_src}surface_realization.o 
+	${common_src}surface_realization.o \
+  ${common_src}surface_th_aux.o \
+  ${common_src}surface_th.o
 
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
@@ -338,7 +343,7 @@ auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o \
               reactive_transport_aux.o \
               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
-              secondary_continuum_aux.o
+              secondary_continuum_aux.o surface_global_aux.o
 block_solve.o:
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
@@ -415,7 +420,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          uniform_velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
-         output.o output_surface.o reaction_aux.o surface_init.o
+         output.o output_surface.o reaction_aux.o surface_init.o surface_th.o \
+         surface_global.o 
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -480,7 +486,7 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           variables.o constraint.o general_aux.o reaction_aux.o richards_aux.o \
           reactive_transport_aux.o dataset_aux.o thc_aux.o thmc_aux.o \
           global_aux.o mphase_aux.o immis_aux.o miscible_aux.o mineral_aux.o \
-          surface_complexation_aux.o
+          surface_complexation_aux.o surface_auxiliary.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o
@@ -549,6 +555,8 @@ stochastic_aux.o : simulation.o input.o option.o
 strata.o : input.o region.o material.o
 string.o :
 structured_grid.o : connection.o option.o input.o
+surface_auxiliary.o : surface_global_aux.o surface_flow_aux.o \
+                      surface_th_aux.o
 surface_complexation.o : surface_complexation_aux.o reaction_aux.o \
                          global_aux.o  reactive_transport_aux.o option.o \
                          string.o input.o utility.o
@@ -560,12 +568,20 @@ surface_init.o : option.o input.o string.o surface_material.o \
                  unstructured_grid.o unstructured_grid_aux.o region.o \
                  condition.o dataset_aux.o coupler.o strata.o units.o \
                  waypoint.o debug.o patch.o output_aux.o
+surface_global_aux.o : option.o
+surface_global.o : surface_global_aux.o surface_realization.o level.o \
+                   patch.o option.o coupler.o connection.o grid.o \
+                   variables.o patch.o field.o 
 surface_material.o : string.o option.o input.o
 surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         option.o patch.o region.o surface_field.o \
                         surface_material.o waypoint.o dataset_aux.o coupler.o \
                         string.o grid.o strata.o unstructured_grid.o dataset.o \
                         unstructured_grid_aux.o realization_base.o
+surface_th_aux.o: option.o material.o water_eos.o \
+            saturation_function.o grid.o surface_global_aux.o
+surface_th.o : surface_global_aux.o surface_realization.o output_aux.o variables.o \
+               surface_material.o surface_th_aux.o
 th.o : secondary_continuum.o th_aux.o realization.o saturation_function.o \
        variables.o secondary_continuum_aux.o 
 th_aux.o : option.o material.o water_eos.o \
@@ -581,7 +597,8 @@ timestepper.o : th.o thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 input.o string.o reactive_transport.o condition_control.o \
-                surface_flow.o output_aux.o output_surface.o reaction_aux.o
+                surface_flow.o output_aux.o output_surface.o reaction_aux.o \
+                surface_th.o
 time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
