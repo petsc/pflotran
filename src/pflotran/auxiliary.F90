@@ -71,9 +71,6 @@ subroutine AuxInit(aux)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
 
-#ifdef SURFACE_FLOW
-  !nullify(aux%SurfaceFlow)
-#endif
 end subroutine AuxInit
 
 ! ************************************************************************** !
@@ -113,10 +110,6 @@ subroutine AuxDestroy(aux)
   nullify(aux%Material)
   nullify(aux%SC_Heat)
   nullify(aux%SC_RT)
-#ifdef SURFACE_FLOW
-  !call SurfaceFlowAuxDestroy(aux%SurfaceFlow)
-  !nullify(aux%SurfaceFlow)
-#endif
 end subroutine AuxDestroy
 
 end module Auxiliary_module
