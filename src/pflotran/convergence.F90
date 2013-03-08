@@ -177,7 +177,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     endif
   endif
 
-  call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
+  call SNESConvergedDefault(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
 
 ! Checking if norm exceeds divergence tolerance

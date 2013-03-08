@@ -7,7 +7,7 @@ module Dataset_Aux_module
 #include "definitions.h"
 
   type, public :: dataset_map_type
-    character(len=MAXWORDLENGTH) :: h5_dataset_map_name
+    character(len=MAXSTRINGLENGTH) :: h5_dataset_map_name
     character(len=MAXSTRINGLENGTH) :: filename
     PetscInt,pointer :: map(:,:)
     PetscInt         :: map_dims_global(2)

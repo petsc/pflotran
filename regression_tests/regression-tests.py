@@ -145,6 +145,9 @@ class RegressionTest(object):
                                 "provided.".format(self.name()))
 
         command.append(executable)
+        #geh: kludge for -malloc 0
+        command.append("-malloc")
+        command.append("0")
         if self._input_arg != None:
             command.append(self._input_arg)
             command.append(self.name())
