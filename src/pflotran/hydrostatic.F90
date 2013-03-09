@@ -370,7 +370,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
     ! assign other dofs
     select case(option%iflowmode)
-      case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+      case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
         temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
@@ -379,6 +379,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_real_var(3,iconn) = concentration_at_datum
 
         coupler%flow_aux_int_var(1,iconn) = condition%iphase
+
+      case(TH_MODE)
+        temperature = temperature_at_datum + &
+                    temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
+                    temperature_gradient(Y_DIRECTION)*dist_y + &
+                    temperature_gradient(Z_DIRECTION)*dist_z
+        coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = temperature
+        coupler%flow_aux_int_var(TH_PRESSURE_DOF,iconn) = condition%iphase
 
       case(MIS_MODE)
         temperature = temperature_at_datum + &

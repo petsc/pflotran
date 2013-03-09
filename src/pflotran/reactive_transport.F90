@@ -666,7 +666,7 @@ subroutine RTUpdateSolutionPatch(realization)
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
   !      resolves a bug in the Intel Visual Fortran compiler.
   use Secondary_Continuum_Aux_module, only : sec_transport_type
-  use Secondary_Continuum_module, only : SecondaryRTAuxVarComputeMulti
+  use Secondary_Continuum_module, only : SecondaryRTUpdateTimestep
  
   implicit none
 
@@ -682,7 +682,6 @@ subroutine RTUpdateSolutionPatch(realization)
   PetscInt :: ghosted_id, local_id
   PetscReal :: conc, max_conc, min_conc
   PetscErrorCode :: ierr
-  PetscReal :: sec_diffusion_coefficient
   PetscReal :: sec_porosity
   
   option => realization%option
@@ -744,29 +743,20 @@ subroutine RTUpdateSolutionPatch(realization)
     if (option%use_mc) then
       do ghosted_id = 1, grid%ngmax
         if (patch%imat(ghosted_id) <= 0) cycle
-          sec_diffusion_coefficient = realization% &
-                                      material_property_array(1)%ptr% &
-                                      secondary_continuum_diff_coeff
           sec_porosity = realization%material_property_array(1)%ptr% &
                          secondary_continuum_porosity
 
-          call SecondaryRTAuxVarComputeMulti(&
-                                        rt_sec_transport_vars(ghosted_id), &
-                                        rt_aux_vars(ghosted_id), &
-                                        global_aux_vars(ghosted_id), &
-                                        reaction, &
-                                        sec_diffusion_coefficient, &
-                                        sec_porosity, &
-                                        option)                                        
-                                   
+          call SecondaryRTUpdateTimestep(rt_sec_transport_vars(ghosted_id), &
+                                         global_aux_vars(ghosted_id), &
+                                         reaction,sec_porosity,option)                     
       enddo
     endif
-
   endif
 
   if (option%compute_mass_balance_new) then
     call RTUpdateMassBalancePatch(realization)
   endif
+  
 end subroutine RTUpdateSolutionPatch
 
 ! ************************************************************************** !
@@ -2777,7 +2767,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       if (option%use_mc) then
         vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
       endif  
-        
       call RTAccumulation(rt_aux_vars(ghosted_id), &
                           global_aux_vars(ghosted_id), &
                           porosity_loc_p(ghosted_id), &

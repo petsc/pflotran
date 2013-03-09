@@ -13,6 +13,7 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
+#include "finclude/petscts.h"
 ! If the PETSc release is 3.3 or lower, then include petscpcmg.h.
 ! If using an older version of petsc-dev and petscpcmg.h is required, 
 ! it can be used by having the makefile turn on HAVE_PETSCPCMG_H.
@@ -37,6 +38,7 @@ module Solver_module
     PetscReal :: newton_stomp_tol  ! tolerance based on STOMP convergence
     PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
     PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
+    PetscReal :: newton_inf_res_tol_sec  ! infinity tolerance for secondary continuum residual
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
     PetscReal :: max_norm          ! maximum norm for divergence
@@ -66,6 +68,7 @@ module Solver_module
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
+    TS    :: ts
     
     PetscBool :: inexact_newton
 
@@ -83,6 +86,7 @@ module Solver_module
             SolverReadNewton, &
             SolverCreateSNES, &
             SolverSetSNESOptions, &
+            SolverCreateTS, &
             SolverPrintNewtonInfo, &
             SolverPrintLinearInfo, &
             SolverCheckCommandLine
@@ -125,6 +129,7 @@ function SolverCreate()
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
+  solver%newton_inf_res_tol_sec = 1.d-10
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
 
@@ -146,6 +151,7 @@ function SolverCreate()
   solver%pc_type = ""
   solver%ksp = 0
   solver%pc = 0
+  solver%ts = 0
   
   solver%inexact_newton = PETSC_FALSE
   
@@ -264,6 +270,28 @@ subroutine SolverSetSNESOptions(solver)
 
 end subroutine SolverSetSNESOptions
   
+! ************************************************************************** !
+!> This routine creates PETSc TS object.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 01/18/13
+! ************************************************************************** !
+subroutine SolverCreateTS(solver,comm)
+
+  implicit none
+  
+  type(solver_type) :: solver
+
+  PetscMPIInt :: comm
+  PetscErrorCode :: ierr
+  
+  call TSCreate(comm,solver%ts,ierr)
+  call TSSetFromOptions(solver%ts,ierr)
+
+end subroutine SolverCreateTS
+
 ! ************************************************************************** !
 !
 ! SolverReadLinear: Reads parameters associated with linear solver
@@ -668,6 +696,15 @@ subroutine SolverReadNewton(solver,input,option)
         option%check_stomp_norm = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_stomp_tol)
         call InputDefaultMsg(input,option,'newton_stomp_tol')
+
+      case('ITOL_SEC','ITOL_RES_SEC','INF_TOL_SEC')
+        if (.not.option%use_mc) then
+          option%io_buffer = 'NEWTON ITOL_SEC supported without ' // &
+            'MULTIPLE_CONTINUUM.'
+          call printErrMsg(option)
+        endif         
+        call InputReadDouble(input,option,solver%newton_inf_res_tol_sec)
+        call InputDefaultMsg(input,option,'newton_inf_res_tol_sec')
    
       case('MAXIT')
         call InputReadInt(input,option,solver%newton_maxit)
@@ -944,7 +981,7 @@ subroutine SolverCheckCommandLine(solver)
   if (is_present) solver%Jpre_mat_type = trim(mat_type)
 
   ! Parse the options for the Galerkin multigrid solver.
-  ! Users can specify the number of levels of coarsening via the 
+  ! Users can specify the number of levels of coarsening via the
   ! 'galerkin_mg N' option, which will set the number of levels in the 
   ! x, y, and z directions all to N.  For semi-coarsening, however, 
   ! it is possible to set the number of levels in each direction 
@@ -1014,6 +1051,7 @@ subroutine SolverDestroy(solver)
     call MatFDColoringDestroy(solver%matfdcoloring,ierr)
 
   if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
+  if (solver%ts /= 0) call TSDestroy(solver%ts,ierr)
 
   solver%ksp = 0
   solver%pc = 0

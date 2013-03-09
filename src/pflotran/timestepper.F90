@@ -315,6 +315,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Surface_Flow_module
   use Surface_Realization_class
   use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
+  use Surface_TH_module
 #endif
   implicit none
   
@@ -559,6 +560,18 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call OutputPrintCouplers(realization,ZERO_INTEGER)
   endif
 
+#ifdef SURFACE_FLOW
+  if (option%nsurfflowdof>0.and. &
+    surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select case(option%iflowmode)
+      case (RICHARDS_MODE)
+        call SurfaceFlowGetSubsurfProp(realization,surf_realization)
+      case (TH_MODE)
+        call SurfaceTHGetSubsurfProp(realization,surf_realization)
+    end select
+  endif
+#endif
+
   do
 
     if (OptionPrintToScreen(option) .and. &
@@ -587,12 +600,20 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
 
         ! Update model coupling time
+        if(option%surf_flow_explicit) then
+          call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+        endif
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag)
 
         ! Update subsurface pressure of top soil layer for surface flow model
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
+          select case(option%iflowmode)
+            case (RICHARDS_MODE)
+              call SurfaceFlowUpdateSurfBC(realization,surf_realization)
+            case (TH_MODE)
+             call SurfaceTHUpdateSurfBC(realization,surf_realization)
+          end select
         endif
 
         surf_failure = PETSC_FALSE
@@ -601,7 +622,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
           ! Compute flux between surface-subsurface model
           if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-            call SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realization)
+            select case(option%iflowmode)
+              case (RICHARDS_MODE)
+                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
+              case (TH_MODE)
+               call SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
+            end select
           endif
           
           ! Solve surface flow
@@ -618,9 +644,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
           ! if still stepping, update solution
           call StepperUpdateSurfaceFlowSolution(surf_realization)
-          call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
 
           ! Set new target time for surface model
+          if(option%surf_flow_explicit) then
+            call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+          endif
           call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                           option,plot_flag,transient_plot_flag)
         enddo
@@ -634,8 +662,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
 
         ! Update source/sink condition for subsurface flow model
-        call SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization, &
-              option%surf_subsurf_coupling_time-option%flow_time)
+        select case(option%iflowmode)
+          case (RICHARDS_MODE)
+            call SurfaceFlowUpdateSubsurfSS(realization,surf_realization, &
+                  option%surf_subsurf_coupling_time-option%flow_time)
+          case (TH_MODE)
+!            call SurfaceTHUpdateSubsurfSS(realization,surf_realization, &
+!                  option%surf_subsurf_coupling_time-option%flow_time)
+        end select
 
         do
           ! Solve subsurface flow
@@ -822,7 +856,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call OutputSurface(surf_realization,realization,plot_flag_surf, &
                        transient_plot_flag_surf)
     if(associated(surf_flow_stepper)) then
-      call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+      if(option%surf_flow_explicit) then
+        call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+      else
+        call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+      endif
     endif
 #endif
 
@@ -1256,6 +1294,41 @@ subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
   endif
 
 end subroutine StepperUpdateSurfaceFlowDT
+
+! ************************************************************************** !
+!> This routine the maximum allowable dt for surface flow
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date:
+! ************************************************************************** !
+subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+
+  use Surface_Realization_class
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+  
+  implicit none
+
+  type(surface_realization_type), pointer :: surf_realization
+  type(option_type) :: option
+
+  PetscReal :: dt_max,dt_max_glb
+  PetscErrorCode :: ierr
+
+  select case (option%iflowmode)
+    case (RICHARDS_MODE)
+      call SurfaceFlowComputeMaxDt(surf_realization,dt_max)
+    case (TH_MODE)
+      call SurfaceTHComputeMaxDt(surf_realization,dt_max)
+  end select
+  call MPI_Allreduce(dt_max,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MIN,option%mycomm,ierr)
+  option%surf_flow_dt=min(0.9d0*dt_max_glb,surf_realization%dt_max)
+
+end subroutine StepperUpdateSurfaceFlowDTExplicit
 #endif
 ! ************************************************************************** !
 !
@@ -2203,6 +2276,11 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   sum_linear_iterations = 0
   prev_norm = 1.d20
 
+  if(option%surf_flow_explicit) then
+    call StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
+    return
+  endif
+
   if (option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE_FLOW ",52("="))')
   endif
@@ -2214,6 +2292,8 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
       option%io_buffer = 'ERROR: Incorrect iflowmode in SurfaceFlow'
       call printErrMsgByRank(option)
   end select
+  option%io_buffer='stopping for debugging--- SurfaceFlowInitializeTimestep'
+  call printErrMsg(option)
 
   do
     call PetscGetTime(log_start_time,ierr)
@@ -2342,6 +2422,67 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   if (option%print_screen_flag) print *, ""
 
 end subroutine StepperStepSurfaceFlowDT
+
+! ************************************************************************** !
+!
+! ************************************************************************** !
+subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
+  
+  use Surface_Realization_class
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Surface_Field_module
+  use Grid_module
+  use Output_module, only : Output
+  
+  implicit none
+  
+#include "finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscts.h"
+
+  type(surface_realization_type) :: surf_realization
+  type(stepper_type)     :: stepper
+  PetscBool              :: failure
+
+  PetscErrorCode :: ierr
+  type(option_type), pointer          :: option
+  type(surface_field_type), pointer   :: surf_field 
+  type(discretization_type), pointer  :: discretization 
+  type(solver_type), pointer          :: solver
+  character(len=MAXSTRINGLENGTH)      :: string
+
+  option         => surf_realization%option
+  discretization => surf_realization%discretization
+  surf_field     => surf_realization%surf_field
+  solver         => stepper%solver
+
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
+  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+
+
+  ! First, update the solution vector
+  call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
+          surf_field%flow_xx_loc,NFLOWDOF)
+
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      call SurfaceFlowUpdateAuxVars(surf_realization)
+    case(TH_MODE)
+      ! Then, update the aux vars
+      call SurfaceTHUpdateAuxVars(surf_realization)
+      ! override flags since they will soon be out of date
+      surf_realization%patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
+    case default
+  end select
+
+end subroutine StepperStepSurfaceFlowExplicitDT
 #endif
 
 ! ************************************************************************** !
@@ -3259,7 +3400,7 @@ subroutine StepperUpdateSolution(realization)
     call StepperUpdateTransportSolution(realization)
 
 #ifdef SURFACE_FLOW
-  call SurfaceRealizationUpdate(surf_realization)
+  call SurfRealizUpdate(surf_realization)
   if (surf_realization%option%nsurfflowdof > 0) &
     call StepperUpdateSurfaceFlowSolution(surf_realization)
 #endif
@@ -3333,7 +3474,7 @@ end subroutine StepperUpdateFlowSolution
 subroutine StepperUpdateSurfaceFlowSolution(surf_realization)
 
   use Surface_Flow_module
-
+  use Surface_TH_module
   use Surface_Realization_class
   use Option_module
 
@@ -3350,6 +3491,9 @@ subroutine StepperUpdateSurfaceFlowSolution(surf_realization)
   select case(option%iflowmode)
     case(RICHARDS_MODE)
       call SurfaceFlowUpdateSolution(surf_realization)
+    case(TH_MODE)
+      call SurfaceTHUpdateSolution(surf_realization)
+    case default
   end select
 
 end subroutine StepperUpdateSurfaceFlowSolution

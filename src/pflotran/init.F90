@@ -12,6 +12,7 @@ module Init_module
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
+#include "finclude/petscts.h"
 
 
   public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
@@ -64,6 +65,8 @@ subroutine Init(simulation)
   use Reactive_Transport_module
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
+  use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
+  
   use Global_module
   use Variables_module
   use Water_EOS_module
@@ -75,8 +78,11 @@ subroutine Init(simulation)
 #ifdef SURFACE_FLOW
   use Surface_Field_module
   use Surface_Flow_Module
-  use Unstructured_Grid_module
+  use Surface_Global_module
+  use Surface_Init_module
   use Surface_Realization_class
+  use Surface_TH_module
+  use Unstructured_Grid_module
 #endif
 
   implicit none
@@ -160,7 +166,7 @@ subroutine Init(simulation)
 #ifdef SURFACE_FLOW
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
-  call InitReadRequiredCardsFromInputSurf(simulation%surf_realization)
+  call SurfaceInitReadRequiredCards(simulation%surf_realization)
 #endif
 
   patch => realization%patch
@@ -202,6 +208,8 @@ subroutine Init(simulation)
   ! initialize surface-flow mode
   if (option%nsurfflowdof > 0) then
     surf_flow_solver => surf_flow_stepper%solver
+    waypoint_list => WaypointListCreate()
+    surf_realization%waypoints => waypoint_list
   else
     call TimestepperDestroy(simulation%surf_flow_stepper)
     nullify(surf_flow_solver)
@@ -253,7 +261,7 @@ subroutine Init(simulation)
   call RealizationCreateDiscretization(realization)
 #ifdef SURFACE_FLOW
   if (option%nsurfflowdof>0) then
-    call SurfaceRealizationCreateDiscretization(simulation%surf_realization)
+    call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
 
@@ -528,74 +536,102 @@ subroutine Init(simulation)
                                           realization,ierr)
       end select
     endif
+        
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
 #ifdef SURFACE_FLOW
     if(option%nsurfflowdof>0) then
-      call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
-      call SolverCreateSNES(surf_flow_solver,option%mycomm)
-      call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
-      call SolverCheckCommandLine(surf_flow_solver)
 
-      if (surf_flow_solver%Jpre_mat_type == '') then
-        if (surf_flow_solver%J_mat_type /= MATMFFD) then
-          surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
-        else
-          surf_flow_solver%Jpre_mat_type = MATBAIJ
+
+      if(option%surf_flow_explicit) then
+
+        ! Setup PETSc TS for explicit surface flow solution
+        call printMsg(option,"  Beginning setup of SURF FLOW TS ")
+
+        call SolverCreateTS(surf_flow_solver,option%mycomm)
+        call TSSetProblemType(surf_flow_solver%ts,TS_NONLINEAR,ierr)
+        select case(option%iflowmode)
+          case (RICHARDS_MODE)
+            call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                                  SurfaceFlowRHSFunction, &
+                                  simulation%surf_realization,ierr)
+          case (TH_MODE)
+            call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
+                                  SurfaceTHRHSFunction, &
+                                  simulation%surf_realization,ierr)
+        end select
+        call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
+                           simulation%surf_realization%waypoints%last%time,ierr)
+
+      else
+
+        ! Setup PETSc SNES for implicit surface flow solution
+        call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
+
+        call SolverCreateSNES(surf_flow_solver,option%mycomm)
+        call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
+        call SolverCheckCommandLine(surf_flow_solver)
+
+        if (surf_flow_solver%Jpre_mat_type == '') then
+          if (surf_flow_solver%J_mat_type /= MATMFFD) then
+            surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
+          else
+            surf_flow_solver%Jpre_mat_type = MATBAIJ
+          endif
         endif
-      endif
 
-      call DiscretizationCreateJacobian( &
-                                        simulation%surf_realization%discretization, &
-                                        NFLOWDOF, &
-                                        surf_flow_solver%Jpre_mat_type, &
-                                        surf_flow_solver%Jpre, &
-                                        option)
+        call DiscretizationCreateJacobian( &
+                                  simulation%surf_realization%discretization, &
+                                  NFLOWDOF, &
+                                  surf_flow_solver%Jpre_mat_type, &
+                                  surf_flow_solver%Jpre, &
+                                  option)
 
-      call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
-      call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+        call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+        call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
-      call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
+        call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
 
-      if (surf_flow_solver%J_mat_type /= MATMFFD) then
-        surf_flow_solver%J = surf_flow_solver%Jpre
-      endif
+        if (surf_flow_solver%J_mat_type /= MATMFFD) then
+          surf_flow_solver%J = surf_flow_solver%Jpre
+        endif
 
-      call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
-                            SurfaceFlowResidual, &
-                            simulation%surf_realization,ierr)
+        call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
+                              SurfaceFlowResidual, &
+                              simulation%surf_realization,ierr)
 
-      call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
-                          surf_flow_solver%Jpre, &
-                          SurfaceFlowJacobian,simulation%surf_realization,ierr)
-      ! by default turn off line search
-      call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
-      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+        call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
+                            surf_flow_solver%Jpre, &
+                            SurfaceFlowJacobian,simulation%surf_realization,ierr)
+        ! by default turn off line search
+        call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
+        call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 
-      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-      if (option%verbosity >= 1) then
-        string = '-surf_flow_snes_view'
-        call PetscOptionsInsertString(string, ierr)
-      endif
+        ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+        if (option%verbosity >= 1) then
+          string = '-surf_flow_snes_view'
+          call PetscOptionsInsertString(string, ierr)
+        endif
 
-      call SolverSetSNESOptions(surf_flow_solver)
+        call SolverSetSNESOptions(surf_flow_solver)
 
-      option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
-      call printMsg(option)
-      option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
-      call printMsg(option)
+        option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
+        call printMsg(option)
+        option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
+        call printMsg(option)
 
-      ! shell for custom convergence test.  The default SNES convergence test  
-      ! is call within this function. 
-      surf_flow_stepper%convergence_context => &
-        ConvergenceContextCreate(surf_flow_solver,option,grid)
-      call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
-                                  surf_flow_stepper%convergence_context, &
-                                  PETSC_NULL_FUNCTION,ierr) 
-
-    endif
+        ! shell for custom convergence test.  The default SNES convergence test
+        ! is call within this function.
+        surf_flow_stepper%convergence_context => &
+          ConvergenceContextCreate(surf_flow_solver,option,grid)
+        call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
+                                    surf_flow_stepper%convergence_context, &
+                                    PETSC_NULL_FUNCTION,ierr)
+      endif ! if(option%surface_flow_explicit)
+    endif ! if(option%nsurfflowdof>0)
 #endif
+
   endif
 
   
@@ -659,7 +695,13 @@ subroutine Init(simulation)
       ! update does not perturb concentrations negative.
       call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-    
+      
+      if (option%use_mc) then
+        call SNESLineSearchSetPostCheck(linesearch, &
+                                        SecondaryRTUpdateIterate, &
+                                        realization,ierr)      
+      endif
+      
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
         string = '-tran_snes_view'
@@ -901,7 +943,7 @@ subroutine Init(simulation)
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_stepper)) then
+   if (option%nsurfflowdof>0) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -919,7 +961,7 @@ subroutine Init(simulation)
                                string)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_solver)) then
+  if (associated(surf_flow_solver).and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Newton Solver:'
     call SolverPrintNewtonInfo(surf_flow_solver,OptionPrintToScreen(option), &
                                OptionPrintToFile(option),option%fid_out, &
@@ -935,9 +977,17 @@ subroutine Init(simulation)
     call SolverPrintLinearInfo(tran_solver,string,option)
   endif    
 #ifdef SURFACE_FLOW
-  if (associated(surf_flow_solver)) then
+  if (associated(surf_flow_solver).and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Linear Solver:'
     call SolverPrintLinearInfo(surf_flow_solver,string,option)
+  endif
+  if (associated(surf_flow_solver).and.option%surf_flow_explicit) then
+    string = 'Surface Flow TS Solver:'
+    if (OptionPrintToScreen(option)) then
+      write(*,*),' '
+      write(*,*),string
+    endif
+    call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
   endif
 #endif
 
@@ -966,53 +1016,67 @@ subroutine Init(simulation)
 
 #ifdef SURFACE_FLOW
   if(option%nsurfflowdof > 0) then
-    call readSurfaceRegionFiles(simulation%surf_realization)
-    call SurfaceRealizationMapSurfSubsurfaceGrids(realization,simulation%surf_realization)
-    call SurfaceRealizationLocalizeRegions(simulation%surf_realization)
-    call SurfaceRealizatonPassFieldPtrToPatches(simulation%surf_realization)
-    call SurfaceRealizationProcessMatProp(simulation%surf_realization)
-    call SurfaceRealizationProcessCouplers(simulation%surf_realization)
-    call SurfaceRealizationProcessConditions(simulation%surf_realization)
+    ! Check if surface-flow is compatible with the given flowmode
+    select case(option%iflowmode)
+      case(RICHARDS_MODE,TH_MODE)
+      case default
+        option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
+        call printErrMsgByRank(option)
+    end select
+
+    call SurfaceInitReadRegionFiles(simulation%surf_realization)
+    call SurfRealizMapSurfSubsurfGrids(realization,simulation%surf_realization)
+    call SurfRealizLocalizeRegions(simulation%surf_realization)
+    call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
+    call SurfRealizProcessMatProp(simulation%surf_realization)
+    call SurfRealizProcessCouplers(simulation%surf_realization)
+    call SurfRealizProcessConditions(simulation%surf_realization)
     !call RealProcessFluidProperties(simulation%surf_realization)
-    call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
-    call SurfaceRealizationInitAllCouplerAuxVars(simulation%surf_realization)
+    call SurfaceInitMatPropToRegions(simulation%surf_realization)
+    call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
     !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
 
     ! initialize plot variables
-    simulation%surf_realization%output_option%output_variable_list => OutputVariableListCreate()
-    call SurfaceFlowSetup(simulation%surf_realization)
-
-    !call GlobalSetup(simulation%surf_realization)
-    ! initialize FLOW
-    ! set up auxillary variable arrays
+    simulation%surf_realization%output_option%output_variable_list => &
+      OutputVariableListCreate()
     select case(option%iflowmode)
       case(RICHARDS_MODE)
-        !call SurfaceSetup(realization)
+        call SurfaceFlowSetup(simulation%surf_realization)
       case default
-        option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
-        call printErrMsgByRank(option)
+      case(TH_MODE)
+        call SurfaceTHSetup(simulation%surf_realization)
     end select
+
+    call SurfaceGlobalSetup(simulation%surf_realization)
+    ! initialize FLOW
+    ! set up auxillary variable arrays
 
     ! assign initial conditionsRealizAssignFlowInitCond
     call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
 
     ! override initial conditions if they are to be read from a file
-    if (len_trim(option%initialize_flow_filename) > 1) then
+    if (len_trim(option%surf_initialize_flow_filename) > 1) then
       option%io_buffer = 'For surface-flow initial conditions cannot be read from file'
       call printErrMsgByRank(option)
     endif
   
     select case(option%iflowmode)
       case(RICHARDS_MODE)
-        !call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+        call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+          call SurfaceFlowCreateSurfSubsurfVec( &
+                          simulation%realization, simulation%surf_realization)
+        endif
+      case(TH_MODE)
+        call SurfaceTHUpdateAuxVars(surf_realization)
+        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+          call SurfaceTHCreateSurfSubsurfVec( &
+                          simulation%realization, simulation%surf_realization)
+        endif
       case default
-        option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
+        option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
     end select
-    if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-      call SurfaceRealizationCreateSurfaceSubsurfaceVec( &
-                      simulation%realization, simulation%surf_realization)
-    endif
   endif ! option%nsurfflowdof > 0
 #endif
 
@@ -1138,10 +1202,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
 
   use Reaction_module  
   use Reaction_Aux_module  
-
-#ifdef SURFACE_FLOW
-  use Surface_Flow_module
-#endif
 
   implicit none
 
@@ -1317,6 +1377,7 @@ subroutine InitReadInput(simulation)
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
+  use Surface_Init_module
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -2271,12 +2332,19 @@ subroutine InitReadInput(simulation)
 #ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
-        call SurfaceFlowRead(simulation%surf_realization, &
-                             simulation%surf_flow_stepper%solver,input,option)
+        call SurfaceInitReadInput(simulation%surf_realization, &
+                              simulation%surf_flow_stepper%solver,input,option)
         simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
         option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+
+        ! Add final_time waypoint to surface_realization
+        waypoint => WaypointCreate()
+        waypoint%final = PETSC_TRUE
+        waypoint%time = realization%waypoints%last%time
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 #endif
 
 !......................
@@ -3540,329 +3608,6 @@ subroutine Create_IOGroups(option)
 ! SCORPIO
  
 end subroutine Create_IOGroups
-
-#ifdef SURFACE_FLOW
-! ************************************************************************** !
-!> This routine reads the required input file cards related to surface flows
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/18/12
-! ************************************************************************** !
-
-subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
-
-  use Option_module
-  use Discretization_module
-  use Grid_module
-  use Input_module
-  use String_module
-  use Patch_module
-  use Level_module
-
-  use Surface_Flow_module
-  use Surface_Realization_class
-
-  implicit none
-
-  type(surface_realization_type)     :: surf_realization
-  type(discretization_type), pointer :: discretization
-
-  character(len=MAXSTRINGLENGTH) :: string
-  
-  type(patch_type), pointer   :: patch
-  type(level_type), pointer   :: level
-  type(grid_type), pointer    :: grid
-  type(option_type), pointer  :: option
-  type(input_type), pointer   :: input
-  
-  patch          => surf_realization%patch
-  option         => surf_realization%option
-  discretization => surf_realization%discretization
-  
-  input => surf_realization%input
-  
-! Read in select required cards
-!.........................................................................
- 
-  ! GRID information
-  string = "GRID"
-  call InputFindStringInFile(input,option,string)
-  call InputFindStringErrorMsg(input,option,string)
-
-  ! SURFACE_FLOW information
-  string = "SURFACE_FLOW"
-  call InputFindStringInFile(input,option,string)
-  if(InputError(input)) return
-  option%nsurfflowdof = 1
-  
-  string = "SURF_GRID"
-  call InputFindStringInFile(input,option,string)
-  call SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
-
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      patch => PatchCreate()
-      patch%grid => discretization%grid
-      patch%surf_or_subsurf_flag = SURFACE
-      if (.not.associated(surf_realization%level_list)) then
-        surf_realization%level_list => LevelCreateList()
-      endif
-      level => LevelCreate()
-      call LevelAddToList(level,surf_realization%level_list)
-      call PatchAddToList(patch,level%patch_list)
-      surf_realization%patch => patch
-  end select
-    
-end subroutine InitReadRequiredCardsFromInputSurf
-
-! ************************************************************************** !
-!> This routine assigns surface material properties to associated regions in
-!! the model (similar to assignMaterialPropToRegions)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/13/12
-! ************************************************************************** !
-
-subroutine assignSurfaceMaterialPropToRegions(surf_realization)
-
-  use Surface_Realization_class
-  use Discretization_module
-  use Strata_module
-  use Region_module
-  use Material_module
-  use Option_module
-  use Grid_module
-  use Field_module
-  use Patch_module
-  use Level_module
-  use Surface_Field_module
-  use Surface_Material_module
-  
-  use HDF5_module
-
-  implicit none
-  
-  type(surface_realization_type) :: surf_realization
-  
-  PetscReal, pointer :: man0_p(:)
-  PetscReal, pointer :: vec_p(:)
-  
-  PetscInt :: icell, local_id, ghosted_id, natural_id, surf_material_id
-  PetscInt :: istart, iend
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscErrorCode :: ierr
-  
-  type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(discretization_type), pointer :: discretization
-  type(surface_field_type), pointer :: surf_field
-  type(strata_type), pointer :: strata
-  type(patch_type), pointer :: patch  
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
-  type(surface_material_property_type), pointer :: surf_material_property
-  type(surface_material_property_type), pointer :: null_surf_material_property
-  type(region_type), pointer :: region
-  PetscBool :: update_ghosted_material_ids
-  
-  option => surf_realization%option
-  discretization => surf_realization%discretization
-  surf_field => surf_realization%surf_field
-
-  ! loop over all patches and allocation material id arrays
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      if (.not.associated(cur_patch%imat)) then
-        allocate(cur_patch%imat(cur_patch%grid%ngmax))
-        ! initialize to "unset"
-        cur_patch%imat = -999
-        ! also allocate saturation function id
-        allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
-        cur_patch%sat_func_id = -999
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  ! if material ids are set based on region, as opposed to being read in
-  ! we must communicate the ghosted ids.  This flag toggles this operation.
-  update_ghosted_material_ids = PETSC_FALSE
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-      strata => cur_patch%strata%first
-      do
-        if (.not.associated(strata)) exit
-        ! Read in cell by cell material ids if they exist
-        if (.not.associated(strata%region) .and. strata%active) then
-          option%io_buffer = 'Reading of material prop from file for' // &
-            ' surface flow is not implemented.'
-          call printErrMsgByRank(option)
-          !call readMaterialsFromFile(realization,strata%realization_dependent, &
-          !                           strata%material_property_filename)
-        ! Otherwise, set based on region
-        else if (strata%active) then
-          update_ghosted_material_ids = PETSC_TRUE
-          region => strata%region
-          surf_material_property => strata%surf_material_property
-          if (associated(region)) then
-            istart = 1
-            iend = region%num_cells
-          else
-            istart = 1
-            iend = grid%nlmax
-          endif
-          do icell=istart, iend
-            if (associated(region)) then
-              local_id = region%cell_ids(icell)
-            else
-              local_id = icell
-            endif
-            ghosted_id = grid%nL2G(local_id)
-            cur_patch%imat(ghosted_id) = surf_material_property%id
-          enddo
-        endif
-        strata => strata%next
-      enddo
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  if (update_ghosted_material_ids) then
-    ! update ghosted material ids
-    call SurfaceRealizationLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
-  endif
-
-  ! set cell by cell material properties
-  ! create null material property for inactive cells
-  null_surf_material_property => SurfaceMaterialPropertyCreate()
-  cur_level => surf_realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-
-      call GridVecGetArrayF90(grid,surf_field%mannings0,man0_p,ierr)
-
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        surf_material_id = cur_patch%imat(ghosted_id)
-        if (surf_material_id == 0) then ! accomodate inactive cells
-          surf_material_property = null_surf_material_property
-        else if ( surf_material_id > 0 .and. &
-                  surf_material_id <= &
-                  size(surf_realization%surf_material_property_array)) then
-          surf_material_property => &
-            surf_realization%surf_material_property_array(surf_material_id)%ptr
-          if (.not.associated(surf_material_property)) then
-            write(dataset_name,*) surf_material_id
-            option%io_buffer = 'No material property for surface material id ' // &
-                               trim(adjustl(dataset_name)) &
-                               //  ' defined in input file.'
-            call printErrMsgByRank(option)
-          endif
-        else if (surf_material_id < -998) then 
-          write(dataset_name,*) grid%nG2A(ghosted_id)
-          option%io_buffer = 'Uninitialized surface material id in patch at cell ' // &
-                             trim(adjustl(dataset_name))
-          call printErrMsgByRank(option)
-        else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
-          write(option%io_buffer,*) surf_material_id
-          option%io_buffer = 'Unmatched surface material id in patch:' // &
-            adjustl(trim(option%io_buffer))
-          call printErrMsgByRank(option)
-        else
-          option%io_buffer = 'Something messed up with surface material ids. ' // &
-            ' Possibly material ids not assigned to all grid cells. ' // &
-            ' Contact Glenn!'
-          call printErrMsgByRank(option)
-        endif
-        man0_p(local_id) = surf_material_property%mannings
-      enddo ! local_id - loop
-
-      call GridVecRestoreArrayF90(grid,surf_field%mannings0,man0_p,ierr)
-      
-      cur_patch => cur_patch%next
-    enddo ! looping over patches
-    cur_level => cur_level%next
-  enddo ! looping over levels
-  
-  call SurfaceMaterialPropertyDestroy(null_surf_material_property)
-  nullify(null_surf_material_property)
-
-  call DiscretizationGlobalToLocal(discretization,surf_field%mannings0, &
-                                   surf_field%mannings_loc,ONEDOF)
-
-end subroutine assignSurfaceMaterialPropToRegions
-
-! ************************************************************************** !
-!> This routine reads surface region files
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/20/12
-! ************************************************************************** !
-subroutine readSurfaceRegionFiles(surf_realization)
-
-  use Surface_Realization_class
-  use Region_module
-  use HDF5_module
-  use Grid_module
-
-  implicit none
-
-  type(surface_realization_type) :: surf_realization
-  
-  type(region_type), pointer :: surf_region
-  
-  surf_region => surf_realization%surf_regions%first
-  do 
-    if (.not.associated(surf_region)) exit
-    if (len_trim(surf_region%filename) > 1) then
-      if (index(surf_region%filename,'.h5') > 0) then
-        if (surf_region%grid_type == STRUCTURED_GRID) then
-          !call HDF5ReadRegionFromFile(surf_realization,surf_region,surf_region%filename)
-        else
-#if defined(PETSC_HAVE_HDF5)
-          call HDF5ReadUnstructuredGridRegionFromFile(surf_realization%option, &
-                                                      surf_region, &
-                                                      surf_region%filename)
-#endif      
-        endif
-      else if (index(surf_region%filename,'.ss') > 0) then
-        surf_region%sideset => RegionCreateSideset()
-        call RegionReadFromFile(surf_region%sideset,surf_region%filename, &
-                                surf_realization%option)
-      else
-        call RegionReadFromFile(surf_region,surf_realization%option, &
-                                surf_region%filename)
-      endif
-    endif
-    surf_region => surf_region%next
-  enddo
-
-end subroutine readSurfaceRegionFiles
-
-#endif
-! SURF_FLOW
 
 ! ************************************************************************** !
 !

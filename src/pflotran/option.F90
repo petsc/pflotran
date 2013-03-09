@@ -63,6 +63,8 @@ module Option_module
     PetscReal :: surf_flow_time, surf_flow_dt
     PetscReal :: surf_subsurf_coupling_time
     PetscReal :: surf_subsurf_coupling_flow_dt
+    PetscBool :: surf_flow_explicit
+    character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -129,6 +131,8 @@ module Option_module
     PetscReal :: temperature_change_limit
     PetscReal :: stomp_norm
     PetscBool :: check_stomp_norm
+    
+    PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
     
     PetscReal :: minimum_hydrostatic_pressure
     
@@ -357,6 +361,8 @@ subroutine OptionInitRealization(option)
    option%surf_flow_time =0.d0
    option%surf_subsurf_coupling_time = 0.d0
    option%surf_subsurf_coupling_flow_dt = 0.d0
+   option%surf_flow_explicit = PETSC_TRUE
+   option%surf_initialize_flow_filename =""
 #endif
 
   option%tranmode = ""
@@ -400,6 +406,8 @@ subroutine OptionInitRealization(option)
   option%temperature_change_limit = 0.d0
   option%stomp_norm = 0.d0
   option%check_stomp_norm = PETSC_FALSE
+  
+  option%infnorm_res_sec = 0.d0
   
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE

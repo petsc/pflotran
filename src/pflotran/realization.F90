@@ -952,7 +952,7 @@ subroutine RealProcessFlowConditions(realization)
     !TODO(geh): could destroy the time_series here if dataset allocated
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE,MIS_MODE)
+      case(RICHARDS_MODE,MIS_MODE,TH_MODE)
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! check for dataset in flow_dataset
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
