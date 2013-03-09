@@ -34,7 +34,8 @@ module Surface_Field_module
     Vec :: subsurf_zz            ! MPI
     Vec :: surf2subsurf_dist_gravity ! MPI
 
-    Vec :: subsurf_temp_vec      ! MPI
+    Vec :: subsurf_temp_vec_1dof ! MPI
+    Vec :: subsurf_temp_vec_ndof ! MPI
 
     ! residual vectors
     Vec :: flow_r
@@ -96,7 +97,8 @@ function SurfaceFieldCreate()
   surface_field%subsurf_zz = 0
   surface_field%surf2subsurf_dist_gravity = 0
   
-  surface_field%subsurf_temp_vec = 0
+  surface_field%subsurf_temp_vec_1dof = 0
+  surface_field%subsurf_temp_vec_ndof = 0
 
   SurfaceFieldCreate => surface_field
 
@@ -155,7 +157,8 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%flow_yy /= 0) call VecDestroy(surface_field%flow_yy,ierr)
   if (surface_field%flow_accum /= 0) call VecDestroy(surface_field%flow_accum,ierr)
   
-  if (surface_field%subsurf_temp_vec/=0) call VecDestroy(surface_field%subsurf_temp_vec,ierr)
+  if (surface_field%subsurf_temp_vec_1dof/=0) call VecDestroy(surface_field%subsurf_temp_vec_1dof,ierr)
+  if (surface_field%subsurf_temp_vec_ndof/=0) call VecDestroy(surface_field%subsurf_temp_vec_ndof,ierr)
 
 end subroutine SurfaceFieldDestroy
 

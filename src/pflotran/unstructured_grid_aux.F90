@@ -102,6 +102,10 @@ module Unstructured_Grid_Aux_module
 #ifdef SURFACE_FLOW
     VecScatter :: scatter_bet_grids ! scatter context between surface and subsurface
                                     ! grids
+    VecScatter :: scatter_bet_grids_1dof ! scatter context between surface and
+                                         ! subsurface grids for 1-DOF
+    VecScatter :: scatter_bet_grids_ndof ! scatter context between surface and
+                                         ! subsurface grids for N-DOFs
 #endif
   end type ugdm_type
 
@@ -162,6 +166,8 @@ function UGDMCreate()
   ugdm%local_vec = 0
 #ifdef SURFACE_FLOW
   ugdm%scatter_bet_grids = 0
+  ugdm%scatter_bet_grids_1dof = 0
+  ugdm%scatter_bet_grids_ndof = 0
 #endif
   UGDMCreate => ugdm
 
@@ -1574,6 +1580,8 @@ subroutine UGridDMDestroy(ugdm)
   call VecDestroy(ugdm%local_vec,ierr)
 #ifdef SURFACE_FLOW
   call VecScatterDestroy(ugdm%scatter_bet_grids,ierr)
+  call VecScatterDestroy(ugdm%scatter_bet_grids_1dof,ierr)
+  call VecScatterDestroy(ugdm%scatter_bet_grids_ndof,ierr)
 #endif
   deallocate(ugdm)
   nullify(ugdm)

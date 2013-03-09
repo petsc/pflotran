@@ -70,7 +70,9 @@ module Variables_module
   PetscInt, parameter, public :: SECONDARY_CONCENTRATION = 60
   PetscInt, parameter, public :: SEC_MIN_VOLFRAC =         61
 
-  PetscInt, parameter, public :: SURFACE_FLOW_PRESSURE =   62
+  PetscInt, parameter, public :: SURFACE_LIQUID_HEAD        = 62
+  PetscInt, parameter, public :: SURFACE_LIQUID_TEMPERATURE = 63
+  PetscInt, parameter, public :: SURFACE_LIQUID_DENSITY     = 64
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
