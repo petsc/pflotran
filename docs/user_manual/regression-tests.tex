@@ -1,11 +1,11 @@
-\section{PFLOTRAN regression test manager}
+\section{PFLOTRAN Regression Test Manager}
 
 The test manager for PFLOTRAN is a python program that is responsible
 for reading a configuration file, identifying the tests declared in
 the file, running PFLOTRAN on the appropriate input files, and then
 comparing the results to a known ``gold standard'' output file.
 
-\subsection{Running the test manager}
+\subsection{Running the Test Manager}
 The test manager can be run in two ways, either as part of the build
 system using ``make'' or manually.
 
@@ -115,8 +115,8 @@ The data types and default tolerances are:
 The default tolerances are deliberately set very tight, and are
 expected to be overridden on a per-test or per configuration file
 basis.  There are three known comparisons: ``absolute'', for absolute
-differences ($\delta=|c-g|$), ``relative'' for relative differences ($\delta=\frac{|c-g|}{g}$), and ``percent''
-for specifying a percent difference ($\delta=100\cdot\frac{|c-g|}{g}$).
+differences ($\delta\!=\!|c\!-\!g|$), ``relative'' for relative differences ($\delta\!=\!{|c\!-\!g|}/{g}$), and ``percent''
+for specifying a percent difference ($\delta\!=\!100\!\cdot\!{|c\!-\!g|}/{g}$).
 
 In addition there are two optional sections in configuration
 files. The section ``default-test-criteria'' specifies the default
@@ -129,7 +129,7 @@ serial = test-1 test-2 test-3
 parallel = test-4 test-5 test-6
 \end{verbatim}
 
-\subsection{Creating new tests}
+\subsection{Creating New Tests}
 
 We want running tests to become a habit for developers so that ``make
 pflotran'' is always followed by ``make test.'' With that in mind, ideal
@@ -158,22 +158,23 @@ REGRESSION
 END
 \end{verbatim}
 
-\item add the test to the configuration file
+\item Add the test to the configuration file
 
-\item refine the tolerances so that they will be tight enough to
+\item Refine the tolerances so that they will be tight enough to
   identify problems, but loose enough that they do not create a lot of
   false positives and discourage users and developers from running the
   tests.
 
-\item add the test to the appropriate test suite and make rule.
+\item Add the test to the appropriate test suite and make rule.
 
-\item add the configuration file, input file and ``gold'' file to revision control.
+\item Add the configuration file, input file and ``gold'' file to revision control.
 
 \end{itemize}
 
 \textbf{Guidelines for setting tolerances go here, once we figure out what to recommend.}
 
-\subsection{Updating test results}
+\subsection{Updating Test Results}
+
 The output from PFLOTRAN should be fairly stable, and we consider the
 current output to be ``correct''. Changes to regression output should
 be rare, and primarily done for bug fixes. Updating the test results

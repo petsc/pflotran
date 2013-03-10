@@ -3,7 +3,7 @@
 # include the make variables from PETSc so we can use PYTHON and do
 # some conditional testing, e.g. test if unstructured mesh is available.
 #
-# If PYTHON definied from petsc is not correct, override it on the
+# If PYTHON defined from petsc is not correct, override it on the
 # command line with: make PYTHON=python3.3 test
 
 include ${PETSC_DIR}/conf/variables
@@ -36,6 +36,7 @@ STANDARD_CFG = \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
+	default/mfd/mfd.cfg \
 	ngee/ngee.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 
