@@ -136,3 +136,20 @@ ngee-biogeochemistry :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		-r ngee --suite biogeochemistry 
 
+#
+# Try to cleanup the regression test output.
+#
+# NOTE: do NOT add a "*.h5" glob. The .h5 extension is used for both
+# input and output files, and a simple glob can not distinguish
+# between them. Manually add rm commands for each file that needs to be
+# removed.
+#
+clean-tests :
+	-find . -type f -name '*.testlog' -print0 | xargs -0 rm
+	-find . -type f -name '*.out' -print0 | xargs -0 rm
+	-find . -type f -name '*.tec' -print0 | xargs -0 rm
+	-find . -type f -name '*.regression' -print0 | xargs -0 rm
+	-find . -type f -name '*.stdout' -print0 | xargs -0 rm
+	-find . -type f -name '*.old' -print0 | xargs -0 rm
+	-find . -type f -name '*~' -print0 | xargs -0 rm
+	-rm default/anisothermal/thc_1d.h5
