@@ -855,7 +855,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   do i = 1, ncomp
     if (reaction%use_log_formulation) then
       ! convert log concentration to concentration
-      conc_current_M(i) = conc_upd(i,ngcells) + exp(rhs(i+(ngcells-1)*ncomp))
+      conc_current_M(i) = conc_upd(i,ngcells)*exp(rhs(i+(ngcells-1)*ncomp))
     else
       conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
     endif
@@ -1303,7 +1303,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
       n = j + (i - 1)*ncomp
       if (reaction%use_log_formulation) then 
         ! convert log concentration to concentration
-        conc_upd(j,i) = exp(rhs(n)) + conc_upd(j,i)
+        conc_upd(j,i) = exp(rhs(n))*conc_upd(j,i)
       else
         conc_upd(j,i) = rhs(n) + conc_upd(j,i)
       endif   
