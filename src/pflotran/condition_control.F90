@@ -1062,7 +1062,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscReal, pointer :: xx_p(:), iphase_loc_p(:), xx_faces_p(:)
+  PetscReal, pointer :: xx_p(:)!, iphase_loc_p(:), xx_faces_p(:)
   PetscErrorCode :: ierr
   
   PetscReal :: temperature, p_sat
@@ -1097,7 +1097,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
       
         case(G_MODE) ! general phase mode
 
-        case default
+        case (RICHARDS_MODE,TH_MODE)
           ! assign initial conditions values to domain
           call GridVecGetArrayF90(grid,surf_field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
     
@@ -1108,8 +1108,6 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
       
             if (.not.associated(initial_condition)) exit
 
-            if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            else 
               if (.not.associated(initial_condition%flow_aux_real_var)) then
                 if (.not.associated(initial_condition%flow_condition)) then
                   option%io_buffer = 'Flow condition is NULL in initial condition'
@@ -1122,18 +1120,18 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                   ibegin = iend-option%nflowdof+1
                   if (cur_patch%imat(ghosted_id) <= 0) then
                     xx_p(ibegin:iend) = 0.d0
-                    iphase_loc_p(ghosted_id) = 0
                     cycle
                   endif
                   do idof = 1, option%nflowdof
                     xx_p(ibegin+idof-1) = &
-                          initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                          initial_condition%flow_condition% &
+                          sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                    !TODO(GB): Correct the initialization of surface flow condition
+                    if (idof == 1) xx_p(ibegin+idof-1) = 0.d0
+                    !if (idof == 1.and.option%iflowmode==TH_MODE) then
+                    !  xx_p(ibegin+idof-1) = 0.d0+option%reference_pressure
+                    !endif
                   enddo
-                  iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-                  if (option%iflowmode == G_MODE) then
-                      cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                          int(iphase_loc_p(ghosted_id))
-                  endif
                 enddo
               else
                 do iconn=1,initial_condition%connection_set%num_connections
@@ -1143,26 +1141,25 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                   ibegin = iend-option%nflowdof+1
                   if (cur_patch%imat(ghosted_id) <= 0) then
                     xx_p(ibegin:iend) = 0.d0
-                    iphase_loc_p(ghosted_id) = 0
                    cycle
                   endif
                   xx_p(ibegin:iend) = &
                         initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
                   !TODO(gb): Correct the initialization of surface flow condition
-                  xx_p(ibegin:iend) = 101325.d0
-                  xx_p(ibegin:iend) = 0.d0
-                  if (option%iflowmode == G_MODE) then
-                    cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                        int(iphase_loc_p(ghosted_id))
-                  endif
+                  xx_p(ibegin) = 0.d0
+                  !if (idof == 1.and.option%iflowmode==TH_MODE) then
+                  !  xx_p(ibegin) = 0.d0 + option%reference_pressure
+                  !endif
                 enddo
               endif
-            end if
             initial_condition => initial_condition%next
           enddo
      
           call GridVecRestoreArrayF90(grid,surf_field%flow_xx,xx_p, ierr)
-
+        case default
+          option%io_buffer = 'CondControlAssignFlowInitCondSurface not ' // &
+            'for this mode'
+          call printErrMsg(option)
       end select 
    
       cur_patch => cur_patch%next
@@ -1171,8 +1168,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   enddo
    
   ! update dependent vectors
-  call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)  
-  !call VecCopy(surf_field%flow_xx, surf_field%flow_yy, ierr)
+  call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
 
 end subroutine CondControlAssignFlowInitCondSurface
 #endif

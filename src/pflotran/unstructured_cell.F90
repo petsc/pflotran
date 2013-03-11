@@ -495,7 +495,7 @@ function UCellGetNVertices(cell_type,option)
     case(TET_TYPE, QUAD_TYPE)
       UCellGetNVertices = 4
     case(TRI_TYPE)
-      UCellGetNVertices = 4
+      UCellGetNVertices = 3
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
