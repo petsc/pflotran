@@ -3,6 +3,26 @@
 For those adverse to reading manuals the following is a quick start guide to getting up and running with PFLOTRAN in four easy steps.
 
 \begin{description}
+\item[Required Software Packages] ~
+\begin{itemize}
+\item Compilers (compatible with Fortran 2003: gcc 4.7.x, Intel 12.1.x, PGI)
+
+For MacOSX 10.8.2 the latest Fortran compiler binaries (gcc/gfortran 4.8 at the time of this writing) may be downloaded from the web site \href{http://hpc.sourceforge.net}{HPC for MacOSX}.
+
+%{\footnotesize\tt http://hpc.sourceforge.net}.
+
+\item Mercurial (hg) (version control system)
+\item CMAKE (version 2.8.x)
+\item Developer version of PETSc: \href{http://www.mcs.anl.gov/petsc/developers/index.html}{petsc-dev}
+\begin{itemize}
+\item MPI (for running in parallel)
+\item BLAS/LAPACK libraries
+\item HDF5 (parallel output)
+\item METIS/ParMETIS (unstructured grids)
+\end{itemize}
+\item \href{https://bitbucket.org/pflotran/pflotran-dev}{PFLOTRAN}
+\end{itemize}
+
 \item[Step 1: Installing PETSc] The first step is to download the developer version of PETSc, \href{http://www.mcs.anl.gov/petsc/developers/index.html}{petsc-dev}. To do this follow the directions at the PETSc Developer web site. The recommended approach is to use \href{http://mercurial.selenic.com/}{Mercurial}---also needed to obtain the PFLOTRAN source code. Mercurial(hg) is the version control system used by both PETSc and PFLOTRAN. Often one can find executables for particular platforms and there is no need to compile the application from scratch. On a UNIX system you can check to see if Mercurial is already installed by issuing the command: {\footnotesize\tt which hg}.
 
 To compile PETSc it is first necessary to configure the makefile. To this end define the environmental variables {\footnotesize\tt PETSC\_DIR} and {\footnotesize\tt PETSC\_ARCH} pointing to the directory where petsc-dev is installed and an identifying name for the installation, respectively. E.g. if using the t-shell on MacOSX 10.8.2 and gcc-4.8 enter into the .tcshrc file:
@@ -83,17 +103,21 @@ Option & \multicolumn{1}{c}{Description}\\
 \midrule
 scco2=1 & MPHASE mode for supercritical CO$_2$\\
 scorpio=1 & SCORPIO$^{*}$ parallel IO\\
-mfd=1 & Mimetic finite difference for full permeability tensor\\
+%mfd=1 & Mimetic finite difference for full permeability tensor\\
 \bottomrule
 \multicolumn{2}{l}{$^{*}$ See \S\ref{parallelio} for installing SCORPIO.}
 \end{tabular}
 
 \end{table}
 
+\footnotesize
 \begin{Verbatim}
 cd PLOTRAN_DIR/src/pflotran
-make [options] pflotran
+make [options] ./pflotran
 \end{Verbatim}
+\normalsize
+
+For example: {\footnotesize\tt make scco2=1 ./ppflotran}
 
 \item[Step 4: Running PFLOTRAN] PFLOTRAN is run in parallel on {\tt N} cores using the command:
 
@@ -103,9 +127,57 @@ with input file {\footnotesize\tt input\_file\_name.in}. The default input file 
 \end{description}
 
 \noindent
-Finally, to get the most out of PFLOTRAN subscribe to the PFLOTRAN User Group:
+To get the most out of PFLOTRAN subscribe to the PFLOTRAN User Group:
 
 {\footnotesize\tt pflotran-users@googlegroups.com}.
 
 \noindent
 PFLOTRAN developers monitor this site and will as quickly as possible respond to your queries.
+
+The final challenge is setting up an input file. Various modes available are listed in Table~\ref{tmodes} and example input decks are stored in the {\footnotesize\tt ./pflotran/example\_problems} and \linebreak {\footnotesize\tt ./pflotran/shortcourse} directories.
+
+\begin{table}[H]\centering
+\caption{Available modes in PFLOTRAN}
+\label{tmodes}
+\vspace{3mm}
+\begin{tabular}{lcc}
+\toprule
+MODE & \multicolumn{1}{c}{Description} & Requirements\\
+\midrule
+RICHARDS & Solves Richards equation & \\
+MPHASE & Supercritcal CO$_2$ & co2data0.dat database\\
+TH & Thermal-Hydrology mode & \\
+CHEMISTRY & Reactive Transport & thermodynamic database\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+An example input file is listed in \S\ref{exinput} for a coupled problem using Richards and Chemistry modes.
+
+\subsection{Running on Big Iron Parallel Architectures}
+
+Generally these machines use {\footnotesize\tt module} to load the computing environment.
+Make sure the correct compilers are loaded that are compatible with Fortran 2003. The following instructions apply to Yellowstone running Red Hat linux using the Intel compiler. As MPI is already installed it is not necessary to reinstall it through PETSc.
+
+\noindent
+Use a recent version of CMAKE: {\footnotesize\tt module load cmake/2.8.10.2}.
+
+\noindent Set the environmental variable for the BLAS/LAPACK libraries to use MKL:
+
+\noindent
+{\footnotesize\tt setenv BLAS\_LAPACK\_LIB\_DIR /ncar/opt/intel/12.1.0.233/composer\_xe\_2013.1.117/mkl}
+
+\noindent
+Configure PETSc:
+\footnotesize
+\begin{Verbatim}
+./config/configure.py --with-cc=mpicc --with-fc=mpif90 --with-cxx=mpicxx 
+--with-clanguage=c --with-blas-lapack-dir=$BLAS_LAPACK_LIB_DIR 
+--with-shared-libraries=0 --with-debugging=0 --download-hdf5=yes 
+--download-parmetis=yes --download-metis=yes
+\end{Verbatim}
+\normalsize
+
+%\subsection{Debug Mode}
+
+%To install Valgrind
