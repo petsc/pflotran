@@ -1694,6 +1694,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
     condition%num_sub_conditions = condition%num_sub_conditions + 1
   if (associated(general%gas_saturation)) &
     condition%num_sub_conditions = condition%num_sub_conditions + 1
+  if (associated(general%mole_fraction)) &
+    condition%num_sub_conditions = condition%num_sub_conditions + 1
   if (associated(general%temperature)) &
     condition%num_sub_conditions = condition%num_sub_conditions + 1
   if (associated(general%flux)) &
@@ -1716,6 +1718,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   if (associated(general%gas_saturation)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => general%gas_saturation
+  endif  
+  if (associated(general%mole_fraction)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%mole_fraction
   endif  
   if (associated(general%temperature)) then
     i = i + 1

@@ -1804,7 +1804,14 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   enddo
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-      res(option%energy_id) = qsrc_mol(ONE_INTEGER) * gen_aux_var%H(ONE_INTEGER)
+      if (gen_aux_var%H(ONE_INTEGER) < -998.d0) then
+        option%io_buffer = 'Src/Sink only works for liquid or two_phase.'
+        call printErrMsg(option)
+      endif
+!      res(option%energy_id) = qsrc_mol(ONE_INTEGER) * gen_aux_var%H(ONE_INTEGER)
+      res(option%energy_id) = qsrc_mol(ONE_INTEGER) * &
+        (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(1) / &
+                                      gen_aux_var%den(1) * 1.d-6)
     else
       res(option%energy_id) = qsrc(THREE_INTEGER)
     endif
