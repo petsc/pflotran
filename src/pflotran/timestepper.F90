@@ -336,7 +336,6 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   PetscBool :: plot_flag_surf, transient_plot_flag_surf
 #endif
 
-  type(stepper_type), pointer :: null_stepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -348,12 +347,10 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   PetscBool :: failure, surf_failure
   PetscErrorCode :: ierr
 
-  return
-  
   option => realization%option
   output_option => realization%output_option
 
-  nullify(master_stepper,null_stepper)
+  nullify(master_stepper)
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr)
@@ -368,6 +365,8 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   else
     master_stepper => tran_stepper
   endif
+
+  return
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
@@ -632,6 +631,9 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   option => realization%option
   output_option => realization%output_option
 
+  nullify(null_stepper)
+
+#if 0
   nullify(master_stepper,null_stepper)
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
@@ -647,6 +649,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   else
     master_stepper => tran_stepper
   endif
+#endif
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
@@ -1165,6 +1168,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
   enddo
 
+#if 0
   if (master_stepper%steps >= master_stepper%max_time_step) then
     call printMsg(option,'')
     write(option%io_buffer,*) master_stepper%max_time_step
@@ -1220,6 +1224,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   endif
 
   call PetscLogStagePop(ierr)
+#endif
 
 end subroutine TimestepperExecuteRun
 
