@@ -70,6 +70,7 @@ program pflotran
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
+  type(stepper_type), pointer :: master_stepper
   type(option_type), pointer :: option
   
   nullify(stochastic)
@@ -190,8 +191,18 @@ program pflotran
                     simulation%tran_stepper, &
                     simulation%surf_flow_stepper)
 #else
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
+    call TimestepperInitializeRun(simulation%realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper)
+    call  TimestepperExecuteRun(simulation%realization, &
+                                master_stepper, &
+                                simulation%flow_stepper, &
+                                simulation%tran_stepper)
+    call  TimestepperFinalizeRun(simulation%realization, &
+                                 master_stepper, &
+                                 simulation%flow_stepper, &
+                                 simulation%tran_stepper)
 #endif
 
     call RegressionOutput(simulation%regression,simulation%realization, &
