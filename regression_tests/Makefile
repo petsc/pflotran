@@ -47,7 +47,7 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg
 
-	STANDARD_PARALLEL_CFG = \
+	STANDARD_PARALLEL_CFG += \
 		default/discretization/discretization.cfg
 endif
 
