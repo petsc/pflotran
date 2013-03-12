@@ -62,6 +62,7 @@ program pflotran
   PetscBool :: input_prefix_option_found, pflotranin_option_found
   PetscBool :: single_inputfile
   PetscBool :: bool1, bool2
+  PetscInt :: init_status
   PetscInt :: i
   PetscInt :: temp_int
   PetscErrorCode :: ierr
@@ -195,15 +196,22 @@ program pflotran
     call TimestepperInitializeRun(simulation%realization, &
                                   master_stepper, &
                                   simulation%flow_stepper, &
-                                  simulation%tran_stepper,bool1,bool2)
-    call  TimestepperExecuteRun(simulation%realization, &
-                                master_stepper, &
-                                simulation%flow_stepper, &
-                                simulation%tran_stepper,bool1,bool2)
-    call  TimestepperFinalizeRun(simulation%realization, &
-                                 master_stepper, &
-                                 simulation%flow_stepper, &
-                                 simulation%tran_stepper)
+                                  simulation%tran_stepper, &
+                                  bool1,bool2, &
+                                  init_status)
+    select case(init_status)
+      case(TIMESTEPPER_INIT_PROCEED)
+        call  TimestepperExecuteRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper,bool1,bool2)
+        call  TimestepperFinalizeRun(simulation%realization, &
+                                     master_stepper, &
+                                     simulation%flow_stepper, &
+                                     simulation%tran_stepper)
+      case(TIMESTEPPER_INIT_FAIL)
+      case(TIMESTEPPER_INIT_DONE)
+    end select
 #endif
 
     call RegressionOutput(simulation%regression,simulation%realization, &

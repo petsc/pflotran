@@ -157,6 +157,7 @@ subroutine StochasticRun(stochastic,option)
   type(realization_type), pointer :: realization
   type(stepper_type), pointer :: master_stepper
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: init_status
   PetscErrorCode :: ierr
   PetscInt :: status
   
@@ -201,15 +202,22 @@ subroutine StochasticRun(stochastic,option)
     call TimestepperInitializeRun(simulation%realization, &
                                   master_stepper, &
                                   simulation%flow_stepper, &
-                                  simulation%tran_stepper,bool1,bool2)
-    call  TimestepperExecuteRun(simulation%realization, &
-                                master_stepper, &
-                                simulation%flow_stepper, &
-                                simulation%tran_stepper,bool1,bool2)
-    call  TimestepperFinalizeRun(simulation%realization, &
-                                 master_stepper, &
-                                 simulation%flow_stepper, &
-                                 simulation%tran_stepper)
+                                  simulation%tran_stepper, &
+                                  bool1,bool2, &
+                                  init_status)
+    select case(init_status)
+      case(TIMESTEPPER_INIT_PROCEED)
+        call  TimestepperExecuteRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper,bool1,bool2)
+        call  TimestepperFinalizeRun(simulation%realization, &
+                                     master_stepper, &
+                                     simulation%flow_stepper, &
+                                     simulation%tran_stepper)
+      case(TIMESTEPPER_INIT_FAIL)
+      case(TIMESTEPPER_INIT_DONE)
+    end select
 #endif
 
     call RegressionOutput(simulation%regression,simulation%realization, &

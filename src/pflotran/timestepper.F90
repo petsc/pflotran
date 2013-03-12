@@ -9,6 +9,10 @@ module Timestepper_module
   private
   
 #include "definitions.h"
+
+  PetscInt, parameter, public :: TIMESTEPPER_INIT_PROCEED = 0
+  PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1
+  PetscInt, parameter, public :: TIMESTEPPER_INIT_FAIL = 2
  
   type, public :: stepper_type
   
@@ -308,7 +312,8 @@ subroutine TimestepperInitializeRun(realization,surf_realization, &
 #else
 subroutine TimestepperInitializeRun(realization,master_stepper, &
                                     flow_stepper,tran_stepper, &
-step_to_steady_state, run_flow_as_steady_state)
+step_to_steady_state, run_flow_as_steady_state, &
+                                    init_status)
 #endif
 
   use Realization_class
@@ -331,6 +336,7 @@ step_to_steady_state, run_flow_as_steady_state)
   type(stepper_type), pointer :: master_stepper
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
+  PetscInt :: init_status
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer :: surf_flow_stepper
   type(surface_realization_type), pointer :: surf_realization
@@ -354,12 +360,15 @@ step_to_steady_state, run_flow_as_steady_state)
   output_option => realization%output_option
 
   nullify(master_stepper)
+  init_status = TIMESTEPPER_INIT_PROCEED
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr)
                              
   if (option%steady_state) then
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+    ! do not want to run through time stepper
+    init_status = TIMESTEPPER_INIT_DONE
     return 
   endif
   
@@ -418,6 +427,7 @@ step_to_steady_state, run_flow_as_steady_state)
           if (OptionPrintToFile(option)) then
             write(option%fid_out,*) ' ERROR: steady state solve failed!!!'
           endif
+          init_status = TIMESTEPPER_INIT_FAIL
           return 
         endif
         option%flow_dt = master_stepper%dt_min
@@ -483,6 +493,7 @@ step_to_steady_state, run_flow_as_steady_state)
                        'has been met.  Stopping....'  
     call printMsg(option)
     call printMsg(option,'')
+    init_status = TIMESTEPPER_INIT_DONE
     return
   endif
 
@@ -505,7 +516,7 @@ step_to_steady_state, run_flow_as_steady_state)
 #endif
   endif
   
-  !if TIMESTEPPER->MAX_STEPS < 0, print out initial condition only
+  !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
   if (master_stepper%max_time_step < 1) then
     call printMsg(option,'')
     write(option%io_buffer,*) master_stepper%max_time_step
@@ -514,7 +525,8 @@ step_to_steady_state, run_flow_as_steady_state)
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
                        'has been met.  Stopping....'  
     call printMsg(option)
-    call printMsg(option,'')                    
+    call printMsg(option,'') 
+    init_status = TIMESTEPPER_INIT_DONE
     return
   endif
 
@@ -533,6 +545,7 @@ step_to_steady_state, run_flow_as_steady_state)
       option%io_buffer = &
         'Null flow waypoint list; final time likely equal to start time.'
       call printMsg(option)
+      init_status = TIMESTEPPER_INIT_FAIL
       return
     else
       flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
@@ -544,6 +557,7 @@ step_to_steady_state, run_flow_as_steady_state)
         'Null transport waypoint list; final time likely equal to start ' // &
         'time or simulation time needs to be extended on a restart.'
       call printMsg(option)
+      init_status = TIMESTEPPER_INIT_FAIL
       return
     else
       tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
