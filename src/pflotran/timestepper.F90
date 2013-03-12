@@ -486,13 +486,6 @@ step_to_steady_state, run_flow_as_steady_state)
     return
   endif
 
-  
-  
-  
-    return
-  
-
-  
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
 #ifdef SURFACE_FLOW
@@ -525,6 +518,13 @@ step_to_steady_state, run_flow_as_steady_state)
     return
   endif
 
+  
+  
+  
+    return
+  
+
+  
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
@@ -784,11 +784,6 @@ step_to_steady_state, run_flow_as_steady_state)
     return
   endif
 
-  
-#endif  
-  
-  
-  
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
 #ifdef SURFACE_FLOW
@@ -820,6 +815,13 @@ step_to_steady_state, run_flow_as_steady_state)
     call printMsg(option,'')                    
     return
   endif
+  
+  
+#endif  
+  
+  
+  
+  
 
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
