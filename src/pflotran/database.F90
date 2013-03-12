@@ -2645,13 +2645,14 @@ subroutine BasisInit(reaction,option)
                                 reaction%print_all_species
       if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
         surface_complexation%srfcplxrxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction%mineral,cur_srfcplx_rxn%mineral_name)
+          GetKineticMineralIDFromName(reaction%mineral, &
+                                      cur_srfcplx_rxn%mineral_name)
         surface_complexation%srfcplxrxn_surf_type(irxn) = MINERAL_SURFACE
         if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // &
                               trim(cur_srfcplx_rxn%mineral_name) // &
-                              'listed in surface complexation ' // &
-                              'reaction not found in mineral list'
+                              ' listed in surface complexation ' // &
+                              'reaction not found in kinetic mineral list'
           call printErrMsg(option)
         endif
       else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
@@ -2661,7 +2662,7 @@ subroutine BasisInit(reaction,option)
         if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Colloid ' // &
                               trim(cur_srfcplx_rxn%colloid_name) // &
-                              'listed in surface complexation ' // &
+                              ' listed in surface complexation ' // &
                               'reaction not found in colloid list'
           call printErrMsg(option)
         endif
@@ -2818,10 +2819,11 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
       if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
         reaction%eqionx_rxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction%mineral,cur_ionx_rxn%mineral_name)
+          GetKineticMineralIDFromName(reaction%mineral, &
+                                      cur_ionx_rxn%mineral_name)
         if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
-                             'listed in ion exchange ' // &
+                             ' listed in ion exchange ' // &
                              'reaction not found in mineral list'
           call printErrMsg(option)
         endif

@@ -119,11 +119,17 @@ module Mineral_Aux_module
     PetscInt, pointer :: kinmnrl_irreversible(:)
    
   end type mineral_type
-
+  
+  interface GetMineralIDFromName
+    module procedure :: GetMineralIDFromName1
+    module procedure :: GetMineralIDFromName2
+  end interface
+  
   public :: MineralCreate, &
             GetMineralCount, &
             GetMineralNames, &
             GetMineralIDFromName, &
+            GetKineticMineralIDFromName, &
             TransitionStateTheoryRxnCreate, &
             TransitionStatePrefactorCreate, &
             TSPrefactorSpeciesCreate, &
@@ -422,12 +428,12 @@ end function GetMineralCount
 
 ! ************************************************************************** !
 !
-! GetMineralIDFromName: Returns the id of mineral with the corresponding name
+! GetMineralIDFromName1: Returns the id of mineral with the corresponding name
 ! author: Glenn Hammond
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-function GetMineralIDFromName(mineral,name)
+function GetMineralIDFromName1(mineral,name)
 
   use String_module
   
@@ -436,22 +442,71 @@ function GetMineralIDFromName(mineral,name)
   type(mineral_type) :: mineral
   character(len=MAXWORDLENGTH) :: name
 
-  PetscInt :: GetMineralIDFromName
+  PetscInt :: GetMineralIDFromName1
+
+  GetMineralIDFromName1 = &
+    GetMineralIDFromName(mineral,name,PETSC_FALSE)
+ 
+end function GetMineralIDFromName1
+
+! ************************************************************************** !
+!
+! GetMineralIDFromName2: Returns the id of mineral with the corresponding name
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+function GetMineralIDFromName2(mineral,name,must_be_kinetic)
+
+  use String_module
+  
+  implicit none
+  
+  type(mineral_type) :: mineral
+  character(len=MAXWORDLENGTH) :: name
+  PetscBool :: must_be_kinetic
+
+  PetscInt :: GetMineralIDFromName2
   type(mineral_rxn_type), pointer :: cur_mineral
 
-  GetMineralIDFromName = -1
+  GetMineralIDFromName2 = -1
  
   cur_mineral => mineral%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
     if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
-      GetMineralIDFromName = cur_mineral%id
+      if (must_be_kinetic .and. cur_mineral%itype /= MINERAL_KINETIC) exit
+      GetMineralIDFromName2 = cur_mineral%id
       exit
     endif
     cur_mineral => cur_mineral%next
   enddo
 
-end function GetMineralIDFromName
+end function GetMineralIDFromName2
+
+! ************************************************************************** !
+!
+! GetKineticMineralIDFromName: Returns the id of kinetic mineral with the 
+!                              corresponding name
+! author: Glenn Hammond
+! date: 03/11/13
+!
+! ************************************************************************** !
+function GetKineticMineralIDFromName(mineral,name)
+
+  use String_module
+  
+  implicit none
+  
+  type(mineral_type) :: mineral
+  character(len=MAXWORDLENGTH) :: name
+
+  PetscInt :: GetKineticMineralIDFromName
+
+  GetKineticMineralIDFromName = &
+    GetMineralIDFromName(mineral,name,PETSC_TRUE)
+
+end function GetKineticMineralIDFromName
 
 ! ************************************************************************** !
 !
