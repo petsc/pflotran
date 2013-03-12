@@ -855,6 +855,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   do i = 1, ncomp
     if (reaction%use_log_formulation) then
       ! convert log concentration to concentration
+      if (rhs(i+(ngcells-1)*ncomp) > reaction%max_dlnC) &
+        rhs(i+(ngcells-1)*ncomp) = reaction%max_dlnC
       conc_current_M(i) = conc_upd(i,ngcells)*exp(rhs(i+(ngcells-1)*ncomp))
     else
       conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
@@ -899,7 +901,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   enddo
   
   dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3 ! in kg/L
-            
+                                  
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
                   (total_current_M - total_primary_node)*prim_vol*1.d3 ! in mol/s
@@ -1303,6 +1305,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
       n = j + (i - 1)*ncomp
       if (reaction%use_log_formulation) then 
         ! convert log concentration to concentration
+        if (rhs(n) > reaction%max_dlnC) rhs(n) = reaction%max_dlnC
         conc_upd(j,i) = exp(rhs(n))*conc_upd(j,i)
       else
         conc_upd(j,i) = rhs(n) + conc_upd(j,i)
