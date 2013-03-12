@@ -1915,7 +1915,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
                                   field%iphas_loc,ONEDOF)
     
   if (option%print_screen_flag) then
-    write(*,'(/,2("=")," FLOW ",52("="))')
+    write(*,'(/,2("=")," FLOW ",72("="))')
   endif
 
   if (option%ntrandof > 0) then ! store initial saturations for transport
@@ -2101,7 +2101,8 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
     write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
   endif
   if (option%print_file_flag) then
-    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1, &
+    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
+      & " [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
@@ -2227,12 +2228,19 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
 
   prev_norm = 1.d20
 
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," Initialize FLOW to Steady-State (Begin)",38("="))')
+  endif
+  if (option%print_file_flag) then
+    write(option%fid_out,'(/,2("="), &
+      &" Initialize FLOW to Steady-State (Begin)",38("="))')
+  endif
+
   do ! this loop is for steady state initial condition
    
-    if (option%print_screen_flag) then
-      write(*,'(/,2("=")," Initialize FLOW to Steady-State ",25("="))')
-    endif
-
+    ! flow stepper increments time step. Need to decrement prior to step so that
+    ! printout reflects time step 0
+    stepper%steps = stepper%steps - 1      
     call StepperStepFlowDT(realization,stepper,failure)
   
     call SNESGetSolutionUpdate(solver%snes,update_vec,ierr)
@@ -2245,6 +2253,7 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
 !          dabs(rel_norm) < stepper%steady_state_rel_tol) then
         inorm < stepper%steady_state_rel_tol) then
       if (option%print_file_flag) then
+        write(option%fid_out,'(/,80("="))')
         write(option%fid_out,*) 'Steady state solve converged after ', &
           stepper%cumulative_newton_iterations, ' iterations'
       endif
@@ -2308,6 +2317,15 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
     endif
 
   enddo ! end of steady-state loop
+
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," Initialize FLOW to Steady-State (End)",40("="),/, &
+          & 80("="),/)')
+  endif
+  if (option%print_file_flag) then
+    write(option%fid_out,'(/,2("="), &
+      &" Initialize FLOW to Steady-State (End)",40("="),/,80("="),/)')
+  endif
 
 end subroutine FlowStepperStepToSteadyState
 
@@ -3197,7 +3215,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   sum_linear_iterations = 0
   icut = 0
 
-  if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
+  if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",67("="))')
 
   do
    
