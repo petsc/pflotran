@@ -379,8 +379,6 @@ step_to_steady_state, run_flow_as_steady_state)
   run_flow_as_steady_state = PETSC_FALSE
   failure = PETSC_FALSE
   
-  return
-
   if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
                         flow_read,transport_read,activity_coefs_read)
@@ -452,6 +450,8 @@ step_to_steady_state, run_flow_as_steady_state)
     call CondControlAssignTranInitCond(realization)  
   endif
 
+  return
+  
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
 #ifdef SURFACE_FLOW
   call StepperUpdateSolution(realization,surf_realization)
@@ -644,6 +644,9 @@ step_to_steady_state, run_flow_as_steady_state)
   nullify(null_stepper)
 
   stop_flag = PETSC_FALSE
+  plot_flag = PETSC_FALSE
+  transient_plot_flag = PETSC_FALSE
+  failure = PETSC_FALSE
 
 #if 0
   nullify(master_stepper,null_stepper)
@@ -665,15 +668,9 @@ step_to_steady_state, run_flow_as_steady_state)
   step_to_steady_state = PETSC_FALSE
   run_flow_as_steady_state = PETSC_FALSE
   
-#endif
-
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
-  stop_flag = PETSC_FALSE
   activity_coefs_read = PETSC_FALSE
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
-  failure = PETSC_FALSE
   
   if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
@@ -745,6 +742,7 @@ step_to_steady_state, run_flow_as_steady_state)
   if (transport_read .and. option%overwrite_restart_transport) then
     call CondControlAssignTranInitCond(realization)  
   endif
+#endif  
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
 #ifdef SURFACE_FLOW
