@@ -226,7 +226,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     ! This is to check if the secondary continuum residual convergences
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
-       reason > 0 .and. it > 1) then
+       reason > 0 .and. it > 0) then
       if (option%infnorm_res_sec > solver%newton_inf_res_tol_sec) then
         reason = 0
       else
