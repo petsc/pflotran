@@ -307,7 +307,8 @@ subroutine TimestepperInitializeRun(realization,surf_realization, &
                                     surf_flow_stepper)
 #else
 subroutine TimestepperInitializeRun(realization,master_stepper, &
-                                    flow_stepper,tran_stepper)
+                                    flow_stepper,tran_stepper, &
+step_to_steady_state, run_flow_as_steady_state)
 #endif
 
   use Realization_class
@@ -345,6 +346,8 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   PetscBool :: flow_read
   PetscBool :: transport_read
   PetscBool :: failure, surf_failure
+  PetscBool :: step_to_steady_state
+  PetscBool :: run_flow_as_steady_state
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -366,15 +369,18 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     master_stepper => tran_stepper
   endif
 
-  return
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   activity_coefs_read = PETSC_FALSE
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
+  step_to_steady_state = PETSC_FALSE
+  run_flow_as_steady_state = PETSC_FALSE
   failure = PETSC_FALSE
   
+  return
+
   if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
                         flow_read,transport_read,activity_coefs_read)
@@ -403,8 +409,9 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     option%print_file_flag = OptionPrintToFile(option)
     if (associated(flow_stepper)) then
       if (flow_stepper%init_to_steady_state) then
+        step_to_steady_state = PETSC_TRUE
         option%flow_dt = master_stepper%dt_min
-        call StepperStepFlowDT(realization,flow_stepper,PETSC_TRUE, &
+        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
                                failure)
         if (failure) then ! if flow solve fails, exit
           if (OptionPrintToScreen(option)) then
@@ -416,8 +423,9 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
           return 
         endif
         option%flow_dt = master_stepper%dt_min
+        run_flow_as_steady_state = flow_stepper%run_as_steady_state
       endif
-      if (flow_stepper%run_as_steady_state) then
+      if (run_flow_as_steady_state) then
         master_stepper => tran_stepper
       endif
     endif
@@ -537,7 +545,8 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     endif
   endif
            
-  call PetscGetTime(master_stepper%start_time, ierr)
+  ! ensure that steady_state flag is off
+  step_to_steady_state = PETSC_FALSE
   if (associated(flow_stepper)) &
     flow_stepper%start_time_step = flow_stepper%steps + 1
   if (associated(tran_stepper)) &
@@ -573,7 +582,8 @@ subroutine TimestepperExecuteRun(realization,surf_realization,flow_stepper, &
                                  tran_stepper,surf_flow_stepper)
 #else
 subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
-                                 tran_stepper)
+                                 tran_stepper, &
+step_to_steady_state, run_flow_as_steady_state)
 #endif
 
   use Realization_class
@@ -633,6 +643,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
   nullify(null_stepper)
 
+  stop_flag = PETSC_FALSE
+
 #if 0
   nullify(master_stepper,null_stepper)
 
@@ -649,6 +661,10 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   else
     master_stepper => tran_stepper
   endif
+
+  step_to_steady_state = PETSC_FALSE
+  run_flow_as_steady_state = PETSC_FALSE
+  
 #endif
 
   plot_flag = PETSC_FALSE
@@ -657,8 +673,6 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   activity_coefs_read = PETSC_FALSE
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
-  step_to_steady_state = PETSC_FALSE
-  run_flow_as_steady_state = PETSC_FALSE
   failure = PETSC_FALSE
   
   if (option%restart_flag) then
@@ -848,6 +862,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     end select
   endif
 #endif
+
+  call PetscGetTime(stepper_start_time, ierr)
 
   do
 

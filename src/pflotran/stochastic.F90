@@ -159,6 +159,8 @@ subroutine StochasticRun(stochastic,option)
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   PetscInt :: status
+  
+  PetscBool :: bool1,bool2
 
   call OptionCheckCommandLine(option)
 
@@ -199,11 +201,11 @@ subroutine StochasticRun(stochastic,option)
     call TimestepperInitializeRun(simulation%realization, &
                                   master_stepper, &
                                   simulation%flow_stepper, &
-                                  simulation%tran_stepper)
+                                  simulation%tran_stepper,bool1,bool2)
     call  TimestepperExecuteRun(simulation%realization, &
                                 master_stepper, &
                                 simulation%flow_stepper, &
-                                simulation%tran_stepper)
+                                simulation%tran_stepper,bool1,bool2)
     call  TimestepperFinalizeRun(simulation%realization, &
                                  master_stepper, &
                                  simulation%flow_stepper, &
