@@ -530,13 +530,6 @@ step_to_steady_state, run_flow_as_steady_state, &
     return
   endif
 
-  
-  
-  
-    return
-  
-
-  
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
@@ -650,7 +643,6 @@ step_to_steady_state, run_flow_as_steady_state)
   PetscBool :: step_to_steady_state
   PetscBool :: run_flow_as_steady_state
   PetscBool :: failure, surf_failure
-  PetscLogDouble :: start_time, end_time
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: dt_cfl_1, flow_to_tran_ts_ratio
 
@@ -830,13 +822,6 @@ step_to_steady_state, run_flow_as_steady_state)
     return
   endif
   
-  
-#endif  
-  
-  
-  
-  
-
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
@@ -886,7 +871,10 @@ step_to_steady_state, run_flow_as_steady_state)
   endif
 #endif
 
-  call PetscGetTime(stepper_start_time, ierr)
+  
+#endif  
+
+  call PetscGetTime(master_stepper%start_time, ierr)
 
   do
 
@@ -1185,7 +1173,7 @@ step_to_steady_state, run_flow_as_steady_state)
     ! checkpoint and exit.
     if (option%wallclock_stop_flag) then
       call PetscGetTime(current_time, ierr)
-      average_step_time = (current_time-stepper_start_time)/ &
+      average_step_time = (current_time-master_stepper%start_time)/ &
                           real(master_stepper%steps-&
                                master_stepper%start_time_step+1) &
                           *2.d0  ! just to be safe, double it
