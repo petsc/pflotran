@@ -190,7 +190,29 @@ program pflotran
     call StepperRun(simulation%realization,simulation%surf_realization, &
                     simulation%flow_stepper, &
                     simulation%tran_stepper, &
-                    simulation%surf_flow_stepper)
+                    simulation%surf_flow_stepper, &
+                    init_status)
+    call TimestepperInitializeRun(simulation%realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper, &
+                                  simulation%surf_flow_stepper, &
+                                  init_status)
+    select case(init_status)
+      case(TIMESTEPPER_INIT_PROCEED)
+        call  TimestepperExecuteRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper, &
+                                    simulation%surf_flow_stepper)
+        call  TimestepperFinalizeRun(simulation%realization, &
+                                     master_stepper, &
+                                     simulation%flow_stepper, &
+                                     simulation%tran_stepper, &
+                                     simulation%surf_flow_stepper)
+      case(TIMESTEPPER_INIT_FAIL)
+      case(TIMESTEPPER_INIT_DONE)
+    end select
 #else
     call TimestepperInitializeRun(simulation%realization, &
                                   master_stepper, &

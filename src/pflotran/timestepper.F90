@@ -307,8 +307,10 @@ end subroutine TimestepperRead
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
 subroutine TimestepperInitializeRun(realization,surf_realization, &
-                                    flow_stepper,tran_stepper, &
-                                    surf_flow_stepper)
+                                    master_stepper,flow_stepper, &
+                                    tran_stepper, &
+                                    surf_flow_stepper, &
+                                    init_status)
 #else
 subroutine TimestepperInitializeRun(realization,master_stepper, &
                                     flow_stepper,tran_stepper, &
@@ -350,7 +352,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
-  PetscBool :: failure, surf_failure
+  PetscBool :: failure
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -471,8 +473,11 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     call StepperJumpStart(realization)
   endif
   
+  ! pushed in Init()
   call PetscLogStagePop(ierr)
   option%init_stage = PETSC_FALSE
+
+  ! popped in TimeStepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
@@ -626,14 +631,11 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscBool :: plot_flag, stop_flag, transient_plot_flag
-  PetscBool :: activity_coefs_read
-  PetscBool :: flow_read
-  PetscBool :: transport_read
   PetscBool :: step_to_steady_state
   PetscBool :: run_flow_as_steady_state
   PetscBool :: failure, surf_failure
   PetscReal :: tran_dt_save, flow_t0
-  PetscReal :: dt_cfl_1, flow_to_tran_ts_ratio
+  PetscReal :: flow_to_tran_ts_ratio
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -974,64 +976,6 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
   enddo
 
-#if 0
-  if (master_stepper%steps >= master_stepper%max_time_step) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'')
-  endif
-
-  if (option%checkpoint_flag) then
-    call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
-                           NEG_ONE_INTEGER)  
-  endif
-
-  if (OptionPrintToScreen(option)) then
-    if (option%nflowdof > 0) then
-      write(*,'(/," FLOW steps = ",i6," newton = ",i8," linear = ",i10, &
-            & " cuts = ",i6)') &
-            flow_stepper%steps,flow_stepper%cumulative_newton_iterations, &
-            flow_stepper%cumulative_linear_iterations,flow_stepper%cumulative_time_step_cuts
-      write(string,'(f12.1)') flow_stepper%cumulative_solver_time
-      write(*,*) 'FLOW SNES time = ' // trim(adjustl(string)) // ' seconds'
-    endif
-    if (option%ntrandof > 0) then
-      write(*,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
-            & " cuts = ",i6)') &
-            tran_stepper%steps,tran_stepper%cumulative_newton_iterations, &
-            tran_stepper%cumulative_linear_iterations,tran_stepper%cumulative_time_step_cuts
-      write(string,'(f12.1)') tran_stepper%cumulative_solver_time
-      write(*,*) 'TRAN SNES time = ' // trim(adjustl(string)) // ' seconds'
-    endif            
-  endif
-  
-  if (OptionPrintToFile(option)) then
-    if (option%nflowdof > 0) then
-      write(option%fid_out,'(/," FLOW steps = ",i6," newton = ",i8," linear = ",i10, &
-            & " cuts = ",i6)') &
-            flow_stepper%steps,flow_stepper%cumulative_newton_iterations, &
-            flow_stepper%cumulative_linear_iterations,flow_stepper%cumulative_time_step_cuts
-      write(string,'(f12.1)') flow_stepper%cumulative_solver_time
-      write(option%fid_out,*) 'FLOW SNES time = ' // trim(adjustl(string)) // ' seconds'
-    endif
-    if (option%ntrandof > 0) then
-      write(option%fid_out,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
-            & " cuts = ",i6)') &
-            tran_stepper%steps,tran_stepper%cumulative_newton_iterations, &
-            tran_stepper%cumulative_linear_iterations,tran_stepper%cumulative_time_step_cuts
-      write(string,'(f12.1)') tran_stepper%cumulative_solver_time
-      write(option%fid_out,*) 'TRAN SNES time = ' // trim(adjustl(string)) // ' seconds'
-    endif            
-  endif
-
-  call PetscLogStagePop(ierr)
-#endif
-
 end subroutine TimestepperExecuteRun
 
 ! ************************************************************************** !
@@ -1043,7 +987,7 @@ end subroutine TimestepperExecuteRun
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
 subroutine TimestepperFinalizeRun(realization,surf_realization, &
-                                  flow_stepper,tran_stepper, &
+                                  master_stepper,flow_stepper,tran_stepper, &
                                   surf_flow_stepper)
 #else
 subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
