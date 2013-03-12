@@ -434,7 +434,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   rt_sec_transport_vars%aperture = ptr%secondary_continuum_aperture
   rt_sec_transport_vars%epsilon = ptr%secondary_continuum_epsilon 
   rt_sec_transport_vars%log_spacing = ptr%secondary_continuum_log_spacing
-  rt_sec_transport_vars%outer_spacing = ptr%secondary_continuum_outer_spacing    
+  rt_sec_transport_vars%outer_spacing = ptr%secondary_continuum_outer_spacing
         
   allocate(rt_sec_transport_vars%area(rt_sec_transport_vars%ncells))
   allocate(rt_sec_transport_vars%vol(rt_sec_transport_vars%ncells))
@@ -453,7 +453,8 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
                               rt_sec_transport_vars%outer_spacing, &
                               area_per_vol,option)                                
   rt_sec_transport_vars%interfacial_area = area_per_vol* &
-          (1.d0 - rt_sec_transport_vars%epsilon)
+          (1.d0 - rt_sec_transport_vars%epsilon)*ptr% &
+          secondary_continuum_area_scaling
   
   ! Initializing the secondary RT auxvars
   allocate(rt_sec_transport_vars%sec_rt_auxvar(rt_sec_transport_vars%ncells))
