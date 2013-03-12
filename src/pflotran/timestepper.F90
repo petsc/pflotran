@@ -385,28 +385,8 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   failure = PETSC_FALSE
   
   if (option%restart_flag) then
-    call StepperRestart(realization,flow_stepper,tran_stepper, &
-                        flow_read,transport_read,activity_coefs_read)
-    if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
-      WaypointSkipToTime(realization%waypoints,option%time)
-    if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
-      WaypointSkipToTime(realization%waypoints,option%time)
-
-    if (flow_read) then
-      flow_stepper%target_time = option%flow_time
-      call StepperUpdateFlowAuxVars(realization)
-    endif
-
-    if (transport_read) then
-      tran_stepper%target_time = option%tran_time
-      ! This is here since we need to recalculate the secondary complexes
-      ! if they exist.  DO NOT update activity coefficients!!! - geh
-      if (realization%reaction%use_full_geochemistry) then
-        call StepperUpdateTranAuxVars(realization)
-        !call StepperSandbox(realization)
-      endif
-    endif
-
+    call TimestepperRestart(realization,flow_stepper,tran_stepper, &
+                            flow_read,transport_read,activity_coefs_read)
   else if (master_stepper%init_to_steady_state) then
     option%print_screen_flag = OptionPrintToScreen(option)
     option%print_file_flag = OptionPrintToFile(option)
@@ -3946,14 +3926,14 @@ end subroutine StepperCheckpoint
 
 ! ************************************************************************** !
 !
-! StepperRestart: Calls appropriate routines to read checkpoint file and
-!                 restart
+! TimestepperRestart: Calls appropriate routines to read checkpoint file and
+!                     restart
 ! author: Glenn Hammond
 ! date: 03/07/08 
 !
 ! ************************************************************************** !
-subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
-                          flow_read,transport_read,activity_coefs_read)
+subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
+                              flow_read,transport_read,activity_coefs_read)
 
   use Realization_class
   use Checkpoint_module
@@ -4043,8 +4023,28 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
     option%match_waypoint = PETSC_FALSE
     realization%output_option%plot_number = 0
   endif
+  
+  if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
+    WaypointSkipToTime(realization%waypoints,option%time)
+  if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
+    WaypointSkipToTime(realization%waypoints,option%time)
+
+  if (flow_read) then
+    flow_stepper%target_time = option%flow_time
+    call StepperUpdateFlowAuxVars(realization)
+  endif
+
+  if (transport_read) then
+    tran_stepper%target_time = option%tran_time
+    ! This is here since we need to recalculate the secondary complexes
+    ! if they exist.  DO NOT update activity coefficients!!! - geh
+    if (realization%reaction%use_full_geochemistry) then
+      call StepperUpdateTranAuxVars(realization)
+      !call StepperSandbox(realization)
+    endif
+  endif  
     
-end subroutine StepperRestart
+end subroutine TimestepperRestart
 
 ! ************************************************************************** !
 !
