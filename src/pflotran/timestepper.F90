@@ -450,8 +450,6 @@ step_to_steady_state, run_flow_as_steady_state)
     call CondControlAssignTranInitCond(realization)  
   endif
 
-  return
-  
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
 #ifdef SURFACE_FLOW
   call StepperUpdateSolution(realization,surf_realization)
@@ -488,6 +486,13 @@ step_to_steady_state, run_flow_as_steady_state)
     return
   endif
 
+  
+  
+  
+    return
+  
+
+  
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
 #ifdef SURFACE_FLOW
@@ -742,7 +747,6 @@ step_to_steady_state, run_flow_as_steady_state)
   if (transport_read .and. option%overwrite_restart_transport) then
     call CondControlAssignTranInitCond(realization)  
   endif
-#endif  
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
 #ifdef SURFACE_FLOW
@@ -780,6 +784,11 @@ step_to_steady_state, run_flow_as_steady_state)
     return
   endif
 
+  
+#endif  
+  
+  
+  
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
 #ifdef SURFACE_FLOW
