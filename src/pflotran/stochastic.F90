@@ -161,8 +161,6 @@ subroutine StochasticRun(stochastic,option)
   PetscErrorCode :: ierr
   PetscInt :: status
   
-  PetscBool :: bool1,bool2
-
   call OptionCheckCommandLine(option)
 
   ! moved outside due to errors when allocating/deallocating  over and over
@@ -203,14 +201,13 @@ subroutine StochasticRun(stochastic,option)
                                   master_stepper, &
                                   simulation%flow_stepper, &
                                   simulation%tran_stepper, &
-                                  bool1,bool2, &
                                   init_status)
     select case(init_status)
       case(TIMESTEPPER_INIT_PROCEED)
         call  TimestepperExecuteRun(simulation%realization, &
                                     master_stepper, &
                                     simulation%flow_stepper, &
-                                    simulation%tran_stepper,bool1,bool2)
+                                    simulation%tran_stepper)
         call  TimestepperFinalizeRun(simulation%realization, &
                                      master_stepper, &
                                      simulation%flow_stepper, &

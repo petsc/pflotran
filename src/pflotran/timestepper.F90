@@ -312,7 +312,6 @@ subroutine TimestepperInitializeRun(realization,surf_realization, &
 #else
 subroutine TimestepperInitializeRun(realization,master_stepper, &
                                     flow_stepper,tran_stepper, &
-step_to_steady_state, run_flow_as_steady_state, &
                                     init_status)
 #endif
 
@@ -352,8 +351,6 @@ step_to_steady_state, run_flow_as_steady_state, &
   PetscBool :: flow_read
   PetscBool :: transport_read
   PetscBool :: failure, surf_failure
-  PetscBool :: step_to_steady_state
-  PetscBool :: run_flow_as_steady_state
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -378,14 +375,11 @@ step_to_steady_state, run_flow_as_steady_state, &
     master_stepper => tran_stepper
   endif
 
-
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   activity_coefs_read = PETSC_FALSE
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
-  step_to_steady_state = PETSC_FALSE
-  run_flow_as_steady_state = PETSC_FALSE
   failure = PETSC_FALSE
   
   if (option%restart_flag) then
@@ -416,9 +410,8 @@ step_to_steady_state, run_flow_as_steady_state, &
     option%print_file_flag = OptionPrintToFile(option)
     if (associated(flow_stepper)) then
       if (flow_stepper%init_to_steady_state) then
-        step_to_steady_state = PETSC_TRUE
         option%flow_dt = master_stepper%dt_min
-        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
+        call StepperStepFlowDT(realization,flow_stepper,PETSC_TRUE, &
                                failure)
         if (failure) then ! if flow solve fails, exit
           if (OptionPrintToScreen(option)) then
@@ -431,9 +424,8 @@ step_to_steady_state, run_flow_as_steady_state, &
           return 
         endif
         option%flow_dt = master_stepper%dt_min
-        run_flow_as_steady_state = flow_stepper%run_as_steady_state
       endif
-      if (run_flow_as_steady_state) then
+      if (flow_stepper%run_as_steady_state) then
         master_stepper => tran_stepper
       endif
     endif
@@ -557,8 +549,6 @@ step_to_steady_state, run_flow_as_steady_state, &
     endif
   endif
            
-  ! ensure that steady_state flag is off
-  step_to_steady_state = PETSC_FALSE
   if (associated(flow_stepper)) &
     flow_stepper%start_time_step = flow_stepper%steps + 1
   if (associated(tran_stepper)) &
@@ -594,8 +584,7 @@ subroutine TimestepperExecuteRun(realization,surf_realization,flow_stepper, &
                                  tran_stepper,surf_flow_stepper)
 #else
 subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
-                                 tran_stepper, &
-step_to_steady_state, run_flow_as_steady_state)
+                                 tran_stepper)
 #endif
 
   use Realization_class
@@ -658,221 +647,11 @@ step_to_steady_state, run_flow_as_steady_state)
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   failure = PETSC_FALSE
-
-#if 0
-  nullify(master_stepper,null_stepper)
-
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
-                           failure, ierr)
-                             
-  if (option%steady_state) then
-    call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
-    return 
-  endif
-  
-  if (associated(flow_stepper)) then
-    master_stepper => flow_stepper
-  else
-    master_stepper => tran_stepper
-  endif
-
-  step_to_steady_state = PETSC_FALSE
   run_flow_as_steady_state = PETSC_FALSE
-  
-  activity_coefs_read = PETSC_FALSE
-  flow_read = PETSC_FALSE
-  transport_read = PETSC_FALSE
-  
-  if (option%restart_flag) then
-    call StepperRestart(realization,flow_stepper,tran_stepper, &
-                        flow_read,transport_read,activity_coefs_read)
-    if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
-      WaypointSkipToTime(realization%waypoints,option%time)
-    if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
-      WaypointSkipToTime(realization%waypoints,option%time)
-
-    if (flow_read) then
-      flow_stepper%target_time = option%flow_time
-      call StepperUpdateFlowAuxVars(realization)
-    endif
-
-    if (transport_read) then
-      tran_stepper%target_time = option%tran_time
-      ! This is here since we need to recalculate the secondary complexes
-      ! if they exist.  DO NOT update activity coefficients!!! - geh
-      if (realization%reaction%use_full_geochemistry) then
-        call StepperUpdateTranAuxVars(realization)
-        !call StepperSandbox(realization)
-      endif
-    endif
-
-  else if (master_stepper%init_to_steady_state) then
-    option%print_screen_flag = OptionPrintToScreen(option)
-    option%print_file_flag = OptionPrintToFile(option)
-    if (associated(flow_stepper)) then
-      if (flow_stepper%init_to_steady_state) then
-        step_to_steady_state = PETSC_TRUE
-        option%flow_dt = master_stepper%dt_min
-        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                               failure)
-        if (failure) then ! if flow solve fails, exit
-          if (OptionPrintToScreen(option)) then
-            write(*,*) ' ERROR: steady state solve failed!!!'
-          endif
-          if (OptionPrintToFile(option)) then
-            write(option%fid_out,*) ' ERROR: steady state solve failed!!!'
-          endif
-          return 
-        endif
-        option%flow_dt = master_stepper%dt_min
-        run_flow_as_steady_state = flow_stepper%run_as_steady_state
-      endif
-      if (run_flow_as_steady_state) then
-        master_stepper => tran_stepper
-      endif
-    endif
-
-    if (associated(tran_stepper)) then
-      if (tran_stepper%init_to_steady_state) then
-    ! not yet functional
-    !    step_to_steady_state = PETSC_TRUE
-    !    option%tran_dt = master_stepper%dt_min
-    !    call StepperStepTransportDT(realization,tran_stepper, &
-    !                                tran_timestep_cut_flag, &
-    !                                idum,step_to_steady_state,failure)
-    !    if (failure) return ! if flow solve fails, exit
-    !    option%tran_dt = master_stepper%dt_min
-      endif
-    endif
-  endif
-
-  if (flow_read .and. option%overwrite_restart_flow) then
-    call RealizationRevertFlowParameters(realization)
-  endif
-
-  if (transport_read .and. option%overwrite_restart_transport) then
-    call CondControlAssignTranInitCond(realization)  
-  endif
-
-  ! turn on flag to tell RTUpdateSolution that the code is not timestepping
-#ifdef SURFACE_FLOW
-  call StepperUpdateSolution(realization,surf_realization)
-#else
-  call StepperUpdateSolution(realization)
-#endif
-
-  if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
-    ! only user jumpstart for a restarted simulation
-    if (.not. option%restart_flag) then
-      option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
-        'restarted simulation.  ReactionEquilibrateConstraint() will ' // &
-        'appropriately set sorbed initial concentrations for a normal ' // &
-        '(non-restarted) simulation.'
-      call printErrMsg(option)
-    endif
-    call StepperJumpStart(realization)
-  endif
-  
-  call PetscLogStagePop(ierr)
-  option%init_stage = PETSC_FALSE
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-
-  !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
-  if (master_stepper%max_time_step < 0) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'')
-    return
-  endif
-
-  ! print initial condition output if not a restarted sim
-  call OutputInit(realization,master_stepper%steps)
-#ifdef SURFACE_FLOW
-  call OutputSurfaceInit(realization,master_stepper%steps)
-#endif
-  if (output_option%plot_number == 0 .and. &
-      master_stepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-    call Output(realization,plot_flag,transient_plot_flag)
-#ifdef SURFACE_FLOW
-    plot_flag_surf = PETSC_TRUE
-    transient_plot_flag_surf = PETSC_TRUE
-    call OutputSurface(surf_realization,realization,plot_flag_surf, &
-                       transient_plot_flag_surf)
-#endif
-  endif
-  
-  !if TIMESTEPPER->MAX_STEPS < 0, print out initial condition only
-  if (master_stepper%max_time_step < 1) then
-    call printMsg(option,'')
-    write(option%io_buffer,*) master_stepper%max_time_step
-    option%io_buffer = 'The maximum # of time steps (' // &
-                       trim(adjustl(option%io_buffer)) // &
-                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
-                       'has been met.  Stopping....'  
-    call printMsg(option)
-    call printMsg(option,'')                    
-    return
-  endif
-  
-  ! increment plot number so that 000 is always the initial condition, and nothing else
-  if (output_option%plot_number == 0) output_option%plot_number = 1
-
-  if (associated(flow_stepper)) then
-    if (.not.associated(flow_stepper%cur_waypoint)) then
-      option%io_buffer = &
-        'Null flow waypoint list; final time likely equal to start time.'
-      call printMsg(option)
-      return
-    else
-      flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
-    endif
-  endif
-  if (associated(tran_stepper)) then
-    if (.not.associated(tran_stepper%cur_waypoint)) then
-      option%io_buffer = &
-        'Null transport waypoint list; final time likely equal to start ' // &
-        'time or simulation time needs to be extended on a restart.'
-      call printMsg(option)
-      return
-    else
-      tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
-    endif
-  endif
-           
-  ! ensure that steady_state flag is off
   step_to_steady_state = PETSC_FALSE
-  call PetscGetTime(stepper_start_time, ierr)
-  if (associated(flow_stepper)) &
-    flow_stepper%start_time_step = flow_stepper%steps + 1
-  if (associated(tran_stepper)) &
-    tran_stepper%start_time_step = tran_stepper%steps + 1
-  
-  if (realization%debug%print_couplers) then
-    call OutputPrintCouplers(realization,ZERO_INTEGER)
+  if (associated(flow_stepper)) then
+    run_flow_as_steady_state = flow_stepper%run_as_steady_state
   endif
-
-#ifdef SURFACE_FLOW
-  if (option%nsurfflowdof>0.and. &
-    surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-    select case(option%iflowmode)
-      case (RICHARDS_MODE)
-        call SurfaceFlowGetSubsurfProp(realization,surf_realization)
-      case (TH_MODE)
-        call SurfaceTHGetSubsurfProp(realization,surf_realization)
-    end select
-  endif
-#endif
-
-  
-#endif  
 
   call PetscGetTime(master_stepper%start_time, ierr)
 

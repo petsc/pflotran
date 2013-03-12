@@ -61,7 +61,6 @@ program pflotran
   PetscBool :: option_found
   PetscBool :: input_prefix_option_found, pflotranin_option_found
   PetscBool :: single_inputfile
-  PetscBool :: bool1, bool2
   PetscInt :: init_status
   PetscInt :: i
   PetscInt :: temp_int
@@ -197,14 +196,13 @@ program pflotran
                                   master_stepper, &
                                   simulation%flow_stepper, &
                                   simulation%tran_stepper, &
-                                  bool1,bool2, &
                                   init_status)
     select case(init_status)
       case(TIMESTEPPER_INIT_PROCEED)
         call  TimestepperExecuteRun(simulation%realization, &
                                     master_stepper, &
                                     simulation%flow_stepper, &
-                                    simulation%tran_stepper,bool1,bool2)
+                                    simulation%tran_stepper)
         call  TimestepperFinalizeRun(simulation%realization, &
                                      master_stepper, &
                                      simulation%flow_stepper, &
