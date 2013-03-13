@@ -1852,7 +1852,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       end select
       
       ff_p(local_id) = ff_p(local_id) + qsrc/area_p(local_id)
-
     enddo
     source_sink => source_sink%next
   enddo
@@ -2160,7 +2159,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   end select
   
   flux = head*vel
-  Res(TH_PRESSURE_DOF) = flux*length
+  Res(RICHARDS_PRESSURE_DOF) = flux*length
 
 end subroutine SurfaceFlowBCFlux
 
