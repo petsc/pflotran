@@ -638,7 +638,7 @@ subroutine OutputHydrograph(surf_realization)
   
     if (option%nflowdof > 0) then
       if (option%myrank == option%io_rank) &
-        write(fid,100,advance="no") option%flow_dt/output_option%tconv
+        write(fid,100,advance="no") option%surf_flow_dt/output_option%tconv
     endif
 
     sum_flux = 0.d0
