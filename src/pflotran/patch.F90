@@ -1060,6 +1060,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                       general%temperature%flow_dataset%time_series%cur_value(1)
                     dof3 = PETSC_TRUE
                 end select
+              case(ANY_STATE)
+                do iconn = 1, num_connections
+                  coupler%flow_aux_real_var(1:3,iconn) = &
+                      general%temperature%flow_dataset%time_series%cur_value(1:3)
+                enddo
+                dof1 = PETSC_TRUE
+                dof2 = PETSC_TRUE
+                dof3 = PETSC_TRUE
             end select  
             !geh: is this really correct, or should it be .or.
             if (.not.dof1 .or. .not.dof2 .or. .not.dof3) then

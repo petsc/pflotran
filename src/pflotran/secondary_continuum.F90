@@ -434,7 +434,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   rt_sec_transport_vars%aperture = ptr%secondary_continuum_aperture
   rt_sec_transport_vars%epsilon = ptr%secondary_continuum_epsilon 
   rt_sec_transport_vars%log_spacing = ptr%secondary_continuum_log_spacing
-  rt_sec_transport_vars%outer_spacing = ptr%secondary_continuum_outer_spacing
+  rt_sec_transport_vars%outer_spacing = ptr%secondary_continuum_outer_spacing    
         
   allocate(rt_sec_transport_vars%area(rt_sec_transport_vars%ncells))
   allocate(rt_sec_transport_vars%vol(rt_sec_transport_vars%ncells))
@@ -453,8 +453,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
                               rt_sec_transport_vars%outer_spacing, &
                               area_per_vol,option)                                
   rt_sec_transport_vars%interfacial_area = area_per_vol* &
-          (1.d0 - rt_sec_transport_vars%epsilon)*ptr% &
-          secondary_continuum_area_scaling
+          (1.d0 - rt_sec_transport_vars%epsilon)
   
   ! Initializing the secondary RT auxvars
   allocate(rt_sec_transport_vars%sec_rt_auxvar(rt_sec_transport_vars%ncells))
@@ -826,42 +825,16 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     call lubksb(D_M,ncomp,indx,identity(1,j))
   enddo  
   inv_D_M = identity          
-   
-  if (reaction%use_log_formulation) then
-  ! scale the jacobian by concentrations
-    do i = 1, ngcells
-      do k = 1, ncomp
-        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i)
-      enddo
-    enddo
-  
-    do i = 2, ngcells
-      do k = 1, ncomp
-        coeff_left(:,k,i-1) = coeff_left(:,k,i-1)*conc_upd(k,i-1)
-      enddo
-    enddo
-  
-    do i = 1, ngcells-1
-      do k = 1, ncomp
-        coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i)
-      enddo
-    enddo
-  endif                            
-                                    
+                             
+
   call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)
   
   call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
 
+  
   ! Update the secondary concentrations
   do i = 1, ncomp
-    if (reaction%use_log_formulation) then
-      ! convert log concentration to concentration
-      if (rhs(i+(ngcells-1)*ncomp) > reaction%max_dlnC) &
-        rhs(i+(ngcells-1)*ncomp) = reaction%max_dlnC
-      conc_current_M(i) = conc_upd(i,ngcells)*exp(rhs(i+(ngcells-1)*ncomp))
-    else
-      conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
-    endif
+    conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
   enddo
 
   ! Update the secondary continuum totals at the outer matrix node
@@ -902,7 +875,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   enddo
   
   dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3 ! in kg/L
-                                  
+            
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
                   (total_current_M - total_primary_node)*prim_vol*1.d3 ! in mol/s
@@ -1298,19 +1271,13 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   coeff_right = sec_transport_vars%cxp
   coeff_diag = sec_transport_vars%cdl
   rhs = sec_transport_vars%r
-          
+        
   call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
   
   do j = 1, ncomp
     do i = 1, ngcells
       n = j + (i - 1)*ncomp
-      if (reaction%use_log_formulation) then 
-        ! convert log concentration to concentration
-        if (rhs(n) > reaction%max_dlnC) rhs(n) = reaction%max_dlnC
-        conc_upd(j,i) = exp(rhs(n))*conc_upd(j,i)
-      else
-        conc_upd(j,i) = rhs(n) + conc_upd(j,i)
-      endif   
+      conc_upd(j,i) = rhs(n) + conc_upd(j,i)
     enddo
   enddo
   

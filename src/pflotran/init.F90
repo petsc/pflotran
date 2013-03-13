@@ -120,6 +120,7 @@ subroutine Init(simulation)
   type(surface_realization_type), pointer   :: surf_realization
 #endif
 
+  ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,ierr)
   

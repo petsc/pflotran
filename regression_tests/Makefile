@@ -36,7 +36,6 @@ STANDARD_CFG = \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
-	default/mfd/mfd.cfg \
 	ngee/ngee.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 
@@ -48,7 +47,7 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg
 
-	STANDARD_PARALLEL_CFG = \
+	STANDARD_PARALLEL_CFG += \
 		default/discretization/discretization.cfg
 endif
 
