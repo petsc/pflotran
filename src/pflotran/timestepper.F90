@@ -9,6 +9,10 @@ module Timestepper_module
   private
   
 #include "definitions.h"
+
+  PetscInt, parameter, public :: TIMESTEPPER_INIT_PROCEED = 0
+  PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1
+  PetscInt, parameter, public :: TIMESTEPPER_INIT_FAIL = 2
  
   type, public :: stepper_type
   
@@ -38,7 +42,8 @@ module Timestepper_module
     PetscReal :: steady_state_rel_tol
     
     PetscBool :: time_step_cut_flag  ! flag toggled if timestep is cut
-    
+
+    PetscLogDouble :: start_time    
     PetscInt :: start_time_step ! the first time step of a given run
     PetscReal :: time_step_tolerance ! scalar used in determining time step size
     PetscReal :: target_time    ! time at end of "synchronized" time step 
@@ -66,7 +71,9 @@ module Timestepper_module
 #endif
   end type stepper_type
   
-  public :: TimestepperCreate, TimestepperDestroy, StepperRun, &
+  public :: TimestepperCreate, TimestepperDestroy, &
+            TimestepperExecuteRun, &
+            TimestepperInitializeRun, TimestepperFinalizeRun, &
             TimestepperRead, TimestepperPrintInfo, TimestepperReset
 
 contains
@@ -102,6 +109,7 @@ function TimestepperCreate()
   stepper%cumulative_time_step_cuts = 0    
   stepper%cumulative_solver_time = 0.d0
 
+  stepper%start_time = 0.d0  
   stepper%start_time_step = 0
   stepper%time_step_tolerance = 0.1d0
   stepper%target_time = 0.d0
@@ -292,15 +300,21 @@ end subroutine TimestepperRead
 
 ! ************************************************************************** !
 !
-! StepperRun: Runs the time step loop
+! TimestepperInitializeRun: Initializes timestepping run the time step loop
 ! author: Glenn Hammond
-! date: 10/25/07
+! date: 03/11/13
 !
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
-subroutine StepperRun(realization,surf_realization,flow_stepper,tran_stepper,surf_flow_stepper)
+subroutine TimestepperInitializeRun(realization,surf_realization, &
+                                    master_stepper,flow_stepper, &
+                                    tran_stepper, &
+                                    surf_flow_stepper, &
+                                    init_status)
 #else
-subroutine StepperRun(realization,flow_stepper,tran_stepper)
+subroutine TimestepperInitializeRun(realization,master_stepper, &
+                                    flow_stepper,tran_stepper, &
+                                    init_status)
 #endif
 
   use Realization_class
@@ -309,7 +323,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
-  use Discretization_module
   use Condition_Control_module
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -317,54 +330,44 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
   use Surface_TH_module
 #endif
+
   implicit none
-  
-#include "finclude/petscdef.h"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
-#include "finclude/petscviewer.h"
 
   type(realization_type) :: realization
+  type(stepper_type), pointer :: master_stepper
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
+  PetscInt :: init_status
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer :: surf_flow_stepper
   type(surface_realization_type), pointer :: surf_realization
   PetscBool :: plot_flag_surf, transient_plot_flag_surf
-!  PetscReal :: surf_flow_time,surf_flow_dt,surf_flow_target_time
 #endif
-  
-  type(stepper_type), pointer :: master_stepper
-  type(stepper_type), pointer :: null_stepper
+
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
-  type(waypoint_type), pointer :: prev_waypoint  
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: plot_flag, stop_flag, transient_plot_flag
+  PetscBool :: plot_flag, transient_plot_flag
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
-  PetscBool :: step_to_steady_state
-  PetscBool :: run_flow_as_steady_state
-  PetscBool :: failure, surf_failure
-  PetscLogDouble :: start_time, end_time
-  PetscReal :: tran_dt_save, flow_t0
-  PetscReal :: dt_cfl_1, flow_to_tran_ts_ratio
-
-  PetscLogDouble :: stepper_start_time, current_time, average_step_time
+  PetscBool :: failure
   PetscErrorCode :: ierr
 
   option => realization%option
   output_option => realization%output_option
 
-  nullify(master_stepper,null_stepper)
+  nullify(master_stepper)
+  init_status = TIMESTEPPER_INIT_PROCEED
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr)
                              
   if (option%steady_state) then
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+    ! do not want to run through time stepper
+    init_status = TIMESTEPPER_INIT_DONE
     return 
   endif
   
@@ -376,45 +379,21 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
-  stop_flag = PETSC_FALSE
   activity_coefs_read = PETSC_FALSE
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
-  step_to_steady_state = PETSC_FALSE
-  run_flow_as_steady_state = PETSC_FALSE
   failure = PETSC_FALSE
   
   if (option%restart_flag) then
-    call StepperRestart(realization,flow_stepper,tran_stepper, &
-                        flow_read,transport_read,activity_coefs_read)
-    if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
-      WaypointSkipToTime(realization%waypoints,option%time)
-    if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
-      WaypointSkipToTime(realization%waypoints,option%time)
-
-    if (flow_read) then
-      flow_stepper%target_time = option%flow_time
-      call StepperUpdateFlowAuxVars(realization)
-    endif
-
-    if (transport_read) then
-      tran_stepper%target_time = option%tran_time
-      ! This is here since we need to recalculate the secondary complexes
-      ! if they exist.  DO NOT update activity coefficients!!! - geh
-      if (realization%reaction%use_full_geochemistry) then
-        call StepperUpdateTranAuxVars(realization)
-        !call StepperSandbox(realization)
-      endif
-    endif
-
+    call TimestepperRestart(realization,flow_stepper,tran_stepper, &
+                            flow_read,transport_read,activity_coefs_read)
   else if (master_stepper%init_to_steady_state) then
     option%print_screen_flag = OptionPrintToScreen(option)
     option%print_file_flag = OptionPrintToFile(option)
     if (associated(flow_stepper)) then
       if (flow_stepper%init_to_steady_state) then
-        step_to_steady_state = PETSC_TRUE
         option%flow_dt = master_stepper%dt_min
-        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
+        call StepperStepFlowDT(realization,flow_stepper,PETSC_TRUE, &
                                failure)
         if (failure) then ! if flow solve fails, exit
           if (OptionPrintToScreen(option)) then
@@ -423,12 +402,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
           if (OptionPrintToFile(option)) then
             write(option%fid_out,*) ' ERROR: steady state solve failed!!!'
           endif
+          init_status = TIMESTEPPER_INIT_FAIL
           return 
         endif
         option%flow_dt = master_stepper%dt_min
-        run_flow_as_steady_state = flow_stepper%run_as_steady_state
       endif
-      if (run_flow_as_steady_state) then
+      if (flow_stepper%run_as_steady_state) then
         master_stepper => tran_stepper
       endif
     endif
@@ -474,8 +453,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call StepperJumpStart(realization)
   endif
   
+  ! pushed in Init()
   call PetscLogStagePop(ierr)
   option%init_stage = PETSC_FALSE
+
+  ! popped in TimeStepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
@@ -488,6 +470,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                        'has been met.  Stopping....'  
     call printMsg(option)
     call printMsg(option,'')
+    init_status = TIMESTEPPER_INIT_DONE
     return
   endif
 
@@ -510,7 +493,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #endif
   endif
   
-  !if TIMESTEPPER->MAX_STEPS < 0, print out initial condition only
+  !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
   if (master_stepper%max_time_step < 1) then
     call printMsg(option,'')
     write(option%io_buffer,*) master_stepper%max_time_step
@@ -519,7 +502,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                        '), specified by TIMESTEPPER->MAX_STEPS, ' // &
                        'has been met.  Stopping....'  
     call printMsg(option)
-    call printMsg(option,'')                    
+    call printMsg(option,'') 
+    init_status = TIMESTEPPER_INIT_DONE
     return
   endif
 
@@ -531,6 +515,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       option%io_buffer = &
         'Null flow waypoint list; final time likely equal to start time.'
       call printMsg(option)
+      init_status = TIMESTEPPER_INIT_FAIL
       return
     else
       flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
@@ -542,15 +527,13 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         'Null transport waypoint list; final time likely equal to start ' // &
         'time or simulation time needs to be extended on a restart.'
       call printMsg(option)
+      init_status = TIMESTEPPER_INIT_FAIL
       return
     else
       tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
     endif
   endif
            
-  ! ensure that steady_state flag is off
-  step_to_steady_state = PETSC_FALSE
-  call PetscGetTime(stepper_start_time, ierr)
   if (associated(flow_stepper)) &
     flow_stepper%start_time_step = flow_stepper%steps + 1
   if (associated(tran_stepper)) &
@@ -571,6 +554,88 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     end select
   endif
 #endif
+
+end subroutine TimestepperInitializeRun
+
+! ************************************************************************** !
+!
+! TimestepperExecuteRun: Runs the time step loop
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine TimestepperExecuteRun(realization,surf_realization,flow_stepper, &
+                                 tran_stepper,surf_flow_stepper)
+#else
+subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
+                                 tran_stepper)
+#endif
+
+  use Realization_class
+
+  use Option_module
+  use Output_Aux_module
+  use Output_module, only : Output, OutputInit, OutputPrintCouplers
+  use Logging_module  
+  use Discretization_module
+  use Condition_Control_module
+#ifdef SURFACE_FLOW
+  use Surface_Flow_module
+  use Surface_Realization_class
+  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
+  use Surface_TH_module
+#endif
+  implicit none
+  
+#include "finclude/petscdef.h"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscviewer.h"
+
+  type(realization_type) :: realization
+  type(stepper_type), pointer :: master_stepper
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+#ifdef SURFACE_FLOW
+  type(stepper_type), pointer :: surf_flow_stepper
+  type(surface_realization_type), pointer :: surf_realization
+  PetscBool :: plot_flag_surf, transient_plot_flag_surf
+!  PetscReal :: surf_flow_time,surf_flow_dt,surf_flow_target_time
+#endif
+  
+  type(stepper_type), pointer :: null_stepper
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  type(waypoint_type), pointer :: prev_waypoint  
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: plot_flag, stop_flag, transient_plot_flag
+  PetscBool :: step_to_steady_state
+  PetscBool :: run_flow_as_steady_state
+  PetscBool :: failure, surf_failure
+  PetscReal :: tran_dt_save, flow_t0
+  PetscReal :: flow_to_tran_ts_ratio
+
+  PetscLogDouble :: stepper_start_time, current_time, average_step_time
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  output_option => realization%output_option
+
+  nullify(null_stepper)
+
+  stop_flag = PETSC_FALSE
+  plot_flag = PETSC_FALSE
+  transient_plot_flag = PETSC_FALSE
+  failure = PETSC_FALSE
+  run_flow_as_steady_state = PETSC_FALSE
+  step_to_steady_state = PETSC_FALSE
+  if (associated(flow_stepper)) then
+    run_flow_as_steady_state = flow_stepper%run_as_steady_state
+  endif
+
+  call PetscGetTime(master_stepper%start_time, ierr)
 
   do
 
@@ -869,7 +934,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! checkpoint and exit.
     if (option%wallclock_stop_flag) then
       call PetscGetTime(current_time, ierr)
-      average_step_time = (current_time-stepper_start_time)/ &
+      average_step_time = (current_time-master_stepper%start_time)/ &
                           real(master_stepper%steps-&
                                master_stepper%start_time_step+1) &
                           *2.d0  ! just to be safe, double it
@@ -891,6 +956,62 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   enddo
 
+end subroutine TimestepperExecuteRun
+
+! ************************************************************************** !
+!
+! TimestepperFinalizeRun: Finalizes timestepping runs the time step loop
+! author: Glenn Hammond
+! date: 03/11/13
+!
+! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine TimestepperFinalizeRun(realization,surf_realization, &
+                                  master_stepper,flow_stepper,tran_stepper, &
+                                  surf_flow_stepper)
+#else
+subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
+                                  tran_stepper)
+#endif
+
+
+  use Realization_class
+
+  use Option_module
+  use Output_Aux_module
+  use Output_module, only : Output, OutputInit, OutputPrintCouplers
+  use Logging_module  
+#ifdef SURFACE_FLOW
+  use Surface_Flow_module
+  use Surface_Realization_class
+  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
+  use Surface_TH_module
+#endif
+  implicit none
+  
+#include "finclude/petscdef.h"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscviewer.h"
+
+  type(realization_type) :: realization
+  type(stepper_type), pointer :: master_stepper
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+#ifdef SURFACE_FLOW
+  type(stepper_type), pointer :: surf_flow_stepper
+  type(surface_realization_type), pointer :: surf_realization
+  PetscBool :: plot_flag_surf, transient_plot_flag_surf
+#endif
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  output_option => realization%output_option
+  
   if (master_stepper%steps >= master_stepper%max_time_step) then
     call printMsg(option,'')
     write(option%io_buffer,*) master_stepper%max_time_step
@@ -945,9 +1066,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif            
   endif
 
+  ! pushed in TimeStepperInitializeRun
   call PetscLogStagePop(ierr)
 
-end subroutine StepperRun
+end subroutine TimestepperFinalizeRun
 
 ! ************************************************************************** !
 !
@@ -3804,14 +3926,14 @@ end subroutine StepperCheckpoint
 
 ! ************************************************************************** !
 !
-! StepperRestart: Calls appropriate routines to read checkpoint file and
-!                 restart
+! TimestepperRestart: Calls appropriate routines to read checkpoint file and
+!                     restart
 ! author: Glenn Hammond
 ! date: 03/07/08 
 !
 ! ************************************************************************** !
-subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
-                          flow_read,transport_read,activity_coefs_read)
+subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
+                              flow_read,transport_read,activity_coefs_read)
 
   use Realization_class
   use Checkpoint_module
@@ -3901,8 +4023,28 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
     option%match_waypoint = PETSC_FALSE
     realization%output_option%plot_number = 0
   endif
+  
+  if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
+    WaypointSkipToTime(realization%waypoints,option%time)
+  if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
+    WaypointSkipToTime(realization%waypoints,option%time)
+
+  if (flow_read) then
+    flow_stepper%target_time = option%flow_time
+    call StepperUpdateFlowAuxVars(realization)
+  endif
+
+  if (transport_read) then
+    tran_stepper%target_time = option%tran_time
+    ! This is here since we need to recalculate the secondary complexes
+    ! if they exist.  DO NOT update activity coefficients!!! - geh
+    if (realization%reaction%use_full_geochemistry) then
+      call StepperUpdateTranAuxVars(realization)
+      !call StepperSandbox(realization)
+    endif
+  endif  
     
-end subroutine StepperRestart
+end subroutine TimestepperRestart
 
 ! ************************************************************************** !
 !

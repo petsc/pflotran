@@ -61,6 +61,7 @@ program pflotran
   PetscBool :: option_found
   PetscBool :: input_prefix_option_found, pflotranin_option_found
   PetscBool :: single_inputfile
+  PetscInt :: init_status
   PetscInt :: i
   PetscInt :: temp_int
   PetscErrorCode :: ierr
@@ -70,6 +71,7 @@ program pflotran
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
+  type(stepper_type), pointer :: master_stepper
   type(option_type), pointer :: option
   
   nullify(stochastic)
@@ -188,10 +190,48 @@ program pflotran
     call StepperRun(simulation%realization,simulation%surf_realization, &
                     simulation%flow_stepper, &
                     simulation%tran_stepper, &
-                    simulation%surf_flow_stepper)
+                    simulation%surf_flow_stepper, &
+                    init_status)
+    call TimestepperInitializeRun(simulation%realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper, &
+                                  simulation%surf_flow_stepper, &
+                                  init_status)
+    select case(init_status)
+      case(TIMESTEPPER_INIT_PROCEED)
+        call  TimestepperExecuteRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper, &
+                                    simulation%surf_flow_stepper)
+        call  TimestepperFinalizeRun(simulation%realization, &
+                                     master_stepper, &
+                                     simulation%flow_stepper, &
+                                     simulation%tran_stepper, &
+                                     simulation%surf_flow_stepper)
+      case(TIMESTEPPER_INIT_FAIL)
+      case(TIMESTEPPER_INIT_DONE)
+    end select
 #else
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
+    call TimestepperInitializeRun(simulation%realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper, &
+                                  init_status)
+    select case(init_status)
+      case(TIMESTEPPER_INIT_PROCEED)
+        call  TimestepperExecuteRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper)
+        call  TimestepperFinalizeRun(simulation%realization, &
+                                     master_stepper, &
+                                     simulation%flow_stepper, &
+                                     simulation%tran_stepper)
+      case(TIMESTEPPER_INIT_FAIL)
+      case(TIMESTEPPER_INIT_DONE)
+    end select
 #endif
 
     call RegressionOutput(simulation%regression,simulation%realization, &

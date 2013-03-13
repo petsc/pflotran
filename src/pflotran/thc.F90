@@ -248,7 +248,9 @@ subroutine THCSetupPatch(realization)
                                   area_per_vol,option)
                                 
       thc_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
-        (1.d0 - thc_sec_heat_vars(ghosted_id)%epsilon)
+        (1.d0 - thc_sec_heat_vars(ghosted_id)%epsilon)* &
+        realization%material_property_array(1)%ptr% &
+        secondary_continuum_area_scaling
 
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/26/12

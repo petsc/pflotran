@@ -1,0 +1,322 @@
+:Description: 2D MFD problem for richards equation
+
+:=========================== regression test ========================================
+REGRESSION
+  CELLS
+    1990
+    1765
+    1540
+  /
+  CELLS_PER_PROCESS 2
+END
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+tracer
+/
+/
+
+:=========================== solver options ===================================
+
+:DEBUG
+:PRINT_SOLUTION
+:PRINT_JACOBIAN
+:PRINT_RESIDUAL
+:END
+
+TIMESTEPPER
+MAX_STEPS 1000
+END
+
+NEWTON_SOLVER FLOW
+RTOL 1.d-15
+:RTOL 1.d-20
+ATOL 1.d-15
+:DTOL 1.e4
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+END
+
+LINEAR_SOLVER FLOW
+KSP_TYPE BCGS
+:KSP_TYPE GMRES
+:KSP_TYPE FGMRES
+RTOL 1.d-24
+ATOL 1.d-24
+END
+
+:=========================== discretization ===================================
+GRID
+:TYPE structured
+TYPE structured_mimetic
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 45 1 45
+BOUNDS
+0.d0 9.d0
+0.d0 1.d0
+0.d0 8.86d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-14
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.2d0
+LAMBDA 0.25d0
+::LAMBDA 0.75d0
+ALPHA 1.d-4
+MAX_CAPILLARY_PRESSURE 1.d8
+BETAC 0.d0
+POWER 1.d0
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION sf1
+PERMEABILITY
+PERM_X 7.75d-12
+PERM_Y 1.d-12
+PERM_Z 3.25d-12
+PERM_XZ 3.8971d-12
+PERM_XY 0
+PERM_YZ 0
+/
+/
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION sf1
+PERMEABILITY
+PERM_X 7.75d-12
+PERM_Y 1.d-12
+PERM_Z 3.25d-12
+PERM_XZ -3.8971d-12
+PERM_XY 0
+PERM_YZ 0
+/
+/
+
+:=========================== output options ===================================
+OUTPUT
+: PERIODIC TIME  1. y  
+  FORMAT TECPLOT BLOCK
+  FORMAT HDF5
+  VELOCITIES
+  PERMEABILITY
+  PERIODIC_OBSERVATION TIMESTEP 1 
+  PRINT_COLUMN_IDS
+  MASS_BALANCE
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 1. y
+INITIAL_TIMESTEP_SIZE 1.d-2 y
+MAXIMUM_TIMESTEP_SIZE 0.1 y
+MAXIMUM_TIMESTEP_SIZE 5 y at 10. y
+/
+
+REFERENCE_PRESSURE 101325
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+9.d0 1.d0 8.86d0
+/
+END
+
+REGION Top_part
+COORDINATES
+0.d0 0.d0 4.43d0
+9.d0 1.d0 8.86d0
+/
+END
+
+REGION Bottom_part
+COORDINATES
+0.d0 0.d0 0.d0
+9.d0 1.d0 4.43d0
+/
+END
+
+REGION Top
+COORDINATES
+0.d0 0.d0 8.86d0
+9.d0 1.d0 8.86d0
+/
+FACE TOP
+END
+
+REGION Top_left
+COORDINATES
+0.d0 0.d0 8.86d0
+4.d0 1.d0 8.86d0
+/
+FACE TOP
+END
+
+REGION Top_middle
+COORDINATES
+4.d0 0.d0 8.86d0
+5.d0 1.d0 8.86d0
+/
+FACE TOP
+END
+
+REGION Top_right
+COORDINATES
+5.d0 0.d0 8.86d0
+9.d0 1.d0 8.86d0
+/
+FACE TOP
+END
+
+REGION Left
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 8.86d0
+/
+FACE WEST
+END
+
+REGION Right
+COORDINATES
+9.d0 0.d0 0d0
+9.d0 1.d0 8.86d0
+/
+FACE EAST
+END
+
+REGION Bottom
+COORDINATES
+0.d0 0.d0 0.d0
+9.d0 1.d0 0.d0
+/
+FACE BOTTOM
+END
+
+:=========================== flow conditions ==================================
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+:PRESSURE dirichlet
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 155800 
+END
+
+FLOW_CONDITION Top
+TYPE
+FLUX neumann
+END
+FLUX 1.58549d-8 !1.58549d-9 = 5 cm/yr darcy
+!FLUX 0.
+END
+
+FLOW_CONDITION Bottom
+TYPE
+:PRESSURE dirichlet
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 155800 
+END
+
+:=========================== transport conditions =============================
+
+TRANSPORT_CONDITION initial_c
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_c
+END
+END
+
+TRANSPORT_CONDITION source_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 source_c
+END
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial_c
+CONCENTRATIONS
+tracer    1.d-5   T
+/
+/
+
+CONSTRAINT source_c
+CONCENTRATIONS
+tracer    1.d0   T
+/
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION init
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+END
+
+: top boundary condition
+BOUNDARY_CONDITION top
+FLOW_CONDITION Top
+:FLOW_CONDITION Top_test
+TRANSPORT_CONDITION source_c
+:REGION Top
+REGION Top_middle
+END
+
+:: top boundary condition
+:BOUNDARY_CONDITION
+:FLOW_CONDITION Top
+:TRANSPORT_CONDITION initial_c
+:REGION Top_left
+:END
+:: top boundary condition
+:BOUNDARY_CONDITION
+:FLOW_CONDITION Top
+:TRANSPORT_CONDITION initial_c
+:REGION Top_right
+:END
+
+: bottom boundary condition
+BOUNDARY_CONDITION bot
+FLOW_CONDITION Bottom
+TRANSPORT_CONDITION initial_c
+REGION Bottom
+END
+
+:=========================== stratigraphy couplers ============================
+:STRATA
+:REGION all
+:MATERIAL soil1
+:END
+
+STRATA
+REGION Top_part
+MATERIAL soil1
+END
+
+STRATA
+REGION Bottom_part
+MATERIAL soil2
+END

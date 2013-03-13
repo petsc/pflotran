@@ -65,6 +65,8 @@ subroutine Init(simulation)
   use Reactive_Transport_module
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
+  use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
+  
   use Global_module
   use Variables_module
   use Water_EOS_module
@@ -118,6 +120,7 @@ subroutine Init(simulation)
   type(surface_realization_type), pointer   :: surf_realization
 #endif
 
+  ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,ierr)
   
@@ -534,6 +537,7 @@ subroutine Init(simulation)
                                           realization,ierr)
       end select
     endif
+        
     
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
@@ -692,7 +696,13 @@ subroutine Init(simulation)
       ! update does not perturb concentrations negative.
       call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-    
+      
+      if (option%use_mc) then
+        call SNESLineSearchSetPostCheck(linesearch, &
+                                        SecondaryRTUpdateIterate, &
+                                        realization,ierr)      
+      endif
+      
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
         string = '-tran_snes_view'

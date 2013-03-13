@@ -14,6 +14,10 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
 !	This version of bl3dfac dated March 15, 2000.
 
+! Modified from bl3dfac.f, bl3dsol.f - Fortran codes of
+! P. Keast, http://www.mscs.dal.ca/ keast/research/pubs.html, 
+! Mathematics and Statistics Department, Dalhousie University, Canada.
+
 !************************************************************************
 
 !	bl3dfac performs an LU factorization of the block tridiagonal

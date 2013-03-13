@@ -155,10 +155,12 @@ subroutine StochasticRun(stochastic,option)
   PetscInt :: irealization
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
+  type(stepper_type), pointer :: master_stepper
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: init_status
   PetscErrorCode :: ierr
   PetscInt :: status
-
+  
   call OptionCheckCommandLine(option)
 
   ! moved outside due to errors when allocating/deallocating  over and over
@@ -195,8 +197,24 @@ subroutine StochasticRun(stochastic,option)
     option%io_buffer = 'Stochastic mode not tested for surface-flow'
     call printErrMsgByRank(option)
 #else
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
+    call TimestepperInitializeRun(simulation%realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper, &
+                                  init_status)
+    select case(init_status)
+      case(TIMESTEPPER_INIT_PROCEED)
+        call  TimestepperExecuteRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper)
+        call  TimestepperFinalizeRun(simulation%realization, &
+                                     master_stepper, &
+                                     simulation%flow_stepper, &
+                                     simulation%tran_stepper)
+      case(TIMESTEPPER_INIT_FAIL)
+      case(TIMESTEPPER_INIT_DONE)
+    end select
 #endif
 
     call RegressionOutput(simulation%regression,simulation%realization, &

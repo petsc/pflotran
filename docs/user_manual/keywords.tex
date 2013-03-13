@@ -116,7 +116,7 @@ Surface Site Density: & mole/Meter$^{3}$ [mol/m$^{3}$]\\
 
 \clearpage
 
-\subsection{Example Input File}
+\subsection{Example Input File}\label{exinput}
 
 \hypertarget{target_input_file}{}
 
@@ -1820,12 +1820,12 @@ LINEAR_SOLVER TRANSPORT
 \item[PERMEABILITY\_POWER] \ {\tt <float>} \ (see Eqn.\eqref{permeability})
 \item[PERMEABILITY\_CRIT\_POR] \ {\tt <float>} \ (see Eqn.\eqref{permf})
 \item[PERMEABILITY\_MIN\_SCALE\_FAC] \ {\tt <float>} \ (see Eqn.\eqref{fmin})
-\item[TORTUOSITY\_POWER] \ {\tt float}
-\item[MINERAL\_SURFACE\_AREA\_POWER] ~
-\begin{deflist}{000}
-\item[VOLUME\_FRACTION] \ {\tt <float>} \ Volume fraction power in mineral surface area
-\item[POROSITY] \ {\tt <float>} \ Porosity power in mineral surface area
-\end{deflist}
+\item[TORTUOSITY\_POWER] \ {\tt <float>}
+\item[MINERAL\_SURFACE\_AREA\_POWER] ~ toggle to update mineral surface area (see {\tt MINERAL\_KINETICS} keyword for setting porosity or volume fraction power)
+%\begin{deflist}{000}
+%\item[VOLUME\_FRACTION] \ {\tt <float>} \ Volume fraction power in mineral surface area
+%\item[POROSITY] \ {\tt <float>} \ Porosity power in mineral surface area
+%\end{deflist}
 %\item[\keyend]
 \item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
@@ -1840,6 +1840,7 @@ LINEAR_SOLVER TRANSPORT
 \item[RADIUS] \ {\tt <float>} [m] \ radius for NESTED\_SPHERES type
 \item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in REV
 \item[APERTURE] \ {\tt <float>} \ Fracture aperture (if specified overrides epsilon---applicable for nested cubes only)
+\item[AREA\_SCALING\_FACTOR] \ {\tt <float>} \ Factor multiplying primary-secondary continua coupling term (default set to 1)
 \end{deflist}
 \item[\keyend]
 \item[RANDOM\_DATASET] \ {\tt permeability\_filename}
@@ -2069,6 +2070,7 @@ specified under the MATERIAL\_PROPERTY keyword.
 \item[DTOL] \ {\tt <Value>}
 \item[ITOL \ (INF\_TOL, \ ITOL\_RES, \ INF\_TOL\_RES)] \ {\tt <Value>}
 \item[ITOL\_UPDATE \ (INF\_TOL\_UPDATE)] \ {\tt <Value>}
+\item[ITOL\_SEC \ (ITOL\_RES\_SEC, \ INF\_TOL\_SEC)] \ {\tt <Value>} \ Checks the infinite norm of secondary continuum residual for convergence when using transport. (default set to 1.d-10)
 \item[MAXIT] \ {\tt <Value>} \ Cuts time step if the number of iterations exceed this value
 \item[MAXF] \ {\tt <Value>}
 \item[MAX\_NORM] \ {\tt <Value>} \ Cuts time step if the convergence norm exceeds this value. 
