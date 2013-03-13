@@ -2396,8 +2396,14 @@ subroutine BasisInit(reaction,option)
       isrfcplx = isrfcplx + 1
           
       surface_complexation%srfcplx_names(isrfcplx) = cur_srfcplx%name
-      surface_complexation%srfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
-        reaction%print_all_species
+      !geh: Only print surface complex concentrations for equilibrium
+      !     surface complexation reaction.  They are not stored for 
+      !     multirate and kinetic surface complexation has its own
+      !     data structure and print flag.
+      if (surface_complexation%neqsrfcplxrxn > 0) then
+        surface_complexation%srfcplx_print(isrfcplx) = &
+          cur_srfcplx%print_me .or. reaction%print_all_species
+      endif
       surface_complexation%srfcplx_free_site_stoich(isrfcplx) =  &
         cur_srfcplx%free_site_stoich
             
