@@ -1840,6 +1840,7 @@ LINEAR_SOLVER TRANSPORT
 \item[RADIUS] \ {\tt <float>} [m] \ radius for NESTED\_SPHERES type
 \item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in REV
 \item[APERTURE] \ {\tt <float>} \ Fracture aperture (if specified overrides epsilon---applicable for nested cubes only)
+\item[AREA\_SCALING\_FACTOR] \ {\tt <float>} \ Factor multiplied to the primary-secondary continua coupling term (default set to 1)
 \end{deflist}
 \item[\keyend]
 \item[RANDOM\_DATASET] \ {\tt permeability\_filename}
@@ -2069,6 +2070,7 @@ specified under the MATERIAL\_PROPERTY keyword.
 \item[DTOL] \ {\tt <Value>}
 \item[ITOL \ (INF\_TOL, \ ITOL\_RES, \ INF\_TOL\_RES)] \ {\tt <Value>}
 \item[ITOL\_UPDATE \ (INF\_TOL\_UPDATE)] \ {\tt <Value>}
+\item[ITOL\_SEC \ (ITOL\_RES\_SEC, \ INF\_TOL\_SEC)] \ {\tt <Value>} \ Checks the infinite norm of secondary continuum residual for convergence when using transport. (default set to 1.d-10)
 \item[MAXIT] \ {\tt <Value>} \ Cuts time step if the number of iterations exceed this value
 \item[MAXF] \ {\tt <Value>}
 \item[MAX\_NORM] \ {\tt <Value>} \ Cuts time step if the convergence norm exceeds this value. 
