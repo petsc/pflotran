@@ -1167,7 +1167,7 @@ subroutine InitReadInputFilenames(option,filenames)
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
-    call InputReadWord(input,option,filename,PETSC_FALSE)
+    call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
     filename_count = filename_count + 1
   enddo
   
@@ -1185,7 +1185,7 @@ subroutine InitReadInputFilenames(option,filenames)
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
-    call InputReadWord(input,option,filename,PETSC_FALSE)
+    call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
     filename_count = filename_count + 1
     filenames(filename_count) = filename
   enddo
