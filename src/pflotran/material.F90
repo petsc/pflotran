@@ -62,6 +62,7 @@ module Material_module
     PetscReal :: secondary_continuum_mnrl_area 
     PetscBool :: secondary_continuum_log_spacing
     PetscReal :: secondary_continuum_outer_spacing
+    PetscReal :: secondary_continuum_area_scaling
     type(material_property_type), pointer :: next
   end type material_property_type
   
@@ -144,6 +145,7 @@ function MaterialPropertyCreate()
   material_property%secondary_continuum_ncells = 0
   material_property%secondary_continuum_log_spacing = PETSC_FALSE
   material_property%secondary_continuum_outer_spacing = 1.d-3
+  material_property%secondary_continuum_area_scaling = 1.d0
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
@@ -478,6 +480,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputReadDouble(input,option, &
                              material_property%secondary_continuum_outer_spacing)
               call InputErrorMsg(input,option,'secondary cont. outer spacing', &
+                           'MATERIAL_PROPERTY')
+            case('AREA_SCALING_FACTOR')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_area_scaling)
+              call InputErrorMsg(input,option,'secondary area scaling factor', &
                            'MATERIAL_PROPERTY')
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &

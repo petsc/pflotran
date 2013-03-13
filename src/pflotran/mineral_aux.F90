@@ -121,8 +121,8 @@ module Mineral_Aux_module
   end type mineral_type
   
   interface GetMineralIDFromName
-    module procedure :: GetMineralIDFromName1
-    module procedure :: GetMineralIDFromName2
+    module procedure GetMineralIDFromName1
+    module procedure GetMineralIDFromName2
   end interface
   
   public :: MineralCreate, &
