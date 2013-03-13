@@ -565,8 +565,8 @@ end subroutine TimestepperInitializeRun
 !
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
-subroutine TimestepperExecuteRun(realization,surf_realization,flow_stepper, &
-                                 tran_stepper,surf_flow_stepper)
+subroutine TimestepperExecuteRun(realization,surf_realization,master_stepper, &
+                                 flow_stepper,tran_stepper,surf_flow_stepper)
 #else
 subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
                                  tran_stepper)
