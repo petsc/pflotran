@@ -1146,22 +1146,27 @@ subroutine InitReadInputFilenames(option,filenames)
   character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: filename_count
   type(input_type), pointer :: input
+  PetscBool :: card_found
 
   input => InputCreate(IN_UNIT,option%input_filename,option)
 
   string = "FILENAMES"
   call InputFindStringInFile(input,option,string) 
 
+  card_found = PETSC_FALSE
   if (InputError(input)) then
     ! if the FILENAMES card is not included, we will assume that only
     ! filenames exist in the file.
     rewind(input%fid)
+  else
+    card_found = PETSC_TRUE
   endif
     
   filename_count = 0     
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit  
     call InputReadWord(input,option,filename,PETSC_FALSE)
     filename_count = filename_count + 1
   enddo
@@ -1170,10 +1175,16 @@ subroutine InitReadInputFilenames(option,filenames)
   filenames = ''
   rewind(input%fid) 
 
+  if (card_found) then
+    string = "FILENAMES"
+    call InputFindStringInFile(input,option,string) 
+  endif
+  
   filename_count = 0     
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit  
     call InputReadWord(input,option,filename,PETSC_FALSE)
     filename_count = filename_count + 1
     filenames(filename_count) = filename
