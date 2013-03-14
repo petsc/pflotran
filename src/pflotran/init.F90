@@ -1796,6 +1796,11 @@ subroutine InitReadInput(simulation)
 
 !......................
 
+      case ('NUMERICAL_JACOBIAN_MULTI_COUPLE')
+        option%numerical_derivatives_multi_coupling = PETSC_TRUE
+
+!......................
+
       case ('COMPUTE_STATISTICS')
         option%compute_statistics = PETSC_TRUE
 
