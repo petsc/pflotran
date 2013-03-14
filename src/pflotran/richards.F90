@@ -27,14 +27,18 @@ module Richards_module
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-6
   
-  public RichardsResidual,RichardsJacobian, &
-         RichardsUpdateFixedAccum,RichardsTimeCut,&
-         RichardsSetup, RichardsNumericalJacTest, &
-         RichardsInitializeTimestep, RichardsUpdateAuxVars, &
-         RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader, RichardsComputeMassBalance, &
+  public RichardsResidual, &
+         RichardsJacobian, &
+         RichardsTimeCut,&
+         RichardsSetup, &
+         RichardsInitializeTimestep, &
+         RichardsUpdateAuxVars, &
+         RichardsMaxChange, &
+         RichardsUpdateSolution, &
+         RichardsComputeMassBalance, &
          RichardsDestroy, &
-         RichardsCheckUpdatePre, RichardsCheckUpdatePost
+         RichardsCheckUpdatePre, &
+         RichardsCheckUpdatePost
 
 contains
 
@@ -2227,13 +2231,13 @@ end subroutine RichardsCreateZeroArray
 ! ************************************************************************** !
 subroutine RichardsMaxChange(realization)
 
-  use Realization_class
+  use Realization_Base_class
   use Option_module
   use Field_module
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_base_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -2269,55 +2273,6 @@ subroutine RichardsMaxChange(realization)
   end if
 
 end subroutine RichardsMaxChange
-
-! ************************************************************************** !
-!
-! RichardsGetTecplotHeader: Returns Richards Lite contribution to 
-!                               Tecplot file header
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
-function RichardsGetTecplotHeader(realization,icolumn)
-  
-  use Realization_class
-  use Option_module
-  use Field_module
-    
-  implicit none
-  
-  character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
-  type(realization_type) :: realization
-  PetscInt :: icolumn
-  
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  
-  option => realization%option
-  field => realization%field
-  
-  string = ''
-  
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
-  else
-    write(string2,'('',"P [Pa]"'')') 
-  endif
-  string = trim(string) // trim(string2)
-
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-sl"'')') icolumn
-  else
-    write(string2,'('',"sl"'')') 
-  endif
-  string = trim(string) // trim(string2)
- 
-  RichardsGetTecplotHeader = string
-
-end function RichardsGetTecplotHeader
 
 ! ************************************************************************** !
 !
@@ -2396,6 +2351,8 @@ end subroutine RichardsPrintAuxVars
 subroutine RichardsDestroy(realization)
 
   use Realization_class
+  
+  implicit none
 
   type(realization_type) :: realization
   
