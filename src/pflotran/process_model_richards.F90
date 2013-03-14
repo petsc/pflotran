@@ -76,7 +76,9 @@ end subroutine PMRichardsInitializeTimestep
 !
 ! ************************************************************************** !
 subroutine PMRichardsResidual(this,snes,xx,r,ierr)
+
   implicit none
+  
   class(process_model_richards_type) :: this
   SNES :: snes
   Vec :: xx
@@ -95,7 +97,9 @@ end subroutine PMRichardsResidual
 !
 ! ************************************************************************** !
 subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
+
   implicit none
+  
   class(process_model_richards_type) :: this
   SNES :: snes
   Vec :: xx
@@ -115,7 +119,9 @@ end subroutine PMRichardsJacobian
 !
 ! ************************************************************************** !
 subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+
   implicit none
+  
   class(process_model_richards_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
@@ -137,6 +143,7 @@ end subroutine PMRichardsCheckUpdatePre
 subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
   implicit none
+  
   class(process_model_richards_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
