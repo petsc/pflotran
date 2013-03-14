@@ -17,17 +17,17 @@ module Process_Model_Base_class
   type, abstract, public :: process_model_base_type
     class(process_model_base_type), pointer :: next
   contains
-    procedure, public :: Init => PMBaseInit
-    procedure, public :: InitializeTimeStep => PMBaseInitializeTimeStep
-    procedure, public :: Residual => PMBaseResidual
-    procedure, public :: Jacobian => PMBaseJacobian
-    procedure, public :: CheckUpdatePre => PMBaseCheckUpdatePre
-    procedure, public :: CheckUpdatePost => PMBaseCheckUpdatePost
-    procedure, public :: TimeCut => PMBaseTimeCut
-    procedure, public :: UpdateSolution => PMBaseUpdateSolution
-    procedure, public :: MaxChange => PMBaseMaxChange
-    procedure, public :: ComputeMassBalance => PMBaseComputeMassBalance
-    procedure, public :: Destroy => PMBaseDestroy
+    procedure(PMBaseInit), public, deferred :: Init
+    procedure(PMBaseInitializeTimeStep), public, deferred :: InitializeTimeStep
+    procedure(PMBaseResidual), public, deferred :: Residual
+    procedure(PMBaseJacobian), public, deferred :: Jacobian
+    procedure(PMBaseCheckUpdatePre), public, deferred :: CheckUpdatePre
+    procedure(PMBaseCheckUpdatePost), public, deferred :: CheckUpdatePost
+    procedure(PMBaseTimeCut), public, deferred :: TimeCut
+    procedure(PMBaseUpdateSolution), public, deferred :: UpdateSolution
+    procedure(PMBaseMaxChange), public, deferred :: MaxChange
+    procedure(PMBaseComputeMassBalance), public, deferred :: ComputeMassBalance
+    procedure(PMBaseDestroy), public, deferred :: Destroy
   end type process_model_base_type
   
   interface
