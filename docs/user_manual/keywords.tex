@@ -34,7 +34,9 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_mc}{\bf MULTIPLE\_CONTINUUM} & \\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} & \\
 \hyperlink{target_nonuniform_vel}{\bf NONUNIFORM\_VELOCITY} & \\ 
-\hyperlink{target_numjac}{\bf NUMERICAL\_JACOBIAN} & \\
+\hyperlink{target_numjac_flow}{\bf NUMERICAL\_JACOBIAN\_FLOW} & \\
+\hyperlink{target_numjac_rxn}{\bf NUMERICAL\_JACOBIAN\_RXN} & \\
+\hyperlink{target_numjac_multi}{\bf NUMERICAL\_JACOBIAN\_MULTI\_COUPLE} & \\
 \hyperlink{target_observation}{\bf OBSERVATION} & \\
 \hyperlink{target_orig}{\bf ORIG, ORIGIN} & \\
 \hyperlink{target_output}{\bf OUTPUT} & \\
@@ -2188,11 +2190,40 @@ NONUNIFORM\_VELOCITY velocity.h5
 %========================================================================
 
 \newpage
-\protect\hypertarget{target_numjac}{}
+\protect\hypertarget{target_numjac_flow}{}
 
-\subsection{Keyword: NUMERICAL\_JACOBIAN}
+\subsection{Keyword: NUMERICAL\_JACOBIAN\_FLOW}
 \begin{deflist}{0000000000}
-\item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
+\item[NUMERICAL\_JACOBIAN\_FLOW] 
+Uses numerically evaluated Jacobian for flow.
+\end{deflist}
+
+\hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_numjac_rxn}{}
+
+\subsection{Keyword: NUMERICAL\_JACOBIAN\_RXN}
+\begin{deflist}{0000000000}
+\item[NUMERICAL\_JACOBIAN\_RXN]
+Uses numerically evaluated Jacobian for reactions.
+\end{deflist}
+
+\hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_numjac_multi}{}
+
+\subsection{Keyword: NUMERICAL\_JACOBIAN\_MULTI\_COUPLE}
+\begin{deflist}{0000000000}
+\item[NUMERICAL\_JACOBIAN\_MULTI\_COUPLE]
+The contribution to the primary continuum Jacobian due to primary-secondary continua coupling term is numerically evaluated.
 \end{deflist}
 
 \hyperlink{target_key}{\return}

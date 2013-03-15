@@ -1461,7 +1461,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
         conc_upd(j,i) = exp(rhs(n))*conc_upd(j,i)
       else
         conc_upd(j,i) = rhs(n) + conc_upd(j,i)
-      endif   
+      endif
     enddo
   enddo
   
