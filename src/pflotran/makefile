@@ -231,15 +231,18 @@ chem_obj = \
 
 grid_obj = \
 	${common_src}connection.o \
+	${common_src}communicator_base.o \
 	${common_src}discretization.o \
 	${common_src}general_grid.o \
 	${common_src}grid.o \
 	${common_src}mfd.o \
 	${common_src}mfd_aux.o \
 	${common_src}unstructured_cell.o \
+	${common_src}unstructured_communicator.o \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
+	${common_src}structured_communicator.o \
 	${common_src}structured_grid.o 
 
 relations_obj = \
@@ -353,6 +356,7 @@ auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o \
 block_solve.o:
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
+communicator_base.o : 
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.o dataset.o time_series.o \
               reactive_transport_aux.o constraint.o general_aux.o
@@ -360,6 +364,7 @@ condition_control.o : realization.o discretization.o region.o option.o grid.o \
                       field.o coupler.o condition.o connection.o reaction.o \
                       hdf5.o mfd.o dataset_aux.o surface_realization.o \
                       constraint.o general_aux.o
+connection.o : 
 convergence.o : option.o solver.o grid.o
 ifdef PFLOTRAN_RXN_FLAG
 constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
@@ -572,6 +577,7 @@ stochastic.o : simulation.o option.o realization.o timestepper.o \
 stochastic_aux.o : simulation.o input.o option.o
 strata.o : input.o region.o material.o
 string.o :
+structured_communicator.o : communicator_base.o structured_grid.o
 structured_grid.o : connection.o option.o input.o
 surface_auxiliary.o : surface_global_aux.o surface_flow_aux.o \
                       surface_th_aux.o
@@ -621,6 +627,8 @@ time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
 unstructured_cell.o : option.o utility.o 
+unstructured_communicator.o : communicator_base.o unstructured_grid.o \
+                              unstructured_grid_aux.o unstructured_explicit.o
 unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
                       unstructured_grid_aux.o geometry.o reaction_aux.o hdf5_aux.o
