@@ -1807,6 +1807,11 @@ subroutine InitReadInput(simulation)
 
 !......................
 
+      case ('NUMERICAL_JACOBIAN_MULTI_COUPLE')
+        option%numerical_derivatives_multi_coupling = PETSC_TRUE
+
+!......................
+
       case ('COMPUTE_STATISTICS')
         option%compute_statistics = PETSC_TRUE
 
@@ -3097,6 +3102,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscInt :: fid = 86
   PetscInt :: status
   PetscInt :: idirection
+  PetscInt :: temp_int
   PetscReal :: ratio, scale
   Vec :: global_vec
   PetscErrorCode :: ierr
@@ -3105,6 +3111,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscReal, pointer :: perm_xx_p(:)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
+  PetscReal, pointer :: perm_xyz_p(:)
 
   field => realization%field
   patch => realization%patch
@@ -3153,7 +3160,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       enddo
       call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
     else
-      do idirection = X_DIRECTION,Z_DIRECTION
+      temp_int = Z_DIRECTION
+      if (grid%itype == STRUCTURED_GRID_MIMETIC) temp_int = YZ_DIRECTION
+      do idirection = X_DIRECTION,temp_int
         select case(idirection)
           case(X_DIRECTION)
             dataset_name = 'PermeabilityX'
@@ -3161,6 +3170,15 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             dataset_name = 'PermeabilityY'
           case(Z_DIRECTION)
             dataset_name = 'PermeabilityZ'
+          case(XY_DIRECTION)
+            dataset_name = 'PermeabilityXY'
+            call GridVecGetArrayF90(grid,field%perm0_xy,perm_xyz_p,ierr)
+          case(XZ_DIRECTION)
+            dataset_name = 'PermeabilityXZ'
+            call GridVecGetArrayF90(grid,field%perm0_xz,perm_xyz_p,ierr)
+          case(YZ_DIRECTION)
+            dataset_name = 'PermeabilityYZ'
+            call GridVecGetArrayF90(grid,field%perm0_yz,perm_xyz_p,ierr)
         end select          
         call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                                           material_property%permeability_dataset%filename, &
@@ -3186,6 +3204,23 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
                 perm_zz_p(local_id) = vec_p(local_id)
               endif
             enddo
+          case(XY_DIRECTION,XZ_DIRECTION,YZ_DIRECTION)
+            do local_id = 1, grid%nlmax
+              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+                perm_xyz_p(local_id) = vec_p(local_id)
+              endif
+            enddo
+            select case(idirection)
+              case(XY_DIRECTION)
+                call GridVecRestoreArrayF90(grid,field%perm0_xy,perm_xyz_p, &
+                                            ierr)
+              case(XZ_DIRECTION)
+                call GridVecRestoreArrayF90(grid,field%perm0_xz,perm_xyz_p, &
+                                            ierr)
+              case(YZ_DIRECTION)
+                call GridVecRestoreArrayF90(grid,field%perm0_yz,perm_xyz_p, &
+                                            ierr)
+            end select
         end select
         call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
       enddo
