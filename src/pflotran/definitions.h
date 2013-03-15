@@ -58,6 +58,9 @@ PetscMPIInt, parameter :: MAXSTRINGLENGTH_MPI = MAXSTRINGLENGTH
 PetscInt, parameter :: X_DIRECTION = 1
 PetscInt, parameter :: Y_DIRECTION = 2
 PetscInt, parameter :: Z_DIRECTION = 3
+PetscInt, parameter :: XY_DIRECTION = 4
+PetscInt, parameter :: XZ_DIRECTION = 5
+PetscInt, parameter :: YZ_DIRECTION = 6
 PetscInt, parameter :: LOWER = 1
 PetscInt, parameter :: UPPER = 2
 

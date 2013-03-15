@@ -393,8 +393,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     if (associated(flow_stepper)) then
       if (flow_stepper%init_to_steady_state) then
         option%flow_dt = master_stepper%dt_min
-        call StepperStepFlowDT(realization,flow_stepper,PETSC_TRUE, &
-                               failure)
+        call FlowStepperStepToSteadyState(realization,flow_stepper,failure)
         if (failure) then ! if flow solve fails, exit
           if (OptionPrintToScreen(option)) then
             write(*,*) ' ERROR: steady state solve failed!!!'
@@ -738,8 +737,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
         do
           ! Solve subsurface flow
-          call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                                 failure)
+          call StepperStepFlowDT(realization,flow_stepper,failure)
           
           if (failure) return ! if flow solve fails, exit
           option%flow_time = flow_stepper%target_time
@@ -768,8 +766,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
                                      option,plot_flag, &
                                      transient_plot_flag)
           call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-          call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                                failure)
+          call StepperStepFlowDT(realization,flow_stepper,failure)
           call PetscLogStagePop(ierr)
           if (failure) return ! if flow solve fails, exit
           option%flow_time = flow_stepper%target_time
@@ -788,8 +785,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
       flow_t0 = option%flow_time
       call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-      call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                              failure)
+      call StepperStepFlowDT(realization,flow_stepper,failure)
       call PetscLogStagePop(ierr)
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
@@ -1831,6 +1827,513 @@ end subroutine SetSurfaceSubsurfaceCouplingTime
 !
 ! StepperStepFlowDT: Steps forward one step in time
 ! author: Glenn Hammond
+! date: 02/19/08, 03/11/13
+!
+! ************************************************************************** !
+subroutine StepperStepFlowDT(realization,stepper,failure)
+
+  use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
+                           Flash2TimeCut, Flash2UpdateReason
+  use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
+                           MphaseTimeCut, MPhaseUpdateReason
+  use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
+                           ImmisTimeCut, ImmisUpdateReason
+  use Miscible_module, only : MiscibleMaxChange, MiscibleInitializeTimestep, &
+                           MiscibleTimeCut
+  use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
+                             RichardsTimeCut, RichardsResidual
+  use TH_module, only : THMaxChange, THInitializeTimestep, THTimeCut
+  use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
+  use THMC_module, only : THMCMaxChange, THMCInitializeTimestep, THMCTimeCut
+
+  use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
+                             GeneralTimeCut
+  use Global_module
+
+  use Output_module, only : Output
+  
+  use Realization_class
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Field_module
+  use Grid_module, only : STRUCTURED_GRID_MIMETIC
+  
+  implicit none
+
+#include "finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscsnes.h"
+
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+  PetscBool :: failure
+  
+  PetscErrorCode :: ierr
+  PetscInt :: icut ! Tracks the number of time step reductions applied
+  SNESConvergedReason :: snes_reason 
+  PetscInt :: update_reason
+  PetscInt :: sum_newton_iterations, sum_linear_iterations
+  PetscInt :: num_newton_iterations, num_linear_iterations
+  PetscReal :: fnorm, scaled_fnorm, inorm
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
+  PetscLogDouble :: log_start_time, log_end_time
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field 
+  type(discretization_type), pointer :: discretization 
+  type(solver_type), pointer :: solver
+  
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  solver => stepper%solver
+
+  icut = 0
+  sum_newton_iterations = 0
+  sum_linear_iterations = 0
+
+  ! Perform some global-to-local scatters to update the ghosted vectors.
+  ! We have to do this so that the routines for calculating the residual
+  ! and the Jacobian will have the ghost points they need.
+  ! Note that we don't do the global-to-local scatter for the pressure 
+  ! vector, as that needs to be done within the residual calculation routine
+  ! because that routine may get called several times during one Newton step
+  ! if a method such as line search is being used.
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                  field%tortuosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+                                  field%icap_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+                                  field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
+    
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," FLOW ",72("="))')
+  endif
+
+  if (option%ntrandof > 0) then ! store initial saturations for transport
+    call GlobalUpdateAuxVars(realization,TIME_T)
+  endif
+    
+  select case(option%iflowmode)
+    case(THMC_MODE)
+      call THMCInitializeTimestep(realization)
+    case(TH_MODE)
+      call THInitializeTimestep(realization)
+    case(THC_MODE)
+      call THCInitializeTimestep(realization)
+    case(RICHARDS_MODE)
+      call RichardsInitializeTimestep(realization)
+    case(MPH_MODE)
+      call MphaseInitializeTimestep(realization)
+    case(MIS_MODE)
+      call MiscibleInitializeTimestep(realization)
+    case(IMS_MODE)
+      call ImmisInitializeTimestep(realization)
+    case(FLASH2_MODE)
+      call Flash2InitializeTimestep(realization)
+    case(G_MODE)
+      call GeneralInitializeTimestep(realization)
+  end select
+
+  do
+      
+    call PetscGetTime(log_start_time, ierr)
+
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+      case(RICHARDS_MODE)
+        if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
+          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
+        else 
+          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+        end if
+
+    end select
+    call PetscGetTime(log_end_time, ierr)
+    stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
+                                      (log_end_time - log_start_time)
+
+! do we really need all this? - geh 
+    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
+    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
+    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
+
+    sum_newton_iterations = sum_newton_iterations + num_newton_iterations
+    sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+    update_reason = 1
+      
+    if (snes_reason >= 0) then
+      select case(option%iflowmode)
+        case(IMS_MODE)
+          call ImmisUpdateReason(update_reason,realization)
+        case(MPH_MODE)
+          if (option%use_mc) then
+            option%sec_vars_update = PETSC_TRUE
+          endif
+        case(FLASH2_MODE)
+        case(TH_MODE)
+          update_reason=1
+          if (option%use_mc) then
+            option%sec_vars_update = PETSC_TRUE
+          endif
+        case(THC_MODE)
+          update_reason=1
+          if (option%use_mc) then
+            option%sec_vars_update = PETSC_TRUE
+          endif
+        case(THMC_MODE)
+          update_reason=1
+        case (MIS_MODE)
+          update_reason=1
+        case(RICHARDS_MODE,G_MODE)
+          update_reason=1
+        end select   
+    endif
+   
+    if (snes_reason <= 0 .or. update_reason <= 0) then
+      ! The Newton solver diverged, so try reducing the time step.
+      icut = icut + 1
+      stepper%time_step_cut_flag = PETSC_TRUE
+      option%out_of_table = PETSC_FALSE
+
+      if (icut > stepper%max_time_step_cuts .or. option%flow_dt<1.d-20) then
+        if (option%print_screen_flag) then
+          print *,"--> max_time_step_cuts exceeded: icut/icutmax= ",icut, &
+                  stepper%max_time_step_cuts, "t= ", &
+                  stepper%target_time/realization%output_option%tconv, " dt= ", &
+                  option%flow_dt/realization%output_option%tconv
+          print *,"Stopping execution!"
+        endif
+        realization%output_option%plot_name = 'flow_cut_to_failure'
+        plot_flag = PETSC_TRUE
+        transient_plot_flag = PETSC_FALSE
+        call Output(realization,plot_flag,transient_plot_flag)
+        failure = PETSC_TRUE
+        return
+      endif
+ 
+      stepper%target_time = stepper%target_time - option%flow_dt
+
+      option%flow_dt = 0.5d0 * option%flow_dt  
+      
+      if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
+        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
+        &   1pe12.5)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
+            option%flow_time/realization%output_option%tconv, &
+            option%flow_dt/realization%output_option%tconv
+
+      stepper%target_time = stepper%target_time + option%flow_dt
+
+      select case(option%iflowmode)
+        case(TH_MODE)
+          call THTimeCut(realization)
+        case(THC_MODE)
+          call THCTimeCut(realization)
+        case(THMC_MODE)
+          call THMCTimeCut(realization)
+        case(RICHARDS_MODE)
+          call RichardsTimeCut(realization)
+        case(MPH_MODE)
+          call MphaseTimeCut(realization)
+        case(MIS_MODE)
+          call MiscibleTimeCut(realization)
+        case(IMS_MODE)
+          call ImmisTimeCut(realization)
+        case(FLASH2_MODE)
+          call Flash2TimeCut(realization)
+        case(G_MODE)
+          call GeneralTimeCut(realization)
+      end select
+      call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
+
+    else
+      ! The Newton solver converged, so we can exit.
+      exit
+    endif
+  enddo
+  
+  stepper%steps = stepper%steps + 1      
+  stepper%cumulative_newton_iterations = &
+    stepper%cumulative_newton_iterations + sum_newton_iterations
+  stepper%cumulative_linear_iterations = &
+    stepper%cumulative_linear_iterations + sum_linear_iterations
+  stepper%cumulative_time_step_cuts = &
+    stepper%cumulative_time_step_cuts + icut
+
+  stepper%num_newton_iterations = num_newton_iterations
+  stepper%num_linear_iterations = num_linear_iterations
+
+  if (option%ntrandof > 0) then ! store final saturations, etc. for transport
+    call GlobalUpdateAuxVars(realization,TIME_TpDT)
+  endif
+    
+! print screen output
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
+  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
+  if (option%print_screen_flag) then
+    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
+      & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
+      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
+      stepper%steps, &
+      stepper%target_time/realization%output_option%tconv, &
+      option%flow_dt/realization%output_option%tconv, &
+      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      stepper%cumulative_newton_iterations,sum_linear_iterations, &
+      stepper%cumulative_linear_iterations,icut, &
+      stepper%cumulative_time_step_cuts
+
+    if (associated(discretization%grid)) then
+       scaled_fnorm = fnorm/discretization%grid%nmax 
+    else
+       scaled_fnorm = fnorm
+    endif
+    print *,' --> SNES Linear/Non-Linear Iterations = ', &
+             num_linear_iterations,' / ',num_newton_iterations
+    write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
+  endif
+  if (option%print_file_flag) then
+    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
+      & " [",a1, &
+      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
+      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
+      stepper%steps, &
+      stepper%target_time/realization%output_option%tconv, &
+      option%flow_dt/realization%output_option%tconv, &
+      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      stepper%cumulative_newton_iterations,sum_linear_iterations, &
+      stepper%cumulative_linear_iterations,icut, &
+      stepper%cumulative_time_step_cuts
+  endif
+  
+  select case(option%iflowmode)
+    case(TH_MODE)
+      call THMaxChange(realization)
+      if (option%print_screen_flag) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax
+      endif
+    case(THC_MODE)
+      call THCMaxChange(realization)
+      if (option%print_screen_flag) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax, option%dcmax
+      endif
+    case(THMC_MODE)
+      call THMCMaxChange(realization)
+      if (option%print_screen_flag) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax, option%dcmax
+      endif
+      if (option%print_file_flag) then 
+        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax
+      endif
+    case(RICHARDS_MODE)
+      call RichardsMaxChange(realization)
+      if (option%print_screen_flag) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+      endif
+      if (option%print_file_flag) then
+        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+      endif
+    case(MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call MphaseMaxChange(realization)
+        case(IMS_MODE)
+          call ImmisMaxChange(realization)
+        case(MIS_MODE)
+          call MiscibleMaxChange(realization)
+        case(FLASH2_MODE)
+          call FLASH2MaxChange(realization)
+        case(G_MODE)
+          call GeneralMaxChange(realization)
+      end select
+      ! note use mph will use variable switching, the x and s change is not meaningful 
+      if (option%print_screen_flag) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
+      endif
+      if (option%print_file_flag) then  
+        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
+      endif
+  end select
+
+  if (option%print_screen_flag) print *, ""
+  
+end subroutine StepperStepFlowDT
+
+! ************************************************************************** !
+!
+! FlowStepperStepToSteadyState: Steps forward one step in time
+! author: Glenn Hammond
+! date: 03/12/13
+!
+! ************************************************************************** !
+subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
+
+  use Global_module
+  use Output_module, only : Output
+  
+  use Realization_class
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Field_module
+  use Grid_module, only : STRUCTURED_GRID_MIMETIC
+  
+  implicit none
+
+#include "finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscsnes.h"
+
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+  PetscBool :: failure
+  
+  PetscErrorCode :: ierr
+  PetscReal :: inorm, prev_norm, dif_norm, rel_norm
+  PetscReal :: tempreal
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field 
+  type(discretization_type), pointer :: discretization 
+  type(solver_type), pointer :: solver
+  
+  Vec :: update_vec
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  solver => stepper%solver
+
+  prev_norm = 1.d20
+
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," Initialize FLOW to Steady-State (Begin)",38("="))')
+  endif
+  if (option%print_file_flag) then
+    write(option%fid_out,'(/,2("="), &
+      &" Initialize FLOW to Steady-State (Begin)",38("="))')
+  endif
+
+  do ! this loop is for steady state initial condition
+   
+    ! flow stepper increments time step. Need to decrement prior to step so that
+    ! printout reflects time step 0
+    stepper%steps = stepper%steps - 1      
+    call StepperStepFlowDT(realization,stepper,failure)
+  
+    call SNESGetSolutionUpdate(solver%snes,update_vec,ierr)
+    call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm,ierr)
+    dif_norm = inorm-prev_norm
+    rel_norm = dif_norm/prev_norm
+    if (stepper%cumulative_newton_iterations > 20 .and. &
+!geh: These norms don't seem to be the best, sticking with inorm
+!           dabs(dif_norm) < stepper%steady_state_rel_tol) .or. &
+!          dabs(rel_norm) < stepper%steady_state_rel_tol) then
+        inorm < stepper%steady_state_rel_tol) then
+      if (option%print_file_flag) then
+        write(option%fid_out,'(/,80("="))')
+        write(option%fid_out,*) 'Steady state solve converged after ', &
+          stepper%cumulative_newton_iterations, ' iterations'
+      endif
+      exit
+    endif
+      
+    prev_norm = inorm
+      
+    if (stepper%cumulative_newton_iterations > 1000) then
+      option%io_buffer = 'Steady-state solve exceeded 1000 Newton iterations.'
+      call printMsg(option)
+      if (option%print_file_flag) then
+        write(option%fid_out,*) trim(option%io_buffer)
+        write(option%fid_out,*) 'inorm: ', inorm
+        write(option%fid_out,*) 'prev_norm: ', prev_norm
+        write(option%fid_out,*) 'rel_norm: ', rel_norm
+        write(option%fid_out,*) 'dif_norm: ', dif_norm
+        write(option%fid_out,*) 'relative tolerance: ', &
+                                stepper%steady_state_rel_tol
+      endif
+      failure = PETSC_TRUE
+      exit
+    endif
+
+    ! zero out dt to prevent potential error in mass balance calc while 
+    ! updating solution
+    tempreal = option%flow_dt
+    option%flow_dt = 0.d0  
+    ! take next step at larger dt      
+    call StepperUpdateFlowSolution(realization)
+    option%flow_dt = tempreal
+    if (stepper%num_newton_iterations < 4) then
+      option%flow_dt = option%flow_dt*2.d0
+    else if (stepper%num_newton_iterations < 5) then
+      option%flow_dt = option%flow_dt*1.5d0
+    else if (stepper%num_newton_iterations < 6) then
+      option%flow_dt = option%flow_dt*1.d0
+    else if (stepper%num_newton_iterations < 7) then
+      option%flow_dt = option%flow_dt*0.9d0
+    else if (stepper%num_newton_iterations < 8) then
+      option%flow_dt = option%flow_dt*0.8d0
+    else if (stepper%num_newton_iterations < 9) then
+      option%flow_dt = option%flow_dt*0.7d0
+    else
+      option%flow_dt = option%flow_dt*0.6d0
+    endif
+
+    if (option%print_file_flag) then
+      write(option%fid_out,*) 'Dt: ', option%flow_dt
+      write(option%fid_out,*) 'Inf Norm: ', inorm
+      write(option%fid_out,*) 'Relative Norm: ', rel_norm
+      write(option%fid_out,*) 'Linear its/Newton It: ', &
+        float(stepper%num_linear_iterations) / stepper%num_newton_iterations
+    endif
+    if (option%print_screen_flag) then
+      write(*,*) 'Dt: ', option%flow_dt
+      write(*,*) 'Inf Norm: ', inorm
+      write(*,*) 'Relative Norm: ', rel_norm
+      write(*,*) 'Linear its/Newton It: ', &
+        float(stepper%num_linear_iterations) / stepper%num_newton_iterations
+    endif
+
+  enddo ! end of steady-state loop
+
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," Initialize FLOW to Steady-State (End)",40("="),/, &
+          & 80("="),/)')
+  endif
+  if (option%print_file_flag) then
+    write(option%fid_out,'(/,2("="), &
+      &" Initialize FLOW to Steady-State (End)",40("="),/,80("="),/)')
+  endif
+
+end subroutine FlowStepperStepToSteadyState
+
+#if 0
+! ************************************************************************** !
+!
+! StepperStepFlowDT: Steps forward one step in time
+! author: Glenn Hammond
 ! date: 02/19/08
 !
 ! ************************************************************************** !
@@ -2341,6 +2844,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   ! option%flow_time is updated outside this subroutine
 
 end subroutine StepperStepFlowDT
+#endif
 
 ! ************************************************************************** !
 !
@@ -2711,7 +3215,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   sum_linear_iterations = 0
   icut = 0
 
-  if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
+  if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",67("="))')
 
   do
    

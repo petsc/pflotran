@@ -1762,7 +1762,7 @@ end subroutine GeneralBCFluxDerivative
 !
 ! ************************************************************************** !
 subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                          gen_aux_var,scale,res)
+                          gen_aux_var,global_aux_var,scale,res)
 
   use Option_module
 
@@ -1772,6 +1772,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscReal :: qsrc(:)
   PetscInt :: flow_src_sink_type
   type(general_auxvar_type) :: gen_aux_var
+  type(global_auxvar_type) :: global_aux_var
   PetscReal :: scale
   PetscReal :: res(option%nflowdof)
       
@@ -1804,14 +1805,17 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   enddo
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-      if (gen_aux_var%H(ONE_INTEGER) < -998.d0) then
-        option%io_buffer = 'Src/Sink only works for liquid or two_phase.'
-        call printErrMsg(option)
+      if (global_aux_var%istate == LIQUID_STATE .or. &
+          global_aux_var%istate == TWO_PHASE_STATE) then
+        res(option%energy_id) = qsrc_mol(ONE_INTEGER) * &
+          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(1) / &
+                                        gen_aux_var%den(1) * 1.d-6)
+      else if (global_aux_var%istate == GAS_STATE .or. &
+               global_aux_var%istate == TWO_PHASE_STATE) then
+        res(option%energy_id) = qsrc_mol(TWO_INTEGER) * &
+          (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
+                                        gen_aux_var%den(TWO_INTEGER) * 1.d-6)
       endif
-!      res(option%energy_id) = qsrc_mol(ONE_INTEGER) * gen_aux_var%H(ONE_INTEGER)
-      res(option%energy_id) = qsrc_mol(ONE_INTEGER) * &
-        (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(1) / &
-                                      gen_aux_var%den(1) * 1.d-6)
     else
       res(option%energy_id) = qsrc(THREE_INTEGER)
     endif
@@ -1827,7 +1831,7 @@ end subroutine GeneralSrcSink
 !
 ! ************************************************************************** !
 subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
-                                    gen_aux_vars,scale,Jac)
+                                    gen_aux_vars,global_aux_var,scale,Jac)
 
   use Option_module
 
@@ -1837,6 +1841,7 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   PetscReal :: qsrc(:)
   PetscInt :: flow_src_sink_type
   type(general_auxvar_type) :: gen_aux_vars(0:)
+  type(global_auxvar_type) :: global_aux_var
   PetscReal :: scale
   PetscReal :: Jac(option%nflowdof,option%nflowdof)
   
@@ -1844,11 +1849,11 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   PetscInt :: idof, irow
 
   call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                      gen_aux_vars(ZERO_INTEGER),scale,res)            
+                      gen_aux_vars(ZERO_INTEGER),global_aux_var,scale,res)
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                        gen_aux_vars(idof),scale,res_pert)            
+                        gen_aux_vars(idof),global_aux_var,scale,res_pert)            
     do irow = 1, option%nflowdof
       Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_vars(idof)%pert
     enddo !irow
@@ -2291,6 +2296,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
                                   flow_dataset%time_series%cur_value(:), &
                         source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(ZERO_INTEGER,ghosted_id), &
+                        global_aux_vars(ghosted_id), &
                         scale,Res)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
@@ -2755,6 +2761,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                   flow_dataset%time_series%cur_value(:), &
                         source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(:,ghosted_id), &
+                        global_aux_vars(ghosted_id), &
                         scale,Jup)
 
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &

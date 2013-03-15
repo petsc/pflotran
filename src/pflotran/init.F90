@@ -1146,23 +1146,28 @@ subroutine InitReadInputFilenames(option,filenames)
   character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: filename_count
   type(input_type), pointer :: input
+  PetscBool :: card_found
 
   input => InputCreate(IN_UNIT,option%input_filename,option)
 
   string = "FILENAMES"
   call InputFindStringInFile(input,option,string) 
 
+  card_found = PETSC_FALSE
   if (InputError(input)) then
     ! if the FILENAMES card is not included, we will assume that only
     ! filenames exist in the file.
     rewind(input%fid)
+  else
+    card_found = PETSC_TRUE
   endif
     
   filename_count = 0     
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
-    call InputReadWord(input,option,filename,PETSC_FALSE)
+    if (InputCheckExit(input,option)) exit  
+    call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
     filename_count = filename_count + 1
   enddo
   
@@ -1170,11 +1175,17 @@ subroutine InitReadInputFilenames(option,filenames)
   filenames = ''
   rewind(input%fid) 
 
+  if (card_found) then
+    string = "FILENAMES"
+    call InputFindStringInFile(input,option,string) 
+  endif
+  
   filename_count = 0     
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
-    call InputReadWord(input,option,filename,PETSC_FALSE)
+    if (InputCheckExit(input,option)) exit  
+    call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
     filename_count = filename_count + 1
     filenames(filename_count) = filename
   enddo
@@ -3091,6 +3102,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscInt :: fid = 86
   PetscInt :: status
   PetscInt :: idirection
+  PetscInt :: temp_int
   PetscReal :: ratio, scale
   Vec :: global_vec
   PetscErrorCode :: ierr
@@ -3099,6 +3111,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscReal, pointer :: perm_xx_p(:)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
+  PetscReal, pointer :: perm_xyz_p(:)
 
   field => realization%field
   patch => realization%patch
@@ -3147,7 +3160,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       enddo
       call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
     else
-      do idirection = X_DIRECTION,Z_DIRECTION
+      temp_int = Z_DIRECTION
+      if (grid%itype == STRUCTURED_GRID_MIMETIC) temp_int = YZ_DIRECTION
+      do idirection = X_DIRECTION,temp_int
         select case(idirection)
           case(X_DIRECTION)
             dataset_name = 'PermeabilityX'
@@ -3155,6 +3170,15 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             dataset_name = 'PermeabilityY'
           case(Z_DIRECTION)
             dataset_name = 'PermeabilityZ'
+          case(XY_DIRECTION)
+            dataset_name = 'PermeabilityXY'
+            call GridVecGetArrayF90(grid,field%perm0_xy,perm_xyz_p,ierr)
+          case(XZ_DIRECTION)
+            dataset_name = 'PermeabilityXZ'
+            call GridVecGetArrayF90(grid,field%perm0_xz,perm_xyz_p,ierr)
+          case(YZ_DIRECTION)
+            dataset_name = 'PermeabilityYZ'
+            call GridVecGetArrayF90(grid,field%perm0_yz,perm_xyz_p,ierr)
         end select          
         call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                                           material_property%permeability_dataset%filename, &
@@ -3180,6 +3204,23 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
                 perm_zz_p(local_id) = vec_p(local_id)
               endif
             enddo
+          case(XY_DIRECTION,XZ_DIRECTION,YZ_DIRECTION)
+            do local_id = 1, grid%nlmax
+              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+                perm_xyz_p(local_id) = vec_p(local_id)
+              endif
+            enddo
+            select case(idirection)
+              case(XY_DIRECTION)
+                call GridVecRestoreArrayF90(grid,field%perm0_xy,perm_xyz_p, &
+                                            ierr)
+              case(XZ_DIRECTION)
+                call GridVecRestoreArrayF90(grid,field%perm0_xz,perm_xyz_p, &
+                                            ierr)
+              case(YZ_DIRECTION)
+                call GridVecRestoreArrayF90(grid,field%perm0_yz,perm_xyz_p, &
+                                            ierr)
+            end select
         end select
         call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
       enddo

@@ -254,8 +254,9 @@ PFLOTRAN is compiled with the command:
 
 \noindent
 where several possible options are: 
-
 \begin{tabular}{ll}
+Compile Option & \multicolumn{1}{c}{Description}\\
+\midrule
 \verb|scco2=1|: & --enable two-phase supercritical CO$_2$ mode\\
 \verb|scorpio=1|: & --enable parallel IO\\
 \verb|coll=1|: & --enable colloid-facilitated transport option\\
@@ -267,6 +268,21 @@ where several possible options are:
 \noindent
 Thus for compiling with the supercritical CO$_2$ option use: {\tt make ssco2=1 pflotran}.
 See the PFLOTRAN \verb|makefile| for additional options.
+
+\subsection{Updating PFLOTRAN}
+
+To update the PFLOTRAN source code
+type: 
+
+{\tt hg pull -u} 
+
+\noindent
+from within the PFLOTRAN source repository.
+Recompile PFLOTRAN using:
+
+{\tt make clean}\\
+\indent
+{\tt make [options] pflotran}
 
 \subsection{Parallel I/O using Sarat Sreepathi's SCORPIO library with PFLOTRAN}
 \label{parallelio}
@@ -319,7 +335,9 @@ password: {\footnotesize\tt gr0undw@t3r}
 
 \item Compile SCORPIO library:
 First, set the environment variable {\footnotesize\tt SCORPIO\_DIR} to a directory where you wish to install the library files. 
-Please make sure that you have the correct permissions to write to that location. E.g., you can use something like {\footnotesize\tt \$\{HOME\}/soft/scorpio}.
+Please make sure that you have the correct permissions to write to that location. For example, you can use something like \linebreak {\footnotesize\tt \$\{HOME\}/parallelIO/scorpio}.
+Depending on the shell you are using you may use:
+
 \footnotesize {\tt export SCORPIO\_DIR=<your-iolib-install-dir>} \hfill {\it (bash shell)}
 \normalsize
 
@@ -347,6 +365,8 @@ For advanced users, please edit the section for {\footnotesize\tt pflotran\_mach
 % 79     LDFLAGS+= -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
 % 80 endif
 % \end{Verbatim}
+
+This assumes that you have let PETSc build MPI and {\tt mpicc} and {\tt mpif90} are located in \linebreak \verb|${PETSC_DIR}/${PETSC_ARCH}/bin|. If not, you may need to alter the {\tt Makefile} to provide the correct path to the location of the MPI compilers.
 
 \footnotesize
 {\tt cd DIRNAME/src}
@@ -424,7 +444,8 @@ In this case, CC refers to C compiler with MPI support, e.g., mpicc.
 
 \normalsize
 
-\section{Running PFLOTRAN}
+\newpage
+\subsection{Running PFLOTRAN}
 
 PFLOTRAN can be run from the command line as
 
@@ -434,10 +455,12 @@ A number of command line options are available:
 
 \begin{tabular}{ll}
 \toprule
-\multicolumn{2}{c}{PFLOTRAN}\\
+Option & \multicolumn{1}{c}{Description}\\
 \midrule
 {\tt -pflotranin} <input file name> & specify input file [Default: {\tt pflotran.in}]\\
 {\tt -file\_prefix} <output file name> & specify output file [Default: {\tt pflotran.out}]\\
+{\tt -input\_prefix} & \\
+{\tt -output\_prefix} & \\
 {\tt -screen\_output off} & turn off screen output\\
 %{\tt -v} &\\
 {\tt -realization\_id <integer>} & run specified realization ID\\
@@ -448,22 +471,13 @@ A number of command line options are available:
 \midrule
 {\tt -log\_summary} & print out run performance (PETSc option)\\
 {\tt -on\_error\_abort} & aborts run on hitting NaNs\\
+{\tt -v} & verbose\\
+{\tt -options\_left} & for debugging: lists any PETSc objects \\
+&that have not been freed\\
 \bottomrule
 \end{tabular}
 
-\subsection*{Updating PFLOTRAN}
-
-To update the PFLOTRAN source code
-type: {\tt hg pull -u} from within the PFLOTRAN source repository.
-
-\noindent
-Recompile PFLOTRAN using:\\
-\indent
-{\tt make clean}\\
-\indent
-{\tt make [options] pflotran}
-
-\subsection*{Multiple Realization Simulation Mode}
+\subsection{Multiple Realization Simulation Mode}
 
 To launch 1000 realizations on 100 processor groups using 10,000 processor cores:
 
@@ -472,6 +486,7 @@ To launch 1000 realizations on 100 processor groups using 10,000 processor cores
 
 -num\_groups 100}
 
+\noindent
 Each processor group will utilize 100 processor cores and run 10 realizations apiece \linebreak ({\tt num\_realizations/num\_groups}), one after another. Thus, 100 realizations are executed simultaneously with each processor group simulating a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 is completed.
 
 \noindent
@@ -481,6 +496,22 @@ To simulate a specific realization without running in multi-realization stochast
 
 \noindent
 where <integer> specifies the realization id.
+
+\subsection{Multiple Simulation Mode}
+
+To run multiple input decks simultaneously, create a file e.g. {\tt filenames.in}, containing the list of filenames that are to be run:
+\begin{Verbatim}
+                             sim1.in
+                             sim2.in
+                             ...
+                             sim100.in
+\end{Verbatim}
+where {\tt simn.in} is the usual PFLOTRAN input file. The names may be arbitrarily chosen. Then, launch the run as:
+
+\verb|mpirun -n XXX pflotran -pflotranin filename.in -multisimulation| 
+
+\noindent  
+Note that all simulations must run at once. The same logic used to allow a processor group to run multiple simulations with {\tt multirealization} is not implemented. Chose the number of cores to be a multiple of the number of input files. All output files have {\tt Gn} appended to the file name, e.g. {\tt sim10G10-001.tec}.
 
 \begin{comment}
 \subsection{Building SAMRAI Version 2.4.4}
