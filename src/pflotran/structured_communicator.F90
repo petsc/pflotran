@@ -1,6 +1,6 @@
 module Structured_Communicator_class
 
-  use Communicator_module
+  use Communicator_Base_module
   use Structured_Grid_module  
   
   implicit none
@@ -25,7 +25,10 @@ module Structured_Communicator_class
     procedure, public :: LocalToLocal => StructuredLocalToLocal
     procedure, public :: GlobalToNatural => StructuredGlobalToNatural
     procedure, public :: NaturalToGlobal => StructuredNaturalToGlobal
-    final :: StructuredCommunicatorDestroy
+!geh: finalization not yet supported by gfortran.
+!    final :: StructuredCommunicatorDestroy
+    procedure, public :: Destroy => StructuredCommunicatorDestroy
+
   end type structured_communicator_type
   
 contains
@@ -175,7 +178,7 @@ subroutine StructuredCommunicatorDestroy(this)
 
   implicit none
   
-  type(structured_communicator_type) :: this
+  class(structured_communicator_type) :: this
   
   PetscErrorCode :: ierr
   

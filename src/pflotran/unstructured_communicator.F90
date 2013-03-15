@@ -1,6 +1,6 @@
 module Unstructured_Communicator_class
 
-  use Communicator_module
+  use Communicator_Base_module
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Explicit_module  
@@ -29,7 +29,9 @@ module Unstructured_Communicator_class
     procedure, public :: LocalToLocal => UnstructuredLocalToLocal
     procedure, public :: GlobalToNatural => UnstructuredGlobalToNatural
     procedure, public :: NaturalToGlobal => UnstructuredNaturalToGlobal
-    final :: UnstructuredCommunicatorDestroy
+!geh: finalization not yet supported by gfortran.
+!    final :: UnstructuredCommunicatorDestroy
+    procedure, public :: Destroy => UnstructuredCommunicatorDestroy
   end type unstructured_communicator_type
   
 contains
@@ -211,7 +213,7 @@ subroutine UnstructuredCommunicatorDestroy(this)
 
   implicit none
   
-  type(unstructured_communicator_type) :: this
+  class(unstructured_communicator_type) :: this
   
   PetscErrorCode :: ierr
   

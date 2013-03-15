@@ -1,4 +1,4 @@
-module Communicator_module
+module Communicator_Base_module
 
   implicit none
 
@@ -14,6 +14,7 @@ module Communicator_module
     procedure(VecToVec), public, deferred :: LocalToLocal 
     procedure(VecToVec), public, deferred :: GlobalToNatural 
     procedure(VecToVec), public, deferred :: NaturalToGlobal 
+    procedure(BaseDestroy), public, deferred :: Destroy 
   end type communicator_type
   
   abstract interface
@@ -26,6 +27,12 @@ module Communicator_module
       Vec :: destination
     end subroutine VecToVec
 
+    subroutine BaseDestroy(this)
+      import communicator_type
+      implicit none
+      class(communicator_type) :: this
+    end subroutine BaseDestroy
+
   end interface
   
-end module Communicator_module
+end module Communicator_Base_module
