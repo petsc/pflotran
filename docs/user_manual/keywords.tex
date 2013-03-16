@@ -1845,7 +1845,7 @@ LINEAR_SOLVER TRANSPORT
 \item[AREA\_SCALING\_FACTOR] \ {\tt <float>} \ Factor multiplying primary-secondary continua coupling term (default set to 1)
 \end{deflist}
 \item[\keyend]
-\item[RANDOM\_DATASET] \ {\tt permeability\_filename}
+%\item[RANDOM\_DATASET] \ {\tt permeability\_filename}
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -1936,6 +1936,18 @@ dataset_name = 'PermeabilityZ'
 h5dset = h5file.create_dataset(dataset_name, data=rarray3)
 print 'done with ', dataset_name
 \end{Verbatim}
+
+\noindent
+For the full permeability tensor the dataset naming convention is:
+\begin{Verbatim}
+PermeabilityX
+PermeabilityY
+PermeabilityZ
+PermeabilityXY
+PermeabilityXZ
+PermeabilityYZ
+\end{Verbatim}
+
 \end{mdframed}
 
 \hyperlink{target_key}{\return}

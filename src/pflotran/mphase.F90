@@ -2147,7 +2147,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   ! checking for negative saturation/mole fraction
   call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr)
   if (min_value < 0.d0) then
-    write(option%io_buffer,*) 'saturation or mole fraction negative at cell ', &
+    write(option%io_buffer,*) 'Warning: saturation or mole fraction negative at cell ', &
       idum, min_value 
     call printMsg(option)
     option%force_newton_iteration = PETSC_TRUE
