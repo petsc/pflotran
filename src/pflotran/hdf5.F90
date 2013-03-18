@@ -991,6 +991,8 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   integer, pointer :: int_array_i4(:)
   PetscReal, pointer :: double_array(:)
 
+  name = trim(name) // CHAR(0)
+
 #if defined(SCORPIO_WRITE)
 
 !  write(option%io_buffer,'(" Writing dataset block: ", a, " type - ", i, ".")') trim(name), data_type
@@ -998,7 +1000,6 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 !  write(option%io_buffer,'(" HDF_NATIVE_INTEGER is ", i, " and H5T_NATIVE_DOUBLE is ", i, " and H5T_NATIVE_INTEGER is ", i, ".")') HDF_NATIVE_INTEGER, H5T_NATIVE_DOUBLE, H5T_NATIVE_INTEGER
 !  call printMsg(option)
 
-  name = trim(name) // CHAR(0)
   call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
   
   ny_local_X_nz_local = ny_local*nz_local
