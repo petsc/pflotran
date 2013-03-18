@@ -183,7 +183,6 @@ function PatchCreate()
     nullify(patch%surf_internal_fluxes)
     nullify(patch%surf_boundary_fluxes)
     call SurfaceAuxInit(patch%surf_aux)
-    write(*,*),'>>>>>>>>>>>>>>>>>>>>>> SurfaceAuxInit() >>>>>>>>>>>>>>>> done'
 #endif
 
   PatchCreate => patch
