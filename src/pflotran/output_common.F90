@@ -738,6 +738,54 @@ subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
 
+  string="      <Attribute Name=""XC"" AttributeType=""Scalar""  Center=""Cell"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/XC"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
+  string="      <Attribute Name=""YC"" AttributeType=""Scalar""  Center=""Cell"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/YC"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
+  string="      <Attribute Name=""ZC"" AttributeType=""Scalar""  Center=""Cell"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/ZC"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
 end subroutine OutputXMFHeader
 
 ! ************************************************************************** !

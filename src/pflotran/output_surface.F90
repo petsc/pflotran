@@ -638,7 +638,7 @@ subroutine OutputHydrograph(surf_realization)
   
     if (option%nflowdof > 0) then
       if (option%myrank == option%io_rank) &
-        write(fid,100,advance="no") option%flow_dt/output_option%tconv
+        write(fid,100,advance="no") option%surf_flow_dt/output_option%tconv
     endif
 
     sum_flux = 0.d0
@@ -978,12 +978,14 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, pointer :: double_array(:)
   Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
+  Vec :: global_x_cell_vec,global_y_cell_vec,global_z_cell_vec
+  Vec :: natural_x_cell_vec,natural_y_cell_vec,natural_z_cell_vec
   PetscErrorCode :: ierr
 
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, natural_vec
   PetscInt, pointer :: int_array(:)
-  type(ugdm_type),pointer :: ugdm_element
+  type(ugdm_type),pointer :: ugdm_element,ugdm_cell
 
   PetscInt :: TRI_ID_XDMF = 4
   PetscInt :: QUA_ID_XDMF = 5
@@ -1203,6 +1205,228 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
+
+  ! Cell center X/Y/Z
+  call VecCreateMPI(option%mycomm,surf_grid%nlmax, &
+                    PETSC_DETERMINE, &
+                    global_x_cell_vec,ierr)
+  call VecCreateMPI(option%mycomm,surf_grid%nlmax, &
+                    PETSC_DETERMINE, &
+                    global_y_cell_vec,ierr)
+  call VecCreateMPI(option%mycomm,surf_grid%nlmax, &
+                    PETSC_DETERMINE, &
+                    global_z_cell_vec,ierr)
+
+  call GetCellCoordinates(surf_grid, global_x_cell_vec,X_COORDINATE)
+  call GetCellCoordinates(surf_grid, global_y_cell_vec,Y_COORDINATE)
+  call GetCellCoordinates(surf_grid, global_z_cell_vec,Z_COORDINATE)
+
+
+  call UGridCreateUGDM(surf_grid%unstructured_grid,ugdm_cell,ONE_INTEGER,option)
+  call UGridDMCreateVector(surf_grid%unstructured_grid,ugdm_cell,natural_x_cell_vec, &
+                           NATURAL,option)
+  call UGridDMCreateVector(surf_grid%unstructured_grid,ugdm_cell,natural_y_cell_vec, &
+                           NATURAL,option)
+  call UGridDMCreateVector(surf_grid%unstructured_grid,ugdm_cell,natural_z_cell_vec, &
+                           NATURAL,option)
+                           
+  call VecScatterBegin(ugdm_cell%scatter_gton,global_x_cell_vec,natural_x_cell_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_cell%scatter_gton,global_x_cell_vec,natural_x_cell_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecScatterBegin(ugdm_cell%scatter_gton,global_y_cell_vec,natural_y_cell_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_cell%scatter_gton,global_y_cell_vec,natural_y_cell_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecScatterBegin(ugdm_cell%scatter_gton,global_z_cell_vec,natural_z_cell_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_cell%scatter_gton,global_z_cell_vec,natural_z_cell_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecGetArrayF90(natural_x_cell_vec,vec_x_ptr,ierr)
+  call VecGetArrayF90(natural_y_cell_vec,vec_y_ptr,ierr)
+  call VecGetArrayF90(natural_z_cell_vec,vec_z_ptr,ierr)
+  local_size = surf_grid%unstructured_grid%nlmax
+
+  ! XC
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = surf_grid%nmax
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "XC" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  start(1) = istart
+  length(1) = local_size
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_x_ptr,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  ! YC
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = surf_grid%nmax
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "YC" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  start(1) = istart
+  length(1) = local_size
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_y_ptr,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  ! ZC
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = surf_grid%nmax
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "ZC" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  start(1) = istart
+  length(1) = local_size
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_z_ptr,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+
+  call VecRestoreArrayF90(natural_x_cell_vec,vec_x_ptr,ierr)
+  call VecRestoreArrayF90(natural_y_cell_vec,vec_y_ptr,ierr)
+  call VecRestoreArrayF90(natural_z_cell_vec,vec_z_ptr,ierr)
+
+  call VecDestroy(global_x_cell_vec,ierr)
+  call VecDestroy(global_y_cell_vec,ierr)
+  call VecDestroy(global_z_cell_vec,ierr)
+
+  call VecDestroy(natural_x_cell_vec,ierr)
+  call VecDestroy(natural_y_cell_vec,ierr)
+  call VecDestroy(natural_z_cell_vec,ierr)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
 
