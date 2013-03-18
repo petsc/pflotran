@@ -555,10 +555,6 @@ CONSTRAINT groundwater
     Tracer   1.e-7            F
     Tracer2  1.e-7            F
   /
-  MINERALS
-    Calcite        DATASET initial_Calcite  1. cm^2/cm^3
-    Metatorbernite 0.    1. cm^2/cm^3
-  /
 END
 
 CONSTRAINT U_source
