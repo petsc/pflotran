@@ -1037,6 +1037,12 @@ subroutine Init(simulation)
     call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
     !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
 
+    ! add waypoints associated with boundary conditions, source/sinks etc. to list
+    call SurfRealizAddWaypointsToList(simulation%surf_realization)
+    if (associated(flow_stepper)) then
+      simulation%surf_flow_stepper%cur_waypoint => simulation%surf_realization%waypoints%first
+    endif
+
     ! initialize plot variables
     simulation%surf_realization%output_option%output_variable_list => &
       OutputVariableListCreate()
