@@ -258,15 +258,25 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         case default
           write(string,'(i3)') reason
       end select
-      write(*,'(i3," fnrm:",es9.2, &
-              & " xnrm:",es9.2, &
-              & " pnrm:",es9.2, &
-              & " inrmr:",es9.2, &
-              & " inrmu:",es9.2, &
-              & " inrmrsec:",es9.2, &
-              & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, &
-                              inorm_update, option%infnorm_res_sec, &
-                              trim(string)
+      if (option%use_mc) then
+        write(*,'(i3," fnrm:",es9.2, &
+                & " xnrm:",es9.2, &
+                & " pnrm:",es9.2, &
+                & " inrmr:",es9.2, &
+                & " inrmu:",es9.2, &
+                & " inrmrsec:",es9.2, &
+                & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, &
+                                inorm_update, option%infnorm_res_sec, &
+                                trim(string)
+      else
+        write(*,'(i3," fnrm:",es9.2, &
+                & " xnrm:",es9.2, &
+                & " pnrm:",es9.2, &
+                & " inrmr:",es9.2, &
+                & " inrmu:",es9.2, &
+                & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, &
+                                inorm_update, trim(string)        
+      endif
     endif
   else
   
