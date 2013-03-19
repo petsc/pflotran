@@ -51,20 +51,18 @@ contains
 ! date: 01/22/09
 !
 ! ************************************************************************** !
-subroutine OutputInit(realization_base,num_steps)
+subroutine OutputInit(num_steps)
 
-  use Realization_Base_class, only : realization_base_type
   use Option_module
   use Output_Common_module
 
   implicit none
   
-  class(realization_base_type) :: realization_base
   PetscInt :: num_steps
   
-  call OutputCommonInit(realization_base,num_steps)
-  call OutputObservationInit(realization_base,num_steps)
-  call OutputHDF5Init(realization_base,num_steps)
+  call OutputCommonInit()
+  call OutputObservationInit(num_steps)
+  call OutputHDF5Init(num_steps)
 
 end subroutine OutputInit
 

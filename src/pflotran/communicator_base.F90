@@ -9,6 +9,7 @@ module Communicator_Base_module
 
   type, abstract, public :: communicator_type
   contains
+    procedure(SetDM), public, deferred :: SetDM 
     procedure(VecToVec), public, deferred :: GlobalToLocal 
     procedure(VecToVec), public, deferred :: LocalToGlobal
     procedure(VecToVec), public, deferred :: LocalToLocal 
@@ -18,6 +19,14 @@ module Communicator_Base_module
   end type communicator_type
   
   abstract interface
+  
+    subroutine SetDM(this,dm_ptr)
+      use Discretization_module
+      import communicator_type
+      implicit none
+      class(communicator_type) :: this
+      type(dm_ptr_type) :: dm_ptr
+    end subroutine
   
     subroutine VecToVec(this,source,destination)
       import communicator_type

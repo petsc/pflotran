@@ -24,6 +24,7 @@ module Unstructured_Communicator_class
     DM :: dm
     type(ugdm_type), pointer :: ugdm
   contains
+    procedure, public :: SetDM => UnstructuredSetDM
     procedure, public :: GlobalToLocal => UnstructuredGlobalToLocal
     procedure, public :: LocalToGlobal => UnstructuredLocalToGlobal
     procedure, public :: LocalToLocal => UnstructuredLocalToLocal
@@ -33,6 +34,8 @@ module Unstructured_Communicator_class
 !    final :: UnstructuredCommunicatorDestroy
     procedure, public :: Destroy => UnstructuredCommunicatorDestroy
   end type unstructured_communicator_type
+
+  public :: UnstructuredCommunicatorCreate
   
 contains
 
@@ -57,17 +60,30 @@ function UnstructuredCommunicatorCreate()
   nullify(communicator%ugdm)
   communicator%dm = 0
 
-#if 0  
-  ! use these to set up dm later.
-  call UGridCreateUGDM(discretization%grid%unstructured_grid, &
-                       dm_ptr%ugdm,ndof,option)
-  call DMShellCreate(option%mycomm,dm_ptr%dm,ierr)
-  call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_gtol,ierr)
-#endif  
-
   UnstructuredCommunicatorCreate => communicator  
   
 end function UnstructuredCommunicatorCreate
+
+! ************************************************************************** !
+!
+! UnstructuredSetDM: Sets pointer to DM
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+subroutine UnstructuredSetDM(this,dm_ptr)
+
+  use Discretization_module
+
+  implicit none
+  
+  class(unstructured_communicator_type) :: this
+  type(dm_ptr_type) :: dm_ptr
+
+  this%dm = dm_ptr%dm
+  this%ugdm => dm_ptr%ugdm
+  
+end subroutine UnstructuredSetDM
 
 ! ************************************************************************** !
 !

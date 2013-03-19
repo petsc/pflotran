@@ -29,6 +29,10 @@ module Waypoint_module
     type(waypoint_type), pointer :: array(:)    
   end type waypoint_list_type
   
+  interface WaypointCreate
+    module procedure WaypointCreate1
+    module procedure WaypointCreate2
+  end interface  
   
   public :: WaypointCreate, &
             WaypointListCreate, &
@@ -44,16 +48,16 @@ contains
 
 ! ************************************************************************** !
 !
-! WaypointCreate: Creates a simulation waypoint
+! WaypointCreate1: Creates a simulation waypoint
 ! author: Glenn Hammond
 ! date: 11/07/07
 !
 ! ************************************************************************** !
-function WaypointCreate()
+function WaypointCreate1()
 
   implicit none
   
-  type(waypoint_type), pointer :: WaypointCreate
+  type(waypoint_type), pointer :: WaypointCreate1
   
   type(waypoint_type), pointer :: waypoint
   
@@ -67,9 +71,38 @@ function WaypointCreate()
   nullify(waypoint%next)
   nullify(waypoint%prev)
     
-  WaypointCreate => waypoint
+  WaypointCreate1 => waypoint
   
-end function WaypointCreate 
+end function WaypointCreate1
+
+! ************************************************************************** !
+!
+! WaypointCreate2: Creates a simulation waypoint
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+function WaypointCreate2(original_waypoint)
+
+  implicit none
+  
+  type(waypoint_type), pointer :: original_waypoint
+  
+  type(waypoint_type), pointer :: WaypointCreate2
+  
+  type(waypoint_type), pointer :: waypoint
+  
+  allocate(waypoint)
+  waypoint%time = original_waypoint%time
+  waypoint%print_output = original_waypoint%print_output
+  waypoint%print_tr_output = original_waypoint%print_tr_output
+  waypoint%final = original_waypoint%final
+  waypoint%update_conditions = original_waypoint%update_conditions
+  waypoint%dt_max = original_waypoint%dt_max
+    
+  WaypointCreate2 => waypoint
+  
+end function WaypointCreate2
 
 ! ************************************************************************** !
 !
@@ -547,6 +580,47 @@ end subroutine WaypointListPrint
 
 ! ************************************************************************** !
 !
+! WaypointListCopy: Copies a waypoint list
+! author: Glenn Hammond
+! date: 03/19/13
+!
+! ************************************************************************** !
+function WaypointListCopy(list,option,output_option)
+
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+  
+  type(waypoint_list_type), pointer :: new_list
+  
+  type(waypoint_list_type), pointer :: list
+  type(waypoint_type), pointer :: new_waypoint
+  type(waypoint_type), pointer :: prev_new_waypoint
+  
+  new_list => WaypointListCreate()
+  
+  nullify(prev_new_waypoint)
+  
+  cur_waypoint => list%first
+  do 
+    if (.not.associated(cur_waypoint)) exit
+    new_waypoint => WaypointCreate(cur_waypoint)
+    if (associated(prev_new_waypoint)) then
+      prev_new_waypoint%next => new_waypoint
+    else
+      new_list%first => new_waypoint
+    endif
+    new_list%num_waypoints = new_list%num_waypoints + 1
+    prev_new_waypoint => new_waypoint
+    nullify(new_waypoint)
+    cur_waypoint => cur_waypoint%next
+  enddo
+
+end function WaypointListCopy
+
+! ************************************************************************** !
+!
 ! WaypointPrint: Prints a waypoint
 ! author: Glenn Hammond
 ! date: 05/20/11
@@ -600,8 +674,6 @@ subroutine WaypointPrint(waypoint,option,output_option)
   endif
  
 end subroutine WaypointPrint
-
-
 
 ! ************************************************************************** !
 !

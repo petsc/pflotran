@@ -3,6 +3,7 @@ module Process_Model_Richards_class
   use Process_Model_Base_class
   use Richards_module
   use Realization_class
+  use Communicator_Base_module
   
   implicit none
 
@@ -18,8 +19,12 @@ module Process_Model_Richards_class
 
   type, public, extends(process_model_base_type) :: process_model_richards_type
     class(realization_type), pointer :: realization
+    class(communicator_type), pointer :: comm
   contains
     procedure, public :: Init => PMRichardsInit
+    procedure, public :: PMRichardsSetRealization
+    procedure, public :: InitializeExecution => PMRichardsInitializeExecution
+    procedure, public :: FinalizeExecution => PMRichardsFinalizeExecution
     procedure, public :: InitializeTimeStep => PMRichardsInitializeTimestep
     procedure, public :: Residual => PMRichardsResidual
     procedure, public :: Jacobian => PMRichardsJacobian
@@ -32,7 +37,32 @@ module Process_Model_Richards_class
     procedure, public :: Destroy => PMRichardsDestroy
   end type process_model_richards_type
   
+  public :: PMRichardsCreate
+  
 contains
+
+! ************************************************************************** !
+!
+! PMRichardsCreate: Creates Richards process models shell
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+function PMRichardsCreate()
+
+  implicit none
+  
+  class(process_model_richards_type), pointer :: PMRichardsCreate
+
+  class(process_model_richards_type), pointer :: richards_pm
+  
+  allocate(richards_pm)
+  nullify(richards_pm%realization)
+  nullify(richards_pm%comm)
+
+  PMRichardsCreate => richards_pm
+  
+end function PMRichardsCreate
 
 ! ************************************************************************** !
 !
@@ -43,13 +73,45 @@ contains
 ! ************************************************************************** !
 subroutine PMRichardsInit(this)
 
+  use Discretization_module
+  use Structured_Communicator_class
+  use Unstructured_Communicator_class
+  use Grid_module 
+  
   implicit none
   
   class(process_model_richards_type) :: this
-  
-  call RichardsSetup(this%realization)
+
+  ! set up communicator
+  select case(this%realization%discretization%itype)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      this%comm => StructuredCommunicatorCreate()
+    case(UNSTRUCTURED_GRID)
+      this%comm => UnstructuredCommunicatorCreate()
+  end select
+  call this%comm%SetDM(this%realization%discretization%dm_1dof)
   
 end subroutine PMRichardsInit
+
+! ************************************************************************** !
+!
+! PMRichardsSetRealization: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRichardsSetRealization(this,realization)
+
+  use Realization_Base_class  
+
+  implicit none
+  
+  class(process_model_richards_type) :: this
+  class(realization_type), pointer :: realization
+
+  this%realization => realization
+  
+end subroutine PMRichardsSetRealization
 
 ! ************************************************************************** !
 !
@@ -64,9 +126,53 @@ subroutine PMRichardsInitializeTimestep(this)
   
   class(process_model_richards_type) :: this
   
-  call RichardsSetup(this%realization)
+!  call RichardsSetup(this%realization)
 
 end subroutine PMRichardsInitializeTimestep 
+
+! ************************************************************************** !
+!
+! PMRichardsInitializeRun: Initializes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMRichardsInitializeRun(this)
+
+  implicit none
+  
+  type(process_model_type), pointer :: this
+  
+  ! restart
+  ! init to steady state
+  
+  if (flow_read .and. option%overwrite_restart_flow) then
+    call RealizationRevertFlowParameters(realization)
+  endif  
+  call RichardsUpdateSolution(this%realization)
+    
+end subroutine PMRichardsInitializeRun
+
+! ************************************************************************** !
+!
+! PMRichardsFinalizeRun: Finalizes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMRichardsFinalizeRun(this)
+
+  implicit none
+  
+  type(process_model_type), pointer :: this
+  
+  ! do something here
+  
+  if (this%next) then
+    this%next%FinalizeRun()
+  endif  
+  
+end subroutine PMRichardsFinalizeRun
 
 ! ************************************************************************** !
 !
@@ -240,7 +346,12 @@ subroutine PMRichardsDestroy(this)
   
   class(process_model_richards_type) :: this
   
+  if (associated(this%next)) then
+    call this%next%Destroy()
+  endif
+  
   call RichardsDestroy(this%realization)
+  call this%comm%Destroy()
   
 end subroutine PMRichardsDestroy
   

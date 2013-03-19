@@ -59,17 +59,6 @@ module Timestepper_module
 
     type(convergence_context_type), pointer :: convergence_context
 
-#ifdef SURFACE_FLOW
-    PetscInt :: steps_surf_flow         ! The number of time steps taken by the code.
-    !PetscInt :: num_constant_time_steps   ! number of contiguous time_steps of constant size
-    PetscInt :: num_newton_iterations_surf_flow ! number of Newton iterations in a time step
-    PetscInt :: num_linear_iterations_surf_flow ! number of linear solver iterations in a time step
-
-    PetscInt :: cumulative_newton_iterations_surf_flow       ! Total number of Newton iterations
-    PetscInt :: cumulative_linear_iterations_surf_flow     ! Total number of linear iterations
-    PetscInt :: cumulative_time_step_cuts_surf_flow       ! Total number of cuts in the timestep taken.    
-    PetscReal :: cumulative_solver_time_surf_flow
-#endif
   end type stepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, &
@@ -307,17 +296,9 @@ end subroutine TimestepperRead
 ! date: 03/11/13
 !
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
-subroutine TimestepperInitializeRun(realization,surf_realization, &
-                                    master_stepper,flow_stepper, &
-                                    tran_stepper, &
-                                    surf_flow_stepper, &
-                                    init_status)
-#else
 subroutine TimestepperInitializeRun(realization,master_stepper, &
                                     flow_stepper,tran_stepper, &
                                     init_status)
-#endif
 
   use Realization_class
 
@@ -326,12 +307,6 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
   use Condition_Control_module
-#ifdef SURFACE_FLOW
-  use Surface_Flow_module
-  use Surface_Realization_class
-  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
-  use Surface_TH_module
-#endif
 
   implicit none
 
@@ -340,11 +315,6 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   PetscInt :: init_status
-#ifdef SURFACE_FLOW
-  type(stepper_type), pointer :: surf_flow_stepper
-  type(surface_realization_type), pointer :: surf_realization
-  PetscBool :: plot_flag_surf, transient_plot_flag_surf
-#endif
 
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
@@ -436,11 +406,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   endif
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
-#ifdef SURFACE_FLOW
-  call StepperUpdateSolution(realization,surf_realization)
-#else
   call StepperUpdateSolution(realization)
-#endif
 
   if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
@@ -470,21 +436,12 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
 
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
-#ifdef SURFACE_FLOW
-  call OutputSurfaceInit(realization,master_stepper%steps)
-#endif
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
-#ifdef SURFACE_FLOW
-    plot_flag_surf = PETSC_TRUE
-    transient_plot_flag_surf = PETSC_TRUE
-    call OutputSurface(surf_realization,realization,plot_flag_surf, &
-                       transient_plot_flag_surf)
-#endif
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
@@ -537,18 +494,6 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     call OutputPrintCouplers(realization,ZERO_INTEGER)
   endif
 
-#ifdef SURFACE_FLOW
-  if (option%nsurfflowdof>0.and. &
-    surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-    select case(option%iflowmode)
-      case (RICHARDS_MODE)
-        call SurfaceFlowGetSubsurfProp(realization,surf_realization)
-      case (TH_MODE)
-        call SurfaceTHGetSubsurfProp(realization,surf_realization)
-    end select
-  endif
-#endif
-
 end subroutine TimestepperInitializeRun
 
 ! ************************************************************************** !
@@ -558,13 +503,8 @@ end subroutine TimestepperInitializeRun
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
-subroutine TimestepperExecuteRun(realization,surf_realization,flow_stepper, &
-                                 tran_stepper,surf_flow_stepper)
-#else
 subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
                                  tran_stepper)
-#endif
 
   use Realization_class
 
@@ -574,12 +514,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
-#ifdef SURFACE_FLOW
-  use Surface_Flow_module
-  use Surface_Realization_class
-  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
-  use Surface_TH_module
-#endif
+
   implicit none
   
 #include "finclude/petscdef.h"
@@ -591,12 +526,6 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   type(stepper_type), pointer :: master_stepper
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
-#ifdef SURFACE_FLOW
-  type(stepper_type), pointer :: surf_flow_stepper
-  type(surface_realization_type), pointer :: surf_realization
-  PetscBool :: plot_flag_surf, transient_plot_flag_surf
-!  PetscReal :: surf_flow_time,surf_flow_dt,surf_flow_target_time
-#endif
   
   type(stepper_type), pointer :: null_stepper
   type(option_type), pointer :: option
@@ -651,126 +580,6 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
     
-#ifdef SURFACE_FLOW
-
-    if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
-
-      ! Solve surface-flow model
-      if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
-
-        ! Update model coupling time
-        if(option%surf_flow_explicit) then
-          call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-        endif
-        call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
-                            option,plot_flag,transient_plot_flag)
-
-        ! Update subsurface pressure of top soil layer for surface flow model
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          select case(option%iflowmode)
-            case (RICHARDS_MODE)
-              call SurfaceFlowUpdateSurfBC(realization,surf_realization)
-            case (TH_MODE)
-             call SurfaceTHUpdateSurfBC(realization,surf_realization)
-          end select
-        endif
-
-        surf_failure = PETSC_FALSE
-
-        do ! loop on surface-flow until it reaches the target time
-
-          ! Compute flux between surface-subsurface model
-          if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-            select case(option%iflowmode)
-              case (RICHARDS_MODE)
-                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
-              case (TH_MODE)
-               call SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
-            end select
-          endif
-          
-          ! Solve surface flow
-          call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
-                                        surf_failure)
-
-          if(surf_failure) return
-          ! update time for surface flow model
-          option%surf_flow_time=option%surf_flow_time+option%surf_flow_dt
-
-          ! if target time reached, we are done
-          if((option%surf_subsurf_coupling_time-surf_flow_stepper%target_time) &
-              /option%surf_flow_dt<1.d-10) exit
-
-          ! if still stepping, update solution
-          call StepperUpdateSurfaceFlowSolution(surf_realization)
-
-          ! Set new target time for surface model
-          if(option%surf_flow_explicit) then
-            call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-          endif
-          call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
-                                          option,plot_flag,transient_plot_flag)
-        enddo
-      endif
-
-      ! Solve subsurface model
-      if (associated(surf_flow_stepper).and. &
-          (surf_realization%option%subsurf_surf_coupling==SEQ_COUPLED)) then
-
-        flow_t0 = option%flow_time
-        call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-
-        ! Update source/sink condition for subsurface flow model
-        select case(option%iflowmode)
-          case (RICHARDS_MODE)
-            call SurfaceFlowUpdateSubsurfSS(realization,surf_realization, &
-                  option%surf_subsurf_coupling_time-option%flow_time)
-          case (TH_MODE)
-!            call SurfaceTHUpdateSubsurfSS(realization,surf_realization, &
-!                  option%surf_subsurf_coupling_time-option%flow_time)
-        end select
-
-        do
-          ! Solve subsurface flow
-          call StepperStepFlowDT(realization,flow_stepper,failure)
-          
-          if (failure) return ! if flow solve fails, exit
-          option%flow_time = flow_stepper%target_time
-
-          ! If target time reached, we are done
-          if((option%surf_subsurf_coupling_time-flow_stepper%target_time) &
-              /option%flow_dt<1.d-10)exit
-          
-          ! If still stepping, update the solution and update dt
-          call StepperUpdateFlowSolution(realization)
-          call StepperUpdateDT(flow_stepper,tran_stepper,option)
-
-          ! Set new target time for subsurface model
-          call StepperSetTargetTimes(flow_stepper,tran_stepper, &
-                                     surf_flow_stepper, &
-                                     option,plot_flag, &
-                                     transient_plot_flag)
-        enddo
-        call PetscLogStagePop(ierr)
-      
-      else
-        if(.not.associated(surf_flow_stepper)) then
-          flow_t0 = option%flow_time
-          call StepperSetTargetTimes(flow_stepper,tran_stepper, &
-                                     surf_flow_stepper, &
-                                     option,plot_flag, &
-                                     transient_plot_flag)
-          call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-          call StepperStepFlowDT(realization,flow_stepper,failure)
-          call PetscLogStagePop(ierr)
-          if (failure) return ! if flow solve fails, exit
-          option%flow_time = flow_stepper%target_time
-        endif
-      endif ! if SEQ_COUPLED
-   endif ! associated(flow_stepper)
-
-#else
-
     call StepperSetTargetTimes(flow_stepper,tran_stepper, &
                                option,plot_flag, &
                                transient_plot_flag)
@@ -785,7 +594,6 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
-#endif
     
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
@@ -872,11 +680,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     ! update solution variables
     
     option%time = master_stepper%target_time
-#ifdef SURFACE_FLOW
-    call StepperUpdateSolution(realization,surf_realization)
-#else
     call StepperUpdateSolution(realization)
-#endif
 
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
@@ -899,26 +703,10 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 !      call MassBalanceUpdate(realization,flow_stepper%solver, &
 !                             tran_stepper%solver)
 !    endif
-#ifdef SURFACE_FLOW
-    plot_flag_surf = plot_flag
-    transient_plot_flag_surf = transient_plot_flag
-#endif
     call Output(realization,plot_flag,transient_plot_flag)
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
-
-#ifdef SURFACE_FLOW
-    call OutputSurface(surf_realization,realization,plot_flag_surf, &
-                       transient_plot_flag_surf)
-    if(associated(surf_flow_stepper)) then
-      if(option%surf_flow_explicit) then
-        call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-      else
-        call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
-      endif
-    endif
-#endif
 
     ! if a simulation wallclock duration time is set, check to see that the
     ! next time step will not exceed that value.  If it does, print the
@@ -956,15 +744,8 @@ end subroutine TimestepperExecuteRun
 ! date: 03/11/13
 !
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
-subroutine TimestepperFinalizeRun(realization,surf_realization, &
-                                  master_stepper,flow_stepper,tran_stepper, &
-                                  surf_flow_stepper)
-#else
 subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
                                   tran_stepper)
-#endif
-
 
   use Realization_class
 
@@ -972,12 +753,7 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
-#ifdef SURFACE_FLOW
-  use Surface_Flow_module
-  use Surface_Realization_class
-  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
-  use Surface_TH_module
-#endif
+
   implicit none
   
 #include "finclude/petscdef.h"
@@ -989,11 +765,6 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
   type(stepper_type), pointer :: master_stepper
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
-#ifdef SURFACE_FLOW
-  type(stepper_type), pointer :: surf_flow_stepper
-  type(surface_realization_type), pointer :: surf_realization
-  PetscBool :: plot_flag_surf, transient_plot_flag_surf
-#endif
   
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
@@ -1330,120 +1101,6 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 end subroutine StepperUpdateDT
 
 ! ************************************************************************** !
-!> This subroutine sets updates dt for surface flow.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/31/12
-! ************************************************************************** !
-#ifdef SURFACE_FLOW
-subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
-
-  use Option_module
-  
-  implicit none
-
-  type(stepper_type), pointer :: surf_flow_stepper
-  type(option_type) :: option
-
-  PetscReal :: time, dt
-  PetscReal :: fac,dtt,up,utmp,uc,ut,uus,dt_tfac,dt_p
-  PetscBool :: update_time_step
-  PetscInt :: ifac
-
-  ! FLOW
-  update_time_step = PETSC_TRUE
-
-  ! if the time step was cut, set number of constant time steps to 1
-  if(surf_flow_stepper%time_step_cut_flag) then
-    surf_flow_stepper%time_step_cut_flag=PETSC_FALSE
-    surf_flow_stepper%num_constant_time_steps=1
-  ! otherwise, only increment if the constant time step counter was
-  ! initialized to 1
-  else if (surf_flow_stepper%num_constant_time_steps > 0) then
-    surf_flow_stepper%num_constant_time_steps = &
-      surf_flow_stepper%num_constant_time_steps + 1
-  endif
-
-  ! num_constant_time_steps = 0: normal time stepping with growing steps
-  ! num_constant_time_steps > 0: restriction of constant time steps until
-  !                              constant_time_step_threshold is met
-  if (surf_flow_stepper%num_constant_time_steps > &
-      surf_flow_stepper%constant_time_step_threshold) then
-    surf_flow_stepper%num_constant_time_steps = 0
-  else if (surf_flow_stepper%num_constant_time_steps > 0) then
-    ! do not increase time step size
-    update_time_step = PETSC_FALSE
-  endif
-
-  if(update_time_step) then
-
-    time=option%surf_flow_time
-    dt=option%surf_flow_dt
-
-    if(surf_flow_stepper%iaccel==0) return
-    
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        fac=0.5d0
-        if(surf_flow_stepper%num_newton_iterations>=surf_flow_stepper%iaccel) then
-          fac=0.33d0
-          ut=0.d0
-        else
-          !up = option%dpmxe/(option%dpmax+0.1)
-          up = 2.d0
-          ut = up
-        endif
-        dtt = fac * dt * (1.d0 + ut)
-    end select
-
-    if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
-    if (dtt > surf_flow_stepper%dt_max) dtt = surf_flow_stepper%dt_max
-
-    dt = dtt
-    option%surf_flow_dt = dt
-
-  endif
-
-end subroutine StepperUpdateSurfaceFlowDT
-
-! ************************************************************************** !
-!> This routine the maximum allowable dt for surface flow
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
-subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-
-  use Surface_Realization_class
-  use Surface_Flow_module
-  use Surface_TH_module
-  use Option_module
-  
-  implicit none
-
-  type(surface_realization_type), pointer :: surf_realization
-  type(option_type) :: option
-
-  PetscReal :: dt_max,dt_max_glb
-  PetscErrorCode :: ierr
-
-  select case (option%iflowmode)
-    case (RICHARDS_MODE)
-      call SurfaceFlowComputeMaxDt(surf_realization,dt_max)
-    case (TH_MODE)
-      call SurfaceTHComputeMaxDt(surf_realization,dt_max)
-  end select
-  call MPI_Allreduce(dt_max,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                     MPI_MIN,option%mycomm,ierr)
-  option%surf_flow_dt=min(0.9d0*dt_max_glb,surf_realization%dt_max)
-
-end subroutine StepperUpdateSurfaceFlowDTExplicit
-#endif
-! ************************************************************************** !
 !
 ! StepperUpdateDTMax: Updates maximum time step specified by the current
 !                     waypoint after the completion of a time step
@@ -1501,201 +1158,7 @@ end subroutine StepperUpdateDTMax
 
 ! ************************************************************************** !
 !
-! StepperSetTargetTimes: Sets target time for flow and transport solvers
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
-subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
-#ifdef SURFACE_FLOW
-                                 surf_flow_stepper, &
-#endif
-                                 option,plot_flag, &
-                                 transient_plot_flag)
-
-  use Option_module
-  
-  implicit none
-
-  type(stepper_type), pointer :: flow_stepper, tran_stepper
-  type(option_type) :: option
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
-#ifdef SURFACE_FLOW
-  type(stepper_type), pointer :: surf_flow_stepper
-#endif
-  
-  PetscReal :: target_time
-  PetscReal :: dt
-  PetscReal :: dt_max
-  PetscInt :: cumulative_time_steps
-  PetscInt :: max_time_step
-  PetscBool :: flag
-  PetscReal :: tolerance
-  type(waypoint_type), pointer :: cur_waypoint
-
-  ! target time will always be dictated by the flow solver, if present
-  ! this does not mean that the transport solver cannot take smaller steps
-  
-  ! this just works through the logic of whether the flow stepper should
-  ! be used to set the target time.  If flow is not present, or is to
-  ! be run as steady state, use the transport parameters
-  flag = PETSC_TRUE
-  if (associated(flow_stepper)) then
-    if (flow_stepper%run_as_steady_state) then
-      flag = PETSC_FALSE
-    endif
-  else
-    flag = PETSC_FALSE
-  endif
-
-  ! this flag allows one to take a shorter or slightly larger step than normal
-  ! in order to synchronize with the waypoint time
-  if (option%match_waypoint) then
-    ! if the maximum time step size decreased in the past step, need to set
-    ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-    if (associated(flow_stepper)) option%flow_dt = min(flow_stepper%prev_dt, &
-                                                       flow_stepper%dt_max)
-    if (associated(tran_stepper)) option%tran_dt = min(tran_stepper%prev_dt, &
-                                                       tran_stepper%dt_max)
-    option%match_waypoint = PETSC_FALSE
-  endif
-
-  if (flag) then ! flow stepper will govern the target time
-!    time = option%flow_time + option%flow_dt
-    dt = option%flow_dt
-    ! dt_max must be set from current waypoint and not updated below
-    cur_waypoint => flow_stepper%cur_waypoint
-    dt_max = cur_waypoint%dt_max
-    cumulative_time_steps = flow_stepper%steps
-    max_time_step = flow_stepper%max_time_step
-    tolerance = flow_stepper%time_step_tolerance
-    target_time = flow_stepper%target_time + option%flow_dt
-  else
-!    time = option%tran_time + option%tran_dt
-    dt = option%tran_dt
-    cur_waypoint => tran_stepper%cur_waypoint
-    ! dt_max must be set from current waypoint and not updated below
-    dt_max = cur_waypoint%dt_max
-    cumulative_time_steps = tran_stepper%steps
-    max_time_step = tran_stepper%max_time_step
-    tolerance = tran_stepper%time_step_tolerance
-    target_time = tran_stepper%target_time + option%tran_dt
-  endif
-  
-  ! For the case where the second waypoint is a printout after the first time step
-  ! we must increment the waypoint beyond the first (time=0.) waypoint.  Otherwise
-  ! the second time step will be zero. - geh
-  if (cur_waypoint%time < 1.d-40) then
-    cur_waypoint => cur_waypoint%next
-  endif
-  
-  if (associated(flow_stepper)) flow_stepper%prev_dt = option%flow_dt
-  if (associated(tran_stepper)) tran_stepper%prev_dt = option%tran_dt
-
-#ifdef SURFACE_FLOW
-  if(associated(surf_flow_stepper)) then
-    if (option%surf_subsurf_coupling_flow_dt>0.d0) then
-
-      !if next waypoint is a very close, increase the timestep to match it
-      if(cur_waypoint%print_output) then
-        if(cur_waypoint%time>target_time.and.(cur_waypoint%time-target_time)/dt<0.2) then
-          dt=dt+(cur_waypoint%time-target_time)
-          target_time=cur_waypoint%time
-        endif
-      endif
-
-      ! if target time exceed model coupling time, shrink it back
-      if((target_time-option%surf_subsurf_coupling_time) &
-        /option%flow_dt>1.d-10) then
-        dt=option%surf_subsurf_coupling_time-option%flow_time
-        target_time=option%surf_subsurf_coupling_time
-      endif
-    endif
-
-    if(option%subsurf_surf_coupling==DECOUPLED) then
-      target_time=surf_flow_stepper%target_time
-      dt = option%surf_flow_dt
-    endif
-  endif
-#endif
-
-! If a waypoint calls for a plot or change in src/sinks, adjust time step
-! to match waypoint.
-  do ! we cycle just in case the next waypoint is beyond the target_time
-    if (target_time + tolerance*dt >= cur_waypoint%time .and. &
-        (cur_waypoint%update_conditions .or. &
-         cur_waypoint%print_output .or. &
-         cur_waypoint%print_tr_output .or. &
-         cur_waypoint%final)) then
-      ! decrement by time step size
-      target_time = target_time - dt
-      ! set new time step size based on waypoint time
-      dt = cur_waypoint%time - target_time
-      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
-        dt = dt_max                    ! error from waypoint%time - time
-        target_time = target_time + dt
-      else
-        target_time = cur_waypoint%time
-        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
-        option%match_waypoint = PETSC_TRUE
-        cur_waypoint => cur_waypoint%next
-      endif
-      exit
-    else if (target_time > cur_waypoint%time) then
-      cur_waypoint => cur_waypoint%next
-    else
-      exit
-    endif
-  enddo
-  ! subtract 1 from max_time_steps since we still have to complete the current
-  ! time step
-
-  if (cumulative_time_steps >= max_time_step-1) then
-    plot_flag = PETSC_TRUE
-    nullify(cur_waypoint)
-  endif
-
-  ! update maximum time step size to current waypoint value
-  if (associated(cur_waypoint)) then
-    dt_max = cur_waypoint%dt_max
-  endif
-  
-  ! target time will always be dictated by the flow solver, if present
-  if (associated(flow_stepper)) then
-    option%flow_dt = dt
-    flow_stepper%target_time = target_time
-    !geh: dt_max now updated in StepperUpdateDTMax() at the end of 
-    !     a time step to avoid premature update if cuts or sub-stepping
-    !     for transport occur during the time step.
-    !flow_stepper%dt_max = dt_max
-    flow_stepper%cur_waypoint => cur_waypoint
-  endif
-  if (associated(tran_stepper)) then
-    if (flag) then ! flow stepper governs the target time
-      ! if transport step is within the tolerance of the flow step, let it 
-      ! try to reach the target time with a slightly larger step
-      if (option%match_waypoint .and. &
-          dt <= (1.d0+tolerance)*option%tran_dt) then
-        option%tran_dt = dt
-      endif
-      !geh: Need to ensure that tran_dt <= flow_dt
-      if (option%tran_dt > option%flow_dt) option%tran_dt = option%flow_dt
-    else ! transport only
-      option%tran_dt = dt
-    endif
-    tran_stepper%target_time = target_time
-    !geh: see note on flow_stepper%dt_max above.
-    !tran_stepper%dt_max = dt_max
-    tran_stepper%cur_waypoint => cur_waypoint
-  endif
-  
-end subroutine StepperSetTargetTimes
-
-! ************************************************************************** !
-!
-! StepperSetTargetTimes: Sets target time for flow and transport solvers
+! StepperSetTargetTime: Sets target time for timestepper
 ! author: Glenn Hammond
 ! date: 02/19/08
 !

@@ -85,6 +85,11 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
 #endif
 
+  use Process_Model_Coupler_module
+  use Process_Model_Base_class
+  use Process_Model_RT_class
+  use Process_Model_Richards_class
+
   implicit none
   
   type(simulation_type) :: simulation
@@ -94,7 +99,7 @@ subroutine Init(simulation)
   type(stepper_type), pointer :: tran_stepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -119,6 +124,9 @@ subroutine Init(simulation)
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
 #endif
+
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  class(process_model_base_type), pointer :: cur_process_model
 
   ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
@@ -748,6 +756,51 @@ subroutine Init(simulation)
                      &++++++++++++++++++++++++++++",/)')
 
   call PetscLogEventBegin(logging%event_setup,ierr)
+  
+  !----------------------------------------------------------------------------!
+  ! This section for setting up new process model approach
+  !----------------------------------------------------------------------------!
+  cur_process_model_coupler => ProcessModelCouplerCreate()
+  simulation%process_model_coupler_list => cur_process_model_coupler
+  simulation%synchronizer => SynchronizerCreate()
+  simulation%synchronizer%process_model_coupler_list => cur_process_model_coupler
+  simulation%synchronizer%option => simulation%option
+  simulation%synchronizer%output_option => simulation%output_option
+  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
+  if (option%nflowdof > 0) then
+    cur_process_model => PMRichardsCreate()
+  endif
+  if (option%ntrandof > 0) then
+    if (associated(cur_process_model)) then
+      cur_process_model%next => PMRTCreate()
+    else
+      cur_process_model => PMRTCreate()
+    endif
+  endif  
+  cur_process_model_coupler%process_model_list => cur_process_model
+  
+  cur_process_model_coupler => simulation%process_model_coupler_list
+  do
+    if (.not.associated(cur_process_model_coupler)) exit
+    cur_process_model => cur_process_model_coupler%process_model_list
+    do
+      if (.not.associated(cur_process_model)) exit
+      select type(cur_process_model)
+        class is (process_model_richards_type)
+          call cur_process_model%PMRichardsSetRealization(realization)
+          call cur_process_model%SetTimestepper(flow_stepper)
+        class is (process_model_rt_type)
+          call cur_process_model%PMRTSetRealization(realization)
+          call cur_process_model%SetTimestepper(tran_stepper)
+      end select
+      call cur_process_model%Init()
+      cur_process_model => cur_process_model%next
+    enddo
+    cur_process_model_coupler => cur_process_model_coupler%next
+  enddo
+  !----------------------------------------------------------------------------!
+  !----------------------------------------------------------------------------!
+  
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  

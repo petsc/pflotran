@@ -186,6 +186,8 @@ module Option_module
     PetscBool :: use_upwinding
     
     PetscBool :: out_of_table
+    
+    PetscBool :: use_process_model
 
   end type option_type
   
@@ -316,6 +318,8 @@ subroutine OptionInitAll(option)
   option%use_upwinding = PETSC_TRUE
 
   option%out_of_table = PETSC_FALSE
+  
+  option%use_process_model = PETSC_FALSE
  
   call OptionInitRealization(option)
 

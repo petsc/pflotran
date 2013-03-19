@@ -28,14 +28,12 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputObservationInit(realization_base,num_steps)
+subroutine OutputObservationInit(num_steps)
 
-  use Realization_Base_class, only : realization_base_type
   use Option_module
 
   implicit none
   
-  class(realization_base_type) :: realization_base
   PetscInt :: num_steps
   
   if (num_steps == 0) then

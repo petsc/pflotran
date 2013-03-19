@@ -44,14 +44,11 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputCommonInit(realization_base,num_steps)
+subroutine OutputCommonInit()
 
   use Option_module
 
   implicit none
-  
-  class(realization_base_type) :: realization_base
-  PetscInt :: num_steps
   
   ! set size to -1 in order to re-initialize parallel communication blocks
   max_local_size_saved = -1

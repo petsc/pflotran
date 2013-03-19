@@ -1,6 +1,6 @@
 module Process_Model_Base_class
 
-  ! add accessory modules here
+  use Timestepper_module
 
   implicit none
 
@@ -18,7 +18,8 @@ module Process_Model_Base_class
     class(process_model_base_type), pointer :: next
   contains
     procedure(PMBaseInit), public, deferred :: Init
-    procedure(PMBaseInitializeTimeStep), public, deferred :: InitializeTimeStep
+    procedure(PMBaseInitializeRun), public, deferred :: InitializeRun
+    procedure(PMBaseFinalizeRun), public, deferred :: FinalizeRun
     procedure(PMBaseResidual), public, deferred :: Residual
     procedure(PMBaseJacobian), public, deferred :: Jacobian
     procedure(PMBaseCheckUpdatePre), public, deferred :: CheckUpdatePre
@@ -36,12 +37,6 @@ module Process_Model_Base_class
       implicit none
       class(process_model_base_type) :: this
     end subroutine PMBaseInit
-
-    subroutine PMBaseInitializeTimestep(this)
-      import process_model_base_type
-      implicit none
-      class(process_model_base_type) :: this
-    end subroutine PMBaseInitializeTimestep 
 
     subroutine PMBaseResidual(this,snes,xx,r,ierr)
       import process_model_base_type
@@ -120,5 +115,29 @@ module Process_Model_Base_class
       class(process_model_base_type) :: this
     end subroutine PMBaseDestroy
   end interface
+  
+contains
+
+! ************************************************************************** !
+!
+! PMBaseRunTo: Runs the actual simulation.
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMBaseRunTo(this,time)
+
+  implicit none
+  
+  type(process_model_type) :: this  
+  PetscReal :: time
+  
+  ! do something here
+  
+  if (this%next) then
+    this%next%RunTo(time)
+  endif
+  
+end subroutine PMBaseRunTo
 
 end module Process_Model_Base_class

@@ -20,6 +20,7 @@ module Structured_Communicator_class
   type, public, extends(communicator_type) :: structured_communicator_type
     DM :: dm
   contains
+    procedure, public :: SetDM => StructuredSetDM
     procedure, public :: GlobalToLocal => StructuredGlobalToLocal
     procedure, public :: LocalToGlobal => StructuredLocalToGlobal
     procedure, public :: LocalToLocal => StructuredLocalToLocal
@@ -30,6 +31,8 @@ module Structured_Communicator_class
     procedure, public :: Destroy => StructuredCommunicatorDestroy
 
   end type structured_communicator_type
+  
+  public :: StructuredCommunicatorCreate
   
 contains
 
@@ -55,6 +58,26 @@ function StructuredCommunicatorCreate()
   StructuredCommunicatorCreate => communicator  
   
 end function StructuredCommunicatorCreate
+
+! ************************************************************************** !
+!
+! StructuredSetDM: Sets pointer to DM
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+subroutine StructuredSetDM(this,dm_ptr)
+
+  use Discretization_module
+
+  implicit none
+  
+  class(structured_communicator_type) :: this
+  type(dm_ptr_type) :: dm_ptr
+
+  this%dm = dm_ptr%dm
+  
+end subroutine StructuredSetDM
 
 ! ************************************************************************** !
 !

@@ -2,7 +2,9 @@ module Process_Model_RT_class
 
   use Process_Model_Base_class
   use Reactive_Transport_module
+  
   use Realization_class
+  use Communicator_Base_module  
   
   implicit none
 
@@ -18,8 +20,13 @@ module Process_Model_RT_class
 
   type, public, extends(process_model_base_type) :: process_model_rt_type
     class(realization_type), pointer :: realization
+    class(communicator_type), pointer :: comm1
+    class(communicator_type), pointer :: commN
   contains
     procedure, public :: Init => PMRTInit
+    procedure, public :: PMRTSetRealization
+    procedure, public :: InitializeExecution => PMRTInitializeExecution
+    procedure, public :: FinalizeExecution => PMRTFinalizeExecution
     procedure, public :: InitializeTimeStep => PMRTInitializeTimestep
     procedure, public :: Residual => PMRTResidual
     procedure, public :: Jacobian => PMRTJacobian
@@ -32,129 +39,86 @@ module Process_Model_RT_class
     procedure, public :: Destroy => PMRTDestroy
   end type process_model_rt_type
   
+  public :: PMRTCreate
+
 contains
 
 ! ************************************************************************** !
 !
-! PMRTInit: Initializes variables associated with Richard
+! PMRTCreate: Creates reactive transport process models shell
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+function PMRTCreate()
+
+  implicit none
+  
+  class(process_model_rt_type), pointer :: PMRTCreate
+
+  class(process_model_rt_type), pointer :: rt_pm
+  
+  allocate(rt_pm)
+  nullify(rt_pm%realization)
+  nullify(rt_pm%comm1)
+  nullify(rt_pm%commN)
+
+  PMRTCreate => rt_pm
+  
+end function PMRTCreate
+
+! ************************************************************************** !
+!
+! PMRTInit: Initializes variables associated with reactive transport
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
 subroutine PMRTInit(this)
 
+  use Discretization_module
+  use Structured_Communicator_class
+  use Unstructured_Communicator_class
+  use Grid_module 
+  
   implicit none
   
   class(process_model_rt_type) :: this
-  
-#if 0  
-  call printMsg(option,"  Beginning setup of TRAN SNES ")
-    
-  call SolverCreateSNES(tran_solver,option%mycomm)  
-  call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
-  call SolverCheckCommandLine(tran_solver)
-      
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-    if (tran_solver%Jpre_mat_type == '') then
-      if (tran_solver%J_mat_type /= MATMFFD) then
-        tran_solver%Jpre_mat_type = tran_solver%J_mat_type
-      else
-        tran_solver%Jpre_mat_type = MATBAIJ
-      endif
-    endif
-    call DiscretizationCreateJacobian(discretization,NTRANDOF, &
-                                      tran_solver%Jpre_mat_type, &
-                                      tran_solver%Jpre,option)
-  else
-    tran_solver%J_mat_type = MATAIJ
-    tran_solver%Jpre_mat_type = MATAIJ
 
-    call DiscretizationCreateJacobian(discretization,ONEDOF, &
-                                      tran_solver%Jpre_mat_type, &
-                                      tran_solver%Jpre,option)
-  endif
-
-  if (tran_solver%J_mat_type /= MATMFFD) then
-    tran_solver%J = tran_solver%Jpre
-  endif
-    
-  call MatSetOptionsPrefix(tran_solver%Jpre,"tran_",ierr)
-    
-  if (tran_solver%use_galerkin_mg) then
-    call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
-                                            tran_solver%interpolation, &
-                                            tran_solver%galerkin_mg_levels_x, &
-                                            tran_solver%galerkin_mg_levels_y, &
-                                            tran_solver%galerkin_mg_levels_z, &
-                                            option)
-  endif
-
-  if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-
-    call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
-                          realization,ierr)
-
-    if (tran_solver%J_mat_type == MATMFFD) then
-      call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
-    endif
-      
-    call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
-                          RTJacobian,realization,ierr)
-
-    ! this could be changed in the future if there is a way to ensure that the linesearch
-    ! update does not perturb concentrations negative.
-    call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
-    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-      
-    if (option%use_mc) then
-      call SNESLineSearchSetPostCheck(linesearch, &
-                                      SecondaryRTUpdateIterate, &
-                                      realization,ierr)      
-    endif
-      
-    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-    if (option%verbosity >= 1) then
-      string = '-tran_snes_view'
-      call PetscOptionsInsertString(string, ierr)
-    endif
-
-  endif
-
-  ! ensure setting of SNES options since they set KSP and PC options too
-  call SolverSetSNESOptions(tran_solver)
-
-  option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
-  call printMsg(option)
-  option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
-  call printMsg(option)
-
-  if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-
-    ! shell for custom convergence test.  The default SNES convergence test  
-    ! is call within this function. 
-    tran_stepper%convergence_context => &
-      ConvergenceContextCreate(tran_solver,option,grid)
-    call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                tran_stepper%convergence_context, &
-                                PETSC_NULL_FUNCTION,ierr) 
-
-    ! this update check must be in place, otherwise reactive transport is likely
-    ! to fail
-    if (associated(realization%reaction)) then
-      if (realization%reaction%check_update) then
-        call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
-        call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
-                                        realization,ierr)
-      endif
-    endif
-  endif
-    
-  call printMsg(option,"  Finished setting up TRAN SNES ")  
-#endif  
-  
-  call RTSetup(this%realization)
+  ! set up communicator
+  select case(this%realization%discretization%itype)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      this%comm1 => StructuredCommunicatorCreate()
+      this%commN => StructuredCommunicatorCreate()
+    case(UNSTRUCTURED_GRID)
+      this%comm1 => UnstructuredCommunicatorCreate()
+      this%commN => UnstructuredCommunicatorCreate()
+  end select
+  call this%comm1%SetDM(this%realization%discretization%dm_1dof)
+  call this%commN%SetDM(this%realization%discretization%dm_ntrandof)
   
 end subroutine PMRTInit
+
+
+! ************************************************************************** !
+!
+! PMRTSetRealization: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRTSetRealization(this,realization)
+
+  use Realization_Base_class  
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+  class(realization_type), pointer :: realization
+
+  this%realization => realization
+  
+end subroutine PMRTSetRealization
 
 ! ************************************************************************** !
 !
@@ -172,6 +136,64 @@ subroutine PMRTInitializeTimestep(this)
   call RTSetup(this%realization)
 
 end subroutine PMRTInitializeTimestep 
+
+! ************************************************************************** !
+!
+! PMRTInitializeRun: Initializes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMRTInitializeRun(this)
+
+  implicit none
+  
+  type(process_model_type), pointer :: this
+  
+  ! restart
+  
+  if (transport_read .and. option%overwrite_restart_transport) then
+    call CondControlAssignTranInitCond(realization)  
+  endif
+  
+  call RTUpdateSolution(this%realization)
+  
+  if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
+    ! only user jumpstart for a restarted simulation
+    if (.not. option%restart_flag) then
+      option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
+        'restarted simulation.  ReactionEquilibrateConstraint() will ' // &
+        'appropriately set sorbed initial concentrations for a normal ' // &
+        '(non-restarted) simulation.'
+      call printErrMsg(option)
+    endif
+    call RTJumpStartKineticSorption(this%realization)
+  endif
+  
+  ! check on MAX_STEPS < 0 to quit after initialization.
+    
+end subroutine PMRTInitializeRun
+
+! ************************************************************************** !
+!
+! PMRTFinalizeRun: Finalizes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMRTFinalizeRun(this)
+
+  implicit none
+  
+  type(process_model_type), pointer :: this
+  
+  ! do something here
+  
+  if (this%next) then
+    this%next%FinalizeRun()
+  endif  
+  
+end subroutine PMRTFinalizeRun
 
 ! ************************************************************************** !
 !
