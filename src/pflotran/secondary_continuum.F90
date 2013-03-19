@@ -1023,6 +1023,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                
       enddo
       
+      res = res*1.d3 ! Convert mol/L*m3/s to mol/s                                                    
+      
       ! Reaction 
       do i = 1, ngcells
         res_react = 0.d0
@@ -1038,7 +1040,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
         enddo
       enddo        
                          
-      res = res*1.d3 ! Convert mol/L*m3/s to mol/s                                                    
                                                                                                                   
 !============================== Forward solve ==================================        
                         
