@@ -1418,7 +1418,7 @@ subroutine InitReadInput(simulation)
   PetscInt :: count, id
   
   PetscBool :: velocities
-  PetscBool :: fluxes
+  PetscBool :: flux_velocities
   
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
@@ -1987,7 +1987,7 @@ subroutine InitReadInput(simulation)
 !....................
       case ('OUTPUT')
         velocities = PETSC_FALSE
-        fluxes = PETSC_FALSE
+        flux_velocities = PETSC_FALSE
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
@@ -2237,8 +2237,8 @@ subroutine InitReadInput(simulation)
               end select
             case('VELOCITIES')
               velocities = PETSC_TRUE
-            case('FLUXES')
-              fluxes = PETSC_TRUE
+            case('FLUXES_VELOCITIES')
+              flux_velocities = PETSC_TRUE
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
@@ -2260,7 +2260,7 @@ subroutine InitReadInput(simulation)
           if (output_option%print_vtk) &
             output_option%print_vtk_velocities = PETSC_TRUE
         endif
-        if (fluxes) then
+        if (flux_velocities) then
           if (output_option%print_tecplot) &
             output_option%print_tecplot_flux_velocities = PETSC_TRUE
           if (output_option%print_hdf5) &
