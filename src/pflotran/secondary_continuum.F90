@@ -958,7 +958,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
-  
+    
 !============== Numerical jacobian for coupling term ===========================
 
 

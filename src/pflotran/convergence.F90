@@ -227,10 +227,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
        reason > 0 .and. it > 0) then
-      if (option%infnorm_res_sec > solver%newton_inf_res_tol_sec) then
-        reason = 0
-      else
+      if (option%infnorm_res_sec < solver%newton_inf_res_tol_sec) then
         reason = 13
+      else
+        reason = 0
       endif
     endif
   
@@ -263,7 +263,9 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
               & " pnrm:",es9.2, &
               & " inrmr:",es9.2, &
               & " inrmu:",es9.2, &
-              & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, inorm_update, &
+              & " inrmrsec:",es9.2, &
+              & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, &
+                              inorm_update, option%infnorm_res_sec, &
                               trim(string)
     endif
   else
@@ -271,11 +273,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     ! This is to check if the secondary continuum residual convergences
     ! for nonlinear problems specifically transport
     if (solver%itype == TRANSPORT_CLASS .and. option%use_mc .and. &
-       reason > 0 .and. it > 1) then
-      if (option%infnorm_res_sec > solver%newton_inf_res_tol_sec) then
-        reason = 0
-      else
+       reason > 0 .and. it > 0) then
+      if (option%infnorm_res_sec < solver%newton_inf_res_tol_sec) then
         reason = 13
+      else
+        reason = 0
       endif
     endif
     
