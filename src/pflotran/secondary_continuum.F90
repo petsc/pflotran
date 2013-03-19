@@ -896,6 +896,9 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     else
       conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
     endif
+    if (conc_current_M(i) < 0.d0) then
+      conc_current_M(i) = 1.d-8
+    endif
   enddo
 
   ! Update the secondary continuum totals at the outer matrix node
@@ -1478,6 +1481,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
       else
         conc_upd(j,i) = rhs(n) + conc_upd(j,i)
       endif
+      if (conc_upd(j,i) < 0.d0) conc_upd(j,i) = 1.d-8
     enddo
   enddo
   
