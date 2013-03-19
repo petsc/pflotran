@@ -1022,6 +1022,21 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                    total_upd(j,ngcells-1))  
                                
       enddo
+      
+      ! Reaction 
+      do i = 1, ngcells
+        res_react = 0.d0
+        jac_react = 0.d0
+        call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
+                         option)
+        rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
+        call RTotal(rt_auxvar,global_aux_var,reaction,option)
+        call RReaction(res_react,jac_react,PETSC_FALSE, &
+                       rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)                     
+        do j = 1, ncomp
+          res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
+        enddo
+      enddo        
                          
       res = res*1.d3 ! Convert mol/L*m3/s to mol/s                                                    
                                                                                                                   
