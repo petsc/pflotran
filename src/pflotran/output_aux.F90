@@ -22,6 +22,8 @@ module Output_Aux_module
     PetscBool :: print_hdf5_flux_velocities
     PetscBool :: print_single_h5_file
     PetscInt  :: times_per_h5_file
+    PetscBool :: print_hdf5_mass_flowrate
+    PetscBool :: print_hdf5_energy_flowrate
 
     PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
@@ -144,6 +146,8 @@ function OutputOptionCreate()
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
   output_option%print_single_h5_file = PETSC_TRUE
   output_option%times_per_h5_file = 0
+  output_option%print_hdf5_mass_flowrate = PETSC_FALSE
+  output_option%print_hdf5_energy_flowrate = PETSC_FALSE
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE

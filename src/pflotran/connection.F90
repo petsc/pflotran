@@ -24,6 +24,7 @@ module Connection_module
                                        ! upwind and downwind cells with the face shared by the cells
     PetscReal, pointer :: area(:)      ! list of areas of faces normal to distance vectors
     PetscReal, pointer :: cntr(:,:)    ! coordinates (1:3, num_connections) of the mass center of the face
+    PetscInt, pointer :: face_id(:)    ! list of ids of faces (in local order)
     type(connection_set_type), pointer :: next
   end type connection_set_type
 
@@ -75,6 +76,7 @@ function ConnectionCreate(num_connections,connection_itype)
   nullify(connection%id_dn)
   nullify(connection%id_up2)
   nullify(connection%id_dn2)
+  nullify(connection%face_id)
   nullify(connection%dist)
   nullify(connection%intercp)
   nullify(connection%area)
@@ -86,6 +88,7 @@ function ConnectionCreate(num_connections,connection_itype)
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%intercp(1:3,num_connections))
       allocate(connection%area(num_connections))
+      allocate(connection%face_id(num_connections))
 #ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
       allocate(connection%local(num_connections))
@@ -93,6 +96,7 @@ function ConnectionCreate(num_connections,connection_itype)
 #endif
       connection%id_up = 0
       connection%id_dn = 0
+      connection%face_id = 0
       connection%dist = 0.d0
       connection%intercp = 0.d0
       connection%area = 0.d0
@@ -101,6 +105,7 @@ function ConnectionCreate(num_connections,connection_itype)
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%intercp(1:3,num_connections))
       allocate(connection%area(num_connections))
+      allocate(connection%face_id(num_connections))
 #ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
 #endif
@@ -245,6 +250,8 @@ subroutine ConnectionDestroy(connection)
   nullify(connection%id_up2)
   if (associated(connection%id_dn2)) deallocate(connection%id_dn2)
   nullify(connection%id_dn2)
+  if (associated(connection%face_id)) deallocate(connection%face_id)
+  nullify(connection%face_id)
   if (associated(connection%dist)) deallocate(connection%dist)
   nullify(connection%dist)
   if (associated(connection%intercp)) deallocate(connection%intercp)

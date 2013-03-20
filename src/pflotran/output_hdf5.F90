@@ -741,35 +741,8 @@ subroutine OutputHDF5UGrid(realization_base)
   endif
 
   if (output_option%print_hdf5_flux_velocities) then
-
-    ! internal flux velocities
-    if (grid%structured_grid%nx > 1) then
-        string = "Liquid X-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,X_DIRECTION,grp_id)
-        if (option%nphase > 1) then
-          string = "Gas X-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,X_DIRECTION,grp_id)
-        endif
-    endif
-
-    if (grid%structured_grid%ny > 1) then
-        string = "Liquid Y-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,Y_DIRECTION,grp_id)
-        if (option%nphase > 1) then
-          string = "Gas Y-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,Y_DIRECTION,grp_id)
-        endif
-    endif
-
-    if (grid%structured_grid%nz > 1) then
-        string = "Liquid Z-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,Z_DIRECTION,grp_id)
-        if (option%nphase > 1) then
-          string = "Gas Z-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,Z_DIRECTION,grp_id)
-        endif
-    endif
-   
+    option%io_buffer='WriteHDF5FluxVecolities() not implemented for unstructured grid.'
+    call printErrMsg(option)
   endif
 
   call VecDestroy(global_vec,ierr)
@@ -1075,6 +1048,10 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
       enddo
 
   end select
+
+  if(output_option%print_hdf5_mass_flowrate.or.output_option%print_hdf5_energy_flowrate) then
+    call WriteHDF5FlowratesUGrid(realization_base,option,grp_id)
+  endif
 
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
@@ -2259,10 +2236,336 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call VecDestroy(natural_y_cell_vec,ierr)
   call VecDestroy(natural_z_cell_vec,ierr)
 
+  call UGridDMDestroy(ugdm_cell)
+
 #endif
 !if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
 #endif
+
+! ************************************************************************** !
+!> This routine writes (mass/energy) flowrate for unstructured grid.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 03/19/2013
+! ************************************************************************** !
+subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
+
+  use hdf5
+  use HDF5_module
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+  use Variables_module
+  use Connection_module
+  use Coupler_module
+  use HDF5_Aux_module
+  use Output_Aux_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: boundary_condition
+  type(ugdm_type),pointer :: ugdm
+  type(output_option_type), pointer :: output_option
+  
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: idual
+  PetscInt :: iconn
+  PetscInt :: face_id
+  PetscInt :: local_id_up,local_id_dn
+  PetscInt :: ghosted_id_up,ghosted_id_dn
+  PetscInt :: iface_up,iface_dn
+  PetscInt :: dof
+  PetscInt :: sum_connection
+  PetscInt :: offset
+  PetscInt :: cell_type
+  PetscInt :: local_size
+  PetscInt :: i
+  PetscInt :: iface
+  PetscInt :: ndof
+
+  PetscReal, pointer :: flowrates(:,:,:)
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: double_array(:)
+
+  Vec :: global_flowrates_vec
+  Vec :: natural_flowrates_vec
+
+  PetscMPIInt :: hdf5_err
+  PetscErrorCode :: ierr
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: unit_string
+
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  output_option =>realization_base%output_option
+
+  select case(option%iflowmode)
+    case (RICHARDS_MODE)
+      ndof=1
+    case (TH_MODE)
+      ndof=1
+      if(output_option%print_hdf5_mass_flowrate.and.output_option%print_hdf5_energy_flowrate) ndof = 2
+    case default
+      option%io_buffer='FLOWRATE output not supported in this mode'
+      call printErrMsg(option)
+  end select
+
+  ! Create a flowrate vector in global order
+  call VecCreateMPI(option%mycomm, &
+                    (option%nflowdof*MAX_FACE_PER_CELL + 1)*ugrid%nlmax,&
+                    PETSC_DETERMINE,global_flowrates_vec,ierr)
+
+  ! Create UGDM for
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
+                       (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
+
+  ! Create a flowrate vector in natural order
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
+                           NATURAL,option)
+
+
+  allocate(flowrates(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+  flowrates = 0.d0
+  call VecGetArrayF90(global_flowrates_vec,vec_ptr,ierr)
+  vec_ptr = 0.d0
+  
+  offset = option%nflowdof*MAX_FACE_PER_CELL+1
+  do local_id = 1,grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    cell_type = ugrid%cell_type(ghosted_id)
+    vec_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
+  enddo
+
+  ! Interior Flowrates Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      face_id = cur_connection_set%face_id(iconn)
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn)
+      do iface_up = 1,MAX_FACE_PER_CELL
+        if(face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
+      enddo
+      iface_dn=-1
+      if(local_id_dn>0) then
+        do iface_dn = 1,MAX_FACE_PER_CELL
+          if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+        enddo
+      endif
+      
+      do dof=1,option%nflowdof
+        flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
+        vec_ptr((local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1) = &
+          patch%internal_fluxes(dof,1,sum_connection)
+        if(iface_dn>0) then
+          flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+          vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
+            -patch%internal_fluxes(dof,1,sum_connection)
+        endif
+      enddo
+      
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! Boundary Flowrates Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do 
+    if (.not.associated(boundary_condition)) exit
+
+    cur_connection_set => boundary_condition%connection_set
+    sum_connection = 0
+
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      face_id = cur_connection_set%face_id(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_dn = grid%nG2L(ghosted_id_dn)
+      do iface_dn = 1,MAX_FACE_PER_CELL
+        if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+      enddo
+
+      do dof=1,option%nflowdof
+        flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+        vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
+          -patch%internal_fluxes(dof,1,sum_connection)
+      enddo
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  deallocate(flowrates)
+
+  call VecRestoreArrayF90(global_flowrates_vec,vec_ptr,ierr)
+
+  ! Scatter flowrate from Global --> Natural order
+  call VecScatterBegin(ugdm%scatter_gton,global_flowrates_vec,natural_flowrates_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm%scatter_gton,global_flowrates_vec,natural_flowrates_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecGetLocalSize(natural_flowrates_vec,local_size,ierr)
+  local_size = local_size/(MAX_FACE_PER_CELL+1)/option%nflowdof
+
+  allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
+  double_array = 0.d0
+  
+  call VecGetArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+
+  do dof = 1,option%nflowdof
+
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        string = "Mass_Flowrate [kg_s]" // CHAR(0)
+      case(TH_MODE)
+        if(dof==1) then
+          string = "Mass_Flowrate" // CHAR(0)
+        else
+          string = "Energy_Flowrate [J_s]" // CHAR(0)
+        endif
+      case default
+        option%io_buffer='FLOWRATE output not implemented in this mode.'
+        call printErrMsg(option)
+    end select
+
+    if(option%iflowmode==TH_MODE.and.dof==1 .and. (.not.output_option%print_hdf5_mass_flowrate)) exit
+    if(option%iflowmode==TH_MODE.and.dof==2 .and. (.not.output_option%print_hdf5_energy_flowrate)) exit
+
+    ! memory space which is a 1D vector
+    rank_mpi = 1
+    dims = 0
+    dims(1) = local_size*(MAX_FACE_PER_CELL+1)
+    call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+    ! file space which is a 2D block
+    rank_mpi = 2
+    dims = 0
+    dims(2) = ugrid%nmax
+    dims(1) = MAX_FACE_PER_CELL + 1
+    call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5dopen_f(file_id,trim(string),data_set_id,hdf5_err)
+    hdf5_flag = hdf5_err
+    call h5eset_auto_f(ON,hdf5_err)
+    if (hdf5_flag < 0) then
+      call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+      call h5dcreate_f(file_id,trim(string),H5T_NATIVE_DOUBLE,file_space_id, &
+                      data_set_id,hdf5_err,prop_id)
+    else
+      call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+    endif
+
+    call h5pclose_f(prop_id,hdf5_err)
+
+    istart = 0
+    call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+    start(2) = istart
+    start(1) = 0
+  
+    length(2) = local_size
+    length(1) = MAX_FACE_PER_CELL + 1
+
+    stride = 1
+    call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                              hdf5_err,stride,stride)
+    ! write the data
+    call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+    do i=1,local_size
+      double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
+        vec_ptr((i-1)*offset+(dof-1)*MAX_FACE_PER_CELL+1)
+      do iface = 1,MAX_FACE_PER_CELL
+        double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
+        vec_ptr((i-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface + 1)
+      enddo
+    enddo
+
+    call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+    call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                    hdf5_err,memory_space_id,file_space_id,prop_id)
+    call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+    call h5pclose_f(prop_id,hdf5_err)
+
+    call h5dclose_f(data_set_id,hdf5_err)
+    call h5sclose_f(file_space_id,hdf5_err)
+
+  enddo
+  deallocate(double_array)
+
+  call VecRestoreArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+
+  call VecDestroy(global_flowrates_vec,ierr)
+  call VecDestroy(natural_flowrates_vec,ierr)
+  call UGridDMDestroy(ugdm)
+  
+end subroutine WriteHDF5FlowratesUGrid
 
 end module Output_HDF5_module
