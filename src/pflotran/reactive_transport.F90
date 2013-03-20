@@ -3637,6 +3637,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   use Logging_module
   
 #ifdef XINGYUAN_BC
+  use Dataset_module
   use Dataset_Aux_module
 #endif
   
@@ -3678,6 +3679,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   PetscInt :: idof_aq_dataset
   type(dataset_type), pointer :: dataset
   PetscReal :: temp_real
+  PetscBool, save :: first = PETSC_TRUE
 #endif  
   
   data icall/0/
@@ -3783,6 +3785,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
                           cur_constraint_coupler%aqueous_species% &
                           constraint_aux_string(idof), &
                         string,option)
+          call DatasetLoad(dataset,option)
           exit
         endif
       enddo
@@ -3821,6 +3824,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
             option%tran_time,temp_real,option)
     boundary_condition%tran_condition%cur_constraint_coupler% &
       aqueous_species%constraint_conc(idof_aq_dataset) = temp_real
+    if (first) patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = basis_molarity_p
     call ReactionEquilibrateConstraint( &
         patch%aux%RT%aux_vars_bc(sum_connection), &
         patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
@@ -3996,6 +4000,10 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
     call PetscLogEventEnd(logging%event_rt_auxvars_bc,ierr)
 
+#ifdef XINGYUAN_BC
+    first = PETSC_FALSE
+#endif
+
   endif 
 
   patch%aux%RT%aux_vars_up_to_date = update_cells .and. update_bcs
@@ -4003,7 +4011,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   call VecRestoreArrayReadF90(field%tran_xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
   icall = icall+ 1
-
+  
 end subroutine RTUpdateAuxVarsPatch
 
 ! ************************************************************************** !
