@@ -997,7 +997,10 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 #if defined(SCORPIO_WRITE)
 
   !geh: kludge to get scorpio to write name properly without garbage appended.
-  scorpio_string(1:len_trim(name)) = name
+! scorpio_string(1:len_trim(name)) = name
+
+  scorpio_string = trim(name)
+
   scorpio_string = trim(scorpio_string) // CHAR(0)
 
 !  write(option%io_buffer,'(" Writing dataset block: ", a, " type - ", i, ".")') trim(name), data_type
@@ -1054,6 +1057,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
        !   '(a," Writing double dataset1: dimensions: ",i9,i9,i9, " Data type and ndims: ",i9, i9)') & 
        !trim(name), dims(1), dims(2), dims(3), SCORPIO_DOUBLE, rank_mpi
        !call printMsg(option)   
+
        call scorpio_write_dataset_block(double_array, SCORPIO_DOUBLE, rank_mpi, &
               dims, length, start, file_id, trim(scorpio_string), &
               option%iowrite_group_id, ierr)
