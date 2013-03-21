@@ -1503,7 +1503,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 #endif                    
 #endif
 
-
+  J = J/option%flow_dt
   J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
 
   if (option%numerical_derivatives_flow) then
@@ -1643,8 +1643,8 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
 #endif
 #endif
 
-  Res(1:option%nflowdof-1) = mol(:)
-  Res(option%nflowdof) = vol_frac_prim*eng
+  Res(1:option%nflowdof-1) = mol(:)/option%flow_dt
+  Res(option%nflowdof) = vol_frac_prim*eng/option%flow_dt
 
 end subroutine THAccumulation
 
@@ -2139,8 +2139,7 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_dn 
-  Jup = Jup*option%flow_dt
-  Jdn = Jdn*option%flow_dt
+
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
@@ -2455,8 +2454,8 @@ fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
   cond = Dk*area*(global_aux_var_up%temp(1) - global_aux_var_dn%temp(1)) 
   fluxe = fluxe + cond
 
-  Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-  Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nflowdof-1) = fluxm(:)
+  Res(option%nflowdof) = fluxe
   
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -2773,8 +2772,6 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
 #endif  
 
   end select
-
-  Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives_flow) then
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
@@ -3093,9 +3090,9 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       ! No change in fluxe
   end select
 
-  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
-  Res(option%nflowdof) = fluxe*option%flow_dt
-
+  Res(1:option%nflowspec) = fluxm(:)
+  Res(option%nflowdof) = fluxe
+  
 end subroutine THBCFlux
 
 ! ************************************************************************** !
@@ -3365,7 +3362,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                           sec_dencpr, &
                           option,res_sec_heat)
 
-      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
+      r_p(iend) = r_p(iend) - res_sec_heat*volume_p(local_id)
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
@@ -3408,19 +3405,19 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       
       if (enthalpy_flag) then
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
-                                        option%flow_dt*volume_p(local_id)   
+                                        volume_p(local_id)   
       endif
 
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           r_p((local_id-1)*option%nflowdof + jh2o) = &
             r_p((local_id-1)*option%nflowdof + jh2o) - &
-            qsrc1*option%flow_dt*volume_p(local_id)
+            qsrc1*volume_p(local_id)
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
           r_p((local_id-1)*option%nflowdof + jh2o) = &
             r_p((local_id-1)*option%nflowdof + jh2o) - &
-            qsrc1 *option%flow_dt*volume_p(local_id)
+            qsrc1*volume_p(local_id)
         case default
           write(string,*),source_sink%flow_condition%rate%itype
           option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
@@ -3440,11 +3437,11 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-              qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
+              qsrc1*aux_vars_ss(sum_connection)%h*volume_p(local_id)
       else
         ! extraction
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-              qsrc1*aux_vars(ghosted_id)%h*option%flow_dt*volume_p(local_id)
+              qsrc1*aux_vars(ghosted_id)%h*volume_p(local_id)
       endif
 
     enddo
@@ -3903,7 +3900,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*option%flow_dt*volume_p(local_id)
+                               jac_sec_heat*volume_p(local_id)
     endif
                             
     ! scale by the volume of the cell
@@ -3966,15 +3963,15 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       end select
 
       if (qsrc1 > 0.d0) then ! injection
-        !dresT_dp = -qsrc1*hw_dp*option%flow_dt
-        dresT_dp = -qsrc1*aux_vars_ss(sum_connection)%dh_dp*option%flow_dt
-        ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
+        !dresT_dp = -qsrc1*hw_dp
+        dresT_dp = -qsrc1*aux_vars_ss(sum_connection)%dh_dp
+        ! dresT_dt = -qsrc1*hw_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
       else
         ! extraction
-        dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp*option%flow_dt
-        dresT_dt = -qsrc1*aux_vars(ghosted_id)%dh_dt*option%flow_dt
+        dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp
+        dresT_dt = -qsrc1*aux_vars(ghosted_id)%dh_dt
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
