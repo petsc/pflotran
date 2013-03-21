@@ -151,4 +151,5 @@ clean-tests :
 	-find . -type f -name '*.stdout' -print0 | xargs -0 rm
 	-find . -type f -name '*.old' -print0 | xargs -0 rm
 	-find . -type f -name '*~' -print0 | xargs -0 rm
-	-rm default/anisothermal/thc_1d.h5
+	-rm -f default/anisothermal/thc_1d.h5
+	-rm -f default/anisothermal/th_1d.h5
