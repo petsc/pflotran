@@ -1416,7 +1416,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   
 #ifndef USE_COMPRESSIBILITY
   porXvol = por*vol
-  J(1,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
+  J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
            TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol !*TH_aux_var%xmol(1)
 #else
   if (TH_aux_var%pc > 0.d0) then
@@ -1429,11 +1429,11 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   porXvol = por1*vol
   
   if (TH_aux_var%pc > 0.d0) then
-    J(1,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
+    J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
              TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol
   else
     tempreal = exp(-1.d-10*(abs(global_aux_var%pres(1)-option%reference_pressure)))
-    J(1,1) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
+    J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = (global_aux_var%sat(1)*TH_aux_var%dden_dp + &
              TH_aux_var%dsat_dp*global_aux_var%den(1))*porXvol + &
              global_aux_var%sat(1)*global_aux_var%den(1)*vol*1.d-10* &
              (1.d0 - por)*tempreal*abs(global_aux_var%pres(1)- &
@@ -1442,11 +1442,11 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   endif
 #endif
 
-  J(1,2) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol !*TH_aux_var%xmol(1)
-  J(2,1) = (TH_aux_var%dsat_dp*global_aux_var%den(1)*TH_aux_var%u + &
+  J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = global_aux_var%sat(1)*TH_aux_var%dden_dt*porXvol !*TH_aux_var%xmol(1)
+  J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (TH_aux_var%dsat_dp*global_aux_var%den(1)*TH_aux_var%u + &
             global_aux_var%sat(1)*TH_aux_var%dden_dp*TH_aux_var%u + &
             global_aux_var%sat(1)*global_aux_var%den(1)*TH_aux_var%du_dp)*porXvol
-  J(2,2) = global_aux_var%sat(1)* &
+  J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = global_aux_var%sat(1)* &
            (TH_aux_var%dden_dt*TH_aux_var%u + &  ! pull %sat outside
             global_aux_var%den(1)*TH_aux_var%du_dt)*porXvol +  &
            (1.d0 - por)*vol*rock_dencpr 
@@ -1475,15 +1475,15 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   ddeni_dp = TH_aux_var%dden_ice_dp
   dui_dt = TH_aux_var%du_ice_dt
  
-  J(1,1) = J(1,1) + (dsatg_dp*den_g*mol_g + dsati_dp*den_i + &
+  J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) = J(TH_PRESSURE_DOF,TH_PRESSURE_DOF) + (dsatg_dp*den_g*mol_g + dsati_dp*den_i + &
                     sat_i*ddeni_dp)*porXvol
-  J(1,2) = J(1,2) + (TH_aux_var%dsat_dt*global_aux_var%den(1) + &
+  J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + (TH_aux_var%dsat_dt*global_aux_var%den(1) + &
                     dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
                     sat_g*den_g*dmolg_dt + dsati_dt*den_i + sat_i*ddeni_dt)* &
                     porXvol
-  J(2,1) = J(2,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
+  J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
                     sat_i*ddeni_dp*u_i)*porXvol
-  J(2,2) = J(2,2) + (TH_aux_var%dsat_dt*global_aux_var%den(1)*TH_aux_var%u + &
+  J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) + (TH_aux_var%dsat_dt*global_aux_var%den(1)*TH_aux_var%u + &
                     dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
