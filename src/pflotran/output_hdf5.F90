@@ -2352,6 +2352,11 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
   ugrid => grid%unstructured_grid
   output_option =>realization_base%output_option
 
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5FlowratesUGrid not supported for SCORPIO_WRITE'
+  call printErrMsg(option)
+#else
   select case(option%iflowmode)
     case (RICHARDS_MODE)
       ndof=1
@@ -2565,6 +2570,8 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
   call VecDestroy(global_flowrates_vec,ierr)
   call VecDestroy(natural_flowrates_vec,ierr)
   call UGridDMDestroy(ugdm)
+#endif
+! if defined(SCORPIO_WRITE)
   
 end subroutine WriteHDF5FlowratesUGrid
 
