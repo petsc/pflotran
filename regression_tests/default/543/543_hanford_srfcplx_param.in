@@ -475,6 +475,13 @@ TRANSPORT_CONDITION columbia_river
   /
 END
 
+TRANSPORT_CONDITION initial_groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial_groundwater
+  /
+END
+
 TRANSPORT_CONDITION groundwater
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -506,7 +513,7 @@ TRANSPORT_CONDITION source_zone
 END
 
 :=========================== transport constraints ============================
-CONSTRAINT groundwater
+CONSTRAINT initial_groundwater
   CONCENTRATIONS
     H+       1.d-7            M Calcite
     Ca++     1.20644e-3       T
@@ -527,6 +534,26 @@ CONSTRAINT groundwater
   MINERALS
     Calcite        DATASET initial_Calcite  1. cm^2/cm^3
     Metatorbernite 0.    1. cm^2/cm^3
+  /
+END
+
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    H+       1.d-7            M Calcite
+    Ca++     1.20644e-3       T
+    Cu++     1.e-8            T
+    Mg++     5.09772e-4       T Dolomite
+    UO2++    2.4830E-11       T
+    K+       1.54789e-4       T
+    Na+      1.03498e-3       Z
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-8            M Fluorapatite
+    NO3-     4.69979e-4       T
+    SO4--    6.37961e-4       T
+    Tracer   1.e-7            F
+    Tracer2  1.e-7            F
   /
 END
 
@@ -598,7 +625,7 @@ END
 : initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION groundwater
+  TRANSPORT_CONDITION initial_groundwater
   REGION all
 END
 

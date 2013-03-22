@@ -56,6 +56,7 @@ private
   !         123456789+123456789+123456789+1
   public :: SurfRealizCreate, &
             SurfRealizDestroy, &
+            SurfRealizAddWaypointsToList, &
             SurfRealizCreateDiscretization, &
             SurfRealizAddCoupler, &
             SurfRealizAddStrata, &
@@ -1299,6 +1300,121 @@ subroutine SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
                        vec,ivar,isubvar,isubvar1)
 
 end subroutine SurfRealizGetDataset
+
+! ************************************************************************** !
+!> This routine creates waypoints assocated with source/sink, boundary 
+!! condition, etc. and adds to a list
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 03/15/13
+! ************************************************************************** !
+subroutine SurfRealizAddWaypointsToList(surf_realization)
+
+  use Option_module
+  use Waypoint_module
+
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  type(flow_condition_type), pointer :: cur_flow_condition
+  type(flow_sub_condition_type), pointer :: sub_condition
+  type(waypoint_type), pointer :: waypoint, cur_waypoint
+  type(option_type), pointer :: option
+  PetscInt :: itime, isub_condition
+  PetscReal :: temp_real, final_time
+  PetscReal, pointer :: times(:)
+
+  option => surf_realization%option
+  waypoint_list => surf_realization%waypoints
+  nullify(times)
+  
+  ! set flag for final output
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%final) then
+      cur_waypoint%print_output = surf_realization%output_option%print_final
+      exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  ! use final time in conditional below
+  if (associated(cur_waypoint)) then
+    final_time = cur_waypoint%time
+  else
+    option%io_buffer = 'Final time not found in SurfRealizAddWaypointsToList'
+    call printErrMsg(option)
+  endif
+
+  ! add update of flow conditions
+  cur_flow_condition => surf_realization%surf_flow_conditions%first
+  do
+    if (.not.associated(cur_flow_condition)) exit
+    if (cur_flow_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_flow_condition%num_sub_conditions
+        sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
+        !TODO(geh): check if this updated more than simply the flow_dataset (i.e. datum and gradient)
+        !geh: followup - no, datum/gradient are not considered.  Should they be considered?
+        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
+                                          times)
+        if (size(times) > 1000) then
+          option%io_buffer = 'For flow condition "' // &
+            trim(cur_flow_condition%name) // &
+            '" dataset "' // trim(sub_condition%name) // &
+            '", the number of times is excessive for synchronization ' // &
+            'with waypoints.'
+          call printErrMsg(option)
+        endif
+        do itime = 1, size(times)
+          waypoint => WaypointCreate()
+          waypoint%time = times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        deallocate(times)
+        nullify(times)
+      enddo
+    endif
+    cur_flow_condition => cur_flow_condition%next
+  enddo
+      
+  ! add waypoints for periodic output
+  if (surf_realization%output_option%periodic_output_time_incr > 0.d0 .or. &
+      surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
+
+    if (surf_realization%output_option%periodic_output_time_incr > 0.d0) then
+      ! standard output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + surf_realization%output_option%periodic_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+      enddo
+    endif
+    
+    if (surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
+      ! transient observation output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + surf_realization%output_option%periodic_tr_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_tr_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+      enddo
+    endif
+
+  endif
+
+end subroutine SurfRealizAddWaypointsToList
 
 end module Surface_Realization_class
 

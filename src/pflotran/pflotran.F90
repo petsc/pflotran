@@ -187,12 +187,8 @@ program pflotran
     call Init(simulation)
 
 #ifdef SURFACE_FLOW
-    call StepperRun(simulation%realization,simulation%surf_realization, &
-                    simulation%flow_stepper, &
-                    simulation%tran_stepper, &
-                    simulation%surf_flow_stepper, &
-                    init_status)
     call TimestepperInitializeRun(simulation%realization, &
+                                  simulation%surf_realization, &
                                   master_stepper, &
                                   simulation%flow_stepper, &
                                   simulation%tran_stepper, &
@@ -201,11 +197,13 @@ program pflotran
     select case(init_status)
       case(TIMESTEPPER_INIT_PROCEED)
         call  TimestepperExecuteRun(simulation%realization, &
+                                    simulation%surf_realization, &
                                     master_stepper, &
                                     simulation%flow_stepper, &
                                     simulation%tran_stepper, &
                                     simulation%surf_flow_stepper)
         call  TimestepperFinalizeRun(simulation%realization, &
+                                     simulation%surf_realization, &
                                      master_stepper, &
                                      simulation%flow_stepper, &
                                      simulation%tran_stepper, &

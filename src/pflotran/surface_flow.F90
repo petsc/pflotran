@@ -1753,6 +1753,14 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
+      if(surf_global_aux_vars(ghosted_id_up)%head(1)<0.d0 .or. &
+         surf_global_aux_vars(ghosted_id_dn)%head(1)<0.d0) then
+        write(*,*),'In SurfaceFlowFlux: ', surf_global_aux_vars(ghosted_id_up)%head(1), &
+          surf_global_aux_vars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
+          option%io_buffer='stopping: -ve head values '
+          call printErrMsg(option)
+      endif
+
       select case(option%surface_flow_formulation)
         case (KINEMATIC_WAVE)
           option%io_buffer='Explicit Surface flow not implemented for ' // &
@@ -1771,7 +1779,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(sum_connection) = Res(1)
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
 
       if (local_id_up>0) then
         ff_p(local_id_up) = ff_p(local_id_up) - Res(1)/area_p(local_id_up)
@@ -1814,7 +1822,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(sum_connection) = Res(1)
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
       
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)
     enddo
@@ -1852,7 +1860,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       end select
       
       ff_p(local_id) = ff_p(local_id) + qsrc/area_p(local_id)
-
     enddo
     source_sink => source_sink%next
   enddo
@@ -1983,7 +1990,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
                              option,vel,Res)
       end select
 
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
 
 
     enddo
@@ -2016,7 +2023,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
 
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2160,7 +2167,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   end select
   
   flux = head*vel
-  Res(TH_PRESSURE_DOF) = flux*length
+  Res(RICHARDS_PRESSURE_DOF) = flux*length
 
 end subroutine SurfaceFlowBCFlux
 

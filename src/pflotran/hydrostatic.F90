@@ -285,6 +285,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       dist_x = conn_set_ptr%cntr(1,conn_id) - datum(X_DIRECTION)
       dist_y = conn_set_ptr%cntr(2,conn_id) - datum(Y_DIRECTION)
       dist_z = conn_set_ptr%cntr(3,conn_id) - datum(Z_DIRECTION)
+      z_offset = 0.d0
 #endif
     else 
 

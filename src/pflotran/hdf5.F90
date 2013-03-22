@@ -990,15 +990,24 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
   integer, pointer :: int_array_i4(:)
   PetscReal, pointer :: double_array(:)
+  character(len=128) :: scorpio_string
+
+  name = trim(name) // CHAR(0)
 
 #if defined(SCORPIO_WRITE)
+
+  !geh: kludge to get scorpio to write name properly without garbage appended.
+! scorpio_string(1:len_trim(name)) = name
+
+  scorpio_string = trim(name)
+
+  scorpio_string = trim(scorpio_string) // CHAR(0)
 
 !  write(option%io_buffer,'(" Writing dataset block: ", a, " type - ", i, ".")') trim(name), data_type
 !  call printMsg(option)
 !  write(option%io_buffer,'(" HDF_NATIVE_INTEGER is ", i, " and H5T_NATIVE_DOUBLE is ", i, " and H5T_NATIVE_INTEGER is ", i, ".")') HDF_NATIVE_INTEGER, H5T_NATIVE_DOUBLE, H5T_NATIVE_INTEGER
 !  call printMsg(option)
 
-  name = trim(name) // CHAR(0)
   call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
   
   ny_local_X_nz_local = ny_local*nz_local
@@ -1048,8 +1057,9 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
        !   '(a," Writing double dataset1: dimensions: ",i9,i9,i9, " Data type and ndims: ",i9, i9)') & 
        !trim(name), dims(1), dims(2), dims(3), SCORPIO_DOUBLE, rank_mpi
        !call printMsg(option)   
+
        call scorpio_write_dataset_block(double_array, SCORPIO_DOUBLE, rank_mpi, &
-              dims, length, start, file_id, name, &
+              dims, length, start, file_id, trim(scorpio_string), &
               option%iowrite_group_id, ierr)
       !call h5dwrite_f(data_set_id,data_type,double_array,dims, &
                       !hdf5_err,memory_space_id,file_space_id,prop_id)  
@@ -1073,7 +1083,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
        !trim(name), dims(1), dims(2), dims(3), SCORPIO_INTEGER, rank_mpi
        !call printMsg(option)   
       call scorpio_write_dataset_block(int_array_i4, SCORPIO_INTEGER, rank_mpi, &
-              dims, length, start, file_id, name, &
+              dims, length, start, file_id, trim(scorpio_string), &
               option%iowrite_group_id, ierr)
       !!call h5dwrite_f(data_set_id,data_type,int_array_i4,dims, &
       !                hdf5_err,memory_space_id,file_space_id,prop_id)

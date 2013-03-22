@@ -346,6 +346,8 @@ or
 \footnotesize
 {\tt setenv SCORPIO\_DIR <your-iolib-install-dir>} \hfill {\it (tcsh/csh shell)}
 
+\normalsize
+
 To compile the library, check to make sure that the Makefile has the right settings for your machine.
 Typically, the current configuration suffices. So you can just follow the instructions below.
 For advanced users, please edit the section for {\footnotesize\tt pflotran\_machine} in the Makefile as desired.
@@ -378,6 +380,20 @@ This assumes that you have let PETSc build MPI and {\tt mpicc} and {\tt mpif90} 
 \normalsize
 
 This will build the library {\footnotesize\tt libscorpio.a} and copy corresponding files to {\footnotesize\tt SCORPIO\_DIR/lib} and {\footnotesize\tt SCORPIO\_DIR/include} directories.
+
+On machines with MPI installed modify the makefile to use the native {\tt mpi} compilers:
+\footnotesize
+\begin{Verbatim}
+ifeq ($(MACHINE),pflotran_machine)
+  CC=mpicc
+  FC=mpif90
+  LINKER=${FC}
+  CFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -O3
+  FFLAGS+= -I${PETSC_DIR}/${PETSC_ARCH}/include -O3 
+  LDFLAGS+= -Wl,-L${PETSC_DIR}/${PETSC_ARCH}/lib -lhdf5 -lz 
+endif
+\end{Verbatim}
+\normalsize
 
 \item Compile PFLOTRAN:
 

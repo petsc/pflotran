@@ -183,7 +183,6 @@ function PatchCreate()
     nullify(patch%surf_internal_fluxes)
     nullify(patch%surf_boundary_fluxes)
     call SurfaceAuxInit(patch%surf_aux)
-    write(*,*),'>>>>>>>>>>>>>>>>>>>>>> SurfaceAuxInit() >>>>>>>>>>>>>>>> done'
 #endif
 
   PatchCreate => patch
@@ -625,6 +624,17 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   if (option%store_solute_fluxes) then
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
+  endif
+  if (option%store_flowrate) then
+    if(option%store_solute_fluxes) then
+      option%io_buffer='Model does not support store_solute_fluxes and flowrate ' // &
+      ' options together. If you run into this message, complain on pflotran-dev@googlegroups.com'
+      call printErrMsg(option)
+    endif
+    allocate(patch%internal_fluxes(option%nflowdof,1,temp_int))
+    allocate(patch%boundary_fluxes(option%nflowdof,1,temp_int))
+    patch%internal_fluxes = 0.d0
+    patch%boundary_fluxes = 0.d0
   endif
 #ifdef SURFACE_FLOW
   if (patch%surf_or_subsurf_flag == SURFACE) then

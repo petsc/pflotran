@@ -12,8 +12,7 @@ ifdef uo2
 endif
 
 ifdef glenn
-  MYFLAGS += -DUGRID_DEBUG
-  #MYFLAGS += -DGLENN -DTVD_DEBUG
+  MYFLAGS += -DXINGYUAN_BC
 endif
 
 ifdef solid_solution
@@ -118,6 +117,10 @@ endif
 
 ifdef amanzi_bgd
   MYFLAGS += -DAMANZI_BGD
+endif
+
+ifdef store_flowrates
+  MYFLAGS += -DSTORE_FLOWRATES
 endif
 
 CFLAGS   = 

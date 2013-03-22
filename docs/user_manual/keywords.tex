@@ -514,8 +514,10 @@ END
 
 \subsection{Keyword: CHECKPOINT}
 {\noindent\bf Description:}
-Checkpoint files enable the restart of a simulation at any discrete point in simulation where a checkpoint file has been printed.  When the CHECKPOINT card is included in the input deck, checkpoint files are printed every N time steps, where N is the checkpoint frequency, and at the end of the simulation, should the simulation finish or the be shut down properly mid-simulation using the WALL\_CLOCK\_STOP card.  Checkpoint files are named \linebreak {\tt pflotran.chkN}, where N is the number of the timestep when the checkpoint file was printed.
+Checkpoint files enable the restart of a simulation at any discrete point in simulation where a checkpoint file has been printed.  When the {\tt CHECKPOINT} card is included in the input deck, checkpoint files are printed every N time steps, where N is the checkpoint frequency, and at the end of the simulation, should the simulation finish or the be shut down properly mid-simulation using the {\tt WALL\_CLOCK\_STOP} card.  Checkpoint files are named {\tt pflotran.chkN}, where {\tt N} is the number of the timestep when the checkpoint file was printed.
 A file named {\tt restart.chk} will also be written when PFLOTRAN properly terminates execution. One use this file to pick up from where the simulation stopped by increasing the final time.
+
+Checkpointing can be used to start from an initial steady-state solution, but note that porosity and permeability are checkpointed as there are scenarios where they can change over time. To override this behavior add: {\tt OVERWRITE\_RESTART\_FLOW\_PARAMS} to the input file to set porosity/permeability to their read-in values.
 
 {\noindent\bf Input:}
 
@@ -1845,7 +1847,7 @@ LINEAR_SOLVER TRANSPORT
 \item[AREA\_SCALING\_FACTOR] \ {\tt <float>} \ Factor multiplying primary-secondary continua coupling term (default set to 1)
 \end{deflist}
 \item[\keyend]
-\item[RANDOM\_DATASET] \ {\tt permeability\_filename}
+%\item[RANDOM\_DATASET] \ {\tt permeability\_filename}
 \end{deflist}
 \item[\keyend]
 \end{deflist}
@@ -1936,6 +1938,18 @@ dataset_name = 'PermeabilityZ'
 h5dset = h5file.create_dataset(dataset_name, data=rarray3)
 print 'done with ', dataset_name
 \end{Verbatim}
+
+\noindent
+For the full permeability tensor the dataset naming convention is:
+\begin{Verbatim}
+PermeabilityX
+PermeabilityY
+PermeabilityZ
+PermeabilityXY
+PermeabilityXZ
+PermeabilityYZ
+\end{Verbatim}
+
 \end{mdframed}
 
 \hyperlink{target_key}{\return}
@@ -2320,7 +2334,7 @@ END
 \item[NO\_PRINT\_FINAL] \ the final state of the system will not be printed to the output file if this card is activated
 \item[PRINT\_COLUMN\_IDS] print column numbers in observation and mass balance output files
 \item[FORMAT] \ <file format>: \ specify the snapshot in time file type. Options available are: 
-\begin{deflist}{0000000000000000000000}
+\begin{deflist}{0000000000000000000000000}
 \item[TECPLOT BLOCK] -TecPlot block format
 \item[TECPLOT POINT] -TecPlot point format (requires a single processor)
 \item[HDF5] -produces single HDF5 file {\tt pflotran.h5}
@@ -2402,6 +2416,8 @@ END
 \end{deflist}
 %\end{minipage}
 %}
+
+Overwrites checkpointing values with values read in from the input file on restart.
 
 \hyperlink{target_key}{\return}
 
