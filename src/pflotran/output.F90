@@ -757,6 +757,7 @@ subroutine OutputAvegVars(realization_base)
   use Output_Aux_module
   use Output_Common_module, only : OutputGetVarFromArray  
   use Field_module
+  use Grid_module, only : UNSTRUCTURED_GRID
 
   implicit none
   
@@ -781,10 +782,6 @@ subroutine OutputAvegVars(realization_base)
   ! 
   if(option%time<1.d-10) return
   
-  if(.not.associated(output_option%aveg_output_variable_list%first)) then
-    return
-  endif
-  
   dtime = option%time-output_option%aveg_var_time
   output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
   output_option%aveg_var_time = output_option%aveg_var_time + dtime
@@ -795,6 +792,20 @@ subroutine OutputAvegVars(realization_base)
     aveg_plot_flag=PETSC_FALSE
   endif
 
+  if(.not.associated(output_option%aveg_output_variable_list%first)) then
+    if(output_option%print_hdf5_aveg_mass_flowrate.or. &
+       output_option%print_hdf5_aveg_energy_flowrate) then
+      ! There is a possibility to output average-flowrates, thus
+      ! call output subroutine depending on mesh type
+      if (realization_base%discretization%itype == UNSTRUCTURED_GRID) then
+        call OutputHDF5UGridXDMF(realization_base,AVERAGED_VARS)
+      else
+      !  call OutputHDF5(realization_base,AVERAGED_VARS)
+      endif
+    endif
+    return
+  endif
+  
   ivar = 0
   cur_variable => output_option%aveg_output_variable_list%first
   do
@@ -831,7 +842,11 @@ subroutine OutputAvegVars(realization_base)
     if (realization_base%output_option%print_hdf5) then
       call PetscGetTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
-      call OutputHDF5(realization_base, AVERAGED_VARS)
+      if (realization_base%discretization%itype == UNSTRUCTURED_GRID) then
+        call OutputHDF5UGridXDMF(realization_base,AVERAGED_VARS)
+      else
+        call OutputHDF5(realization_base,AVERAGED_VARS)
+      endif      
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
       write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart

@@ -1027,30 +1027,49 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
       enddo
 
     case (AVERAGED_VARS)
-      cur_variable => output_option%aveg_output_variable_list%first
-      do ivar = 1,output_option%aveg_output_variable_list%nvars
-        string = 'Aveg. ' // cur_variable%name
-        if (len_trim(cur_variable%units) > 0) then
-          word = cur_variable%units
-          call HDF5MakeStringCompatible(word)
-          string = trim(string) // ' [' // trim(word) // ']'
-        endif
+      if(associated(output_option%aveg_output_variable_list%first)) then
+        cur_variable => output_option%aveg_output_variable_list%first
+        do ivar = 1,output_option%aveg_output_variable_list%nvars
+          string = 'Aveg. ' // cur_variable%name
+          if (len_trim(cur_variable%units) > 0) then
+            word = cur_variable%units
+            call HDF5MakeStringCompatible(word)
+            string = trim(string) // ' [' // trim(word) // ']'
+          endif
 
-        call DiscretizationGlobalToNatural(discretization,field%avg_vars_vec(ivar), &
-                                           natural_vec,ONEDOF)
-        call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                           natural_vec,grp_id,H5T_NATIVE_DOUBLE)
-        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
-        if (option%myrank == option%io_rank) then
-          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
-        endif
-        cur_variable => cur_variable%next
-      enddo
+          call DiscretizationGlobalToNatural(discretization,field%avg_vars_vec(ivar), &
+                                            natural_vec,ONEDOF)
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                            natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+          att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+          if (option%myrank == option%io_rank) then
+            call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+          endif
+          cur_variable => cur_variable%next
+        enddo
+      endif
 
   end select
 
-  if(output_option%print_hdf5_mass_flowrate.or.output_option%print_hdf5_energy_flowrate) then
-    call WriteHDF5FlowratesUGrid(realization_base,option,grp_id)
+  !Output flowrates
+  if(output_option%print_hdf5_mass_flowrate.or. &
+     output_option%print_hdf5_energy_flowrate.or. &
+     output_option%print_hdf5_aveg_mass_flowrate.or. &
+     output_option%print_hdf5_aveg_energy_flowrate) then
+
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        call OutputGetFlowrates(realization_base)
+        if(output_option%print_hdf5_mass_flowrate.or.&
+           output_option%print_hdf5_energy_flowrate) then
+          call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
+        endif
+      case (AVERAGED_VARS)
+        if(output_option%print_hdf5_aveg_mass_flowrate.or.&
+           output_option%print_hdf5_aveg_energy_flowrate) then
+          call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
+        endif
+    end select
   endif
 
   call VecDestroy(global_vec,ierr)
@@ -2252,7 +2271,7 @@ end subroutine WriteHDF5CoordinatesUGridXDMF
 !!
 !! date: 03/19/2013
 ! ************************************************************************** !
-subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
+subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type)
 
   use hdf5
   use HDF5_module
@@ -2267,6 +2286,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
   use Coupler_module
   use HDF5_Aux_module
   use Output_Aux_module
+  use Field_module
   
   implicit none
 
@@ -2277,6 +2297,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
+  PetscInt :: var_list_type  
 
 #if defined(SCORPIO_WRITE)
   integer:: file_id
@@ -2316,6 +2337,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
   type(coupler_type), pointer :: boundary_condition
   type(ugdm_type),pointer :: ugdm
   type(output_option_type), pointer :: output_option
+  type(field_type), pointer :: field
   
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -2335,8 +2357,13 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
   PetscInt :: ndof
 
   PetscReal, pointer :: flowrates(:,:,:)
-  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr1(:)
+  PetscReal, pointer :: vec_ptr2(:)
   PetscReal, pointer :: double_array(:)
+  PetscReal :: dtime
+
+  PetscBool :: mass_flowrate
+  PetscBool :: energy_flowrate
 
   Vec :: global_flowrates_vec
   Vec :: natural_flowrates_vec
@@ -2351,6 +2378,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
   grid => patch%grid
   ugrid => grid%unstructured_grid
   output_option =>realization_base%output_option
+  field => realization_base%field
 
 #if defined(SCORPIO_WRITE)
   write(*,*),'SCORPIO_WRITE'
@@ -2368,123 +2396,38 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
       call printErrMsg(option)
   end select
 
-  ! Create a flowrate vector in global order
-  call VecCreateMPI(option%mycomm, &
-                    (option%nflowdof*MAX_FACE_PER_CELL + 1)*ugrid%nlmax,&
-                    PETSC_DETERMINE,global_flowrates_vec,ierr)
-
-  ! Create UGDM for
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
-                       (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
-
-  ! Create a flowrate vector in natural order
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
-                           NATURAL,option)
-
-
-  allocate(flowrates(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
-  flowrates = 0.d0
-  call VecGetArrayF90(global_flowrates_vec,vec_ptr,ierr)
-  vec_ptr = 0.d0
-  
-  offset = option%nflowdof*MAX_FACE_PER_CELL+1
-  do local_id = 1,grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    cell_type = ugrid%cell_type(ghosted_id)
-    vec_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
-  enddo
-
-  ! Interior Flowrates Terms -----------------------------------
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      face_id = cur_connection_set%face_id(iconn)
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-      local_id_up = grid%nG2L(ghosted_id_up)
-      local_id_dn = grid%nG2L(ghosted_id_dn)
-      do iface_up = 1,MAX_FACE_PER_CELL
-        if(face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
-      enddo
-      iface_dn=-1
-      if(local_id_dn>0) then
-        do iface_dn = 1,MAX_FACE_PER_CELL
-          if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
-        enddo
-      endif
-      
-      do dof=1,option%nflowdof
-        flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
-        vec_ptr((local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1) = &
-          patch%internal_fluxes(dof,1,sum_connection)
-        if(iface_dn>0) then
-          flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
-          vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
-            -patch%internal_fluxes(dof,1,sum_connection)
-        endif
-      enddo
-      
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo
-
-  ! Boundary Flowrates Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0
-  do 
-    if (.not.associated(boundary_condition)) exit
-
-    cur_connection_set => boundary_condition%connection_set
-    sum_connection = 0
-
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      face_id = cur_connection_set%face_id(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-      local_id_dn = grid%nG2L(ghosted_id_dn)
-      do iface_dn = 1,MAX_FACE_PER_CELL
-        if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
-      enddo
-
-      do dof=1,option%nflowdof
-        flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
-        vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
-          -patch%internal_fluxes(dof,1,sum_connection)
-      enddo
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  deallocate(flowrates)
-
-  call VecRestoreArrayF90(global_flowrates_vec,vec_ptr,ierr)
-
-  ! Scatter flowrate from Global --> Natural order
-  call VecScatterBegin(ugdm%scatter_gton,global_flowrates_vec,natural_flowrates_vec, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(ugdm%scatter_gton,global_flowrates_vec,natural_flowrates_vec, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-  call VecGetLocalSize(natural_flowrates_vec,local_size,ierr)
+  call VecGetLocalSize(field%flowrate_inst,local_size,ierr)
   local_size = local_size/(MAX_FACE_PER_CELL+1)/option%nflowdof
 
   allocate(double_array(local_size*(MAX_FACE_PER_CELL+1)))
   double_array = 0.d0
-  
-  call VecGetArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+
+  offset = option%nflowdof*MAX_FACE_PER_CELL+1
+
+  select case (var_list_type)
+    case (INSTANTANEOUS_VARS)
+      call VecGetArrayF90(field%flowrate_inst,vec_ptr1,ierr)
+      mass_flowrate = output_option%print_hdf5_mass_flowrate
+      energy_flowrate = output_option%print_hdf5_energy_flowrate
+    case (AVERAGED_VARS)
+      call VecGetArrayF90(field%flowrate_inst,vec_ptr1,ierr)
+      call VecGetArrayF90(field%flowrate_aveg,vec_ptr2,ierr)
+      mass_flowrate = output_option%print_hdf5_aveg_mass_flowrate
+      energy_flowrate = output_option%print_hdf5_aveg_energy_flowrate
+  end select
+
 
   do dof = 1,option%nflowdof
+
+    if(dof==1 .and. (.not.mass_flowrate)) exit
+    if(dof==2 .and. (.not.energy_flowrate)) exit
 
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         string = "Mass_Flowrate [kg_s]" // CHAR(0)
       case(TH_MODE)
         if(dof==1) then
-          string = "Mass_Flowrate" // CHAR(0)
+          string = "Mass_Flowrate [kg_s]" // CHAR(0)
         else
           string = "Energy_Flowrate [J_s]" // CHAR(0)
         endif
@@ -2493,8 +2436,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
         call printErrMsg(option)
     end select
 
-    if(option%iflowmode==TH_MODE.and.dof==1 .and. (.not.output_option%print_hdf5_mass_flowrate)) exit
-    if(option%iflowmode==TH_MODE.and.dof==2 .and. (.not.output_option%print_hdf5_energy_flowrate)) exit
+    if(var_list_type==AVERAGED_VARS) string = 'Aveg_' // trim(string) // CHAR(0)
 
     ! memory space which is a 1D vector
     rank_mpi = 1
@@ -2543,14 +2485,34 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
                             hdf5_err)
 #endif
 
-    do i=1,local_size
-      double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
-        vec_ptr((i-1)*offset+(dof-1)*MAX_FACE_PER_CELL+1)
-      do iface = 1,MAX_FACE_PER_CELL
-        double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
-        vec_ptr((i-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface + 1)
-      enddo
-    enddo
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+      
+        do i=1,local_size
+          ! Num. of faces for each cell (Note: Use vec_ptr1 not vec_ptr2)
+          double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
+            vec_ptr1((i-1)*offset+(dof-1)*MAX_FACE_PER_CELL+1)
+          ! Flowrate values for each face
+          do iface = 1,MAX_FACE_PER_CELL
+            double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
+            vec_ptr1((i-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface + 1)
+          enddo
+        enddo
+
+      case (AVERAGED_VARS)
+
+        do i=1,local_size
+          ! Num. of faces for each cell (Note: Use vec_ptr1 not vec_ptr2)
+          double_array((i-1)*(MAX_FACE_PER_CELL+1)+1) = &
+            vec_ptr1((i-1)*offset+(dof-1)*MAX_FACE_PER_CELL+1)
+          ! Divide the flowrate values by integration 'time'
+          do iface = 1,MAX_FACE_PER_CELL
+            double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
+            vec_ptr2((i-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface + 1)/ &
+            output_option%periodic_output_time_incr
+          enddo
+        enddo
+    end select
 
     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
     call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
@@ -2563,16 +2525,10 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id)
     call h5sclose_f(file_space_id,hdf5_err)
 
   enddo
-  deallocate(double_array)
 
-  call VecRestoreArrayF90(natural_flowrates_vec,vec_ptr,ierr)
-
-  call VecDestroy(global_flowrates_vec,ierr)
-  call VecDestroy(natural_flowrates_vec,ierr)
-  call UGridDMDestroy(ugdm)
 #endif
-! if defined(SCORPIO_WRITE)
-  
+! #ifdef SCORPIO_WRITE
+
 end subroutine WriteHDF5FlowratesUGrid
 
 end module Output_HDF5_module

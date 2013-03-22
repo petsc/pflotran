@@ -1421,6 +1421,8 @@ subroutine InitReadInput(simulation)
   PetscBool :: flux_velocities
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
+  PetscBool :: aveg_mass_flowrate
+  PetscBool :: aveg_energy_flowrate
   
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
@@ -1992,6 +1994,8 @@ subroutine InitReadInput(simulation)
         flux_velocities = PETSC_FALSE
         mass_flowrate = PETSC_FALSE
         energy_flowrate = PETSC_FALSE
+        aveg_mass_flowrate = PETSC_FALSE
+        aveg_energy_flowrate = PETSC_FALSE
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
@@ -2250,6 +2254,13 @@ subroutine InitReadInput(simulation)
               mass_flowrate = PETSC_TRUE
             case('ENERGY_FLOWRATE')
               energy_flowrate = PETSC_TRUE
+            case('AVERAGE_FLOWRATES','AVERAGE_FLOWRATE')
+              aveg_mass_flowrate = PETSC_TRUE
+              aveg_energy_flowrate = PETSC_TRUE
+            case('AVERAGE_MASS_FLOWRATE')
+              aveg_mass_flowrate = PETSC_TRUE
+            case('AVERAGE_ENERGY_FLOWRATE')
+              aveg_energy_flowrate = PETSC_TRUE
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
@@ -2288,15 +2299,25 @@ subroutine InitReadInput(simulation)
             call printErrMsg(option)
           endif
         endif
-        if (mass_flowrate.or.energy_flowrate) then
+        if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
           if (output_option%print_hdf5) then
 #ifndef STORE_FLOWRATES
             option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
               'compile with -DSTORE_FLOWRATES'
             call printErrMsg(option)
 #endif
-           output_option%print_hdf5_mass_flowrate = mass_flowrate
-           output_option%print_hdf5_energy_flowrate = energy_flowrate
+            output_option%print_hdf5_mass_flowrate = mass_flowrate
+            output_option%print_hdf5_energy_flowrate = energy_flowrate
+            output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
+            output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
+            if(aveg_mass_flowrate.or.aveg_energy_flowrate) then
+              if(output_option%periodic_output_time_incr==0.d0) then
+                option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
+                  'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
+                  ' PERIODIC TIME being set.'
+                call printErrMsg(option)
+              endif
+            endif
            option%store_flowrate = PETSC_TRUE
           else
             option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &

@@ -3453,7 +3453,11 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                   Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
-     
+#ifdef STORE_FLOWRATES
+      patch%internal_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)
+      patch%internal_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
+#endif
+
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
         istart = iend-option%nflowdof+1
@@ -3523,6 +3527,10 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
                                 distance_gravity,option, &
                                 v_darcy,Diff_dn,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
+#ifdef STORE_FLOWRATES
+      patch%boundary_fluxes(TH_PRESSURE_DOF,1,sum_connection) = Res(TH_PRESSURE_DOF)
+      patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) = Res(TH_TEMPERATURE_DOF)
+#endif
 
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1

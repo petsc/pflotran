@@ -177,6 +177,7 @@ subroutine RealizationCreateDiscretization(realization)
   use MFD_module
   use Coupler_module
   use Discretization_module
+  use Unstructured_Cell_module
   
   implicit none
   
@@ -462,6 +463,26 @@ subroutine RealizationCreateDiscretization(realization)
     enddo
   endif
        
+  ! Allocate vectors to hold flowrate quantities
+  if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+     realization%output_option%print_hdf5_aveg_energy_flowrate.or. &
+     realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+     realization%output_option%print_hdf5_aveg_energy_flowrate) then
+
+    call VecCreateMPI(option%mycomm, &
+         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+          PETSC_DETERMINE,field%flowrate_inst,ierr)
+    call VecSet(field%flowrate_inst,0.d0,ierr)
+
+    ! If average flowrate has to be saved, create a vector for it
+    if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+       realization%output_option%print_hdf5_aveg_energy_flowrate) then
+      call VecCreateMPI(option%mycomm, &
+          (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+          PETSC_DETERMINE,field%flowrate_aveg,ierr)
+    call VecSet(field%flowrate_aveg,0.d0,ierr)
+    endif
+  endif
 
 end subroutine RealizationCreateDiscretization
 
