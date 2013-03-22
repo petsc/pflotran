@@ -22,7 +22,7 @@ contains
 ! ************************************************************************** !
 subroutine StochasticInit(stochastic,option)
 
-  use Simulation_New_module
+  use Simulation_module
   use Option_module
   use Input_module
   
@@ -136,10 +136,13 @@ end subroutine StochasticInit
 ! ************************************************************************** !
 subroutine StochasticRun(stochastic,option)
 
-  use Simulation_New_module
+  use Simulation_module
+  use Realization_class
+  use Timestepper_module
   use Option_module
   use Init_module
   use Logging_module
+  use Regression_module
 
   implicit none
 
