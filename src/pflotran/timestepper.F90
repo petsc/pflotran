@@ -55,7 +55,6 @@ module Timestepper_module
     type(solver_type), pointer :: solver
     
     type(waypoint_type), pointer :: cur_waypoint
-    PetscBool :: match_waypoint
 
     type(convergence_context_type), pointer :: convergence_context
 
@@ -140,7 +139,6 @@ function TimestepperCreate()
   nullify(stepper%solver)
   nullify(stepper%convergence_context)
   nullify(stepper%cur_waypoint)
-  stepper%match_waypoint = PETSC_FALSE
   
   stepper%solver => SolverCreate()
   
@@ -454,6 +452,13 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
     call StepperJumpStart(realization)
   endif
   
+  ! pushed in Init()
+  call PetscLogStagePop(ierr)
+  option%init_stage = PETSC_FALSE
+
+  ! popped in TimeStepperFinalizeRun()
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
+
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then
     call printMsg(option,'')
@@ -469,7 +474,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(realization,master_stepper%steps)
+  call OutputInit(master_stepper%steps)
 #ifdef SURFACE_FLOW
   call OutputSurfaceInit(realization,master_stepper%steps)
 #endif
@@ -1692,111 +1697,6 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   endif
   
 end subroutine StepperSetTargetTimes
-
-! ************************************************************************** !
-!
-! StepperSetTargetTimes: Sets target time for flow and transport solvers
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
-subroutine StepperSetTargetTime(timestepper,sync_time,option)
-
-  use Option_module
-  
-  implicit none
-
-  type(stepper_type), pointer :: timestepper
-  PetscReal :: sync_time
-  type(option_type) :: option
-  
-  PetscReal :: target_time
-  PetscReal :: dt
-  PetscReal :: dt_max
-  PetscInt :: cumulative_time_steps
-  PetscInt :: max_time_step
-  PetscReal :: tolerance
-  type(waypoint_type), pointer :: cur_waypoint
-
-  ! if the maximum time step size decreased in the past step, need to set
-  ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-  if (timestepper%match_maypoint) then
-    option%dt = min(timestepper%prev_dt,timestepper%dt_max)
-    timestepper%match_maypoint = PETSC_FALSE
-  endif
-  
-  dt = option%dt
-  timestepper%prev_dt = dt
-  cur_waypoint => timestepper%cur_waypoint
-  ! dt_max must be set from current waypoint and not updated below
-  dt_max = cur_waypoint%dt_max
-  cumulative_time_steps = timestepper%steps
-  max_time_step = timestepper%max_time_step
-  tolerance = timestepper%time_step_tolerance
-  timestepper%prev_dt = timestepper%dt
-  target_time = timestepper%target_time + dt
-
-  !TODO(geh): move to process model initialization stage
-  ! For the case where the second waypoint is a printout after the first time step
-  ! we must increment the waypoint beyond the first (time=0.) waypoint.  Otherwise
-  ! the second time step will be zero. - geh
-  if (cur_waypoint%time < 1.d-40) then
-    cur_waypoint => cur_waypoint%next
-  endif
-  
-  ! If a waypoint calls for a plot or change in src/sinks, adjust time step
-  ! to match waypoint.
-  do ! we cycle just in case the next waypoint is beyond the target_time
-    if (target_time > sync_time .or. &
-        (target_time + tolerance*dt >= cur_waypoint%time .and. &
-         (cur_waypoint%update_conditions &
-         .or. &
-!         cur_waypoint%print_output .or. &
-!         cur_waypoint%print_tr_output .or. &
-         cur_waypoint%final &
-          ))) then
-      max_time = min(sync_time,cur_waypoint%time)
-      ! decrement by time step size
-      target_time = target_time - dt
-      ! set new time step size based on max time
-      dt = max_time - target_time
-      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
-        dt = dt_max                    ! error from waypoint%time - time
-        target_time = target_time + dt
-      else
-        target_time = max_time
-        timestepper%match_time = PETSC_TRUE
-        if (max_time-cur_waypoint%time < 1.d-5) then
-          cur_waypoint => cur_waypoint%next
-        endif
-!        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-!        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
-      endif
-      exit
-    else if (target_time > cur_waypoint%time) then
-      cur_waypoint => cur_waypoint%next
-    else
-      exit
-    endif
-  enddo
-  ! subtract 1 from max_time_steps since we still have to complete the current
-  ! time step
-
-  if (cumulative_time_steps >= max_time_step-1) then
-    plot_flag = PETSC_TRUE
-    nullify(cur_waypoint)
-  endif
-
-  ! update maximum time step size to current waypoint value
-  if (associated(cur_waypoint)) then
-    dt_max = cur_waypoint%dt_max
-  endif
-  
-  option%dt = dt
-  timestepper%target_time = target_time
-  timestepper%cur_waypoint => cur_waypoint
-  
- end subroutine StepperSetTargetTime
 
 ! ************************************************************************** !
 !> This subroutine sets target time for surface flow.
@@ -3772,9 +3672,9 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
 
   ! print initial condition output if not a restarted sim
   if (associated(flow_stepper)) then
-    call OutputInit(realization,flow_stepper%steps)
+    call OutputInit(flow_stepper%steps)
   else
-    call OutputInit(realization,tran_stepper%steps)
+    call OutputInit(tran_stepper%steps)
   endif
   transient_plot_flag = PETSC_FALSE
   plot_flag = PETSC_TRUE
