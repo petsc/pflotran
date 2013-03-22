@@ -2,6 +2,7 @@ module Process_Model_Coupler_module
 
   use Process_Model_Base_class
   use Timestepper_module
+  use Option_module
 
   implicit none
 
@@ -10,20 +11,20 @@ module Process_Model_Coupler_module
   private
 
   type, public :: process_model_coupler_type
+    type(option_type), pointer :: option
     type(stepper_type), pointer :: timestepper
     class(process_model_base_type), pointer :: process_model_list
     type(process_model_coupler_type), pointer :: next
   contains
     procedure, public :: InitializeRun
-    procedure, public :: RunTo
+    procedure, public :: RunTo => RunToTime
     procedure, public :: FinalizeRun
     procedure, public :: Output
     procedure, public :: UpdateSolution => PMCUpdateSolution
     procedure, public :: Destroy
   end type process_model_coupler_type
   
-  public :: ProcessModelCouplerCreate, &
-            ProcessModelCouplerDestroy
+  public :: ProcessModelCouplerCreate
   
 contains
 
@@ -44,6 +45,7 @@ function ProcessModelCouplerCreate()
   type(process_model_coupler_type), pointer :: process_model_coupler
   
   allocate(process_model_coupler)
+  nullify(process_model_coupler%option)
   nullify(process_model_coupler%timestepper)
   nullify(process_model_coupler%process_model_list)
   nullify(process_model_coupler%next)
@@ -65,7 +67,7 @@ subroutine ProcModelCouplerSetTimestepper(this,timestepper)
   
   implicit none
   
-  class(process_model_base_type) :: this
+  class(process_model_coupler_type) :: this
   type(stepper_type), pointer :: timestepper
 
   this%timestepper => timestepper
@@ -83,9 +85,9 @@ recursive subroutine InitializeRun(this)
 
   implicit none
   
-  type(process_model_coupler_type), pointer :: this
+  class(process_model_coupler_type) :: this
   
-  type(process_model_base_type), pointer :: cur_process_model
+  class(process_model_base_type), pointer :: cur_process_model
   
   cur_process_model => this%process_model_list
   do
@@ -105,19 +107,36 @@ end subroutine InitializeRun
 ! ************************************************************************** !
 recursive subroutine RunToTime(this,sync_time)
 
+  use Timestepper_module
+  
   implicit none
   
-  type(process_model_coupler_type), pointer :: this
-  PetscReal :: target_time
+  class(process_model_coupler_type) :: this
+  PetscReal :: sync_time
+  PetscBool :: failure
   
   do
-    call StepperSetTargetTime(this%timestepper,sync_time,option)
-
-  
-    
+    if (this%option%time >= sync_time) exit
+    call StepperSetTargetTime(this%timestepper,sync_time,this%option)
+    call StepperStepDT(this%timestepper,this%process_model_list,failure)
   enddo
   
 end subroutine RunToTime
+
+! ************************************************************************** !
+!
+! PMCUpdateSolution: 
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMCUpdateSolution(this)
+
+  implicit none
+  
+  class(process_model_coupler_type) :: this
+  
+end subroutine PMCUpdateSolution
 
 ! ************************************************************************** !
 !
@@ -130,10 +149,9 @@ recursive subroutine FinalizeRun(this)
 
   implicit none
   
-  type(process_model_coupler_type), pointer :: this
+  class(process_model_coupler_type) :: this
   
 end subroutine FinalizeRun
-
 
 ! ************************************************************************** !
 !
@@ -142,14 +160,21 @@ end subroutine FinalizeRun
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine Output(this,plot_flag,transient_plot_flag)
+recursive subroutine Output(this)
 
   implicit none
   
-  type(process_model_coupler_type), pointer :: this
+  class(process_model_coupler_type) :: this
   
-  call Output(this%realization,plot_flag,transient_plot_flag)
+  class(process_model_base_type), pointer :: cur_process_model
   
+  cur_process_model => this%process_model_list
+  do
+    if (.not.associated(cur_process_model)) exit
+!    call Output(cur_process_model%realization,plot_flag,transient_plot_flag)
+    cur_process_model => cur_process_model%next
+  enddo
+    
 end subroutine Output
 
 ! ************************************************************************** !
@@ -159,30 +184,25 @@ end subroutine Output
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine Destroy(this)
+recursive subroutine Destroy(this)
 
   use Utility_module, only: DeallocateArray 
 
   implicit none
   
-  type(process_model_coupler_type), pointer :: this
+  class(process_model_coupler_type) :: this
   
-  if (.not.associated(process_model_coupler)) return
-
-  if (associated(this%below)) then
-    call this%below%Destroy()
-  endif  
-  if (associated(this%next) then
+  if (associated(this%next)) then
     call this%next%Destroy()
   endif 
   
-  if (associated(cur_process_model)) then
+  if (associated(this%process_model_list)) then
     call this%process_model_list%Destroy()
   endif
 
-  deallocate(process_model_coupler)
-  nullify(process_model_coupler)
+!  deallocate(process_model_coupler)
+!  nullify(process_model_coupler)
   
-end subroutine ProcessModelCouplerDestroy
+end subroutine Destroy
   
 end module Process_Model_Coupler_module

@@ -106,6 +106,7 @@ module Option_module
     PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt ! The size of the time step.
     PetscBool :: match_waypoint
+    PetscReal :: refactor_dt
   
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
@@ -482,6 +483,7 @@ subroutine OptionInitRealization(option)
   option%tran_weight_t1 = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
+  option%refactor_dt = 0.d0
   option%match_waypoint = PETSC_FALSE
 
   option%io_handshake_buffer_size = 0

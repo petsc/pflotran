@@ -25,11 +25,13 @@ module Process_Model_RT_class
   contains
     procedure, public :: Init => PMRTInit
     procedure, public :: PMRTSetRealization
-    procedure, public :: InitializeExecution => PMRTInitializeExecution
-    procedure, public :: FinalizeExecution => PMRTFinalizeExecution
+    procedure, public :: InitializeRun => PMRTInitializeRun
+    procedure, public :: FinalizeRun => PMRTFinalizeRun
     procedure, public :: InitializeTimeStep => PMRTInitializeTimestep
     procedure, public :: Residual => PMRTResidual
     procedure, public :: Jacobian => PMRTJacobian
+    procedure, public :: UpdateTimestep => PMRTUpdateTimestep
+    procedure, public :: UpdatePreSolve => PMRTUpdatePreSolve
     procedure, public :: CheckUpdatePre => PMRTCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMRTCheckUpdatePost
     procedure, public :: TimeCut => PMRTTimeCut
@@ -38,6 +40,10 @@ module Process_Model_RT_class
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: Destroy => PMRTDestroy
   end type process_model_rt_type
+
+  type :: realization_type
+    PetscInt :: i
+  end type realization_type
   
   public :: PMRTCreate
 
@@ -85,6 +91,7 @@ subroutine PMRTInit(this)
   
   class(process_model_rt_type) :: this
 
+#ifdef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -96,7 +103,8 @@ subroutine PMRTInit(this)
   end select
   call this%comm1%SetDM(this%realization%discretization%dm_1dof)
   call this%commN%SetDM(this%realization%discretization%dm_ntrandof)
-  
+#endif
+
 end subroutine PMRTInit
 
 
@@ -133,9 +141,76 @@ subroutine PMRTInitializeTimestep(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef SIMPLIFY 
   call RTSetup(this%realization)
+#endif
 
-end subroutine PMRTInitializeTimestep 
+end subroutine PMRTInitializeTimestep
+
+! ************************************************************************** !
+!
+! PMRTUpdatePreSolve: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRTUpdatePreSolve(this)
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+  
+#ifdef SIMPLIFY 
+  ! update tortuosity
+  call this%comm1%LocalToLocal(this%realization%field%tortuosity_loc, &
+                               this%realization%field%tortuosity_loc)
+#endif
+
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," REACTIVE TRANSPORT ",58("="))')
+  endif
+  
+end subroutine PMRTUpdatePreSolve
+
+! ************************************************************************** !
+!
+! PMRTUpdateTimestep: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
+                              num_newton_iterations,tfac)
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+  PetscReal :: dt
+  PetscReal :: dt_max
+  PetscInt :: iacceleration
+  PetscInt :: num_newton_iterations
+  PetscReal :: tfac(:)
+  
+  PetscReal :: dtt
+  
+  dtt = dt
+  if (num_newton_iterations <= iacceleration) then
+    if (num_newton_iterations <= size(tfac)) then
+      dtt = tfac(num_newton_iterations) * dt
+    else
+      dtt = 0.5d0 * dt
+    endif
+  else
+!       dtt = 2.d0 * dt
+    dtt = 0.5d0 * dt
+  endif
+
+  if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
+  if (dtt > dt_max) dtt = dt_max
+  ! geh: see comment above under flow stepper
+  dt = dtt
+
+end subroutine PMRTUpdateTimestep
 
 ! ************************************************************************** !
 !
@@ -148,28 +223,31 @@ recursive subroutine PMRTInitializeRun(this)
 
   implicit none
   
-  type(process_model_type), pointer :: this
+  class(process_model_rt_type) :: this
   
   ! restart
-  
+#if 0  
   if (transport_read .and. option%overwrite_restart_transport) then
     call CondControlAssignTranInitCond(realization)  
   endif
+#endif  
   
+#ifdef SIMPLIFY 
   call RTUpdateSolution(this%realization)
   
-  if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
+  if (this%option%jumpstart_kinetic_sorption .and. &
+      this%option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
-    if (.not. option%restart_flag) then
-      option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
+    if (.not. this%option%restart_flag) then
+      this%option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
         'restarted simulation.  ReactionEquilibrateConstraint() will ' // &
         'appropriately set sorbed initial concentrations for a normal ' // &
         '(non-restarted) simulation.'
-      call printErrMsg(option)
+      call printErrMsg(this%option)
     endif
     call RTJumpStartKineticSorption(this%realization)
   endif
-  
+#endif
   ! check on MAX_STEPS < 0 to quit after initialization.
     
 end subroutine PMRTInitializeRun
@@ -185,12 +263,12 @@ recursive subroutine PMRTFinalizeRun(this)
 
   implicit none
   
-  type(process_model_type), pointer :: this
+  class(process_model_rt_type) :: this
   
   ! do something here
   
-  if (this%next) then
-    this%next%FinalizeRun()
+  if (associated(this%next)) then
+    call this%next%FinalizeRun()
   endif  
   
 end subroutine PMRTFinalizeRun
@@ -212,8 +290,10 @@ subroutine PMRTResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY 
   call RTResidual(snes,xx,r,this%realization,ierr)
-  
+#endif
+
 end subroutine PMRTResidual
 
 ! ************************************************************************** !
@@ -234,8 +314,10 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY 
   call RTJacobian(snes,xx,A,B,flag,this%realization,ierr)
-  
+#endif
+
 end subroutine PMRTJacobian
     
 ! ************************************************************************** !
@@ -256,8 +338,10 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY 
   call RTCheckUpdate(line_search,P,dP,changed,this%realization,ierr)
-  
+#endif
+
 end subroutine PMRTCheckUpdatePre
     
 ! ************************************************************************** !
@@ -298,7 +382,9 @@ subroutine PMRTTimeCut(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef SIMPLIFY 
   call RTTimeCut(this%realization)
+#endif
 
 end subroutine PMRTTimeCut
     
@@ -315,7 +401,9 @@ subroutine PMRTUpdateSolution(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef SIMPLIFY 
   call RTUpdateSolution(this%realization)
+#endif
 
 end subroutine PMRTUpdateSolution     
 
@@ -332,7 +420,9 @@ subroutine PMRTMaxChange(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef SIMPLIFY 
   call RTMaxChange(this%realization)
+#endif
 
 end subroutine PMRTMaxChange
     
@@ -350,7 +440,9 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
   class(process_model_rt_type) :: this
   PetscReal :: mass_balance_array(:)
   
+#ifdef SIMPLIFY 
   call RTComputeMassBalance(this%realization,mass_balance_array)
+#endif
 
 end subroutine PMRTComputeMassBalance
 
@@ -367,8 +459,10 @@ subroutine PMRTDestroy(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef SIMPLIFY 
   call RTDestroy(this%realization)
-  
+#endif
+
 end subroutine PMRTDestroy
   
 end module Process_Model_RT_class

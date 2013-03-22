@@ -585,19 +585,22 @@ end subroutine WaypointListPrint
 ! date: 03/19/13
 !
 ! ************************************************************************** !
-function WaypointListCopy(list,option,output_option)
+function WaypointListCopy(list)
 
   use Option_module
   use Output_Aux_module
 
   implicit none
   
-  type(waypoint_list_type), pointer :: new_list
+  type(waypoint_list_type), pointer :: WaypointListCopy
   
   type(waypoint_list_type), pointer :: list
   type(waypoint_type), pointer :: new_waypoint
   type(waypoint_type), pointer :: prev_new_waypoint
   
+  type(waypoint_list_type), pointer :: new_list
+  type(waypoint_type), pointer :: cur_waypoint
+
   new_list => WaypointListCreate()
   
   nullify(prev_new_waypoint)
@@ -616,6 +619,8 @@ function WaypointListCopy(list,option,output_option)
     nullify(new_waypoint)
     cur_waypoint => cur_waypoint%next
   enddo
+  
+  WaypointListCopy => new_list
 
 end function WaypointListCopy
 

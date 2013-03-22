@@ -1,8 +1,11 @@
-module Simulation_New_module
+module Simulation_module
 
   use Process_Model_Coupler_module
   use Option_module
-
+  use Output_Aux_module
+  use Synchronizer_module
+  use Process_Model_Coupler_module
+  
   implicit none
 
 #include "definitions.h"
@@ -20,14 +23,8 @@ module Simulation_New_module
     procedure, public :: FinalizeRun
   end type simulation_type
   
-  interface SimulationCreate
-    module procedure SimulationCreate1
-    module procedure SimulationCreate2
-  end interface
-  
   public :: SimulationCreate, &
             SimulationDestroy, &
-            SimulationResetTimeSteppers, &
             SimulationCreateProcessorGroups
   
 contains
@@ -55,6 +52,8 @@ function SimulationCreate(option)
   nullify(simulation%output_option)
   nullify(simulation%synchronizer)
   nullify(simulation%process_model_coupler_list)
+  
+  SimulationCreate => simulation
   
 end function SimulationCreate
 
@@ -104,98 +103,6 @@ end subroutine SimulationCreateProcessorGroups
 
 ! ************************************************************************** !
 !
-! SimulationResetTimeSteppers: Sets time steppers back to initial settings
-! author: Glenn Hammond
-! date: 01/27/11
-!
-! ************************************************************************** !
-subroutine SimulationResetTimeSteppers(simulation)
-
-  use Timestepper_module
-
-  implicit none
-
-  type(simulation_type) :: simulation
-
-  PetscReal :: dt_min
-  PetscReal :: flow_dt_min = 0.d0
-  PetscReal :: tran_dt_min = 0.d0
-
-  simulation%option%io_buffer = 'Refactor SimulationResetTimeSteppers'
-  call printErrMsg(option)
-
-#if 0  
-  use Timestepper_module
-
-  implicit none
-
-  type(simulation_type) :: simulation
-
-  PetscReal :: dt_min
-  PetscReal :: flow_dt_min = 0.d0
-  PetscReal :: tran_dt_min = 0.d0
-#ifdef SURFACE_FLOW
-  PetscReal :: surf_flow_dt_min = 0.d0
-#endif
-
-  if (associated(simulation%flow_stepper)) &
-    flow_dt_min = simulation%flow_stepper%dt_min
-  if (associated(simulation%tran_stepper)) &
-    tran_dt_min = simulation%tran_stepper%dt_min
-#ifdef SURFACE_FLOW
-  if (associated(simulation%surf_flow_stepper)) &
-    surf_flow_dt_min = simulation%surf_flow_stepper%dt_min
-#endif
-
-  dt_min = max(flow_dt_min,tran_dt_min)
-#ifdef SURFACE_FLOW
-  dt_min = max(flow_dt_min,tran_dt_min,surf_flow_dt_min)
-#endif
-
-  simulation%realization%option%flow_time = 0.d0
-  simulation%realization%option%flow_dt = dt_min
-  simulation%realization%option%tran_time = 0.d0
-  simulation%realization%option%tran_dt = dt_min
-  simulation%realization%option%match_waypoint = PETSC_FALSE
-
-  simulation%realization%output_option%plot_number = 0
-
-  if (associated(simulation%flow_stepper)) then
-    simulation%flow_stepper%cur_waypoint => &
-      simulation%realization%waypoints%first
-    call TimestepperReset(simulation%flow_stepper,dt_min)
-  endif
-  if (associated(simulation%tran_stepper)) then
-    simulation%tran_stepper%cur_waypoint => &
-      simulation%realization%waypoints%first
-    call TimestepperReset(simulation%tran_stepper,dt_min)
-  endif
-#ifdef SURFACE_FLOW
-  if (associated(simulation%surf_flow_stepper)) then
-    simulation%surf_flow_stepper%cur_waypoint => &
-      simulation%realization%waypoints%first
-    call TimestepperReset(simulation%surf_flow_stepper,dt_min)
-
-    simulation%surf_realization%option%flow_time = 0.d0
-    simulation%surf_realization%option%flow_dt = dt_min
-    simulation%surf_realization%option%tran_time = 0.d0
-    simulation%surf_realization%option%tran_dt = dt_min
-    simulation%surf_realization%option%match_waypoint = PETSC_FALSE
-
-    simulation%surf_realization%output_option%plot_number = 0
-
-    simulation%surf_flow_stepper%cur_waypoint => &
-      simulation%surf_realization%waypoints%first
-    call TimestepperReset(simulation%surf_flow_stepper,dt_min)
-  endif
-
-#endif
-#endif
-  
-end subroutine SimulationResetTimeSteppers
-
-! ************************************************************************** !
-!
 ! InitializeRun: Initializes simulation
 ! author: Glenn Hammond
 ! date: 03/18/13
@@ -207,16 +114,14 @@ subroutine InitializeRun(this)
 
   implicit none
   
-  type(simulation_type) :: this
-  
-  type(option_type), pointer :: option
+  class(simulation_type) :: this
+
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler
   PetscErrorCode :: ierr
-  
-  option => this%option
   
   cur_process_model_coupler => this%process_model_coupler_list
   do
-    if (.not.associated(process_model_coupler_list)) exit
+    if (.not.associated(cur_process_model_coupler)) exit
     call cur_process_model_coupler%InitializeRun()
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
@@ -225,19 +130,19 @@ subroutine InitializeRun(this)
   !           solution composition, etc.).
   
   !TODO(geh): replace integer arguments with logical
-  if (option%restart) then
+  if (this%option%restart_flag) then
     call OutputInit(1) ! number greater than 0
   else
     call OutputInit(0)
   endif
   
-  if (output_option%print_initial) then
+  if (this%output_option%print_initial) then
     cur_process_model_coupler => this%process_model_coupler_list
     do
-      if (.not.associated(process_model_coupler_list)) exit
+      if (.not.associated(cur_process_model_coupler)) exit
       ! arg1 = plot_flag
       ! arg2 = transient_plot_flag
-      call cur_process_model_coupler%Output(PETSC_TRUE,PETSC_TRUE)
+!      call cur_process_model_coupler%Output(PETSC_TRUE,PETSC_TRUE)
       cur_process_model_coupler => cur_process_model_coupler%next
     enddo
   endif
@@ -264,9 +169,9 @@ subroutine ExecuteRun(this)
 
   implicit none
   
-  type(simulation_type) :: this
+  class(simulation_type) :: this
   
-  call this%synchronizer%ExecuteRun()
+  call SynchronizerRunToTime(this%synchronizer,0.d0)
   
 end subroutine ExecuteRun
 
@@ -281,11 +186,13 @@ subroutine FinalizeRun(this)
 
   implicit none
   
-  type(simulation_type) :: this
+  class(simulation_type) :: this
+  
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler
   
   cur_process_model_coupler => this%process_model_coupler_list
   do
-    if (.not.associated(process_model_coupler_list)) exit
+    if (.not.associated(cur_process_model_coupler)) exit
     call cur_process_model_coupler%FinalizeRun()
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
@@ -311,39 +218,9 @@ subroutine SimulationDestroy(simulation)
   
   if (.not.associated(simulation)) return
   
-  !TODO(geh): destroy all kinds of objects
-  
-#if 0  
-  if (simulation%realization%option%nflowdof > 0) then
-    select case(simulation%realization%option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsDestroy(simulation%realization)
-      case(G_MODE)
-        call GeneralDestroy(simulation%realization)
-    end select
-  endif
-
-  if (simulation%realization%option%ntrandof > 0) then
-    call RTDestroy(simulation%realization)
-  endif
-
-  call RealizationDestroy(simulation%realization)
-  call TimestepperDestroy(simulation%flow_stepper)
-  call TimestepperDestroy(simulation%tran_stepper)
-#ifdef SURFACE_FLOW
-  call TimestepperDestroy(simulation%surf_flow_stepper)
-#endif
-
-#ifdef SURFACE_FLOW
-  call SurfRealizDestroy(simulation%surf_realization)
-#endif
-
-  call RegressionDestroy(simulation%regression)
-#endif
-  
   deallocate(simulation)
   nullify(simulation)
   
 end subroutine SimulationDestroy
   
-end module Simulation_New_module
+end module Simulation_module

@@ -192,10 +192,6 @@ mode_obj = \
 	${common_src}miscible.o \
 	${common_src}mphase.o \
 	${common_src}reactive_transport.o \
-	${common_src}process_model_base.o \
-	${common_src}process_model_coupler.o \
-	${common_src}process_model_richards.o \
-	${common_src}process_model_rt.o \
 	${common_src}richards.o \
 	${common_src}richards_common.o \
 	${common_src}richards_lsm.o \
@@ -501,10 +497,6 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o
-process_model_base.o : 
-process_model_coupler.o : process_model_base.o utility.o
-process_model_richards.o : process_model_base.o richards.o realization.o
-process_model_rt.o : process_model_base.o richards.o realization.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \

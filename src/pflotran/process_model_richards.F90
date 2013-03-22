@@ -2,7 +2,9 @@ module Process_Model_Richards_class
 
   use Process_Model_Base_class
   use Richards_module
+#ifdef SIMPLIFY  
   use Realization_class
+#endif  
   use Communicator_Base_module
   
   implicit none
@@ -23,11 +25,13 @@ module Process_Model_Richards_class
   contains
     procedure, public :: Init => PMRichardsInit
     procedure, public :: PMRichardsSetRealization
-    procedure, public :: InitializeExecution => PMRichardsInitializeExecution
-    procedure, public :: FinalizeExecution => PMRichardsFinalizeExecution
+    procedure, public :: InitializeRun => PMRichardsInitializeRun
+    procedure, public :: FinalizeRun => PMRichardsFinalizeRun
     procedure, public :: InitializeTimeStep => PMRichardsInitializeTimestep
     procedure, public :: Residual => PMRichardsResidual
     procedure, public :: Jacobian => PMRichardsJacobian
+    procedure, public :: UpdateTimestep => PMRichardsUpdateTimestep
+    procedure, public :: UpdatePreSolve => PMRichardsUpdatePreSolve
     procedure, public :: CheckUpdatePre => PMRichardsCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMRichardsCheckUpdatePost
     procedure, public :: TimeCut => PMRichardsTimeCut
@@ -36,6 +40,10 @@ module Process_Model_Richards_class
     procedure, public :: ComputeMassBalance => PMRichardsComputeMassBalance
     procedure, public :: Destroy => PMRichardsDestroy
   end type process_model_richards_type
+  
+  type :: realization_type
+    PetscInt :: i
+  end type realization_type
   
   public :: PMRichardsCreate
   
@@ -82,6 +90,7 @@ subroutine PMRichardsInit(this)
   
   class(process_model_richards_type) :: this
 
+#ifdef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -90,7 +99,8 @@ subroutine PMRichardsInit(this)
       this%comm => UnstructuredCommunicatorCreate()
   end select
   call this%comm%SetDM(this%realization%discretization%dm_1dof)
-  
+#endif
+
 end subroutine PMRichardsInit
 
 ! ************************************************************************** !
@@ -125,10 +135,94 @@ subroutine PMRichardsInitializeTimestep(this)
   implicit none
   
   class(process_model_richards_type) :: this
-  
-!  call RichardsSetup(this%realization)
 
-end subroutine PMRichardsInitializeTimestep 
+#ifdef SIMPLIFY  
+  call RichardsSetup(this%realization)
+#endif
+  
+end subroutine PMRichardsInitializeTimestep
+
+! ************************************************************************** !
+!
+! PMRichardsUpdatePreSolve: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRichardsUpdatePreSolve(this)
+
+  implicit none
+  
+  class(process_model_richards_type) :: this
+  
+#ifdef SIMPLIFY  
+  ! update porosity
+  call this%comm%LocalToLocal(this%realization%field%porosity_loc, &
+                              this%realization%field%porosity_loc)
+#endif
+  
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," RICHARDS FLOW ",63("="))')
+  endif
+  
+end subroutine PMRichardsUpdatePreSolve
+
+! ************************************************************************** !
+!
+! PMRichardsUpdateTimestep: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
+                                    num_newton_iterations,tfac)
+
+  implicit none
+  
+  class(process_model_richards_type) :: this
+  PetscReal :: dt
+  PetscReal :: dt_max
+  PetscInt :: iacceleration
+  PetscInt :: num_newton_iterations
+  PetscReal :: tfac(:)
+  
+  PetscReal :: fac
+  PetscReal :: ut
+  PetscReal :: up
+  PetscReal :: dtt
+  PetscReal :: dt_p
+  PetscReal :: dt_tfac
+  PetscInt :: ifac
+  
+  if (iacceleration > 0) then
+    fac = 0.5d0
+    if (num_newton_iterations >= iacceleration) then
+      fac = 0.33d0
+      ut = 0.d0
+    else
+      up = this%option%dpmxe/(this%option%dpmax+0.1)
+      ut = up
+    endif
+    dtt = fac * dt * (1.d0 + ut)
+  else
+    ifac = max(min(num_newton_iterations,size(tfac)),1)
+    dt_tfac = tfac(ifac) * dt
+
+    fac = 0.5d0
+    up = this%option%dpmxe/(this%option%dpmax+0.1)
+    dt_p = fac * dt * (1.d0 + up)
+
+    dtt = min(dt_tfac,dt_p)
+  endif
+  
+  if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
+  if (dtt > dt_max) dtt = dt_max
+  ! geh: There used to be code here that cut the time step if it is too
+  !      large relative to the simulation time.  This has been removed.
+      
+  dt = dtt
+  
+end subroutine PMRichardsUpdateTimestep
 
 ! ************************************************************************** !
 !
@@ -141,15 +235,17 @@ recursive subroutine PMRichardsInitializeRun(this)
 
   implicit none
   
-  type(process_model_type), pointer :: this
+  class(process_model_richards_type) :: this
   
   ! restart
   ! init to steady state
   
+#if 0  
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
   endif  
   call RichardsUpdateSolution(this%realization)
+#endif  
     
 end subroutine PMRichardsInitializeRun
 
@@ -164,12 +260,12 @@ recursive subroutine PMRichardsFinalizeRun(this)
 
   implicit none
   
-  type(process_model_type), pointer :: this
+  class(process_model_richards_type) :: this
   
   ! do something here
   
-  if (this%next) then
-    this%next%FinalizeRun()
+  if (associated(this%next)) then
+    call this%next%FinalizeRun()
   endif  
   
 end subroutine PMRichardsFinalizeRun
@@ -191,8 +287,10 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY  
   call RichardsResidual(snes,xx,r,this%realization,ierr)
-  
+#endif
+
 end subroutine PMRichardsResidual
 
 ! ************************************************************************** !
@@ -213,8 +311,10 @@ subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY  
   call RichardsJacobian(snes,xx,A,B,flag,this%realization,ierr)
-  
+#endif
+
 end subroutine PMRichardsJacobian
     
 ! ************************************************************************** !
@@ -235,8 +335,10 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY  
   call RichardsCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
-  
+#endif
+
 end subroutine PMRichardsCheckUpdatePre
     
 ! ************************************************************************** !
@@ -259,8 +361,10 @@ subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
+#ifdef SIMPLIFY  
   call RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
+#endif
 
 end subroutine PMRichardsCheckUpdatePost
   
@@ -277,7 +381,9 @@ subroutine PMRichardsTimeCut(this)
   
   class(process_model_richards_type) :: this
   
+#ifdef SIMPLIFY  
   call RichardsTimeCut(this%realization)
+#endif
 
 end subroutine PMRichardsTimeCut
     
@@ -294,7 +400,9 @@ subroutine PMRichardsUpdateSolution(this)
   
   class(process_model_richards_type) :: this
   
+#ifdef SIMPLIFY  
   call RichardsUpdateSolution(this%realization)
+#endif
 
 end subroutine PMRichardsUpdateSolution     
 
@@ -311,7 +419,9 @@ subroutine PMRichardsMaxChange(this)
   
   class(process_model_richards_type) :: this
   
+#ifdef SIMPLIFY  
   call RichardsMaxChange(this%realization)
+#endif
 
 end subroutine PMRichardsMaxChange
     
@@ -329,7 +439,9 @@ subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
   class(process_model_richards_type) :: this
   PetscReal :: mass_balance_array(:)
   
+#ifdef SIMPLIFY  
   call RichardsComputeMassBalance(this%realization,mass_balance_array)
+#endif
 
 end subroutine PMRichardsComputeMassBalance
 
@@ -349,8 +461,10 @@ subroutine PMRichardsDestroy(this)
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
-  
+
+#ifdef SIMPLIFY 
   call RichardsDestroy(this%realization)
+#endif
   call this%comm%Destroy()
   
 end subroutine PMRichardsDestroy

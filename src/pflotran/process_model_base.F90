@@ -1,6 +1,6 @@
 module Process_Model_Base_class
 
-  use Timestepper_module
+  use Option_module
 
   implicit none
 
@@ -15,20 +15,23 @@ module Process_Model_Base_class
 #include "finclude/petscsnes.h"
   
   type, abstract, public :: process_model_base_type
+    type(option_type), pointer :: option
     class(process_model_base_type), pointer :: next
   contains
     procedure(PMBaseInit), public, deferred :: Init
-    procedure(PMBaseInitializeRun), public, deferred :: InitializeRun
-    procedure(PMBaseFinalizeRun), public, deferred :: FinalizeRun
+    procedure(PMBaseThisOnly), public, deferred :: InitializeRun
+    procedure(PMBaseThisOnly), public, deferred :: FinalizeRun
     procedure(PMBaseResidual), public, deferred :: Residual
     procedure(PMBaseJacobian), public, deferred :: Jacobian
+    procedure(PMBaseUpdateTimestep), public, deferred :: UpdateTimestep
+    procedure(PMBaseThisOnly), public, deferred :: UpdatePreSolve
     procedure(PMBaseCheckUpdatePre), public, deferred :: CheckUpdatePre
     procedure(PMBaseCheckUpdatePost), public, deferred :: CheckUpdatePost
-    procedure(PMBaseTimeCut), public, deferred :: TimeCut
-    procedure(PMBaseUpdateSolution), public, deferred :: UpdateSolution
-    procedure(PMBaseMaxChange), public, deferred :: MaxChange
+    procedure(PMBaseThisOnly), public, deferred :: TimeCut
+    procedure(PMBaseThisOnly), public, deferred :: UpdateSolution
+    procedure(PMBaseThisOnly), public, deferred :: MaxChange
     procedure(PMBaseComputeMassBalance), public, deferred :: ComputeMassBalance
-    procedure(PMBaseDestroy), public, deferred :: Destroy
+    procedure(PMBaseThisOnly), public, deferred :: Destroy
   end type process_model_base_type
   
   interface
@@ -59,6 +62,18 @@ module Process_Model_Base_class
       PetscErrorCode :: ierr
     end subroutine PMBaseJacobian
     
+    subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
+                                    num_newton_iterations,tfac)
+      import process_model_base_type
+      implicit none
+      class(process_model_base_type) :: this
+      PetscReal :: dt
+      PetscReal :: dt_max
+      PetscInt :: iacceleration
+      PetscInt :: num_newton_iterations
+      PetscReal :: tfac(:)
+    end subroutine PMBaseUpdateTimestep
+    
     subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
       import process_model_base_type
       implicit none
@@ -84,23 +99,11 @@ module Process_Model_Base_class
       PetscErrorCode :: ierr
     end subroutine PMBaseCheckUpdatePost
   
-    subroutine PMBaseTimeCut(this)
+    subroutine PMBaseThisOnly(this)
       import process_model_base_type
       implicit none
       class(process_model_base_type) :: this
-    end subroutine PMBaseTimeCut
-    
-    subroutine PMBaseUpdateSolution(this)
-      import process_model_base_type
-      implicit none
-      class(process_model_base_type) :: this
-    end subroutine PMBaseUpdateSolution     
-
-    subroutine PMBaseMaxChange(this)
-      import process_model_base_type
-      implicit none
-      class(process_model_base_type) :: this
-    end subroutine PMBaseMaxChange
+    end subroutine PMBaseThisOnly
     
     subroutine PMBaseComputeMassBalance(this,mass_balance_array)
       import process_model_base_type
@@ -108,16 +111,11 @@ module Process_Model_Base_class
       class(process_model_base_type) :: this
       PetscReal :: mass_balance_array(:)
     end subroutine PMBaseComputeMassBalance
-    
-    subroutine PMBaseDestroy(this)
-      import process_model_base_type
-      implicit none
-      class(process_model_base_type) :: this
-    end subroutine PMBaseDestroy
+
   end interface
   
 contains
-
+#if 0
 ! ************************************************************************** !
 !
 ! PMBaseRunTo: Runs the actual simulation.
@@ -129,15 +127,15 @@ recursive subroutine PMBaseRunTo(this,time)
 
   implicit none
   
-  type(process_model_type) :: this  
+  class(process_model_base_type) :: this  
   PetscReal :: time
   
   ! do something here
   
-  if (this%next) then
-    this%next%RunTo(time)
+  if (associated(this%next)) then
+    call this%next%RunTo(time)
   endif
   
 end subroutine PMBaseRunTo
-
+#endif
 end module Process_Model_Base_class

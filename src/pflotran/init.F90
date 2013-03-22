@@ -85,11 +85,6 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
 #endif
 
-  use Process_Model_Coupler_module
-  use Process_Model_Base_class
-  use Process_Model_RT_class
-  use Process_Model_Richards_class
-
   implicit none
   
   type(simulation_type) :: simulation
@@ -124,9 +119,6 @@ subroutine Init(simulation)
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
 #endif
-
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
-  class(process_model_base_type), pointer :: cur_process_model
 
   ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
@@ -757,6 +749,7 @@ subroutine Init(simulation)
 
   call PetscLogEventBegin(logging%event_setup,ierr)
   
+#if 0  
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
@@ -800,7 +793,8 @@ subroutine Init(simulation)
   enddo
   !----------------------------------------------------------------------------!
   !----------------------------------------------------------------------------!
-  
+#endif
+
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
