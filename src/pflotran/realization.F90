@@ -464,8 +464,8 @@ subroutine RealizationCreateDiscretization(realization)
   endif
        
   ! Allocate vectors to hold flowrate quantities
-  if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
-     realization%output_option%print_hdf5_aveg_energy_flowrate.or. &
+  if(realization%output_option%print_hdf5_mass_flowrate.or. &
+     realization%output_option%print_hdf5_energy_flowrate.or. &
      realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
      realization%output_option%print_hdf5_aveg_energy_flowrate) then
 
