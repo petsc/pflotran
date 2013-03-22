@@ -94,7 +94,10 @@ subroutine Init(simulation)
   type(stepper_type), pointer :: tran_stepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-  class(realization_type), pointer :: realization
+!geh: for some reason, changing type(realization) to class(realization) causes
+!     the code to crash with gfortran 4.7
+!geh  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
