@@ -20,12 +20,19 @@ module Communicator_Base_module
   
   abstract interface
   
+#ifdef SIMPLIFY    
+    subroutine SetDM(this)
+      import communicator_type
+      implicit none
+      class(communicator_type) :: this
+#else
     subroutine SetDM(this,dm_ptr)
       use Discretization_module
       import communicator_type
       implicit none
       class(communicator_type) :: this
       type(dm_ptr_type) :: dm_ptr
+#endif    
     end subroutine
   
     subroutine VecToVec(this,source,destination)

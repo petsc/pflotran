@@ -1,10 +1,12 @@
 module Process_Model_RT_class
 
   use Process_Model_Base_class
+#ifndef SIMPLIFY  
   use Reactive_Transport_module
-  
   use Realization_class
+#endif  
   use Communicator_Base_module  
+  use Option_module
   
   implicit none
 
@@ -64,11 +66,15 @@ function PMRTCreate()
 
   class(process_model_rt_type), pointer :: rt_pm
   
+  print *, 'PMRTCreate()'
+  
   allocate(rt_pm)
   nullify(rt_pm%realization)
   nullify(rt_pm%comm1)
   nullify(rt_pm%commN)
 
+  call PMBaseCreate(rt_pm)
+  
   PMRTCreate => rt_pm
   
 end function PMRTCreate
@@ -82,16 +88,20 @@ end function PMRTCreate
 ! ************************************************************************** !
 subroutine PMRTInit(this)
 
+#ifndef SIMPLIFY
   use Discretization_module
   use Structured_Communicator_class
   use Unstructured_Communicator_class
   use Grid_module 
+#endif  
   
   implicit none
   
   class(process_model_rt_type) :: this
 
-#ifdef SIMPLIFY  
+  call printMsg(this%option,'PMRT%Init()')
+  
+#ifndef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -117,13 +127,17 @@ end subroutine PMRTInit
 ! ************************************************************************** !
 subroutine PMRTSetRealization(this,realization)
 
+#ifndef SIMPLIFY
   use Realization_Base_class  
+#endif  
 
   implicit none
   
   class(process_model_rt_type) :: this
   class(realization_type), pointer :: realization
 
+  call printMsg(this%option,'PMRT%SetRealization()')
+  
   this%realization => realization
   
 end subroutine PMRTSetRealization
@@ -140,8 +154,10 @@ subroutine PMRTInitializeTimestep(this)
   implicit none
   
   class(process_model_rt_type) :: this
+ 
+  call printMsg(this%option,'PMRT%InitializeTimestep()')
   
-#ifdef SIMPLIFY 
+#ifndef SIMPLIFY 
   call RTSetup(this%realization)
 #endif
 
@@ -160,17 +176,36 @@ subroutine PMRTUpdatePreSolve(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%UpdatePreSolve()')
+  
+#ifndef SIMPLIFY 
   ! update tortuosity
   call this%comm1%LocalToLocal(this%realization%field%tortuosity_loc, &
                                this%realization%field%tortuosity_loc)
 #endif
 
-  if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," REACTIVE TRANSPORT ",58("="))')
-  endif
+!  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
+!  endif
   
 end subroutine PMRTUpdatePreSolve
+
+! ************************************************************************** !
+!
+! PMRichardsUpdatePostSolve: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRTUpdatePostSolve(this)
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+  
+  call printMsg(this%option,'PMRT%UpdatePostSolve()')
+  
+end subroutine PMRTUpdatePostSolve
 
 ! ************************************************************************** !
 !
@@ -192,6 +227,8 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: tfac(:)
   
   PetscReal :: dtt
+  
+  call printMsg(this%option,'PMRT%UpdateTimestep()')  
   
   dtt = dt
   if (num_newton_iterations <= iacceleration) then
@@ -225,6 +262,8 @@ recursive subroutine PMRTInitializeRun(this)
   
   class(process_model_rt_type) :: this
   
+  call printMsg(this%option,'PMRT%InitializeRun()')
+  
   ! restart
 #if 0  
   if (transport_read .and. option%overwrite_restart_transport) then
@@ -232,7 +271,7 @@ recursive subroutine PMRTInitializeRun(this)
   endif
 #endif  
   
-#ifdef SIMPLIFY 
+#ifndef SIMPLIFY 
   call RTUpdateSolution(this%realization)
   
   if (this%option%jumpstart_kinetic_sorption .and. &
@@ -265,6 +304,8 @@ recursive subroutine PMRTFinalizeRun(this)
   
   class(process_model_rt_type) :: this
   
+  call printMsg(this%option,'PMRT%PMRTFinalizeRun()')
+  
   ! do something here
   
   if (associated(this%next)) then
@@ -290,7 +331,9 @@ subroutine PMRTResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%Residual()')  
+  
+#ifndef SIMPLIFY 
   call RTResidual(snes,xx,r,this%realization,ierr)
 #endif
 
@@ -314,7 +357,9 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%Jacobian()')  
+
+#ifndef SIMPLIFY 
   call RTJacobian(snes,xx,A,B,flag,this%realization,ierr)
 #endif
 
@@ -338,7 +383,9 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%CheckUpdatePre()')
+  
+#ifndef SIMPLIFY 
   call RTCheckUpdate(line_search,P,dP,changed,this%realization,ierr)
 #endif
 
@@ -364,6 +411,8 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
+  call printMsg(this%option,'PMRT%CheckUpdatePost()')
+  
 !  call RTCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 !                               P1_changed,this%realization,ierr)
 
@@ -382,7 +431,9 @@ subroutine PMRTTimeCut(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%TimeCut()')
+  
+#ifndef SIMPLIFY 
   call RTTimeCut(this%realization)
 #endif
 
@@ -401,7 +452,9 @@ subroutine PMRTUpdateSolution(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%UpdateSolution()')
+  
+#ifndef SIMPLIFY 
   call RTUpdateSolution(this%realization)
 #endif
 
@@ -420,7 +473,9 @@ subroutine PMRTMaxChange(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef SIMPLIFY 
+  call printMsg(this%option,'PMRT%MaxChange()')
+  
+#ifndef SIMPLIFY 
   call RTMaxChange(this%realization)
 #endif
 
@@ -439,8 +494,10 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
   
   class(process_model_rt_type) :: this
   PetscReal :: mass_balance_array(:)
-  
-#ifdef SIMPLIFY 
+
+  call printMsg(this%option,'PMRT%MassBalance()')
+
+#ifndef SIMPLIFY 
   call RTComputeMassBalance(this%realization,mass_balance_array)
 #endif
 
@@ -458,8 +515,10 @@ subroutine PMRTDestroy(this)
   implicit none
   
   class(process_model_rt_type) :: this
+
+  call printMsg(this%option,'PMRTDestroy()')
   
-#ifdef SIMPLIFY 
+#ifndef SIMPLIFY 
   call RTDestroy(this%realization)
 #endif
 

@@ -114,7 +114,22 @@ module Process_Model_Base_class
 
   end interface
   
+  public :: PMBaseCreate
+  
 contains
+
+subroutine PMBaseCreate(this)
+
+  implicit none
+  
+  class(process_model_base_type) :: this  
+
+  ! Cannot allocate here.  Allocation takes place in daughter class
+  nullify(this%option)
+  nullify(this%next)
+  
+end subroutine PMBaseCreate
+
 #if 0
 ! ************************************************************************** !
 !

@@ -39,9 +39,10 @@
 !=======================================================================
 program pflotran
   
-  use Simulation_New_module
+  use Simulation_module
   use Option_module
   use Input_module
+  use Logging_module
   
   implicit none
 
@@ -90,8 +91,7 @@ program pflotran
   call PetscGetTime(timex_wall(1), ierr)
   option%start_time = timex_wall(1)
 
-  call Init(simulation)
-
+  call Simulation%Initialize()
   call Simulation%InitializeRun()
   call Simulation%ExecuteRun()
   call Simulation%FinalizeRun()

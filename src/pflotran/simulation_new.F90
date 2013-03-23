@@ -18,6 +18,7 @@ module Simulation_module
     type(synchronizer_type), pointer :: synchronizer
     type(process_model_coupler_type), pointer :: process_model_coupler_list
   contains
+    procedure, public :: Initialize
     procedure, public :: InitializeRun
     procedure, public :: ExecuteRun
     procedure, public :: FinalizeRun
@@ -47,6 +48,8 @@ function SimulationCreate(option)
   type(simulation_type), pointer :: simulation
   type(option_type), pointer :: option
 
+  print *, 'SimulationCreate'
+  
   allocate(simulation)
   simulation%option => option
   nullify(simulation%output_option)
@@ -101,6 +104,137 @@ subroutine SimulationCreateProcessorGroups(option,num_groups)
 
 end subroutine SimulationCreateProcessorGroups
 
+subroutine Initialize(this)
+
+  use Logging_module
+  use Process_Model_Coupler_module
+  use Process_Model_Richards_class
+  use Process_Model_RT_class
+  use Process_Model_Base_class
+  
+  use Waypoint_module
+  use Timestepper_module
+
+  implicit none
+  
+  class(simulation_type) :: this
+
+  type(process_model_coupler_type), pointer :: richards_process_model_coupler
+  type(process_model_coupler_type), pointer :: rt_process_model_coupler
+  class(process_model_base_type), pointer :: process_model
+  type(synchronizer_type), pointer :: synchronizer
+  type(output_option_type), pointer :: output_option
+  type(waypoint_type), pointer :: waypoint
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  type(stepper_type), pointer :: timestepper
+  PetscErrorCode :: ierr
+  
+  ! Richards Flow
+  
+  ! popped in InitializeRun()
+  call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
+
+  output_option => OutputOptionCreate()
+
+  process_model => PMRichardsCreate()
+  process_model%option => this%option
+
+  waypoint_list => WaypointListCreate()
+  waypoint => WaypointCreate()
+  waypoint%time = 0.d0
+  waypoint%dt_max = 1.d0
+  call WaypointInsertInList(waypoint,waypoint_list)
+  waypoint => WaypointCreate()
+  waypoint%time = 3.9d0
+  waypoint%dt_max = 2.1d0
+  waypoint%update_conditions = PETSC_TRUE
+  call WaypointInsertInList(waypoint,waypoint_list)
+  waypoint => WaypointCreate()
+  waypoint%time = 11.d0
+  waypoint%dt_max = 3.d0
+  call WaypointInsertInList(waypoint,waypoint_list)
+  waypoint => WaypointCreate()
+  waypoint%time = 20.d0
+  waypoint%dt_max = 999.d0
+  waypoint%final = PETSC_TRUE
+  call WaypointInsertInList(waypoint,waypoint_list)
+  call WaypointListFillIn(this%option,waypoint_list)
+  
+  timestepper => TimestepperCreate()
+  timestepper%cur_waypoint => waypoint_list%first
+
+  richards_process_model_coupler => ProcessModelCouplerCreate()
+  richards_process_model_coupler%option => this%option
+  richards_process_model_coupler%process_model_list => process_model
+  richards_process_model_coupler%waypoints => waypoint_list
+  richards_process_model_coupler%timestepper => timestepper
+  
+  nullify(waypoint)
+  nullify(waypoint_list)
+
+  ! Reactive Transport
+  process_model => PMRTCreate()
+  process_model%option => this%option
+
+  waypoint_list => WaypointListCreate()
+  waypoint => WaypointCreate()
+  waypoint%time = 0.d0
+  waypoint%dt_max = 0.75d0
+  call WaypointInsertInList(waypoint,waypoint_list)
+  waypoint => WaypointCreate()
+  waypoint%time = 2.5d0
+  waypoint%dt_max = 1.3d0
+  waypoint%update_conditions = PETSC_TRUE
+  call WaypointInsertInList(waypoint,waypoint_list)
+  waypoint => WaypointCreate()
+  waypoint%time = 11.1d0
+  waypoint%dt_max = 3.2d0
+  call WaypointInsertInList(waypoint,waypoint_list)
+  waypoint => WaypointCreate()
+  waypoint%time = 20.d0
+  waypoint%dt_max = 999.d0
+  waypoint%final = PETSC_TRUE
+  call WaypointInsertInList(waypoint,waypoint_list)
+  call WaypointListFillIn(this%option,waypoint_list)
+  
+  timestepper => TimestepperCreate()
+  timestepper%cur_waypoint => waypoint_list%first
+
+  rt_process_model_coupler => ProcessModelCouplerCreate()
+  rt_process_model_coupler%option => this%option
+  rt_process_model_coupler%process_model_list => process_model
+  rt_process_model_coupler%waypoints => waypoint_list
+  rt_process_model_coupler%timestepper => timestepper  
+  
+  nullify(waypoint)
+  nullify(waypoint_list)
+
+  synchronizer => SynchronizerCreate()
+  synchronizer%waypoints => WaypointListCreate()
+  waypoint => WaypointCreate()
+  waypoint%time = 0.d0
+  call WaypointInsertInList(waypoint,synchronizer%waypoints)
+  waypoint => WaypointCreate()
+  waypoint%time = 10.d0
+  call WaypointInsertInList(waypoint,synchronizer%waypoints)
+  waypoint => WaypointCreate()
+  waypoint%final = PETSC_TRUE
+  waypoint%time = 20.d0
+  call WaypointInsertInList(waypoint,synchronizer%waypoints)
+  call WaypointListFillIn(this%option,synchronizer%waypoints)
+
+  synchronizer%option => this%option
+  synchronizer%output_option => output_option
+
+  this%output_option => output_option
+  this%synchronizer => synchronizer
+  this%synchronizer%process_model_coupler_list => richards_process_model_coupler
+  richards_process_model_coupler%below => rt_process_model_coupler
+  this%process_model_coupler_list => richards_process_model_coupler
+  
+end subroutine Initialize
+
 ! ************************************************************************** !
 !
 ! InitializeRun: Initializes simulation
@@ -119,6 +253,8 @@ subroutine InitializeRun(this)
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
   PetscErrorCode :: ierr
   
+  call printMsg(this%option,'Simulation%InitializeRun()')
+  
   cur_process_model_coupler => this%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler)) exit
@@ -130,11 +266,13 @@ subroutine InitializeRun(this)
   !           solution composition, etc.).
   
   !TODO(geh): replace integer arguments with logical
+#ifndef SIMPLIFY  
   if (this%option%restart_flag) then
     call OutputInit(1) ! number greater than 0
   else
     call OutputInit(0)
   endif
+#endif
   
   if (this%output_option%print_initial) then
     cur_process_model_coupler => this%process_model_coupler_list
@@ -153,7 +291,7 @@ subroutine InitializeRun(this)
   call PetscLogStagePop(ierr)
   this%option%init_stage = PETSC_FALSE
 
-  ! popped in TimeStepperFinalizeRun()
+  ! popped in FinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
   
 end subroutine InitializeRun
@@ -171,7 +309,9 @@ subroutine ExecuteRun(this)
   
   class(simulation_type) :: this
   
-  call SynchronizerRunToTime(this%synchronizer,0.d0)
+  call printMsg(this%option,'Simulation%ExecuteRun()')
+
+  call this%synchronizer%ExecuteRun()
   
 end subroutine ExecuteRun
 
@@ -188,7 +328,11 @@ subroutine FinalizeRun(this)
   
   class(simulation_type) :: this
   
+  PetscErrorCode :: ierr
+  
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
+
+  call printMsg(this%option,'Simulation%FinalizeRun()')
   
   cur_process_model_coupler => this%process_model_coupler_list
   do
@@ -196,6 +340,9 @@ subroutine FinalizeRun(this)
     call cur_process_model_coupler%FinalizeRun()
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
+
+  ! pushed in InitializeRun()
+  call PetscLogStagePop(ierr)
   
 end subroutine FinalizeRun
 
@@ -208,13 +355,17 @@ end subroutine FinalizeRun
 ! ************************************************************************** !
 subroutine SimulationDestroy(simulation)
 
+#ifndef SIMPLIFY
   use Richards_module, only : RichardsDestroy
   use Reactive_Transport_module, only : RTDestroy
   use General_module, only : GeneralDestroy
+#endif
 
   implicit none
   
   type(simulation_type), pointer :: simulation
+  
+  call printMsg(simulation%option,'SimulationDestroy()')
   
   if (.not.associated(simulation)) return
   

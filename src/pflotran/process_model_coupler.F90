@@ -3,6 +3,7 @@ module Process_Model_Coupler_module
   use Process_Model_Base_class
   use Timestepper_module
   use Option_module
+  use Waypoint_module
 
   implicit none
 
@@ -14,6 +15,8 @@ module Process_Model_Coupler_module
     type(option_type), pointer :: option
     type(stepper_type), pointer :: timestepper
     class(process_model_base_type), pointer :: process_model_list
+    type(waypoint_list_type), pointer :: waypoints
+    type(process_model_coupler_type), pointer :: below
     type(process_model_coupler_type), pointer :: next
   contains
     procedure, public :: InitializeRun
@@ -43,11 +46,15 @@ function ProcessModelCouplerCreate()
   type(process_model_coupler_type), pointer :: ProcessModelCouplerCreate
   
   type(process_model_coupler_type), pointer :: process_model_coupler
+
+  print *, 'ProcessModelCoupler%Create()'
   
   allocate(process_model_coupler)
   nullify(process_model_coupler%option)
   nullify(process_model_coupler%timestepper)
   nullify(process_model_coupler%process_model_list)
+  nullify(process_model_coupler%waypoints)
+  nullify(process_model_coupler%below)
   nullify(process_model_coupler%next)
   
   ProcessModelCouplerCreate => process_model_coupler  
@@ -70,6 +77,8 @@ subroutine ProcModelCouplerSetTimestepper(this,timestepper)
   class(process_model_coupler_type) :: this
   type(stepper_type), pointer :: timestepper
 
+  call printMsg(this%option,'ProcessModelCoupler%SetTimestepper()')
+  
   this%timestepper => timestepper
   
 end subroutine ProcModelCouplerSetTimestepper
@@ -89,12 +98,18 @@ recursive subroutine InitializeRun(this)
   
   class(process_model_base_type), pointer :: cur_process_model
   
+  call printMsg(this%option,'ProcessModelCoupler%InitializeRun()')
+  
   cur_process_model => this%process_model_list
   do
     if (.not.associated(cur_process_model)) exit
     call cur_process_model%InitializeRun()
     cur_process_model => cur_process_model%next
-  enddo  
+  enddo
+  
+  if (associated(this%below)) then
+    call this%below%InitializeRun()
+  endif
   
 end subroutine InitializeRun
 
@@ -113,12 +128,28 @@ recursive subroutine RunToTime(this,sync_time)
   
   class(process_model_coupler_type) :: this
   PetscReal :: sync_time
+  
   PetscBool :: failure
+  class(process_model_base_type), pointer :: cur_process_model
+  
+  write(this%option%io_buffer,'(f12.2)') sync_time
+  this%option%io_buffer = 'ProcessModelCoupler%RunToTime(' // &
+    trim(adjustl(this%option%io_buffer)) // ')'
+  call printMsg(this%option)
   
   do
-    if (this%option%time >= sync_time) exit
+    if (this%timestepper%target_time >= sync_time) exit
     call StepperSetTargetTime(this%timestepper,sync_time,this%option)
     call StepperStepDT(this%timestepper,this%process_model_list,failure)
+    cur_process_model => this%process_model_list
+    do
+      if (.not.associated(cur_process_model)) exit
+      call StepperUpdateDT(this%timestepper,cur_process_model)
+      cur_process_model => cur_process_model%next
+    enddo
+    if (associated(this%below)) then
+      call this%below%RunTo(this%timestepper%target_time)
+    endif
   enddo
   
 end subroutine RunToTime
@@ -135,6 +166,8 @@ recursive subroutine PMCUpdateSolution(this)
   implicit none
   
   class(process_model_coupler_type) :: this
+
+  call printMsg(this%option,'ProcessModelCoupler%UpdateSolution()')
   
 end subroutine PMCUpdateSolution
 
@@ -150,6 +183,8 @@ recursive subroutine FinalizeRun(this)
   implicit none
   
   class(process_model_coupler_type) :: this
+  
+  call printMsg(this%option,'ProcessModelCoupler%FinalizeRun()')
   
 end subroutine FinalizeRun
 
@@ -167,6 +202,8 @@ recursive subroutine Output(this)
   class(process_model_coupler_type) :: this
   
   class(process_model_base_type), pointer :: cur_process_model
+  
+  call printMsg(this%option,'ProcessModelCoupler%Output()')
   
   cur_process_model => this%process_model_list
   do
@@ -191,6 +228,8 @@ recursive subroutine Destroy(this)
   implicit none
   
   class(process_model_coupler_type) :: this
+  
+  call printMsg(this%option,'ProcessModelCoupler%Destroy()')
   
   if (associated(this%next)) then
     call this%next%Destroy()

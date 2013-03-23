@@ -2,7 +2,9 @@ module Timestepper_module
  
   use Solver_module
   use Waypoint_module 
+#ifndef SIMPLIFY  
   use Convergence_module 
+#endif  
  
   implicit none
 
@@ -58,12 +60,15 @@ module Timestepper_module
     type(waypoint_type), pointer :: cur_waypoint
     PetscBool :: match_waypoint
 
+#ifndef SIMPLIFY    
     type(convergence_context_type), pointer :: convergence_context
+#endif    
 
   end type stepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, &
             StepperSetTargetTime, StepperStepDT, &
+            StepperUpdateDT, &
             TimestepperRead, TimestepperPrintInfo
 
 contains
@@ -128,7 +133,9 @@ function TimestepperCreate()
   stepper%run_as_steady_state = PETSC_FALSE
   
   nullify(stepper%solver)
+#ifndef SIMPLIFY  
   nullify(stepper%convergence_context)
+#endif  
   nullify(stepper%cur_waypoint)
   stepper%match_waypoint = PETSC_FALSE
   
@@ -368,14 +375,19 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   PetscReal :: tolerance
   type(waypoint_type), pointer :: cur_waypoint
 
+  write(option%io_buffer,'(f12.2)') sync_time
+  option%io_buffer = 'StepperSetTargetTime%RunToTime(' // &
+    trim(adjustl(option%io_buffer)) // ')'
+  call printMsg(option)
+  
   ! if the maximum time step size decreased in the past step, need to set
   ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
   if (timestepper%match_waypoint) then
-    option%refactor_dt = min(timestepper%prev_dt,timestepper%dt_max)
+    timestepper%dt = min(timestepper%prev_dt,timestepper%dt_max)
     timestepper%match_waypoint = PETSC_FALSE
   endif
   
-  dt = option%refactor_dt
+  dt = timestepper%dt
   timestepper%prev_dt = dt
   cur_waypoint => timestepper%cur_waypoint
   ! dt_max must be set from current waypoint and not updated below
@@ -397,7 +409,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   ! If a waypoint calls for a plot or change in src/sinks, adjust time step
   ! to match waypoint.
   do ! we cycle just in case the next waypoint is beyond the target_time
-    if (target_time > sync_time .or. &
+    if (target_time + tolerance*dt >= sync_time .or. &
         (target_time + tolerance*dt >= cur_waypoint%time .and. &
          (cur_waypoint%update_conditions &
          .or. &
@@ -416,7 +428,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
       else
         target_time = max_time
         timestepper%match_waypoint = PETSC_TRUE
-        if (max_time-cur_waypoint%time < 1.d-5) then
+        if (max_time >= cur_waypoint%time) then
           cur_waypoint => cur_waypoint%next
         endif
 !        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
@@ -442,6 +454,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   endif
   
   option%refactor_dt = dt
+  timestepper%dt = dt
   timestepper%dt_max = dt_max
   timestepper%target_time = target_time
   timestepper%cur_waypoint => cur_waypoint
@@ -458,6 +471,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
 subroutine StepperStepDT(timestepper,process_model,failure)
 
   use Process_Model_Base_class
+  use Option_module
   
   implicit none
 
@@ -466,7 +480,38 @@ subroutine StepperStepDT(timestepper,process_model,failure)
   class(process_model_base_type) :: process_model
   PetscBool :: failure
   
+  write(process_model%option%io_buffer,'(f12.2)') timestepper%dt
+  process_model%option%io_buffer = 'StepperStepDT(' // &
+    trim(adjustl(process_model%option%io_buffer)) // ')'
+  call printMsg(process_model%option)  
   call process_model%UpdatePreSolve()
+  
+  timestepper%num_linear_iterations = 1
+  timestepper%num_newton_iterations = 1
+  
+  timestepper%steps = timestepper%steps + 1
+  timestepper%cumulative_newton_iterations = &
+    timestepper%cumulative_newton_iterations + &
+    timestepper%num_newton_iterations
+  timestepper%cumulative_linear_iterations = &
+    timestepper%cumulative_linear_iterations + &
+    timestepper%num_linear_iterations
+  
+  write(*, '(/,i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
+    & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
+    & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
+    timestepper%steps, &
+    timestepper%target_time, &
+    timestepper%dt, &
+    'seconds', &
+    -999, &
+    timestepper%num_newton_iterations, &
+    timestepper%cumulative_newton_iterations, &
+    timestepper%num_linear_iterations, &
+    timestepper%cumulative_linear_iterations, &
+    0, &
+    timestepper%cumulative_time_step_cuts
+
   
 #if 0
   if (option%print_screen_flag) then
@@ -795,8 +840,10 @@ subroutine TimestepperDestroy(stepper)
   if (.not.associated(stepper)) return
     
   call SolverDestroy(stepper%solver)
+#ifndef SIMPLIFY  
   call ConvergenceContextDestroy(stepper%convergence_context)
-  
+#endif
+
   if (associated(stepper%tfac)) deallocate(stepper%tfac)
   nullify(stepper%tfac)
   deallocate(stepper)
