@@ -33,7 +33,8 @@ module Output_Common_module
             GetCellConnections, &
             OutputXMFHeader, &
             OutputXMFAttribute, &
-            OutputXMFFooter
+            OutputXMFFooter, &
+            OutputGetFlowrates
   
 contains
 
@@ -850,5 +851,214 @@ subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
   write(fid,'(a)') trim(string)
 
 end subroutine OutputXMFAttribute
+
+! ************************************************************************** !
+!> This returns mass/energy flowrate at all faces of a control volume
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 03/21/2013
+! ************************************************************************** !
+subroutine OutputGetFlowrates(realization_base)
+
+  use hdf5
+  use HDF5_module
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+  use Variables_module
+  use Connection_module
+  use Coupler_module
+  use HDF5_Aux_module
+  use Output_Aux_module
+  use Field_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: boundary_condition
+  type(ugdm_type),pointer :: ugdm
+  type(output_option_type), pointer :: output_option
+  type(field_type), pointer :: field
+  
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: idual
+  PetscInt :: iconn
+  PetscInt :: face_id
+  PetscInt :: local_id_up,local_id_dn
+  PetscInt :: ghosted_id_up,ghosted_id_dn
+  PetscInt :: iface_up,iface_dn
+  PetscInt :: dof
+  PetscInt :: sum_connection
+  PetscInt :: offset
+  PetscInt :: cell_type
+  PetscInt :: local_size
+  PetscInt :: i
+  PetscInt :: iface
+  PetscInt :: ndof
+
+  PetscReal, pointer :: flowrates(:,:,:)
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr2(:)
+  PetscReal, pointer :: vec_ptr3(:)
+  PetscReal, pointer :: double_array(:)
+  PetscReal :: dtime
+
+  Vec :: natural_flowrates_vec
+
+  PetscMPIInt :: hdf5_err
+  PetscErrorCode :: ierr
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: unit_string
+
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  output_option =>realization_base%output_option
+  option => realization_base%option
+  field => realization_base%field
+
+  ! Create UGDM for
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
+                       (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
+
+  ! Create a flowrate vector in natural order
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
+                           NATURAL,option)
+
+
+  allocate(flowrates(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+  flowrates = 0.d0
+  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
+  vec_ptr = 0.d0
+  
+  offset = 1+option%nflowdof*MAX_FACE_PER_CELL
+  ! Save the number of faces of all cell
+  do local_id = 1,grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    cell_type = ugrid%cell_type(ghosted_id)
+    vec_ptr((local_id-1)*offset+1) = UCellGetNFaces(cell_type,option)
+  enddo
+
+  ! Interior Flowrates Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      face_id = cur_connection_set%face_id(iconn)
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn)
+      do iface_up = 1,MAX_FACE_PER_CELL
+        if(face_id==ugrid%cell_to_face_ghosted(iface_up,local_id_up)) exit
+      enddo
+      iface_dn=-1
+      if(local_id_dn>0) then
+        do iface_dn = 1,MAX_FACE_PER_CELL
+          if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+        enddo
+      endif
+      
+      do dof=1,option%nflowdof
+        ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
+        flowrates(dof,iface_up,local_id_up) = patch%internal_fluxes(dof,1,sum_connection)
+        vec_ptr((local_id_up-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_up + 1) = &
+          patch%internal_fluxes(dof,1,sum_connection)
+
+        if(iface_dn>0) then
+          ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
+          flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+          vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
+            -patch%internal_fluxes(dof,1,sum_connection)
+        endif
+      enddo
+      
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! Boundary Flowrates Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do 
+    if (.not.associated(boundary_condition)) exit
+
+    cur_connection_set => boundary_condition%connection_set
+    sum_connection = 0
+
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      face_id = cur_connection_set%face_id(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_dn = grid%nG2L(ghosted_id_dn)
+      do iface_dn = 1,MAX_FACE_PER_CELL
+        if(face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
+      enddo
+
+      do dof=1,option%nflowdof
+        ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
+        flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+        vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
+          -patch%internal_fluxes(dof,1,sum_connection)
+      enddo
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  deallocate(flowrates)
+
+  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+
+  ! Scatter flowrate from Global --> Natural order
+  call VecScatterBegin(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm%scatter_gton,field%flowrate_inst,natural_flowrates_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecGetArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+  call VecGetArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+
+  ! Copy the vectors
+  vec_ptr2 = vec_ptr
+  
+  if(output_option%print_hdf5_aveg_mass_flowrate.or. &
+    output_option%print_hdf5_aveg_energy_flowrate) then
+
+    dtime = option%time-output_option%aveg_var_time
+    call VecGetArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
+    vec_ptr3 = vec_ptr3 + vec_ptr2/dtime
+    call VecRestoreArrayF90(field%flowrate_aveg,vec_ptr3,ierr)
+      
+  endif
+
+  call VecRestoreArrayF90(natural_flowrates_vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr2,ierr)
+
+  call VecDestroy(natural_flowrates_vec,ierr)
+  call UGridDMDestroy(ugdm)
+  
+end subroutine OutputGetFlowrates
 
 end module Output_Common_module

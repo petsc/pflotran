@@ -1072,6 +1072,8 @@ subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
 #endif
 
+  J = J/option%flow_dt 
+
   if (option%numerical_derivatives_flow) then
     allocate(thmc_aux_var_pert%xmol(option%nflowspec),thmc_aux_var_pert%diff(option%nflowspec))
     call GlobalAuxVarInit(global_aux_var_pert,option)  
@@ -1229,8 +1231,8 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
   eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
 #endif
 
-  Res(1:option%nflowspec) = mol(:)
-  Res(option%nflowdof-option%nmechdof) = eng
+  Res(1:option%nflowspec) = mol(:)/option%flow_dt
+  Res(option%nflowdof-option%nmechdof) = eng/option%flow_dt
  
 
 end subroutine THMCAccumulation
@@ -1684,8 +1686,6 @@ subroutine THMCFluxDerivative1(aux_var_up,global_aux_var_up,por_up,tor_up, &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_dn 
                            
-  Jup = Jup*option%flow_dt
-  Jdn = Jdn*option%flow_dt
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
@@ -2056,7 +2056,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
       lambda_avg*(-dd_up*(Minv_up(1,j)*disp_vec_sum_up(1) + Minv_up(2,j)* &
       disp_vec_sum_up(2) + Minv_up(3,j)*disp_vec_sum_up(3)) + &
       dd_dn*(Minv_dn(1,j)*disp_up_minus_dn(1) + Minv_dn(2,j)* &
-      disp_up_minus_dn(2) + Minv_dn(3,j)*disp_up_minus_dn(3)))*normal(i)*area*option%flow_dt
+      disp_up_minus_dn(2) + Minv_dn(3,j)*disp_up_minus_dn(3)))*normal(i)*area
     enddo
   enddo
       
@@ -2066,7 +2066,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
       mu_avg*(-dd_up*Minv_up(i,j)*(disp_vec_sum_up(1)*normal(1) + &
       disp_vec_sum_up(2)*normal(2) + disp_vec_sum_up(3)*normal(3)) + &
       dd_dn*Minv_dn(i,j)*(disp_up_minus_dn(1)*normal(1) + &
-      disp_up_minus_dn(2)*normal(2) + disp_up_minus_dn(3)*normal(3)))*area*option%flow_dt
+      disp_up_minus_dn(2)*normal(2) + disp_up_minus_dn(3)*normal(3)))*area
     enddo
   enddo      
       
@@ -2076,7 +2076,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
       mu_avg*(-dd_up*disp_vec_sum_up(i)*(Minv_up(1,j)*normal(1) + &
       Minv_up(2,j)*normal(2) + Minv_up(3,j)*normal(3)) + &
       dd_dn*disp_up_minus_dn(i)*(Minv_dn(1,j)*normal(1) + &
-      Minv_dn(2,j)*normal(2) + Minv_dn(3,j)*normal(3)))*area*option%flow_dt
+      Minv_dn(2,j)*normal(2) + Minv_dn(3,j)*normal(3)))*area
     enddo
   enddo  
 
@@ -2088,7 +2088,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
       lambda_avg*(-dd_dn*(Minv_dn(1,j)*disp_vec_sum_dn(1) + Minv_dn(2,j)* &
       disp_vec_sum_dn(2) + Minv_dn(3,j)*disp_vec_sum_dn(3)) + &
       dd_up*(Minv_up(1,j)*disp_dn_minus_up(1) + Minv_up(2,j)* &
-      disp_dn_minus_up(2) + Minv_up(3,j)*disp_dn_minus_up(3)))*normal(i)*area*option%flow_dt
+      disp_dn_minus_up(2) + Minv_up(3,j)*disp_dn_minus_up(3)))*normal(i)*area
     enddo
   enddo
       
@@ -2098,7 +2098,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
       mu_avg*(-dd_dn*Minv_dn(i,j)*(disp_vec_sum_dn(1)*normal(1) + &
       disp_vec_sum_dn(2)*normal(2) + disp_vec_sum_dn(3)*normal(3)) + &
       dd_up*Minv_up(i,j)*(disp_dn_minus_up(1)*normal(1) + &
-      disp_dn_minus_up(2)*normal(2) + disp_dn_minus_up(3)*normal(3)))*area*option%flow_dt
+      disp_dn_minus_up(2)*normal(2) + disp_dn_minus_up(3)*normal(3)))*area
     enddo
   enddo      
       
@@ -2108,7 +2108,7 @@ subroutine THMCFluxDerivativeAnalytical(grid, &
       mu_avg*(-dd_dn*disp_vec_sum_dn(i)*(Minv_dn(1,j)*normal(1) + &
       Minv_dn(2,j)*normal(2) + Minv_dn(3,j)*normal(3)) + &
       dd_up*disp_dn_minus_up(i)*(Minv_up(1,j)*normal(1) + &
-      Minv_up(2,j)*normal(2) + Minv_up(3,j)*normal(3)))*area*option%flow_dt
+      Minv_up(2,j)*normal(2) + Minv_up(3,j)*normal(3)))*area
     enddo
   enddo  
 
@@ -2303,8 +2303,8 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
   cond = Dk*area*(global_aux_var_up%temp(1) - global_aux_var_dn%temp(1)) 
   fluxe = fluxe + cond
 
-  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
-  Res(option%nflowdof-option%nmechdof) = fluxe*option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:)
+  Res(option%nflowdof-option%nmechdof) = fluxe
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
@@ -2323,15 +2323,15 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
                                   
   Res(option%nflowdof-option%nmechdof+1) = (stress(1,1)*unit_normal(1) + &
                                            stress(1,2)*unit_normal(2) + &
-                                           stress(1,3)*unit_normal(3))*area*option%flow_dt
+                                           stress(1,3)*unit_normal(3))*area
 
   Res(option%nflowdof-option%nmechdof+2) = (stress(2,1)*unit_normal(1) + &
                                            stress(2,2)*unit_normal(2) + &
-                                           stress(2,3)*unit_normal(3))*area*option%flow_dt
+                                           stress(2,3)*unit_normal(3))*area
 
   Res(option%nflowdof-option%nmechdof+3) = (stress(3,1)*unit_normal(1) + &
                                            stress(3,2)*unit_normal(2) + &
-                                           stress(3,3)*unit_normal(3))*area*option%flow_dt
+                                           stress(3,3)*unit_normal(3))*area
   
  
 end subroutine THMCFlux
@@ -2627,8 +2627,6 @@ subroutine THMCBCFluxDerivative(ibndtype,aux_vars, &
 #endif  
 
   end select
-
-  Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives_flow) then
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
@@ -2935,8 +2933,8 @@ subroutine THMCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       ! No change in fluxe
   end select
 
-  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
-  Res(option%nflowdof-option%nmechdof) = fluxe*option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:)
+  Res(option%nflowdof-option%nmechdof) = fluxe
 
 end subroutine THMCBCFlux
 
@@ -3143,13 +3141,13 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
 
     r_p(iend-2) =  r_p(iend-2) + &
          thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id)))* &
-         option%gravity(1)*volume_p(local_id)*1.d-6*option%flow_dt !convert to MN
+         option%gravity(1)*volume_p(local_id)*1.d-6 !convert to MN
     r_p(iend-1) =  r_p(iend-2) + &
          thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id)))* &
-         option%gravity(2)*volume_p(local_id)*1.d-6*option%flow_dt !convert to MN
+         option%gravity(2)*volume_p(local_id)*1.d-6 !convert to MN
     r_p(iend) =  r_p(iend) + &
          thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id)))* &
-         option%gravity(3)*volume_p(local_id)*1.d-6*option%flow_dt !convert to MN
+         option%gravity(3)*volume_p(local_id)*1.d-6 !convert to MN
 
   enddo 
 
@@ -3187,7 +3185,7 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
       if (enthalpy_flag) then
         r_p(local_id*(option%nflowdof-option%nmechdof)) = &
                          r_p(local_id*(option%nflowdof-option%nmechdof)) - &
-                         hsrc1*option%flow_dt*volume_p(local_id)   
+                         hsrc1*volume_p(local_id)   
       endif         
 
 !      if (qsrc1 > 0.d0) then ! injection
@@ -3196,8 +3194,8 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
 !        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
-!                                               - qsrc1 *option%flow_dt
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
+!                                               - qsrc1
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o
 !      endif  
 !    
 !      if (csrc1 > 0.d0) then ! injection
@@ -3707,7 +3705,7 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
       
 !      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1   
 !      endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -3715,9 +3713,9 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
               enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)        
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
-        dresT_dp = -qsrc1*hw_dp*option%flow_dt
-        ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
+        ! base on r_p() = r_p() - qsrc1*enth_src_h2o
+        dresT_dp = -qsrc1*hw_dp
+        ! dresT_dt = -qsrc1*hw_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)

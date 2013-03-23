@@ -896,9 +896,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     else
       conc_current_M(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
     endif
-    if (conc_current_M(i) < 0.d0) then
-      conc_current_M(i) = 1.d-8
-    endif
   enddo
 
   ! Update the secondary continuum totals at the outer matrix node
@@ -961,7 +958,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
-    
+  
 !============== Numerical jacobian for coupling term ===========================
 
 
@@ -1025,24 +1022,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                    total_upd(j,ngcells-1))  
                                
       enddo
-      
-      res = res*1.d3 ! Convert mol/L*m3/s to mol/s                                                    
-      
-      ! Reaction 
-      do i = 1, ngcells
-        res_react = 0.d0
-        jac_react = 0.d0
-        call RTAuxVarCopy(rt_auxvar,sec_transport_vars%sec_rt_auxvar(i), &
-                         option)
-        rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
-        call RTotal(rt_auxvar,global_aux_var,reaction,option)
-        call RReaction(res_react,jac_react,PETSC_FALSE, &
-                       rt_auxvar,global_aux_var,porosity,vol(i),reaction,option)                     
-        do j = 1, ncomp
-          res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
-        enddo
-      enddo        
                          
+      res = res*1.d3 ! Convert mol/L*m3/s to mol/s                                                    
                                                                                                                   
 !============================== Forward solve ==================================        
                         
@@ -1481,7 +1462,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
       else
         conc_upd(j,i) = rhs(n) + conc_upd(j,i)
       endif
-      if (conc_upd(j,i) < 0.d0) conc_upd(j,i) = 1.d-8
     enddo
   enddo
   

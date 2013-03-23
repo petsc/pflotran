@@ -119,6 +119,10 @@ ifdef amanzi_bgd
   MYFLAGS += -DAMANZI_BGD
 endif
 
+ifdef store_flowrates
+  MYFLAGS += -DSTORE_FLOWRATES
+endif
+
 CFLAGS   = 
 FFLAGS   =
 CPPFLAGS = ${MYFLAGS}
