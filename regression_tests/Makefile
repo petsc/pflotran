@@ -80,6 +80,8 @@ TRANSPORT_CFG = \
 MESH_CFG = \
 	default/discretization/discretization.cfg
 
+MFD_CFG = \
+	mfd/mfd.cfg
 
 check : standard standard_parallel
 
@@ -134,6 +136,10 @@ endif
 ngee-biogeochemistry : 
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		-r ngee --suite biogeochemistry 
+
+test_mimetic :
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--config-files $(MFD_CFG)
 
 #
 # Try to cleanup the regression test output.
