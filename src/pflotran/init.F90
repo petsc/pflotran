@@ -220,7 +220,14 @@ subroutine Init(simulation)
   ! initialize plot variables
   realization%output_option%output_variable_list => OutputVariableListCreate()
   realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
-  
+#ifdef SURFACE_FLOW
+  ! initialize plot variables
+  simulation%surf_realization%output_option%output_variable_list => &
+    OutputVariableListCreate()
+  simulation%surf_realization%output_option%aveg_output_variable_list => &
+    OutputVariableListCreate()
+#endif
+
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
@@ -1043,9 +1050,6 @@ subroutine Init(simulation)
       simulation%surf_flow_stepper%cur_waypoint => simulation%surf_realization%waypoints%first
     endif
 
-    ! initialize plot variables
-    simulation%surf_realization%output_option%output_variable_list => &
-      OutputVariableListCreate()
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call SurfaceFlowSetup(simulation%surf_realization)
