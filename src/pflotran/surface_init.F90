@@ -221,6 +221,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Solver_module
   use Output_Aux_module
   use Output_Tecplot_module
+  use Output_Surface_module
 
   implicit none
 
@@ -250,6 +251,11 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   PetscBool :: velocities
   PetscBool :: fluxes
   PetscBool :: continuation_flag
+  PetscBool :: mass_flowrate
+  PetscBool :: energy_flowrate
+  PetscBool :: aveg_mass_flowrate
+  PetscBool :: aveg_energy_flowrate
+
   type(waypoint_type), pointer :: waypoint
   PetscReal :: temp_real, temp_real2
 
@@ -395,6 +401,10 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
       case ('SURF_OUTPUT')
         velocities = PETSC_FALSE
         fluxes = PETSC_FALSE
+        mass_flowrate = PETSC_FALSE
+        energy_flowrate = PETSC_FALSE
+        aveg_mass_flowrate = PETSC_FALSE
+        aveg_energy_flowrate = PETSC_FALSE
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
@@ -634,6 +644,24 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
+            case('FLOWRATES','FLOWRATE')
+              mass_flowrate = PETSC_TRUE
+              energy_flowrate = PETSC_TRUE
+            case('MASS_FLOWRATE')
+              mass_flowrate = PETSC_TRUE
+            case('ENERGY_FLOWRATE')
+              energy_flowrate = PETSC_TRUE
+            case('AVERAGE_FLOWRATES','AVERAGE_FLOWRATE')
+              aveg_mass_flowrate = PETSC_TRUE
+              aveg_energy_flowrate = PETSC_TRUE
+            case('AVERAGE_MASS_FLOWRATE')
+              aveg_mass_flowrate = PETSC_TRUE
+            case('AVERAGE_ENERGY_FLOWRATE')
+              aveg_energy_flowrate = PETSC_TRUE
+            case('VARIABLES')
+              call OutputSurfaceVariableRead(input,option,output_option%output_variable_list)
+            case('AVERAGE_VARIABLES')
+              call OutputSurfaceVariableRead(input,option,output_option%aveg_output_variable_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
@@ -655,6 +683,33 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
         endif
+        if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
+          if (output_option%print_hdf5) then
+#ifndef STORE_FLOWRATES
+            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
+              'compile with -DSTORE_FLOWRATES'
+            call printErrMsg(option)
+#endif
+            output_option%print_hdf5_mass_flowrate = mass_flowrate
+            output_option%print_hdf5_energy_flowrate = energy_flowrate
+            output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
+            output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
+            if(aveg_mass_flowrate.or.aveg_energy_flowrate) then
+              if(output_option%periodic_output_time_incr==0.d0) then
+                option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
+                  'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
+                  ' PERIODIC TIME being set.'
+                call printErrMsg(option)
+              endif
+            endif
+           option%store_flowrate = PETSC_TRUE
+          else
+            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+              'only available in HDF5 format'
+            call printErrMsg(option)
+          endif
+        endif
+
       !.........................................................................
       case('NEWTON_SOLVER')
         call InputReadWord(input,option,word,PETSC_FALSE)
