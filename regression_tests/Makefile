@@ -159,3 +159,5 @@ clean-tests :
 	-find . -type f -name '*~' -print0 | xargs -0 rm
 	-rm -f default/anisothermal/thc_1d.h5
 	-rm -f default/anisothermal/th_1d.h5
+	-rm -f mfd/mfd-mas.dat
+	-rm -f mfd/mfd.h5
