@@ -141,12 +141,6 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
   PetscReal :: vol, por, por1
        
   ! accumulation term units = kmol/s
-
-#ifdef DASVYAT
-!  write(*,*) "sat ",global_aux_var%sat(1), " den ", global_aux_var%den(1)
-!  write(*,*) "por ", por, " volume ", vol, " dt ", option%flow_dt
-#endif
-
 #ifndef USE_COMPRESSIBILITY
     Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
