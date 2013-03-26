@@ -359,7 +359,9 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       end select
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(sum_connection) = Res(1)
+#ifdef STORE_FLOWRATES
+      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+#endif
       
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
@@ -404,8 +406,9 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
                           cur_connection_set%area(iconn),option,vel,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(sum_connection) = Res(1)
-      
+#ifdef STORE_FLOWRATES
+      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+#endif
       r_p(local_id) = r_p(local_id) - Res(1)
     enddo
     boundary_condition => boundary_condition%next
@@ -1778,7 +1781,9 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       end select
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(sum_connection) = Res(1)
+#ifdef STORE_FLOWRATES
+      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+#endif
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
 
       if (local_id_up>0) then
@@ -1821,7 +1826,9 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(sum_connection) = Res(1)
+#ifdef STORE_FLOWRATES
+      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+#endif
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
       
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)

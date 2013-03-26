@@ -2469,11 +2469,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       endif
     endif
 
-#ifdef DASVYAT
-!     write(*,*) "Flow begins"
-!     read(*,*)
-#endif
-
     if (option%ntrandof > 0) then ! store initial saturations for transport
       call GlobalUpdateAuxVars(realization,TIME_T)
     endif
@@ -2515,39 +2510,26 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           end if
 
 #if DASVYAT_DEBUG
-
-    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
-                              viewer,ierr)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-!             call VecView(field%flow_xx_faces, viewer, ierr)
-     !       call VecView(field%flow_xx, viewer, ierr)
-     !        call VecView(field%flow_r_faces, viewer, ierr)
-              call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
-
-             write(*,*) "MFD residual", tempreal
-    else
+          call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
+                                viewer,ierr)
+          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            !call VecView(field%flow_xx_faces, viewer, ierr)
+            !call VecView(field%flow_xx, viewer, ierr)
+            !call VecView(field%flow_r_faces, viewer, ierr)
+            call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
+            write(*,*) "MFD residual", tempreal
+          else
             call VecView(field%flow_xx, viewer, ierr)
-    end if
+        endif
 
-!    stop
+        call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
+        call VecView(field%flow_r, viewer, ierr)
+        call VecNorm(field%flow_r, NORM_2, tempreal2, ierr)
 
-    call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
-
-    call VecView(field%flow_r, viewer, ierr)
-    call VecNorm(field%flow_r, NORM_2, tempreal2, ierr)
-
-
-    write(*,*) "FV residual", tempreal2
-
-    call PetscViewerDestroy(viewer,ierr)
-
-    write(*,*) "After SNESSolve" 
-
-!    if (tempreal2/tempreal > 1e+4) stop
-
-!     stop
-      read(*,*)   
-     
+        write(*,*) "FV residual", tempreal2
+        call PetscViewerDestroy(viewer,ierr)
+        write(*,*) "After SNESSolve"
+        read(*,*)     
 #endif
 
 
@@ -2859,12 +2841,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
       endif
   end select
-
-
-#ifdef DASVYAT_DEBUG
-    write(*,*) "End FLOW" 
-    read(*,*)    
-#endif
 
   if (option%print_screen_flag) print *, ""
   
@@ -3205,12 +3181,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
-
-#ifdef DASVYAT
-!write(*,*) "Beginning of StepperStepTransportDT"
-!read(*,*)
-!stop
-#endif
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
