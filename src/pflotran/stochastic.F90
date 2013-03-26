@@ -186,7 +186,7 @@ subroutine StochasticRun(stochastic,option)
     endif
 #endif
 
-    call PetscGetTime(timex_wall(1), ierr)
+    call PetscTime(timex_wall(1), ierr)
     option%start_time = timex_wall(1)
 
     call Init(simulation)
@@ -223,7 +223,7 @@ subroutine StochasticRun(stochastic,option)
     call SimulationDestroy(simulation)
 
   ! Final Time
-    call PetscGetTime(timex_wall(2), ierr)
+    call PetscTime(timex_wall(2), ierr)
     
     if (option%myrank == option%io_rank) then
 

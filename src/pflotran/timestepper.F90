@@ -634,7 +634,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     run_flow_as_steady_state = flow_stepper%run_as_steady_state
   endif
 
-  call PetscGetTime(master_stepper%start_time, ierr)
+  call PetscTime(master_stepper%start_time, ierr)
 
   do
 
@@ -929,7 +929,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     ! next time step will not exceed that value.  If it does, print the
     ! checkpoint and exit.
     if (option%wallclock_stop_flag) then
-      call PetscGetTime(current_time, ierr)
+      call PetscTime(current_time, ierr)
       average_step_time = (current_time-master_stepper%start_time)/ &
                           real(master_stepper%steps-&
                                master_stepper%start_time_step+1) &
@@ -1972,7 +1972,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
 
   do
       
-    call PetscGetTime(log_start_time, ierr)
+    call PetscTime(log_start_time, ierr)
 
     select case(option%iflowmode)
       case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
@@ -1985,7 +1985,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         end if
 
     end select
-    call PetscGetTime(log_end_time, ierr)
+    call PetscTime(log_end_time, ierr)
     stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
                                       (log_end_time - log_start_time)
 
@@ -2497,7 +2497,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     
     do
       
-      call PetscGetTime(log_start_time, ierr)
+      call PetscTime(log_start_time, ierr)
 
       select case(option%iflowmode)
         case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
@@ -2535,7 +2535,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
 
       end select
-      call PetscGetTime(log_end_time, ierr)
+      call PetscTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
                                        (log_end_time - log_start_time)
 
@@ -2925,7 +2925,7 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   call printErrMsg(option)
 
   do
-    call PetscGetTime(log_start_time,ierr)
+    call PetscTime(log_start_time,ierr)
     
     select case(option%iflowmode)
       case (RICHARDS_MODE)
@@ -2935,7 +2935,7 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
         call printErrMsgByRank(option)
     end select
 
-    call PetscGetTime(log_end_time,ierr)
+    call PetscTime(log_end_time,ierr)
 
 
     stepper%cumulative_solver_time_surf_flow =  &
@@ -3227,18 +3227,18 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
       call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
       call VecLog(field%tran_log_xx,ierr)
 
-      call PetscGetTime(log_start_time, ierr)
+      call PetscTime(log_start_time, ierr)
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
-      call PetscGetTime(log_end_time, ierr)
+      call PetscTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
         (log_end_time - log_start_time)          
         
       call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
       call VecExp(field%tran_xx,ierr)
     else
-      call PetscGetTime(log_start_time, ierr)
+      call PetscTime(log_start_time, ierr)
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
-      call PetscGetTime(log_end_time, ierr)
+      call PetscTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
         (log_end_time - log_start_time)          
     endif
@@ -3462,7 +3462,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)
 
-  call PetscGetTime(log_start_time, ierr)
+  call PetscTime(log_start_time, ierr)
 
   if (option%nflowdof > 0 .and. .not.steady_flow) then
     call TimestepperSetTranWeights(option,flow_t0,flow_t1)
@@ -3581,7 +3581,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   endif
 
   call PetscBarrier(solver%ksp,ierr)
-  call PetscGetTime(log_end_time, ierr)
+  call PetscTime(log_end_time, ierr)
   stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
                                    (log_end_time - log_start_time)          
 
@@ -3695,11 +3695,11 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   plot_flag = PETSC_TRUE
     
   if (associated(flow_stepper)) then
-    call PetscGetTime(start_time, ierr)
+    call PetscTime(start_time, ierr)
     call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
     call StepperSolveFlowSteadyState(realization,flow_stepper,failure)
     call PetscLogStagePop(ierr)
-    call PetscGetTime(end_time, ierr)
+    call PetscTime(end_time, ierr)
     if (OptionPrintToScreen(option)) then
       write(*, &
          &  '(/,1pe12.4," seconds to solve steady state flow problem",/)') &
@@ -3714,11 +3714,11 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   endif
 
   if (associated(tran_stepper)) then
-    call PetscGetTime(start_time, ierr)
+    call PetscTime(start_time, ierr)
     call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
     call StepperSolveTranSteadyState(realization,tran_stepper,failure)
     call PetscLogStagePop(ierr)
-    call PetscGetTime(end_time, ierr)
+    call PetscTime(end_time, ierr)
     if (OptionPrintToScreen(option)) then
       write(*, &
          &'(/,1pe12.4," seconds to solve steady state transport problem",/)') &

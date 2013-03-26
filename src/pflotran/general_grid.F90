@@ -107,7 +107,7 @@ subroutine ReadStructuredGridHDF5(realization)
   patch => realization%patch
   grid => patch%grid
 
-  call PetscGetTime(time0, ierr)
+  call PetscTime(time0, ierr)
 
   filename = option%generalized_grid
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-hdf5_grid', &
@@ -145,11 +145,11 @@ subroutine ReadStructuredGridHDF5(realization)
   
   option%io_buffer = 'Setting up grid cell indices'
   call printMsg(option)
-  call PetscGetTime(time3, ierr)
+  call PetscTime(time3, ierr)
   string = 'Cell Id'
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
-  call PetscGetTime(time4, ierr)
+  call PetscTime(time4, ierr)
   time4 = time4 - time3
   write(option%io_buffer, &
         '(f6.2," seconds to set up grid cell indices for hdf5 file")') time4
@@ -278,9 +278,9 @@ subroutine ReadStructuredGridHDF5(realization)
 
   option%io_buffer = 'Setting up connection indices'
   call printMsg(option)   
-  call PetscGetTime(time3, ierr)
+  call PetscTime(time3, ierr)
   call SetupConnectionIndices(grid,option,grp_id,indices)
-  call PetscGetTime(time4, ierr)
+  call PetscTime(time4, ierr)
   time4 = time4 - time3
   write(option%io_buffer, &
         '(f6.2," seconds to set up connection indices for hdf5 file")') &
@@ -386,7 +386,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   call GridDestroyHashTable(grid)
 
-  call PetscGetTime(time1, ierr)
+  call PetscTime(time1, ierr)
   time1 = time1 - time0
   write(option%io_buffer, &
         '(f6.2," seconds to read unstructured grid data from hdf5 file")') &

@@ -111,21 +111,21 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
     endif
   
     if (surf_realization%output_option%print_tecplot) then
-      call PetscGetTime(tstart,ierr)
+      call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(surf_realization%output_option%tecplot_format)
         case (TECPLOT_FEQUADRILATERAL_FORMAT)
           call OutputTecplotFEQUAD(surf_realization,realization)
       end select
-      call PetscGetTime(tend,ierr)
+      call PetscTime(tend,ierr)
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)
     endif
 
     if (surf_realization%output_option%print_hydrograph) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_hydrograph,ierr)
       call OutputHydrograph(surf_realization)
-      call PetscGetTime(tend,ierr)
+      call PetscTime(tend,ierr)
       call PetscLogEventEnd(logging%event_output_hydrograph,ierr)
     endif
 
@@ -1664,7 +1664,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   if(aveg_plot_flag) then
 
     if (surf_realization%output_option%print_hdf5) then
-      call PetscGetTime(tstart,ierr)
+      call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       if (surf_realization%discretization%itype == UNSTRUCTURED_GRID) then
         call OutputSurfaceHDF5UGridXDMF(surf_realization,realization,AVERAGED_VARS)
@@ -1672,7 +1672,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
       !  call OutputHDF5(surf_realization,AVERAGED_VARS)
       endif      
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
-      call PetscGetTime(tend,ierr)
+      call PetscTime(tend,ierr)
       write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
