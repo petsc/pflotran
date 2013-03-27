@@ -308,10 +308,11 @@ subroutine ExecuteRun(this)
   implicit none
   
   class(simulation_type) :: this
+  PetscInt :: stop_flag
   
   call printMsg(this%option,'Simulation%ExecuteRun()')
 
-  call this%synchronizer%ExecuteRun()
+  call this%synchronizer%ExecuteRun(stop_flag)
   
 end subroutine ExecuteRun
 

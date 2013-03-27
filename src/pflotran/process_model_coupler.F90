@@ -120,7 +120,7 @@ end subroutine InitializeRun
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine RunToTime(this,sync_time)
+recursive subroutine RunToTime(this,sync_time,stop_flag)
 
   use Timestepper_module
   
@@ -128,7 +128,9 @@ recursive subroutine RunToTime(this,sync_time)
   
   class(process_model_coupler_type) :: this
   PetscReal :: sync_time
+  PetscInt :: stop_flag
   
+  PetscInt :: local_stop_flag
   PetscBool :: failure
   class(process_model_base_type), pointer :: cur_process_model
   
@@ -137,20 +139,31 @@ recursive subroutine RunToTime(this,sync_time)
     trim(adjustl(this%option%io_buffer)) // ')'
   call printMsg(this%option)
   
+  local_stop_flag = 0
   do
     if (this%timestepper%target_time >= sync_time) exit
-    call StepperSetTargetTime(this%timestepper,sync_time,this%option)
-    call StepperStepDT(this%timestepper,this%process_model_list,failure)
+    if (local_stop_flag > 0) exit ! end simulation
+    call StepperSetTargetTime(this%timestepper,sync_time,this%option, &
+                              local_stop_flag)
+    call StepperStepDT(this%timestepper,this%process_model_list, &
+                       local_stop_flag)
+    if (local_stop_flag > 1) exit ! failure
+    ! Have to loop over all process models coupled in this object and update
+    ! the time step size.  Still need code to force all process models to
+    ! use the same time step size if tightly or iteratively coupled.
     cur_process_model => this%process_model_list
     do
       if (.not.associated(cur_process_model)) exit
       call StepperUpdateDT(this%timestepper,cur_process_model)
       cur_process_model => cur_process_model%next
     enddo
+    ! Run underlying process model couplers
     if (associated(this%below)) then
-      call this%below%RunTo(this%timestepper%target_time)
+      call this%below%RunTo(this%timestepper%target_time,local_stop_flag)
     endif
   enddo
+  
+  stop_flag = max(stop_flag,local_stop_flag)
   
 end subroutine RunToTime
 

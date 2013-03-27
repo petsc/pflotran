@@ -58,6 +58,7 @@ module Timestepper_module
     type(solver_type), pointer :: solver
     
     type(waypoint_type), pointer :: cur_waypoint
+    type(waypoint_type), pointer :: prev_waypoint
     PetscBool :: match_waypoint
 
 #ifndef SIMPLIFY    
@@ -137,6 +138,7 @@ function TimestepperCreate()
   nullify(stepper%convergence_context)
 #endif  
   nullify(stepper%cur_waypoint)
+  nullify(stepper%prev_waypoint)
   stepper%match_waypoint = PETSC_FALSE
   
   stepper%solver => SolverCreate()
@@ -317,7 +319,6 @@ subroutine StepperUpdateDT(timestepper,process_model)
 
   update_time_step = PETSC_TRUE
   if (timestepper%time_step_cut_flag) then
-    timestepper%time_step_cut_flag = PETSC_FALSE
     timestepper%num_constant_time_steps = 1
   else if (timestepper%num_constant_time_steps > 0) then
     ! otherwise, only increment if the constant time step counter was
@@ -356,7 +357,7 @@ end subroutine StepperUpdateDT
 ! date: 03/20/13
 !
 ! ************************************************************************** !
-subroutine StepperSetTargetTime(timestepper,sync_time,option)
+subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag)
 
   use Option_module
   
@@ -365,6 +366,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   type(stepper_type), pointer :: timestepper
   PetscReal :: sync_time
   type(option_type) :: option
+  PetscInt :: stop_flag
   
   PetscReal :: target_time
   PetscReal :: dt
@@ -375,21 +377,27 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   PetscReal :: tolerance
   type(waypoint_type), pointer :: cur_waypoint
 
-  write(option%io_buffer,'(f12.2)') sync_time
-  option%io_buffer = 'StepperSetTargetTime%RunToTime(' // &
-    trim(adjustl(option%io_buffer)) // ')'
+  option%io_buffer = 'StepperSetTargetTime()'
   call printMsg(option)
   
-  ! if the maximum time step size decreased in the past step, need to set
-  ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-  if (timestepper%match_waypoint) then
-    timestepper%dt = min(timestepper%prev_dt,timestepper%dt_max)
-    timestepper%match_waypoint = PETSC_FALSE
+  if (timestepper%time_step_cut_flag) then
+    timestepper%time_step_cut_flag = PETSC_FALSE
+    timestepper%match_waypoint = PETSC_FALSE ! reset back to false
+    timestepper%cur_waypoint => timestepper%prev_waypoint
+  else
+    ! if the maximum time step size decreased in the past step, need to set
+    ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
+    if (timestepper%match_waypoint) then
+      timestepper%dt = min(timestepper%prev_dt,timestepper%dt_max)
+      timestepper%match_waypoint = PETSC_FALSE
+    endif
   endif
   
   dt = timestepper%dt
   timestepper%prev_dt = dt
   cur_waypoint => timestepper%cur_waypoint
+  ! need previous waypoint for reverting back on time step cut
+  timestepper%prev_waypoint => timestepper%cur_waypoint
   ! dt_max must be set from current waypoint and not updated below
   dt_max = cur_waypoint%dt_max
   cumulative_time_steps = timestepper%steps
@@ -411,12 +419,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   do ! we cycle just in case the next waypoint is beyond the target_time
     if (target_time + tolerance*dt >= sync_time .or. &
         (target_time + tolerance*dt >= cur_waypoint%time .and. &
-         (cur_waypoint%update_conditions &
-         .or. &
-!         cur_waypoint%print_output .or. &
-!         cur_waypoint%print_tr_output .or. &
-         cur_waypoint%final &
-          ))) then
+         WaypointForceMatchToTime(cur_waypoint))) then
       max_time = min(sync_time,cur_waypoint%time)
       ! decrement by time step size
       target_time = target_time - dt
@@ -451,6 +454,8 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
   ! update maximum time step size to current waypoint value
   if (associated(cur_waypoint)) then
     dt_max = cur_waypoint%dt_max
+  else
+    stop_flag = 1 ! stop after end of time step
   endif
   
   option%refactor_dt = dt
@@ -468,7 +473,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option)
 ! date: 03/20/13
 !
 ! ************************************************************************** !
-subroutine StepperStepDT(timestepper,process_model,failure)
+subroutine StepperStepDT(timestepper,process_model,stop_flag)
 
   use Process_Model_Base_class
   use Option_module
@@ -478,7 +483,12 @@ subroutine StepperStepDT(timestepper,process_model,failure)
 
   type(stepper_type) :: timestepper
   class(process_model_base_type) :: process_model
-  PetscBool :: failure
+  PetscInt :: stop_flag
+  
+  PetscInt :: snes_reason
+  PetscInt :: icut
+  
+  PetscBool, save :: flag = PETSC_TRUE
   
   write(process_model%option%io_buffer,'(f12.2)') timestepper%dt
   process_model%option%io_buffer = 'StepperStepDT(' // &
@@ -511,7 +521,25 @@ subroutine StepperStepDT(timestepper,process_model,failure)
     timestepper%cumulative_linear_iterations, &
     0, &
     timestepper%cumulative_time_step_cuts
-
+  
+    !stop_flag = 0 ! reset stop flag to 0
+    
+    if (flag .and. timestepper%target_time >= 3.89999d0) then
+      ! cut target time
+      flag = PETSC_FALSE
+      timestepper%target_time = timestepper%target_time - timestepper%dt
+      timestepper%dt = 0.5 * timestepper%dt
+      timestepper%target_time = timestepper%target_time + timestepper%dt
+      snes_reason = 2
+      icut = 1
+      timestepper%time_step_cut_flag = PETSC_TRUE
+      write(*,'('' -> Cut time step: snes='',i3, &
+        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
+        &   1pe12.5)')  snes_reason,icut,timestepper%cumulative_time_step_cuts, &
+            timestepper%target_time, &
+            timestepper%dt
+     
+    endif
   
 #if 0
   if (option%print_screen_flag) then

@@ -42,6 +42,7 @@ module Waypoint_module
             WaypointListRemoveExtraWaypnts, &
             WaypointConvertTimes, &
             WaypointSkipToTime, &
+            WaypointForceMatchToTime, &
             WaypointListPrint
 
 contains
@@ -623,6 +624,35 @@ function WaypointListCopy(list)
   WaypointListCopy => new_list
 
 end function WaypointListCopy
+
+! ************************************************************************** !
+!
+! WaypointForceMatchToTime: Forces a match to waypoint time if condition is 
+!                           true.
+! author: Glenn Hammond
+! date: 03/19/13
+!
+! ************************************************************************** !
+function WaypointForceMatchToTime(waypoint)
+
+  implicit none
+  
+  type(waypoint_type) :: waypoint
+  
+  PetscBool :: WaypointForceMatchToTime
+  
+  WaypointForceMatchToTime = PETSC_FALSE
+
+  if (waypoint%update_conditions &
+      .or. &
+!      waypoint%print_output .or. &
+!      waypoint%print_tr_output .or. &
+      waypoint%final &
+      ) then
+    WaypointForceMatchToTime = PETSC_TRUE
+  endif
+  
+end function WaypointForceMatchToTime
 
 ! ************************************************************************** !
 !
