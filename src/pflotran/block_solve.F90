@@ -72,9 +72,10 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
 ! Local variables:
 
-  PetscInt :: j, info
-  character(len=1) :: trans
+  PetscInt :: j, i, l, ll, info, info1, iwork(k)
+  character(len=1) :: trans, norm = '1'
   PetscReal, parameter :: one = 1.d0
+  PetscReal anorm, sum, rcond, work(4*k)
 
 !************************************************************************
 
@@ -90,29 +91,48 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
 !      First, factor D(j).
            
-     call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
+    call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
 
-     if ( info .ne. 0 ) then
-        print *,'At block ',j,','
-        print *,'problem, info = ', info   ! make this better later.
-        return
-     endif
+    if ( info .ne. 0 ) then
+!        write(*,'("node ",3i3,1p15e12.4)') j,n,k,(d(i,ll,j),ll=1,k)
+
+      print *,'At block ',j,',',' 1-norm = ',anorm
+      print *,'problem, info = ', info   ! make this better later.
+      stop
+!     return
+    endif
+
+!  Estimate condition number
+       anorm = 0.d0
+       do l=1,k
+         sum = 0.d0
+         do i = 1, k
+           sum = sum + abs(d(i,l,j))
+         enddo
+         anorm = max(anorm,sum)
+       enddo
+
+      CALL dgecon(NORM,k,D(1,1,j),k,ANORM,RCOND,WORK,IWORK,INFO1)
+
+      rcond = 1.e0/RCOND
+      if (rcond > 1.e10) WRITE (*,999) 'Estimate of condition number =', RCOND,info1
+      999 FORMAT (1X,A,1P,e11.4,i3)
 
 !      Now, compute E(j) from D(j) * E(j) = E(j).
 
-     call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
+    call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
                        E(1,1,j), k, info)
-     if ( info .lt. 0 ) then
-        print *,'Illegal parameter number ',-info
-        return
-     endif
+    if ( info .lt. 0 ) then
+      print *,'Illegal parameter number ',-info
+      return
+    endif
 
 !    Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
 
-     call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
+    call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
                       E(1,1,j), k, one, D(1,1,j+1), k)
 
-    enddo
+  enddo
 
 ! Finally, obtain the LU factorization of D(n).
 
