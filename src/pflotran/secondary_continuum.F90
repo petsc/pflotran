@@ -468,9 +468,9 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
            
   ! Allocate diagonal terms
   allocate(rt_sec_transport_vars%cxm(reaction%naqcomp,reaction%naqcomp,&
-           rt_sec_transport_vars%ncells-1)) 
+           rt_sec_transport_vars%ncells)) 
   allocate(rt_sec_transport_vars%cxp(reaction%naqcomp,reaction%naqcomp,&
-           rt_sec_transport_vars%ncells-1))  
+           rt_sec_transport_vars%ncells))  
   allocate(rt_sec_transport_vars%cdl(reaction%naqcomp,reaction%naqcomp,&
            rt_sec_transport_vars%ncells)) 
   allocate(rt_sec_transport_vars% &
@@ -570,6 +570,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   use Option_module 
   use Global_Aux_module
   use Block_Solve_module
+  use Block_Tridiag_module
   use Utility_module
   use Reaction_module
   use Reaction_Aux_module
@@ -585,11 +586,11 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
-                          sec_transport_vars%ncells-1)
+                          sec_transport_vars%ncells)
   PetscReal :: coeff_diag(reaction%naqcomp,reaction%naqcomp, &
                           sec_transport_vars%ncells)
   PetscReal :: coeff_right(reaction%naqcomp,reaction%naqcomp, &
-                           sec_transport_vars%ncells-1)
+                           sec_transport_vars%ncells)
   PetscReal :: res(sec_transport_vars%ncells*reaction%naqcomp)
   PetscReal :: rhs(sec_transport_vars%ncells*reaction%naqcomp)
   PetscReal :: D_M(reaction%naqcomp,reaction%naqcomp)
@@ -628,7 +629,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
-  PetscInt :: d
+  PetscInt :: d, ier
 
   ! Quantities for numerical jacobian
   PetscReal :: conc_prim(reaction%naqcomp)
@@ -642,17 +643,17 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: dPsisec_dCprim_num(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: pert
   PetscReal :: coeff_left_pert(reaction%naqcomp,reaction%naqcomp, &
-                          sec_transport_vars%ncells-1)
+                          sec_transport_vars%ncells)
   PetscReal :: coeff_diag_pert(reaction%naqcomp,reaction%naqcomp, &
                           sec_transport_vars%ncells)
   PetscReal :: coeff_right_pert(reaction%naqcomp,reaction%naqcomp, &
-                           sec_transport_vars%ncells-1)
+                           sec_transport_vars%ncells)
   PetscReal :: coeff_left_copy(reaction%naqcomp,reaction%naqcomp, &
-                          sec_transport_vars%ncells-1)
+                          sec_transport_vars%ncells)
   PetscReal :: coeff_diag_copy(reaction%naqcomp,reaction%naqcomp, &
                           sec_transport_vars%ncells)
   PetscReal :: coeff_right_copy(reaction%naqcomp,reaction%naqcomp, &
-                           sec_transport_vars%ncells-1)
+                           sec_transport_vars%ncells)
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -753,7 +754,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
           coeff_diag(j,k,i) = coeff_diag(j,k,i) + &
                               pordiff*area(i)/(dm_minus(i+1) + dm_plus(i)) + &
                               pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))
-          coeff_left(j,k,i-1) = coeff_left(j,k,i-1) - &
+          coeff_left(j,k,i) = coeff_left(j,k,i) - &
                               pordiff*area(i-1)/(dm_minus(i) + dm_plus(i-1))
           coeff_right(j,k,i) = coeff_right(j,k,i) - &
                                pordiff*area(i)/(dm_minus(i+1) + dm_plus(i))
@@ -773,7 +774,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                   pordiff*area(ngcells-1)/(dm_minus(ngcells) &
                                   + dm_plus(ngcells-1)) + &
                                   pordiff*area(ngcells)/dm_plus(ngcells)
-        coeff_left(j,k,ngcells-1) = coeff_left(j,k,ngcells-1) - &
+        coeff_left(j,k,ngcells) = coeff_left(j,k,ngcells) - &
                                   pordiff*area(ngcells-1)/(dm_minus(ngcells) + &
                                   dm_plus(ngcells-1)) 
 
@@ -787,22 +788,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     do j = 1, ncomp
       do k = 1, ncomp
         coeff_diag(j,k,i) = coeff_diag(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
-      enddo
-    enddo
-  enddo
-  
-  do i = 2, ngcells
-    do j = 1, ncomp
-      do k = 1, ncomp
-        coeff_left(j,k,i-1) = coeff_left(j,k,i-1)*dtotal(j,k,i-1) ! m3/s*kg/L
-      enddo
-    enddo
-  enddo
-  
-  do i = 1, ngcells-1
-    do j = 1, ncomp
-      do k = 1, ncomp
-        coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+        coeff_left(j,k,i) = coeff_left(j,k,i)*dtotal(j,k,i)
+        coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i)
       enddo
     enddo
   enddo
@@ -858,21 +845,11 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     do i = 1, ngcells
       do k = 1, ncomp
         coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i)
-      enddo
-    enddo
-  
-    do i = 2, ngcells
-      do k = 1, ncomp
-        coeff_left(:,k,i-1) = coeff_left(:,k,i-1)*conc_upd(k,i-1)
-      enddo
-    enddo
-  
-    do i = 1, ngcells-1
-      do k = 1, ncomp
+        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i)
         coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i)
       enddo
-    enddo
-  endif                                                
+    enddo 
+  endif
   
   if (option%numerical_derivatives_multi_coupling) then  
     ! Store the coeffs for numerical jacobian
@@ -881,10 +858,21 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     coeff_right_copy = coeff_right
   endif
 
-  call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)
-  
-  call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
-
+  if (option%secondary_continuum_solver == 1) then
+    do i = 2, ngcells
+      coeff_left(:,:,i-1) = coeff_left(:,:,i)
+    enddo
+    coeff_left(:,:,ngcells) = 0.d0
+    call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)  
+    call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+  elseif (option%secondary_continuum_solver == 2) then
+    call decbt(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,ier)
+    if (ier /= 0) then
+      print *,'error in matrix decbt: ier = ',ier
+      stop
+    endif
+    call solbtf(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
+  endif
   
   ! Update the secondary concentrations
   do i = 1, ncomp
@@ -1028,13 +1016,22 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 !============================== Forward solve ==================================        
                         
       rhs = -res   
-  
-      call bl3dfac(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
-                    coeff_left_pert,pivot)
-    
-      call bl3dsolf(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
-                     coeff_left_pert,pivot,1,rhs)
-
+      
+      if (option%secondary_continuum_solver == 1) then
+        call bl3dfac(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
+                      coeff_left_pert,pivot)  
+        call bl3dsolf(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
+                       coeff_left_pert,pivot,1,rhs)
+      elseif (option%secondary_continuum_solver == 2) then
+        call decbt(ncomp,ngcells,ncomp,coeff_diag_pert,coeff_right_pert, &
+                    coeff_left_pert,pivot,ier)
+        if (ier /= 0) then
+          print *,'error in matrix decbt: ier = ',ier
+          stop
+        endif
+        call solbtf(ncomp,ngcells,ncomp,coeff_diag_pert,coeff_right_pert, &
+                    coeff_left_pert,pivot,rhs)
+      endif
   
       ! Update the secondary concentrations
       do i = 1, ncomp
@@ -1254,6 +1251,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
   use Option_module 
   use Global_Aux_module
   use Block_Solve_module
+  use Block_Tridiag_module
   use Utility_module
   use Reaction_module
   use Reaction_Aux_module
@@ -1407,6 +1405,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   use Reaction_module
   use Reactive_Transport_Aux_module
   use Block_Solve_module
+  use Block_Tridiag_module
   use Utility_module
   
 
@@ -1417,11 +1416,11 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   PetscReal :: coeff_left(reaction%naqcomp,reaction%naqcomp, &
-                 sec_transport_vars%ncells-1)
+                 sec_transport_vars%ncells)
   PetscReal :: coeff_diag(reaction%naqcomp,reaction%naqcomp, &
                  sec_transport_vars%ncells)
   PetscReal :: coeff_right(reaction%naqcomp,reaction%naqcomp, &
-                 sec_transport_vars%ncells-1)
+                 sec_transport_vars%ncells)
   PetscReal :: rhs(sec_transport_vars%ncells*reaction%naqcomp)
   PetscReal :: conc_upd(reaction%naqcomp,sec_transport_vars%ncells) 
   PetscInt :: i, j, n
@@ -1449,8 +1448,13 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   coeff_right = sec_transport_vars%cxp
   coeff_diag = sec_transport_vars%cdl
   rhs = sec_transport_vars%r
-        
-  call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+   
+  if (option%secondary_continuum_solver  == 1) then           
+    call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+  elseif (option%secondary_continuum_solver == 2) then
+    call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
+  endif
+  
   
   do j = 1, ncomp
     do i = 1, ngcells
@@ -1462,6 +1466,7 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
       else
         conc_upd(j,i) = rhs(n) + conc_upd(j,i)
       endif
+      if (conc_upd(j,i) < 0.d0) conc_upd(j,i) = 1.d-8
     enddo
   enddo
   
