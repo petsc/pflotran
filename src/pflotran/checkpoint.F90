@@ -185,7 +185,7 @@ subroutine Checkpoint(realization, &
 
   global_vec = 0
   ! Open the checkpoint file.
-  call PetscGetTime(tstart,ierr)   
+  call PetscTime(tstart,ierr)   
   if (id < 0) then
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-restart.chk'
@@ -501,7 +501,7 @@ subroutine Checkpoint(realization, &
   write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(filename)
   call printMsg(option)
 
-  call PetscGetTime(tend,ierr) 
+  call PetscTime(tend,ierr) 
   write(option%io_buffer, &
         '("      Seconds to write to checkpoint file: ", f10.2)') tend-tstart
   call printMsg(option)
@@ -599,7 +599,7 @@ subroutine Restart(realization, &
   global_vec = 0
   local_vec = 0
 
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%restart_filename)
   call printMsg(option)
@@ -808,7 +808,7 @@ subroutine Restart(realization, &
     call VecDestroy(local_vec,ierr)
   endif
   call PetscViewerDestroy(viewer, ierr)
-  call PetscGetTime(tend,ierr) 
+  call PetscTime(tend,ierr) 
 
   call PetscBagDestroy(bag, ierr)
 

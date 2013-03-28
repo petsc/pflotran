@@ -43,6 +43,14 @@ module Surface_Field_module
     ! Solution vectors (yy = previous solution, xx = current iterate)
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
 
+    ! vectors to save temporally average quantities
+    Vec, pointer :: avg_vars_vec(:)
+    PetscInt :: nvars
+
+    ! vectors to save temporally average flowrates
+    Vec :: flowrate_inst
+    Vec :: flowrate_aveg
+
   end type surface_field_type
 
   public :: SurfaceFieldCreate, &
@@ -100,6 +108,12 @@ function SurfaceFieldCreate()
   surface_field%subsurf_temp_vec_1dof = 0
   surface_field%subsurf_temp_vec_ndof = 0
 
+  nullify(surface_field%avg_vars_vec)
+  surface_field%nvars = 0
+
+  surface_field%flowrate_inst = 0
+  surface_field%flowrate_aveg = 0
+
   SurfaceFieldCreate => surface_field
 
 end function SurfaceFieldCreate
@@ -118,6 +132,7 @@ subroutine SurfaceFieldDestroy(surface_field)
   type(surface_field_type), pointer :: surface_field
   
   PetscErrorCode :: ierr
+  PetscInt :: ivar
 
   ! Destroy PetscVecs
   if (surface_field%mannings0 /= 0) call VecDestroy(surface_field%mannings0,ierr)
@@ -159,6 +174,13 @@ subroutine SurfaceFieldDestroy(surface_field)
   
   if (surface_field%subsurf_temp_vec_1dof/=0) call VecDestroy(surface_field%subsurf_temp_vec_1dof,ierr)
   if (surface_field%subsurf_temp_vec_ndof/=0) call VecDestroy(surface_field%subsurf_temp_vec_ndof,ierr)
+
+  do ivar = 1,surface_field%nvars
+    call VecDestroy(surface_field%avg_vars_vec(ivar),ierr)
+  enddo
+
+  if (surface_field%flowrate_inst/=0) call VecDestroy(surface_field%flowrate_inst,ierr)
+  if (surface_field%flowrate_aveg/=0) call VecDestroy(surface_field%flowrate_aveg,ierr)
 
 end subroutine SurfaceFieldDestroy
 

@@ -2868,6 +2868,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
   type(point_type) :: vertex_8(8)
   PetscInt :: ivertex, vertex_id
   PetscInt :: num_vertices, iface, cell_type, num_faces, face_type, i
+  PetscInt :: num_face_vertices
   character(len=MAXSTRINGLENGTH) :: string
   PetscBool :: error_found
 
@@ -2886,6 +2887,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
     num_faces = UCellGetNFaces(cell_type,option)
     do iface = 1, num_faces
       face_type = UCellGetFaceType(cell_type,iface,option)
+      num_face_vertices = UCellGetNFaceVertices(cell_type,iface,option)
       call UCellGetFaceVertices(option,cell_type,iface,face_vertex_ids)
       ! Need to find distance of a point (centroid) from a line (formed by
       ! joining vertices of a line)
@@ -2923,7 +2925,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
           ' violates right hand rule at face "' // &
           trim(UCellFaceTypeToWord(face_type,option)) // &
           '" based on face vertices:'
-        do i = 1, num_vertices
+        do i = 1, num_face_vertices
           write(string,'(i13)') face_vertex_ids(i)
           option%io_buffer = trim(option%io_buffer) // ' ' // &
             trim(adjustl(string))

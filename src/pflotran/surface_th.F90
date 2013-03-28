@@ -1162,7 +1162,10 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,Res)
 
       patch%internal_velocities(1,sum_connection) = vel
-      patch%surf_internal_fluxes(sum_connection) = Res(TH_PRESSURE_DOF)
+#ifdef STORE_FLOWRATE
+      patch%surf_internal_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
+      !patch%surf_internal_fluxes(TH_TEMPERATURE_DOF,sum_connection) =
+#endif
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
 
       if (local_id_up>0) then
@@ -1209,7 +1212,9 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(sum_connection) = Res(1)
+#ifdef STORE_FLOWRATE
+      patch%surf_boundary_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(1)
+#endif
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
       
       iend = local_id_dn*option%nflowdof
