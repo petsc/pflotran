@@ -1756,13 +1756,16 @@ subroutine InitReadInput(simulation)
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
         select case(word)
-          case('HINDMARSH')
-            option%secondary_continuum_solver = 2
           case('KEARST')
             option%secondary_continuum_solver = 1
+          case('HINDMARSH')
+            option%secondary_continuum_solver = 2
+          case('THOMAS')
+            option%secondary_continuum_solver = 3
           case default
             option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
-                               'HINDMARSH or KEARST'
+                               'HINDMARSH or KEARST. For single component'// &
+                               'chemistry THOMAS can be used.'
           call printErrMsg(option)    
         end select        
 !....................

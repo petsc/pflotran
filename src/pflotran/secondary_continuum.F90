@@ -630,6 +630,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscInt :: pivot(reaction%naqcomp,sec_transport_vars%ncells)
   PetscInt :: indx(reaction%naqcomp)
   PetscInt :: d, ier
+  PetscReal :: m
 
   ! Quantities for numerical jacobian
   PetscReal :: conc_prim(reaction%naqcomp)
@@ -858,21 +859,41 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     coeff_right_copy = coeff_right
   endif
 
-  if (option%secondary_continuum_solver == 1) then
-    do i = 2, ngcells
-      coeff_left(:,:,i-1) = coeff_left(:,:,i)
-    enddo
-    coeff_left(:,:,ngcells) = 0.d0
-    call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)  
-    call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
-  elseif (option%secondary_continuum_solver == 2) then
-    call decbt(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,ier)
-    if (ier /= 0) then
-      print *,'error in matrix decbt: ier = ',ier
-      stop
-    endif
-    call solbtf(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
-  endif
+  select case (option%secondary_continuum_solver)
+    case(1) 
+      do i = 2, ngcells
+        coeff_left(:,:,i-1) = coeff_left(:,:,i)
+      enddo
+      coeff_left(:,:,ngcells) = 0.d0
+      call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)  
+      call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+    case(2)
+      call decbt(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,ier)
+      if (ier /= 0) then
+        print *,'error in matrix decbt: ier = ',ier
+        stop
+      endif
+      call solbtf(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
+    case(3)
+      ! Thomas algorithm for tridiagonal system
+      ! Forward elimination
+      if (ncomp /= 1) then
+        option%io_buffer = 'THOMAS algorithm can be used only with single '// &
+                           'component chemistry'
+        call printErrMsg(option)
+      endif
+      do i = 2, ngcells
+        m = coeff_left(ncomp,ncomp,i)/coeff_diag(ncomp,ncomp,i-1)
+        coeff_diag(ncomp,ncomp,i) = coeff_diag(ncomp,ncomp,i) - &
+                                    m*coeff_right(ncomp,ncomp,i-1)
+        rhs(i) = rhs(i) - m*rhs(i-1)
+      enddo        
+    case default
+      option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
+                         'HINDMARSH or KEARST. For single component'// &
+                         'chemistry THOMAS can be used.'
+      call printErrMsg(option)  
+    end select
   
   ! Update the secondary concentrations
   do i = 1, ncomp
@@ -1016,13 +1037,14 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 !============================== Forward solve ==================================        
                         
       rhs = -res   
-      
-      if (option%secondary_continuum_solver == 1) then
+           
+    select case (option%secondary_continuum_solver)
+      case(1) 
         call bl3dfac(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
                       coeff_left_pert,pivot)  
         call bl3dsolf(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
                        coeff_left_pert,pivot,1,rhs)
-      elseif (option%secondary_continuum_solver == 2) then
+      case(2)
         call decbt(ncomp,ngcells,ncomp,coeff_diag_pert,coeff_right_pert, &
                     coeff_left_pert,pivot,ier)
         if (ier /= 0) then
@@ -1030,18 +1052,39 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
           stop
         endif
         call solbtf(ncomp,ngcells,ncomp,coeff_diag_pert,coeff_right_pert, &
-                    coeff_left_pert,pivot,rhs)
-      endif
-  
+                     coeff_left_pert,pivot,rhs)
+      case(3)
+        ! Thomas algorithm for tridiagonal system
+        ! Forward elimination
+        if (ncomp /= 1) then
+          option%io_buffer = 'THOMAS algorithm can be used only with '// &
+                             'single component chemistry'
+          call printErrMsg(option)
+        endif
+        do i = 2, ngcells
+          m = coeff_left_pert(ncomp,ncomp,i)/coeff_diag_pert(ncomp,ncomp,i-1)
+          coeff_diag_pert(ncomp,ncomp,i) = coeff_diag_pert(ncomp,ncomp,i) - &
+                                      m*coeff_right_pert(ncomp,ncomp,i-1)
+          rhs(i) = rhs(i) - m*rhs(i-1)
+        enddo        
+      case default
+        option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
+                           'HINDMARSH or KEARST. For single component'// &
+                           'chemistry THOMAS can be used.'
+        call printErrMsg(option)  
+      end select      
+    
       ! Update the secondary concentrations
       do i = 1, ncomp
         if (reaction%use_log_formulation) then
           ! convert log concentration to concentration
           rhs(i+(ngcells-1)*ncomp) = dsign(1.d0,rhs(i+(ngcells-1)*ncomp))* &
             min(dabs(rhs(i+(ngcells-1)*ncomp)),reaction%max_dlnC)
-          conc_current_M_pert(i) = conc_upd(i,ngcells)*exp(rhs(i+(ngcells-1)*ncomp))
+          conc_current_M_pert(i) = conc_upd(i,ngcells)* &
+                                     exp(rhs(i+(ngcells-1)*ncomp))
         else
-          conc_current_M_pert(i) = conc_upd(i,ngcells) + rhs(i+(ngcells-1)*ncomp)
+          conc_current_M_pert(i) = conc_upd(i,ngcells) + &
+                                     rhs(i+(ngcells-1)*ncomp)
         endif
       enddo
 
@@ -1448,13 +1491,24 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
   coeff_right = sec_transport_vars%cxp
   coeff_diag = sec_transport_vars%cdl
   rhs = sec_transport_vars%r
-   
-  if (option%secondary_continuum_solver  == 1) then           
-    call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
-  elseif (option%secondary_continuum_solver == 2) then
-    call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
-  endif
-  
+    
+  select case (option%secondary_continuum_solver)
+    case(1) 
+      call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+    case(2)
+      call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
+    case(3)
+      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
+      do i = ngcells-1, 1, -1
+        rhs(i) = (rhs(i) - coeff_right(ncomp,ncomp,i)*rhs(i+1))/ &
+                             coeff_diag(ncomp,ncomp,i)
+      enddo
+    case default
+      option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
+                         'HINDMARSH or KEARST. For single component'// &
+                         'chemistry THOMAS can be used.'
+      call printErrMsg(option)  
+  end select  
   
   do j = 1, ncomp
     do i = 1, ngcells
