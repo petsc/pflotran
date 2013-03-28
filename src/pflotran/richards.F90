@@ -1306,6 +1306,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         global_aux_vars(local_id_up)%mass_balance_delta(1,1) - Res(1)
 #endif
 
+#ifdef STORE_FLOWRATES
+      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
+#endif
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
@@ -1360,6 +1363,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 option, &
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
+#ifdef STORE_FLOWRATES
+      patch%boundary_fluxes(1,1,sum_connection) = Res(1)
+#endif
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -2246,22 +2252,13 @@ subroutine RichardsMaxChange(realization)
 
   if (option%mimetic) then
 
-     call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces,ierr)
-     call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+    call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces,ierr)
+    call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
-     call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+    call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
     call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
-#ifdef DASVYAT
-!     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out',viewer,ierr)
-!     call VecView(field%flow_dxx_faces, viewer,ierr)
-!     call VecView(field%flow_dxx, viewer,ierr)
-!     call PetscViewerDestroy(viewer, ierr)
-!     write(*,*) "write flow_dxx_faces.out"
-!     read(*,*)
-#endif
-
-  else 
+  else
 
      call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
      call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)

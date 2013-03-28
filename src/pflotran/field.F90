@@ -60,6 +60,10 @@ module Field_module
     Vec, pointer :: avg_vars_vec(:)
     PetscInt :: nvars
 
+    ! vectors to save temporally average flowrates
+    Vec :: flowrate_inst
+    Vec :: flowrate_aveg
+
   end type field_type
 
   public :: FieldCreate, &
@@ -151,6 +155,9 @@ function FieldCreate()
 
   nullify(field%avg_vars_vec)
   field%nvars = 0
+
+  field%flowrate_inst = 0
+  field%flowrate_aveg = 0
 
   FieldCreate => field
   
@@ -260,6 +267,9 @@ subroutine FieldDestroy(field)
   do ivar = 1,field%nvars
     call VecDestroy(field%avg_vars_vec(ivar),ierr)
   enddo
+
+  if (field%flowrate_inst/=0) call VecDestroy(field%flowrate_inst,ierr)
+  if (field%flowrate_aveg/=0) call VecDestroy(field%flowrate_aveg,ierr)
 
   deallocate(field)
   nullify(field)

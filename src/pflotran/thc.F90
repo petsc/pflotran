@@ -1501,7 +1501,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 #endif                    
 #endif
 
-
+  J = J/option%flow_dt
+  
   J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
 
   if (option%numerical_derivatives_flow) then
@@ -1677,8 +1678,8 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
 #endif
 #endif
 
-  Res(1:option%nflowdof-1) = mol(:)
-  Res(option%nflowdof) = vol_frac_prim*eng
+  Res(1:option%nflowdof-1) = mol(:)/option%flow_dt
+  Res(option%nflowdof) = vol_frac_prim*eng/option%flow_dt
 
 end subroutine THCAccumulation
 
@@ -2168,8 +2169,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_dn 
-  Jup = Jup*option%flow_dt
-  Jdn = Jdn*option%flow_dt
+
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
@@ -2487,8 +2487,8 @@ fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
   cond = Dk*area*(global_aux_var_up%temp(1) - global_aux_var_dn%temp(1)) 
   fluxe = fluxe + cond
 
-  Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-  Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nflowdof-1) = fluxm(:)
+  Res(option%nflowdof) = fluxe
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
  
@@ -2800,8 +2800,6 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
 #endif  
 
   end select
-
-  Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives_flow) then
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
@@ -3123,8 +3121,8 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       ! No change in fluxe
   end select
 
-  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
-  Res(option%nflowdof) = fluxe*option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:)
+  Res(option%nflowdof) = fluxe
 
 end subroutine THCBCFlux
 
@@ -3379,7 +3377,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                           sec_dencpr, &
                           option,res_sec_heat)
 
-      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
+      r_p(iend) = r_p(iend) - res_sec_heat*volume_p(local_id)
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
@@ -3421,36 +3419,30 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       
       if (enthalpy_flag) then
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
-                                          option%flow_dt*volume_p(local_id)   
+                                          volume_p(local_id)   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
-        !call wateos_noderiv(tsrc1,global_aux_vars(ghosted_id)%pres(1), &
-        !                    dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
+        ! units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+        ! qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         r_p((local_id-1)*option%nflowdof + jh2o) =  &
                                      r_p((local_id-1)*option%nflowdof + jh2o) &
-                                     - qsrc1*option%flow_dt*volume_p(local_id)
-        !r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
+                                     - qsrc1*volume_p(local_id)
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-          qsrc1*aux_vars_ss(sum_connection)%h*option%flow_dt*volume_p(local_id)
+          qsrc1*aux_vars_ss(sum_connection)%h*volume_p(local_id)
       else
         ! extraction
         r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
-                                               - qsrc1*option%flow_dt* &
-                                                 volume_p(local_id)
+                                               - qsrc1*volume_p(local_id)
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
                                         qsrc1*aux_vars(ghosted_id)%h* &
-                                        option%flow_dt*volume_p(local_id)
+                                        volume_p(local_id)
                                         
       endif  
     
       if (csrc1 > 0.d0) then ! injection
         call printErrMsg(option,"concentration source not yet implemented in THC")
       endif
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -3911,7 +3903,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*option%flow_dt*volume_p(local_id)
+                               jac_sec_heat*volume_p(local_id)
     endif
                             
 ! scale by the volume of the cell
@@ -3959,28 +3951,22 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      
-!      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
-!      endif         
+      endif        
 
       if (qsrc1 > 0.d0) then ! injection
-        !call wateos(tsrc1,global_aux_vars(ghosted_id)%pres(1),dw_kg,dw_mol,dw_dp,dw_dt, &
-        !      enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
-        !dresT_dp = -qsrc1*hw_dp*option%flow_dt
-        dresT_dp = -qsrc1*aux_vars_ss(sum_connection)%dh_dp*option%flow_dt
-        ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
+        ! units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+        ! qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
+        ! base on r_p() = r_p() - qsrc1*enth_src_h2o
+        ! dresT_dp = -qsrc1*hw_dp
+        dresT_dp = -qsrc1*aux_vars_ss(sum_connection)%dh_dp
+        ! dresT_dt = -qsrc1*hw_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       else
         ! extraction
-        dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp*option%flow_dt
-        dresT_dt = -qsrc1*aux_vars(ghosted_id)%dh_dt*option%flow_dt
+        dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp
+        dresT_dt = -qsrc1*aux_vars(ghosted_id)%dh_dt
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)

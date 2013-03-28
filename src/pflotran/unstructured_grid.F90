@@ -2260,6 +2260,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         endif
         connections%id_up(iconn) = local_id
         connections%id_dn(iconn) = abs(dual_local_id)
+        connections%face_id(iconn) = cell_to_face(iface,local_id)
         if(face_type == LINE_FACE_TYPE) then
 
           point_up%x = grid_x(local_id)
@@ -2586,6 +2587,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
       connection%intercp(1,iconn)= intercept%x
       connection%intercp(2,iconn)= intercept%y
       connection%intercp(3,iconn)= intercept%z
+      connection%face_id(iconn)  = face_id
       
   end select
   

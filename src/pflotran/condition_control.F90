@@ -267,52 +267,49 @@ subroutine CondControlAssignFlowInitCond(realization)
 
             if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
-               if (.not.associated(initial_condition%flow_aux_real_var)) then
-                 do icell=1,initial_condition%region%num_cells
-                   local_id = initial_condition%region%cell_ids(icell)
-                   ghosted_id = grid%nL2G(local_id)
-                   if (cur_patch%imat(ghosted_id) <= 0) then
-                     iphase_loc_p(ghosted_id) = 0
-                     cycle
-                   endif
-                   iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+              if (.not.associated(initial_condition%flow_aux_real_var)) then
+                do icell=1,initial_condition%region%num_cells
+                  local_id = initial_condition%region%cell_ids(icell)
+                  ghosted_id = grid%nL2G(local_id)
+                  if (cur_patch%imat(ghosted_id) <= 0) then
+                    iphase_loc_p(ghosted_id) = 0
+                    cycle
+                  endif
+                  iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
                  enddo
-               else
-                   do iface=1,initial_condition%numfaces_set
-                       ghosted_id = initial_condition%faces_set(iface)
-                       local_id = grid%fG2L(ghosted_id)
-!  if (option%myrank == 0) write(*,*) iface, ghosted_id, local_id,&
-!                                initial_condition%flow_aux_real_var(1:option%nflowdof,iface)                        
-                       if (local_id > 0) then
-                          iend = local_id*option%nflowdof
-                          ibegin = iend-option%nflowdof+1
-                          xx_faces_p(ibegin:iend) = &
-                          initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
-                       end if
-                    end do
-
-                    do iconn=1,initial_condition%connection_set%num_connections
-                      local_id = initial_condition%region%cell_ids(iconn)
-                      ghosted_id = grid%nL2G(local_id)
-                      iend = local_id*option%nflowdof
-                      ibegin = iend-option%nflowdof+1
-                      if (cur_patch%imat(ghosted_id) <= 0) then
-                        xx_p(ibegin:iend) = 0.d0
-                        iphase_loc_p(ghosted_id) = 0
-                        cycle
-                      endif
-                      xx_p(ibegin:iend) = &
-                        initial_condition%flow_aux_real_var(1:option%nflowdof, &
-                                                            iconn + &
-                                                            initial_condition%numfaces_set)
-                      xx_faces_p(grid%nlmax_faces + &
-                                 ibegin:grid%nlmax_faces + iend) = &
-                                 xx_p(ibegin:iend) ! for LP -formulation
-                      iphase_loc_p(ghosted_id) = &
-                        initial_condition%flow_aux_int_var(1,iconn + &
-                                                           initial_condition%numfaces_set)
-                    enddo
-               end if
+              else
+                do iface=1,initial_condition%numfaces_set
+                  ghosted_id = initial_condition%faces_set(iface)
+                  local_id = grid%fG2L(ghosted_id)
+                  if (local_id > 0) then
+                    iend = local_id*option%nflowdof
+                    ibegin = iend-option%nflowdof+1
+                    xx_faces_p(ibegin:iend) = &
+                    initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
+                  endif
+                enddo
+                do iconn=1,initial_condition%connection_set%num_connections
+                  local_id = initial_condition%region%cell_ids(iconn)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  if (cur_patch%imat(ghosted_id) <= 0) then
+                    xx_p(ibegin:iend) = 0.d0
+                    iphase_loc_p(ghosted_id) = 0
+                    cycle
+                  endif
+                  xx_p(ibegin:iend) = &
+                    initial_condition%flow_aux_real_var(1:option%nflowdof, &
+                                                        iconn + &
+                                                        initial_condition%numfaces_set)
+                  xx_faces_p(grid%nlmax_faces + &
+                            ibegin:grid%nlmax_faces + iend) = &
+                                xx_p(ibegin:iend) ! for LP -formulation
+                  iphase_loc_p(ghosted_id) = &
+                    initial_condition%flow_aux_int_var(1,iconn + &
+                                                      initial_condition%numfaces_set)
+                enddo
+              endif
 #endif
             else 
               use_dataset = PETSC_FALSE
@@ -408,30 +405,18 @@ subroutine CondControlAssignFlowInitCond(realization)
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
 
-
-!    if (option%myrank==0) then
-!        do local_id = 1, grid%nlmax_faces
-!            write(*,*) "RealizAssignFlowInitCond ", local_id, xx_faces_p(local_id)
-!        end do
-!        read(*,*)
-!    end if
-
-
     call VecRestoreArrayF90(field%flow_xx_faces,xx_faces_p, ierr)
-
     call RealizationSetUpBC4Faces(realization)
 
-  
     !call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
     call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &
                                   realization%discretization%MFD, realization%option)
-   patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_TRUE
+    patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_TRUE
 
-
-  end if
+  endif
 #endif
 !  stop 
 end subroutine CondControlAssignFlowInitCond
@@ -613,7 +598,7 @@ subroutine CondControlAssignTranInitCond(realization)
         
         if (use_aq_dataset) then
           call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
-          call PetscGetTime(tstart,ierr) 
+          call PetscTime(tstart,ierr) 
         endif
         
         ave_num_iterations = 0.d0
@@ -750,7 +735,7 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
         enddo ! icell=1,initial_condition%region%num_cells
         if (use_aq_dataset) then
-          call PetscGetTime(tend,ierr) 
+          call PetscTime(tend,ierr) 
           call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
           ave_num_iterations = ave_num_iterations / &
             initial_condition%region%num_cells

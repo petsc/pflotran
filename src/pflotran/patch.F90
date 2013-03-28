@@ -75,8 +75,8 @@ module Patch_module
     type(surface_field_type),pointer                  :: surf_field
     type(surface_auxiliary_type) :: surf_aux
     
-    PetscReal,pointer :: surf_internal_fluxes(:)
-    PetscReal,pointer :: surf_boundary_fluxes(:)
+    PetscReal,pointer :: surf_internal_fluxes(:,:)
+    PetscReal,pointer :: surf_boundary_fluxes(:,:)
 #endif
 
   end type patch_type
@@ -625,12 +625,25 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
+  if (option%store_flowrate) then
+    if(option%store_solute_fluxes) then
+      option%io_buffer='Model does not support store_solute_fluxes and flowrate ' // &
+      ' options together. If you run into this message, complain on pflotran-dev@googlegroups.com'
+      call printErrMsg(option)
+    endif
+    allocate(patch%internal_fluxes(option%nflowdof,1,temp_int))
+    allocate(patch%boundary_fluxes(option%nflowdof,1,temp_int))
+    patch%internal_fluxes = 0.d0
+    patch%boundary_fluxes = 0.d0
+  endif
 #ifdef SURFACE_FLOW
   if (patch%surf_or_subsurf_flag == SURFACE) then
-    allocate(patch%surf_internal_fluxes(temp_int))
-    allocate(patch%surf_boundary_fluxes(temp_int))
-    patch%surf_internal_fluxes = 0.d0
-    patch%surf_boundary_fluxes = 0.d0
+    if (option%store_flowrate) then
+      allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
+      allocate(patch%surf_boundary_fluxes(option%nflowdof,temp_int))
+      patch%surf_internal_fluxes = 0.d0
+      patch%surf_boundary_fluxes = 0.d0
+    endif
   endif
 #endif
  

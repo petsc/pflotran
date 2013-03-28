@@ -21,6 +21,7 @@ module Unstructured_Cell_module
   PetscInt, parameter, public :: QUAD_FACE_TYPE    = 3
   PetscInt, parameter, public :: MAX_VERT_PER_FACE = 4
   PetscInt, parameter, public :: MAX_FACE_PER_CELL = 6
+  PetscInt, parameter, public :: MAX_FACE_PER_CELL_SURF = 4
 
   type, public :: point_type
     PetscInt :: id

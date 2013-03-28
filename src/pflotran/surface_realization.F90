@@ -367,6 +367,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   use Unstructured_Grid_module, only     : UGridEnsureRightHandRule
   use Coupler_module
   use Discretization_module
+  use Unstructured_Cell_module
   
   implicit none
 
@@ -459,6 +460,27 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
   call GridComputeAreas(grid,surf_field%area,option)
+
+  ! Allocate vectors to hold flowrate quantities
+  if(surf_realization%output_option%print_hdf5_mass_flowrate.or. &
+     surf_realization%output_option%print_hdf5_energy_flowrate.or. &
+     surf_realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+     surf_realization%output_option%print_hdf5_aveg_energy_flowrate) then
+
+    call VecCreateMPI(option%mycomm, &
+         (option%nflowdof*MAX_FACE_PER_CELL_SURF+1)*surf_realization%patch%grid%nlmax, &
+          PETSC_DETERMINE,surf_field%flowrate_inst,ierr)
+    call VecSet(surf_field%flowrate_inst,0.d0,ierr)
+
+    ! If average flowrate has to be saved, create a vector for it
+    if(surf_realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+       surf_realization%output_option%print_hdf5_aveg_energy_flowrate) then
+      call VecCreateMPI(option%mycomm, &
+          (option%nflowdof*MAX_FACE_PER_CELL_SURF+1)*surf_realization%patch%grid%nlmax, &
+          PETSC_DETERMINE,surf_field%flowrate_aveg,ierr)
+    call VecSet(surf_field%flowrate_aveg,0.d0,ierr)
+    endif
+  endif
 
 end subroutine SurfRealizCreateDiscretization
 

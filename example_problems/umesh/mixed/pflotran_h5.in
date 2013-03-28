@@ -65,6 +65,8 @@ OUTPUT
   PERIODIC TIME 5 d
   FORMAT TECPLOT BLOCK
   MASS_BALANCE
+  FORMAT HDF5
+  FLOWRATES
 END
 
 :=========================== times ============================================
