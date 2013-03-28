@@ -89,7 +89,7 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
         
   do j = 1,n-1
 
-!      First, factor D(j).
+!   First, factor D(j).
            
     call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
 
@@ -102,7 +102,7 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 !     return
     endif
 
-!  Estimate condition number
+!   Estimate condition number
        anorm = 0.d0
        do l=1,k
          sum = 0.d0
@@ -112,13 +112,14 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
          anorm = max(anorm,sum)
        enddo
 
-      CALL dgecon(NORM,k,D(1,1,j),k,ANORM,RCOND,WORK,IWORK,INFO1)
+      CALL dgecon(norm,k,D(1,1,j),k,anorm,rcond,work,iwork,info1)
 
-      rcond = 1.e0/RCOND
-      if (rcond > 1.e10) WRITE (*,999) 'Estimate of condition number =', RCOND,info1
+      rcond = 1.e0/rcond
+      if (rcond > 1.e10) WRITE (*,999) 'Estimate of condition number =', &
+        rcond,info1
       999 FORMAT (1X,A,1P,e11.4,i3)
 
-!      Now, compute E(j) from D(j) * E(j) = E(j).
+!   Now, compute E(j) from D(j) * E(j) = E(j).
 
     call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
                        E(1,1,j), k, info)
@@ -290,7 +291,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
          do j = 2,n
 
-  !       Form rhs(:,:,j) = rhs(:,:,j) - E(j-1)^T*rhs(:,:,j-1)
+!        Form rhs(:,:,j) = rhs(:,:,j) - E(j-1)^T*rhs(:,:,j-1)
             call dgemm(trans, 'N', k, nrhs, k, -one, E(1,1,j-1), k, &
                            rhs(1,1,j-1), k, one, rhs(1,1,j), k)
          enddo
@@ -311,7 +312,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
          do j = n-1,1,-1
 
-  !       Form rhs(:,:,j) = rhs(:,:,j) - F(j)^T*rhs(:,:,j+1)
+!        Form rhs(:,:,j) = rhs(:,:,j) - F(j)^T*rhs(:,:,j+1)
             call dgemm(trans, 'N', k, nrhs, k, -one, F(1,1,j), k, &
                            rhs(1,1,j+1), k, one, rhs(1,1,j), k)
 
