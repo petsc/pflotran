@@ -521,12 +521,12 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
     
   do
       
-    call PetscGetTime(log_start_time, ierr)
+    call PetscTime(log_start_time, ierr)
 
     call SNESSolve(solver%snes,PETSC_NULL_OBJECT, &
                    process_model%solution_vec,ierr)
 
-    call PetscGetTime(log_end_time, ierr)
+    call PetscTime(log_end_time, ierr)
 
     timestepper%cumulative_solver_time = &
       timestepper%cumulative_solver_time + &

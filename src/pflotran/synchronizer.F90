@@ -91,7 +91,7 @@ subroutine SynchronizerExecuteRun(this,stop_flag)
     if (this%option%wallclock_stop_flag) then
     !TODO(geh): reformulate 
 #if 0    
-      call PetscGetTime(current_time, ierr)
+      call PetscTime(current_time, ierr)
       average_step_time = (current_time-master_stepper%start_time)/ &
                           real(master_stepper%steps-&
                                master_stepper%start_time_step+1) &
