@@ -168,6 +168,7 @@ subroutine StochasticRun(stochastic,option)
 
   do irealization = 1, stochastic%num_local_realizations
 
+#ifndef PROCESS_MODEL  
     call OptionInitRealization(option)
     simulation => SimulationCreate(option)
     realization => simulation%realization
@@ -222,6 +223,8 @@ subroutine StochasticRun(stochastic,option)
 
     call SimulationDestroy(simulation)
 
+! PROCESS_MODEL
+#endif    
   ! Final Time
     call PetscTime(timex_wall(2), ierr)
     
