@@ -2,9 +2,7 @@ module Timestepper_module
  
   use Solver_module
   use Waypoint_module 
-#ifndef SIMPLIFY  
   use Convergence_module 
-#endif  
  
   implicit none
 
@@ -61,9 +59,7 @@ module Timestepper_module
     type(waypoint_type), pointer :: prev_waypoint
     PetscBool :: match_waypoint
 
-#ifndef SIMPLIFY    
     type(convergence_context_type), pointer :: convergence_context
-#endif    
 
   end type stepper_type
   
@@ -134,9 +130,7 @@ function TimestepperCreate()
   stepper%run_as_steady_state = PETSC_FALSE
   
   nullify(stepper%solver)
-#ifndef SIMPLIFY  
   nullify(stepper%convergence_context)
-#endif  
   nullify(stepper%cur_waypoint)
   nullify(stepper%prev_waypoint)
   stepper%match_waypoint = PETSC_FALSE
@@ -477,253 +471,152 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
 
   use Process_Model_Base_class
   use Option_module
+  use Output_module, only : Output
   
   implicit none
 
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
 
   type(stepper_type) :: timestepper
   class(process_model_base_type) :: process_model
   PetscInt :: stop_flag
   
-  PetscInt :: snes_reason
+  SNESConvergedReason :: snes_reason
   PetscInt :: icut
   
-  PetscBool, save :: flag = PETSC_TRUE
+  type(solver_type), pointer :: solver
+  type(option_type), pointer :: option
+  
+  PetscLogDouble :: log_start_time
+  PetscLogDouble :: log_end_time
+  PetscInt :: num_newton_iterations
+  PetscInt :: num_linear_iterations
+  PetscInt :: sum_newton_iterations
+  PetscInt :: sum_linear_iterations
+  character(len=2) :: tunit
+  PetscReal :: tconv
+  PetscReal :: fnorm, inorm, scaled_fnorm
+  PetscBool :: plot_flag, transient_plot_flag
+  PetscErrorCode :: ierr
+  
+  solver => timestepper%solver
+  option => process_model%option
   
   write(process_model%option%io_buffer,'(f12.2)') timestepper%dt
   process_model%option%io_buffer = 'StepperStepDT(' // &
     trim(adjustl(process_model%option%io_buffer)) // ')'
   call printMsg(process_model%option)  
-  call process_model%UpdatePreSolve()
-  
-  timestepper%num_linear_iterations = 1
-  timestepper%num_newton_iterations = 1
-  
-  timestepper%steps = timestepper%steps + 1
-  timestepper%cumulative_newton_iterations = &
-    timestepper%cumulative_newton_iterations + &
-    timestepper%num_newton_iterations
-  timestepper%cumulative_linear_iterations = &
-    timestepper%cumulative_linear_iterations + &
-    timestepper%num_linear_iterations
-  
-  write(*, '(/,i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
-    & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
-    & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-    timestepper%steps, &
-    timestepper%target_time, &
-    timestepper%dt, &
-    'seconds', &
-    -999, &
-    timestepper%num_newton_iterations, &
-    timestepper%cumulative_newton_iterations, &
-    timestepper%num_linear_iterations, &
-    timestepper%cumulative_linear_iterations, &
-    0, &
-    timestepper%cumulative_time_step_cuts
-  
-    !stop_flag = 0 ! reset stop flag to 0
-    
-    if (flag .and. timestepper%target_time >= 3.89999d0) then
-      ! cut target time
-      flag = PETSC_FALSE
-      timestepper%target_time = timestepper%target_time - timestepper%dt
-      timestepper%dt = 0.5 * timestepper%dt
-      timestepper%target_time = timestepper%target_time + timestepper%dt
-      snes_reason = 2
-      icut = 1
-      timestepper%time_step_cut_flag = PETSC_TRUE
-      write(*,'('' -> Cut time step: snes='',i3, &
-        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
-        &   1pe12.5)')  snes_reason,icut,timestepper%cumulative_time_step_cuts, &
-            timestepper%target_time, &
-            timestepper%dt
-     
-    endif
-  
-#if 0
-  if (option%print_screen_flag) then
-    write(*,'(/,2("=")," FLOW ",72("="))')
-  endif
 
-  if (option%ntrandof > 0) then ! store initial saturations for transport
-    call GlobalUpdateAuxVars(realization,TIME_T)
-  endif
+  tconv = process_model%output_option%tconv
+  tunit = process_model%output_option%tunit
+  sum_linear_iterations = 0
+  sum_newton_iterations = 0
+  icut = 0
+  
+  option%dt = timestepper%dt
     
-  select case(option%iflowmode)
-    case(THMC_MODE)
-      call THMCInitializeTimestep(realization)
-    case(TH_MODE)
-      call THInitializeTimestep(realization)
-    case(THC_MODE)
-      call THCInitializeTimestep(realization)
-    case(RICHARDS_MODE)
-      call RichardsInitializeTimestep(realization)
-    case(MPH_MODE)
-      call MphaseInitializeTimestep(realization)
-    case(MIS_MODE)
-      call MiscibleInitializeTimestep(realization)
-    case(IMS_MODE)
-      call ImmisInitializeTimestep(realization)
-    case(FLASH2_MODE)
-      call Flash2InitializeTimestep(realization)
-    case(G_MODE)
-      call GeneralInitializeTimestep(realization)
-  end select
-
+  call process_model%PreSolve()
+    
   do
       
     call PetscGetTime(log_start_time, ierr)
 
-    select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-      case(RICHARDS_MODE)
-        if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
-        else 
-          call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
-        end if
+    call SNESSolve(solver%snes,PETSC_NULL_OBJECT, &
+                   process_model%solution_vec,ierr)
 
-    end select
     call PetscGetTime(log_end_time, ierr)
-    stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
-                                      (log_end_time - log_start_time)
 
-! do we really need all this? - geh 
-    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
+    timestepper%cumulative_solver_time = &
+      timestepper%cumulative_solver_time + &
+      (log_end_time - log_start_time)
+
+    call SNESGetIterationNumber(solver%snes,num_newton_iterations,ierr)
+    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations,ierr)
+    call SNESGetConvergedReason(solver%snes,snes_reason,ierr)
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
-    update_reason = 1
-      
-    if (snes_reason >= 0) then
-      select case(option%iflowmode)
-        case(IMS_MODE)
-          call ImmisUpdateReason(update_reason,realization)
-        case(MPH_MODE)
-          if (option%use_mc) then
-            option%sec_vars_update = PETSC_TRUE
-          endif
-        case(FLASH2_MODE)
-        case(TH_MODE)
-          update_reason=1
-          if (option%use_mc) then
-            option%sec_vars_update = PETSC_TRUE
-          endif
-        case(THC_MODE)
-          update_reason=1
-          if (option%use_mc) then
-            option%sec_vars_update = PETSC_TRUE
-          endif
-        case(THMC_MODE)
-          update_reason=1
-        case (MIS_MODE)
-          update_reason=1
-        case(RICHARDS_MODE,G_MODE)
-          update_reason=1
-        end select   
-    endif
-   
-    if (snes_reason <= 0 .or. update_reason <= 0) then
+  
+    if (snes_reason <= 0 .or. .not. process_model%AcceptSolution()) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
-      stepper%time_step_cut_flag = PETSC_TRUE
-      option%out_of_table = PETSC_FALSE
+      timestepper%time_step_cut_flag = PETSC_TRUE
 
-      if (icut > stepper%max_time_step_cuts .or. option%flow_dt<1.d-20) then
+      if (icut > timestepper%max_time_step_cuts .or. &
+          timestepper%dt < 1.d-20) then
         if (option%print_screen_flag) then
           print *,"--> max_time_step_cuts exceeded: icut/icutmax= ",icut, &
-                  stepper%max_time_step_cuts, "t= ", &
-                  stepper%target_time/realization%output_option%tconv, " dt= ", &
-                  option%flow_dt/realization%output_option%tconv
+                  timestepper%max_time_step_cuts, "t= ", &
+                  timestepper%target_time/tconv, &
+                  " dt= ", &
+                  timestepper%dt/tconv
           print *,"Stopping execution!"
         endif
-        realization%output_option%plot_name = 'flow_cut_to_failure'
+        process_model%output_option%plot_name = 'flow_cut_to_failure'
         plot_flag = PETSC_TRUE
         transient_plot_flag = PETSC_FALSE
-        call Output(realization,plot_flag,transient_plot_flag)
-        failure = PETSC_TRUE
+        call Output(process_model%realization_base,plot_flag,transient_plot_flag)
+        stop_flag = 2
         return
       endif
  
-      stepper%target_time = stepper%target_time - option%flow_dt
+      timestepper%target_time = timestepper%target_time - timestepper%dt
 
-      option%flow_dt = 0.5d0 * option%flow_dt  
+      timestepper%dt = 0.5d0 * timestepper%dt  
       
       if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
-        &   1pe12.5)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
-            option%flow_time/realization%output_option%tconv, &
-            option%flow_dt/realization%output_option%tconv
+        &   1pe12.5)')  snes_reason,icut,timestepper%cumulative_time_step_cuts, &
+            option%time/tconv, &
+            timestepper%dt/tconv
 
-      stepper%target_time = stepper%target_time + option%flow_dt
-
-      select case(option%iflowmode)
-        case(TH_MODE)
-          call THTimeCut(realization)
-        case(THC_MODE)
-          call THCTimeCut(realization)
-        case(THMC_MODE)
-          call THMCTimeCut(realization)
-        case(RICHARDS_MODE)
-          call RichardsTimeCut(realization)
-        case(MPH_MODE)
-          call MphaseTimeCut(realization)
-        case(MIS_MODE)
-          call MiscibleTimeCut(realization)
-        case(IMS_MODE)
-          call ImmisTimeCut(realization)
-        case(FLASH2_MODE)
-          call Flash2TimeCut(realization)
-        case(G_MODE)
-          call GeneralTimeCut(realization)
-      end select
-      call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
-
+      timestepper%target_time = timestepper%target_time + timestepper%dt
+      
+      call process_model%TimeCut()
+  
     else
       ! The Newton solver converged, so we can exit.
       exit
     endif
   enddo
+
+  timestepper%steps = timestepper%steps + 1      
+  timestepper%cumulative_newton_iterations = &
+    timestepper%cumulative_newton_iterations + sum_newton_iterations
+  timestepper%cumulative_linear_iterations = &
+    timestepper%cumulative_linear_iterations + sum_linear_iterations
+  timestepper%cumulative_time_step_cuts = &
+    timestepper%cumulative_time_step_cuts + icut
+
+  timestepper%num_newton_iterations = num_newton_iterations
+  timestepper%num_linear_iterations = num_linear_iterations  
   
-  stepper%steps = stepper%steps + 1      
-  stepper%cumulative_newton_iterations = &
-    stepper%cumulative_newton_iterations + sum_newton_iterations
-  stepper%cumulative_linear_iterations = &
-    stepper%cumulative_linear_iterations + sum_linear_iterations
-  stepper%cumulative_time_step_cuts = &
-    stepper%cumulative_time_step_cuts + icut
-
-  stepper%num_newton_iterations = num_newton_iterations
-  stepper%num_linear_iterations = num_linear_iterations
-
-  if (option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(realization,TIME_TpDT)
-  endif
-    
 ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
+  call VecNorm(process_model%residual_vec,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      stepper%steps, &
-      stepper%target_time/realization%output_option%tconv, &
-      option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
-      stepper%cumulative_newton_iterations,sum_linear_iterations, &
-      stepper%cumulative_linear_iterations,icut, &
-      stepper%cumulative_time_step_cuts
+      timestepper%steps, &
+      timestepper%target_time/tconv, &
+      timestepper%dt/tconv, &
+      tunit,snes_reason,sum_newton_iterations, &
+      timestepper%cumulative_newton_iterations,sum_linear_iterations, &
+      timestepper%cumulative_linear_iterations,icut, &
+      timestepper%cumulative_time_step_cuts
 
+#if 0    
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
     else
        scaled_fnorm = fnorm
     endif
+#endif
+    scaled_fnorm = fnorm
+
     print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
     write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
@@ -733,78 +626,18 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
       & " [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      stepper%steps, &
-      stepper%target_time/realization%output_option%tconv, &
-      option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
-      stepper%cumulative_newton_iterations,sum_linear_iterations, &
-      stepper%cumulative_linear_iterations,icut, &
-      stepper%cumulative_time_step_cuts
-  endif
+      timestepper%steps, &
+      timestepper%target_time/tconv, &
+      timestepper%dt/tconv, &
+      tunit,snes_reason,sum_newton_iterations, &
+      timestepper%cumulative_newton_iterations,sum_linear_iterations, &
+      timestepper%cumulative_linear_iterations,icut, &
+      timestepper%cumulative_time_step_cuts
+  endif  
   
-  select case(option%iflowmode)
-    case(TH_MODE)
-      call THMaxChange(realization)
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax
-      endif
-    case(THC_MODE)
-      call THCMaxChange(realization)
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax, option%dcmax
-      endif
-    case(THMC_MODE)
-      call THMCMaxChange(realization)
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax, option%dcmax
-      endif
-      if (option%print_file_flag) then 
-        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax
-      endif
-    case(RICHARDS_MODE)
-      call RichardsMaxChange(realization)
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-      endif
-      if (option%print_file_flag) then
-        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-      endif
-    case(MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      select case(option%iflowmode)
-        case(MPH_MODE)
-          call MphaseMaxChange(realization)
-        case(IMS_MODE)
-          call ImmisMaxChange(realization)
-        case(MIS_MODE)
-          call MiscibleMaxChange(realization)
-        case(FLASH2_MODE)
-          call FLASH2MaxChange(realization)
-        case(G_MODE)
-          call GeneralMaxChange(realization)
-      end select
-      ! note use mph will use variable switching, the x and s change is not meaningful 
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-      endif
-      if (option%print_file_flag) then  
-        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-      endif
-  end select
-
-  if (option%print_screen_flag) print *, ""
-#endif  
+  call process_model%PostSolve()
+  
+  if (option%print_screen_flag) print *, ""  
   
 end subroutine StepperStepDT
 
@@ -868,9 +701,7 @@ subroutine TimestepperDestroy(stepper)
   if (.not.associated(stepper)) return
     
   call SolverDestroy(stepper%solver)
-#ifndef SIMPLIFY  
   call ConvergenceContextDestroy(stepper%convergence_context)
-#endif
 
   if (associated(stepper%tfac)) deallocate(stepper%tfac)
   nullify(stepper%tfac)

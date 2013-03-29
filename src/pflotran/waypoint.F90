@@ -43,6 +43,7 @@ module Waypoint_module
             WaypointConvertTimes, &
             WaypointSkipToTime, &
             WaypointForceMatchToTime, &
+            WaypointListCopy, &
             WaypointListPrint
 
 contains

@@ -5,6 +5,7 @@ module Simulation_module
   use Output_Aux_module
   use Synchronizer_module
   use Process_Model_Coupler_module
+  use Regression_module
   
   implicit none
 
@@ -16,6 +17,7 @@ module Simulation_module
     type(option_type), pointer :: option
     type(output_option_type), pointer :: output_option
     type(synchronizer_type), pointer :: synchronizer
+    type(regression_type), pointer :: regression    
     type(process_model_coupler_type), pointer :: process_model_coupler_list
   contains
     procedure, public :: Initialize
@@ -55,6 +57,7 @@ function SimulationCreate(option)
   nullify(simulation%output_option)
   nullify(simulation%synchronizer)
   nullify(simulation%process_model_coupler_list)
+  nullify(simulation%regression)  
   
   SimulationCreate => simulation
   
@@ -325,6 +328,12 @@ end subroutine ExecuteRun
 ! ************************************************************************** !
 subroutine FinalizeRun(this)
 
+  use Realization_class
+  use Timestepper_module
+  use Process_Model_Base_class
+  use Process_Model_Richards_class
+  use Process_Model_RT_class
+
   implicit none
   
   class(simulation_type) :: this
@@ -332,6 +341,10 @@ subroutine FinalizeRun(this)
   PetscErrorCode :: ierr
   
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  class(process_model_base_type), pointer :: cur_process_model
+  type(realization_type), pointer :: realization
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
 
   call printMsg(this%option,'Simulation%FinalizeRun()')
   
@@ -341,6 +354,30 @@ subroutine FinalizeRun(this)
     call cur_process_model_coupler%FinalizeRun()
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
+  
+  ! temporary pointers for regression
+  nullify(flow_stepper)
+  nullify(tran_stepper)
+  cur_process_model_coupler => this%process_model_coupler_list
+  do
+    if (.not.associated(cur_process_model_coupler)) exit
+    cur_process_model => cur_process_model_coupler%process_model_list
+    do
+      select type(cur_process_model)
+        class is (process_model_richards_type)
+          realization => cur_process_model%realization
+          flow_stepper => cur_process_model_coupler%timestepper
+        class is (process_model_rt_type)
+          realization => cur_process_model%realization
+          tran_stepper => cur_process_model_coupler%timestepper
+      end select
+      cur_process_model => cur_process_model%next
+    enddo
+    cur_process_model_coupler => cur_process_model_coupler%next
+  enddo
+  
+  call RegressionOutput(this%regression,realization, &
+                        flow_stepper,tran_stepper)  
 
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr)
@@ -369,6 +406,9 @@ subroutine SimulationDestroy(simulation)
   call printMsg(simulation%option,'SimulationDestroy()')
   
   if (.not.associated(simulation)) return
+  
+  
+  call RegressionDestroy(simulation%regression)  
   
   deallocate(simulation)
   nullify(simulation)

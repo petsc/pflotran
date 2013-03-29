@@ -1314,10 +1314,18 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
 #endif
       if (local_id_up>0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res interior up', local_id_up
+  print *, Res(1)
+#endif  
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
          
       if (local_id_dn>0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res interior dn', local_id_dn
+  print *, Res(1)
+#endif  
         r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
       endif
 
@@ -1379,6 +1387,11 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
+
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res bc', local_id
+  print *, Res(1)
+#endif
 
       r_p(local_id)= r_p(local_id) - Res(1)
 
@@ -1478,6 +1491,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res) 
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res accum', local_id
+  print *, Res(1)      
+#endif
       r_p(local_id) = r_p(local_id) + Res(1)
     enddo
   endif
@@ -1539,6 +1556,11 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
     enddo
   endif
+
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Residual'
+  print *, r_p(:)
+#endif
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
@@ -1837,6 +1859,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       end select
 
       if (local_id_up > 0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac up', local_id_up
+  print *, Jup(1,1)
+#endif      
 #ifdef BUFFER_MATRIX
         if (option%use_matrix_buffer) then
           call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
@@ -1854,6 +1880,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 #endif
       endif
       if (local_id_dn > 0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac dn', local_id_dn
+  print *, Jdn(1,1)
+#endif        
         Jup = -Jup
         Jdn = -Jdn
 #ifdef BUFFER_MATRIX
@@ -1929,6 +1959,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 patch%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac dn bc', local_id
+  print *, Jdn(1,1)      
+#endif
 #ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then
         call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
@@ -2040,6 +2074,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               patch%saturation_function_array(icap)%ptr,&
                               Jup) 
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac accum'
+  print *, Jup(1,1)     
+#endif
 #ifdef BUFFER_MATRIX
     if (option%use_matrix_buffer) then
       call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &

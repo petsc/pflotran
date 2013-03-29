@@ -85,7 +85,8 @@ private
             RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
-            RealizationNonInitializedData
+            RealizationNonInitializedData, &
+            RealizUpdateAllCouplerAuxVars
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -1375,6 +1376,7 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
   type(realization_type) :: realization
   PetscBool :: force_update_flag
 
+  !TODO(geh): separate flow from transport in these calls
   call PatchUpdateAllCouplerAuxVars(realization%patch,force_update_flag, &
                                     realization%option)
 

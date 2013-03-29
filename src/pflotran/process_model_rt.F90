@@ -1,10 +1,8 @@
 module Process_Model_RT_class
 
   use Process_Model_Base_class
-#ifndef SIMPLIFY  
   use Reactive_Transport_module
   use Realization_class
-#endif  
   use Communicator_Base_module  
   use Option_module
   
@@ -33,7 +31,9 @@ module Process_Model_RT_class
     procedure, public :: Residual => PMRTResidual
     procedure, public :: Jacobian => PMRTJacobian
     procedure, public :: UpdateTimestep => PMRTUpdateTimestep
-    procedure, public :: UpdatePreSolve => PMRTUpdatePreSolve
+    procedure, public :: PreSolve => PMRTPreSolve
+    procedure, public :: PostSolve => PMRTPostSolve
+    procedure, public :: AcceptSolution => PMRTAcceptSolution
     procedure, public :: CheckUpdatePre => PMRTCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMRTCheckUpdatePost
     procedure, public :: TimeCut => PMRTTimeCut
@@ -42,10 +42,6 @@ module Process_Model_RT_class
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: Destroy => PMRTDestroy
   end type process_model_rt_type
-
-  type :: realization_type
-    PetscInt :: i
-  end type realization_type
   
   public :: PMRTCreate
 
@@ -69,6 +65,8 @@ function PMRTCreate()
   print *, 'PMRTCreate()'
   
   allocate(rt_pm)
+  nullify(rt_pm%option)
+  nullify(rt_pm%output_option)
   nullify(rt_pm%realization)
   nullify(rt_pm%comm1)
   nullify(rt_pm%commN)
@@ -127,9 +125,7 @@ end subroutine PMRTInit
 ! ************************************************************************** !
 subroutine PMRTSetRealization(this,realization)
 
-#ifndef SIMPLIFY
-  use Realization_Base_class  
-#endif  
+  use Realization_class  
 
   implicit none
   
@@ -139,6 +135,7 @@ subroutine PMRTSetRealization(this,realization)
   call printMsg(this%option,'PMRT%SetRealization()')
   
   this%realization => realization
+  this%realization_base => realization
   
 end subroutine PMRTSetRealization
 
@@ -165,12 +162,12 @@ end subroutine PMRTInitializeTimestep
 
 ! ************************************************************************** !
 !
-! PMRTUpdatePreSolve: 
+! PMRTPreSolve: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMRTUpdatePreSolve(this)
+subroutine PMRTPreSolve(this)
 
   implicit none
   
@@ -184,28 +181,49 @@ subroutine PMRTUpdatePreSolve(this)
                                this%realization%field%tortuosity_loc)
 #endif
 
-!  if (this%option%print_screen_flag) then
+  if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
-!  endif
+  endif
   
-end subroutine PMRTUpdatePreSolve
+end subroutine PMRTPreSolve
 
 ! ************************************************************************** !
 !
-! PMRichardsUpdatePostSolve: 
+! PMRTPostSolve: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMRTUpdatePostSolve(this)
+subroutine PMRTPostSolve(this)
 
   implicit none
   
   class(process_model_rt_type) :: this
   
-  call printMsg(this%option,'PMRT%UpdatePostSolve()')
+  call printMsg(this%option,'PMRT%PostSolve()')
   
-end subroutine PMRTUpdatePostSolve
+end subroutine PMRTPostSolve
+
+! ************************************************************************** !
+!
+! PMRichardsAcceptSolution: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+function PMRTAcceptSolution(this)
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+  
+  PetscBool :: PMRTAcceptSolution
+  
+  call printMsg(this%option,'PMRT%AcceptSolution()')
+  ! do nothing
+  PMRTAcceptSolution = PETSC_TRUE
+  
+end function PMRTAcceptSolution
 
 ! ************************************************************************** !
 !
@@ -448,15 +466,26 @@ end subroutine PMRTTimeCut
 ! ************************************************************************** !
 subroutine PMRTUpdateSolution(this)
 
+  use Condition_module
+
   implicit none
   
   class(process_model_rt_type) :: this
   
   call printMsg(this%option,'PMRT%UpdateSolution()')
   
-#ifndef SIMPLIFY 
+  ! begin from RealizationUpdate()
+  call TranConditionUpdate(this%realization%transport_conditions, &
+                           this%realization%option, &
+                           this%realization%option%time)
+  ! end from RealizationUpdate()
   call RTUpdateSolution(this%realization)
-#endif
+  if (this%realization%reaction%update_porosity .or. &
+      this%realization%reaction%update_tortuosity .or. &
+      this%realization%reaction%update_permeability .or. &
+      this%realization%reaction%update_mineral_surface_area) then
+    call RealizationUpdateProperties(this%realization)
+  endif
 
 end subroutine PMRTUpdateSolution     
 

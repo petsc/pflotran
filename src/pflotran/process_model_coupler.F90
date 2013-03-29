@@ -4,6 +4,7 @@ module Process_Model_Coupler_module
   use Timestepper_module
   use Option_module
   use Waypoint_module
+  use Process_Model_module
 
   implicit none
 
@@ -18,8 +19,10 @@ module Process_Model_Coupler_module
     type(waypoint_list_type), pointer :: waypoints
     type(process_model_coupler_type), pointer :: below
     type(process_model_coupler_type), pointer :: next
+    type(process_model_pointer_type), pointer :: pm_ptr
   contains
     procedure, public :: InitializeRun
+    procedure, public :: SetTimestepper => ProcModelCouplerSetTimestepper
     procedure, public :: RunTo => RunToTime
     procedure, public :: FinalizeRun
     procedure, public :: Output
@@ -56,6 +59,9 @@ function ProcessModelCouplerCreate()
   nullify(process_model_coupler%waypoints)
   nullify(process_model_coupler%below)
   nullify(process_model_coupler%next)
+  
+  allocate(process_model_coupler%pm_ptr)
+  nullify(process_model_coupler%pm_ptr%ptr)
   
   ProcessModelCouplerCreate => process_model_coupler  
   
@@ -141,12 +147,16 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = 0
   do
-    if (this%timestepper%target_time >= sync_time) exit
     if (local_stop_flag > 0) exit ! end simulation
+    if (this%timestepper%target_time >= sync_time) exit
+    
+    call ToggleOutputFlags(this)
+
     call StepperSetTargetTime(this%timestepper,sync_time,this%option, &
                               local_stop_flag)
     call StepperStepDT(this%timestepper,this%process_model_list, &
                        local_stop_flag)
+
     if (local_stop_flag > 1) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
@@ -154,6 +164,9 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
     cur_process_model => this%process_model_list
     do
       if (.not.associated(cur_process_model)) exit
+      ! have to update option%time for conditions
+      this%option%time = this%timestepper%target_time
+      call cur_process_model%UpdateSolution()
       call StepperUpdateDT(this%timestepper,cur_process_model)
       cur_process_model => cur_process_model%next
     enddo
@@ -200,6 +213,44 @@ recursive subroutine FinalizeRun(this)
   call printMsg(this%option,'ProcessModelCoupler%FinalizeRun()')
   
 end subroutine FinalizeRun
+
+! ************************************************************************** !
+!
+! ToggleOutputFlags: Toggles flags that determine whether output is printed
+!                    to the screen and output file during a time step.
+! author: Glenn Hammond
+! date: 03/29/13
+!
+! ************************************************************************** !
+subroutine ToggleOutputFlags(this)
+
+  use Option_module
+  use Output_Aux_module
+  
+  implicit none
+  
+  class(process_model_coupler_type) :: this
+  
+  type(output_option_type), pointer :: output_option
+  
+  output_option => this%process_model_list%output_option
+
+  if (OptionPrintToScreen(this%option) .and. &
+      mod(this%timestepper%steps,output_option%screen_imod) == 0) then
+    this%option%print_screen_flag = PETSC_TRUE
+  else
+    this%option%print_screen_flag = PETSC_FALSE
+  endif
+
+  if (OptionPrintToFile(this%option) .and. &
+      mod(this%timestepper%steps,output_option%output_file_imod) == 0) then
+    this%option%print_file_flag = PETSC_TRUE
+  else
+    this%option%print_file_flag = PETSC_FALSE
+      
+  endif
+  
+end subroutine ToggleOutputFlags
 
 ! ************************************************************************** !
 !

@@ -80,10 +80,13 @@ module Option_module
     
     PetscInt :: iflag
     PetscBool :: init_stage
-    PetscBool :: print_screen_flag
-    PetscBool :: print_file_flag
+    ! these flags are for printing outside of time step loop
     PetscBool :: print_to_screen
     PetscBool :: print_to_file
+    ! these flags are for printing within time step loop where printing may
+    ! need to be temporarily turned off to accommodate periodic screen outout.
+    PetscBool :: print_screen_flag
+    PetscBool :: print_file_flag
     PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
@@ -106,6 +109,7 @@ module Option_module
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt ! The size of the time step.
+    PetscReal :: dt
     PetscBool :: match_waypoint
     PetscReal :: refactor_dt
   
@@ -488,6 +492,7 @@ subroutine OptionInitRealization(option)
   option%tran_weight_t1 = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
+  option%dt = 0.d0
   option%refactor_dt = 0.d0
   option%match_waypoint = PETSC_FALSE
 
