@@ -3639,6 +3639,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 #ifdef XINGYUAN_BC
   use Dataset_module
   use Dataset_Aux_module
+  use Output_Tecplot_module
 #endif
   
   implicit none
@@ -3676,10 +3677,12 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   
 #ifdef XINGYUAN_BC
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: name
   PetscInt :: idof_aq_dataset
   type(dataset_type), pointer :: dataset
   PetscReal :: temp_real
   PetscBool, save :: first = PETSC_TRUE
+  PetscReal, pointer :: work_p(:)
 #endif  
   
   data icall/0/
@@ -3689,6 +3692,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   grid => patch%grid
   field => realization%field
   reaction => realization%reaction
+
+#ifdef XINGYUAN_BC
+!geh  call VecZeroEntries(field%work,ierr)
+!geh  call VecGetArrayReadF90(field%work,work_p,ierr)
+#endif  
   
   call VecGetArrayReadF90(field%tran_xx_loc,xx_loc_p,ierr)
   call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -3822,6 +3830,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               boundary_condition%connection_set%dist(2,iconn), &
             0.d0, &  ! z
             option%tran_time,temp_real,option)
+!geh    work_p(local_id) = temp_real
     boundary_condition%tran_condition%cur_constraint_coupler% &
       aqueous_species%constraint_conc(idof_aq_dataset) = temp_real
     if (first) patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = basis_molarity_p
@@ -4002,6 +4011,10 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
 #ifdef XINGYUAN_BC
     first = PETSC_FALSE
+    !call VecRestoreArrayReadF90(field%work,work_p,ierr)
+    !string = 'xingyuan_bc.tec'
+    !name = 'xingyuan_bc'
+    !call OutputVectorTecplot(string,name,realization,field%work)
 #endif
 
   endif 

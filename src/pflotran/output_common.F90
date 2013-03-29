@@ -1016,9 +1016,9 @@ subroutine OutputGetFlowrates(realization_base)
 
       do dof=1,option%nflowdof
         ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
-        flowrates(dof,iface_dn,local_id_dn) = -patch%internal_fluxes(dof,1,sum_connection)
+        flowrates(dof,iface_dn,local_id_dn) = -patch%boundary_fluxes(dof,1,sum_connection)
         vec_ptr((local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1) = &
-          -patch%internal_fluxes(dof,1,sum_connection)
+          -patch%boundary_fluxes(dof,1,sum_connection)
       enddo
     enddo
     boundary_condition => boundary_condition%next

@@ -397,54 +397,36 @@ subroutine RealizationCreateDiscretization(realization)
 
      if (option%nflowdof > 0) then
 
-       num_LP_dof = (grid%nlmax_faces + grid%nlmax)*option%nflowdof
+      num_LP_dof = (grid%nlmax_faces + grid%nlmax)*option%nflowdof
    
-       call VecCreateMPI(option%mycomm, num_LP_dof, &
-                    PETSC_DETERMINE,field%flow_xx_faces,ierr)
+      call VecCreateMPI(option%mycomm, num_LP_dof, &
+                  PETSC_DETERMINE,field%flow_xx_faces,ierr)
+      call VecSetBlockSize(field%flow_xx_faces,option%nflowdof,ierr)
 
+      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                        field%flow_r_faces)
+      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                        field%flow_dxx_faces)
+      call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                        field%flow_yy_faces)
 
+      call VecCreateSeq(PETSC_COMM_SELF, (grid%ngmax_faces + grid%ngmax)*option%nflowdof, &
+                                              field%flow_xx_loc_faces, ierr)
+      call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof,ierr)
 
-       call VecSetBlockSize(field%flow_xx_faces,option%nflowdof,ierr)
-
-       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                                        field%flow_r_faces)
-
-       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                                        field%flow_dxx_faces)
-
-       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
-                                                        field%flow_yy_faces)
-
-
-       call VecCreateSeq(PETSC_COMM_SELF, (grid%ngmax_faces + grid%ngmax)*option%nflowdof, field%flow_xx_loc_faces, ierr)
-       call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof,ierr)
-
-!       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
-!       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
-
-!       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_bc_loc_faces, ierr)
-!       call VecSetBlockSize(field%flow_bc_loc_faces,NFLOWDOF,ierr)
-
-        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_r_loc_faces) 
-
-        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_bc_loc_faces)
-   
-        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%work_loc_faces)
-
-!       call VecGetArrayF90(field%volume, real_tmp, ierr)
-!       call VecRestoreArrayF90(field%volume, real_tmp, ierr)
- 
-
-
-     end if
+      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
+                                          field%flow_r_loc_faces)
+      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
+                                          field%flow_bc_loc_faces)
+      call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, &
+                                          field%work_loc_faces)
+     endif
 
      call RealizationCreatenG2LP(realization)
-
-
      dm_ptr => DiscretizationGetDMPtrFromIndex(discretization, NFLOWDOF)
-     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, dm_ptr%dm, NFLOWDOF, option)
-  
-   end if
+     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, &
+                                                  dm_ptr%dm, NFLOWDOF, option)
+   endif
 #endif
  
   ! initialize to -999.d0 for check later that verifies all values 
@@ -465,8 +447,8 @@ subroutine RealizationCreateDiscretization(realization)
   endif
        
   ! Allocate vectors to hold flowrate quantities
-  if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
-     realization%output_option%print_hdf5_aveg_energy_flowrate.or. &
+  if(realization%output_option%print_hdf5_mass_flowrate.or. &
+     realization%output_option%print_hdf5_energy_flowrate.or. &
      realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
      realization%output_option%print_hdf5_aveg_energy_flowrate) then
 
@@ -2100,10 +2082,9 @@ subroutine RealizationCountCells(realization,global_total_count, &
 
 end subroutine RealizationCountCells
 
+! ************************************************************************** !
+! ************************************************************************** !
 subroutine RealizationSetUpBC4Faces(realization)
-
-
-
 
   use Connection_module
   use Coupler_module
@@ -2163,41 +2144,26 @@ subroutine RealizationSetUpBC4Faces(realization)
         conn => grid%faces(ghost_face_id)%conn_set_ptr
         jface = grid%faces(ghost_face_id)%id
         if (boundary_condition%faces_set(iconn) == ghost_face_id) then
-           if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
+          if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
               .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
-                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
-                    xx_faces_p(local_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
-           else if ((bc_type == NEUMANN_BC)) then
-                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
-                    bound_id = grid%fL2B(local_face_id)
-                    if (bound_id>0) then
-                        patch%boundary_velocities(realization%option%nphase, bound_id) = &
-                                             boundary_condition%flow_aux_real_var(1,iconn)
-                    end if
-           end if 
-  !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
-        end if
-      end do
-    end do
+            bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+            xx_faces_p(local_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
+          else if ((bc_type == NEUMANN_BC)) then
+            bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+            bound_id = grid%fL2B(local_face_id)
+            if (bound_id>0) then
+              patch%boundary_velocities(realization%option%nphase, bound_id) = &
+                boundary_condition%flow_aux_real_var(1,iconn)
+            endif
+          endif
+        endif
+      enddo
+    enddo
     boundary_condition => boundary_condition%next
-  end do
-
+  enddo
 
   call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-
-
-
-#ifdef DASVYAT
-!   write(*,*) "Boundary faces"
-!   do iconn = 1, grid%boundary_connection_set_list%first%num_connections 
-!      write(*,*) "bound_flux", iconn, patch%boundary_velocities(realization%option%nphase, iconn),&
-!               grid%boundary_connection_set_list%first%cntr(1,iconn), &
-!               grid%boundary_connection_set_list%first%cntr(2,iconn), &
-!               grid%boundary_connection_set_list%first%cntr(3,iconn)
-!   end do  
-!   read(*,*)
-#endif
 
 #endif
 

@@ -236,9 +236,11 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
       if (sat_up > eps .and. sat_dn > eps) then
         ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
         
-        stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                            ((sat_up+sat_dn)*dist_dn)
-        
+!       stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+!                           ((sat_up+sat_dn)*dist_dn)
+
+        stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
@@ -261,9 +263,11 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         if (sat_up > eps .and. sat_dn > eps) then
           ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
           
-          stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                              ((sat_up+sat_dn)*dist_dn)
-          
+!         stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+!                             ((sat_up+sat_dn)*dist_dn)
+
+          stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
           diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
@@ -302,8 +306,10 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           if (sat_up > eps .and. sat_dn > eps) then
          !  units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
          
-            stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                                ((sat_up+sat_dn)*dist_dn)
+!           stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+!                               ((sat_up+sat_dn)*dist_dn)
+
+            stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
             
          !  need to account for multiple phases
          !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
@@ -328,8 +334,10 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           ! same as dirichlet above
             if (sat_up > eps .and. sat_dn > eps) then
           !   units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-              stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                                  ((sat_up+sat_dn)*dist_dn)
+!             stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+!                                 ((sat_up+sat_dn)*dist_dn)
+
+              stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
           !   need to account for multiple phases
           !   units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
               if (iphase == 2) then
