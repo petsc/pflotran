@@ -2838,8 +2838,8 @@ end subroutine UGridComputeQuality
 ! ************************************************************************** !
 !
 ! UGridEnsureRightHandRule: Rearranges order of vertices within each cell
-!                           so that when the right hand rule is appied to a
-!                           face, the thumb points away from teh centroid
+!                           so that when the right hand rule is applied to a
+!                           face, the thumb points away from the centroid
 ! author: Glenn Hammond
 ! date: 10/24/11
 !
