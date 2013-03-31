@@ -87,10 +87,21 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
   trans = 'N'
         
-  do j = 1,n-1
+  do j = 1, n-1
 
-!   First, factor D(j).
-           
+!  compute 1-norm: only needed for computing condition nr.
+#ifdef CONDNR
+    anorm = 0.d0
+    do l = 1, k
+      sum = 0.d0
+      do i = 1, k
+        sum = sum + abs(d(i,l,j))
+      enddo
+      anorm = max(anorm,sum)
+    enddo
+#endif
+
+!  First, factor D(j).
     call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
 
     if ( info .ne. 0 ) then
@@ -98,29 +109,20 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
       print *,'At block ',j,',',' 1-norm = ',anorm
       print *,'problem, info = ', info   ! make this better later.
-      stop
-!     return
+      return
     endif
 
-!   Estimate condition number
-       anorm = 0.d0
-       do l=1,k
-         sum = 0.d0
-         do i = 1, k
-           sum = sum + abs(d(i,l,j))
-         enddo
-         anorm = max(anorm,sum)
-       enddo
-
-      CALL dgecon(norm,k,D(1,1,j),k,anorm,rcond,work,iwork,info1)
-
-      rcond = 1.e0/rcond
-      if (rcond > 1.e10) WRITE (*,999) 'Estimate of condition number =', &
+!  Estimate condition number
+#ifdef CONDNR
+    CALL dgecon(norm,k,D(1,1,j),k,anorm,rcond,work,iwork,info1)
+    rcond = 1.e0/rcond
+!   if (rcond > 1.e10)
+        WRITE (*,999) 'Estimate of condition number =', &
         rcond,info1
-      999 FORMAT (1X,A,1P,e11.4,i3)
+    999 FORMAT (1X,A,1P,e11.4,i3)
+#endif
 
-!   Now, compute E(j) from D(j) * E(j) = E(j).
-
+!  Now, compute E(j) from D(j) * E(j) = E(j).
     call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
                        E(1,1,j), k, info)
     if ( info .lt. 0 ) then
@@ -128,15 +130,12 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
       return
     endif
 
-!    Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
-
+!  Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
     call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
                       E(1,1,j), k, one, D(1,1,j+1), k)
-
   enddo
 
 ! Finally, obtain the LU factorization of D(n).
-
   call dgetrf(k, k, D(1,1,n), k, pivot(1,n), info)
   if ( info .ne. 0 ) then
      print *,'At block ',j,','

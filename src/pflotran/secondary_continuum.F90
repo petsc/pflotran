@@ -784,14 +784,28 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 
 !============================= Include dtotal ==================================        
   
-  ! Include dtotal (units of kg water/ L water)  
-  do i = 1, ngcells
+  ! Include dtotal (units of kg water/ L water)
+  i = 1
+  do j = 1, ncomp
+    do k = 1, ncomp
+      coeff_diag(j,k,i) = coeff_diag(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+      coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i+1)
+    enddo
+  enddo
+  do i = 2, ngcells-1
     do j = 1, ncomp
       do k = 1, ncomp
         coeff_diag(j,k,i) = coeff_diag(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
-        coeff_left(j,k,i) = coeff_left(j,k,i)*dtotal(j,k,i)
-        coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i)
+        coeff_left(j,k,i) = coeff_left(j,k,i)*dtotal(j,k,i-1)
+        coeff_right(j,k,i) = coeff_right(j,k,i)*dtotal(j,k,i+1)
       enddo
+    enddo
+  enddo
+  i = ngcells
+  do j = 1, ncomp
+    do k = 1, ncomp
+      coeff_diag(j,k,i) = coeff_diag(j,k,i)*dtotal(j,k,i) ! m3/s*kg/L
+      coeff_left(j,k,i) = coeff_left(j,k,i)*dtotal(j,k,i-1)
     enddo
   enddo
   
