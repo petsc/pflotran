@@ -857,13 +857,23 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
           
   if (reaction%use_log_formulation) then
   ! scale the jacobian by concentrations
-    do i = 1, ngcells
+    i = 1
+    do k = 1, ncomp
+      coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
+      coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i+1)
+    enddo
+    do i = 2, ngcells-1
       do k = 1, ncomp
-        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i)
-        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i)
-        coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i)
+        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
+        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i-1)
+        coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i+1)
       enddo
-    enddo 
+    enddo
+    i = ngcells
+      do k = 1, ncomp
+        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
+        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i-1)
+      enddo
   endif
   
   if (option%numerical_derivatives_multi_coupling) then  
