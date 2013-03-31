@@ -351,7 +351,8 @@ end subroutine StepperUpdateDT
 ! date: 03/20/13
 !
 ! ************************************************************************** !
-subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag)
+subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
+                                plot_flag,transient_plot_flag)
 
   use Option_module
   
@@ -361,6 +362,8 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag)
   PetscReal :: sync_time
   type(option_type) :: option
   PetscInt :: stop_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
   
   PetscReal :: target_time
   PetscReal :: dt
@@ -425,11 +428,11 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag)
       else
         target_time = max_time
         timestepper%match_waypoint = PETSC_TRUE
+        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
         if (max_time >= cur_waypoint%time) then
           cur_waypoint => cur_waypoint%next
         endif
-!        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-!        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
       endif
       exit
     else if (target_time > cur_waypoint%time) then

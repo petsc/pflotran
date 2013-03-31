@@ -62,7 +62,9 @@ function PMRTCreate()
 
   class(process_model_rt_type), pointer :: rt_pm
   
+#ifdef PM_RICHARDS_DEBUG  
   print *, 'PMRTCreate()'
+#endif
   
   allocate(rt_pm)
   nullify(rt_pm%option)
@@ -97,7 +99,9 @@ subroutine PMRTInit(this)
   
   class(process_model_rt_type) :: this
 
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%Init()')
+#endif
   
 #ifndef SIMPLIFY  
   ! set up communicator
@@ -132,7 +136,9 @@ subroutine PMRTSetRealization(this,realization)
   class(process_model_rt_type) :: this
   class(realization_type), pointer :: realization
 
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%SetRealization()')
+#endif
   
   this%realization => realization
   this%realization_base => realization
@@ -152,11 +158,11 @@ subroutine PMRTInitializeTimestep(this)
   
   class(process_model_rt_type) :: this
  
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%InitializeTimestep()')
-  
-#ifndef SIMPLIFY 
-  call RTSetup(this%realization)
 #endif
+  
+  call RTSetup(this%realization)
 
 end subroutine PMRTInitializeTimestep
 
@@ -173,7 +179,9 @@ subroutine PMRTPreSolve(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
+#endif
   
 #ifndef SIMPLIFY 
   ! update tortuosity
@@ -200,7 +208,9 @@ subroutine PMRTPostSolve(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%PostSolve()')
+#endif
   
 end subroutine PMRTPostSolve
 
@@ -219,7 +229,9 @@ function PMRTAcceptSolution(this)
   
   PetscBool :: PMRTAcceptSolution
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%AcceptSolution()')
+#endif
   ! do nothing
   PMRTAcceptSolution = PETSC_TRUE
   
@@ -246,7 +258,9 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   PetscReal :: dtt
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%UpdateTimestep()')  
+#endif
   
   dtt = dt
   if (num_newton_iterations <= iacceleration) then
@@ -280,7 +294,9 @@ recursive subroutine PMRTInitializeRun(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%InitializeRun()')
+#endif
   
   ! restart
 #if 0  
@@ -289,7 +305,6 @@ recursive subroutine PMRTInitializeRun(this)
   endif
 #endif  
   
-#ifndef SIMPLIFY 
   call RTUpdateSolution(this%realization)
   
   if (this%option%jumpstart_kinetic_sorption .and. &
@@ -304,7 +319,6 @@ recursive subroutine PMRTInitializeRun(this)
     endif
     call RTJumpStartKineticSorption(this%realization)
   endif
-#endif
   ! check on MAX_STEPS < 0 to quit after initialization.
     
 end subroutine PMRTInitializeRun
@@ -322,7 +336,9 @@ recursive subroutine PMRTFinalizeRun(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%PMRTFinalizeRun()')
+#endif
   
   ! do something here
   
@@ -349,11 +365,11 @@ subroutine PMRTResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%Residual()')  
-  
-#ifndef SIMPLIFY 
-  call RTResidual(snes,xx,r,this%realization,ierr)
 #endif
+  
+  call RTResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMRTResidual
 
@@ -375,11 +391,11 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%Jacobian()')  
-
-#ifndef SIMPLIFY 
-  call RTJacobian(snes,xx,A,B,flag,this%realization,ierr)
 #endif
+
+  call RTJacobian(snes,xx,A,B,flag,this%realization,ierr)
 
 end subroutine PMRTJacobian
     
@@ -401,7 +417,9 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%CheckUpdatePre()')
+#endif
   
 #ifndef SIMPLIFY 
   call RTCheckUpdate(line_search,P,dP,changed,this%realization,ierr)
@@ -429,7 +447,9 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%CheckUpdatePost()')
+#endif
   
 !  call RTCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 !                               P1_changed,this%realization,ierr)
@@ -449,11 +469,11 @@ subroutine PMRTTimeCut(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%TimeCut()')
-  
-#ifndef SIMPLIFY 
-  call RTTimeCut(this%realization)
 #endif
+  
+  call RTTimeCut(this%realization)
 
 end subroutine PMRTTimeCut
     
@@ -472,7 +492,9 @@ subroutine PMRTUpdateSolution(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%UpdateSolution()')
+#endif
   
   ! begin from RealizationUpdate()
   call TranConditionUpdate(this%realization%transport_conditions, &
@@ -502,11 +524,11 @@ subroutine PMRTMaxChange(this)
   
   class(process_model_rt_type) :: this
   
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%MaxChange()')
-  
-#ifndef SIMPLIFY 
-  call RTMaxChange(this%realization)
 #endif
+  
+  call RTMaxChange(this%realization)
 
 end subroutine PMRTMaxChange
     
@@ -524,7 +546,9 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
   class(process_model_rt_type) :: this
   PetscReal :: mass_balance_array(:)
 
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRT%MassBalance()')
+#endif
 
 #ifndef SIMPLIFY 
   call RTComputeMassBalance(this%realization,mass_balance_array)
@@ -545,7 +569,9 @@ subroutine PMRTDestroy(this)
   
   class(process_model_rt_type) :: this
 
+#ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRTDestroy()')
+#endif
   
 #ifndef SIMPLIFY 
   call RTDestroy(this%realization)

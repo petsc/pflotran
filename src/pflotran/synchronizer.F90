@@ -186,7 +186,7 @@ subroutine Output(this)
   cur_process_model_coupler => this%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler)) exit
-    call cur_process_model_coupler%Output()!PETSC_TRUE,PETSC_FALSE)
+    call cur_process_model_coupler%OutputLocal()!PETSC_TRUE,PETSC_FALSE)
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
 

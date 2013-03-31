@@ -646,8 +646,8 @@ function WaypointForceMatchToTime(waypoint)
 
   if (waypoint%update_conditions &
       .or. &
-!      waypoint%print_output .or. &
-!      waypoint%print_tr_output .or. &
+      waypoint%print_output .or. &
+      waypoint%print_tr_output .or. &
       waypoint%final &
       ) then
     WaypointForceMatchToTime = PETSC_TRUE

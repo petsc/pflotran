@@ -892,6 +892,7 @@ subroutine Init(simulation)
     cur_process_model%output_option => realization%output_option
     cur_process_model_coupler%process_model_list => cur_process_model
     cur_process_model_coupler%pm_ptr%ptr => cur_process_model
+    cur_process_model_coupler%depth = 0
   endif
   if (option%ntrandof > 0) then
     cur_process_model => PMRTCreate()
@@ -902,9 +903,11 @@ subroutine Init(simulation)
       cur_process_model%output_option => realization%output_option
       cur_process_model_coupler%below%process_model_list => cur_process_model
       cur_process_model_coupler%below%pm_ptr%ptr => cur_process_model
+      cur_process_model_coupler%below%depth = 1
     else
       cur_process_model_coupler%process_model_list => cur_process_model
       cur_process_model_coupler%pm_ptr%ptr => cur_process_model
+      cur_process_model_coupler%depth = 0
     endif
   endif  
   simulation%process_model_coupler_list => cur_process_model_coupler
