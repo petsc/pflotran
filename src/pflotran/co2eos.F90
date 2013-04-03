@@ -671,14 +671,14 @@ subroutine Henry_duan_sun_0NaCl (p,tc,henry)
 end subroutine Henry_duan_sun_0NaCl
   
 
-subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
+subroutine Henry_duan_sun(tc,p,keqco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   
 ! t[c], p[bar], mco2[mol/Kg-H2O], mc[cation: mol/kg-H2O], 
 ! ma[anion: mol/kg-H2O], psat[bars]
 
   implicit none
   PetscReal, save :: coef(3,11)
-  PetscReal :: tc,p,mco2,phico2,mc,ma,psat, t
+  PetscReal :: tc,p,keqco2,phico2,mc,ma,psat, t
   PetscReal, optional :: co2_aq_actcoef
   PetscReal :: temparray(11)
 
@@ -698,32 +698,30 @@ subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
 
 
   t=tc+273.15
-!#ifdef PC_BUG
+
   ! adding temparray to improve efficiency (and remove Intel warning) - geh
   temparray = coef(1,:)
-  call duan_sun_param(t,p,temparray,mu0)
+  call duan_sun_param(t,p,temparray,mu0) ! mu0/RT
   temparray = coef(2,:)
-  call duan_sun_param(t,p,temparray,lamc)
+  call duan_sun_param(t,p,temparray,lamc) ! lambda_CO2-Na Pitzer 2nd order int. param.
   temparray = coef(3,:)
-  call duan_sun_param(t,p,temparray,lamca)
-!#else
-!#endif
+  call duan_sun_param(t,p,temparray,lamca) ! zeta_CO2-Na-Cl Pitzer 3rd order int. param.
   
   !activity coef. co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
   if (present(co2_aq_actcoef)) then
     co2_aq_actcoef = exp(lngamco2)
   endif 
-  tmp = mu0 + lngamco2 !- log(phico2)
+  tmp = mu0 + lngamco2 !- log(phico2) [ln y P/m = mu0 + ln gamma - ln phico2]
   
-  yco2 = (p-psat)/p
+  yco2 = (p-psat)/p ! mole fraction of CO2 in supercritical CO2 phase: based on 
+                    ! assumption that mole fraction of H2O in SC CO2 = Psat(T)/P.
   
-  !molality co2
- 
-  ! mco2 = yco2 * exp(-tmp) * p
+  ! mco2 = molality co2
+  ! mco2 = phico2 * yco2 * p * exp(-mu0) / gamma
   
-  mco2 = exp(-tmp) ! = K_co2 * gamco2
-  !print *, 'mco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
+  keqco2 = exp(-tmp) ! = K_co2 / gamco2
+  !print *, 'keqco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
   return
 end subroutine Henry_duan_sun
   

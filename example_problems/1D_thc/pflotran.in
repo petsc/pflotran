@@ -134,9 +134,9 @@ END
 
 FLOW_CONDITION west
 TYPE 
-PRESSURE zero_gradient
+PRESSURE dirichlet
 TEMPERATURE dirichlet
-CONCENTRATION zero_gradient
+CONCENTRATION dirichlet
 ENTHALPY dirichlet
 /
 PRESSURE 1.D5

@@ -3,19 +3,27 @@ module Reaction_Aux_module
   use Database_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
-  use Biomass_Aux_module
+  use Immobile_Aux_module
   use Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_Aux_module
-#endif  
+#endif
 
   implicit none
   
   private 
 
 #include "definitions.h"
-  
+
+  ! activity coefficients
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_OFF = 0
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_TIMESTEP = 1
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_NEWTON_ITER = 2
+  PetscInt, parameter, public :: ACT_COEF_ALGORITHM_LAG = 3
+  PetscInt, parameter, public :: ACT_COEF_ALGORITHM_NEWTON = 4
+  PetscInt, parameter, public :: NO_BDOT = 5
+
   type, public :: species_idx_type
     PetscInt :: h2o_aq_id
     PetscInt :: h_ion_id
@@ -129,7 +137,6 @@ module Reaction_Aux_module
     PetscBool :: print_all_primary_species
     PetscBool :: print_all_secondary_species
     PetscBool :: print_all_gas_species
-    PetscBool :: print_all_mineral_species
     PetscBool :: print_pH
     PetscBool :: print_kd
     PetscBool :: print_total_sorb
@@ -170,7 +177,7 @@ module Reaction_Aux_module
     type(surface_complexation_type), pointer :: surface_complexation
     type(mineral_type), pointer :: mineral
     type(microbial_type), pointer :: microbial
-    type(biomass_type), pointer :: biomass
+    type(immobile_type), pointer :: immobile
     
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
@@ -259,9 +266,6 @@ module Reaction_Aux_module
     PetscBool, pointer :: total_sorb_mobile_print(:)
     PetscBool, pointer :: colloid_print(:)
     
-    ! immobile species
-    character(len=MAXWORDLENGTH), pointer :: immobile_species_names(:)
-    
     ! general rxn
     PetscInt :: ngeneral_rxn
     ! ids and stoichiometries for species involved in reaction
@@ -298,7 +302,11 @@ module Reaction_Aux_module
     PetscReal :: minimum_porosity
     PetscBool :: update_mineral_surface_area
     PetscBool :: update_mnrl_surf_with_porosity
-    
+
+    PetscBool :: update_armor_mineral_surface
+    PetscInt :: update_armor_mineral_surface_flag
+
+
     PetscBool :: use_sandbox
     
   end type reaction_type
@@ -381,7 +389,6 @@ function ReactionCreate()
   reaction%print_all_primary_species = PETSC_FALSE
   reaction%print_all_secondary_species = PETSC_FALSE
   reaction%print_all_gas_species = PETSC_FALSE
-  reaction%print_all_mineral_species = PETSC_FALSE
   reaction%print_pH = PETSC_FALSE
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE
@@ -420,7 +427,7 @@ function ReactionCreate()
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralCreate()
   reaction%microbial => MicrobialCreate()
-  reaction%biomass => BiomassCreate()
+  reaction%immobile => ImmobileCreate()
 #ifdef SOLID_SOLUTION  
   nullify(reaction%solid_solution_list)
 #endif
@@ -502,8 +509,6 @@ function ReactionCreate()
   nullify(reaction%coll_spec_to_pri_spec)
   nullify(reaction%colloid_mobile_fraction)
   
-  nullify(reaction%immobile_species_names)
-  
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
   nullify(reaction%generalstoich)
@@ -533,6 +538,10 @@ function ReactionCreate()
   reaction%minimum_porosity = 0.d0
   reaction%update_mineral_surface_area = PETSC_FALSE
   reaction%update_mnrl_surf_with_porosity = PETSC_FALSE
+
+  reaction%update_armor_mineral_surface = PETSC_FALSE
+  reaction%update_armor_mineral_surface_flag = 0
+
   reaction%use_sandbox = PETSC_FALSE
 
   ReactionCreate => reaction
@@ -960,7 +969,7 @@ function GetPrimarySpeciesIDFromName(name,reaction,option)
 
   if (GetPrimarySpeciesIDFromName <= 0) then
     option%io_buffer = 'Species "' // trim(name) // &
-      '" not founds among primary species.'
+      '" not founds among primary species in GetPrimarySpeciesIDFromName().'
     call printErrMsg(option)
   endif
   
@@ -1227,7 +1236,7 @@ function GetImmobileCount(reaction)
   PetscInt :: GetImmobileCount
   type(reaction_type) :: reaction
 
-  GetImmobileCount = BiomassGetCount(reaction%biomass)
+  GetImmobileCount = ImmobileGetCount(reaction%immobile)
   
 end function GetImmobileCount
 
@@ -1277,15 +1286,17 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
       if (dabs(logK(i) - 500.) < 1.d-10) then
         iflag = 1
         temp_int(i) = ZERO_INTEGER
-        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-                           trim(name)
-        call printWrnMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
       endif
     enddo
   enddo
+
+  if (iflag == 1) then
+    option%io_buffer = 'In ReactionFitLogKCoef: log K = 500 for ' // trim(name)
+    call printWrnMsg(option)
+  endif
 
   do j = 1, FIVE_INTEGER
     do k = j, FIVE_INTEGER
@@ -1792,7 +1803,7 @@ subroutine ReactionDestroy(reaction)
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
   call MicrobialDestroy(reaction%microbial)
-  call BiomassDestroy(reaction%biomass)
+  call ImmobileDestroy(reaction%immobile)
 #ifdef SOLID_SOLUTION  
   call SolidSolutionDestroy(reaction%solid_solution_list)
 #endif  
@@ -1805,7 +1816,7 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%redox_species_list)) &
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
   nullify(reaction%redox_species_list)
-
+  
   call DeallocateArray(reaction%primary_species_names)
   call DeallocateArray(reaction%secondary_species_names)
   call DeallocateArray(reaction%gas_species_names)
@@ -1859,8 +1870,6 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%pri_spec_to_coll_spec)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
-  
-  call DeallocateArray(reaction%immobile_species_names)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

@@ -31,7 +31,7 @@ contains
 #if !defined(PETSC_HAVE_HDF5)
 subroutine ReadStructuredGridHDF5(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   
   implicit none
@@ -58,7 +58,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   use hdf5
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Grid_module
@@ -107,7 +107,7 @@ subroutine ReadStructuredGridHDF5(realization)
   patch => realization%patch
   grid => patch%grid
 
-  call PetscGetTime(time0, ierr)
+  call PetscTime(time0, ierr)
 
   filename = option%generalized_grid
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-hdf5_grid', &
@@ -145,11 +145,11 @@ subroutine ReadStructuredGridHDF5(realization)
   
   option%io_buffer = 'Setting up grid cell indices'
   call printMsg(option)
-  call PetscGetTime(time3, ierr)
+  call PetscTime(time3, ierr)
   string = 'Cell Id'
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
-  call PetscGetTime(time4, ierr)
+  call PetscTime(time4, ierr)
   time4 = time4 - time3
   write(option%io_buffer, &
         '(f6.2," seconds to set up grid cell indices for hdf5 file")') time4
@@ -278,9 +278,9 @@ subroutine ReadStructuredGridHDF5(realization)
 
   option%io_buffer = 'Setting up connection indices'
   call printMsg(option)   
-  call PetscGetTime(time3, ierr)
+  call PetscTime(time3, ierr)
   call SetupConnectionIndices(grid,option,grp_id,indices)
-  call PetscGetTime(time4, ierr)
+  call PetscTime(time4, ierr)
   time4 = time4 - time3
   write(option%io_buffer, &
         '(f6.2," seconds to set up connection indices for hdf5 file")') &
@@ -386,7 +386,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   call GridDestroyHashTable(grid)
 
-  call PetscGetTime(time1, ierr)
+  call PetscTime(time1, ierr)
   time1 = time1 - time0
   write(option%io_buffer, &
         '(f6.2," seconds to read unstructured grid data from hdf5 file")') &
@@ -410,6 +410,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   use Grid_module
   use Option_module
   use Logging_module
+  use HDF5_Aux_module
   
   implicit none
   
@@ -481,7 +482,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   memory_space_id = -1
   do
     if (connection_count >= num_connections_in_file) exit
-    temp_int = num_connections_in_file-connection_count
+    temp_int = int(num_connections_in_file)-connection_count
     temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
@@ -527,7 +528,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
                      option%mycomm,ierr)
     endif
 #endif    
-    do i=1,dims(1)
+    do i=1,int(dims(1))
       connection_count = connection_count + 1
       natural_id_up = upwind_ids_i4(i)
       natural_id_down = downwind_ids_i4(i)

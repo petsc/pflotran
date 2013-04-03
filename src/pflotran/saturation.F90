@@ -21,7 +21,7 @@ contains
 subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
                                    sat_func_id)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Option_module
   use Grid_module
@@ -137,7 +137,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
     endif
 
     select case(option%iflowmode)
-      case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+      case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
         temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
@@ -204,7 +204,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
       endif
 
       select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+        case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
            temperature = temperature_at_datum + &
                       temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                       temperature_gradient(Y_DIRECTION)*dist_y + &

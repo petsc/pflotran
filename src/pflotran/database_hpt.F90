@@ -1760,7 +1760,7 @@ subroutine BasisInit_hpt(reaction,option)
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
         reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
-                                           reaction%print_all_mineral_species
+                                           reaction%mineral%print_all
         reaction%kinmnrlspecid(:,ikinmnrl) = reaction%mnrlspecid(:,imnrl)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
@@ -1982,7 +1982,7 @@ subroutine BasisInit_hpt(reaction,option)
         if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
           reaction%eqsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
           reaction%eqsrfcplx_rxn_to_surf(irxn) = &
-            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+            GetKineticMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
           if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
                                'listed in surface complexation reaction not ' // &
@@ -2186,7 +2186,7 @@ subroutine BasisInit_hpt(reaction,option)
         if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
           reaction%kinsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
           reaction%kinsrfcplx_rxn_to_surf(irxn) = &
-            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+            GetKineticMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
           if (reaction%kinsrfcplx_rxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
                                'listed in kinetic surface complexation ' // &

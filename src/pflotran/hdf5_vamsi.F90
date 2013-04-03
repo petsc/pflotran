@@ -1087,14 +1087,14 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   call GridCreateNaturalToGhostedHash(grid,option)
 #endif
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
       option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
       call printMsg(option)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, &
+  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
           file_id, ierr)
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
   option%io_buffer = 'Reading dataset: ' // trim(string)
@@ -1143,11 +1143,11 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
        option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
        call printMsg(option)   
    endif
-   call parallelio_close_file(file_id, option%ioread_group_id, ierr)
+   call scorpio_close_file(file_id, option%ioread_group_id, ierr)
 
   call GridDestroyHashTable(grid)
 
-! PARALLELIO_LIB
+! SCORPIO
 #else   
 
   ! initialize fortran hdf5 interface 
@@ -1333,7 +1333,7 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   endif
 
   ! Read Cell Ids
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   string = "Cell Ids"
   if (grp_id /= file_id) then
     option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
@@ -1343,12 +1343,12 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   endif
   call printMsg(option)   
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
-  call PetscGetTime(tend,ierr)
+  call PetscTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up indices")') tend-tstart
   call printMsg(option)
 
 
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   string = ''
   if (append_realization_id) then
     write(string,'(i6)') option%id
@@ -1364,7 +1364,7 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   call HDF5ReadArray(discretization,grid,option,grp_id,string,grid%nmax, &
                      indices,global_vec,HDF_NATIVE_INTEGER)
   
-  call PetscGetTime(tend,ierr)
+  call PetscTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to read integer array.")') &
     tend-tstart
   call printMsg(option)  
@@ -1487,7 +1487,7 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   endif
 
   ! Read Cell Ids
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   string = "Cell Ids"
   if (grp_id /= file_id) then
     option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
@@ -1497,11 +1497,11 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   endif
   call printMsg(option)   
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
-  call PetscGetTime(tend,ierr)
+  call PetscTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up indices")') tend-tstart
   call printMsg(option)
 
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   string = ''
   if (append_realization_id) then
     write(string,'(i6)') option%id
@@ -1517,7 +1517,7 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   call HDF5ReadArray(discretization,grid,option,file_id,string,grid%nmax, &
                      indices,global_vec,H5T_NATIVE_DOUBLE)
   
-  call PetscGetTime(tend,ierr)
+  call PetscTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to read real array")') &
     tend-tstart
   call printMsg(option)  

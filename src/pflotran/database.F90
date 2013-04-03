@@ -36,8 +36,8 @@ subroutine DatabaseRead(reaction,option)
   use Mineral_module
   use Microbial_Aux_module
   use Microbial_module
-  use Biomass_Aux_module
-  use Biomass_module
+  use Immobile_Aux_module
+  use Immobile_module
   
   implicit none
   
@@ -47,14 +47,14 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_rxn_type), pointer :: cur_mineral, cur_mineral2
-  type(biomass_species_type), pointer :: cur_biomass_spec
+  type(immobile_species_type), pointer :: cur_immobile_spec
   type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
                                          cur_srfcplx_in_master_list
   type(mineral_type), pointer :: mineral
-  type(biomass_type), pointer :: biomass
+  type(immobile_type), pointer :: immobile
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -70,7 +70,7 @@ subroutine DatabaseRead(reaction,option)
   
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
-  biomass => reaction%biomass
+  immobile => reaction%immobile
   
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
@@ -91,11 +91,11 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec%id = -abs(cur_gas_spec%id)
     cur_gas_spec => cur_gas_spec%next
   enddo  
-  cur_biomass_spec => biomass%list
+  cur_immobile_spec => immobile%list
   do
-    if (.not.associated(cur_biomass_spec)) exit
-    cur_biomass_spec%id = -abs(cur_biomass_spec%id)
-    cur_biomass_spec => cur_biomass_spec%next
+    if (.not.associated(cur_immobile_spec)) exit
+    cur_immobile_spec%id = -abs(cur_immobile_spec%id)
+    cur_immobile_spec => cur_immobile_spec%next
   enddo
   cur_mineral => mineral%mineral_list
   do
@@ -208,29 +208,29 @@ subroutine DatabaseRead(reaction,option)
           endif
           cur_colloid => cur_colloid%next
         enddo
-        ! check if biomass
-        if (.not.found) cur_biomass_spec => biomass%list
+        ! check if immobile
+        if (.not.found) cur_immobile_spec => immobile%list
         do
-          if (found .or. .not.associated(cur_biomass_spec)) exit
-          if (StringCompare(name,cur_biomass_spec%name,MAXWORDLENGTH)) then
+          if (found .or. .not.associated(cur_immobile_spec)) exit
+          if (StringCompare(name,cur_immobile_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
             ! change negative id to positive, indicating it was found in 
             ! database
-            cur_biomass_spec%id = abs(cur_biomass_spec%id)
+            cur_immobile_spec%id = abs(cur_immobile_spec%id)
 
             ! skip the Debye-Huckel ion size parameter (a0)
             call InputReadDouble(input,option,temp_real)
-            call InputErrorMsg(input,option,'Biomass skip a0','DATABASE')            
+            call InputErrorMsg(input,option,'Immobile skip a0','DATABASE')            
             ! skip the valence
             call InputReadDouble(input,option,temp_real)
-            call InputErrorMsg(input,option,'Biomass skip Z','DATABASE')            
+            call InputErrorMsg(input,option,'Immobile skip Z','DATABASE')            
             ! read the molar weight
-            call InputReadDouble(input,option,cur_biomass_spec%molar_weight)
-            call InputErrorMsg(input,option,'Biomass molar weight','DATABASE')
+            call InputReadDouble(input,option,cur_immobile_spec%molar_weight)
+            call InputErrorMsg(input,option,'Immobile molar weight','DATABASE')
             
             cycle ! avoid the aqueous species parameters below
           endif
-          cur_biomass_spec => cur_biomass_spec%next
+          cur_immobile_spec => cur_immobile_spec%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
@@ -728,14 +728,14 @@ subroutine DatabaseRead(reaction,option)
   enddo  
     
   if (flag) call printErrMsg(option,'Species not found in database.')
-#if TEMP_DEPENDENT_LOGK    
-  !geh: only stop if running with temperature dependent log Ks.
-  if (logK_error_flag) then
-    option%io_buffer = 'Non-isothermal reactions not possible due to ' // &
-      'missing logKs in database.'
-    call printErrMsg(option)
+  if (.not.option%use_isothermal) then
+    !geh: only stop if running with temperature dependent log Ks.
+    if (logK_error_flag) then
+      option%io_buffer = 'Non-isothermal reactions not possible due to ' // &
+        'missing logKs in database.'
+      call printErrMsg(option)
+    endif
   endif
-#endif  
 
   call InputDestroy(input)
   
@@ -758,11 +758,12 @@ subroutine BasisInit(reaction,option)
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
-  use Biomass_Aux_module
+  use Immobile_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
-#endif  
+#endif
+  use Reaction_Sandbox_module
 
   implicit none
   
@@ -778,7 +779,7 @@ subroutine BasisInit(reaction,option)
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1
   type(gas_species_type), pointer :: cur_gas_spec2
-  type(biomass_species_type), pointer :: cur_biomass_spec
+  type(immobile_species_type), pointer :: cur_immobile_spec
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx_in_rxn
@@ -797,7 +798,7 @@ subroutine BasisInit(reaction,option)
   type(inhibition_type), pointer :: cur_inhibition
   type(mineral_type), pointer :: mineral
   type(microbial_type), pointer :: microbial
-  type(biomass_type), pointer :: biomass
+  type(immobile_type), pointer :: immobile
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -853,7 +854,7 @@ subroutine BasisInit(reaction,option)
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
   microbial => reaction%microbial
-  biomass => reaction%biomass
+  immobile => reaction%immobile
   
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
@@ -1607,14 +1608,14 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqcplx_logK(reaction%neqcplx))
     reaction%eqcplx_logK = 0.d0
 
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
+    if (option%use_isothermal) then
+      allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures, &
+                                        reaction%neqcplx))
+    else
+      allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
+    endif
     reaction%eqcplx_logKcoef = 0.d0
-#else
-    allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures, &
-                                      reaction%neqcplx))
-    reaction%eqcplx_logKcoef = 0.d0
-#endif
+
     allocate(reaction%eqcplx_Z(reaction%neqcplx))
     reaction%eqcplx_Z = 0.d0
 
@@ -1655,28 +1656,28 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%eqcplxspecid(0,isec_spec) = ispec
 
-#if TEMP_DEPENDENT_LOGK
-      if (reaction%use_geothermal_hpt) then
-        call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
-                                        reaction%eqcplx_logK(isec_spec), &
-                                        option,reaction)        
+      if (option%use_isothermal) then
+        call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                    cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
+                    cur_sec_aq_spec%dbaserxn%logK(itemp_low), &
+                    reaction%eqcplx_logK(isec_spec))
       else
-        call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
-                                 cur_sec_aq_spec%dbaserxn%logK, &
-                                 reaction%secondary_species_names(isec_spec), &
-                                 option,reaction)
-        call ReactionInitializeLogK(reaction%eqcplx_logKcoef(:,isec_spec), &
-                                    cur_sec_aq_spec%dbaserxn%logK, &
-                                    reaction%eqcplx_logK(isec_spec), &
-                                    option,reaction)
+        if (reaction%use_geothermal_hpt) then
+          call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                          reaction%eqcplx_logK(isec_spec), &
+                                          option,reaction)        
+        else
+          call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                   cur_sec_aq_spec%dbaserxn%logK, &
+                                   reaction%secondary_species_names(isec_spec), &
+                                   option,reaction)
+          call ReactionInitializeLogK(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                      cur_sec_aq_spec%dbaserxn%logK, &
+                                      reaction%eqcplx_logK(isec_spec), &
+                                      option,reaction)
+        endif
       endif
-#else
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
-                       cur_sec_aq_spec%dbaserxn%logK(itemp_low), &
-                       reaction%eqcplx_logK(isec_spec))
-!      reaction%eqcplx_logK(isec_spec) = cur_sec_aq_spec%dbaserxn%logK(option%itemp_ref)
-#endif  
+
       reaction%eqcplx_Z(isec_spec) = cur_sec_aq_spec%Z
       reaction%eqcplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
       reaction%eqcplx_a0(isec_spec) = cur_sec_aq_spec%a0
@@ -1717,14 +1718,13 @@ subroutine BasisInit(reaction,option)
     reaction%eqgash2ostoich = 0.d0
     allocate(reaction%eqgas_logK(reaction%ngas))
     reaction%eqgas_logK = 0.d0
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
+    if (option%use_isothermal) then
+      allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
+                                       reaction%ngas))
+    else
+      allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
+    endif
     reaction%eqgas_logKcoef = 0.d0
-#else
-    allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
-                                     reaction%ngas))
-    reaction%eqgas_logKcoef = 0.d0
-#endif
 
     ! pack in reaction arrays
     cur_gas_spec => reaction%gas_species_list
@@ -1753,29 +1753,28 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
       
-#if TEMP_DEPENDENT_LOGK
-      if (reaction%use_geothermal_hpt) then
-        call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
-                                        reaction%eqgas_logK(igas_spec), &
-                                        option,reaction)  
+      if (option%use_isothermal) then
+        reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
+        call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                         cur_gas_spec%dbaserxn%logK(itemp_high), &
+                         cur_gas_spec%dbaserxn%logK(itemp_low), &
+                         reaction%eqgas_logK(igas_spec))
       else
-        call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec), &
-                                 cur_gas_spec%dbaserxn%logK, &
-                                 reaction%gas_species_names(igas_spec), &
-                                 option,reaction)
-        call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
-                                    cur_gas_spec%dbaserxn%logK, &
-                                    reaction%eqgas_logK(igas_spec), &
-                                    option,reaction)
+        if (reaction%use_geothermal_hpt) then
+          call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
+                                          reaction%eqgas_logK(igas_spec), &
+                                          option,reaction)  
+        else
+          call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec), &
+                                   cur_gas_spec%dbaserxn%logK, &
+                                   reaction%gas_species_names(igas_spec), &
+                                   option,reaction)
+          call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
+                                      cur_gas_spec%dbaserxn%logK, &
+                                      reaction%eqgas_logK(igas_spec), &
+                                      option,reaction)
+        endif
       endif
-#else
-      reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_gas_spec%dbaserxn%logK(itemp_high), &
-                       cur_gas_spec%dbaserxn%logK(itemp_low), &
-                       reaction%eqgas_logK(igas_spec))
-!      reaction%eqgas_logK(igas_spec) = cur_gas_spec%dbaserxn%logK(option%itemp_ref)
-#endif      
   
       igas_spec = igas_spec + 1
       cur_gas_spec => cur_gas_spec%next
@@ -1785,34 +1784,24 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec)
   igas_spec = -1 ! to catch bugs
 
-  ! biomass species
-  biomass%nbiomass = BiomassGetCount(biomass)
-  if (biomass%nbiomass > 0) then
-    allocate(biomass%names(biomass%nbiomass))
-    biomass%names = ''
-    allocate(biomass%print_me(biomass%nbiomass))
-    biomass%print_me = PETSC_FALSE
+  ! immobile species
+  immobile%nimmobile = ImmobileGetCount(immobile)
+  if (immobile%nimmobile > 0) then
+    allocate(immobile%names(immobile%nimmobile))
+    immobile%names = ''
+    allocate(immobile%print_me(immobile%nimmobile))
+    immobile%print_me = PETSC_FALSE
 
-    cur_biomass_spec => biomass%list
+    cur_immobile_spec => immobile%list
     temp_int = 0
     do
-      if (.not.associated(cur_biomass_spec)) exit
+      if (.not.associated(cur_immobile_spec)) exit
       temp_int = temp_int + 1
-      biomass%names(temp_int) = cur_biomass_spec%name
-      biomass%print_me(temp_int) = cur_biomass_spec%print_me
-      cur_biomass_spec => cur_biomass_spec%next
+      immobile%names(temp_int) = cur_immobile_spec%name
+      immobile%print_me(temp_int) = cur_immobile_spec%print_me .or. &
+                                   immobile%print_all
+      cur_immobile_spec => cur_immobile_spec%next
     enddo
-  endif
-  
-  ! immobile species - must come after initialization of immobile species
-  ! such as biomass
-  if (reaction%nimcomp > 0) then
-    allocate(reaction%immobile_species_names(reaction%nimcomp))
-    reaction%immobile_species_names = ''
-    
-    ! biomass first
-    reaction%immobile_species_names(1:biomass%nbiomass) = &
-      biomass%names(biomass%nbiomass)
   endif
   
   ! minerals
@@ -1884,14 +1873,13 @@ subroutine BasisInit(reaction,option)
     mineral%mnrl_logK = 0.d0
     allocate(mineral%mnrl_print(mineral%nmnrl))
     mineral%mnrl_print = PETSC_FALSE
-#if TEMP_DEPENDENT_LOGK
-    allocate(mineral%mnrl_logKcoef(FIVE_INTEGER,mineral%nmnrl))
-    mineral%mnrl_logKcoef = 0.d0
-#else
-    allocate(mineral%mnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                    mineral%nmnrl))
-    mineral%mnrl_logKcoef = 0.d0
-#endif
+    if (option%use_isothermal) then
+      allocate(mineral%mnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                      mineral%nmnrl))
+    else
+      allocate(mineral%mnrl_logKcoef(FIVE_INTEGER,mineral%nmnrl))
+    endif
+    reaction%mineral%mnrl_logKcoef = 0.d0
 
     if (mineral%nkinmnrl > 0) then
     
@@ -1920,14 +1908,13 @@ subroutine BasisInit(reaction,option)
       mineral%kinmnrlh2ostoich = 0.d0
       allocate(mineral%kinmnrl_logK(mineral%nkinmnrl))
       mineral%kinmnrl_logK = 0.d0
-#if TEMP_DEPENDENT_LOGK
-      allocate(mineral%kinmnrl_logKcoef(FIVE_INTEGER,mineral%nkinmnrl))
+      if (option%use_isothermal) then
+        allocate(mineral%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                           mineral%nkinmnrl))
+      else
+        allocate(mineral%kinmnrl_logKcoef(FIVE_INTEGER,mineral%nkinmnrl))
+      endif
       mineral%kinmnrl_logKcoef = 0.d0
-#else
-      allocate(mineral%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                         mineral%nkinmnrl))
-      mineral%kinmnrl_logKcoef = 0.d0
-#endif
 
       ! TST Rxn variables
       allocate(mineral%kinmnrl_affinity_threshold(mineral%nkinmnrl))
@@ -1944,6 +1931,15 @@ subroutine BasisInit(reaction,option)
       mineral%kinmnrl_molar_vol = 0.d0
       allocate(mineral%kinmnrl_molar_wt(mineral%nkinmnrl))
       mineral%kinmnrl_molar_wt = 0.d0
+
+      allocate(mineral%kinmnrl_armor_pwr(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_pwr = 0.d0
+
+      allocate(mineral%kinmnrl_armor_crit_vol_frac(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_crit_vol_frac = 0.d0
+
+      allocate(mineral%kinmnrl_armor_min_names(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_min_names = ''
 
       allocate(mineral%kinmnrl_num_prefactors(mineral%nkinmnrl))
       mineral%kinmnrl_num_prefactors = 0
@@ -2006,7 +2002,6 @@ subroutine BasisInit(reaction,option)
       mineral%kinmnrl_affinity_power = 1.d0    
     endif
 
-
     ! Determine whether surface area volume fraction power defined
     cur_mineral => mineral%mineral_list
     found = PETSC_FALSE
@@ -2044,7 +2039,64 @@ subroutine BasisInit(reaction,option)
       allocate(mineral%kinmnrl_surf_area_porosity_pwr(mineral%nkinmnrl))
       mineral%kinmnrl_surf_area_porosity_pwr = 0.d0    
     endif
+
+#if 0
+    ! Determine whether armor mineral name defined
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not. cur_mineral%tstrxn%armor_min_name == '') then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_armor_min_names(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_min_names = ''
+    endif
+
+    ! Determine whether armor mineral volume fraction power defined
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%armor_pwr,0.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_armor_pwr(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_pwr = 0.d0
+    endif
     
+    ! Determine whether armor critical volume fraction defined
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%armor_crit_vol_frac, &
+                       0.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_armor_crit_vol_frac(mineral%nkinmnrl))
+      mineral%kinmnrl_armor_crit_vol_frac = 0.d0
+    endif
+#endif
+
     cur_mineral => mineral%mineral_list
     imnrl = 1
     ikinmnrl = 1
@@ -2070,59 +2122,61 @@ subroutine BasisInit(reaction,option)
       enddo
       mineral%mnrlspecid(0,imnrl) = ispec
 
-#if TEMP_DEPENDENT_LOGK
-      if (reaction%use_geothermal_hpt) then
-        call ReactionInitializeLogK_hpt(mineral%mnrl_logKcoef(:,imnrl), &
-                                        mineral%mnrl_logK(imnrl), &
-                                        option,reaction)      
+      if (option%use_isothermal) then
+        call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                         cur_mineral%dbaserxn%logK(itemp_high), &
+                         cur_mineral%dbaserxn%logK(itemp_low), &
+                         mineral%mnrl_logK(imnrl))
       else
-        call ReactionFitLogKCoef(mineral%mnrl_logKcoef(:,imnrl), &
-                                 cur_mineral%dbaserxn%logK, &
-                                 mineral%mineral_names(imnrl), &
-                                 option,reaction)
-        call ReactionInitializeLogK(mineral%mnrl_logKcoef(:,imnrl), &
-                                    cur_mineral%dbaserxn%logK, &
-                                    mineral%mnrl_logK(imnrl), &
-                                    option,reaction)
+        if (reaction%use_geothermal_hpt) then
+          call ReactionInitializeLogK_hpt(mineral%mnrl_logKcoef(:,imnrl), &
+                                          mineral%mnrl_logK(imnrl), &
+                                          option,reaction)      
+        else
+          call ReactionFitLogKCoef(mineral%mnrl_logKcoef(:,imnrl), &
+                                   cur_mineral%dbaserxn%logK, &
+                                   mineral%mineral_names(imnrl), &
+                                   option,reaction)
+          call ReactionInitializeLogK(mineral%mnrl_logKcoef(:,imnrl), &
+                                      cur_mineral%dbaserxn%logK, &
+                                      mineral%mnrl_logK(imnrl), &
+                                      option,reaction)
+        endif
       endif
-#else
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_mineral%dbaserxn%logK(itemp_high), &
-                       cur_mineral%dbaserxn%logK(itemp_low), &
-                       mineral%mnrl_logK(imnrl))
-#endif
+
       ! geh - for now, the user must specify they want each individual
       !       mineral printed for non-kinetic reactions (e.g. for SI).
       mineral%mnrl_print(imnrl) = cur_mineral%print_me
       if (cur_mineral%itype == MINERAL_KINETIC) then
         mineral%kinmnrl_names(ikinmnrl) = mineral%mineral_names(imnrl)
         mineral%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
-                                           reaction%print_all_mineral_species
+                                           reaction%mineral%print_all
         mineral%kinmnrlspecid(:,ikinmnrl) = mineral%mnrlspecid(:,imnrl)
         mineral%kinmnrlstoich(:,ikinmnrl) = mineral%mnrlstoich(:,imnrl)
         mineral%kinmnrlh2oid(ikinmnrl) = mineral%mnrlh2oid(imnrl)
         mineral%kinmnrlh2ostoich(ikinmnrl) = mineral%mnrlh2ostoich(imnrl)
-#if TEMP_DEPENDENT_LOGK
-        if (reaction%use_geothermal_hpt) then
-          call ReactionInitializeLogK_hpt(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
-                                          mineral%kinmnrl_logK(ikinmnrl), &
-                                          option,reaction)        
+
+        if (option%use_isothermal) then
+          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                           cur_mineral%dbaserxn%logK(itemp_high), &
+                           cur_mineral%dbaserxn%logK(itemp_low), &
+                           mineral%kinmnrl_logK(ikinmnrl))
         else
-          call ReactionFitLogKCoef(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
-                                   cur_mineral%dbaserxn%logK, &
-                                   mineral%kinmnrl_names(ikinmnrl), &
-                                   option,reaction)
-          call ReactionInitializeLogK(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
-                                      cur_mineral%dbaserxn%logK, &
-                                      mineral%kinmnrl_logK(ikinmnrl), &
-                                      option,reaction)
+          if (reaction%use_geothermal_hpt) then
+            call ReactionInitializeLogK_hpt(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
+                                            mineral%kinmnrl_logK(ikinmnrl), &
+                                            option,reaction)        
+          else
+            call ReactionFitLogKCoef(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
+                                     cur_mineral%dbaserxn%logK, &
+                                     mineral%kinmnrl_names(ikinmnrl), &
+                                     option,reaction)
+            call ReactionInitializeLogK(mineral%kinmnrl_logKcoef(:,ikinmnrl), &
+                                        cur_mineral%dbaserxn%logK, &
+                                        mineral%kinmnrl_logK(ikinmnrl), &
+                                        option,reaction)
+          endif
         endif
-#else
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                         cur_mineral%dbaserxn%logK(itemp_high), &
-                         cur_mineral%dbaserxn%logK(itemp_low), &
-                         mineral%kinmnrl_logK(ikinmnrl))
-#endif
 
         tstrxn => cur_mineral%tstrxn
         if (associated(tstrxn)) then
@@ -2185,6 +2239,11 @@ subroutine BasisInit(reaction,option)
             tstrxn%affinity_threshold
           mineral%kinmnrl_rate_limiter(ikinmnrl) = tstrxn%rate_limiter
           mineral%kinmnrl_irreversible(ikinmnrl) = tstrxn%irreversible
+
+          mineral%kinmnrl_armor_min_names(ikinmnrl) = tstrxn%armor_min_name
+          mineral%kinmnrl_armor_pwr(ikinmnrl) = tstrxn%armor_pwr
+          mineral%kinmnrl_armor_crit_vol_frac(ikinmnrl) = tstrxn%armor_crit_vol_frac
+
           if (mineral%kinmnrl_num_prefactors(ikinmnrl) == 0) then
             ! no prefactors, rates stored in upper level
             mineral%kinmnrl_rate(ikinmnrl) = tstrxn%rate
@@ -2221,6 +2280,7 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
       imnrl = imnrl + 1
     enddo
+
 #ifdef SOLID_SOLUTION    
     call SolidSolutionLinkNamesToIDs(reaction%solid_solution_list, &
                                      mineral,option)
@@ -2315,15 +2375,15 @@ subroutine BasisInit(reaction,option)
     allocate(surface_complexation%srfcplx_logK(icount))
     surface_complexation%srfcplx_logK = 0.d0
     
-#if TEMP_DEPENDENT_LOGK
-    allocate(surface_complexation%srfcplx_logKcoef(FIVE_INTEGER,icount))
-    surface_complexation%srfcplx_logKcoef = 0.d0
-#else
-    allocate(surface_complexation%srfcplx_logKcoef(reaction% &
+    if (option%use_isothermal) then
+      allocate(surface_complexation%srfcplx_logKcoef(reaction% &
                                                    num_dbase_temperatures, &
                                                    icount))
+    else
+      allocate(surface_complexation%srfcplx_logKcoef(FIVE_INTEGER,icount))
+    endif
     surface_complexation%srfcplx_logKcoef = 0.d0
-#endif
+    
     allocate(surface_complexation%srfcplx_Z(icount))
     surface_complexation%srfcplx_Z = 0.d0
     
@@ -2336,8 +2396,14 @@ subroutine BasisInit(reaction,option)
       isrfcplx = isrfcplx + 1
           
       surface_complexation%srfcplx_names(isrfcplx) = cur_srfcplx%name
-      surface_complexation%srfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
-        reaction%print_all_species
+      !geh: Only print surface complex concentrations for equilibrium
+      !     surface complexation reaction.  They are not stored for 
+      !     multirate and kinetic surface complexation has its own
+      !     data structure and print flag.
+      if (surface_complexation%neqsrfcplxrxn > 0) then
+        surface_complexation%srfcplx_print(isrfcplx) = &
+          cur_srfcplx%print_me .or. reaction%print_all_species
+      endif
       surface_complexation%srfcplx_free_site_stoich(isrfcplx) =  &
         cur_srfcplx%free_site_stoich
             
@@ -2358,27 +2424,29 @@ subroutine BasisInit(reaction,option)
         endif
       enddo
       surface_complexation%srfcplxspecid(0,isrfcplx) = ispec
-#if TEMP_DEPENDENT_LOGK
-      if (reaction%use_geothermal_hpt) then
-        call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
-                                        surface_complexation%srfcplx_logK(isrfcplx), &
-                                        option,reaction)
+      
+      if (option%use_isothermal) then
+        call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                          cur_srfcplx%dbaserxn%logK(itemp_high), &
+                          cur_srfcplx%dbaserxn%logK(itemp_low), &
+                          surface_complexation%srfcplx_logK(isrfcplx))
       else
-        call ReactionFitLogKCoef(surface_complexation%srfcplx_logKcoef(:,isrfcplx),&
-                                 cur_srfcplx%dbaserxn%logK, &
-                                 surface_complexation%srfcplx_names(isrfcplx), &
-                                 option,reaction)
-        call ReactionInitializeLogK(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
-                                    cur_srfcplx%dbaserxn%logK, &
-                                    surface_complexation%srfcplx_logK(isrfcplx), &
-                                    option,reaction)
+        if (reaction%use_geothermal_hpt) then
+          call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
+                                          surface_complexation%srfcplx_logK(isrfcplx), &
+                                          option,reaction)
+        else
+          call ReactionFitLogKCoef(surface_complexation%srfcplx_logKcoef(:,isrfcplx),&
+                                   cur_srfcplx%dbaserxn%logK, &
+                                   surface_complexation%srfcplx_names(isrfcplx), &
+                                   option,reaction)
+          call ReactionInitializeLogK(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
+                                      cur_srfcplx%dbaserxn%logK, &
+                                      surface_complexation%srfcplx_logK(isrfcplx), &
+                                      option,reaction)
+        endif
       endif
-#else
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                        cur_srfcplx%dbaserxn%logK(itemp_high), &
-                        cur_srfcplx%dbaserxn%logK(itemp_low), &
-                        surface_complexation%srfcplx_logK(isrfcplx))
-#endif
+
       surface_complexation%srfcplx_Z(isrfcplx) = cur_srfcplx%Z
 
       cur_srfcplx => cur_srfcplx%next
@@ -2583,13 +2651,14 @@ subroutine BasisInit(reaction,option)
                                 reaction%print_all_species
       if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
         surface_complexation%srfcplxrxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction%mineral,cur_srfcplx_rxn%mineral_name)
+          GetKineticMineralIDFromName(reaction%mineral, &
+                                      cur_srfcplx_rxn%mineral_name)
         surface_complexation%srfcplxrxn_surf_type(irxn) = MINERAL_SURFACE
         if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // &
                               trim(cur_srfcplx_rxn%mineral_name) // &
-                              'listed in surface complexation ' // &
-                              'reaction not found in mineral list'
+                              ' listed in surface complexation ' // &
+                              'reaction not found in kinetic mineral list'
           call printErrMsg(option)
         endif
       else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
@@ -2599,7 +2668,7 @@ subroutine BasisInit(reaction,option)
         if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Colloid ' // &
                               trim(cur_srfcplx_rxn%colloid_name) // &
-                              'listed in surface complexation ' // &
+                              ' listed in surface complexation ' // &
                               'reaction not found in colloid list'
           call printErrMsg(option)
         endif
@@ -2756,10 +2825,11 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
       if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
         reaction%eqionx_rxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction%mineral,cur_ionx_rxn%mineral_name)
+          GetKineticMineralIDFromName(reaction%mineral, &
+                                      cur_ionx_rxn%mineral_name)
         if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
-                             'listed in ion exchange ' // &
+                             ' listed in ion exchange ' // &
                              'reaction not found in mineral list'
           call printErrMsg(option)
         endif
@@ -2824,7 +2894,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%primary_species_names, &
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
-                                       reaction%immobile_species_names, &
+                                       reaction%immobile%names, &
                                        option)
       cur_general_rxn => cur_general_rxn%next
     enddo
@@ -2945,7 +3015,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%primary_species_names, &
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
-                                       reaction%immobile_species_names, &
+                                       reaction%immobile%names, &
                                        option)
       temp_int = cur_microbial_rxn%dbaserxn%nspec
       if (temp_int > max_species_count) max_species_count = temp_int
@@ -3015,14 +3085,14 @@ subroutine BasisInit(reaction,option)
       enddo
       
       if (associated(cur_microbial_rxn%biomass)) then
-        ! check for biomass species in global biomass list
+        ! check for biomass species in global immobile list
         temp_int = &
           StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
-                                biomass%names)
+                                immobile%names)
         if (temp_int == 0) then
           option%io_buffer = 'Biomass species "' // &
             trim(cur_microbial_rxn%biomass%species_name) // &
-            ' not found among biomass species.'
+            ' not found among immobile species.'
           call printErrMsg(option)
         else
           microbial%biomassid(irxn) = temp_int
@@ -3033,10 +3103,10 @@ subroutine BasisInit(reaction,option)
         temp_int = &
           StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
                                 dbaserxn%spec_name)
-        if (temp_int == 0) then
+        if (temp_int /= 0) then
           option%io_buffer = 'Biomass species "' // &
             trim(cur_microbial_rxn%biomass%species_name) // &
-            ' not found in microbial reaction.'
+            ' should not be included in microbial reaction.'
           call printErrMsg(option)
         endif       
       endif
@@ -3284,6 +3354,10 @@ subroutine BasisInit(reaction,option)
 
   enddo
   
+  ! sandbox reactions
+  call RSandboxSetup(reaction,option)
+
+  
 90 format(80('-'))
 100 format(/,2x,i4,2x,a)
 110 format(100(/,14x,3(a20,2x)))
@@ -3515,7 +3589,8 @@ subroutine BasisInit(reaction,option)
 
     close(86)
   endif
-#endif ! AMANZI_BGD
+#endif
+! AMANZI_BGD
   
 #if 0
   ! output for ASCEM reactions

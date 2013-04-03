@@ -32,14 +32,24 @@ module Surface_Field_module
     Vec :: subsurf_xx            ! MPI
     Vec :: subsurf_yy            ! MPI
     Vec :: subsurf_zz            ! MPI
+    Vec :: surf2subsurf_dist_gravity ! MPI
 
-    Vec :: subsurf_temp_vec      ! MPI
+    Vec :: subsurf_temp_vec_1dof ! MPI
+    Vec :: subsurf_temp_vec_ndof ! MPI
 
     ! residual vectors
     Vec :: flow_r
 
     ! Solution vectors (yy = previous solution, xx = current iterate)
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
+
+    ! vectors to save temporally average quantities
+    Vec, pointer :: avg_vars_vec(:)
+    PetscInt :: nvars
+
+    ! vectors to save temporally average flowrates
+    Vec :: flowrate_inst
+    Vec :: flowrate_aveg
 
   end type surface_field_type
 
@@ -93,8 +103,16 @@ function SurfaceFieldCreate()
   surface_field%subsurf_xx = 0
   surface_field%subsurf_yy = 0
   surface_field%subsurf_zz = 0
+  surface_field%surf2subsurf_dist_gravity = 0
   
-  surface_field%subsurf_temp_vec = 0
+  surface_field%subsurf_temp_vec_1dof = 0
+  surface_field%subsurf_temp_vec_ndof = 0
+
+  nullify(surface_field%avg_vars_vec)
+  surface_field%nvars = 0
+
+  surface_field%flowrate_inst = 0
+  surface_field%flowrate_aveg = 0
 
   SurfaceFieldCreate => surface_field
 
@@ -114,6 +132,7 @@ subroutine SurfaceFieldDestroy(surface_field)
   type(surface_field_type), pointer :: surface_field
   
   PetscErrorCode :: ierr
+  PetscInt :: ivar
 
   ! Destroy PetscVecs
   if (surface_field%mannings0 /= 0) call VecDestroy(surface_field%mannings0,ierr)
@@ -143,7 +162,8 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%subsurf_xx/=0) call VecDestroy(surface_field%subsurf_xx,ierr)
   if (surface_field%subsurf_yy/=0) call VecDestroy(surface_field%subsurf_yy,ierr)
   if (surface_field%subsurf_zz/=0) call VecDestroy(surface_field%subsurf_zz,ierr)
-    
+  if (surface_field%surf2subsurf_dist_gravity/=0) &
+    call VecDestroy(surface_field%surf2subsurf_dist_gravity,ierr)
 
   if (surface_field%flow_r /= 0) call VecDestroy(surface_field%flow_r,ierr)
   if (surface_field%flow_xx /= 0) call VecDestroy(surface_field%flow_xx,ierr)
@@ -152,7 +172,15 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%flow_yy /= 0) call VecDestroy(surface_field%flow_yy,ierr)
   if (surface_field%flow_accum /= 0) call VecDestroy(surface_field%flow_accum,ierr)
   
-  if (surface_field%subsurf_temp_vec/=0) call VecDestroy(surface_field%subsurf_temp_vec,ierr)
+  if (surface_field%subsurf_temp_vec_1dof/=0) call VecDestroy(surface_field%subsurf_temp_vec_1dof,ierr)
+  if (surface_field%subsurf_temp_vec_ndof/=0) call VecDestroy(surface_field%subsurf_temp_vec_ndof,ierr)
+
+  do ivar = 1,surface_field%nvars
+    call VecDestroy(surface_field%avg_vars_vec(ivar),ierr)
+  enddo
+
+  if (surface_field%flowrate_inst/=0) call VecDestroy(surface_field%flowrate_inst,ierr)
+  if (surface_field%flowrate_aveg/=0) call VecDestroy(surface_field%flowrate_aveg,ierr)
 
 end subroutine SurfaceFieldDestroy
 

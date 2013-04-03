@@ -196,7 +196,7 @@ subroutine StrataRead(strata,input,option)
           call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
           call InputErrorMsg(input,option,'material property name','STRATA')
         endif
-        strata%material_property_name = string
+        strata%material_property_name = trim(string)
         strata%material_property_filename = string
       case('INACTIVE')
         strata%active = PETSC_FALSE

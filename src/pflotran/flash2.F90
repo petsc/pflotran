@@ -61,7 +61,7 @@ contains
 ! ************************************************************************** !
 subroutine Flash2TimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -91,7 +91,7 @@ end subroutine Flash2TimeCut
 ! ************************************************************************** !
 subroutine Flash2Setup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 !  use span_wagner_module
@@ -146,7 +146,7 @@ end subroutine Flash2Setup
 ! ************************************************************************** !
 subroutine Flash2SetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -257,7 +257,7 @@ end subroutine Flash2SetupPatch
 ! ************************************************************************** !
   function  Flash2InitGuessCheck(realization)
  
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Option_module
@@ -306,7 +306,7 @@ end subroutine Flash2SetupPatch
 ! ************************************************************************** !
 subroutine Flash2UpdateReasonPatch(reason,realization)
 
-   use Realization_module
+   use Realization_class
    use Patch_module
    use Field_module
    use Option_module
@@ -383,7 +383,7 @@ end subroutine Flash2UpdateReasonPatch
 ! ************************************************************************** !
 subroutine Flash2UpdateReason(reason, realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   implicit none
@@ -435,9 +435,9 @@ end subroutine Flash2UpdateReason
 ! ************************************************************************** !
   function  Flash2InitGuessCheckPatch(realization)
    
-     use span_wagner_module
+     use co2_span_wagner_module
      
-    use Realization_module
+    use Realization_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -500,7 +500,7 @@ end subroutine Flash2UpdateReason
 ! ************************************************************************** !
 subroutine Flash2UpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -534,7 +534,7 @@ end subroutine Flash2UpdateAuxVars
 ! ************************************************************************** !
 subroutine Flash2UpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -701,7 +701,7 @@ end subroutine Flash2UpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine Flash2InitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -720,7 +720,7 @@ end subroutine Flash2InitializeTimestep
 ! ************************************************************************** !
 subroutine Flash2UpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -745,7 +745,7 @@ end subroutine Flash2UpdateSolution
 ! ************************************************************************** !
 subroutine Flash2UpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -779,7 +779,7 @@ end subroutine Flash2UpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine Flash2UpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -925,12 +925,12 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 
   use Option_module
   
-   use water_eos_module
-!   use gas_eos_module  
+   use Water_EOS_module
+!   use Gas_EOS_module  
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module 
+  use co2_span_wagner_module 
   
   implicit none
 
@@ -1759,7 +1759,7 @@ end subroutine Flash2BCFluxDiffusion
 ! ************************************************************************** !
 subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -1884,7 +1884,7 @@ end subroutine Flash2Residual
 subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2397,7 +2397,7 @@ end subroutine Flash2ResidualPatch
 subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2697,7 +2697,7 @@ end subroutine Flash2ResidualPatch1
 subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2854,7 +2854,7 @@ end subroutine Flash2ResidualPatch0
 subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3087,7 +3087,7 @@ end subroutine Flash2ResidualPatch2
 ! ************************************************************************** !
 subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -3195,7 +3195,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3751,7 +3751,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -4158,7 +4158,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -4575,7 +4575,7 @@ end subroutine Flash2CreateZeroArray
 ! ************************************************************************** !
 subroutine Flash2MaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Field_module
@@ -4642,7 +4642,7 @@ end subroutine Flash2MaxChange
 ! ************************************************************************** !
 function Flash2GetTecplotHeader(realization, icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -4798,7 +4798,7 @@ end function Flash2GetTecplotHeader
 ! ************************************************************************** !
 subroutine Flash2SetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
   

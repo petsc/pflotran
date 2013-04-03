@@ -187,7 +187,7 @@ end subroutine RegressionRead
 subroutine RegressionCreateMapping(regression,realization)
 
   use Option_module
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Discretization_module
   
@@ -443,12 +443,14 @@ end subroutine RegressionCreateMapping
 subroutine RegressionOutput(regression,realization,flow_stepper, &
                             tran_stepper)
 
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Option_module
   use Discretization_module
   use Output_module
   use Output_Aux_module
+  use Output_Common_module, only : OutputGetCellCenteredVelocities, &
+                                   OutputGetVarFromArray
   
   implicit none
   
@@ -752,7 +754,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   endif
   if (associated(tran_stepper)) then
     call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr)
-    call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
+    endif
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- SOLUTION: Transport --'')')
       write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
@@ -765,7 +769,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
         tran_stepper%cumulative_time_step_cuts
       write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
-      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
+      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+        write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
+      endif
     endif
   endif
   

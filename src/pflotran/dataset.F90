@@ -81,6 +81,11 @@ subroutine DatasetLoad(dataset,option)
     call printErrMsg(option)
   endif
 #else
+
+#ifdef SCORPIO
+      option%io_buffer='In DataLoad: HDF5ReadDataset() not supported with ' // &
+        ' SCORPIO'
+#else
     if(.not.associated(dataset%dataset_map)) then
       call HDF5ReadDataset(dataset,option)
     else
@@ -89,6 +94,7 @@ subroutine DatasetLoad(dataset,option)
         call HDF5ReadDatasetMap(dataset,option)
       endif
     endif
+#endif
     call DatasetReorder(dataset,option)
     if (associated(dataset%buffer)) then
       interpolate_dataset = PETSC_TRUE ! just to be sure
@@ -155,9 +161,11 @@ function DatasetIsCellIndexed(dataset,option)
   
   PetscBool :: DatasetIsCellIndexed
   
-#if defined(PETSC_HAVE_HDF5)  
+#if defined(PETSC_HAVE_HDF5)
+
   DatasetIsCellIndexed = &
     .not.HDF5GroupExists(dataset%filename,dataset%h5_dataset_name,option)
+
 #endif
  
 end function DatasetIsCellIndexed

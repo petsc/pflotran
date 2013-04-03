@@ -3,8 +3,8 @@
 
 :=========================== regression =======================================
 REGRESSION
-  CELLS_PER_PROCESS 2
   CELLS
+    1
     8
     11
   /

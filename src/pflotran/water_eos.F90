@@ -1,4 +1,4 @@
-module water_eos_module
+module Water_EOS_module
 
   implicit none
 
@@ -432,6 +432,23 @@ subroutine PSAT1(T, Ps, tsp, ierr)
 
 
 subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
+
+!  This subroutine calculates water and steam-gas mixture properties.
+!  The water and steam properties are valid in the range of:
+!
+!            0 < p < 165.4 * 10^5 pascals (165.4 bars)
+!            0 < t < 800 centigrade (1073.15 Kelvin)
+!
+!  The properties cover densities, enthalpies, internal energies,
+!  and partial derivatives of these quanties with respect to
+!  pressure and temperature.
+!
+!  For saturated fluid, it will also calculate water saturation
+!  temperature for the specified pressure using Newton-Raphson and
+!  the derivative dts/dp (=tsp) or Ps for a given temperature.
+!
+!  Ref.: International Formulation Committee of the Sixth International
+!       Conference on Properties of Steam (1967).
 
     implicit none
   
@@ -1822,4 +1839,4 @@ end subroutine wateos_simple
 
 
 
-end module water_eos_module
+end module Water_EOS_module

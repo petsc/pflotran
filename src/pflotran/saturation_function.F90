@@ -40,6 +40,7 @@ module Saturation_Function_module
   interface SaturationFunctionCompute
     module procedure SaturationFunctionCompute1
     module procedure SaturationFunctionCompute2
+    module procedure SaturationFunctionCompute3
   end interface
   
   public :: SaturationFunctionCreate, &
@@ -206,7 +207,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
-          case(RICHARDS_MODE,THC_MODE,THMC_MODE,G_MODE)
+          case(RICHARDS_MODE,TH_MODE,THC_MODE,THMC_MODE,G_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
         end select
@@ -540,7 +541,6 @@ subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
 
 end subroutine SaturationFunctionCompute1
 
-
 ! ************************************************************************** !
 !
 ! SaturationFunctionCompute2: Computes the saturation and relative permeability
@@ -756,6 +756,37 @@ end subroutine SaturationFunctionCompute2
 
 ! ************************************************************************** !
 !
+! SaturationFunctionCompute3: Computes just saturation as a function of 
+!                             capillary pressure
+! author: Glenn Hammond
+! date: 2/9/12
+!
+! ************************************************************************** !
+subroutine SaturationFunctionCompute3(pressure,saturation, &
+                                      saturation_function, &
+                                      option)
+  use Option_module
+  
+  implicit none
+
+  PetscReal :: pressure, saturation
+  PetscReal :: relative_perm_dummy, dsat_pres_dummy, dkr_pres_dummy
+  type(saturation_function_type) :: saturation_function
+  PetscReal :: auxvar1_dummy, auxvar2_dummy
+  type(option_type) :: option
+
+  PetscBool :: switch_to_saturated_dummy
+  
+  call SaturationFunctionCompute2(pressure,saturation,relative_perm_dummy, &
+                                  dsat_pres_dummy,dkr_pres_dummy, &
+                                  saturation_function, &
+                                  auxvar1_dummy,auxvar2_dummy, &
+                                  switch_to_saturated_dummy,option)
+
+end subroutine SaturationFunctionCompute3
+
+! ************************************************************************** !
+!
 ! SaturationFunctionComputeIce:Computes the saturation of ice, water vapor 
 !                              and liquid water given the saturation function
 !                              temperature, water vapor pressure and liquid
@@ -948,6 +979,16 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   
   Sr = saturation_function%Sr(iphase)
   Se = (saturation-Sr)/(1.d0-Sr)
+  
+  ! if saturation is below residual saturation (this is possible with 
+  ! two-phase with dry-out), need to bail out.
+  if (Se <= 0.d0) then
+    relative_perm = 0.d0
+    dkr_Se = 0.d0
+    return
+  else if (Se > 1.d0) then
+    Se = 1.d0
+  endif
     
   ! compute relative permeability
   select case(saturation_function%permeability_function_itype)
@@ -1100,6 +1141,10 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   iphase = 1
 
   Sr = saturation_function%Sr(iphase)
+  if (saturation <= Sr) then
+    capillary_pressure = saturation_function%pcwmax
+    return
+  endif
     
   ! compute saturation
   select case(saturation_function%saturation_function_itype)

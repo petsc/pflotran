@@ -78,6 +78,7 @@ module Microbial_Aux_module
             MicrobialGetInhibitionCount, &
             MicrobialGetBiomassCount, &
             MicrobialRxnDestroy, &
+            MicrobialBiomassDestroy, &
             MicrobialDestroy
              
 contains

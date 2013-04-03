@@ -1,4 +1,4 @@
-module Velocity_module
+module Uniform_Velocity_module
  
   implicit none
 
@@ -10,7 +10,7 @@ module Velocity_module
   PetscInt, parameter :: STEP = 1
   PetscInt, parameter :: LINEAR = 2
   
-  type, public :: velocity_dataset_type
+  type, public :: uniform_velocity_dataset_type
     PetscInt :: rank
     PetscBool :: is_transient
     PetscBool :: is_cyclic
@@ -21,28 +21,31 @@ module Velocity_module
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
     PetscReal :: time_shift
-  end type velocity_dataset_type
+  end type uniform_velocity_dataset_type
   
       
-  public :: VelocityDatasetCreate, VelocityDatasetDestroy, VelocityDatasetRead, &
-            VelocityDatasetUpdate, VelocityDatasetVerify
+  public :: UniformVelocityDatasetCreate, &
+            UniformVelocityDatasetDestroy, &
+            UniformVelocityDatasetRead, &
+            UniformVelocityDatasetUpdate, &
+            UniformVelocityDatasetVerify
     
 contains
 
 ! ************************************************************************** !
 !
-! VelocityDatasetCreate: Creates a velocity data set
+! UniformVelocityDatasetCreate: Creates a velocity data set
 ! author: Glenn Hammond
 ! date: 06/02/09
 !
 ! ************************************************************************** !
-function VelocityDatasetCreate()
+function UniformVelocityDatasetCreate()
 
   implicit none
   
-  type(velocity_dataset_type), pointer :: VelocityDatasetCreate
+  type(uniform_velocity_dataset_type), pointer :: UniformVelocityDatasetCreate
   
-  type(velocity_dataset_type), pointer :: dataset
+  type(uniform_velocity_dataset_type), pointer :: dataset
 
   allocate(dataset)
   nullify(dataset%times)
@@ -56,18 +59,18 @@ function VelocityDatasetCreate()
   dataset%interpolation_method = NULL
   dataset%time_shift = 0.d0
    
-  VelocityDatasetCreate => dataset
+  UniformVelocityDatasetCreate => dataset
     
-end function VelocityDatasetCreate
+end function UniformVelocityDatasetCreate
 
 ! ************************************************************************** !
 !
-! VelocityDatasetRead: Reads a velocity data set from the input file
+! UniformVelocityDatasetRead: Reads a velocity data set from the input file
 ! author: Glenn Hammond
 ! date: 06/02/09
 !
 ! ************************************************************************** !
-subroutine VelocityDatasetRead(dataset,input,option)
+subroutine UniformVelocityDatasetRead(dataset,input,option)
 
   use Option_module
   use Input_module
@@ -77,7 +80,7 @@ subroutine VelocityDatasetRead(dataset,input,option)
   
   implicit none
   
-  type(velocity_dataset_type) :: dataset
+  type(uniform_velocity_dataset_type) :: dataset
   type(input_type) :: input
   type(option_type) :: option
   
@@ -125,8 +128,8 @@ subroutine VelocityDatasetRead(dataset,input,option)
             dataset%interpolation_method = LINEAR
         end select
       case('VELOCITY')
-        call VelocityDatasetReadValues(input,option,word,string, &
-                                       dataset,units)
+        call UniVelocityDatasetReadValues(input,option,word,string, &
+                                          dataset,units)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                            ' not recognized in VELOCITY_DATASET'
@@ -143,20 +146,21 @@ subroutine VelocityDatasetRead(dataset,input,option)
     dataset%times = dataset%times * units_conversion
   endif
   
-  call VelocityDatasetVerify(option, dataset)
+  call UniformVelocityDatasetVerify(option, dataset)
   
 !  call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
-end subroutine VelocityDatasetRead
+end subroutine UniformVelocityDatasetRead
 
 ! ************************************************************************** !
 !
-! VelocityDatasetReadValues: Read the value(s) of a velocity data set
+! UniVelocityDatasetReadValues: Read the value(s) of a velocity data set
 ! author: Glenn Hammond
 ! date: 06/02/09
 !
 ! ************************************************************************** !
-subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
+subroutine UniVelocityDatasetReadValues(input,option,keyword,string,dataset, &
+                                        units)
 
   use Input_module
   use String_module
@@ -169,7 +173,7 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
-  type(velocity_dataset_type) :: dataset
+  type(uniform_velocity_dataset_type) :: dataset
   character(len=MAXWORDLENGTH) :: units
   
   type(input_type), pointer :: input2
@@ -210,7 +214,7 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
     else
       input2 => input
     endif
-    call VelocityDatasetReadFromFile(input2,dataset,option)
+    call UniVelocityDatasetReadFromFile(input2,dataset,option)
     if (read_from_file) call InputDestroy(input2)
   else
     input%buf = trim(string2)
@@ -220,7 +224,8 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
     dataset%values = 0.d0
     do irank=1,dataset%rank
       call InputReadDouble(input,option,dataset%values(irank,1))
-      write(input%err_buf,'(a,i2)') trim(keyword) // ' dataset_values, irank = ', irank
+      write(input%err_buf,'(a,i2)') trim(keyword) // &
+        ' dataset_values, irank = ', irank
       input%err_buf2 = 'VELOCITY_DATASET'
       call InputErrorMsg(input,option) 
     enddo
@@ -235,16 +240,16 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
 
 !  call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)    
 
-end subroutine VelocityDatasetReadValues
+end subroutine UniVelocityDatasetReadValues
 
 ! ************************************************************************** !
 !
-! VelocityDatasetReadFromFile: Read values from a external file
+! UniVelocityDatasetReadFromFile: Read values from a external file
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine VelocityDatasetReadFromFile(input,dataset,option)
+subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
 
   use Input_module
   use String_module
@@ -254,7 +259,7 @@ subroutine VelocityDatasetReadFromFile(input,dataset,option)
   implicit none
   
   type(option_type) :: option
-  type(velocity_dataset_type) :: dataset
+  type(uniform_velocity_dataset_type) :: dataset
   character(len=MAXSTRINGLENGTH) :: filename
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -335,22 +340,22 @@ subroutine VelocityDatasetReadFromFile(input,dataset,option)
   if (dataset%rank > 1) deallocate(temp_array2)
   if (dataset%rank > 2) deallocate(temp_array3)
   
-end subroutine VelocityDatasetReadFromFile
+end subroutine UniVelocityDatasetReadFromFile
 
 ! ************************************************************************** !
 !
-! VelocityDatasetVerify: Verifies the data in a dataset
+! UniformVelocityDatasetVerify: Verifies the data in a dataset
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine VelocityDatasetVerify(option, dataset)
+subroutine UniformVelocityDatasetVerify(option, dataset)
   use Option_module
 
   implicit none
   
   type(option_type) :: option
-  type(velocity_dataset_type) :: dataset
+  type(uniform_velocity_dataset_type) :: dataset
   
   PetscInt :: array_size
   character(len=MAXWORDLENGTH) :: size1, size2
@@ -389,16 +394,16 @@ subroutine VelocityDatasetVerify(option, dataset)
 
   dataset%time_shift = dataset%times(dataset%max_time_index)
 
-end subroutine VelocityDatasetVerify
+end subroutine UniformVelocityDatasetVerify
 
 ! ************************************************************************** !
 !
-! VelocityDatasetUpdate: Updates a velocity dataset
+! UniformVelocityDatasetUpdate: Updates a velocity dataset
 ! author: Glenn Hammond
 ! date: 06/02/09
 !
 ! ************************************************************************** !
-subroutine VelocityDatasetUpdate(option,time,dataset)
+subroutine UniformVelocityDatasetUpdate(option,time,dataset)
 
   use Option_module
   
@@ -408,7 +413,7 @@ subroutine VelocityDatasetUpdate(option,time,dataset)
   PetscReal :: time
   PetscBool :: is_cyclic
   PetscInt :: interpolation_method
-  type(velocity_dataset_type) :: dataset
+  type(uniform_velocity_dataset_type) :: dataset
   
   PetscInt :: irank
   PetscInt :: cur_time_index
@@ -476,20 +481,20 @@ subroutine VelocityDatasetUpdate(option,time,dataset)
     end select 
   endif    
   
-end subroutine VelocityDatasetUpdate
+end subroutine UniformVelocityDatasetUpdate
 
 ! ************************************************************************** !
 !
-! VelocityDatasetDestroy: Destroys a velocity dataset
+! UniformVelocityDatasetDestroy: Destroys a velocity dataset
 ! author: Glenn Hammond
 ! date: 06/02/09
 !
 ! ************************************************************************** !
-subroutine VelocityDatasetDestroy(dataset)
+subroutine UniformVelocityDatasetDestroy(dataset)
 
   implicit none
   
-  type(velocity_dataset_type), pointer :: dataset
+  type(uniform_velocity_dataset_type), pointer :: dataset
   
   if (.not.associated(dataset)) return
   
@@ -503,6 +508,6 @@ subroutine VelocityDatasetDestroy(dataset)
   deallocate(dataset)
   nullify(dataset)  
 
-end subroutine VelocityDatasetDestroy
+end subroutine UniformVelocityDatasetDestroy
 
-end module Velocity_module
+end module Uniform_Velocity_module

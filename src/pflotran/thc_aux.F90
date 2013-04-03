@@ -62,10 +62,11 @@ module THC_Aux_module
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscBool :: aux_vars_up_to_date
     PetscBool :: inactive_cells_exist
-    PetscInt :: num_aux, num_aux_bc
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
     type(thc_parameter_type), pointer :: thc_parameter
     type(thc_auxvar_type), pointer :: aux_vars(:)
     type(thc_auxvar_type), pointer :: aux_vars_bc(:)
+    type(thc_auxvar_type), pointer :: aux_vars_ss(:)
   end type thc_type
 
 
@@ -103,8 +104,10 @@ function THCAuxCreate(option)
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
   aux%n_zero_rows = 0
   allocate(aux%thc_parameter)
   nullify(aux%thc_parameter%sir)
@@ -246,7 +249,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  use Water_EOS_module
   use Saturation_Function_module  
   
   implicit none
@@ -383,7 +386,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  use Water_EOS_module
   use Saturation_Function_module  
   
   implicit none
@@ -577,11 +580,16 @@ subroutine THCAuxDestroy(aux)
   do iaux = 1, aux%num_aux_bc
     call AuxVarDestroy(aux%aux_vars_bc(iaux))
   enddo  
+  do iaux = 1, aux%num_aux_ss
+    call AuxVarDestroy(aux%aux_vars_ss(iaux))
+  enddo  
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   nullify(aux%aux_vars)
   if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
   nullify(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_ss)) deallocate(aux%aux_vars_ss)
+  nullify(aux%aux_vars_ss)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

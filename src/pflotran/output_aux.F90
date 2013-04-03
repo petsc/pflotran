@@ -6,8 +6,8 @@ module Output_Aux_module
 
 #include "definitions.h"
 
-  PetscInt, parameter, public :: INST_VARS = 1
-  PetscInt, parameter, public :: AVEG_VARS = 2
+  PetscInt, parameter, public :: INSTANTANEOUS_VARS = 1
+  PetscInt, parameter, public :: AVERAGED_VARS = 2
 
   type, public :: output_option_type
 
@@ -22,6 +22,10 @@ module Output_Aux_module
     PetscBool :: print_hdf5_flux_velocities
     PetscBool :: print_single_h5_file
     PetscInt  :: times_per_h5_file
+    PetscBool :: print_hdf5_mass_flowrate
+    PetscBool :: print_hdf5_energy_flowrate
+    PetscBool :: print_hdf5_aveg_mass_flowrate
+    PetscBool :: print_hdf5_aveg_energy_flowrate
 
     PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
@@ -47,6 +51,7 @@ module Output_Aux_module
     
     PetscBool :: print_permeability
     PetscBool :: print_porosity
+    PetscBool :: print_iproc
 
     PetscInt :: xmf_vert_len
     
@@ -143,6 +148,10 @@ function OutputOptionCreate()
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
   output_option%print_single_h5_file = PETSC_TRUE
   output_option%times_per_h5_file = 0
+  output_option%print_hdf5_mass_flowrate = PETSC_FALSE
+  output_option%print_hdf5_energy_flowrate = PETSC_FALSE
+  output_option%print_hdf5_aveg_mass_flowrate = PETSC_FALSE
+  output_option%print_hdf5_aveg_energy_flowrate = PETSC_FALSE
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
@@ -164,6 +173,7 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
+  output_option%print_iproc = PETSC_FALSE
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
   
@@ -593,7 +603,11 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         units = ''
         call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
                                LIQUID_SATURATION)
-
+      case ('TEMPERATURE')
+        name = 'Temperature'
+        units = 'C'
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
+                                  TEMPERATURE)
 !      case ('LIQUID_VELOCITIY_AT_CELL_CENTER')
 !        name = 'Liquid Velocity at Cell Center'
 !        units = 'm/s'

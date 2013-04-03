@@ -111,7 +111,8 @@ subroutine Checkpoint(realization, &
                       tran_prev_dt, &
                       id)
 
-  use Realization_module
+  use Realization_class
+  use Realization_Base_class, only : RealizationGetDataset
   use Reaction_Aux_module
   use Discretization_module
   use Option_module
@@ -184,9 +185,10 @@ subroutine Checkpoint(realization, &
 
   global_vec = 0
   ! Open the checkpoint file.
-  call PetscGetTime(tstart,ierr)   
+  call PetscTime(tstart,ierr)   
   if (id < 0) then
-    filename = 'restart' // trim(option%group_prefix) // '.chk'
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-restart.chk'
   else 
     write(id_string,'(i8)') id
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
@@ -405,7 +407,7 @@ subroutine Checkpoint(realization, &
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
@@ -499,7 +501,7 @@ subroutine Checkpoint(realization, &
   write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(filename)
   call printMsg(option)
 
-  call PetscGetTime(tend,ierr) 
+  call PetscTime(tend,ierr) 
   write(option%io_buffer, &
         '("      Seconds to write to checkpoint file: ", f10.2)') tend-tstart
   call printMsg(option)
@@ -530,7 +532,8 @@ subroutine Restart(realization, &
                    transport_read, &
                    activity_coefs_read)
 
-  use Realization_module
+  use Realization_class
+  use Realization_Base_class, only : RealizationSetDataset
   use Discretization_module
   use Option_module
   use Output_Aux_module
@@ -596,7 +599,7 @@ subroutine Restart(realization, &
   global_vec = 0
   local_vec = 0
 
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%restart_filename)
   call printMsg(option)
@@ -690,7 +693,7 @@ subroutine Restart(realization, &
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
@@ -805,7 +808,7 @@ subroutine Restart(realization, &
     call VecDestroy(local_vec,ierr)
   endif
   call PetscViewerDestroy(viewer, ierr)
-  call PetscGetTime(tend,ierr) 
+  call PetscTime(tend,ierr) 
 
   call PetscBagDestroy(bag, ierr)
 

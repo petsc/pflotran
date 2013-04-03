@@ -18,7 +18,8 @@ module Mineral_module
             MineralReadFromDatabase, &
             MineralProcessConstraint, &
             RKineticMineral, &
-            RMineralSaturationIndex
+            RMineralSaturationIndex, &
+            MineralUpdateTempDepCoefs
             
 contains
 
@@ -139,7 +140,8 @@ subroutine MineralReadKinetics(mineral,input,option)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           error_string = 'CHEMISTRY,MINERAL_KINETICS'
-          call InputErrorMsg(input,option,'word',error_string) 
+          call InputErrorMsg(input,option,'word',error_string)
+
           select case(trim(word))
             case('RATE_CONSTANT')
 !             read rate constant
@@ -151,7 +153,7 @@ subroutine MineralReadKinetics(mineral,input,option)
               ! read units if they exist
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
-                input%err_buf = trim(cur_mineral%name) // 'RATE UNITS'
+                input%err_buf = trim(cur_mineral%name) // ' RATE UNITS'
                 call InputDefaultMsg(input,option)
               else
                 tstrxn%rate = tstrxn%rate * UnitsConvertToInternal(word,option)
@@ -181,7 +183,7 @@ subroutine MineralReadKinetics(mineral,input,option)
             case('SURFACE_AREA_VOL_FRAC_POWER')
               call InputReadDouble(input,option,tstrxn%surf_area_vol_frac_pwr)
               call InputErrorMsg(input,option, &
-                                 'surface area voluem fraction power', &
+                                 'surface area volume fraction power', &
                                  error_string)
             case('RATE_LIMITER')
 !             read rate limiter for precipitation
@@ -191,6 +193,20 @@ subroutine MineralReadKinetics(mineral,input,option)
 !             read flag for irreversible reaction
               tstrxn%irreversible = 1
               call InputErrorMsg(input,option,'irreversible',error_string)
+
+            case('ARMOR_MINERAL')
+                    ! read mineral name
+              call InputReadWord(input,option,tstrxn%armor_min_name,PETSC_TRUE)
+              call InputErrorMsg(input,option,'name',error_string)
+            case('ARMOR_PWR')
+                    ! read power law exponent
+              call InputReadDouble(input,option,tstrxn%armor_pwr)
+              call InputErrorMsg(input,option,'armor_pwr',error_string)
+            case('ARMOR_CRIT_VOL_FRAC')
+                    ! read critical volume fraction
+              call InputReadDouble(input,option,tstrxn%armor_crit_vol_frac)
+              call InputErrorMsg(input,option,'armor_crit_vol_frac',error_string)
+
             case('PREFACTOR')
               error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
               prefactor => TransitionStatePrefactorCreate()
@@ -581,24 +597,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     ln_sec_act = ln_sec+log(rt_auxvar%sec_act_coef)
   endif
 
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    if (.not.reaction%use_geothermal_hpt)then
-      call ReactionInterpolateLogK(mineral%kinmnrl_logKcoef, &
-                                   mineral%kinmnrl_logK, &
-                                   global_auxvar%temp(iphase), &
-                                   mineral%nkinmnrl)
-    else
-     ! print *,'RKineticMineral:: ', global_auxvar%pres(iphase)
-      call ReactionInterpolateLogK_hpt(mineral%kinmnrl_logKcoef, &
-                                       mineral%kinmnrl_logK, &
-                                       global_auxvar%temp(iphase), &
-                                       global_auxvar%pres(iphase),&
-                                       mineral%nkinmnrl)
-    endif
-  endif
-#endif
-
 #ifdef SOLID_SOLUTION
   rate_scale = 1.d0
   if (associated(reaction%solid_solution_list)) then
@@ -748,7 +746,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! area: m^2 mnrl/m^3 bulk
       ! volume: m^3 bulk
       Im_const = -rt_auxvar%mnrl_area(imnrl)
-
+      
       ! units: mol/sec/m^3 bulk
       if (associated(mineral%kinmnrl_affinity_power)) then
         ! Im_const: m^2 mnrl/m^3 bulk
@@ -762,6 +760,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! store volumetric rate to be used in updating mineral volume fractions
       ! at end of time step
       rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3 bulk
+
     else ! rate is already zero by default; move on to next mineral
       cycle
     endif
@@ -1127,24 +1126,14 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   
   mineral => reaction%mineral
 
-#ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    if (.not.reaction%use_geothermal_hpt)then
-      call ReactionInterpolateLogK(mineral%mnrl_logKcoef, &
-                                   mineral%mnrl_logK, &
-                                   global_auxvar%temp(iphase), &
-                                   mineral%nmnrl)
-    else
-    !  print *,'RMineralSaturationIndex:: ',global_auxvar%pres(iphase)
-      call ReactionInterpolateLogK_hpt(mineral%mnrl_logKcoef, &
-                                       mineral%mnrl_logK, &
-                                       global_auxvar%temp(iphase), &
-                                       global_auxvar%pres(iphase),&
-                                       mineral%nmnrl)
-    endif
-  endif
-#endif  
-
+    call MineralUpdateTempDepCoefs(global_auxvar%temp(iphase), &
+                                   global_auxvar%pres(iphase), &
+                                   reaction%mineral, &
+                                   reaction%use_geothermal_hpt, &
+                                   PETSC_TRUE,option)
+  endif 
+  
   ! compute saturation
   lnQK = -mineral%mnrl_logK(imnrl)*LOG_TO_LN
   if (mineral%mnrlh2oid(imnrl) > 0) then
@@ -1158,5 +1147,59 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   RMineralSaturationIndex = exp(lnQK)    
 
 end function RMineralSaturationIndex
+
+! ************************************************************************** !
+!
+! MineralUpdateTempDepCoefs: Updates temperature dependent coefficients for
+!                            anisothermal simulations
+! author: Glenn Hammond
+! date: 01/25/13
+!
+! ************************************************************************** !
+subroutine MineralUpdateTempDepCoefs(temp,pres,mineral,use_geothermal_hpt, &
+                                     update_mnrl,option)
+
+  use Option_module
+
+  implicit none
+  
+  PetscReal :: temp
+  PetscReal :: pres
+  type(mineral_type) :: mineral
+  PetscBool :: use_geothermal_hpt  
+  PetscBool :: update_mnrl  
+  type(option_type) :: option
+  
+  if (.not.use_geothermal_hpt) then
+    if (associated(mineral%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK(mineral%kinmnrl_logKcoef, &
+                                   mineral%kinmnrl_logK, &
+                                   temp, &
+                                   mineral%nkinmnrl)
+    endif
+    if (update_mnrl .and. associated(mineral%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK(mineral%mnrl_logKcoef, &
+                                   mineral%mnrl_logK, &
+                                   temp, &
+                                   mineral%nmnrl)
+    endif  
+  else
+    if (associated(mineral%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(mineral%kinmnrl_logKcoef, &
+                                       mineral%kinmnrl_logK, &
+                                       temp, &
+                                       pres, &
+                                       mineral%nkinmnrl)
+    endif
+    if (update_mnrl .and. associated(mineral%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(mineral%mnrl_logKcoef, &
+                                       mineral%mnrl_logK, &
+                                       temp, &
+                                       pres, &
+                                       mineral%nmnrl)
+    endif  
+  endif
+  
+end subroutine MineralUpdateTempDepCoefs
 
 end module Mineral_module

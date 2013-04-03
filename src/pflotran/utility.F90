@@ -813,7 +813,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
     max_size = array_size
   endif
   allocate(temp_array(max_size))
-  temp_array = 0.d0
+  temp_array = 0
   
   input%ierr = 0
   string2 = trim(input%buf)

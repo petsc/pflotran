@@ -1,6 +1,7 @@
 module Auxiliary_module
   
   use Global_Aux_module
+  use TH_Aux_module
   use THC_Aux_module
   use THMC_Aux_module
   use Richards_Aux_module
@@ -12,9 +13,6 @@ module Auxiliary_module
   use General_Aux_module
   use Material_Aux_module
   use Secondary_Continuum_Aux_module
-#ifdef SURFACE_FLOW
-  !use Surface_Flow_Aux_module
-#endif
   
   implicit none
 
@@ -25,6 +23,7 @@ module Auxiliary_module
   type, public :: auxiliary_type 
     type(global_type), pointer :: Global
     type(reactive_transport_type), pointer :: RT
+    type(th_type), pointer :: TH
     type(thc_type), pointer :: THC
     type(thmc_type), pointer :: THMC
     type(richards_type), pointer :: Richards
@@ -36,9 +35,6 @@ module Auxiliary_module
     type(material_type), pointer :: Material
     type(sc_heat_type), pointer :: SC_heat
     type(sc_rt_type), pointer :: SC_RT
-#ifdef SURFACE_FLOW
-    !type(surface_flow_type),pointer :: SurfaceFlow
-#endif
   end type auxiliary_type
   
   public :: AuxInit, &
@@ -61,6 +57,7 @@ subroutine AuxInit(aux)
   
   nullify(aux%Global)
   nullify(aux%RT)
+  nullify(aux%TH)
   nullify(aux%THC)
   nullify(aux%THMC)
   nullify(aux%Richards)
@@ -74,9 +71,6 @@ subroutine AuxInit(aux)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
 
-#ifdef SURFACE_FLOW
-  !nullify(aux%SurfaceFlow)
-#endif
 end subroutine AuxInit
 
 ! ************************************************************************** !
@@ -94,6 +88,7 @@ subroutine AuxDestroy(aux)
   
   call GlobalAuxDestroy(aux%Global)
   call RTAuxDestroy(aux%RT)
+  call THAuxDestroy(aux%TH)
   call THCAuxDestroy(aux%THC)
   call THMCAuxDestroy(aux%THMC)
   call RichardsAuxDestroy(aux%Richards)
@@ -115,10 +110,6 @@ subroutine AuxDestroy(aux)
   nullify(aux%Material)
   nullify(aux%SC_Heat)
   nullify(aux%SC_RT)
-#ifdef SURFACE_FLOW
-  !call SurfaceFlowAuxDestroy(aux%SurfaceFlow)
-  !nullify(aux%SurfaceFlow)
-#endif
 end subroutine AuxDestroy
 
 end module Auxiliary_module

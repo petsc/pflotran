@@ -21,7 +21,7 @@ contains
 ! ************************************************************************** !
 subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
-  use water_eos_module
+  use Water_EOS_module
 
   use Option_module
   use Grid_module
@@ -33,6 +33,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Utility_module, only : DotProduct
   use Dataset_module
   use Dataset_Aux_module
+  
+  use General_Aux_module
   
   implicit none
 
@@ -192,7 +194,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
       select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
+        case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
           temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       end select
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
@@ -224,7 +226,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     ! compute pressures above datum, if any
     pressure0 = pressure_array(idatum)
     select case(option%iflowmode)
-      case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
+      case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
         temperature = temperature_at_datum
     end select
     dist_z = 0.d0
@@ -232,7 +234,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
       select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       end select
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
@@ -283,6 +285,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       dist_x = conn_set_ptr%cntr(1,conn_id) - datum(X_DIRECTION)
       dist_y = conn_set_ptr%cntr(2,conn_id) - datum(Y_DIRECTION)
       dist_z = conn_set_ptr%cntr(3,conn_id) - datum(Z_DIRECTION)
+      z_offset = 0.d0
 #endif
     else 
 
@@ -378,6 +381,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
         coupler%flow_aux_int_var(1,iconn) = condition%iphase
 
+      case(TH_MODE)
+        temperature = temperature_at_datum + &
+                    temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
+                    temperature_gradient(Y_DIRECTION)*dist_y + &
+                    temperature_gradient(Z_DIRECTION)*dist_z
+        coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = temperature
+        coupler%flow_aux_int_var(TH_PRESSURE_DOF,iconn) = condition%iphase
+
       case(MIS_MODE)
         temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
@@ -393,12 +404,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
                     temperature_gradient(Z_DIRECTION)*dist_z 
-        coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,iconn) = temperature
-        coupler%flow_aux_real_var(GENERAL_MOLE_FRACTION_DOF,iconn) = concentration_at_datum
+        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_TEMPERATURE_DOF,iconn) = &
+          temperature
+        coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF,iconn) = &
+          concentration_at_datum
 
         coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = condition%iphase
       case default
-        coupler%flow_aux_int_var(1,iconn) = 1
+        coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,iconn) = 1
     end select
 
   enddo
@@ -453,7 +466,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       endif
 
       select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+        case(TH_MODE,THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
            temperature = temperature_at_datum + &
                       temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                       temperature_gradient(Y_DIRECTION)*dist_y + &
@@ -489,7 +502,7 @@ end subroutine HydrostaticUpdateCoupler
 ! ************************************************************************** !
 subroutine HydrostaticTest()
 
-  use water_eos_module
+  use Water_EOS_module
   
   implicit none
   

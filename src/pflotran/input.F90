@@ -700,6 +700,11 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
 
   if (InputError(input)) return
   
+  
+  call InputReadWord2(input%buf, word, return_blank_error, input%ierr)
+  
+!TODO(geh): remove after 3/4/13; remove the unused variables above too.
+#if 0  
   tab = achar(9)
   backslash = achar(92)
 
@@ -752,6 +757,7 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
     input%buf = input%buf(ends+1:)
 
   endif
+#endif
 
 end subroutine InputReadWord1
 
@@ -855,6 +861,11 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 
   if (InputError(input)) return
 
+  call InputReadNChars2(input%buf, chars, n, return_blank_error, input%ierr)
+  
+!TODO(geh): remove after 3/4/13; remove the unused variables above too.
+#if 0 
+
   tab = achar(9)
   backslash = achar(92)
   
@@ -902,6 +913,7 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
     input%buf = input%buf(ends+1:)
 
   endif
+#endif
 
 end subroutine InputReadNChars1
 
