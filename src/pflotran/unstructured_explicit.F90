@@ -157,29 +157,29 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
           call InputErrorMsg(input,option,'face area',hint)
         enddo
       case('ELEMENTS')
-        card = 'Explicit Unstructured Grid ELEMENTS'
+        hint = 'Explicit Unstructured Grid ELEMENTS'
         call InputReadInt(input,option,num_elems)
-        call InputErrorMsg(input,option,'number of elements',card)
+        call InputErrorMsg(input,option,'number of elements',hint)
         explicit_grid%num_elems = num_elems
         ! Assuming only triangular elements (which is the dual mesh of the voronoi read) in DFN -- Karra 12/17/12
         allocate(explicit_grid%cell_connectivity(3,num_elems)) 
         explicit_grid%cell_connectivity = 0
         do iconn = 1, num_elems
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadStringErrorMsg(input,option,hint)  
           call InputReadInt(input,option, &
                             explicit_grid%cell_connectivity(1,iconn))
-          call InputErrorMsg(input,option,'cell vertex 1',card)
+          call InputErrorMsg(input,option,'cell vertex 1',hint)
           call InputReadInt(input,option, &
                             explicit_grid%cell_connectivity(2,iconn))
-          call InputErrorMsg(input,option,'cell vertex 2',card)
+          call InputErrorMsg(input,option,'cell vertex 2',hint)
           call InputReadInt(input,option, &
                             explicit_grid%cell_connectivity(3,iconn))
-          call InputErrorMsg(input,option,'cell vertex 3',card)
+          call InputErrorMsg(input,option,'cell vertex 3',hint)
         enddo
 
       case('VERTICES')
-        card = 'Explicit Unstructured Grid VERTICES'     
+        hint = 'Explicit Unstructured Grid VERTICES'     
         allocate(explicit_grid%vertex_coordinates(explicit_grid%num_cells_global))
         do icell = 1, explicit_grid%num_cells_global
           explicit_grid%vertex_coordinates(icell)%x = 0.d0
@@ -188,16 +188,16 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
         enddo
         do icell = 1, explicit_grid%num_cells_global
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadStringErrorMsg(input,option,hint)  
           call InputReadDouble(input,option, &
                             explicit_grid%vertex_coordinates(icell)%x)
-          call InputErrorMsg(input,option,'vertex 1',card)
+          call InputErrorMsg(input,option,'vertex 1',hint)
           call InputReadDouble(input,option, &
                             explicit_grid%vertex_coordinates(icell)%y)
-          call InputErrorMsg(input,option,'vertex 2',card)
+          call InputErrorMsg(input,option,'vertex 2',hint)
           call InputReadDouble(input,option, &
                             explicit_grid%vertex_coordinates(icell)%z)
-          call InputErrorMsg(input,option,'vertex 3',card)
+          call InputErrorMsg(input,option,'vertex 3',hint)
         enddo
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -532,7 +532,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
         '" in explicit grid file.'
       call printErrMsgByRank(option)
     endif
-    card = 'Explicit Unstructured Grid ELEMENTS'
+    card = 'Explicit Unstruct. Grid ELEMENTS'
     call InputReadInt(input,option,num_elems)
     call InputErrorMsg(input,option,'number of elements',card)
         explicit_grid%num_elems = num_elems
