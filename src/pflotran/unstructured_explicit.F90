@@ -526,7 +526,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'ELEMENTS'
     call InputErrorMsg(input,option,word,card)
-    if (.not.StringCompare(word,card))  exit
+    if (.not.StringCompare(word,card))  return
     card = 'Explicit Unstruct. Grid ELEMENTS'
     call InputReadInt(input,option,num_elems)
     call InputErrorMsg(input,option,'number of elements',card)
@@ -546,10 +546,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
                         explicit_grid%cell_connectivity(3,iconn))
       call InputErrorMsg(input,option,'cell vertex 3',card)
      enddo
-  endif
 
-    
-  if (option%myrank == option%io_rank) then
     call InputReadFlotranString(input,option)
     ! read VERTICES card, not used for calcuations, only tecplot output
     call InputReadWord(input,option,card,PETSC_TRUE)
