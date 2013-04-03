@@ -2481,6 +2481,17 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                                                   size(cell_to_face,2)))
   unstructured_grid%cell_to_face_ghosted(:,:) = cell_to_face(:,:)
 
+#if MFD_UGRID
+  ! Save (x,y,z) of face centroid in connection%cntr(1:3,:)
+  allocate(connections%cntr(3,nconn))
+  do iconn = 1, nconn
+    face_id = connections%face_id(iconn)
+    connections%cntr(1,iconn) = unstructured_grid%face_centroid(face_id)%x
+    connections%cntr(2,iconn) = unstructured_grid%face_centroid(face_id)%y
+    connections%cntr(3,iconn) = unstructured_grid%face_centroid(face_id)%z
+  enddo
+#endif
+
   deallocate(cell_to_face)
   deallocate(face_to_cell)
   deallocate(vertex_to_cell)

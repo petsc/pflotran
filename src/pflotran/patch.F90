@@ -647,13 +647,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   endif
 #endif
  
-  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
+  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
+      patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
                                                  patch%boundary_conditions, &
                                                  option)
   else  
     temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   end if
+
   if (temp_int > 0) then
     allocate(patch%boundary_velocities(option%nphase,temp_int)) 
     patch%boundary_velocities = 0.d0
