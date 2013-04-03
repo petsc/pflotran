@@ -166,23 +166,32 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
                   trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
                   ', K=' // &
                   trim(OutputFormatInt(grid%structured_grid%nz+1))
-      else
+      else if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
         string2 = ', N=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
                   ', ELEMENTS=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%nmax))
         string2 = trim(string2) // ', ZONETYPE=FEBRICK'
-      endif  
-  
-      if (variable_count > 4) then
-        string3 = ', VARLOCATION=([4-' // &
-                  trim(OutputFormatInt(variable_count)) // &
-                  ']=CELLCENTERED)'
       else
-        string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+        string2 = ', N=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%nmax)) // &
+                  ', ELEMENTS=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
+        string2 = trim(string2) // ', ZONETYPE=FETRIANGLE'
+      endif  
+      
+      if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+        string3 = ', VARLOCATION=(NODAL)'
+      else
+        if (variable_count > 4) then
+          string3 = ', VARLOCATION=([4-' // &
+                    trim(OutputFormatInt(variable_count)) // &
+                    ']=CELLCENTERED)'
+        else
+          string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+        endif
       endif
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
-  end select
   
   OutputTecplotZoneHeader = trim(string) // string2  
 
@@ -288,6 +297,10 @@ subroutine OutputTecplotBlock(realization_base)
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif
   
+  if (realization%discretization%grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+    call WriteTecplotExpGridElements(OUTPUT_UNIT,realization)
+  endif
+    
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
   if (output_option%print_tecplot_velocities) then

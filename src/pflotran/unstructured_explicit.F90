@@ -177,7 +177,6 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
                             explicit_grid%cell_connectivity(3,iconn))
           call InputErrorMsg(input,option,'cell vertex 3',hint)
         enddo
-
       case('VERTICES')
         hint = 'Explicit Unstructured Grid VERTICES'     
         allocate(explicit_grid%vertex_coordinates(explicit_grid%num_cells_global))
@@ -527,11 +526,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'ELEMENTS'
     call InputErrorMsg(input,option,word,card)
-    if (.not.StringCompare(word,card)) then
-      option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
-        '" in explicit grid file.'
-      call printErrMsgByRank(option)
-    endif
+    if (.not.StringCompare(word,card))  exit
     card = 'Explicit Unstruct. Grid ELEMENTS'
     call InputReadInt(input,option,num_elems)
     call InputErrorMsg(input,option,'number of elements',card)
@@ -589,9 +584,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   if (option%myrank == option%io_rank) then
     call InputDestroy(input)
   endif
-  
-  explicit_grid%num_elems_local = num_elems_local
-    
+      
 end subroutine ExplicitUGridReadInParallel
 
 ! ************************************************************************** !
