@@ -161,3 +161,5 @@ clean-tests :
 	-rm -f default/anisothermal/th_1d.h5
 	-rm -f mfd/mfd-mas.dat
 	-rm -f mfd/mfd.h5
+	-rm -f default/543/543_flow_and_tracer_restart-np8-restart.chk
+	-rm -f default/543/543_flow_and_tracer_restart-restart.chk

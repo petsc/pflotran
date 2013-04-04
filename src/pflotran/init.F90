@@ -1046,6 +1046,8 @@ subroutine Init(simulation)
 
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call SurfRealizAddWaypointsToList(simulation%surf_realization)
+    call WaypointListFillIn(option,simulation%surf_realization%waypoints)
+    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoints)
     if (associated(flow_stepper)) then
       simulation%surf_flow_stepper%cur_waypoint => simulation%surf_realization%waypoints%first
     endif
@@ -2438,6 +2440,11 @@ subroutine InitReadInput(simulation)
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
         option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+
+        ! Add first waypoint
+        waypoint => WaypointCreate()
+        waypoint%time = 0.d0
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 
         ! Add final_time waypoint to surface_realization
         waypoint => WaypointCreate()

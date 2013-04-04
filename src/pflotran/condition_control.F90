@@ -598,7 +598,7 @@ subroutine CondControlAssignTranInitCond(realization)
         
         if (use_aq_dataset) then
           call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
-          call PetscGetTime(tstart,ierr) 
+          call PetscTime(tstart,ierr) 
         endif
         
         ave_num_iterations = 0.d0
@@ -735,7 +735,7 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
         enddo ! icell=1,initial_condition%region%num_cells
         if (use_aq_dataset) then
-          call PetscGetTime(tend,ierr) 
+          call PetscTime(tend,ierr) 
           call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
           ave_num_iterations = ave_num_iterations / &
             initial_condition%region%num_cells

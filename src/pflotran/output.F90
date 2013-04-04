@@ -112,7 +112,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   if (plot_flag) then
   
     if (realization_base%output_option%print_hdf5) then
-      call PetscGetTime(tstart,ierr)
+      call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID) then
         !call OutputHDF5UGrid(realization_base)
@@ -121,7 +121,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
         call OutputHDF5(realization_base,INSTANTANEOUS_VARS)
       endif      
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
-      call PetscGetTime(tend,ierr)
+      call PetscTime(tend,ierr)
 #ifdef SCORPIO_WRITE
       if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in & 
                                &writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') &
@@ -132,7 +132,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
     endif
    
     if (realization_base%output_option%print_tecplot) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(realization_base%output_option%tecplot_format)
         case (TECPLOT_POINT_FORMAT)
@@ -141,31 +141,31 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
           call OutputTecplotBlock(realization_base)
       end select
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
-      call PetscGetTime(tend,ierr) 
+      call PetscTime(tend,ierr) 
       write(option%io_buffer,'(f10.2," Seconds to write to Tecplot file(s)")') &
             tend-tstart
       call printMsg(option)        
     endif
 
     if (realization_base%output_option%print_vtk) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_vtk,ierr) 
       call OutputVTK(realization_base)
 
       call PetscLogEventEnd(logging%event_output_vtk,ierr)    
-      call PetscGetTime(tend,ierr) 
+      call PetscTime(tend,ierr) 
       write(option%io_buffer,'(f10.2," Seconds to write to VTK file(s)")') &
             tend-tstart
       call printMsg(option) 
     endif
       
     if (realization_base%output_option%print_mad) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_mad,ierr) 
       call OutputMAD(realization_base)
 
       call PetscLogEventEnd(logging%event_output_mad,ierr)    
-      call PetscGetTime(tend,ierr) 
+      call PetscTime(tend,ierr) 
       write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
       call printMsg(option) 
@@ -840,7 +840,7 @@ subroutine OutputAvegVars(realization_base)
   if(aveg_plot_flag) then
 
     if (realization_base%output_option%print_hdf5) then
-      call PetscGetTime(tstart,ierr)
+      call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID) then
         call OutputHDF5UGridXDMF(realization_base,AVERAGED_VARS)
@@ -848,7 +848,7 @@ subroutine OutputAvegVars(realization_base)
         call OutputHDF5(realization_base,AVERAGED_VARS)
       endif      
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
-      call PetscGetTime(tend,ierr)
+      call PetscTime(tend,ierr)
       write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
