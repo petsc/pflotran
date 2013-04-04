@@ -518,66 +518,72 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     
   endif
   deallocate(temp_real_array)  
-
-  if (option%myrank == option%io_rank) then
-    call InputReadFlotranString(input,option)
-    ! read ELEMENTS card, we only use this for tecplot output
-    ! not used while solving the PDEs
-    call InputReadWord(input,option,card,PETSC_TRUE)
-    word = 'ELEMENTS'
-    call InputErrorMsg(input,option,word,card)
-    if (.not.StringCompare(word,card))  return
-    card = 'Explicit Unstruct. Grid ELEMENTS'
-    call InputReadInt(input,option,num_elems)
-    call InputErrorMsg(input,option,'number of elements',card)
-        explicit_grid%num_elems = num_elems
-    allocate(explicit_grid%cell_connectivity(3,num_elems)) 
-    explicit_grid%cell_connectivity = 0
-    do iconn = 1, num_elems
+  
+  if (option%print_explicit_primal_grid .or. option%print_explicit_dual_grid) &
+    then
+    if (option%myrank == option%io_rank) then
       call InputReadFlotranString(input,option)
-      call InputReadStringErrorMsg(input,option,card)  
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(1,iconn))
-      call InputErrorMsg(input,option,'cell vertex 1',card)
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(2,iconn))
-      call InputErrorMsg(input,option,'cell vertex 2',card)
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(3,iconn))
-      call InputErrorMsg(input,option,'cell vertex 3',card)
-     enddo
-
-    call InputReadFlotranString(input,option)
-    ! read VERTICES card, not used for calcuations, only tecplot output
-    call InputReadWord(input,option,card,PETSC_TRUE)
-    word = 'VERTICES'
-    call InputErrorMsg(input,option,word,card)
-    if (.not.StringCompare(word,card)) then
-      option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
-        '" in explicit grid file.'
-      call printErrMsgByRank(option)
+      ! read ELEMENTS card, we only use this for tecplot output
+      ! not used while solving the PDEs
+      call InputReadWord(input,option,card,PETSC_TRUE)
+      word = 'ELEMENTS'
+      call InputErrorMsg(input,option,word,card)
+      if (.not.StringCompare(word,card)) then
+        option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
+          '" in explicit grid file.'
+        call printErrMsgByRank(option)
+      endif
+      card = 'Explicit Unstruct. Grid ELEMENTS'
+      call InputReadInt(input,option,num_elems)
+      call InputErrorMsg(input,option,'number of elements',card)
+          explicit_grid%num_elems = num_elems
+      allocate(explicit_grid%cell_connectivity(3,num_elems)) 
+      explicit_grid%cell_connectivity = 0
+      do iconn = 1, num_elems
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadInt(input,option, &
+                          explicit_grid%cell_connectivity(1,iconn))
+        call InputErrorMsg(input,option,'cell vertex 1',card)
+        call InputReadInt(input,option, &
+                          explicit_grid%cell_connectivity(2,iconn))
+        call InputErrorMsg(input,option,'cell vertex 2',card)
+        call InputReadInt(input,option, &
+                          explicit_grid%cell_connectivity(3,iconn))
+        call InputErrorMsg(input,option,'cell vertex 3',card)
+      enddo
+      call InputReadFlotranString(input,option)
+      ! read VERTICES card, not used for calcuations, only tecplot output
+      call InputReadWord(input,option,card,PETSC_TRUE)
+      word = 'VERTICES'
+      call InputErrorMsg(input,option,word,card)
+      if (.not.StringCompare(word,card)) then
+        option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
+          '" in explicit grid file.'
+        call printErrMsgByRank(option)
+      endif
+      allocate(explicit_grid%vertex_coordinates(explicit_grid%num_cells_global))
+      do icell = 1, explicit_grid%num_cells_global
+        explicit_grid%vertex_coordinates(icell)%x = 0.d0
+        explicit_grid%vertex_coordinates(icell)%y = 0.d0
+        explicit_grid%vertex_coordinates(icell)%z = 0.d0
+      enddo
+      do icell = 1, explicit_grid%num_cells_global
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadDouble(input,option, &
+                             explicit_grid%vertex_coordinates(icell)%x)
+        call InputErrorMsg(input,option,'vertex 1',card)
+        call InputReadDouble(input,option, &
+                             explicit_grid%vertex_coordinates(icell)%y)
+        call InputErrorMsg(input,option,'vertex 2',card)
+        call InputReadDouble(input,option, &
+                             explicit_grid%vertex_coordinates(icell)%z)
+        call InputErrorMsg(input,option,'vertex 3',card)
+      enddo
     endif
-    allocate(explicit_grid%vertex_coordinates(explicit_grid%num_cells_global))
-    do icell = 1, explicit_grid%num_cells_global
-      explicit_grid%vertex_coordinates(icell)%x = 0.d0
-      explicit_grid%vertex_coordinates(icell)%y = 0.d0
-      explicit_grid%vertex_coordinates(icell)%z = 0.d0
-    enddo
-    do icell = 1, explicit_grid%num_cells_global
-      call InputReadFlotranString(input,option)
-      call InputReadStringErrorMsg(input,option,card)  
-      call InputReadDouble(input,option, &
-                           explicit_grid%vertex_coordinates(icell)%x)
-      call InputErrorMsg(input,option,'vertex 1',card)
-      call InputReadDouble(input,option, &
-                           explicit_grid%vertex_coordinates(icell)%y)
-      call InputErrorMsg(input,option,'vertex 2',card)
-      call InputReadDouble(input,option, &
-                           explicit_grid%vertex_coordinates(icell)%z)
-      call InputErrorMsg(input,option,'vertex 3',card)
-    enddo
-  endif
-   
+  endif 
+  
   if (option%myrank == option%io_rank) then
     call InputDestroy(input)
   endif

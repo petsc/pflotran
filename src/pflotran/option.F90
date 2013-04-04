@@ -179,16 +179,14 @@ module Option_module
     character(len=MAXWORDLENGTH) :: group_prefix
     
     PetscBool :: steady_state
-    
     PetscBool :: use_matrix_buffer
     PetscBool :: force_newton_iteration
-  
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
-    
     PetscBool :: use_upwinding
-    
     PetscBool :: out_of_table
+    PetscBool :: print_explicit_primal_grid
+    PetscBool :: print_explicit_dual_grid
 
   end type option_type
   
@@ -505,10 +503,10 @@ subroutine OptionInitRealization(option)
   option%use_matrix_buffer = PETSC_FALSE
   option%init_stage = PETSC_FALSE 
   option%force_newton_iteration = PETSC_FALSE
-
-  option%mimetic = PETSC_FALSE
- 
+  option%mimetic = PETSC_FALSE 
   option%variables_swapped = PETSC_FALSE
+  option%print_explicit_primal_grid = PETSC_FALSE
+  option%print_explicit_dual_grid = PETSC_FALSE
   
 end subroutine OptionInitRealization
 

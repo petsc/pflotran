@@ -119,6 +119,7 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   
   implicit none
@@ -192,6 +193,8 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
         endif
       endif
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
+    
+    end select
   
   OutputTecplotZoneHeader = trim(string) // string2  
 
@@ -297,8 +300,9 @@ subroutine OutputTecplotBlock(realization_base)
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif
   
-  if (realization%discretization%grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
-    call WriteTecplotExpGridElements(OUTPUT_UNIT,realization)
+  if (realization_base%discretization%grid%itype ==  &
+        EXPLICIT_UNSTRUCTURED_GRID) then
+    call WriteTecplotExpGridElements(OUTPUT_UNIT,realization_base)
   endif
     
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
@@ -1297,10 +1301,14 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
   Vec :: global_vertex_vec
   PetscInt :: local_size
   PetscErrorCode :: ierr
-  
+  PetscInt :: num_cells, icell
+  PetscInt :: count
+    
   patch => realization_base%patch
   grid => patch%grid
   option => realization_base%option
+
+1000 format(es13.6,1x)
 
   if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
     call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
@@ -1328,15 +1336,96 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
     call VecDestroy(global_vertex_vec, ierr)
   else
     if (option%myrank == option%io_rank) then
-      write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+      if (option%print_explicit_primal_grid) then
+      num_cells = grid%unstructured_grid%explicit_grid%num_cells_global
+      count = 0
+      do icell = 1, num_cells
+        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                     vertex_coordinates(icell)%x
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
+      enddo
+      if (count /= 0) write(fid,'(a)') ""
+      count = 0
+      do icell = 1, num_cells
+        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                     vertex_coordinates(icell)%y
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
+      enddo
+      if (count /= 0) write(fid,'(a)') ""
+      count = 0
+      do icell = 1, num_cells
+        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                     vertex_coordinates(icell)%z
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
+      enddo
+      if (count /= 0) write(fid,'(a)') ""      
+      elseif (option%print_explicit_dual_grid) then
+        write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+      else 
+        write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+      endif
     endif
   endif
 
 end subroutine WriteTecplotUGridVertices
 
+
 ! ************************************************************************** !
 !
-! WriteTecplotUGridVertices: Writes unstructured grid elements
+! WriteTecplotExpGridElements: Writes unstructured explicit grid elements
+! author: Satish Karra, LANL
+! date: 12/17/12
+!
+! ************************************************************************** !
+subroutine WriteTecplotExpGridElements(fid,realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  PetscInt :: iconn, num_elems, i
+  PetscErrorCode :: ierr
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  
+  num_elems = grid%unstructured_grid%explicit_grid%num_elems
+ 
+  if (option%myrank == option%io_rank) then
+    do iconn = 1, num_elems
+      write(fid,*) (grid%unstructured_grid% &
+                    explicit_grid%cell_connectivity(i,iconn), i = 1,3)
+    enddo 
+  endif
+   
+end subroutine WriteTecplotExpGridElements
+
+! ************************************************************************** !
+!
+! WriteTecplotUGridElements: Writes unstructured grid elements
 ! author: Glenn Hammond
 ! date: 01/12/12
 !

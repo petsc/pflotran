@@ -1566,6 +1566,14 @@ subroutine InitReadInput(simulation)
 !....................
       case ('DEBUG')
         call DebugRead(realization%debug,input,option)
+        
+!....................
+      case ('PRINT_PRIMAL_GRID')
+        option%print_explicit_primal_grid = PETSC_TRUE
+        
+!....................
+      case ('PRINT_DUAL_GRID')
+        option%print_explicit_dual_grid = PETSC_TRUE
 
 !....................
       case ('MAX_CHANGE')
