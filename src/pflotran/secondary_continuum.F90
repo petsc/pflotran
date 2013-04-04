@@ -1443,11 +1443,12 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
     enddo
   enddo           
   
-  do i = 1, ngcells
-    do j = 1, ncomp
-      res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
-    enddo
-  enddo
+ ! Need to decide how to scale the residual with volumes
+ ! do i = 1, ngcells
+ !   do j = 1, ncomp
+ !     res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp)/vol(i)
+ !   enddo
+ ! enddo
     
   inf_norm_sec = maxval(abs(res))  
                                     
