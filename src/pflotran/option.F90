@@ -186,7 +186,8 @@ module Option_module
     PetscBool :: use_upwinding
     PetscBool :: out_of_table
     PetscBool :: print_explicit_primal_grid
-    PetscBool :: print_explicit_dual_grid
+    PetscBool :: print_explicit_dual_grid        
+    PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
 
   end type option_type
   
@@ -507,6 +508,9 @@ subroutine OptionInitRealization(option)
   option%variables_swapped = PETSC_FALSE
   option%print_explicit_primal_grid = PETSC_FALSE
   option%print_explicit_dual_grid = PETSC_FALSE
+  
+  option%secondary_continuum_solver = 1
+
   
 end subroutine OptionInitRealization
 
