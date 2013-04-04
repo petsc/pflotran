@@ -519,20 +519,13 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   endif
   deallocate(temp_real_array)  
   
-  if (option%print_explicit_primal_grid .or. option%print_explicit_dual_grid) &
-    then
     if (option%myrank == option%io_rank) then
       call InputReadFlotranString(input,option)
       ! read ELEMENTS card, we only use this for tecplot output
       ! not used while solving the PDEs
       call InputReadWord(input,option,card,PETSC_TRUE)
       word = 'ELEMENTS'
-      call InputErrorMsg(input,option,word,card)
-      if (.not.StringCompare(word,card)) then
-        option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
-          '" in explicit grid file.'
-        call printErrMsgByRank(option)
-      endif
+      if (.not.StringCompare(word,card)) return
       card = 'Explicit Unstruct. Grid ELEMENTS'
       call InputReadInt(input,option,num_elems)
       call InputErrorMsg(input,option,'number of elements',card)
@@ -582,7 +575,6 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
         call InputErrorMsg(input,option,'vertex 3',card)
       enddo
     endif
-  endif 
   
   if (option%myrank == option%io_rank) then
     call InputDestroy(input)
