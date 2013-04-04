@@ -341,6 +341,7 @@ subroutine FinalizeRun(this)
   PetscErrorCode :: ierr
   
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
   class(process_model_base_type), pointer :: cur_process_model
   type(realization_type), pointer :: realization
   type(stepper_type), pointer :: flow_stepper
@@ -358,22 +359,28 @@ subroutine FinalizeRun(this)
   ! temporary pointers for regression
   nullify(flow_stepper)
   nullify(tran_stepper)
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    cur_process_model => cur_process_model_coupler%process_model_list
-    do
-      select type(cur_process_model)
-        class is (process_model_richards_type)
-          realization => cur_process_model%realization
-          flow_stepper => cur_process_model_coupler%timestepper
-        class is (process_model_rt_type)
-          realization => cur_process_model%realization
-          tran_stepper => cur_process_model_coupler%timestepper
-      end select
-      cur_process_model => cur_process_model%next
+  cur_process_model_coupler_top => this%process_model_coupler_list
+  do ! loop over next process model coupler
+    if (.not.associated(cur_process_model_coupler_top)) exit
+    cur_process_model_coupler => cur_process_model_coupler_top
+    do ! loop over process model couplers below
+      if (.not.associated(cur_process_model_coupler)) exit
+      cur_process_model => cur_process_model_coupler%process_model_list
+      do
+        if (.not.associated(cur_process_model)) exit
+        select type(cur_process_model)
+          class is (process_model_richards_type)
+            realization => cur_process_model%realization
+            flow_stepper => cur_process_model_coupler%timestepper
+          class is (process_model_rt_type)
+            realization => cur_process_model%realization
+            tran_stepper => cur_process_model_coupler%timestepper
+        end select
+        cur_process_model => cur_process_model%next
+      enddo
+      cur_process_model_coupler => cur_process_model_coupler%below
     enddo
-    cur_process_model_coupler => cur_process_model_coupler%next
+    cur_process_model_coupler_top => cur_process_model_coupler_top%next
   enddo
   
   call RegressionOutput(this%regression,realization, &

@@ -115,8 +115,8 @@ subroutine Init(simulation)
   SNESLineSearch :: linesearch
   
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
   class(process_model_base_type), pointer :: cur_process_model
-  type(process_model_richards_type), pointer :: process_model_richards
 
   ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
@@ -896,11 +896,11 @@ subroutine Init(simulation)
   endif
   if (option%ntrandof > 0) then
     cur_process_model => PMRTCreate()
+    cur_process_model%output_option => realization%output_option
     cur_process_model%option => realization%option
     if (associated(cur_process_model_coupler%process_model_list)) then
       cur_process_model_coupler%below => ProcessModelCouplerCreate()
-      cur_process_model_coupler%option => option
-      cur_process_model%output_option => realization%output_option
+      cur_process_model_coupler%below%option => option
       cur_process_model_coupler%below%process_model_list => cur_process_model
       cur_process_model_coupler%below%pm_ptr%ptr => cur_process_model
       cur_process_model_coupler%below%depth = 1
@@ -911,38 +911,45 @@ subroutine Init(simulation)
     endif
   endif  
   simulation%process_model_coupler_list => cur_process_model_coupler
-  simulation%synchronizer%process_model_coupler_list => cur_process_model_coupler
+  simulation%synchronizer%process_model_coupler_list => &
+    cur_process_model_coupler
   
-  cur_process_model_coupler => simulation%process_model_coupler_list
+  cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
-    if (.not.associated(cur_process_model_coupler)) exit
-    cur_process_model => cur_process_model_coupler%process_model_list
+    if (.not.associated(cur_process_model_coupler_top)) exit
+    cur_process_model_coupler => cur_process_model_coupler_top
     do
-      if (.not.associated(cur_process_model)) exit
-      select type(cur_process_model)
-        class is (process_model_richards_type)
-          call cur_process_model%PMRichardsSetRealization(realization)
-          call cur_process_model_coupler%SetTimestepper(flow_stepper)
-          flow_stepper%dt = option%flow_dt
-      process_model_richards => cur_process_model
-        class is (process_model_rt_type)
-          call cur_process_model%PMRTSetRealization(realization)
-          call cur_process_model_coupler%SetTimestepper(tran_stepper)
-          tran_stepper%dt = option%tran_dt
-      end select
-      call cur_process_model%Init()
-      call SNESSetFunction(cur_process_model_coupler%timestepper%solver%snes, &
+      if (.not.associated(cur_process_model_coupler)) exit
+      cur_process_model => cur_process_model_coupler%process_model_list
+      do
+        if (.not.associated(cur_process_model)) exit
+        select type(cur_process_model)
+          class is (process_model_richards_type)
+            call cur_process_model%PMRichardsSetRealization(realization)
+            call cur_process_model_coupler%SetTimestepper(flow_stepper)
+            flow_stepper%dt = option%flow_dt
+          class is (process_model_rt_type)
+            call cur_process_model%PMRTSetRealization(realization)
+            call cur_process_model_coupler%SetTimestepper(tran_stepper)
+            tran_stepper%dt = option%tran_dt
+        end select
+        call cur_process_model%Init()
+        call SNESSetFunction( &
+                           cur_process_model_coupler%timestepper%solver%snes, &
                            cur_process_model%residual_vec, &
                            PMResidual, &
                            cur_process_model_coupler%pm_ptr,ierr)
-      call SNESSetJacobian(cur_process_model_coupler%timestepper%solver%snes, &
+        call SNESSetJacobian( &
+                           cur_process_model_coupler%timestepper%solver%snes, &
                            cur_process_model_coupler%timestepper%solver%J, &
                            cur_process_model_coupler%timestepper%solver%Jpre, &
                            PMJacobian, &
                            cur_process_model_coupler%pm_ptr,ierr)
-      cur_process_model => cur_process_model%next
+        cur_process_model => cur_process_model%next
+      enddo
+      cur_process_model_coupler => cur_process_model_coupler%below
     enddo
-    cur_process_model_coupler => cur_process_model_coupler%next
+    cur_process_model_coupler_top => cur_process_model_coupler_top%next
   enddo
   !----------------------------------------------------------------------------!
   !----------------------------------------------------------------------------!

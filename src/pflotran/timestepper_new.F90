@@ -174,6 +174,7 @@ subroutine TimestepperReset(stepper,dt_min)
   stepper%cfl_limiter_ts = 1.d20
 
   stepper%time_step_cut_flag = PETSC_FALSE
+  stepper%match_waypoint = PETSC_FALSE
 
 end subroutine TimestepperReset
 
@@ -310,7 +311,7 @@ subroutine StepperUpdateDT(timestepper,process_model)
   class(process_model_base_type) :: process_model
   
   PetscBool :: update_time_step
-
+  
   update_time_step = PETSC_TRUE
   if (timestepper%time_step_cut_flag) then
     timestepper%num_constant_time_steps = 1
@@ -372,6 +373,9 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   PetscInt :: max_time_step
   PetscReal :: max_time
   PetscReal :: tolerance
+  PetscBool :: force_to_match_waypoint
+  PetscBool :: equal_to_or_exceeds_waypoint
+  PetscBool :: equal_to_or_exceeds_sync_time
   type(waypoint_type), pointer :: cur_waypoint
 
   option%io_buffer = 'StepperSetTargetTime()'
@@ -400,7 +404,6 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   cumulative_time_steps = timestepper%steps
   max_time_step = timestepper%max_time_step
   tolerance = timestepper%time_step_tolerance
-  timestepper%prev_dt = timestepper%dt
   target_time = timestepper%target_time + dt
 
   !TODO(geh): move to process model initialization stage
@@ -413,10 +416,12 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   
   ! If a waypoint calls for a plot or change in src/sinks, adjust time step
   ! to match waypoint.
+  force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
+  equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
+  equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
   do ! we cycle just in case the next waypoint is beyond the target_time
-    if (target_time + tolerance*dt >= sync_time .or. &
-        (target_time + tolerance*dt >= cur_waypoint%time .and. &
-         WaypointForceMatchToTime(cur_waypoint))) then
+    if (equal_to_or_exceeds_sync_time .or. &
+        (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
       max_time = min(sync_time,cur_waypoint%time)
       ! decrement by time step size
       target_time = target_time - dt
@@ -427,9 +432,11 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
         target_time = target_time + dt
       else
         target_time = max_time
-        timestepper%match_waypoint = PETSC_TRUE
-        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+        if (equal_to_or_exceeds_waypoint) then
+          if (force_to_match_waypoint) timestepper%match_waypoint = PETSC_TRUE
+          if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+          if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+        endif
         if (max_time >= cur_waypoint%time) then
           cur_waypoint => cur_waypoint%next
         endif
@@ -519,11 +526,14 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   icut = 0
   
   option%dt = timestepper%dt
-    
-  call process_model%PreSolve()
+  option%time = timestepper%target_time-timestepper%dt
+
+  call process_model%InitializeTimestep()
     
   do
       
+    call process_model%PreSolve()
+    
     call PetscTime(log_start_time, ierr)
 
     call SNESSolve(solver%snes,PETSC_NULL_OBJECT, &
@@ -576,7 +586,7 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
             timestepper%dt/tconv
 
       timestepper%target_time = timestepper%target_time + timestepper%dt
-      
+      option%dt = timestepper%dt
       call process_model%TimeCut()
   
     else
@@ -600,7 +610,7 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(process_model%residual_vec,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
-    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
+    write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       timestepper%steps, &
@@ -625,7 +635,7 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
     write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
   endif
   if (option%print_file_flag) then
-    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
+    write(option%fid_out, '(" Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
       & " [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
@@ -638,7 +648,8 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
       timestepper%cumulative_time_step_cuts
   endif  
   
-  call process_model%PostSolve()
+  option%time = timestepper%target_time
+  call process_model%FinalizeTimestep()
   
   if (option%print_screen_flag) print *, ""  
   

@@ -35,8 +35,10 @@ module Process_Model_Base_class
     procedure(PMBaseResidual), public, deferred :: Residual
     procedure(PMBaseJacobian), public, deferred :: Jacobian
     procedure(PMBaseUpdateTimestep), public, deferred :: UpdateTimestep
+    procedure(PMBaseThisOnly), public, deferred :: InitializeTimestep
     procedure(PMBaseThisOnly), public, deferred :: PreSolve
     procedure(PMBaseThisOnly), public, deferred :: PostSolve
+    procedure(PMBaseThisOnly), public, deferred :: FinalizeTimestep
     procedure(PMBaseFunctionThisOnly), public, deferred :: AcceptSolution
     procedure(PMBaseCheckUpdatePre), public, deferred :: CheckUpdatePre
     procedure(PMBaseCheckUpdatePost), public, deferred :: CheckUpdatePost
@@ -52,8 +54,10 @@ module Process_Model_Base_class
     procedure, public :: Residual => PMBaseResidual
     procedure, public :: Jacobian => PMBaseJacobian
     procedure, public :: UpdateTimestep => PMBaseUpdateTimestep
+    procedure, public :: InitializeTimestep => PMBaseThisOnly
     procedure, public :: PreSolve => PMBaseThisOnly
     procedure, public :: PostSolve => PMBaseThisOnly
+    procedure, public :: FinalizeTimestep => PMBaseThisOnly
     procedure, public :: AcceptSolution => PMBaseFunctionThisOnly
     procedure, public :: CheckUpdatePre => PMBaseCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMBaseCheckUpdatePost
@@ -143,6 +147,13 @@ module Process_Model_Base_class
       implicit none
       class(process_model_base_type) :: this
     end subroutine PMBaseThisOnly
+    
+    subroutine PMBaseThisTime(this,time)
+      import process_model_base_type
+      implicit none
+      class(process_model_base_type) :: this
+      PetscReal :: time
+    end subroutine PMBaseThisTime
     
     function PMBaseFunctionThisOnly(this)
       import process_model_base_type
@@ -277,6 +288,12 @@ subroutine PMBaseThisOnly(this)
   implicit none
   class(process_model_base_type) :: this
 end subroutine PMBaseThisOnly
+    
+subroutine PMBaseThisTime(this,time)
+  implicit none
+  class(process_model_base_type) :: this
+  PetscReal :: time
+end subroutine PMBaseThisTime
     
 function PMBaseFunctionThisOnly(this)
   implicit none

@@ -1946,7 +1946,8 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   endif
 
   if (option%ntrandof > 0) then ! store initial saturations for transport
-    call GlobalUpdateAuxVars(realization,TIME_T)
+    call GlobalUpdateAuxVars(realization,TIME_T, &
+                             stepper%target_time-option%flow_dt)
   endif
     
   select case(option%iflowmode)
@@ -2100,7 +2101,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   stepper%num_linear_iterations = num_linear_iterations
 
   if (option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(realization,TIME_TpDT)
+    call GlobalUpdateAuxVars(realization,TIME_TpDT,stepper%target_time)
   endif
     
 ! print screen output
@@ -2470,7 +2471,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     endif
 
     if (option%ntrandof > 0) then ! store initial saturations for transport
-      call GlobalUpdateAuxVars(realization,TIME_T)
+      call GlobalUpdateAuxVars(realization,TIME_T, &
+                               stepper%target_time-option%flow_dt)
     endif
     
     select case(option%iflowmode)
@@ -2741,7 +2743,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   stepper%num_linear_iterations = num_linear_iterations
 
   if (option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(realization,TIME_TpDT)
+    call GlobalUpdateAuxVars(realization,TIME_TpDT,stepper%target_time)
   endif
     
 ! print screen output
@@ -3853,8 +3855,9 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   stepper%cumulative_linear_iterations = num_linear_iterations
 
   if (option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(realization,TIME_T)
-    call GlobalUpdateAuxVars(realization,TIME_TpDT)
+    call GlobalUpdateAuxVars(realization,TIME_T, &
+                             stepper%target_time-option%flow_dt)
+    call GlobalUpdateAuxVars(realization,TIME_TpDT,stepper%target_time)
   endif
     
 ! print screen output

@@ -26,7 +26,8 @@ module Process_Model_Richards_class
     procedure, public :: PMRichardsSetRealization
     procedure, public :: InitializeRun => PMRichardsInitializeRun
     procedure, public :: FinalizeRun => PMRichardsFinalizeRun
-    procedure, public :: InitializeTimeStep => PMRichardsInitializeTimestep
+    procedure, public :: InitializeTimestep => PMRichardsInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMRichardsFinalizeTimeStep
     procedure, public :: Residual => PMRichardsResidual
     procedure, public :: Jacobian => PMRichardsJacobian
     procedure, public :: UpdateTimestep => PMRichardsUpdateTimestep
@@ -157,6 +158,8 @@ end subroutine PMRichardsSetRealization
 ! ************************************************************************** !
 subroutine PMRichardsInitializeTimestep(this)
 
+  use Global_module
+  
   implicit none
   
   class(process_model_richards_type) :: this
@@ -166,6 +169,20 @@ subroutine PMRichardsInitializeTimestep(this)
 #endif
 
   this%option%flow_dt = this%option%dt
+
+#ifndef SIMPLIFY  
+  ! update porosity
+  call this%comm%LocalToLocal(this%realization%field%porosity_loc, &
+                              this%realization%field%porosity_loc)
+#endif
+
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," RICHARDS FLOW ",62("="))')
+  endif
+  
+  if (this%option%ntrandof > 0) then ! store initial saturations for transport
+    call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
+  endif  
   
   call RichardsInitializeTimestep(this%realization)
   
@@ -189,24 +206,7 @@ subroutine PMRichardsPreSolve(this)
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%PreSolve()')
 #endif
-  
-#ifndef SIMPLIFY  
-  ! update porosity
-  call this%comm%LocalToLocal(this%realization%field%porosity_loc, &
-                              this%realization%field%porosity_loc)
-#endif
 
-  if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," RICHARDS FLOW ",62("="))')
-  endif
-  
-  if (this%option%ntrandof > 0) then ! store initial saturations for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_T)
-  endif
-
-  this%option%flow_dt = this%option%dt
-  call RichardsInitializeTimestep(this%realization)
-  
 end subroutine PMRichardsPreSolve
 
 ! ************************************************************************** !
@@ -228,8 +228,29 @@ subroutine PMRichardsPostSolve(this)
   call printMsg(this%option,'PMRichards%PostSolve()')
 #endif
   
+end subroutine PMRichardsPostSolve
+
+! ************************************************************************** !
+!
+! PMRichardsFinalizeTimestep: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRichardsFinalizeTimestep(this)
+
+  use Global_module
+
+  implicit none
+  
+  class(process_model_richards_type) :: this
+  
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%FinalizeTimestep()')
+#endif
+  
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
-    call GlobalUpdateAuxVars(this%realization,TIME_TpDT)
+    call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
   call RichardsMaxChange(this%realization)
@@ -241,7 +262,7 @@ subroutine PMRichardsPostSolve(this)
       this%option%dpmax
   endif  
   
-end subroutine PMRichardsPostSolve
+end subroutine PMRichardsFinalizeTimestep
 
 ! ************************************************************************** !
 !

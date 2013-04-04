@@ -22,12 +22,17 @@ module Process_Model_RT_class
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
+    ! local variables
+    PetscBool :: steady_flow
+    PetscReal :: tran_weight_t0
+    PetscReal :: tran_weight_t1
   contains
     procedure, public :: Init => PMRTInit
     procedure, public :: PMRTSetRealization
     procedure, public :: InitializeRun => PMRTInitializeRun
     procedure, public :: FinalizeRun => PMRTFinalizeRun
-    procedure, public :: InitializeTimeStep => PMRTInitializeTimestep
+    procedure, public :: InitializeTimestep => PMRTInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMRTFinalizeTimestep
     procedure, public :: Residual => PMRTResidual
     procedure, public :: Jacobian => PMRTJacobian
     procedure, public :: UpdateTimestep => PMRTUpdateTimestep
@@ -40,6 +45,7 @@ module Process_Model_RT_class
     procedure, public :: UpdateSolution => PMRTUpdateSolution
     procedure, public :: MaxChange => PMRTMaxChange
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
+    procedure, public :: SetTranWeights => SetTranWeights
     procedure, public :: Destroy => PMRTDestroy
   end type process_model_rt_type
   
@@ -62,7 +68,7 @@ function PMRTCreate()
 
   class(process_model_rt_type), pointer :: rt_pm
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   print *, 'PMRTCreate()'
 #endif
   
@@ -72,6 +78,11 @@ function PMRTCreate()
   nullify(rt_pm%realization)
   nullify(rt_pm%comm1)
   nullify(rt_pm%commN)
+  
+  ! local variables
+  rt_pm%steady_flow = PETSC_FALSE
+  rt_pm%tran_weight_t0 = 0.d0
+  rt_pm%tran_weight_t1 = 0.d0
 
   call PMBaseCreate(rt_pm)
   
@@ -99,7 +110,7 @@ subroutine PMRTInit(this)
   
   class(process_model_rt_type) :: this
 
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%Init()')
 #endif
   
@@ -119,7 +130,6 @@ subroutine PMRTInit(this)
 
 end subroutine PMRTInit
 
-
 ! ************************************************************************** !
 !
 ! PMRTSetRealization: 
@@ -136,12 +146,19 @@ subroutine PMRTSetRealization(this,realization)
   class(process_model_rt_type) :: this
   class(realization_type), pointer :: realization
 
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%SetRealization()')
 #endif
   
   this%realization => realization
   this%realization_base => realization
+  
+  if (realization%reaction%use_log_formulation) then
+    this%solution_vec = realization%field%tran_log_xx
+  else
+    this%solution_vec = realization%field%tran_xx
+  endif
+  this%residual_vec = realization%field%tran_r
   
 end subroutine PMRTSetRealization
 
@@ -154,15 +171,52 @@ end subroutine PMRTSetRealization
 ! ************************************************************************** !
 subroutine PMRTInitializeTimestep(this)
 
+  use Global_module
+
   implicit none
   
   class(process_model_rt_type) :: this
+  PetscReal :: time
  
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%InitializeTimestep()')
 #endif
   
-  call RTSetup(this%realization)
+  this%option%tran_dt = this%option%dt
+
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
+  endif
+  
+#if 0  
+  call DiscretizationLocalToLocal(discretization, &
+                                  this%realization%field%porosity_loc, &
+                                  this%realization%field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization, &
+                                  this%realization%field%tortuosity_loc, &
+                                  this%realization%field%tortuosity_loc,ONEDOF)
+#endif  
+  
+  ! interpolate flow parameters/data
+  ! this must remain here as these weighted values are used by both
+  ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
+  if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    call this%SetTranWeights()
+    ! set densities and saturations to t
+    call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t0)
+  endif
+
+  call RTInitializeTimestep(this%realization)
+
+  !geh: this is a bug and should be moved to PreSolve()
+#if 1
+  ! set densities and saturations to t+dt
+  if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t1)
+  endif
+
+  call RTUpdateTransportCoefs(this%realization)
+#endif  
 
 end subroutine PMRTInitializeTimestep
 
@@ -175,22 +229,39 @@ end subroutine PMRTInitializeTimestep
 ! ************************************************************************** !
 subroutine PMRTPreSolve(this)
 
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Global_module  
+
   implicit none
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+  PetscErrorCode :: ierr
+  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
 #endif
   
-#ifndef SIMPLIFY 
-  ! update tortuosity
-  call this%comm1%LocalToLocal(this%realization%field%tortuosity_loc, &
-                               this%realization%field%tortuosity_loc)
-#endif
+#if 0
+  ! set densities and saturations to t+dt
+  if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    call GlobalUpdateDenAndSat(this%realization,this%tran_weight_t1)
+  endif
 
-  if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," REACTIVE TRANSPORT ",57("="))')
+  call RTUpdateTransportCoefs(this%realization)
+#endif  
+  
+  if (this%realization%reaction%act_coef_update_frequency /= &
+      ACT_COEF_FREQUENCY_OFF) then
+      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+!       The below is set within RTUpdateAuxVarsPatch() when 
+!         PETSC_TRUE,PETSC_TRUE,* are passed
+!       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
+  endif
+  if (this%realization%reaction%use_log_formulation) then
+    call VecCopy(this%realization%field%tran_xx, &
+                 this%realization%field%tran_log_xx,ierr)
+    call VecLog(this%realization%field%tran_log_xx,ierr)
   endif
   
 end subroutine PMRTPreSolve
@@ -208,11 +279,45 @@ subroutine PMRTPostSolve(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%PostSolve()')
 #endif
   
 end subroutine PMRTPostSolve
+
+! ************************************************************************** !
+!
+! PMRTFinalizeTimestep: 
+! author: Glenn Hammond
+! date: 04/03/13
+!
+! ************************************************************************** !
+subroutine PMRTFinalizeTimestep(this)
+
+  use Global_module
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+  PetscReal :: time  
+  
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%FinalizeTimestep()')
+#endif
+  
+  call RTMaxChange(this%realization)
+  if (this%option%print_screen_flag) then
+    write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &
+            &" [mol/s]")') &
+      this%option%dcmax,this%option%dcmax/this%option%tran_dt
+  endif
+  if (this%option%print_file_flag) then  
+    write(this%option%fid_out,'("  --> max chng: dcmx= ",1pe12.4, &
+                              &" dc/dt= ",1pe12.4," [mol/s]")') &
+      this%option%dcmax,this%option%dcmax/this%option%tran_dt
+  endif
+  
+end subroutine PMRTFinalizeTimestep
 
 ! ************************************************************************** !
 !
@@ -229,7 +334,7 @@ function PMRTAcceptSolution(this)
   
   PetscBool :: PMRTAcceptSolution
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%AcceptSolution()')
 #endif
   ! do nothing
@@ -258,7 +363,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
   
   PetscReal :: dtt
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateTimestep()')  
 #endif
   
@@ -294,7 +399,7 @@ recursive subroutine PMRTInitializeRun(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%InitializeRun()')
 #endif
   
@@ -336,7 +441,7 @@ recursive subroutine PMRTFinalizeRun(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%PMRTFinalizeRun()')
 #endif
   
@@ -365,7 +470,7 @@ subroutine PMRTResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%Residual()')  
 #endif
   
@@ -391,7 +496,7 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%Jacobian()')  
 #endif
 
@@ -417,7 +522,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%CheckUpdatePre()')
 #endif
   
@@ -447,7 +552,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%CheckUpdatePost()')
 #endif
   
@@ -469,10 +574,14 @@ subroutine PMRTTimeCut(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%TimeCut()')
 #endif
   
+  this%option%tran_dt = this%option%dt
+  if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
+    call this%SetTranWeights()
+  endif
   call RTTimeCut(this%realization)
 
 end subroutine PMRTTimeCut
@@ -492,7 +601,7 @@ subroutine PMRTUpdateSolution(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateSolution()')
 #endif
   
@@ -524,7 +633,7 @@ subroutine PMRTMaxChange(this)
   
   class(process_model_rt_type) :: this
   
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%MaxChange()')
 #endif
   
@@ -546,7 +655,7 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
   class(process_model_rt_type) :: this
   PetscReal :: mass_balance_array(:)
 
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%MassBalance()')
 #endif
 
@@ -555,6 +664,36 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
 #endif
 
 end subroutine PMRTComputeMassBalance
+
+! ************************************************************************** !
+!
+! SetTranWeights: Sets the weights at t0 or t1 for transport
+! author: Glenn Hammond
+! date: 01/17/11; 04/03/13
+!
+! ************************************************************************** !
+subroutine SetTranWeights(this)
+
+  use Option_module
+
+  implicit none
+  
+  class(process_model_rt_type) :: this
+
+  PetscReal :: flow_dt
+  PetscReal :: flow_t0
+  PetscReal :: flow_t1
+
+  ! option%tran_time is the time at beginning of transport step
+  flow_t0 = this%realization%patch%aux%Global%time_t
+  flow_t1 = this%realization%patch%aux%Global%time_tpdt
+  flow_dt = flow_t1-flow_t0
+  this%tran_weight_t0 = max(0.d0,(this%option%time-flow_t0)/flow_dt)
+  this%tran_weight_t1 = min(1.d0, &
+                            (this%option%time+this%option%tran_dt-flow_t0)/ &
+                            flow_dt)
+
+end subroutine SetTranWeights
 
 ! ************************************************************************** !
 !
@@ -569,7 +708,7 @@ subroutine PMRTDestroy(this)
   
   class(process_model_rt_type) :: this
 
-#ifdef PM_RICHARDS_DEBUG  
+#ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRTDestroy()')
 #endif
   
