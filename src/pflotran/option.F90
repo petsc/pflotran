@@ -194,6 +194,9 @@ module Option_module
     PetscBool :: out_of_table
     
     PetscBool :: use_process_model
+        
+    ! Specify secondary continuum solver
+    PetscInt :: secondary_continuum_solver     
 
   end type option_type
   
@@ -516,6 +519,9 @@ subroutine OptionInitRealization(option)
   option%mimetic = PETSC_FALSE
  
   option%variables_swapped = PETSC_FALSE
+  
+  option%secondary_continuum_solver = 1
+
   
 end subroutine OptionInitRealization
 

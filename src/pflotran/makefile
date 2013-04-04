@@ -43,6 +43,10 @@ ifdef pcl
   MYFLAGS += -DPCL -DMUALEM_SPLINE
 endif
 
+ifdef condnr
+  MYFLAGS += -DCONDNR
+endif
+
 ifdef perm
   MYFLAGS += -DPERM
 endif
@@ -272,6 +276,7 @@ io_obj = \
 
 misc_obj = \
 	${common_src}block_solve.o \
+	${common_src}block_tridiag.o \
 	${common_src}checkpoint.o \
 	${common_src}condition.o \
 	${common_src}condition_control.o \
@@ -353,6 +358,7 @@ auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
               secondary_continuum_aux.o surface_global_aux.o
 block_solve.o:
+block_tridiag.o:
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
 communicator_base.o : 
@@ -530,7 +536,7 @@ reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-                       secondary_continuum.o block_solve.o
+                       secondary_continuum.o  
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -560,7 +566,8 @@ saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
                         material.o option.o reactive_transport_aux.o\
-                        block_solve.o global_aux.o mphase_aux.o reaction.o
+                        block_solve.o global_aux.o mphase_aux.o reaction.o\
+						block_tridiag.o
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o \
