@@ -187,6 +187,8 @@ module Option_module
     PetscBool :: use_upwinding
     
     PetscBool :: out_of_table
+        
+    PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
 
   end type option_type
   
@@ -505,6 +507,9 @@ subroutine OptionInitRealization(option)
   option%mimetic = PETSC_FALSE
  
   option%variables_swapped = PETSC_FALSE
+  
+  option%secondary_continuum_solver = 1
+
   
 end subroutine OptionInitRealization
 
