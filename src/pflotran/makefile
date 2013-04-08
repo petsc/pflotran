@@ -130,12 +130,8 @@ FPPFLAGS = ${MYFLAGS}
 
 CLEANFILES       = pflotran pflotran_rxn libpflotranchem.a make.log
 
-ifdef petscrel
- include ${PETSC_DIR}/bmake/common/base
-else
- include ${PETSC_DIR}/conf/variables
- include ${PETSC_DIR}/conf/rules
-endif
+include ${PETSC_DIR}/conf/variables
+include ${PETSC_DIR}/conf/rules
 
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
