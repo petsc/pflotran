@@ -673,10 +673,6 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
   option => realization_base%option
   output_option => realization_base%output_option
   
-  header = OutputVariableListToHeader(output_option%output_variable_list, &
-                                      cell_string,icolumn,PETSC_FALSE)
-  write(fid,'(a)',advance="no") trim(header)
-  
   ! add secondary temperature to header
   if (print_secondary_data(1)) then
     select case (option%iflowmode) 
