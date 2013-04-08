@@ -100,8 +100,6 @@ module Option_module
     PetscBool :: set_secondary_init_temp  ! If true, then secondary init temp is different from prim. init temp
     PetscBool :: set_secondary_init_conc
     
-    PetscBool :: update_flow_perm ! If true, permeability changes due to pressure
-          
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscBool :: use_generalized_grid
       
@@ -179,14 +177,17 @@ module Option_module
     character(len=MAXWORDLENGTH) :: group_prefix
     
     PetscBool :: steady_state
+    
     PetscBool :: use_matrix_buffer
     PetscBool :: force_newton_iteration
+  
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
+    
     PetscBool :: use_upwinding
+    
     PetscBool :: out_of_table
-    PetscBool :: print_explicit_primal_grid
-    PetscBool :: print_explicit_dual_grid        
+        
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
 
   end type option_type
@@ -351,8 +352,6 @@ subroutine OptionInitRealization(option)
   option%set_secondary_init_temp = PETSC_FALSE
   option%set_secondary_init_conc = PETSC_FALSE
   
-  option%update_flow_perm = PETSC_FALSE
-  
   option%flowmode = ""
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
@@ -504,10 +503,10 @@ subroutine OptionInitRealization(option)
   option%use_matrix_buffer = PETSC_FALSE
   option%init_stage = PETSC_FALSE 
   option%force_newton_iteration = PETSC_FALSE
-  option%mimetic = PETSC_FALSE 
+
+  option%mimetic = PETSC_FALSE
+ 
   option%variables_swapped = PETSC_FALSE
-  option%print_explicit_primal_grid = PETSC_FALSE
-  option%print_explicit_dual_grid = PETSC_FALSE
   
   option%secondary_continuum_solver = 1
 

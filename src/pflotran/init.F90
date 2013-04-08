@@ -1566,14 +1566,6 @@ subroutine InitReadInput(simulation)
 !....................
       case ('DEBUG')
         call DebugRead(realization%debug,input,option)
-        
-!....................
-      case ('PRINT_PRIMAL_GRID')
-        option%print_explicit_primal_grid = PETSC_TRUE
-        
-!....................
-      case ('PRINT_DUAL_GRID')
-        option%print_explicit_dual_grid = PETSC_TRUE
 
 !....................
       case ('MAX_CHANGE')
@@ -1754,11 +1746,7 @@ subroutine InitReadInput(simulation)
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
         
-!......................
-
-      case('UPDATE_FLOW_PERMEABILITY')
-        option%update_flow_perm = PETSC_TRUE
-
+        
 !......................
 
       case('SECONDARY_CONTINUUM_SOLVER')
@@ -1782,7 +1770,6 @@ subroutine InitReadInput(simulation)
                                'chemistry THOMAS can be used.'
           call printErrMsg(option)    
         end select        
-
 !....................
 
       case('SECONDARY_CONSTRAINT')
