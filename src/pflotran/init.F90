@@ -1746,7 +1746,32 @@ subroutine InitReadInput(simulation)
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
         
+        
+!......................
+
+      case('SECONDARY_CONTINUUM_SOLVER')
+        if (.not.option%use_mc) then
+          option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can only be used ' // &
+                             'with MULTIPLE_CONTINUUM keyword.'
+          call printErrMsg(option)
+        endif      
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case(word)
+          case('KEARST')
+            option%secondary_continuum_solver = 1
+          case('HINDMARSH')
+            option%secondary_continuum_solver = 2
+          case('THOMAS')
+            option%secondary_continuum_solver = 3
+          case default
+            option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
+                               'HINDMARSH or KEARST. For single component'// &
+                               'chemistry THOMAS can be used.'
+          call printErrMsg(option)    
+        end select        
 !....................
+
       case('SECONDARY_CONSTRAINT')
         if (.not.option%use_mc) then
           option%io_buffer = 'SECONDARY_CONSTRAINT can only be used with ' // &
