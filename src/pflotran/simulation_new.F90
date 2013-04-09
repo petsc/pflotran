@@ -3,6 +3,7 @@ module Simulation_module
   use Process_Model_Coupler_module
   use Option_module
   use Output_Aux_module
+  use Output_module
   use Synchronizer_module
   use Process_Model_Coupler_module
   use Regression_module
@@ -343,7 +344,7 @@ subroutine FinalizeRun(this)
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
   type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
   class(process_model_base_type), pointer :: cur_process_model
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
 

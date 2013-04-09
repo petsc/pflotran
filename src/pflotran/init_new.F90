@@ -1303,7 +1303,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
 
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field

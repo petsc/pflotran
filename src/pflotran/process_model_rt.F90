@@ -1,7 +1,9 @@
 module Process_Model_RT_class
 
   use Process_Model_Base_class
-  use Reactive_Transport_module
+!geh: using Reactive_Transport_module here fails with gfortran (internal 
+!     compiler error)
+!  use Reactive_Transport_module
   use Realization_class
   use Communicator_Base_module  
   use Option_module
@@ -171,6 +173,8 @@ end subroutine PMRTSetRealization
 ! ************************************************************************** !
 subroutine PMRTInitializeTimestep(this)
 
+  use Reactive_Transport_module, only : RTInitializeTimestep, &
+                                        RTUpdateTransportCoefs
   use Global_module
 
   implicit none
@@ -229,6 +233,8 @@ end subroutine PMRTInitializeTimestep
 ! ************************************************************************** !
 subroutine PMRTPreSolve(this)
 
+  use Reactive_Transport_module, only : RTUpdateTransportCoefs, &
+                                        RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module  
 
@@ -294,6 +300,7 @@ end subroutine PMRTPostSolve
 ! ************************************************************************** !
 subroutine PMRTFinalizeTimestep(this)
 
+  use Reactive_Transport_module, only : RTMaxChange
   use Global_module
 
   implicit none
@@ -395,6 +402,9 @@ end subroutine PMRTUpdateTimestep
 ! ************************************************************************** !
 recursive subroutine PMRTInitializeRun(this)
 
+  use Reactive_Transport_module, only : RTUpdateSolution, &
+                                        RTJumpStartKineticSorption
+
   implicit none
   
   class(process_model_rt_type) :: this
@@ -462,6 +472,8 @@ end subroutine PMRTFinalizeRun
 ! ************************************************************************** !
 subroutine PMRTResidual(this,snes,xx,r,ierr)
 
+  use Reactive_Transport_module, only : RTResidual
+
   implicit none
   
   class(process_model_rt_type) :: this
@@ -486,6 +498,8 @@ end subroutine PMRTResidual
 !
 ! ************************************************************************** !
 subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
+
+  use Reactive_Transport_module, only : RTJacobian
 
   implicit none
   
@@ -512,6 +526,8 @@ end subroutine PMRTJacobian
 !
 ! ************************************************************************** !
 subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+
+  use Reactive_Transport_module, only : RTCheckUpdate
 
   implicit none
   
@@ -541,6 +557,9 @@ end subroutine PMRTCheckUpdatePre
 ! ************************************************************************** !
 subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+
+!  use Reactive_Transport_module, only : RTCheckUpdatePost
+
   implicit none
   
   class(process_model_rt_type) :: this
@@ -570,6 +589,8 @@ end subroutine PMRTCheckUpdatePost
 ! ************************************************************************** !
 subroutine PMRTTimeCut(this)
 
+  use Reactive_Transport_module, only : RTTimeCut
+
   implicit none
   
   class(process_model_rt_type) :: this
@@ -595,6 +616,7 @@ end subroutine PMRTTimeCut
 ! ************************************************************************** !
 subroutine PMRTUpdateSolution(this)
 
+  use Reactive_Transport_module, only : RTUpdateSolution
   use Condition_module
 
   implicit none
@@ -629,6 +651,8 @@ end subroutine PMRTUpdateSolution
 ! ************************************************************************** !
 subroutine PMRTMaxChange(this)
 
+  use Reactive_Transport_module, only : RTMaxChange
+
   implicit none
   
   class(process_model_rt_type) :: this
@@ -649,6 +673,8 @@ end subroutine PMRTMaxChange
 !
 ! ************************************************************************** !
 subroutine PMRTComputeMassBalance(this,mass_balance_array)
+
+  use Reactive_Transport_module, only : RTComputeMassBalance
 
   implicit none
   
@@ -703,6 +729,8 @@ end subroutine SetTranWeights
 !
 ! ************************************************************************** !
 subroutine PMRTDestroy(this)
+
+  use Reactive_Transport_module, only : RTDestroy
 
   implicit none
   

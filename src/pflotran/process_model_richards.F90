@@ -1,7 +1,8 @@
 module Process_Model_Richards_class
 
   use Process_Model_Base_class
-  use Richards_module
+!geh: using Richards_module here fails with gfortran (internal compiler error)
+!  use Richards_module
   use Realization_class
   use Communicator_Base_module
   use Option_module
@@ -158,6 +159,7 @@ end subroutine PMRichardsSetRealization
 ! ************************************************************************** !
 subroutine PMRichardsInitializeTimestep(this)
 
+  use Richards_module, only : RichardsInitializeTimestep
   use Global_module
   
   implicit none
@@ -239,6 +241,7 @@ end subroutine PMRichardsPostSolve
 ! ************************************************************************** !
 subroutine PMRichardsFinalizeTimestep(this)
 
+  use Richards_module, only : RichardsMaxChange
   use Global_module
 
   implicit none
@@ -357,6 +360,8 @@ end subroutine PMRichardsUpdateTimestep
 ! ************************************************************************** !
 recursive subroutine PMRichardsInitializeRun(this)
 
+  use Richards_module, only : RichardsUpdateSolution
+
   implicit none
   
   class(process_model_richards_type) :: this
@@ -412,6 +417,7 @@ end subroutine PMRichardsFinalizeRun
 ! ************************************************************************** !
 subroutine PMRichardsResidual(this,snes,xx,r,ierr)
 
+  use Richards_module, only : RichardsResidual
   use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   implicit none
@@ -444,6 +450,7 @@ end subroutine PMRichardsResidual
 ! ************************************************************************** !
 subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
 
+  use Richards_module, only : RichardsJacobian
   use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   implicit none
@@ -477,6 +484,8 @@ end subroutine PMRichardsJacobian
 ! ************************************************************************** !
 subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
+  use Richards_module, only : RichardsCheckUpdatePre
+
   implicit none
   
   class(process_model_richards_type) :: this
@@ -505,6 +514,9 @@ end subroutine PMRichardsCheckUpdatePre
 ! ************************************************************************** !
 subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+
+  use Richards_module, only : RichardsCheckUpdatePost
+
   implicit none
   
   class(process_model_richards_type) :: this
@@ -536,6 +548,8 @@ end subroutine PMRichardsCheckUpdatePost
 ! ************************************************************************** !
 subroutine PMRichardsTimeCut(this)
 
+  use Richards_module, only : RichardsTimeCut
+
   implicit none
   
   class(process_model_richards_type) :: this
@@ -559,6 +573,7 @@ end subroutine PMRichardsTimeCut
 ! ************************************************************************** !
 subroutine PMRichardsUpdateSolution(this)
 
+  use Richards_module, only : RichardsUpdateSolution
   use Condition_module
 
   implicit none
@@ -594,6 +609,8 @@ end subroutine PMRichardsUpdateSolution
 ! ************************************************************************** !
 subroutine PMRichardsMaxChange(this)
 
+  use Richards_module, only : RichardsMaxChange
+
   implicit none
   
   class(process_model_richards_type) :: this
@@ -614,6 +631,8 @@ end subroutine PMRichardsMaxChange
 !
 ! ************************************************************************** !
 subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
+
+  use Richards_module, only : RichardsComputeMassBalance
 
   implicit none
   
@@ -638,6 +657,8 @@ end subroutine PMRichardsComputeMassBalance
 !
 ! ************************************************************************** !
 subroutine PMRichardsDestroy(this)
+
+  use Richards_module, only : RichardsDestroy
 
   implicit none
   
