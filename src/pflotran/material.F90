@@ -38,6 +38,9 @@ module Material_module
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
     PetscReal :: tortuosity_pwr
+    PetscReal :: min_pressure
+    PetscReal :: max_pressure
+    PetscReal :: max_permfactor
     !geh: minral surface area power functions must be defined on a per
     !     mineral basis, look in reaction_aux.F90
     !PetscReal :: mnrl_surf_area_volfrac_pwr
@@ -128,6 +131,9 @@ function MaterialPropertyCreate()
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
+  material_property%min_pressure = 0.d0
+  material_property%max_pressure = 1.d6
+  material_property%max_permfactor = 1.d0
   material_property%secondary_continuum_name = ''
   material_property%secondary_continuum_length = 0.d0
   material_property%secondary_continuum_matrix_block_size = 0.d0
@@ -351,6 +357,41 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
+      case('PERM_FACTOR') 
+      ! Permfactor is the multiplier to permeability to increase perm
+      ! The perm increase could be due to pressure or other variable
+      ! Added by Satish Karra, LANL, 1/8/12
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,PERM_FACTOR')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,PERM_FACTOR')   
+          select case(trim(word))
+          ! Assuming only ramp function for now
+          ! The permfactor ramps from 1 to max_permfactor at max_pressure
+          ! and remains same
+            case('MIN_PRESSURE')       
+              call InputReadDouble(input,option,material_property%min_pressure)
+              call InputErrorMsg(input,option,'min pressure','PERM_FACTOR')  
+            case('MAX_PRESSURE')       
+              call InputReadDouble(input,option,material_property%max_pressure)
+              call InputErrorMsg(input,option,'max pressure','PERM_FACTOR')
+            case('MAX_PERMFACTOR')       
+              call InputReadDouble(input,option,material_property%max_permfactor)
+              call InputErrorMsg(input,option,'max permfactor','PERM_FACTOR')
+            case default
+              option%io_buffer = 'Keyword (' // trim(word) // &
+                                 ') not recognized in MATERIAL_PROPERTY,' // &
+                                 'PERM_FACTOR'
+              call printErrMsg(option)
+          end select
+        enddo
       case('YOUNGS_MODULUS') 
         call InputReadDouble(input,option, &
                              material_property%youngs_modulus)
@@ -394,7 +435,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword', &
-                             'MATERIAL_PROPERTY,PERMEABILITY')   
+                             'MATERIAL_PROPERTY,SECONDARY_CONTINUUM')   
           select case(trim(word))
             case('TYPE')
               call InputReadNChars(input,option, &

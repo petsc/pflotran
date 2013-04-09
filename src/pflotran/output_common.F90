@@ -34,7 +34,8 @@ module Output_Common_module
             OutputXMFHeader, &
             OutputXMFAttribute, &
             OutputXMFFooter, &
-            OutputGetFlowrates
+            OutputGetFlowrates, &
+            ExplicitGetCellCoordinates
   
 contains
 
@@ -569,6 +570,83 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
   endif
   
 end subroutine GetVertexCoordinates
+
+! ************************************************************************** !
+!
+! ExplicitGetCellCoordinates: Extracts cell coordinates for explicit grid
+! into a PetscVec
+! author: Satish Karra, LANL
+! date: 12/11/12
+!
+! ************************************************************************** !
+subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
+
+  use Grid_module
+  use Option_module
+  use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(grid_type) :: grid
+  Vec :: vec
+  PetscInt :: direction
+  type(option_type) :: option
+  
+  PetscInt :: ivertex
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt, allocatable :: indices(:)
+  PetscReal, allocatable :: values(:)
+  PetscErrorCode :: ierr  
+  
+  if (option%mycommsize == 1) then
+    call VecGetArrayF90(vec,vec_ptr,ierr)
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%ngmax
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%ngmax
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%ngmax
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
+        enddo
+    end select
+    call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  else
+    ! initialize to -999 to catch bugs
+    call VecSet(vec,-999.d0,ierr)
+    allocate(values(grid%nlmax))
+    allocate(indices(grid%nlmax))
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%nlmax
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%nlmax
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%nlmax
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
+        enddo
+    end select
+    indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
+    call VecSetValues(vec,grid%nlmax,indices,values,INSERT_VALUES,ierr)
+    call VecAssemblyBegin(vec,ierr)
+    deallocate(values)
+    deallocate(indices)
+    call VecAssemblyEnd(vec,ierr)
+  endif
+  
+  
+end subroutine ExplicitGetCellCoordinates
 
 ! ************************************************************************** !
 !> This routine returns a vector containing vertex ids in natural order of
