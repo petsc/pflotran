@@ -194,7 +194,6 @@ module Option_module
     PetscBool :: use_process_model
         
     ! Specify secondary continuum solver
-    PetscInt :: secondary_continuum_solver     
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
