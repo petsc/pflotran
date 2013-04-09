@@ -93,8 +93,9 @@ subroutine Init(simulation)
   type(solver_type), pointer :: tran_solver
 !geh: for some reason, changing type(realization) to class(realization) causes
 !     the code to crash with gfortran 4.7
-  class(realization_type), pointer :: realization
-!  type(realization_type), pointer :: realization
+!  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization_class_ptr
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -923,13 +924,14 @@ subroutine Init(simulation)
       cur_process_model => cur_process_model_coupler%process_model_list
       do
         if (.not.associated(cur_process_model)) exit
+        realization_class_ptr => realization
         select type(cur_process_model)
           class is (process_model_richards_type)
-            call cur_process_model%PMRichardsSetRealization(realization)
+            call cur_process_model%PMRichardsSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
           class is (process_model_rt_type)
-            call cur_process_model%PMRTSetRealization(realization)
+            call cur_process_model%PMRTSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(tran_stepper)
             tran_stepper%dt = option%tran_dt
         end select
@@ -1264,7 +1266,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
  
   implicit none
   
-  class(realization_type), pointer :: subsurface_realization
+  type(realization_type), pointer :: subsurface_realization
   type(stepper_type), pointer :: subsurface_flow_stepper
   type(stepper_type), pointer :: subsurface_tran_stepper
   type(regression_type), pointer :: subsurface_regression
@@ -1303,7 +1305,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
 
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
