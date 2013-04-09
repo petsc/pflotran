@@ -2859,7 +2859,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                         coef_in,coef_out)
 
-      
+      Res = 0.d0
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
@@ -3498,9 +3498,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       qsrc = patch%ss_fluid_fluxes(1,sum_connection)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype,coef_in,coef_out)
 
+      Jup = 0.d0
       ! coef_in is non-zero
       if (dabs(coef_in-1.d20) > 0.d0) then
-        Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)         
+        Jup(istartaq:iendaq,istartaq:iendaq) = coef_in* &
+          rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)
         if (reaction%ncoll > 0) then
           option%io_buffer = 'Source/sink not yet implemented for colloids'
           call printErrMsg(option)

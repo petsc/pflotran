@@ -583,6 +583,102 @@ end subroutine RichardsUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
+! RichardsUpdatePermPatch: Updates the permeability based on pressure
+! author: Satish Karra
+! Date: 01/09/12
+!
+! ************************************************************************** !
+subroutine RichardsUpdatePermPatch(realization)
+
+  use Grid_module
+  use Realization_class
+  use Option_module
+  use Discretization_module
+  use Patch_module
+  use Field_module
+  use Material_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(material_property_ptr_type), pointer :: material_property_array(:)
+  type(discretization_type), pointer :: discretization
+
+  PetscInt :: local_id, ghosted_id
+  PetscReal :: scale
+  PetscReal :: p_min, p_max, permfactor_max
+  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
+  PetscReal, pointer :: perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  discretization => realization%discretization
+  patch => realization%patch
+  field => realization%field
+  grid => patch%grid
+  material_property_array => realization%material_property_array
+
+  if (.not.associated(patch%imat)) then
+    option%io_buffer = 'Materials IDs not present in run.  Material ' // &
+      ' properties cannot be updated without material ids'
+    call printErrMsg(option)
+  endif
+  
+  call GridVecGetArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
+  call GridVecGetArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
+  call GridVecGetArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%perm_zz_loc,perm_zz_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    p_min = material_property_array(patch%imat(ghosted_id))%ptr%min_pressure
+    p_max = material_property_array(patch%imat(ghosted_id))%ptr%max_pressure
+    permfactor_max = material_property_array(patch%imat(ghosted_id))%ptr% &
+                     max_permfactor
+    if (xx_loc_p(local_id) < p_min) then
+      scale = 1
+    else 
+      if (xx_loc_p(local_id) < p_max) then
+        scale = (xx_loc_p(local_id) - p_min)/ &
+                (p_max - p_min)*(permfactor_max - 1.d0) + 1.d0
+      else
+        scale = permfactor_max
+      endif
+    endif
+    perm_xx_loc_p(ghosted_id) = perm0_xx_p(local_id)*scale
+    perm_yy_loc_p(ghosted_id) = perm0_yy_p(local_id)*scale
+    perm_zz_loc_p(ghosted_id) = perm0_zz_p(local_id)*scale
+  enddo
+  
+  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_zz_loc,perm_zz_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+
+  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
+                                  field%perm_xx_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc, &
+                                  field%perm_yy_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc, &
+                                  field%perm_zz_loc,ONEDOF)
+  
+end subroutine RichardsUpdatePermPatch
+
+
+! ************************************************************************** !
+!
 ! RichardsUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
@@ -845,6 +941,10 @@ subroutine RichardsUpdateSolutionPatch(realization)
 
   if (realization%option%compute_mass_balance_new) then
     call RichardsUpdateMassBalancePatch(realization)
+  endif
+  
+  if (realization%option%update_flow_perm) then
+    call RichardsUpdatePermPatch(realization)
   endif
 
 end subroutine RichardsUpdateSolutionPatch

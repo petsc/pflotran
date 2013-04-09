@@ -3427,13 +3427,13 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
         ! qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         r_p((local_id-1)*option%nflowdof + jh2o) =  &
                                      r_p((local_id-1)*option%nflowdof + jh2o) &
-                                     - qsrc1*volume_p(local_id)
+                                     - qsrc1
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-          qsrc1*aux_vars_ss(sum_connection)%h*volume_p(local_id)
+          qsrc1*aux_vars_ss(sum_connection)%h
       else
         ! extraction
         r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
-                                               - qsrc1*volume_p(local_id)
+                                               - qsrc1
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
                                         qsrc1*aux_vars(ghosted_id)%h* &
                                         volume_p(local_id)

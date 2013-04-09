@@ -3328,12 +3328,12 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         case(MASS_RATE_SS)
           r_p((local_id-1)*option%nflowdof + jh2o) = &
             r_p((local_id-1)*option%nflowdof + jh2o) - &
-            qsrc1*volume_p(local_id)
+            qsrc1
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
           r_p((local_id-1)*option%nflowdof + jh2o) = &
             r_p((local_id-1)*option%nflowdof + jh2o) - &
-            qsrc1*volume_p(local_id)
+            qsrc1
         case default
           write(string,*),source_sink%flow_condition%rate%itype
           option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
@@ -3353,11 +3353,11 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-              qsrc1*aux_vars_ss(sum_connection)%h*volume_p(local_id)
+              qsrc1*aux_vars_ss(sum_connection)%h
       else
         ! extraction
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-              qsrc1*aux_vars(ghosted_id)%h*volume_p(local_id)
+              qsrc1*aux_vars(ghosted_id)%h
       endif
 
     enddo

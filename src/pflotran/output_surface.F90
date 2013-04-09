@@ -803,7 +803,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization,var_list_type
     case (INSTANTANEOUS_VARS)
       string2=''
       write(string3,'(i4)') output_option%plot_number
-      xmf_filename = OutputFilename(output_option,option,'xmf','surf_aveg')
+      xmf_filename = OutputFilename(output_option,option,'xmf','surf')
     case (AVERAGED_VARS)
       string2='-aveg'
       write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
