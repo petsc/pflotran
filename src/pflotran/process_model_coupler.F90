@@ -145,7 +145,7 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
   PetscBool :: transient_plot_flag
   class(process_model_base_type), pointer :: cur_process_model
   
-  write(this%option%io_buffer,'(f12.2)') sync_time
+  write(this%option%io_buffer,'(es12.5)') sync_time
   this%option%io_buffer = 'ProcessModelCoupler%RunToTime(' // &
     trim(adjustl(this%option%io_buffer)) // ')'
   call printMsg(this%option)

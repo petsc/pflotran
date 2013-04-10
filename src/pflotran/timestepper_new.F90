@@ -514,7 +514,7 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   solver => timestepper%solver
   option => process_model%option
   
-  write(process_model%option%io_buffer,'(f12.2)') timestepper%dt
+  write(process_model%option%io_buffer,'(es12.5)') timestepper%dt
   process_model%option%io_buffer = 'StepperStepDT(' // &
     trim(adjustl(process_model%option%io_buffer)) // ')'
   call printMsg(process_model%option)  
