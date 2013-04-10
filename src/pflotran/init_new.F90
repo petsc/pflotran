@@ -79,6 +79,7 @@ subroutine Init(simulation)
   use Process_Model_Coupler_module
   use Process_Model_Richards_class
   use Process_Model_RT_class
+  use Process_Model_TH_class
   use Process_Model_Base_class
   use Process_Model_module
 
@@ -583,7 +584,7 @@ subroutine Init(simulation)
                                         SecondaryRTUpdateIterate, &
                                         realization,ierr)      
       endif
-      
+
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
         string = '-tran_snes_view'
@@ -888,7 +889,12 @@ subroutine Init(simulation)
   cur_process_model_coupler => ProcessModelCouplerCreate()
   cur_process_model_coupler%option => option
   if (option%nflowdof > 0) then
-    cur_process_model => PMRichardsCreate()
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        cur_process_model => PMRichardsCreate()
+      case(TH_MODE)
+        cur_process_model => PMTHCreate()
+    end select
     cur_process_model%option => realization%option
     cur_process_model%output_option => realization%output_option
     cur_process_model_coupler%process_model_list => cur_process_model
@@ -934,6 +940,10 @@ subroutine Init(simulation)
             call cur_process_model%PMRTSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(tran_stepper)
             tran_stepper%dt = option%tran_dt
+          class is (process_model_th_type)
+            call cur_process_model%PMTHSetRealization(realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(flow_stepper)
+            flow_stepper%dt = option%flow_dt
         end select
         call cur_process_model%Init()
         call SNESSetFunction( &

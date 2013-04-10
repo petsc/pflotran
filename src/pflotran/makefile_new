@@ -186,6 +186,7 @@ mode_aux_obj = \
 	${common_src}process_model_richards.o \
 	${common_src}process_model_rt.o \
 	${common_src}process_model_top.o \
+	${common_src}process_model_th.o \
 	${common_src}richards_aux.o \
 	${common_src}th_aux.o \
 	${common_src}thc_aux.o \
@@ -523,6 +524,10 @@ process_model_rt.o : process_model_base.o reactive_transport.o realization.o \
                      reaction_aux.o global.o condition.o
 process_model_top.o : process_model_base.o process_model_richards.o process_model_rt.o \
                       option.o realization.o richards.o option.o
+process_model_th.o : process_model_base.o th.o realization.o \
+                           communicator_base.o option.o discretization.o \
+                           structured_communicator.o unstructured_communicator.o \
+                           grid.o global.o condition.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
