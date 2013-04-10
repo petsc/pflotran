@@ -326,10 +326,10 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         case(EXPLICIT_UNSTRUCTURED_GRID)
           un_str_grid%explicit_grid => UGridExplicitCreate()
 #if 0          
-          call ExplicitUGridRead(un_str_grid%explicit_grid, &
+          call ExplicitUGridRead(un_str_grid, &
                                  discretization%filename,option)
 #else          
-          call ExplicitUGridReadInParallel(un_str_grid%explicit_grid, &
+          call ExplicitUGridReadInParallel(un_str_grid, &
                                  discretization%filename,option)
 #endif          
           grid%unstructured_grid => un_str_grid
