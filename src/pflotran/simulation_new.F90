@@ -333,6 +333,7 @@ subroutine FinalizeRun(this)
   use Timestepper_module
   use Process_Model_Base_class
   use Process_Model_Richards_class
+  use Process_Model_TH_class
   use Process_Model_RT_class
 
   implicit none
@@ -371,6 +372,9 @@ subroutine FinalizeRun(this)
         if (.not.associated(cur_process_model)) exit
         select type(cur_process_model)
           class is (process_model_richards_type)
+            realization => cur_process_model%realization
+            flow_stepper => cur_process_model_coupler%timestepper
+          class is (process_model_th_type)
             realization => cur_process_model%realization
             flow_stepper => cur_process_model_coupler%timestepper
           class is (process_model_rt_type)
