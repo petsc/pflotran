@@ -322,7 +322,7 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
     up = this%option%dpmxe/(this%option%dpmax+0.1)
     utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
     uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
-    ut = up
+    ut = min(up,utmp,uus)
   endif
   dtt = fac * dt * (1.d0 + ut)
 
