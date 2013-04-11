@@ -1,4 +1,4 @@
-module Process_Model_TH_class
+module Process_Model_THC_class
 
   use Process_Model_Base_class
 !geh: using TH_module here fails with gfortran (internal compiler error)
@@ -19,33 +19,33 @@ module Process_Model_TH_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(process_model_base_type) :: process_model_th_type
+  type, public, extends(process_model_base_type) :: process_model_thc_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
   contains
-    procedure, public :: Init => PMTHInit
-    procedure, public :: PMTHSetRealization
-    procedure, public :: InitializeRun => PMTHInitializeRun
-    procedure, public :: FinalizeRun => PMTHFinalizeRun
-    procedure, public :: InitializeTimestep => PMTHInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMTHFinalizeTimeStep
-    procedure, public :: Residual => PMTHResidual
-    procedure, public :: Jacobian => PMTHJacobian
-    procedure, public :: UpdateTimestep => PMTHUpdateTimestep
-    procedure, public :: PreSolve => PMTHPreSolve
-    procedure, public :: PostSolve => PMTHPostSolve
-    procedure, public :: AcceptSolution => PMTHAcceptSolution
-    procedure, public :: CheckUpdatePre => PMTHCheckUpdatePre
-    procedure, public :: CheckUpdatePost => PMTHCheckUpdatePost
-    procedure, public :: TimeCut => PMTHTimeCut
-    procedure, public :: UpdateSolution => PMTHUpdateSolution
-    procedure, public :: MaxChange => PMTHMaxChange
-    procedure, public :: ComputeMassBalance => PMTHComputeMassBalance
-    procedure, public :: Destroy => PMTHDestroy
-  end type process_model_th_type
+    procedure, public :: Init => PMTHCInit
+    procedure, public :: PMTHCSetRealization
+    procedure, public :: InitializeRun => PMTHCInitializeRun
+    procedure, public :: FinalizeRun => PMTHCFinalizeRun
+    procedure, public :: InitializeTimestep => PMTHCInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMTHCFinalizeTimeStep
+    procedure, public :: Residual => PMTHCResidual
+    procedure, public :: Jacobian => PMTHCJacobian
+    procedure, public :: UpdateTimestep => PMTHCUpdateTimestep
+    procedure, public :: PreSolve => PMTHCPreSolve
+    procedure, public :: PostSolve => PMTHCPostSolve
+    procedure, public :: AcceptSolution => PMTHCAcceptSolution
+    procedure, public :: CheckUpdatePre => PMTHCCheckUpdatePre
+    procedure, public :: CheckUpdatePost => PMTHCCheckUpdatePost
+    procedure, public :: TimeCut => PMTHCTimeCut
+    procedure, public :: UpdateSolution => PMTHCUpdateSolution
+    procedure, public :: MaxChange => PMTHCMaxChange
+    procedure, public :: ComputeMassBalance => PMTHCComputeMassBalance
+    procedure, public :: Destroy => PMTHCDestroy
+  end type process_model_thc_type
   
-  public :: PMTHCreate
+  public :: PMTHCCreate
   
 contains
 
@@ -58,30 +58,30 @@ contains
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-function PMTHCreate()
+function PMTHCCreate()
 
   implicit none
   
-  class(process_model_th_type), pointer :: PMTHCreate
+  class(process_model_thc_type), pointer :: PMTHCCreate
 
-  class(process_model_th_type), pointer :: th_pm
+  class(process_model_thc_type), pointer :: thc_pm
   
-#ifdef PM_TH_DEBUG
-  print *, 'PMTHCreate()'
+#ifdef PM_THC_DEBUG
+  print *, 'PMTHCCreate()'
 #endif  
 
-  allocate(th_pm)
-  nullify(th_pm%option)
-  nullify(th_pm%output_option)
-  nullify(th_pm%realization)
-  nullify(th_pm%comm1)
-  nullify(th_pm%commN)
+  allocate(thc_pm)
+  nullify(thc_pm%option)
+  nullify(thc_pm%output_option)
+  nullify(thc_pm%realization)
+  nullify(thc_pm%comm1)
+  nullify(thc_pm%commN)
 
-  call PMBaseCreate(th_pm)
+  call PMBaseCreate(thc_pm)
 
-  PMTHCreate => th_pm
+  PMTHCCreate => thc_pm
   
-end function PMTHCreate
+end function PMTHCCreate
 
 ! ************************************************************************** !
 !> This routine 
@@ -91,7 +91,7 @@ end function PMTHCreate
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHInit(this)
+subroutine PMTHCInit(this)
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -102,10 +102,10 @@ subroutine PMTHInit(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%Init()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%Init()')
 #endif
   
 #ifndef SIMPLIFY  
@@ -122,7 +122,7 @@ subroutine PMTHInit(this)
   call this%commN%SetDM(this%realization%discretization%dm_nflowdof)
 #endif
 
-end subroutine PMTHInit
+end subroutine PMTHCInit
 
 ! ************************************************************************** !
 !> This routine 
@@ -132,18 +132,18 @@ end subroutine PMTHInit
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHSetRealization(this,realization)
+subroutine PMTHCSetRealization(this,realization)
 
   use Realization_class
   use Grid_module
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   class(realization_type), pointer :: realization
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHSetRealization%SetRealization()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHCSetRealization%SetRealization()')
 #endif
   
   this%realization => realization
@@ -152,7 +152,7 @@ subroutine PMTHSetRealization(this,realization)
   this%solution_vec = realization%field%flow_xx
   this%residual_vec = realization%field%flow_r
   
-end subroutine PMTHSetRealization
+end subroutine PMTHCSetRealization
 
 ! ************************************************************************** !
 !> This routine 
@@ -162,17 +162,17 @@ end subroutine PMTHSetRealization
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHInitializeTimestep(this)
+subroutine PMTHCInitializeTimestep(this)
 
-  use TH_module, only : THInitializeTimestep
+  use THC_module, only : THCInitializeTimestep
   use Global_module
   
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHInitializeTimestep%InitializeTimestep()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHCInitializeTimestep%InitializeTimestep()')
 #endif
 
   this%option%flow_dt = this%option%dt
@@ -199,9 +199,9 @@ subroutine PMTHInitializeTimestep(this)
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
-  call THInitializeTimestep(this%realization)
+  call THCInitializeTimestep(this%realization)
   
-end subroutine PMTHInitializeTimestep
+end subroutine PMTHCInitializeTimestep
 
 ! ************************************************************************** !
 !> This routine 
@@ -211,38 +211,38 @@ end subroutine PMTHInitializeTimestep
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHPreSolve(this)
+subroutine PMTHCPreSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
 
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHPreSolve%PreSolve()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHCPreSolve%PreSolve()')
 #endif
 
-end subroutine PMTHPreSolve
+end subroutine PMTHCPreSolve
 
 ! ************************************************************************** !
 !
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMTHPostSolve(this)
+subroutine PMTHCPostSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%PostSolve()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%PostSolve()')
 #endif
   
-end subroutine PMTHPostSolve
+end subroutine PMTHCPostSolve
 
 ! ************************************************************************** !
 !> This routine 
@@ -252,24 +252,24 @@ end subroutine PMTHPostSolve
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHFinalizeTimestep(this)
+subroutine PMTHCFinalizeTimestep(this)
 
-  use TH_module, only : THMaxChange
+  use THC_module, only : THCMaxChange
   use Global_module
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%FinalizeTimestep()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%FinalizeTimestep()')
 #endif
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
-  call THMaxChange(this%realization)
+  call THCMaxChange(this%realization)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
   endif
@@ -278,7 +278,7 @@ subroutine PMTHFinalizeTimestep(this)
       this%option%dpmax
   endif  
   
-end subroutine PMTHFinalizeTimestep
+end subroutine PMTHCFinalizeTimestep
 
 ! ************************************************************************** !
 !> This routine 
@@ -288,21 +288,21 @@ end subroutine PMTHFinalizeTimestep
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-function PMTHAcceptSolution(this)
+function PMTHCAcceptSolution(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
-  PetscBool :: PMTHAcceptSolution
+  PetscBool :: PMTHCAcceptSolution
   
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTHs%AcceptSolution()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHCs%AcceptSolution()')
 #endif
   ! do nothing
-  PMTHAcceptSolution = PETSC_TRUE
+  PMTHCAcceptSolution = PETSC_TRUE
   
-end function PMTHAcceptSolution
+end function PMTHCAcceptSolution
 
 ! ************************************************************************** !
 !> This routine 
@@ -312,12 +312,12 @@ end function PMTHAcceptSolution
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMTHCUpdateTimestep(this,dt,dt_max,iacceleration, &
                               num_newton_iterations,tfac)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -334,8 +334,8 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: dt_tfac
   PetscInt :: ifac
   
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%UpdateTimestep()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%UpdateTimestep()')
 #endif
   
   fac = 0.5d0
@@ -357,7 +357,7 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
       
   dt = dtt
   
-end subroutine PMTHUpdateTimestep
+end subroutine PMTHCUpdateTimestep
 
 ! ************************************************************************** !
 !> This routine 
@@ -367,17 +367,17 @@ end subroutine PMTHUpdateTimestep
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-recursive subroutine PMTHInitializeRun(this)
+recursive subroutine PMTHCInitializeRun(this)
 
-  use TH_module, only : THUpdateSolution
+  use THC_module, only : THCUpdateSolution
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
  
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%InitializeRun()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%InitializeRun()')
 #endif
   
   ! restart
@@ -387,10 +387,10 @@ recursive subroutine PMTHInitializeRun(this)
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
   endif  
-  call THUpdateSolution(this%realization)
+  call THCUpdateSolution(this%realization)
 #endif  
     
-end subroutine PMTHInitializeRun
+end subroutine PMTHCInitializeRun
 
 ! ************************************************************************** !
 !> This routine 
@@ -400,14 +400,14 @@ end subroutine PMTHInitializeRun
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-recursive subroutine PMTHFinalizeRun(this)
+recursive subroutine PMTHCFinalizeRun(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%FinalizeRun()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%FinalizeRun()')
 #endif
   
   ! do something here
@@ -416,7 +416,7 @@ recursive subroutine PMTHFinalizeRun(this)
     call this%next%FinalizeRun()
   endif  
   
-end subroutine PMTHFinalizeRun
+end subroutine PMTHCFinalizeRun
 
 ! ************************************************************************** !
 !> This routine 
@@ -426,25 +426,25 @@ end subroutine PMTHFinalizeRun
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHResidual(this,snes,xx,r,ierr)
+subroutine PMTHCResidual(this,snes,xx,r,ierr)
 
-  use TH_module, only : THResidual
+  use THC_module, only : THCResidual
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%Residual()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%Residual()')
 #endif
   
-  call THResidual(snes,xx,r,this%realization,ierr)
+  call THCResidual(snes,xx,r,this%realization,ierr)
 
-end subroutine PMTHResidual
+end subroutine PMTHCResidual
 
 ! ************************************************************************** !
 !> This routine 
@@ -454,26 +454,26 @@ end subroutine PMTHResidual
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMTHCJacobian(this,snes,xx,A,B,flag,ierr)
 
-  use TH_module, only : THJacobian
+  use THC_module, only : THCJacobian
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
   MatStructure flag
   PetscErrorCode :: ierr
   
-#ifdef PM_TH_DEBUG
-  call printMsg(this%option,'PMTH%Jacobian()')
+#ifdef PM_THC_DEBUG
+  call printMsg(this%option,'PMTHC%Jacobian()')
 #endif
   
-  call THJacobian(snes,xx,A,B,flag,this%realization,ierr)
+  call THCJacobian(snes,xx,A,B,flag,this%realization,ierr)
 
-end subroutine PMTHJacobian
+end subroutine PMTHCJacobian
 
 ! ************************************************************************** !
 !> This routine 
@@ -483,28 +483,28 @@ end subroutine PMTHJacobian
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMTHCCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
-  use TH_module, only : THCheckUpdatePre
+  use THC_module, only : THCCheckUpdatePre
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%CheckUpdatePre()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%CheckUpdatePre()')
 #endif
   
-#ifndef SIMPLIFY  
-  call THCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+#ifndef SIMPLIFY
+  call THCCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
 #endif
 
-end subroutine PMTHCheckUpdatePre
+end subroutine PMTHCCheckUpdatePre
     
 ! ************************************************************************** !
 !> This routine 
@@ -514,14 +514,14 @@ end subroutine PMTHCheckUpdatePre
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
+subroutine PMTHCCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
 
-  use TH_module, only : THCheckUpdatePost
+  use THC_module, only : THCCheckUpdatePost
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -530,16 +530,16 @@ subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%CheckUpdatePost()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%CheckUpdatePost()')
 #endif
   
 #ifndef SIMPLIFY  
-  call THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+  call THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
 #endif
 
-end subroutine PMTHCheckUpdatePost
+end subroutine PMTHCCheckUpdatePost
   
 ! ************************************************************************** !
 !> This routine 
@@ -549,23 +549,23 @@ end subroutine PMTHCheckUpdatePost
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHTimeCut(this)
+subroutine PMTHCTimeCut(this)
 
-  use TH_module, only : THTimeCut
+  use THC_module, only : THCTimeCut
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%TimeCut()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%TimeCut()')
 #endif
   
   this%option%flow_dt = this%option%dt
 
-  call THTimeCut(this%realization)
+  call THCTimeCut(this%realization)
 
-end subroutine PMTHTimeCut
+end subroutine PMTHCTimeCut
     
 ! ************************************************************************** !
 !> This routine 
@@ -575,19 +575,19 @@ end subroutine PMTHTimeCut
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHUpdateSolution(this)
+subroutine PMTHCUpdateSolution(this)
 
-  use TH_module, only : THUpdateSolution
+  use THC_module, only : THCUpdateSolution
   use Condition_module
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%UpdateSolution()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%UpdateSolution()')
 #endif
 
   ! begin from RealizationUpdate()
@@ -600,9 +600,9 @@ subroutine PMTHUpdateSolution(this)
     call RealizUpdateUniformVelocity(this%realization)
   endif  
   ! end from RealizationUpdate()
-  call THUpdateSolution(this%realization)
+  call THCUpdateSolution(this%realization)
 
-end subroutine PMTHUpdateSolution     
+end subroutine PMTHCUpdateSolution     
 
 ! ************************************************************************** !
 !> This routine 
@@ -612,21 +612,21 @@ end subroutine PMTHUpdateSolution
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHMaxChange(this)
+subroutine PMTHCMaxChange(this)
 
-  use TH_module, only : THMaxChange
+  use THC_module, only : THCMaxChange
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%MaxChange()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%MaxChange()')
 #endif
 
-  call THMaxChange(this%realization)
+  call THCMaxChange(this%realization)
 
-end subroutine PMTHMaxChange
+end subroutine PMTHCMaxChange
     
 ! ************************************************************************** !
 !> This routine 
@@ -636,24 +636,24 @@ end subroutine PMTHMaxChange
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHComputeMassBalance(this,mass_balance_array)
+subroutine PMTHCComputeMassBalance(this,mass_balance_array)
 
-  use TH_module, only : THComputeMassBalance
+  use THC_module, only : THCComputeMassBalance
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTH%ComputeMassBalance()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHC%ComputeMassBalance()')
 #endif
 
 #ifndef SIMPLIFY  
-  call THComputeMassBalance(this%realization,mass_balance_array)
+  call THCComputeMassBalance(this%realization,mass_balance_array)
 #endif
 
-end subroutine PMTHComputeMassBalance
+end subroutine PMTHCComputeMassBalance
 
 ! ************************************************************************** !
 !> This routine 
@@ -663,28 +663,28 @@ end subroutine PMTHComputeMassBalance
 !!
 !! date: 03/90/13
 ! ************************************************************************** !
-subroutine PMTHDestroy(this)
+subroutine PMTHCDestroy(this)
 
-  use TH_module, only : THDestroy
+  use THC_module, only : THCDestroy
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(process_model_thc_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
 
-#ifdef PM_TH_DEBUG  
-  call printMsg(this%option,'PMTHDestroy()')
+#ifdef PM_THC_DEBUG  
+  call printMsg(this%option,'PMTHCDestroy()')
 #endif
 
 #ifndef SIMPLIFY 
-  call THDestroy(this%realization%patch)
+  call THCDestroy(this%realization%patch)
 #endif
   call this%comm1%Destroy()
   call this%commN%Destroy()
 
-end subroutine PMTHDestroy
+end subroutine PMTHCDestroy
 
-end module Process_Model_TH_class
+end module Process_Model_THC_class
