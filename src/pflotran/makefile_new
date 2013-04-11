@@ -288,7 +288,7 @@ misc_obj = \
 	${common_src}field.o \
 	${common_src}geometry.o \
 	${common_src}hydrostatic.o \
-	${common_src}init_new.o \
+	${common_src}init.o \
 	${common_src}level.o \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
@@ -431,7 +431,7 @@ immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
               saturation_function.o
 immobile.o : immobile_aux.o option.o string.o input.o utility.o
 immobile_aux.o : option.o utility.o
-init_new.o : option.o grid.o debug.o realization.o solver.o timestepper_new.o \
+init.o : option.o grid.o debug.o realization.o solver.o timestepper_new.o \
          simulation_new.o input.o material.o region.o condition.o convergence.o \
          waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
          co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
@@ -510,7 +510,7 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           reactive_transport_aux.o dataset_aux.o thc_aux.o thmc_aux.o \
           global_aux.o mphase_aux.o immis_aux.o miscible_aux.o mineral_aux.o \
           surface_complexation_aux.o surface_auxiliary.o
-pflotran_new.o : simulation_new.o output.o init_new.o timestepper_new.o logging.o \
+pflotran_new.o : simulation_new.o output.o init.o timestepper_new.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o
 process_model_base.o : option.o output_aux.o realization_base.o
@@ -609,7 +609,7 @@ solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o \
 solid_solution_aux.o : mineral_aux.o
 solver.o : option.o field.o input.o string.o
 stochastic.o : simulation_new.o option.o realization.o timestepper_new.o \
-               init_new.o logging.o regression.o
+               init.o logging.o regression.o
 stochastic_aux.o : simulation_new.o input.o option.o
 strata.o : input.o region.o material.o
 string.o :

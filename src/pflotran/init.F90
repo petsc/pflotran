@@ -85,6 +85,17 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
 #endif
 
+#ifdef PROCESS_MODEL
+  use Synchronizer_module
+  use Process_Model_Coupler_module
+  use Process_Model_Richards_class
+  use Process_Model_RT_class
+  use Process_Model_TH_class
+  use Process_Model_THC_class
+  use Process_Model_Base_class
+  use Process_Model_module
+#endif
+
   implicit none
   
   type(simulation_type) :: simulation
@@ -98,6 +109,7 @@ subroutine Init(simulation)
 !     the code to crash with gfortran 4.7
 !geh  class(realization_type), pointer :: realization
   type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization_class_ptr
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -116,11 +128,18 @@ subroutine Init(simulation)
   PetscReal :: r1, r2, r3, r4, r5, r6
   PetscReal :: min_value
   SNESLineSearch :: linesearch
+
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer               :: surf_flow_stepper
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
+#endif
+
+#ifdef PROCESS_MODEL
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
+  class(process_model_base_type), pointer :: cur_process_model
 #endif
 
   ! popped in TimestepperInitializeRun()
@@ -142,17 +161,18 @@ subroutine Init(simulation)
   flow_stepper => simulation%flow_stepper
   tran_stepper => simulation%tran_stepper
   realization => simulation%realization
-  discretization => realization%discretization
-  option => realization%option
-  field => realization%field
-  debug => realization%debug
-  input => realization%input
 #ifdef SURFACE_FLOW
   surf_realization  => simulation%surf_realization
   surf_flow_stepper => simulation%surf_flow_stepper
   surf_field        => surf_realization%surf_field  
 #endif
 #endif
+
+  discretization => realization%discretization
+  option => realization%option
+  field => realization%field
+  debug => realization%debug
+  input => realization%input
   
   option%init_stage = PETSC_TRUE
 
@@ -784,52 +804,6 @@ subroutine Init(simulation)
 
   call PetscLogEventBegin(logging%event_setup,ierr)
   
-#if 0  
-  !----------------------------------------------------------------------------!
-  ! This section for setting up new process model approach
-  !----------------------------------------------------------------------------!
-  cur_process_model_coupler => ProcessModelCouplerCreate()
-  simulation%process_model_coupler_list => cur_process_model_coupler
-  simulation%synchronizer => SynchronizerCreate()
-  simulation%synchronizer%process_model_coupler_list => cur_process_model_coupler
-  simulation%synchronizer%option => simulation%option
-  simulation%synchronizer%output_option => simulation%output_option
-  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
-  if (option%nflowdof > 0) then
-    cur_process_model => PMRichardsCreate()
-  endif
-  if (option%ntrandof > 0) then
-    if (associated(cur_process_model)) then
-      cur_process_model%next => PMRTCreate()
-    else
-      cur_process_model => PMRTCreate()
-    endif
-  endif  
-  cur_process_model_coupler%process_model_list => cur_process_model
-  
-  cur_process_model_coupler => simulation%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    cur_process_model => cur_process_model_coupler%process_model_list
-    do
-      if (.not.associated(cur_process_model)) exit
-      select type(cur_process_model)
-        class is (process_model_richards_type)
-          call cur_process_model%PMRichardsSetRealization(realization)
-          call cur_process_model%SetTimestepper(flow_stepper)
-        class is (process_model_rt_type)
-          call cur_process_model%PMRTSetRealization(realization)
-          call cur_process_model%SetTimestepper(tran_stepper)
-      end select
-      call cur_process_model%Init()
-      cur_process_model => cur_process_model%next
-    enddo
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
-  !----------------------------------------------------------------------------!
-  !----------------------------------------------------------------------------!
-#endif
-
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
@@ -1171,6 +1145,105 @@ subroutine Init(simulation)
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr)
+
+#ifdef PROCESS_MODEL
+  !----------------------------------------------------------------------------!
+  ! This section for setting up new process model approach
+  !----------------------------------------------------------------------------!
+  simulation%output_option => realization%output_option
+  simulation%synchronizer => SynchronizerCreate()
+  simulation%synchronizer%option => realization%option
+  simulation%synchronizer%output_option => realization%output_option
+!  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
+  simulation%synchronizer%waypoints => realization%waypoints
+  nullify(cur_process_model)
+  cur_process_model_coupler => ProcessModelCouplerCreate()
+  cur_process_model_coupler%option => option
+  if (option%nflowdof > 0) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        cur_process_model => PMRichardsCreate()
+      case(TH_MODE)
+        cur_process_model => PMTHCreate()
+      case(THC_MODE)
+        cur_process_model => PMTHCCreate()
+    end select
+    cur_process_model%option => realization%option
+    cur_process_model%output_option => realization%output_option
+    cur_process_model_coupler%process_model_list => cur_process_model
+    cur_process_model_coupler%pm_ptr%ptr => cur_process_model
+    cur_process_model_coupler%depth = 0
+  endif
+  if (option%ntrandof > 0) then
+    cur_process_model => PMRTCreate()
+    cur_process_model%output_option => realization%output_option
+    cur_process_model%option => realization%option
+    if (associated(cur_process_model_coupler%process_model_list)) then
+      cur_process_model_coupler%below => ProcessModelCouplerCreate()
+      cur_process_model_coupler%below%option => option
+      cur_process_model_coupler%below%process_model_list => cur_process_model
+      cur_process_model_coupler%below%pm_ptr%ptr => cur_process_model
+      cur_process_model_coupler%below%depth = 1
+    else
+      cur_process_model_coupler%process_model_list => cur_process_model
+      cur_process_model_coupler%pm_ptr%ptr => cur_process_model
+      cur_process_model_coupler%depth = 0
+    endif
+  endif  
+  simulation%process_model_coupler_list => cur_process_model_coupler
+  simulation%synchronizer%process_model_coupler_list => &
+    cur_process_model_coupler
+  
+  cur_process_model_coupler_top => simulation%process_model_coupler_list
+  do
+    if (.not.associated(cur_process_model_coupler_top)) exit
+    cur_process_model_coupler => cur_process_model_coupler_top
+    do
+      if (.not.associated(cur_process_model_coupler)) exit
+      cur_process_model => cur_process_model_coupler%process_model_list
+      do
+        if (.not.associated(cur_process_model)) exit
+        realization_class_ptr => realization
+        select type(cur_process_model)
+          class is (process_model_richards_type)
+            call cur_process_model%PMRichardsSetRealization( &
+                                                         realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(flow_stepper)
+            flow_stepper%dt = option%flow_dt
+          class is (process_model_rt_type)
+            call cur_process_model%PMRTSetRealization(realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(tran_stepper)
+            tran_stepper%dt = option%tran_dt
+          class is (process_model_th_type)
+            call cur_process_model%PMTHSetRealization(realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(flow_stepper)
+            flow_stepper%dt = option%flow_dt
+          class is (process_model_thc_type)
+            call cur_process_model%PMTHCSetRealization(realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(flow_stepper)
+            flow_stepper%dt = option%flow_dt
+        end select
+        call cur_process_model%Init()
+        call SNESSetFunction( &
+                           cur_process_model_coupler%timestepper%solver%snes, &
+                           cur_process_model%residual_vec, &
+                           PMResidual, &
+                           cur_process_model_coupler%pm_ptr,ierr)
+        call SNESSetJacobian( &
+                           cur_process_model_coupler%timestepper%solver%snes, &
+                           cur_process_model_coupler%timestepper%solver%J, &
+                           cur_process_model_coupler%timestepper%solver%Jpre, &
+                           PMJacobian, &
+                           cur_process_model_coupler%pm_ptr,ierr)
+        cur_process_model => cur_process_model%next
+      enddo
+      cur_process_model_coupler => cur_process_model_coupler%below
+    enddo
+    cur_process_model_coupler_top => cur_process_model_coupler_top%next
+  enddo
+  !----------------------------------------------------------------------------!
+  !----------------------------------------------------------------------------!
+#endif  
 
 end subroutine Init
 
