@@ -80,6 +80,7 @@ subroutine Init(simulation)
   use Process_Model_Richards_class
   use Process_Model_RT_class
   use Process_Model_TH_class
+  use Process_Model_THC_class
   use Process_Model_Base_class
   use Process_Model_module
 
@@ -894,6 +895,8 @@ subroutine Init(simulation)
         cur_process_model => PMRichardsCreate()
       case(TH_MODE)
         cur_process_model => PMTHCreate()
+      case(THC_MODE)
+        cur_process_model => PMTHCCreate()
     end select
     cur_process_model%option => realization%option
     cur_process_model%output_option => realization%output_option
@@ -942,6 +945,10 @@ subroutine Init(simulation)
             tran_stepper%dt = option%tran_dt
           class is (process_model_th_type)
             call cur_process_model%PMTHSetRealization(realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(flow_stepper)
+            flow_stepper%dt = option%flow_dt
+          class is (process_model_thc_type)
+            call cur_process_model%PMTHCSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
         end select

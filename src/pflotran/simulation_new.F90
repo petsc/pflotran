@@ -334,6 +334,7 @@ subroutine FinalizeRun(this)
   use Process_Model_Base_class
   use Process_Model_Richards_class
   use Process_Model_TH_class
+  use Process_Model_THC_class
   use Process_Model_RT_class
 
   implicit none
@@ -375,6 +376,9 @@ subroutine FinalizeRun(this)
             realization => cur_process_model%realization
             flow_stepper => cur_process_model_coupler%timestepper
           class is (process_model_th_type)
+            realization => cur_process_model%realization
+            flow_stepper => cur_process_model_coupler%timestepper
+          class is (process_model_thc_type)
             realization => cur_process_model%realization
             flow_stepper => cur_process_model_coupler%timestepper
           class is (process_model_rt_type)
