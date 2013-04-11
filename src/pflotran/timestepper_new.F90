@@ -37,6 +37,7 @@ module Timestepper_module
     PetscReal :: dt_max
     PetscReal :: cfl_limiter
     PetscReal :: cfl_limiter_ts
+    PetscBool :: revert_dt
     
     PetscBool :: init_to_steady_state
     PetscBool :: run_as_steady_state
@@ -57,7 +58,6 @@ module Timestepper_module
     
     type(waypoint_type), pointer :: cur_waypoint
     type(waypoint_type), pointer :: prev_waypoint
-    PetscBool :: match_waypoint
 
     type(convergence_context_type), pointer :: convergence_context
 
@@ -133,7 +133,7 @@ function TimestepperCreate()
   nullify(stepper%convergence_context)
   nullify(stepper%cur_waypoint)
   nullify(stepper%prev_waypoint)
-  stepper%match_waypoint = PETSC_FALSE
+  stepper%revert_dt = PETSC_FALSE
   
   stepper%solver => SolverCreate()
   
@@ -174,7 +174,7 @@ subroutine TimestepperReset(stepper,dt_min)
   stepper%cfl_limiter_ts = 1.d20
 
   stepper%time_step_cut_flag = PETSC_FALSE
-  stepper%match_waypoint = PETSC_FALSE
+  stepper%revert_dt = PETSC_FALSE
 
 end subroutine TimestepperReset
 
@@ -383,14 +383,14 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   
   if (timestepper%time_step_cut_flag) then
     timestepper%time_step_cut_flag = PETSC_FALSE
-    timestepper%match_waypoint = PETSC_FALSE ! reset back to false
+    timestepper%revert_dt = PETSC_FALSE ! reset back to false
     timestepper%cur_waypoint => timestepper%prev_waypoint
   else
     ! if the maximum time step size decreased in the past step, need to set
     ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-    if (timestepper%match_waypoint) then
+    if (timestepper%revert_dt) then
       timestepper%dt = min(timestepper%prev_dt,timestepper%dt_max)
-      timestepper%match_waypoint = PETSC_FALSE
+      timestepper%revert_dt = PETSC_FALSE
     endif
   endif
   
@@ -427,16 +427,30 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
       target_time = target_time - dt
       ! set new time step size based on max time
       dt = max_time - target_time
-      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+      if (dt > dt_max .and. &
+          dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
         dt = dt_max                    ! error from waypoint%time - time
         target_time = target_time + dt
       else
         target_time = max_time
         if (equal_to_or_exceeds_waypoint) then
-          if (force_to_match_waypoint) timestepper%match_waypoint = PETSC_TRUE
+          ! Since the time step was cut to match the waypoint, we want to set 
+          ! the time step back to its prior value after the waypoint is met.
+          ! %revert_dt is a flag that does so above.
+          if (force_to_match_waypoint) timestepper%revert_dt = PETSC_TRUE
           if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
           if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
         endif
+        if (equal_to_or_exceeds_sync_time) then
+          ! If the time step was cut to match the sync time, we want to set
+          ! the time step back to its prior value.  However, if the time step
+          ! is close to its full previous value, this constraint is unnecessary
+          ! and limits the ability of process model couplers "below" to catch up
+          ! with those above.  Thus the conditional (dt < .99 prev_dt) below.
+          if (dt < 0.99d0 * timestepper%prev_dt) then
+            timestepper%revert_dt = PETSC_TRUE
+          endif
+        endif        
         if (max_time >= cur_waypoint%time) then
           cur_waypoint => cur_waypoint%next
         endif
