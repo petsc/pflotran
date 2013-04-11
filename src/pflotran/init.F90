@@ -1762,7 +1762,7 @@ subroutine InitReadInput(simulation)
 !......................
 
       case('DFN')
-        option%dfn = PETSC_TRUE        
+        grid%unstructured_grid%grid_type = TWO_DIM_GRID        
         
 !......................
 

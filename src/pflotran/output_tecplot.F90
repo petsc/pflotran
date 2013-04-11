@@ -1386,7 +1386,7 @@ end subroutine WriteTecplotUGridVertices
 !
 ! WriteTecplotExpGridElements: Writes unstructured explicit grid elements
 ! author: Satish Karra, LANL
-! date: 12/17/12
+! date: 04/11/13
 !
 ! ************************************************************************** !
 subroutine WriteTecplotExpGridElements(fid,realization_base)
@@ -1422,10 +1422,10 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
       num_vertices = grid%unstructured_grid%explicit_grid% &
                        cell_connectivity(0,iconn)
       select case(num_vertices)
-        case(8)
+        case(EIGHT_INTEGER) ! Hex mesh
           temp_int = grid%unstructured_grid%explicit_grid% &
                        cell_connectivity(1:num_vertices,iconn)
-        case(6)
+        case(SIX_INTEGER)   ! Wedge 
           temp_int(1) = grid%unstructured_grid%explicit_grid% &
                           cell_connectivity(1,iconn)         
           temp_int(2) = grid%unstructured_grid%explicit_grid% &
@@ -1442,7 +1442,7 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
                           cell_connectivity(5,iconn) 
           temp_int(8) = grid%unstructured_grid%explicit_grid% &
                           cell_connectivity(6,iconn) 
-        case(5)
+        case(FIVE_INTEGER)  ! Pyramid
           do i = 1, 4
             temp_int(i) = grid%unstructured_grid%explicit_grid% &
                             cell_connectivity(i,iconn) 
@@ -1451,19 +1451,21 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
             temp_int(i) = grid%unstructured_grid%explicit_grid% &
                             cell_connectivity(5,iconn) 
           enddo
-        case(4)
+        case(FOUR_INTEGER)
           if (grid%unstructured_grid%grid_type == TWO_DIM_GRID) then ! Quad
             do i = 1, 4
               temp_int(i) = grid%unstructured_grid%explicit_grid% &
                               cell_connectivity(i,iconn) 
+            enddo
+            do i = 5, 8
+              temp_int(i) = temp_int(i-4)
             enddo
           else ! Tet
             do i = 1, 3
               temp_int(i) = grid%unstructured_grid%explicit_grid% &
                              cell_connectivity(i,iconn) 
             enddo
-            temp_int(4) = grid%unstructured_grid%explicit_grid% &
-                            cell_connectivity(3,iconn) 
+            temp_int(4) = temp_int(3)
             do i = 5, 8
               temp_int(i) = grid%unstructured_grid%explicit_grid% &
                               cell_connectivity(4,iconn) 
@@ -1474,10 +1476,12 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
             temp_int(i) = grid%unstructured_grid%explicit_grid% &
                             cell_connectivity(i,iconn) 
           enddo
-          temp_int(4) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(3,iconn) 
-        end select
-        write(fid,*) temp_int
+          temp_int(4) = temp_int(3)
+          do i = 5, 8
+            temp_int(i) = temp_int(i-4) 
+          enddo
+      end select
+      write(fid,*) temp_int
     enddo 
   endif
   
