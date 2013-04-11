@@ -188,6 +188,7 @@ module Option_module
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
+    PetscBool :: dfn                           ! If used for DFN or not
 
   end type option_type
   
@@ -509,6 +510,7 @@ subroutine OptionInitRealization(option)
   option%print_explicit_primal_grid = PETSC_FALSE
   option%print_explicit_dual_grid = PETSC_FALSE  
   option%secondary_continuum_solver = 1
+  option%dfn = PETSC_FALSE
 
   
 end subroutine OptionInitRealization

@@ -525,6 +525,10 @@ subroutine ExplicitUGridReadInParallel(unstructured_grid,filename,option)
   endif
   deallocate(temp_real_array)  
   
+  if (option%dfn) then ! If DFN are used then make the grid two dimensional
+    unstructured_grid%grid_type = TWO_DIM_GRID
+  endif
+  
   if (option%myrank == option%io_rank) then
     call InputReadFlotranString(input,option)
     ! read ELEMENTS card, we only use this for tecplot output
@@ -537,7 +541,7 @@ subroutine ExplicitUGridReadInParallel(unstructured_grid,filename,option)
     call InputErrorMsg(input,option,'number of elements',card)
         explicit_grid%num_elems = num_elems
     unstructured_grid%max_nvert_per_cell = 8 ! Initial guess
-    allocate(explicit_grid%cell_connectivity(unstructured_grid% &
+    allocate(explicit_grid%cell_connectivity(0:unstructured_grid% &
                                   max_nvert_per_cell,num_elems)) 
     do iconn = 1, num_elems
       call InputReadFlotranString(input,option)
@@ -555,8 +559,21 @@ subroutine ExplicitUGridReadInParallel(unstructured_grid,filename,option)
         case('T')
           num_vertices = 4
         case('Q')
+          if (unstructured_grid%grid_type /= TWO_DIM_GRID) then
+            option%io_buffer = '2D grids can only be used for surface' // &
+                               'or DFN'
+            call printErrMsg(option)
+          endif
           num_vertices = 4
+        case('TRI')
+          if (unstructured_grid%grid_type /= TWO_DIM_GRID) then
+            option%io_buffer = '2D grids can only be used for surface' // &
+                               'or DFN'
+            call printErrMsg(option)
+          endif
+          num_vertices = 3
       end select
+      explicit_grid%cell_connectivity(0,iconn) = num_vertices
       do ivertex = 1, num_vertices
         call InputReadInt(input,option,explicit_grid%cell_connectivity(ivertex,iconn))
         call InputErrorMsg(input,option,'vertex id',hint)

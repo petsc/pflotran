@@ -178,7 +178,7 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
                   trim(OutputFormatInt(grid%unstructured_grid%nmax)) // &
                   ', ELEMENTS=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
-        string2 = trim(string2) // ', ZONETYPE=FETRIANGLE'
+        string2 = trim(string2) // ', ZONETYPE=FEBRICK'
       endif  
       
       if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
@@ -1405,7 +1405,8 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch 
-  PetscInt :: iconn, num_elems, i
+  PetscInt, pointer :: temp_int(:)
+  PetscInt :: iconn, num_elems, i, num_vertices
   PetscErrorCode :: ierr
   
   patch => realization_base%patch
@@ -1414,12 +1415,73 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
   
   num_elems = grid%unstructured_grid%explicit_grid%num_elems
  
+  allocate(temp_int(grid%unstructured_grid%max_nvert_per_cell))
+  
   if (option%myrank == option%io_rank) then
     do iconn = 1, num_elems
-      write(fid,*) (grid%unstructured_grid% &
-                    explicit_grid%cell_connectivity(i,iconn), i = 1,3)
+      num_vertices = grid%unstructured_grid%explicit_grid% &
+                       cell_connectivity(0,iconn)
+      select case(num_vertices)
+        case(8)
+          temp_int = grid%unstructured_grid%explicit_grid% &
+                       cell_connectivity(1:num_vertices,iconn)
+        case(6)
+          temp_int(1) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(1,iconn)         
+          temp_int(2) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(1,iconn)  
+          temp_int(3) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(4,iconn) 
+          temp_int(4) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(4,iconn)
+          temp_int(5) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(3,iconn) 
+          temp_int(6) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(2,iconn) 
+          temp_int(7) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(5,iconn) 
+          temp_int(8) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(6,iconn) 
+        case(5)
+          do i = 1, 4
+            temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(i,iconn) 
+          enddo
+          do i = 5, 8
+            temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(5,iconn) 
+          enddo
+        case(4)
+          if (grid%unstructured_grid%grid_type == TWO_DIM_GRID) then ! Quad
+            do i = 1, 4
+              temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                              cell_connectivity(i,iconn) 
+            enddo
+          else ! Tet
+            do i = 1, 3
+              temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                             cell_connectivity(i,iconn) 
+            enddo
+            temp_int(4) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(3,iconn) 
+            do i = 5, 8
+              temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                              cell_connectivity(4,iconn) 
+            enddo
+          endif
+        case(3) ! Tri
+          do i = 1, 3
+            temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(i,iconn) 
+          enddo
+          temp_int(4) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(3,iconn) 
+        end select
+        write(fid,*) temp_int
     enddo 
   endif
+  
+  deallocate(temp_int)
    
 end subroutine WriteTecplotExpGridElements
 

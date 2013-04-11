@@ -1761,6 +1761,11 @@ subroutine InitReadInput(simulation)
         
 !......................
 
+      case('DFN')
+        option%dfn = PETSC_TRUE        
+        
+!......................
+
       case('SECONDARY_CONTINUUM_SOLVER')
         if (.not.option%use_mc) then
           option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can only be used ' // &
