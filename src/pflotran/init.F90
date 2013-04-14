@@ -94,6 +94,9 @@ subroutine Init(simulation)
   use Process_Model_THC_class
   use Process_Model_Base_class
   use Process_Model_module
+#ifdef SURFACE_FLOW
+  use Process_Model_Surface_Flow_class
+#endif
 #endif
 
   implicit none
@@ -134,10 +137,18 @@ subroutine Init(simulation)
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
+  class(surface_realization_type), pointer  :: surf_realization_class_ptr
+  PetscReal :: final_time
+  PetscReal :: time
+  PetscReal :: dt_max
+  type(waypoint_type), pointer :: waypoint
 #endif
 
 #ifdef PROCESS_MODEL
   type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(process_model_coupler_type), pointer :: surf_flow_process_model_coupler
+  type(process_model_coupler_type), pointer :: sub_flow_process_model_coupler
+  type(process_model_coupler_type), pointer :: sub_tran_process_model_coupler
   type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
   class(process_model_base_type), pointer :: cur_process_model
 #endif
@@ -153,7 +164,7 @@ subroutine Init(simulation)
   tran_stepper => TimestepperCreate()
   realization => RealizationCreate(simulation%option) 
 #ifdef SURFACE_FLOW
-  surf_realization  => SurfRealizCreate(option)
+  surf_realization  => SurfRealizCreate(simulation%option)
   surf_flow_stepper => TimestepperCreate()
   surf_field        => surf_realization%surf_field  
 #endif  
@@ -199,11 +210,6 @@ subroutine Init(simulation)
   
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
-#ifdef SURFACE_FLOW
-  surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
-  surf_realization%subsurf_filename = realization%discretization%filename
-  call SurfaceInitReadRequiredCards(surf_realization)
-#endif
 
   patch => realization%patch
 
@@ -244,7 +250,25 @@ subroutine Init(simulation)
     nullify(tran_stepper)
   endif
 
-#ifdef SURFACE_FLOW
+  ! initialize plot variables
+  realization%output_option%output_variable_list => OutputVariableListCreate()
+  realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
+
+  ! read in the remainder of the input file
+#ifndef SURFACE_FLOW
+
+  call InitReadInput(realization,flow_stepper,tran_stepper, &
+                     simulation%regression) 
+
+#else
+
+  ! --------- SURFACE_FLOW enabled -------------------
+  ! GB: InitReadInput() has surface-flow related text that can't be skipped
+  !     for now.
+  surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
+  surf_realization%subsurf_filename = realization%discretization%filename
+  call SurfaceInitReadRequiredCards(surf_realization)
+
   ! initialize surface-flow mode
   if (option%nsurfflowdof > 0) then
     surf_flow_solver => surf_flow_stepper%solver
@@ -256,28 +280,18 @@ subroutine Init(simulation)
 #endif
     nullify(surf_flow_solver)
   endif
-#endif
 
-  ! initialize plot variables
-  realization%output_option%output_variable_list => OutputVariableListCreate()
-  realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
-#ifdef SURFACE_FLOW
   ! initialize plot variables
   surf_realization%output_option%output_variable_list => &
     OutputVariableListCreate()
   surf_realization%output_option%aveg_output_variable_list => &
     OutputVariableListCreate()
-#endif
 
-  ! read in the remainder of the input file
-#ifdef SURFACE_FLOW
   call InitReadInput(realization,flow_stepper,tran_stepper, &
                      simulation%regression,surf_realization, &
-                     surf_flow_stepper) 
-#else
-  call InitReadInput(realization,flow_stepper,tran_stepper, &
-                     simulation%regression) 
-#endif  
+                     surf_flow_stepper)
+#endif
+
   call InputDestroy(realization%input)
 
   ! initialize reference density
@@ -597,8 +611,11 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
 #ifdef SURFACE_FLOW
-    if(option%nsurfflowdof>0) then
+    !
+    ! Setting up SNES or TS for surface-flow
+    !
 
+    if(option%nsurfflowdof>0) then
 
       if(option%surf_flow_explicit) then
 
@@ -619,7 +636,6 @@ subroutine Init(simulation)
         end select
         call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
                            surf_realization%waypoints%last%time,ierr)
-
       else
 
         ! Setup PETSc SNES for implicit surface flow solution
@@ -1000,7 +1016,7 @@ subroutine Init(simulation)
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
 #ifdef SURFACE_FLOW
-   if (option%nsurfflowdof>0) then
+   if (option%nsurfflowdof>0.and.(.not.option%surf_flow_explicit)) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -1088,17 +1104,15 @@ subroutine Init(simulation)
     call SurfRealizProcessMatProp(surf_realization)
     call SurfRealizProcessCouplers(surf_realization)
     call SurfRealizProcessConditions(surf_realization)
-    !call RealProcessFluidProperties(surf_realization)
     call SurfaceInitMatPropToRegions(surf_realization)
     call SurfRealizInitAllCouplerAuxVars(surf_realization)
-    !call SurfaceRealizationPrintCouplers(surf_realization)
 
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call SurfRealizAddWaypointsToList(surf_realization)
     call WaypointListFillIn(option,surf_realization%waypoints)
     call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoints)
     if (associated(flow_stepper)) then
-      simulation%surf_flow_stepper%cur_waypoint => surf_realization%waypoints%first
+       surf_flow_stepper%cur_waypoint => surf_realization%waypoints%first
     endif
 
     select case(option%iflowmode)
@@ -1126,14 +1140,14 @@ subroutine Init(simulation)
       case(RICHARDS_MODE)
         call SurfaceFlowUpdateAuxVars(surf_realization)
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceFlowCreateSurfSubsurfVec( &
-                          simulation%realization, surf_realization)
+          !!GB call SurfaceFlowCreateSurfSubsurfVec( &
+          !!GB                 simulation%realization, surf_realization)
         endif
       case(TH_MODE)
         call SurfaceTHUpdateAuxVars(surf_realization)
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceTHCreateSurfSubsurfVec( &
-                          simulation%realization, surf_realization)
+          !!GB call SurfaceTHCreateSurfSubsurfVec( &
+          !!GB                 simulation%realization, surf_realization)
         endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
@@ -1145,6 +1159,8 @@ subroutine Init(simulation)
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr)
+!  option%io_buffer='stopping for debugging'
+!  call printErrMsg(option)
 
 #ifdef PROCESS_MODEL
   !----------------------------------------------------------------------------!
@@ -1157,8 +1173,33 @@ subroutine Init(simulation)
 !  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
   simulation%synchronizer%waypoints => realization%waypoints
   nullify(cur_process_model)
-  cur_process_model_coupler => ProcessModelCouplerCreate()
-  cur_process_model_coupler%option => option
+
+  nullify(surf_flow_process_model_coupler)
+  nullify(sub_flow_process_model_coupler)
+  nullify(sub_tran_process_model_coupler)
+
+#ifdef SURFACE_FLOW
+  ! Create Surface-flow ProcessModel & ProcessModelCoupler
+  if (option%nsurfflowdof > 0) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        cur_process_model => PMSurfaceFlowCreate()
+      case(TH_MODE)
+        !cur_process_model => PMSurfaceTHCreate()
+    end select
+    cur_process_model%option => surf_realization%option
+    cur_process_model%output_option => surf_realization%output_option
+
+    surf_flow_process_model_coupler => ProcessModelCouplerCreate()
+    surf_flow_process_model_coupler%option => option
+    surf_flow_process_model_coupler%process_model_list => cur_process_model
+    surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
+    surf_flow_process_model_coupler%depth = 0
+    nullify(cur_process_model)
+  endif
+#endif
+
+  ! Create Subsurface-flow ProcessModel & ProcessModelCoupler
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -1170,30 +1211,56 @@ subroutine Init(simulation)
     end select
     cur_process_model%option => realization%option
     cur_process_model%output_option => realization%output_option
-    cur_process_model_coupler%process_model_list => cur_process_model
-    cur_process_model_coupler%pm_ptr%ptr => cur_process_model
-    cur_process_model_coupler%depth = 0
+
+    sub_flow_process_model_coupler => ProcessModelCouplerCreate()
+    sub_flow_process_model_coupler%option => option
+    sub_flow_process_model_coupler%process_model_list => cur_process_model
+    sub_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
+    nullify(cur_process_model)
   endif
+
+  ! Create Subsurface transport ProcessModel & ProcessModelCoupler
   if (option%ntrandof > 0) then
     cur_process_model => PMRTCreate()
     cur_process_model%output_option => realization%output_option
     cur_process_model%option => realization%option
-    if (associated(cur_process_model_coupler%process_model_list)) then
-      cur_process_model_coupler%below => ProcessModelCouplerCreate()
-      cur_process_model_coupler%below%option => option
-      cur_process_model_coupler%below%process_model_list => cur_process_model
-      cur_process_model_coupler%below%pm_ptr%ptr => cur_process_model
-      cur_process_model_coupler%below%depth = 1
-    else
-      cur_process_model_coupler%process_model_list => cur_process_model
-      cur_process_model_coupler%pm_ptr%ptr => cur_process_model
-      cur_process_model_coupler%depth = 0
+   
+    sub_tran_process_model_coupler => ProcessModelCouplerCreate()
+    sub_tran_process_model_coupler%option => option
+    sub_tran_process_model_coupler%process_model_list => cur_process_model
+    sub_tran_process_model_coupler%pm_ptr%ptr => cur_process_model
+    nullify(cur_process_model)
+  endif
+
+  ! Add the ProcessModelCouplers in a list
+  if (associated(surf_flow_process_model_coupler)) then
+    simulation%process_model_coupler_list => surf_flow_process_model_coupler
+    if (associated(sub_flow_process_model_coupler)) then
+      surf_flow_process_model_coupler%next => sub_flow_process_model_coupler
+      if (associated(sub_tran_process_model_coupler)) then
+        sub_flow_process_model_coupler%below => sub_tran_process_model_coupler
+      endif
+    else if (associated(sub_tran_process_model_coupler)) then
+      ! this will likely never be used (i.e. tranport without flow coupled
+      ! to surface)
+      surf_flow_process_model_coupler%next => sub_tran_process_model_coupler
     endif
-  endif  
-  simulation%process_model_coupler_list => cur_process_model_coupler
+  else if (associated(sub_flow_process_model_coupler)) then
+    simulation%process_model_coupler_list => sub_flow_process_model_coupler
+    if (associated(sub_tran_process_model_coupler)) then
+      sub_flow_process_model_coupler%below => sub_tran_process_model_coupler
+    endif
+  else
+    simulation%process_model_coupler_list => sub_tran_process_model_coupler
+  endif
+
   simulation%synchronizer%process_model_coupler_list => &
-    cur_process_model_coupler
+    simulation%process_model_coupler_list
   
+  ! For each ProcessModel, set:
+  ! - realization (subsurface or surface),
+  ! - stepper (flow/trans/surf_flow),
+  ! - SNES functions (Residual/Jacobain), or TS function (RHSFunction)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
@@ -1222,25 +1289,69 @@ subroutine Init(simulation)
             call cur_process_model%PMTHCSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
+#ifdef SURFACE_FLOW
+          class is (process_model_surface_flow_type)
+            surf_realization_class_ptr => surf_realization
+            call cur_process_model%PMSurfaceFlowSetRealization(surf_realization_class_ptr)
+            call cur_process_model_coupler%SetTimestepper(surf_flow_stepper)
+            surf_flow_stepper%dt = option%surf_flow_dt
+#endif
         end select
+
         call cur_process_model%Init()
-        call SNESSetFunction( &
+        select type(cur_process_model)
+#ifdef SURFACE_FLOW
+          class is (process_model_surface_flow_type)
+            call TSSetRHSFunction( &
+                            cur_process_model_coupler%timestepper%solver%ts, &
+                            cur_process_model%residual_vec, &
+                            PMRHSFunction, &
+                            cur_process_model_coupler%pm_ptr, &
+                            ierr)
+#endif
+          class default
+            call SNESSetFunction( &
                            cur_process_model_coupler%timestepper%solver%snes, &
                            cur_process_model%residual_vec, &
                            PMResidual, &
                            cur_process_model_coupler%pm_ptr,ierr)
-        call SNESSetJacobian( &
+            call SNESSetJacobian( &
                            cur_process_model_coupler%timestepper%solver%snes, &
                            cur_process_model_coupler%timestepper%solver%J, &
                            cur_process_model_coupler%timestepper%solver%Jpre, &
                            PMJacobian, &
                            cur_process_model_coupler%pm_ptr,ierr)
+        end select
         cur_process_model => cur_process_model%next
       enddo
       cur_process_model_coupler => cur_process_model_coupler%below
     enddo
     cur_process_model_coupler_top => cur_process_model_coupler_top%next
   enddo
+
+  ! If running with surface flow, add additional waypoints in waypoint-list
+  ! of synchronizer.
+#ifdef SURFACE_FLOW
+  if (option%nsurfflowdof > 0) then
+    waypoint => realization%waypoints%first
+    dt_max = waypoint%dt_max
+    if(dt_max<1.d-40) then
+      option%io_buffer='waypoint%dt_max = 0.'
+      call printErrMsg(option)
+    endif
+    time = 0.d0
+    final_time = realization%waypoints%last%time
+    do
+      time = time + surf_realization%dt_coupling
+      if (time > final_time) exit
+      waypoint => WaypointCreate()
+      waypoint%time = time
+      waypoint%dt_max = dt_max
+      call WaypointInsertInList(waypoint,simulation%synchronizer%waypoints)
+   enddo
+  endif
+#endif
+  
   !----------------------------------------------------------------------------!
   !----------------------------------------------------------------------------!
 #endif  
@@ -1513,8 +1624,10 @@ end subroutine InitReadRequiredCardsFromInput
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
 subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
-                         subsurface_tran_stepper,subsurface_regression, &
-                         surface_realization,surface_flow_stepper)
+                          subsurface_tran_stepper,subsurface_regression, &
+                          surface_realization,surface_flow_stepper)
+!subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
+!                         subsurface_tran_stepper,subsurface_regression)
 #else
 subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
                          subsurface_tran_stepper,subsurface_regression)
@@ -1555,6 +1668,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   use Output_Tecplot_module
   
 #ifdef SURFACE_FLOW
+  use Surface_Realization_class
   use Surface_Flow_module
   use Surface_Init_module
 #endif
@@ -1570,8 +1684,8 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   type(regression_type), pointer :: subsurface_regression
   
 #ifdef SURFACE_FLOW
-  type(surface_realization_type), pointer :: surf_realization
-  type(stepper_type), pointer :: surf_flow_stepper
+  type(surface_realization_type), pointer :: surface_realization
+  type(stepper_type), pointer :: surface_flow_stepper
 #endif
 
   PetscErrorCode :: ierr
@@ -2609,24 +2723,24 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
 #ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
-        call SurfaceInitReadInput(surf_realization, &
-                              simulation%surf_flow_stepper%solver,input,option)
-        simulation%surf_flow_stepper%dt_min = surf_realization%dt_min
-        simulation%surf_flow_stepper%dt_max = surf_realization%dt_max
-        option%surf_subsurf_coupling_flow_dt = surf_realization%dt_coupling
-        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
-
+        call SurfaceInitReadInput(surface_realization, &
+                                  surface_flow_stepper%solver,input,option)
+        surface_flow_stepper%dt_min = surface_realization%dt_min
+        surface_flow_stepper%dt_max = surface_realization%dt_max
+        option%surf_subsurf_coupling_flow_dt = surface_realization%dt_coupling
+        option%surf_flow_dt=surface_flow_stepper%dt_min
+ 
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,surface_realization%waypoints)
 
         ! Add final_time waypoint to surface_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
         waypoint%time = realization%waypoints%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+        call WaypointInsertInList(waypoint,surface_realization%waypoints)
 #endif
 
 !......................

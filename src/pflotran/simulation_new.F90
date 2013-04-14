@@ -108,6 +108,8 @@ subroutine SimulationCreateProcessorGroups(option,num_groups)
 
 end subroutine SimulationCreateProcessorGroups
 
+! ************************************************************************** !
+! ************************************************************************** !
 subroutine Initialize(this)
 
   use Logging_module
@@ -315,6 +317,7 @@ subroutine ExecuteRun(this)
   PetscInt :: stop_flag
   
   call printMsg(this%option,'Simulation%ExecuteRun()')
+  stop_flag=0
 
   call this%synchronizer%ExecuteRun(stop_flag)
   

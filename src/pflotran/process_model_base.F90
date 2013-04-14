@@ -15,6 +15,7 @@ module Process_Model_Base_class
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
+#include "finclude/petscts.h"
 
 #ifdef ABSTRACT
   type, abstract, public :: process_model_base_type
@@ -47,6 +48,7 @@ module Process_Model_Base_class
     procedure(PMBaseThisOnly), public, deferred :: MaxChange
     procedure(PMBaseComputeMassBalance), public, deferred :: ComputeMassBalance
     procedure(PMBaseThisOnly), public, deferred :: Destroy
+    procedure(PMBaseRHSFunction), public, deferred :: RHSFunction
 #else
     procedure, public :: Init => PMBaseInit
     procedure, public :: InitializeRun => PMBaseThisOnly
@@ -66,6 +68,7 @@ module Process_Model_Base_class
     procedure, public :: MaxChange => PMBaseThisOnly
     procedure, public :: ComputeMassBalance => PMBaseComputeMassBalance
     procedure, public :: Destroy => PMBaseThisOnly
+    procedure, public :: RHSFunction => PMBaseRHSFunction
 #endif
   end type process_model_base_type
   
@@ -97,7 +100,7 @@ module Process_Model_Base_class
       MatStructure flag
       PetscErrorCode :: ierr
     end subroutine PMBaseJacobian
-    
+
     subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
       import process_model_base_type
@@ -176,6 +179,7 @@ module Process_Model_Base_class
   
   public :: PMBaseResidual
   public :: PMBaseJacobian
+  public :: PMBaseRHSFunction
   
 contains
 
@@ -277,7 +281,7 @@ subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
 end subroutine PMBaseCheckUpdatePost
-  
+
 subroutine PMBasePostSolve(this)
   implicit none
   class(process_model_base_type) :: this
@@ -307,6 +311,16 @@ subroutine PMBaseComputeMassBalance(this,mass_balance_array)
   class(process_model_base_type) :: this
   PetscReal :: mass_balance_array(:)
 end subroutine PMBaseComputeMassBalance
+
+subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
+  implicit none
+  class(process_model_base_type) :: this
+  TS :: ts
+  PetscReal :: time
+  Vec :: xx
+  Vec :: ff
+  PetscErrorCode :: ierr
+end subroutine PMBaseRHSFunction
 #endif
 
 end module Process_Model_Base_class
