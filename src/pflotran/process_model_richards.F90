@@ -21,7 +21,7 @@ module Process_Model_Richards_class
 
   type, public, extends(process_model_base_type) :: process_model_richards_type
     class(realization_type), pointer :: realization
-    class(communicator_type), pointer :: comm
+    class(communicator_type), pointer :: comm1
   contains
     procedure, public :: Init => PMRichardsInit
     procedure, public :: PMRichardsSetRealization
@@ -71,7 +71,7 @@ function PMRichardsCreate()
   nullify(richards_pm%option)
   nullify(richards_pm%output_option)
   nullify(richards_pm%realization)
-  nullify(richards_pm%comm)
+  nullify(richards_pm%comm1)
 
   call PMBaseCreate(richards_pm)
 
@@ -107,11 +107,11 @@ subroutine PMRichardsInit(this)
   ! set up communicator
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      this%comm => StructuredCommunicatorCreate()
+      this%comm1 => StructuredCommunicatorCreate()
     case(UNSTRUCTURED_GRID)
-      this%comm => UnstructuredCommunicatorCreate()
+      this%comm1 => UnstructuredCommunicatorCreate()
   end select
-  call this%comm%SetDM(this%realization%discretization%dm_1dof)
+  call this%comm1%SetDM(this%realization%discretization%dm_1dof)
 #endif
 
 end subroutine PMRichardsInit
@@ -174,7 +174,7 @@ subroutine PMRichardsInitializeTimestep(this)
 
 #ifndef SIMPLIFY  
   ! update porosity
-  call this%comm%LocalToLocal(this%realization%field%porosity_loc, &
+  call this%comm1%LocalToLocal(this%realization%field%porosity_loc, &
                               this%realization%field%porosity_loc)
 #endif
 
@@ -675,7 +675,7 @@ subroutine PMRichardsDestroy(this)
 #ifndef SIMPLIFY 
   call RichardsDestroy(this%realization)
 #endif
-  call this%comm%Destroy()
+  call this%comm1%Destroy()
   
 end subroutine PMRichardsDestroy
   
