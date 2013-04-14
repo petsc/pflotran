@@ -26,7 +26,8 @@ module Process_Model_module
   end type process_model_pointer_type
 
   public :: PMResidual, &
-            PMJacobian
+            PMJacobian, &
+            PMRHSFunction
 
 contains
 
@@ -97,4 +98,34 @@ subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
     
 end subroutine PMJacobian
     
+! ************************************************************************** !
+!
+! PMRHSFunction:
+! author: Gautam Bisht
+! date: 04/12/13
+!
+! ************************************************************************** !
+subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscts.h"
+
+  TS :: ts
+  PetscReal :: time
+  Vec :: xx
+  Vec :: ff
+  type(process_model_pointer_type) :: this
+  PetscErrorCode :: ierr
+  
+#ifdef PM_TOP_DEBUG
+  print *, 'PMRHSFunction()'
+#endif
+
+  call this%ptr%RHSFunction(ts,time,xx,ff,ierr)
+
+end subroutine PMRHSFunction
+
 end module Process_Model_module

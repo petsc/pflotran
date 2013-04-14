@@ -185,6 +185,7 @@ mode_aux_obj = \
 	${common_src}process_model_base.o \
 	${common_src}process_model_richards.o \
 	${common_src}process_model_rt.o \
+	${common_src}process_model_surface_flow.o \
 	${common_src}process_model_top.o \
 	${common_src}process_model_th.o \
 	${common_src}process_model_thc.o \
@@ -444,7 +445,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper_new.o \
          surface_init.o surface_th.o surface_global.o \
          process_model_coupler.o process_model_base.o process_model_richards.o \
          process_model_rt.o process_model_top.o process_model_th.o \
-         process_model_thc.o synchronizer.o
+         process_model_thc.o process_model_surface_flow.o synchronizer.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -534,6 +535,10 @@ process_model_thc.o : process_model_base.o thc.o realization.o \
                            communicator_base.o option.o discretization.o \
                            structured_communicator.o unstructured_communicator.o \
                            grid.o global.o condition.o
+process_model_surface_flow.o : process_model_base.o thc.o surface_realization.o \
+                           communicator_base.o option.o discretization.o \
+                           structured_communicator.o unstructured_communicator.o \
+                           grid.o global.o condition.o surface_flow.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \

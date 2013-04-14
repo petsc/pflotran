@@ -304,6 +304,9 @@ end subroutine TimestepperRead
 subroutine StepperUpdateDT(timestepper,process_model)
 
   use Process_Model_Base_class
+#ifdef SURFACE_FLOW
+  use Process_Model_Surface_Flow_class
+#endif
   
   implicit none
 
@@ -313,6 +316,14 @@ subroutine StepperUpdateDT(timestepper,process_model)
   PetscBool :: update_time_step
   
   update_time_step = PETSC_TRUE
+#ifdef SURFACE_FLOW
+  select type(process_model)
+    class is(process_model_surface_flow_type)
+      call StepperUpdateSurfaceFlowDTExplicit(timestepper,process_model)
+      return
+  end select
+#endif
+
   if (timestepper%time_step_cut_flag) then
     timestepper%num_constant_time_steps = 1
   else if (timestepper%num_constant_time_steps > 0) then
@@ -481,7 +492,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   timestepper%dt_max = dt_max
   timestepper%target_time = target_time
   timestepper%cur_waypoint => cur_waypoint
-  
+
  end subroutine StepperSetTargetTime
 
 ! ************************************************************************** !
@@ -496,6 +507,9 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   use Process_Model_Base_class
   use Option_module
   use Output_module, only : Output
+#ifdef SURFACE_FLOW
+  use Process_Model_Surface_Flow_class
+#endif
   
   implicit none
 
@@ -528,6 +542,14 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   solver => timestepper%solver
   option => process_model%option
   
+#ifdef SURFACE_FLOW
+  select type(process_model)
+    class is(process_model_surface_flow_type)
+      call StepperStepSurfaceFlowDT(timestepper,process_model,stop_flag)
+      return
+  end select
+#endif
+
   write(process_model%option%io_buffer,'(es12.5)') timestepper%dt
   process_model%option%io_buffer = 'StepperStepDT(' // &
     trim(adjustl(process_model%option%io_buffer)) // ')'
@@ -712,6 +734,88 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
   endif    
 
 end subroutine TimestepperPrintInfo
+
+#ifdef SURFACE_FLOW
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/14/13
+! ************************************************************************** !
+subroutine StepperStepSurfaceFlowDT(timestepper,process_model,stop_flag)
+
+  use Process_Model_Base_class
+  use Option_module
+  use Output_module, only : Output
+  use Process_Model_Surface_Flow_class
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscts.h"
+
+  type(stepper_type) :: timestepper
+  class(process_model_base_type) :: process_model
+  PetscInt :: stop_flag
+  
+  PetscInt :: icut
+  
+  type(solver_type), pointer :: solver
+  type(option_type), pointer :: option
+  
+  PetscLogDouble :: log_start_time
+  PetscLogDouble :: log_end_time
+  character(len=2) :: tunit
+  PetscBool :: plot_flag, transient_plot_flag
+  PetscErrorCode :: ierr
+  
+  solver => timestepper%solver
+  option => process_model%option
+
+  call process_model%PreSolve()
+
+  call TSSetTimeStep(solver%ts,timestepper%dt,ierr)
+  call TSSolve(solver%ts,process_model%solution_vec,ierr)
+
+end subroutine StepperStepSurfaceFlowDT
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/14/13
+! ************************************************************************** !
+!subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+subroutine StepperUpdateSurfaceFlowDTExplicit(timestepper,process_model)
+
+  use Process_Model_Base_class
+  use Process_Model_Surface_Flow_class
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscts.h"
+
+  type(stepper_type) :: timestepper
+  class(process_model_base_type) :: process_model
+  
+  PetscReal :: dt_max,dt_max_glb
+  PetscErrorCode :: ierr
+
+  call process_model%UpdateTimestep(timestepper%dt, &
+                                    timestepper%dt_max, &
+                                    timestepper%iaccel, &
+                                    timestepper%num_newton_iterations, &
+                                    timestepper%tfac)
+
+end subroutine StepperUpdateSurfaceFlowDTExplicit
+#endif
 
 ! ************************************************************************** !
 !
