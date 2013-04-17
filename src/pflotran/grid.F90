@@ -1056,6 +1056,10 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
        int_array, PETSC_COPY_VALUES, MFD_aux%is_ghosted_local_LP, ierr)
   deallocate(int_array)
 
+  call VecScatterCreate(local_vec_LP,MFD_aux%is_local_local_LP,global_vec_LP, &
+                        MFD_aux%is_local_petsc_LP,MFD_aux%scatter_ltog_LP,ierr)
+
+
   allocate(int_array(NG))
   do id = 1, grid%ngmax_faces
     int_array(id) = (grid%fG2P(id))
@@ -1074,9 +1078,6 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
 
   call ISLocalToGlobalMappingBlock(MFD_aux%mapping_ltog_LP, ndof, &
                                    MFD_aux%mapping_ltogb_LP, ierr)
-
-  call VecScatterCreate(local_vec_LP,MFD_aux%is_local_local_LP,global_vec_LP, &
-                        MFD_aux%is_local_petsc_LP,MFD_aux%scatter_ltog_LP,ierr)
 
   call VecScatterCreate(global_vec_LP,MFD_aux%is_ghosted_petsc_LP,local_vec_LP, &
                         MFD_aux%is_ghosted_local_LP, MFD_aux%scatter_gtol_LP, ierr)
@@ -3312,6 +3313,7 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
   PetscInt,pointer :: bnd_count(:)
   
   PetscBool :: found
+  PetscErrorCode :: ierr
   
   character(len=MAXWORDLENGTH) :: filename
 
@@ -3324,6 +3326,8 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
   allocate(grid%fM2U(grid%ngmax_faces))
   allocate(bnd_count(grid%nlmax))
   bnd_count=0
+  grid%fM2U = -1
+  grid%fU2M = -1
 
   ! Find offset for boundary faces
   offset=0
@@ -3382,10 +3386,10 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       found=PETSC_FALSE
       do iface2=1,MAX_FACE_PER_CELL
         face_id2=ugrid%cell_to_face_ghosted(iface2,local_id_up)
-        if( (ugrid%face_to_cell_ghosted(1,face_id2)==local_id_up.and. &
-             ugrid%face_to_cell_ghosted(2,face_id2)==local_id_dn).or. &
-            (ugrid%face_to_cell_ghosted(1,face_id2)==local_id_dn.and. &
-             ugrid%face_to_cell_ghosted(2,face_id2)==local_id_up)) then
+        if( (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_up.and. &
+             ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_dn).or. &
+            (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_dn.and. &
+             ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_up)) then
           found=PETSC_TRUE
           grid%fU2M(iface2,local_id_up)=iface
           grid%fM2U(iface)=face_id2
@@ -3393,28 +3397,30 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
         endif
       enddo
       if(.not.found) then
-        option%io_buffer='UGRID face not found to match face in MIMETIC discretization'
+        option%io_buffer='1) UGRID face not found to match face in MIMETIC discretization'
         call printErrMsg(option)
       endif
       
       ! For 'local_id_dn', find the face-id that is shared by cells
       ! local_id_up ----- local_id_dn
-      found=PETSC_FALSE
-      do iface2=1,MAX_FACE_PER_CELL
-        face_id2=ugrid%cell_to_face_ghosted(iface2,local_id_dn)
-        if( (ugrid%face_to_cell_ghosted(1,face_id2)==local_id_up.and. &
-             ugrid%face_to_cell_ghosted(2,face_id2)==local_id_dn).or. &
-            (ugrid%face_to_cell_ghosted(1,face_id2)==local_id_dn.and. &
-             ugrid%face_to_cell_ghosted(2,face_id2)==local_id_up)) then
-          found=PETSC_TRUE
-          grid%fU2M(iface2,local_id_dn)=iface
-          grid%fM2U(iface)=face_id2
-          exit
+      if(ghosted_id_dn<=grid%nlmax) then
+        found=PETSC_FALSE
+        do iface2=1,MAX_FACE_PER_CELL
+          face_id2=ugrid%cell_to_face_ghosted(iface2,local_id_dn)
+          if( (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_up.and. &
+               ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_dn).or. &
+              (ugrid%face_to_cell_ghosted(1,face_id2)==ghosted_id_dn.and. &
+               ugrid%face_to_cell_ghosted(2,face_id2)==ghosted_id_up)) then
+            found=PETSC_TRUE
+            grid%fU2M(iface2,local_id_dn)=iface
+            grid%fM2U(iface)=face_id2
+            exit
+          endif
+        enddo
+        if(.not.found) then
+          option%io_buffer='2) UGRID face not found to match face in MIMETIC discretization'
+          call printErrMsg(option)
         endif
-      enddo
-      if(.not.found) then
-        option%io_buffer='UGRID face not found to match face in MIMETIC discretization'
-        call printErrMsg(option)
       endif
 
     else if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
@@ -3728,7 +3734,7 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
         do face_id=1,stride
           if (vec_ptr_e2n_gh((jcount-1)*stride+face_id)==grid%nG2P(grid%nL2G(local_id))+1) then
             vec_ptr_e2f((local_id-1)*stride+iface)=vec_ptr_e2f_gh((jcount-1)*stride+face_id)
-            grid%fG2P(ghost_face_id)=int(vec_ptr_e2f_gh((jcount-1))*stride+face_id)-1
+            grid%fG2P(ghost_face_id)=int(vec_ptr_e2f_gh((jcount-1)*stride+face_id))-1
             exit
           endif
         end do
@@ -3783,6 +3789,7 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   call CreateMFDStruct4LP(grid,MFD,ndof,option)
 
   deallocate(num_faces_cumm)
+
 
 end subroutine GridSetGlobalCell2FaceForUGrid
 

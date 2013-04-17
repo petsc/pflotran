@@ -1815,7 +1815,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
   call RichardsJacobianPatchMFDLP(snes,xx,J,J,flag,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
-#if 1  
+#if 1
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
                               viewer,ierr)
 #else
@@ -2122,10 +2122,8 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   richards_parameter => patch%aux%Richards%richards_parameter
   rich_aux_vars => patch%aux%Richards%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
- 
 
   call VecGetArrayF90(grid%e2n, e2n_local, ierr)
-
   numfaces = 6
 
   allocate(J((numfaces+1)*(numfaces+1)))
@@ -2182,31 +2180,30 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
         J(jface + (jface - 1)*nrow) = 1.
       endif
     enddo
- 
+
     call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 , ghosted_LP_id, &
                           J, ADD_VALUES,ierr)
     call MatSetValuesLocal(A, 1, cell_LP_id, numfaces, neig_LP_id, aux_var%dRp_dneig, ADD_VALUES,ierr)
-    enddo
+  enddo
 
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+
+  deallocate(J)
+  deallocate(bound_id)
+  deallocate(ghosted_LP_id)
+  deallocate(neig_LP_id)
+  deallocate(sq_faces)
+
+  if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_mfd.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
-
-    deallocate(J)
-    deallocate(bound_id)
-    deallocate(ghosted_LP_id)
-    deallocate(neig_LP_id)
-    deallocate(sq_faces)
-
-    if (realization%debug%matview_Jacobian_detailed) then
-      call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-      call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-      call PetscViewerASCIIOpen(option%mycomm,'jacobian_mfd.out',viewer,ierr)
-      call MatView(A,viewer,ierr)
-      call PetscViewerDestroy(viewer,ierr)
-    endif
-
-    call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
+  call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
 
 #endif
 
