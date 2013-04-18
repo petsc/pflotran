@@ -2524,6 +2524,8 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 
   enddo
 
+  ! Free up memory
+  deallocate(double_array)
 #endif
 ! #ifdef SCORPIO_WRITE
 
