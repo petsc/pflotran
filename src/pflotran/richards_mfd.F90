@@ -1668,6 +1668,39 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 
   enddo
 
+  ! Source-sink term
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
+  do
+    if (.not.associated(source_sink)) exit
+
+    if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+
+    cur_connection_set => source_sink%connection_set
+
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      select case(source_sink%flow_condition%rate%itype)
+        case(MASS_RATE_SS)
+          qsrc_mol = qsrc/FMWH2O ! kg/sec -> kmol/sec
+        case(HET_MASS_RATE_SS)
+          qsrc_mol = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O ! kg/sec -> kmol/sec
+        case default
+          option%io_buffer='source/sink rate%itype not suppported in MFD'
+          call printErrMsg(option)
+      end select
+
+      r_p(grid%ngmax_faces+ghosted_id) = r_p(grid%ngmax_faces+ghosted_id) - qsrc_mol
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_r_loc_faces, r_p, ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
