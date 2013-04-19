@@ -148,10 +148,12 @@ end subroutine MFDCreateJacobian
 ! ************************************************************************** !
 subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 
- use Option_module
- use Grid_module
- use MFD_Aux_module
- use Connection_module
+  use Option_module
+  use Grid_module
+  use MFD_Aux_module
+  use Connection_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
 
   implicit none
 
@@ -180,55 +182,146 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
   PetscInt :: icount, jcount, jface, loc_id_up, loc_id_dn
   PetscInt :: ndof_local
   PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  type(unstructured_grid_type),pointer :: ugrid
 
   allocate(d_nnz(grid%nlmax_faces + grid%nlmax))
   allocate(o_nnz(grid%nlmax_faces + grid%nlmax))
 
+  ugrid => grid%unstructured_grid
+
   d_nnz = 1 ! start 1 since diagonal connection to self
   o_nnz = 0
 
-  do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
-      local_face_id = grid%fG2L(ghost_face_id)
-      if (local_face_id > 0) then
-        do jcount = 1, aux_var%numfaces
-          if (icount == jcount) cycle
-          ghost_face_id_n = aux_var%face_id_gh(jcount)
-          local_face_id_n = grid%fG2L(ghost_face_id_n)
-          if (local_face_id_n > 0) then
-             d_nnz(local_face_id) = d_nnz(local_face_id) + 1
+  if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+
+    !
+    ! Structured grid
+    !
+
+    do icell = 1, grid%nlmax
+      aux_var => MFD_aux%aux_vars(icell)
+      do icount = 1, aux_var%numfaces
+        ghost_face_id = aux_var%face_id_gh(icount)
+        local_face_id = grid%fG2L(ghost_face_id)
+        if (local_face_id > 0) then
+          do jcount = 1, aux_var%numfaces
+            if (icount == jcount) cycle
+            ghost_face_id_n = aux_var%face_id_gh(jcount)
+            local_face_id_n = grid%fG2L(ghost_face_id_n)
+            if (local_face_id_n > 0) then
+              d_nnz(local_face_id) = d_nnz(local_face_id) + 1
+            else
+              o_nnz(local_face_id) = o_nnz(local_face_id) + 1
+            endif
+          enddo
+          d_nnz(local_face_id) = d_nnz(local_face_id) + 1   ! connection to cell-centered dof
+        endif
+
+        conn => grid%faces(ghost_face_id)%conn_set_ptr
+        jface = grid%faces(ghost_face_id)%id
+        if (conn%itype == INTERNAL_CONNECTION_TYPE) then
+          loc_id_dn = grid%nG2L(conn%id_dn(jface))
+          loc_id_up = grid%nG2L(conn%id_up(jface))
+          if ((loc_id_dn > 0).and.(loc_id_up > 0)) then
+            d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
           else
-             o_nnz(local_face_id) = o_nnz(local_face_id) + 1
+            o_nnz(grid%nlmax_faces + icell) = o_nnz(grid%nlmax_faces + icell) + 1
+            if (local_face_id > 0) then
+              o_nnz(local_face_id) = o_nnz(local_face_id) + 6
+            endif
           endif
-        enddo
-        d_nnz(local_face_id) = d_nnz(local_face_id) + 1   ! connection to cell-centered dof
-      endif
+        else
+          d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
+        endif
 
-       conn => grid%faces(ghost_face_id)%conn_set_ptr
-       jface = grid%faces(ghost_face_id)%id
-       if (conn%itype == INTERNAL_CONNECTION_TYPE) then 
-           loc_id_dn = grid%nG2L(conn%id_dn(jface))
-           loc_id_up = grid%nG2L(conn%id_up(jface))
-           if ((loc_id_dn > 0).and.(loc_id_up > 0)) then
-               d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
-           else
-               o_nnz(grid%nlmax_faces + icell) = o_nnz(grid%nlmax_faces + icell) + 1
-               if (local_face_id > 0) o_nnz(local_face_id) = o_nnz(local_face_id) + 6 
-           endif
-       else
-           d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
-       endif
-
-       if (local_face_id > 0) then
-           d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
-       else
-           o_nnz(grid%nlmax_faces + icell) = o_nnz(grid%nlmax_faces + icell) + 1
-       endif 
-
+        if (local_face_id > 0) then
+          d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
+        else
+          o_nnz(grid%nlmax_faces + icell) = o_nnz(grid%nlmax_faces + icell) + 1
+        endif
+      enddo
     enddo
-  enddo
+
+  else
+    !
+    ! Unstructured grid
+    !
+
+    ! 1) For Pressre at cell-faces
+    do ghost_face_id = 1,grid%ngmax_faces
+
+      local_face_id = grid%fG2L(ghost_face_id)
+      conn => grid%faces(ghost_face_id)%conn_set_ptr
+      jface = grid%faces(ghost_face_id)%id
+
+      if (conn%itype == INTERNAL_CONNECTION_TYPE) then
+
+        ! Interal connection
+
+        loc_id_dn = grid%nG2L(conn%id_dn(jface))
+        loc_id_up = grid%nG2L(conn%id_up(jface))
+
+        d_nnz(local_face_id) = 1
+
+        ! Check if downstream cell is local
+        if(loc_id_dn>0) then
+          d_nnz(local_face_id) = d_nnz(local_face_id) + &
+                      UCellGetNFaces(ugrid%cell_type(conn%id_dn(jface)),option)
+        else
+          if(local_face_id>0) then
+          o_nnz(local_face_id) = o_nnz(local_face_id) + &
+                      UCellGetNFaces(ugrid%cell_type(conn%id_dn(jface)),option)
+          endif
+          o_nnz(grid%nlmax_faces+loc_id_up)=o_nnz(grid%nlmax_faces+loc_id_up)+1
+        endif
+
+        ! Check if upstream cell is local
+        if(loc_id_up>0) then
+          d_nnz(local_face_id) = d_nnz(local_face_id) + &
+                      UCellGetNFaces(ugrid%cell_type(conn%id_up(jface)),option)
+        else
+          if(local_face_id>0) then
+          o_nnz(local_face_id) = o_nnz(local_face_id) + &
+                      UCellGetNFaces(ugrid%cell_type(conn%id_up(jface)),option)
+          endif
+          o_nnz(grid%nlmax_faces+loc_id_dn)=o_nnz(grid%nlmax_faces+loc_id_dn)+1
+        endif
+
+        ! GB: This is a temporary fix
+        o_nnz(local_face_id) = 6
+        d_nnz(local_face_id) = 13
+
+      else
+
+        loc_id_dn = grid%nG2L(conn%id_dn(jface))
+
+        ! External connection
+        d_nnz(local_face_id) = &
+                  UCellGetNFaces(ugrid%cell_type(conn%id_dn(jface)),option) + 1
+        o_nnz(local_face_id) = 6
+        o_nnz(grid%nlmax_faces+loc_id_dn)=o_nnz(grid%nlmax_faces+loc_id_dn)+1
+
+      endif
+    enddo
+
+    ! 1) For Pressre at cell-centers
+    do local_id = 1,grid%nlmax
+
+      ghosted_id = grid%nL2G(local_id)
+      d_nnz(grid%nlmax_faces+local_id) = &
+                          UCellGetNFaces(ugrid%cell_type(ghosted_id),option) + 1
+
+      do icount = 1,ugrid%cell_neighbors_local_ghosted(0,local_id)
+        if(ugrid%cell_neighbors_local_ghosted(icount,local_id)>0) then
+          d_nnz(grid%nlmax_faces+local_id) = d_nnz(grid%nlmax_faces+local_id) + 1
+        else
+          o_nnz(grid%nlmax_faces+local_id) = o_nnz(grid%nlmax_faces+local_id) + 1
+        endif
+      enddo
+    enddo
+  endif
 
 
   ndof_local = mfd_aux%ndof * (grid%nlmax_faces + grid%nlmax)
@@ -254,8 +347,6 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP,mfd_aux%mapping_ltog_LP,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP, ierr)
         
-
-
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobianLP'
         call printErrMsg(option)
@@ -278,7 +369,6 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
         call printErrMsg(option)
     end select
   endif
-
 
   deallocate(d_nnz)
   deallocate(o_nnz)
