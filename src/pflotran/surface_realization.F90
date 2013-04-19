@@ -452,7 +452,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
 
   ! set up nG2L, NL2G, etc.
   call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
-                        grid%nG2L,grid%nL2G,grid%nG2A,option)
+                        grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
   call GridComputeCoordinates(grid,discretization%origin,option, & 
                               discretization%dm_1dof%ugdm) 
   call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
