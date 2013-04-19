@@ -68,6 +68,7 @@ private
             SurfRealizProcessFlowConditions, &
             SurfRealizMapSurfSubsurfGrids, &
             SurfRealizInitAllCouplerAuxVars, &
+            SurfRealizAllCouplerAuxVars, &
             SurfRealizProcessMatProp, &
             SurfRealizUpdate, &
 !            SurfRealizCreateSurfSubsurfVec, &
@@ -730,6 +731,29 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
 end subroutine SurfRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
+!> This routine updates auxiliary variables associated with couplers in the
+!! list.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/18/13
+! ************************************************************************** !
+subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
+
+  use Option_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  PetscBool :: force_update_flag
+
+  call PatchUpdateAllCouplerAuxVars(surf_realization%patch,force_update_flag, &
+                                    surf_realization%option)
+
+end subroutine SurfRealizAllCouplerAuxVars
+
+! ************************************************************************** !
 !> This routine creates vector scatter contexts between surface and subsurface 
 !! grids.
 !!
@@ -1285,10 +1309,14 @@ subroutine SurfRealizUpdate(surf_realization)
   
   type(surface_realization_type) :: surf_realization
 
+  PetscBool :: force_update_flag = PETSC_FALSE
+
   ! must update conditions first
   call FlowConditionUpdate(surf_realization%surf_flow_conditions, &
                            surf_realization%option, &
                            surf_realization%option%time)
+
+  call SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
 
 end subroutine SurfRealizUpdate
 
