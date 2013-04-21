@@ -290,7 +290,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
         endif
 
         ! GB: This is a temporary fix
-        o_nnz(local_face_id) = 6
+        o_nnz(local_face_id) = 6*2
         d_nnz(local_face_id) = 13
 
       else
@@ -303,6 +303,9 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
         o_nnz(local_face_id) = 6
         o_nnz(grid%nlmax_faces+loc_id_dn)=o_nnz(grid%nlmax_faces+loc_id_dn)+1
 
+        ! GB: This is a temporary fix
+        o_nnz(local_face_id) = 6*2
+        d_nnz(local_face_id) = 13
       endif
     enddo
 
@@ -320,6 +323,10 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
           o_nnz(grid%nlmax_faces+local_id) = o_nnz(grid%nlmax_faces+local_id) + 1
         endif
       enddo
+
+        ! GB: This is a temporary fix
+        o_nnz(grid%nlmax_faces+local_id) = 6*2
+        d_nnz(grid%nlmax_faces+local_id) = 13
     enddo
   endif
 
