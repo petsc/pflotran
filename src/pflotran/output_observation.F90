@@ -680,7 +680,7 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
         header = ''
         do i = 1, option%nsec_cells
           write(string,'(i2)') i
-          string = 'T_sec(' // trim(adjustl(string)) // ')'
+          string = 'T(' // trim(adjustl(string)) // ')'
           call OutputAppendToHeader(header,string,'C',cell_string,icolumn)
         enddo
       case default
@@ -697,9 +697,10 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
           do j = 1, reaction%naqcomp
             do i = 1, option%nsec_cells
               write(string,'(i2)') i
-              string = 'C_sec(' // trim(adjustl(string)) // ') ' &
+              string = 'C(' // trim(adjustl(string)) // ') ' &
                          // trim(reaction%primary_species_names(j))
-              call OutputAppendToHeader(header,string,'molal','',icolumn)
+              call OutputAppendToHeader(header,string,'molal',cell_string, &
+                                        icolumn)
             enddo
           enddo
       write(fid,'(a)',advance="no") trim(header)
@@ -711,7 +712,7 @@ subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
           do j = 1, reaction%mineral%nkinmnrl
             do i = 1, option%nsec_cells
               write(string,'(i2)') i
-              string = 'VF_sec(' // trim(adjustl(string)) // ') ' &
+              string = 'VF(' // trim(adjustl(string)) // ') ' &
                        // trim(reaction%mineral%mineral_names(j))
               call OutputAppendToHeader(header,string,'',cell_string,icolumn)
             enddo
