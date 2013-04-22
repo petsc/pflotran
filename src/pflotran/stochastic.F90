@@ -22,9 +22,14 @@ contains
 ! ************************************************************************** !
 subroutine StochasticInit(stochastic,option)
 
+#ifdef PROCESS_MODEL
+  use Simulation_Base_module
+#else
   use Simulation_module
+#endif
   use Option_module
   use Input_module
+  use Communicator_Base_module  
   
   implicit none
 
@@ -94,7 +99,7 @@ subroutine StochasticInit(stochastic,option)
     stochastic%num_realizations = 1
   endif
   
-  call SimulationCreateProcessorGroups(option,stochastic%num_groups)
+  call CommCreateProcessorGroups(option,stochastic%num_groups)
   
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -136,7 +141,11 @@ end subroutine StochasticInit
 ! ************************************************************************** !
 subroutine StochasticRun(stochastic,option)
 
+#ifdef PROCESS_MODEL
+  use Simulation_Base_module
+#else
   use Simulation_module
+#endif
   use Realization_class
   use Timestepper_module
   use Option_module
@@ -153,7 +162,11 @@ subroutine StochasticRun(stochastic,option)
 
   PetscLogDouble :: timex_wall(4)
   PetscInt :: irealization
+#ifdef PROCESS_MODEL  
+  class(simulation_base_type), pointer :: simulation
+#else
   type(simulation_type), pointer :: simulation
+#endif
   type(realization_type), pointer :: realization
   type(stepper_type), pointer :: master_stepper
   character(len=MAXSTRINGLENGTH) :: string

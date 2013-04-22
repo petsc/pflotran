@@ -1,6 +1,11 @@
 module Stochastic_Aux_module
 
+#ifdef PROCESS_MODEL
+  use Simulation_Base_module
+  use Subsurface_Simulation_module
+#else
   use Simulation_module
+#endif
 
   implicit none
   
@@ -13,7 +18,11 @@ module Stochastic_Aux_module
     PetscInt :: num_realizations
     PetscInt :: num_local_realizations
     PetscInt, pointer :: realization_ids(:)
+#ifdef PROCESS_MODEL    
+    class(simulation_base_type), pointer :: simulation
+#else
     type(simulation_type), pointer :: simulation
+#endif
   end type stochastic_type
   
   public :: StochasticCreate, &

@@ -49,6 +49,7 @@ program pflotran
   use Stochastic_module
   use Stochastic_Aux_module
   use Regression_module
+  use Communicator_Base_module
   
   implicit none
 
@@ -154,7 +155,7 @@ program pflotran
     else
       call InitReadInputFilenames(option,filenames)
       temp_int = size(filenames) 
-      call SimulationCreateProcessorGroups(option,temp_int)
+      call CommCreateProcessorGroups(option,temp_int)
       option%input_filename = filenames(option%mygroup_id)
       i = index(option%input_filename,'.',PETSC_TRUE)
       if (i > 1) then

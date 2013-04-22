@@ -39,7 +39,8 @@
 !=======================================================================
 program pflotran
   
-  use Simulation_module
+  use Simulation_Base_module
+  use Subsurface_Simulation_module
   use Realization_class
   use Timestepper_module
   use Option_module
@@ -49,6 +50,7 @@ program pflotran
   use Stochastic_module
   use Stochastic_Aux_module
   use Regression_module
+  use Communicator_Base_module
   
   implicit none
 
@@ -69,7 +71,7 @@ program pflotran
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
   character(len=MAXSTRINGLENGTH), pointer :: strings(:)
   type(stochastic_type), pointer :: stochastic
-  type(simulation_type), pointer :: simulation
+  class(simulation_base_type), pointer :: simulation
   type(realization_type), pointer :: realization
   type(stepper_type), pointer :: master_stepper
   type(option_type), pointer :: option
@@ -154,7 +156,7 @@ program pflotran
     else
       call InitReadInputFilenames(option,filenames)
       temp_int = size(filenames) 
-      call SimulationCreateProcessorGroups(option,temp_int)
+      call CommCreateProcessorGroups(option,temp_int)
       option%input_filename = filenames(option%mygroup_id)
       i = index(option%input_filename,'.',PETSC_TRUE)
       if (i > 1) then
@@ -176,14 +178,17 @@ program pflotran
     endif
     call LoggingCreate()
 
-    simulation => SimulationCreate(option)
+    simulation => SubsurfaceSimulationCreate(option)
 
     call OptionCheckCommandLine(option)
 
     call PetscTime(timex_wall(1), ierr)
     option%start_time = timex_wall(1)
 
-    call Init(simulation)
+    select type(simulation)
+      class is (subsurface_simulation_type)
+        call Init(simulation)
+    end select
 !    call simulation%Initialize()
     call simulation%InitializeRun()
     call simulation%ExecuteRun()
