@@ -74,6 +74,11 @@ module Unstructured_Grid_Aux_module
     PetscInt, pointer :: connections(:,:)
     PetscReal, pointer :: face_areas(:)
     type(point3d_type), pointer :: face_centroids(:)
+    PetscInt :: num_cells_global  ! Number of cells in the entire domain
+    PetscInt :: num_elems
+    PetscInt :: num_elems_local   ! Number of elements locally
+    PetscInt, pointer :: cell_connectivity(:,:)   
+    type(point3d_type), pointer :: vertex_coordinates(:)
   end type unstructured_explicit_type
 
   type, public :: ugdm_type
@@ -769,7 +774,9 @@ end subroutine UGridDMCreateVector
 ! date: 11/06/09
 !
 ! ************************************************************************** !
-subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A)
+subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
+
+  use Option_module
 
   implicit none
   
@@ -778,6 +785,9 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A)
   PetscInt, pointer :: nG2L(:)
   PetscInt, pointer :: nL2G(:)
   PetscInt, pointer :: nG2A(:)
+  PetscInt, pointer :: nG2P(:)
+  type(option_type) :: option
+
   PetscErrorCode :: ierr
   PetscInt, pointer :: int_ptr(:)
   PetscInt :: local_id
@@ -811,6 +821,18 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A)
                             unstructured_grid%ngmax, &
                             nG2A,ierr)
   nG2A = nG2A + 1 ! 1-based
+
+#if MFD_UGRID
+  allocate(nG2P(unstructured_grid%ngmax))
+  do local_id = 1,unstructured_grid%nlmax
+    nG2P(local_id) = local_id-1+unstructured_grid%global_offset
+  enddo
+
+  do ghosted_id = unstructured_grid%nlmax+1,unstructured_grid%ngmax
+    nG2P(ghosted_id) = &
+      unstructured_grid%ghost_cell_ids_petsc(ghosted_id-unstructured_grid%nlmax)-1
+  enddo
+#endif
 
 end subroutine UGridMapIndices
 

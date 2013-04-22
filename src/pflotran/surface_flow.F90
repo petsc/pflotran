@@ -406,9 +406,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
                           cur_connection_set%area(iconn),option,vel,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-#ifdef STORE_FLOWRATES
       patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
-#endif
       r_p(local_id) = r_p(local_id) - Res(1)
     enddo
     boundary_condition => boundary_condition%next
@@ -1842,6 +1840,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   do
     if (.not.associated(source_sink)) exit
     
+    qsrc_flow = 0.d0
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
     qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)

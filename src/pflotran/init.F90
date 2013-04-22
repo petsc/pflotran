@@ -379,7 +379,7 @@ subroutine Init(simulation)
                              realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
-          case(STRUCTURED_GRID_MIMETIC)
+          case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
             call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
                                  RichardsResidualMFDLP, &
                                  realization,ierr)
@@ -421,7 +421,7 @@ subroutine Init(simulation)
                              THMCJacobian,realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
-          case(STRUCTURED_GRID_MIMETIC)
+          case(STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobianMFDLP,realization,ierr)
           case default !sp 
@@ -769,7 +769,6 @@ subroutine Init(simulation)
   if(realization%discretization%lsm_flux_method) &
     call GridComputeMinv(realization%discretization%grid, &
                          realization%discretization%stencil_width,option)
-
 
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
@@ -1291,7 +1290,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC,UNSTRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -1566,6 +1565,14 @@ subroutine InitReadInput(simulation)
 !....................
       case ('DEBUG')
         call DebugRead(realization%debug,input,option)
+               
+!....................
+      case ('PRINT_PRIMAL_GRID')
+        option%print_explicit_primal_grid = PETSC_TRUE
+        
+!....................
+      case ('PRINT_DUAL_GRID')
+        option%print_explicit_dual_grid = PETSC_TRUE
 
 !....................
       case ('MAX_CHANGE')
@@ -1659,7 +1666,7 @@ subroutine InitReadInput(simulation)
         call InputDefaultMsg(input,option,'Initial Condition name') 
         call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
-        nullify(coupler)        
+        nullify(coupler)
       
 !....................
       case ('SOURCE_SINK')
@@ -1746,6 +1753,10 @@ subroutine InitReadInput(simulation)
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
         
+!......................
+
+      case('UPDATE_FLOW_PERMEABILITY')
+        option%update_flow_perm = PETSC_TRUE
         
 !......................
 
