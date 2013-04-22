@@ -108,6 +108,7 @@ function ConnectionCreate(num_connections,connection_itype)
       allocate(connection%face_id(num_connections))
 #ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
+      connection%cntr = 0.d0
 #endif
       connection%id_dn = 0
       connection%dist = 0.d0

@@ -250,7 +250,8 @@ subroutine CondControlAssignFlowInitCond(realization)
               
         case default
           ! assign initial conditions values to domain
-          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+          if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+              discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
             call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
             call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr); CHKERRQ(ierr)        
           else
@@ -265,7 +266,8 @@ subroutine CondControlAssignFlowInitCond(realization)
       
             if (.not.associated(initial_condition)) exit
 
-            if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+                discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
               if (.not.associated(initial_condition%flow_aux_real_var)) then
                 do icell=1,initial_condition%region%num_cells
@@ -403,7 +405,8 @@ subroutine CondControlAssignFlowInitCond(realization)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
 
 #ifdef DASVYAT
-  if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+  if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+      discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
 
     call VecRestoreArrayF90(field%flow_xx_faces,xx_faces_p, ierr)
     call RealizationSetUpBC4Faces(realization)
