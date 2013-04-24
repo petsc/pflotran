@@ -146,6 +146,17 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
             tend-tstart
       call printMsg(option)        
     endif
+    
+    if (realization_base%output_option%print_explicit_flowrate) then
+      call PetscTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
+      call OutputPrintExplicitFlowrates(realization_base)
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
+      call PetscTime(tend,ierr) 
+      write(option%io_buffer,'(f10.2," Seconds to write to Rates file.")') &
+            tend-tstart
+      call printMsg(option)        
+    endif
 
     if (realization_base%output_option%print_vtk) then
       call PetscTime(tstart,ierr) 

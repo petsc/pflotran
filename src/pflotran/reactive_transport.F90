@@ -2327,7 +2327,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 
   ! pass #2 for everything else
   call RTResidualPatch2(snes,xx,r,realization,ierr)
-
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &
                               viewer,ierr)

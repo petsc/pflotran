@@ -2367,9 +2367,13 @@ subroutine InitReadInput(simulation)
             endif
            option%store_flowrate = PETSC_TRUE
           else
-            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format'
-            call printErrMsg(option)
+            if (associated(grid%unstructured_grid%explicit_grid)) then
+              output_option%print_explicit_flowrate = mass_flowrate
+            else
+              option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+                'only available in HDF5 format for implicit grid' 
+              call printErrMsg(option)
+            endif
           endif
         endif
 

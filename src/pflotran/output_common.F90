@@ -35,8 +35,9 @@ module Output_Common_module
             OutputXMFAttribute, &
             OutputXMFFooter, &
             OutputGetFlowrates, &
-            ExplicitGetCellCoordinates
-  
+            ExplicitGetCellCoordinates, &
+            OutputGetExplicitFlowrates
+              
 contains
 
 ! ************************************************************************** !
@@ -1138,5 +1139,68 @@ subroutine OutputGetFlowrates(realization_base)
   call UGridDMDestroy(ugdm)
   
 end subroutine OutputGetFlowrates
+
+! ************************************************************************** !
+!
+! OutputGetExplicitFlowrates: Prints out the flow rate through a voronoi face
+! for explicit grid. This will be used for particle tracking.
+! outputs in the format: conn_id_up, conn_id_dn, mag(Res)
+! author: Satish Karra, LANL
+! date: 04/24/13
+!
+! ************************************************************************** !
+subroutine OutputGetExplicitFlowrates(realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Field_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(field_type), pointer :: field
+  
+  PetscInt :: dof
+  PetscInt :: offset
+  PetscInt :: istart, iend
+  PetscInt :: iconn
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  option => realization_base%option
+  field => realization_base%field
+
+
+  call VecGetOwnershipRange(field%flowrate_inst,istart,iend,ierr)
+  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
+  vec_ptr = 0.d0
+  
+  offset = option%nflowdof
+
+  do iconn = istart,iend-1
+    do dof = 1,option%nflowdof
+      vec_ptr((iconn-1)*offset + dof) = patch%internal_fluxes(dof,1,iconn)
+    enddo
+  enddo
+    
+  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+
+end subroutine OutputGetExplicitFlowrates
+
 
 end module Output_Common_module
