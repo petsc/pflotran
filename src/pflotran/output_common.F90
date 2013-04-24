@@ -1176,8 +1176,8 @@ subroutine OutputGetExplicitFlowrates(realization_base)
   PetscInt :: offset
   PetscInt :: istart, iend
   PetscInt :: iconn
-  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
+  PetscReal :: val
   
   patch => realization_base%patch
   grid => patch%grid
@@ -1187,18 +1187,19 @@ subroutine OutputGetExplicitFlowrates(realization_base)
 
 
   call VecGetOwnershipRange(field%flowrate_inst,istart,iend,ierr)
-  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
-  vec_ptr = 0.d0
   
   offset = option%nflowdof
 
   do iconn = istart,iend-1
     do dof = 1,option%nflowdof
-      vec_ptr((iconn-1)*offset + dof) = patch%internal_fluxes(dof,1,iconn)
+      val = abs(patch%internal_fluxes(dof,1,iconn))
+      call VecSetValues(field%flowrate_inst,ONE_INTEGER,(iconn-1)*offset + dof, &
+                        val,INSERT_VALUES,ierr) 
     enddo
   enddo
-    
-  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+   
+ call VecAssemblyBegin(field%flowrate_inst)
+ call VecAssemblyEnd(field%flowrate_inst)
 
 end subroutine OutputGetExplicitFlowrates
 

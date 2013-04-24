@@ -455,28 +455,27 @@ subroutine RealizationCreateDiscretization(realization)
      realization%output_option%print_hdf5_energy_flowrate.or. &
      realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
      realization%output_option%print_hdf5_aveg_energy_flowrate) then
-    
-    if (associated(grid%unstructured_grid%explicit_grid)) then
-      call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
-            size(grid%unstructured_grid%explicit_grid%connections,2), &
-            field%flowrate_inst,ierr)
-      call VecSet(field%flowrate_inst,0.d0,ierr)
-    else
-      call VecCreateMPI(option%mycomm, &
-           (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-            PETSC_DETERMINE,field%flowrate_inst,ierr)
-      call VecSet(field%flowrate_inst,0.d0,ierr)
+    call VecCreateMPI(option%mycomm, &
+        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        PETSC_DETERMINE,field%flowrate_inst,ierr)
+    call VecSet(field%flowrate_inst,0.d0,ierr)
 
-    endif
+  endif
+  
+  if(realization%output_option%print_explicit_flowrate) then
+    call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+         size(grid%unstructured_grid%explicit_grid%connections,2), &
+         field%flowrate_inst,ierr)
+    call VecSet(field%flowrate_inst,0.d0,ierr)
+  endif
     
     ! If average flowrate has to be saved, create a vector for it
-    if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
-       realization%output_option%print_hdf5_aveg_energy_flowrate) then
-      call VecCreateMPI(option%mycomm, &
-          (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-          PETSC_DETERMINE,field%flowrate_aveg,ierr)
+  if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+      realization%output_option%print_hdf5_aveg_energy_flowrate) then
+    call VecCreateMPI(option%mycomm, &
+        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        PETSC_DETERMINE,field%flowrate_aveg,ierr)
     call VecSet(field%flowrate_aveg,0.d0,ierr)
-    endif
   endif
 
 end subroutine RealizationCreateDiscretization
