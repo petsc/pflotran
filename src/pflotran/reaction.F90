@@ -4933,18 +4933,18 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
 #ifdef CHUAN_CO2
       if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
         ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
-        do iaqspec=1, ncomp  
+        do iaqspec = 1, ncomp  
           icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
           if (icomp == reaction%species_idx%co2_aq_id) then
             global_auxvar%reaction_rate(2) &
-              = global_auxvar%reaction_rate(2)& 
-              + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
-              * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
+              = global_auxvar%reaction_rate(2) & 
+              + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+              * reaction%mineral%mnrlstoich(ncomp,imnrl)/option%flow_dt
           else if (icomp == reaction%species_idx%h2o_aq_id) then
             global_auxvar%reaction_rate(1) &
               = global_auxvar%reaction_rate(1)& 
               + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
-              * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
+              * reaction%mineral%mnrlstoich(ncomp,imnrl)/option%flow_dt
           endif
         enddo 
       endif   
