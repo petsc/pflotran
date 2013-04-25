@@ -1142,9 +1142,8 @@ end subroutine OutputGetFlowrates
 
 ! ************************************************************************** !
 !
-! OutputGetExplicitFlowrates: Prints out the flow rate through a voronoi face
-! for explicit grid. This will be used for particle tracking.
-! outputs in the format: conn_id_up, conn_id_dn, mag(Res)
+! OutputGetExplicitFlowrates: Forms a vector of magnitude of flowrates
+! which will be printed out to file for particle tracking.
 ! author: Satish Karra, LANL
 ! date: 04/24/13
 !
