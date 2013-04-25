@@ -463,9 +463,9 @@ subroutine RealizationCreateDiscretization(realization)
   endif
   
   if(realization%output_option%print_explicit_flowrate) then
-    call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, &
          size(grid%unstructured_grid%explicit_grid%connections,2), &
-         field%flowrate_inst,ierr)
+         PETSC_DETERMINE,field%flowrate_inst,ierr)
     call VecSet(field%flowrate_inst,0.d0,ierr)
   endif
     

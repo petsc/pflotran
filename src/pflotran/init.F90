@@ -2369,9 +2369,9 @@ subroutine InitReadInput(simulation)
           else
             if (associated(grid%unstructured_grid%explicit_grid)) then
 #ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
+              option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
+                'compile with -DSTORE_FLOWRATES'
+              call printErrMsg(option)
 #endif
               output_option%print_explicit_flowrate = mass_flowrate
             else
