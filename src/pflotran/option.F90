@@ -509,7 +509,6 @@ subroutine OptionInitRealization(option)
   option%print_explicit_primal_grid = PETSC_FALSE
   option%print_explicit_dual_grid = PETSC_FALSE  
   option%secondary_continuum_solver = 1
-
   
 end subroutine OptionInitRealization
 

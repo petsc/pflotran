@@ -1760,6 +1760,11 @@ subroutine InitReadInput(simulation)
         
 !......................
 
+      case('DFN')
+        grid%unstructured_grid%grid_type = TWO_DIM_GRID        
+        
+!......................
+
       case('SECONDARY_CONTINUUM_SOLVER')
         if (.not.option%use_mc) then
           option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can only be used ' // &

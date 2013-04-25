@@ -35,15 +35,16 @@ contains
 ! date: 05/14/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridRead(explicit_grid,filename,option)
+subroutine ExplicitUGridRead(unstructured_grid,filename,option)
 
   use Input_module
   use Option_module
   use String_module
   
   implicit none
-  
-  type(unstructured_explicit_type) :: explicit_grid
+ 
+  type(unstructured_grid_type) :: unstructured_grid 
+  type(unstructured_explicit_type), pointer :: explicit_grid
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
   
@@ -58,6 +59,8 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
   
   fileid = 86
   input => InputCreate(fileid,filename,option)
+  
+  explicit_grid => unstructured_grid%explicit_grid
 
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
@@ -217,15 +220,16 @@ end subroutine ExplicitUGridRead
 ! date: 10/03/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
+subroutine ExplicitUGridReadInParallel(unstructured_grid,filename,option)
 
   use Input_module
   use Option_module
   use String_module
   
   implicit none
-  
-  type(unstructured_explicit_type) :: explicit_grid
+ 
+  type(unstructured_grid_type) :: unstructured_grid 
+  type(unstructured_explicit_type), pointer :: explicit_grid
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
   
@@ -243,7 +247,9 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   PetscErrorCode :: ierr
   PetscReal, allocatable :: temp_real_array(:,:)
   PetscInt, allocatable :: temp_int_array(:,:)
-  
+  PetscInt :: ivertex, num_vertices 
+
+  explicit_grid => unstructured_grid%explicit_grid 
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
 ! x_, y_, z_, area_, volume_ = real
@@ -530,20 +536,34 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     call InputReadInt(input,option,num_elems)
     call InputErrorMsg(input,option,'number of elements',card)
         explicit_grid%num_elems = num_elems
-    allocate(explicit_grid%cell_connectivity(3,num_elems)) 
-    explicit_grid%cell_connectivity = 0
+    unstructured_grid%max_nvert_per_cell = 8 ! Initial guess
+    allocate(explicit_grid%cell_connectivity(0:unstructured_grid% &
+                                  max_nvert_per_cell,num_elems)) 
     do iconn = 1, num_elems
       call InputReadFlotranString(input,option)
       call InputReadStringErrorMsg(input,option,card)  
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(1,iconn))
-      call InputErrorMsg(input,option,'cell vertex 1',card)
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(2,iconn))
-      call InputErrorMsg(input,option,'cell vertex 2',card)
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(3,iconn))
-      call InputErrorMsg(input,option,'cell vertex 3',card)
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'element_type',card)
+      call StringtoUpper(word)
+      select case (word)
+        case('H')
+          num_vertices = 8
+        case('W')
+          num_vertices = 6
+        case('P')
+          num_vertices = 5
+        case('T')
+          num_vertices = 4
+        case('Q')
+          num_vertices = 4
+        case('TRI')
+          num_vertices = 3
+      end select
+      explicit_grid%cell_connectivity(0,iconn) = num_vertices
+      do ivertex = 1, num_vertices
+        call InputReadInt(input,option,explicit_grid%cell_connectivity(ivertex,iconn))
+        call InputErrorMsg(input,option,'vertex id',hint)
+      enddo
     enddo
     call InputReadFlotranString(input,option)
     ! read VERTICES card, not used for calcuations, only tecplot output
