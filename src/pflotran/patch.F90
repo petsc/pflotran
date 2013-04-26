@@ -2544,11 +2544,13 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%pres(option%liquid_phase)
             enddo
           case(GAS_PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%pres(option%gas_phase)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
@@ -2556,40 +2558,48 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%liquid_phase)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%liquid_phase)
             enddo
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%U(option%liquid_phase)
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
             enddo
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%gas_phase)
             enddo
           case(GAS_ENERGY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%U(option%gas_phase)
             enddo
           case(GAS_DENSITY) 
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%gas_phase)
             enddo
           case(GAS_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
             enddo
         end select         
       endif
       
-    case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
+    case(PH,PE,EH,O2,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
@@ -2600,6 +2610,42 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
          
       select case(ivar)
         case(PH)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+              vec_ptr(local_id) = &
+               -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
+          enddo
+        case(EH)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+              vec_ptr(local_id) = &
+               -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
+          enddo
+        case(PE)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+              vec_ptr(local_id) = &
+               -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
+          enddo
+        case(O2)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
             if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
@@ -3270,7 +3316,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         end select        
       endif
       
-    case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
+    case(PH,PE,EH,O2,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
@@ -3281,6 +3327,18 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
          
       select case(ivar)
         case(PH)
+          value = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
+                         pri_act_coef(isubvar)* &
+                         patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+        case(EH)
+          value = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
+                         pri_act_coef(isubvar)* &
+                         patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+        case(PE)
+          value = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
+                         pri_act_coef(isubvar)* &
+                         patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+        case(O2)
           value = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
                          pri_act_coef(isubvar)* &
                          patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))

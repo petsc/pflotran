@@ -4208,6 +4208,33 @@ subroutine RTSetPlotVariables(realization)
     endif
   endif  
   
+  if (reaction%print_EH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'Eh'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_pe .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'pe'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_O2 .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'O2'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
   if (reaction%print_total_component) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
