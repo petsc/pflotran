@@ -1142,7 +1142,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscBool :: use_log_formulation
   
   PetscReal :: Jac_num(reaction%naqcomp)
-  PetscReal :: Res_pert, pert, prev_value
+  PetscReal :: Res_pert, pert, prev_value, coh0
 
   PetscInt :: iphase
   PetscInt :: idof
@@ -1420,22 +1420,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
               endif
 
-              do jcomp = 1, reaction%eqcplxspecid(0,icplx)
-                comp_id = reaction%eqcplxspecid(jcomp,icplx)
-                lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
-                              log(rt_auxvar%pri_molal(comp_id)* &
-                              rt_auxvar%pri_act_coef(comp_id))
-              enddo
-              lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
-              QK = exp(lnQK)
+!             do jcomp = 1, reaction%eqcplxspecid(0,icplx)
+!               comp_id = reaction%eqcplxspecid(jcomp,icplx)
+!               lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
+!                             log(rt_auxvar%pri_molal(comp_id)* &
+!                             rt_auxvar%pri_act_coef(comp_id))
+!             enddo
+!             lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
+!             QK = exp(lnQK)
               
-              Res(icomp) = 1.d0 - QK
+!             Res(icomp) = 1.d0 - QK
 
-              do jcomp = 1,reaction%eqcplxspecid(0,icplx)
-                comp_id = reaction%eqcplxspecid(jcomp,icplx)
-                Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
-                                          reaction%eqcplxstoich(jcomp,icplx)
-              enddo
+              rt_auxvar%pri_molal(icomp) = exp(lnQK)*10.d0**(conc(icomp)) / &
+                                            rt_auxvar%pri_act_coef(icomp)
+
+!             do jcomp = 1,reaction%eqcplxspecid(0,icplx)
+!               comp_id = reaction%eqcplxspecid(jcomp,icplx)
+!               Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
+!                                         reaction%eqcplxstoich(jcomp,icplx)
+!             enddo
+               Jac(icomp,icomp) = 1.d0
             endif
           endif
                       
@@ -1965,10 +1969,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
           -log10(rt_auxvar%sec_molal(abs(reaction%species_idx%h_ion_id))* &
                  rt_auxvar%sec_act_coef(abs(reaction%species_idx%h_ion_id)))
       endif
+      if (reaction%species_idx%h_ion_id > 0 .or. reaction%species_idx%h_ion_id < 0) &
       write(option%fid_out,203) '              pH: ',ph
 
 !    output Eh and pe
-      if (reaction%species_idx%o2_gas_id > 0 .and. reaction%species_idx%h_ion_id > 0) then
+      if (reaction%species_idx%o2_gas_id > 0 .and. (reaction%species_idx%h_ion_id > 0 &
+          .or. reaction%species_idx%h_ion_id < 0)) then
+
         ifo2 = reaction%species_idx%o2_gas_id
       
       ! compute gas partial pressure
