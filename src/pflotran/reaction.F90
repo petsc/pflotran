@@ -1968,7 +1968,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       write(option%fid_out,203) '              pH: ',ph
 
 !    output Eh and pe
-      if (reaction%species_idx%o2_gas_id /= 0) then
+      if (reaction%species_idx%o2_gas_id > 0 .and. reaction%species_idx%h_ion_id > 0) then
         ifo2 = reaction%species_idx%o2_gas_id
       
       ! compute gas partial pressure
@@ -1983,7 +1983,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         call ReactionFitLogKCoef(logKehcoef(:),logKeh,string,option,reaction)
         call ReactionInitializeLogK(logKehcoef(:),logKeh,logKeh0,option,reaction)
 !       call ReactionInterpolateLogK(logKehcoef(:),logKeh0,global_auxvar%temp(1),ONE_INTEGER)
-        print *,'logKeh = ',logKeh0
+!       print *,'logKeh = ',logKeh0
 
         ehfac = rgas_bars*(global_auxvar%temp(1)+273.15d0)/faraday
         eh = ehfac*LOG_TO_LN*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG-logKeh(2,1))/4.d0
