@@ -1166,6 +1166,29 @@ Surface Complexes: & $>$name, nspec, $\nu$, $>$site,
 \end{tabular}
 \end{table}
 
+\subsection{Eh, pe}
+
+Output for Eh and pe is calculated from the half-cell reaction
+\EQ\label{redox}
+\rm 2 \, H_2O - 4 \, H^+ - 4\,e^- \arrows \rm O_2,
+\EN
+with the corresponding equilibrium constant fit to the Maier-Kelly expansion Eqn.\eqref{mk}. The fit coefficients are listed in Table~\ref{tmkfit}.
+
+\begin{table}[H]\centering
+\caption{Fit coefficients for log $K$ of reaction \ref{redox}.}
+\label{tmkfit}
+\vspace{3mm}
+\begin{tabular}{lr}
+\toprule
+$c_{-1}$ & 6.745529048\\
+$c_0$ & $-$48.295936593\\
+$c_1$ & $-$0.000557816\\
+$c_2$ & 27780.749538022\\
+$c_3$ & 4027.337694858\\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Method of Solution}
 
 \setcounter{equation}{0}

@@ -1853,14 +1853,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
   PetscReal :: sum_molality, sum_mass, mole_fraction_h2o, mass_fraction_h2o, &
                mass_fraction_co2, mole_fraction_co2
-
-  PetscReal :: faraday = 964846.d0 !C/mol
-  PetscReal :: rgas_bars = 83.1441
-  PetscReal :: ehfac,eh,pe,logkeh0
-  PetscReal :: logKeh(EIGHT_INTEGER,1),logKehcoef(FIVE_INTEGER)
-
-  data logKeh/-91.0454d0,-83.1028d0,-74.0521d0,-65.8632d0, &
-               -57.8929d0,-51.6850d0,-46.7266d0,-42.6842d0/
+  PetscReal :: ehfac,eh,pe,tk
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1980,23 +1973,24 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       
       ! compute gas partial pressure
         lnQKgas(ifo2) = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+        if (reaction%eqgash2oid(ifo2) > 0) then
+          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%eqgash2ostoich(ifo2)*rt_auxvar%ln_act_h2o
+        endif
         do jcomp = 1, reaction%eqgasspecid(0,ifo2)
           comp_id = reaction%eqgasspecid(jcomp,ifo2)
           lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%eqgasstoich(jcomp,ifo2)* &
                       log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
         enddo
 
-!       string = 'Eh log K'
-        call ReactionFitLogKCoef(logKehcoef(:),logKeh,string,option,reaction)
-        call ReactionInitializeLogK(logKehcoef(:),logKeh,logKeh0,option,reaction)
-!       call ReactionInterpolateLogK(logKehcoef(:),logKeh0,global_auxvar%temp(1),ONE_INTEGER)
-!       print *,'logKeh = ',logKeh0
+        tk = global_auxvar%temp(1)+273.15d0
+        ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+        eh = ehfac*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
+        pe = eh/ehfac
 
-        ehfac = rgas_bars*(global_auxvar%temp(1)+273.15d0)/faraday
-        eh = ehfac*LOG_TO_LN*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG-logKeh(2,1))/4.d0
-        pe = eh/(ehfac*LOG_TO_LN)
-!       pe = (-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG-logKeh(2,1))/4.d0
-!       eh = pe*(ehfac*LOG_TO_LN)
+!       pe = (-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
+!       eh = pe*ehfac
         write(option%fid_out,203) '              pe: ',pe
         write(option%fid_out,203) '              Eh: ',eh
       endif

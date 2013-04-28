@@ -4211,8 +4211,8 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_EH .and. associated(reaction%species_idx)) then
     if (reaction%species_idx%h_ion_id > 0) then
       name = 'Eh'
-      units = ''
-      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
+      units = 'V'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,EH, &
                                    reaction%species_idx%h_ion_id)
     endif
   endif  
@@ -4221,17 +4221,17 @@ subroutine RTSetPlotVariables(realization)
     if (reaction%species_idx%h_ion_id > 0) then
       name = 'pe'
       units = ''
-      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PE, &
                                    reaction%species_idx%h_ion_id)
     endif
   endif  
   
   if (reaction%print_O2 .and. associated(reaction%species_idx)) then
-    if (reaction%species_idx%h_ion_id > 0) then
-      name = 'O2'
-      units = ''
-      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
-                                   reaction%species_idx%h_ion_id)
+    if (reaction%species_idx%o2_gas_id > 0) then
+      name = 'logfO2'
+      units = 'bars'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,O2, &
+                                   reaction%species_idx%o2_gas_id)
     endif
   endif  
   

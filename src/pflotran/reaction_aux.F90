@@ -357,7 +357,8 @@ module Reaction_Aux_module
             ColloidConstraintDestroy, &
             IonExchangeRxnCreate, &
             IonExchangeCationCreate, &
-            ReactionDestroy
+            ReactionDestroy, &
+            LogKeh
              
 contains
 
@@ -1479,6 +1480,31 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
   enddo
  ! print *,'ReactionInterpolateLogK_hpt: ', pres,temp, logKs, coefs
 end subroutine ReactionInterpolateLogK_hpt
+
+
+! ************************************************************************** !
+!
+! Function logkeh: Maier-Kelly fit to equilibrium constant half-cell reaction
+! 2 H2O - 4 H+ - 4 e- = O2, to compute Eh and pe.
+! author: Peter Lichtner
+! date: 04/27/13
+!
+! ************************************************************************** !
+PetscReal function logkeh(tk)
+
+  implicit none
+
+  PetscReal, intent(in) :: tk
+
+  PetscReal, parameter :: cm1 = 6.745529048112373d0
+  PetscReal, parameter :: c0 = -48.295936593543715d0
+  PetscReal, parameter :: c1 = 0.0005578156078778505d0
+  PetscReal, parameter :: c2 = 27780.749538022003d0
+  PetscReal, parameter :: c3 = 4027.3376948579394d0
+
+  logkeh = cm1 * log(tk) + c0 + c1 * tk + c2 / tk + c3 / (tk * tk)
+
+end function logkeh
 
 ! ************************************************************************** !
 !
