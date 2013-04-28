@@ -1401,12 +1401,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
-!          Jac(:,icomp) = 0.d0
-          Jac(icomp,icomp) = 1.d0
           if (associated(reaction%species_idx)) then
             if (reaction%species_idx%h_ion_id > 0) then ! conc(icomp) = 10**-pH
               rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
                                             rt_auxvar%pri_act_coef(icomp)
+              Jac(icomp,icomp) = 1.d0
             else ! H+ is a complex
             
               icplx = abs(reaction%species_idx%h_ion_id)
@@ -1420,33 +1419,31 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
               endif
 
-!             do jcomp = 1, reaction%eqcplxspecid(0,icplx)
-!               comp_id = reaction%eqcplxspecid(jcomp,icplx)
-!               lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
-!                             log(rt_auxvar%pri_molal(comp_id)* &
-!                             rt_auxvar%pri_act_coef(comp_id))
-!             enddo
-!             lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
-!             QK = exp(lnQK)
+              do jcomp = 1, reaction%eqcplxspecid(0,icplx)
+                comp_id = reaction%eqcplxspecid(jcomp,icplx)
+                lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
+                              log(rt_auxvar%pri_molal(comp_id)* &
+                              rt_auxvar%pri_act_coef(comp_id))
+                print *,'pH: ',icomp,jcomp,comp_id,lnQK,reaction%eqcplx_logK(icplx), &
+                reaction%eqcplxstoich(jcomp,icplx), conc(icomp), &
+                rt_auxvar%pri_molal(comp_id)
+              enddo
+              lnQK = lnQK + conc(icomp)*LOG_TO_LN ! this is log activity H+
+              QK = exp(lnQK)
               
-!             Res(icomp) = 1.d0 - QK
+              Res(icomp) = 1.d0 - QK
 
-              rt_auxvar%pri_molal(icomp) = exp(lnQK)*10.d0**(conc(icomp)) / &
-                                            rt_auxvar%pri_act_coef(icomp)
-
-!             do jcomp = 1,reaction%eqcplxspecid(0,icplx)
-!               comp_id = reaction%eqcplxspecid(jcomp,icplx)
-!               Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
-!                                         reaction%eqcplxstoich(jcomp,icplx)
-!             enddo
-               Jac(icomp,icomp) = 1.d0
+              do jcomp = 1,reaction%eqcplxspecid(0,icplx)
+                comp_id = reaction%eqcplxspecid(jcomp,icplx)
+                Jac(icomp,comp_id) = -QK/rt_auxvar%pri_molal(comp_id)* &
+                                          reaction%eqcplxstoich(jcomp,icplx)
+              enddo
             endif
           endif
                       
         case(CONSTRAINT_MINERAL)
 
           imnrl = constraint_id(icomp)
-          ! compute secondary species concentration
           lnQK = -mineral_reaction%mnrl_logK(imnrl)*LOG_TO_LN
 
           ! activity of water
@@ -1454,32 +1451,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             lnQK = lnQK + mineral_reaction%mnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
           endif
 
+          ! compute ion activity product
           do jcomp = 1, mineral_reaction%mnrlspecid(0,imnrl)
             comp_id = mineral_reaction%mnrlspecid(jcomp,imnrl)
             lnQK = lnQK + mineral_reaction%mnrlstoich(jcomp,imnrl)* &
                           log(rt_auxvar%pri_molal(comp_id)* &
                           rt_auxvar%pri_act_coef(comp_id))
           enddo
-!         QK = exp(lnQK)
           
-!         Res(icomp) = 1.d0 - QK
           Res(icomp) = lnQK
 
           do jcomp = 1,mineral_reaction%mnrlspecid(0,imnrl)
             comp_id = mineral_reaction%mnrlspecid(jcomp,imnrl)
-!           Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
-!                                reaction%mnrlstoich(jcomp,imnrl)
             Jac(icomp,comp_id) = mineral_reaction%mnrlstoich(jcomp,imnrl)/ &
               rt_auxvar%pri_molal(comp_id)
-                                 
           enddo
   
         case(CONSTRAINT_GAS)
 
           igas = constraint_id(icomp)
-          
-          ! compute secondary species concentration
-           lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
+          lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
  
           ! divide K by RT
           !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
@@ -1489,6 +1480,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
           endif
 
+          ! compute ion activity product
           do jcomp = 1, reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
             lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
