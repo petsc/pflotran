@@ -43,6 +43,10 @@ ifdef pcl
   MYFLAGS += -DPCL -DMUALEM_SPLINE
 endif
 
+ifdef condnr
+  MYFLAGS += -DCONDNR
+endif
+
 ifdef perm
   MYFLAGS += -DPERM
 endif
@@ -123,6 +127,10 @@ ifdef store_flowrates
   MYFLAGS += -DSTORE_FLOWRATES
 endif
 
+ifdef mfd_ugrid
+  MYFLAGS += -DMFD_UGRID
+endif
+
 CFLAGS   = 
 FFLAGS   =
 CPPFLAGS = ${MYFLAGS}
@@ -130,12 +138,8 @@ FPPFLAGS = ${MYFLAGS}
 
 CLEANFILES       = pflotran pflotran_rxn libpflotranchem.a make.log
 
-ifdef petscrel
- include ${PETSC_DIR}/bmake/common/base
-else
- include ${PETSC_DIR}/conf/variables
- include ${PETSC_DIR}/conf/rules
-endif
+include ${PETSC_DIR}/conf/variables
+include ${PETSC_DIR}/conf/rules
 
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
@@ -269,6 +273,7 @@ io_obj = \
 
 misc_obj = \
 	${common_src}block_solve.o \
+	${common_src}block_tridiag.o \
 	${common_src}checkpoint.o \
 	${common_src}condition.o \
 	${common_src}condition_control.o \
@@ -350,6 +355,7 @@ auxiliary.o : th_aux.o thc_aux.o thmc_aux.o richards_aux.o \
               miscible_aux.o general_aux.o material_aux.o \
               secondary_continuum_aux.o surface_global_aux.o
 block_solve.o:
+block_tridiag.o:
 checkpoint.o : realization.o logging.o output_aux.o variables.o \
                realization_base.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
@@ -525,7 +531,7 @@ reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-                       secondary_continuum.o block_solve.o
+                       secondary_continuum.o  
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -555,7 +561,8 @@ saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
                         material.o option.o reactive_transport_aux.o\
-                        block_solve.o global_aux.o mphase_aux.o reaction.o
+                        block_solve.o global_aux.o mphase_aux.o reaction.o\
+						block_tridiag.o
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o \
@@ -618,7 +625,8 @@ units.o : option.o
 unstructured_cell.o : option.o utility.o 
 unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
-                      unstructured_grid_aux.o geometry.o reaction_aux.o hdf5_aux.o
+                      unstructured_grid_aux.o geometry.o reaction_aux.o hdf5_aux.o \
+                      mfd_aux.o
 unstructured_grid_aux.o : unstructured_cell.o geometry.o option.o utility.o
 utility.o : string.o input.o option.o
 variables.o :

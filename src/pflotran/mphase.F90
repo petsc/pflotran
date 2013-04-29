@@ -3274,28 +3274,28 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
-     iend = local_id*option%nflowdof
-     istart = iend-option%nflowdof+1
-     icap = int(icap_loc_p(ghosted_id))
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    icap = int(icap_loc_p(ghosted_id))
      
-     if (option%use_mc) then
-       vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-     endif
+    if (option%use_mc) then
+      vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+    endif
      
-     do nvar =1, option%nflowdof
-        call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
+    do nvar =1, option%nflowdof
+      call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
              global_aux_vars(ghosted_id), &
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER,vol_frac_prim,res) 
-        ResInc(local_id,:,nvar) = ResInc(local_id,:,nvar) + Res(:)
-     enddo
+      ResInc(local_id,:,nvar) = ResInc(local_id,:,nvar) + Res(:)
+    enddo
      
   enddo
 #endif
@@ -3358,10 +3358,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                source_sink%flow_condition%itype(1),Res, &
                                dummy_real_array,enthalpy_flag,option)
       
-         ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-         ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+         ResInc(local_id,jh2o,nvar) =  ResInc(local_id,jh2o,nvar) - Res(jh2o)
+         ResInc(local_id,jco2,nvar) =  ResInc(local_id,jco2,nvar) - Res(jco2)
          if (enthalpy_flag) & 
-           ResInc(local_id,option%nflowdof,nvar)= &
+           ResInc(local_id,option%nflowdof,nvar) = &
            ResInc(local_id,option%nflowdof,nvar) - Res(option%nflowdof) 
 
         enddo 
@@ -3589,7 +3589,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       
       do nvar = 1, option%nflowdof 
-         call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar), &
+        call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar), &
                          porosity_loc_p(ghosted_id_up), &
                          tor_loc_p(ghosted_id_up), &
                          mphase_parameter%sir(:,icap_up), &
@@ -3603,10 +3603,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                          distance_gravity, &
                          upweight, option, vv_darcy, Res)
                          
-         ra(:,nvar) = (Res(:)-mphase%res_old_FL(iconn,:))/ &
+        ra(:,nvar) = (Res(:)-mphase%res_old_FL(iconn,:))/ &
                      mphase%delx(nvar,ghosted_id_up)
 
-         call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0), &
+        call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0), &
                          porosity_loc_p(ghosted_id_up), &
                          tor_loc_p(ghosted_id_up), &
                          mphase_parameter%sir(:,icap_up), &
@@ -3619,45 +3619,44 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                          cur_connection_set%area(iconn),distance_gravity, &
                          upweight, option, vv_darcy, Res)
       
-         ra(:,nvar+option%nflowdof) = (Res(:)-mphase%res_old_FL(iconn,:)) &
+        ra(:,nvar+option%nflowdof) = (Res(:)-mphase%res_old_FL(iconn,:)) &
                                       /mphase%delx(nvar,ghosted_id_dn)
-    enddo
+      enddo
 
-    select case(option%idt_switch)
-    case(1)
-       ra =ra / option%flow_dt
-    case(-1)  
-       if(option%flow_dt>1)  ra =ra / option%flow_dt
-    end select
+      select case(option%idt_switch)
+      case(1)
+        ra = ra / option%flow_dt
+      case(-1)  
+        if(option%flow_dt>1)  ra = ra / option%flow_dt
+      end select
     
-    if (local_id_up > 0) then
-       voltemp=1.D0
+      if (local_id_up > 0) then
+        voltemp=1.D0
  !      if(volume_p(local_id_up)>1.D0)then   !clu removed 05/02/2011
-         voltemp = 1.D0/volume_p(local_id_up)
+        voltemp = 1.D0/volume_p(local_id_up)
  !      endif
-       Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-       jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
+        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
 
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-    endif
-    if (local_id_dn > 0) then
-       voltemp=1.D0
+      endif
+      if (local_id_dn > 0) then
+        voltemp=1.D0
  !      if(volume_p(local_id_dn)>1.D0)then   !clu removed 05/02/2011
-         voltemp=1.D0/volume_p(local_id_dn)
+        voltemp=1.D0/volume_p(local_id_dn)
  !      endif
-       Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
-       jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
+        Jup(:,1:option%nflowdof) = -ra(:,1:option%nflowdof)*voltemp !21
+        Jdn(:,1:option%nflowdof) = -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
- 
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
-       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
-    endif
- enddo
+      endif
+    enddo
     cur_connection_set => cur_connection_set%next
   enddo
 #endif

@@ -34,8 +34,10 @@ module Output_Common_module
             OutputXMFHeader, &
             OutputXMFAttribute, &
             OutputXMFFooter, &
-            OutputGetFlowrates
-  
+            OutputGetFlowrates, &
+            ExplicitGetCellCoordinates, &
+            OutputGetExplicitFlowrates
+              
 contains
 
 ! ************************************************************************** !
@@ -571,6 +573,83 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
 end subroutine GetVertexCoordinates
 
 ! ************************************************************************** !
+!
+! ExplicitGetCellCoordinates: Extracts cell coordinates for explicit grid
+! into a PetscVec
+! author: Satish Karra, LANL
+! date: 12/11/12
+!
+! ************************************************************************** !
+subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
+
+  use Grid_module
+  use Option_module
+  use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(grid_type) :: grid
+  Vec :: vec
+  PetscInt :: direction
+  type(option_type) :: option
+  
+  PetscInt :: ivertex
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt, allocatable :: indices(:)
+  PetscReal, allocatable :: values(:)
+  PetscErrorCode :: ierr  
+  
+  if (option%mycommsize == 1) then
+    call VecGetArrayF90(vec,vec_ptr,ierr)
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%ngmax
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%ngmax
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%ngmax
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
+        enddo
+    end select
+    call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  else
+    ! initialize to -999 to catch bugs
+    call VecSet(vec,-999.d0,ierr)
+    allocate(values(grid%nlmax))
+    allocate(indices(grid%nlmax))
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%nlmax
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%nlmax
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%nlmax
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
+        enddo
+    end select
+    indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
+    call VecSetValues(vec,grid%nlmax,indices,values,INSERT_VALUES,ierr)
+    call VecAssemblyBegin(vec,ierr)
+    deallocate(values)
+    deallocate(indices)
+    call VecAssemblyEnd(vec,ierr)
+  endif
+  
+  
+end subroutine ExplicitGetCellCoordinates
+
+! ************************************************************************** !
 !> This routine returns a vector containing vertex ids in natural order of
 !! local cells for unstructured grid.
 !!
@@ -1060,5 +1139,68 @@ subroutine OutputGetFlowrates(realization_base)
   call UGridDMDestroy(ugdm)
   
 end subroutine OutputGetFlowrates
+
+! ************************************************************************** !
+!
+! OutputGetExplicitFlowrates: Forms a vector of magnitude of flowrates
+! which will be printed out to file for particle tracking.
+! author: Satish Karra, LANL
+! date: 04/24/13
+!
+! ************************************************************************** !
+subroutine OutputGetExplicitFlowrates(realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Field_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(field_type), pointer :: field
+  
+  PetscInt :: dof
+  PetscInt :: offset
+  PetscInt :: istart, iend
+  PetscInt :: iconn
+  PetscErrorCode :: ierr
+  PetscReal :: val
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  option => realization_base%option
+  field => realization_base%field
+
+
+  call VecGetOwnershipRange(field%flowrate_inst,istart,iend,ierr)
+  
+  offset = option%nflowdof
+
+  do iconn = istart,iend-1
+    do dof = 1,option%nflowdof
+      val = abs(patch%internal_fluxes(dof,1,iconn))
+      call VecSetValues(field%flowrate_inst,ONE_INTEGER,(iconn-1)*offset + dof, &
+                        val,INSERT_VALUES,ierr) 
+    enddo
+  enddo
+   
+ call VecAssemblyBegin(field%flowrate_inst)
+ call VecAssemblyEnd(field%flowrate_inst)
+
+end subroutine OutputGetExplicitFlowrates
+
 
 end module Output_Common_module

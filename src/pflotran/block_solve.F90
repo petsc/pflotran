@@ -72,9 +72,10 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
 ! Local variables:
 
-  PetscInt :: j, info
-  character(len=1) :: trans
+  PetscInt :: j, i, l, ll, info, info1, iwork(k)
+  character(len=1) :: trans, norm = '1'
   PetscReal, parameter :: one = 1.d0
+  PetscReal anorm, sum, rcond, work(4*k)
 
 !************************************************************************
 
@@ -86,36 +87,55 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
 
   trans = 'N'
         
-  do j = 1,n-1
+  do j = 1, n-1
 
-!      First, factor D(j).
-           
-     call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
-
-     if ( info .ne. 0 ) then
-        print *,'At block ',j,','
-        print *,'problem, info = ', info   ! make this better later.
-        return
-     endif
-
-!      Now, compute E(j) from D(j) * E(j) = E(j).
-
-     call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
-                       E(1,1,j), k, info)
-     if ( info .lt. 0 ) then
-        print *,'Illegal parameter number ',-info
-        return
-     endif
-
-!    Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
-
-     call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
-                      E(1,1,j), k, one, D(1,1,j+1), k)
-
+!  compute 1-norm: only needed for computing condition nr.
+#ifdef CONDNR
+    anorm = 0.d0
+    do l = 1, k
+      sum = 0.d0
+      do i = 1, k
+        sum = sum + abs(d(i,l,j))
+      enddo
+      anorm = max(anorm,sum)
     enddo
+#endif
+
+!  First, factor D(j).
+    call dgetrf(k, k, D(1,1,j), k, pivot(1,j), info)
+
+    if ( info .ne. 0 ) then
+!        write(*,'("node ",3i3,1p15e12.4)') j,n,k,(d(i,ll,j),ll=1,k)
+
+      print *,'At block ',j,',',' 1-norm = ',anorm
+      print *,'problem, info = ', info   ! make this better later.
+      return
+    endif
+
+!  Estimate condition number
+#ifdef CONDNR
+    CALL dgecon(norm,k,D(1,1,j),k,anorm,rcond,work,iwork,info1)
+    rcond = 1.e0/rcond
+!   if (rcond > 1.e10)
+        WRITE (*,999) 'Estimate of condition number =', &
+        rcond,info1
+    999 FORMAT (1X,A,1P,e11.4,i3)
+#endif
+
+!  Now, compute E(j) from D(j) * E(j) = E(j).
+    call dgetrs(trans, k, k, D(1,1,j), k, pivot(1,j), &
+                       E(1,1,j), k, info)
+    if ( info .lt. 0 ) then
+      print *,'Illegal parameter number ',-info
+      return
+    endif
+
+!  Finally, compute D(j+1) = D(j+1) - F(j) * E(j).
+    call dgemm(trans, trans, k, k, k, -one, F(1,1,j), k, &
+                      E(1,1,j), k, one, D(1,1,j+1), k)
+  enddo
 
 ! Finally, obtain the LU factorization of D(n).
-
   call dgetrf(k, k, D(1,1,n), k, pivot(1,n), info)
   if ( info .ne. 0 ) then
      print *,'At block ',j,','
@@ -270,7 +290,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
          do j = 2,n
 
-  !       Form rhs(:,:,j) = rhs(:,:,j) - E(j-1)^T*rhs(:,:,j-1)
+!        Form rhs(:,:,j) = rhs(:,:,j) - E(j-1)^T*rhs(:,:,j-1)
             call dgemm(trans, 'N', k, nrhs, k, -one, E(1,1,j-1), k, &
                            rhs(1,1,j-1), k, one, rhs(1,1,j), k)
          enddo
@@ -291,7 +311,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
          do j = n-1,1,-1
 
-  !       Form rhs(:,:,j) = rhs(:,:,j) - F(j)^T*rhs(:,:,j+1)
+!        Form rhs(:,:,j) = rhs(:,:,j) - F(j)^T*rhs(:,:,j+1)
             call dgemm(trans, 'N', k, nrhs, k, -one, F(1,1,j), k, &
                            rhs(1,1,j+1), k, one, rhs(1,1,j), k)
 

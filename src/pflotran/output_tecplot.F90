@@ -29,7 +29,8 @@ module Output_Tecplot_module
             GetCellConnectionsTecplot, &
             WriteTecplotDatasetFromVec, &
             WriteTecplotDatasetNumPerLine, &
-            WriteTecplotDataset
+            WriteTecplotDataset, &
+            OutputPrintExplicitFlowrates
 
 contains
 
@@ -119,6 +120,7 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   
   implicit none
@@ -166,23 +168,34 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
                   trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
                   ', K=' // &
                   trim(OutputFormatInt(grid%structured_grid%nz+1))
-      else
+      else if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
         string2 = ', N=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
                   ', ELEMENTS=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%nmax))
         string2 = trim(string2) // ', ZONETYPE=FEBRICK'
-      endif  
-  
-      if (variable_count > 4) then
-        string3 = ', VARLOCATION=([4-' // &
-                  trim(OutputFormatInt(variable_count)) // &
-                  ']=CELLCENTERED)'
       else
-        string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+        string2 = ', N=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%nmax)) // &
+                  ', ELEMENTS=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
+        string2 = trim(string2) // ', ZONETYPE=FEBRICK'
+      endif  
+      
+      if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+        string3 = ', VARLOCATION=(NODAL)'
+      else
+        if (variable_count > 4) then
+          string3 = ', VARLOCATION=([4-' // &
+                    trim(OutputFormatInt(variable_count)) // &
+                    ']=CELLCENTERED)'
+        else
+          string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+        endif
       endif
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
-  end select
+    
+    end select
   
   OutputTecplotZoneHeader = trim(string) // string2  
 
@@ -288,6 +301,11 @@ subroutine OutputTecplotBlock(realization_base)
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif
   
+  if (realization_base%discretization%grid%itype ==  &
+        EXPLICIT_UNSTRUCTURED_GRID) then
+    call WriteTecplotExpGridElements(OUTPUT_UNIT,realization_base)
+  endif
+    
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
   if (output_option%print_tecplot_velocities) then
@@ -1284,10 +1302,14 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
   Vec :: global_vertex_vec
   PetscInt :: local_size
   PetscErrorCode :: ierr
-  
+  PetscInt :: num_cells, icell
+  PetscInt :: count
+    
   patch => realization_base%patch
   grid => patch%grid
   option => realization_base%option
+
+1000 format(es13.6,1x)
 
   if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
     call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
@@ -1315,15 +1337,162 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
     call VecDestroy(global_vertex_vec, ierr)
   else
     if (option%myrank == option%io_rank) then
-      write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+      if (option%print_explicit_primal_grid) then
+      num_cells = grid%unstructured_grid%explicit_grid%num_cells_global
+      count = 0
+      do icell = 1, num_cells
+        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                     vertex_coordinates(icell)%x
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
+      enddo
+      if (count /= 0) write(fid,'(a)') ""
+      count = 0
+      do icell = 1, num_cells
+        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                     vertex_coordinates(icell)%y
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
+      enddo
+      if (count /= 0) write(fid,'(a)') ""
+      count = 0
+      do icell = 1, num_cells
+        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                     vertex_coordinates(icell)%z
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
+      enddo
+      if (count /= 0) write(fid,'(a)') ""      
+      elseif (option%print_explicit_dual_grid) then
+        write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+      else 
+        write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+      endif
     endif
   endif
 
 end subroutine WriteTecplotUGridVertices
 
+
 ! ************************************************************************** !
 !
-! WriteTecplotUGridVertices: Writes unstructured grid elements
+! WriteTecplotExpGridElements: Writes unstructured explicit grid elements
+! author: Satish Karra, LANL
+! date: 04/11/13
+!
+! ************************************************************************** !
+subroutine WriteTecplotExpGridElements(fid,realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  PetscInt, pointer :: temp_int(:)
+  PetscInt :: iconn, num_elems, i, num_vertices
+  PetscErrorCode :: ierr
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  
+  num_elems = grid%unstructured_grid%explicit_grid%num_elems
+ 
+  allocate(temp_int(grid%unstructured_grid%max_nvert_per_cell))
+  
+  if (option%myrank == option%io_rank) then
+    do iconn = 1, num_elems
+      num_vertices = grid%unstructured_grid%explicit_grid% &
+                       cell_connectivity(0,iconn)
+      select case(num_vertices)
+        case(EIGHT_INTEGER) ! Hex mesh
+          temp_int = grid%unstructured_grid%explicit_grid% &
+                       cell_connectivity(1:num_vertices,iconn)
+        case(SIX_INTEGER)   ! Wedge 
+          temp_int(1) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(1,iconn)         
+          temp_int(2) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(1,iconn)  
+          temp_int(3) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(4,iconn) 
+          temp_int(4) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(4,iconn)
+          temp_int(5) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(3,iconn) 
+          temp_int(6) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(2,iconn) 
+          temp_int(7) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(5,iconn) 
+          temp_int(8) = grid%unstructured_grid%explicit_grid% &
+                          cell_connectivity(6,iconn) 
+        case(FIVE_INTEGER)  ! Pyramid
+          do i = 1, 4
+            temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(i,iconn) 
+          enddo
+          do i = 5, 8
+            temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(5,iconn) 
+          enddo
+        case(FOUR_INTEGER)
+          if (grid%unstructured_grid%grid_type == TWO_DIM_GRID) then ! Quad
+            do i = 1, 4
+              temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                              cell_connectivity(i,iconn) 
+            enddo
+            do i = 5, 8
+              temp_int(i) = temp_int(i-4)
+            enddo
+          else ! Tet
+            do i = 1, 3
+              temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                             cell_connectivity(i,iconn) 
+            enddo
+            temp_int(4) = temp_int(3)
+            do i = 5, 8
+              temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                              cell_connectivity(4,iconn) 
+            enddo
+          endif
+        case(3) ! Tri
+          do i = 1, 3
+            temp_int(i) = grid%unstructured_grid%explicit_grid% &
+                            cell_connectivity(i,iconn) 
+          enddo
+          temp_int(4) = temp_int(3)
+          do i = 5, 8
+            temp_int(i) = temp_int(i-4) 
+          enddo
+      end select
+      write(fid,*) temp_int
+    enddo 
+  endif
+  
+  deallocate(temp_int)
+   
+end subroutine WriteTecplotExpGridElements
+
+! ************************************************************************** !
+!
+! WriteTecplotUGridElements: Writes unstructured grid elements
 ! author: Glenn Hammond
 ! date: 01/12/12
 !
@@ -1809,5 +1978,70 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
   call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
 end subroutine WriteTecplotDataSetNumPerLine
+
+! ************************************************************************** !
+!
+! OutputPrintExplicitFlowrates: Prints out the flow rate through a voronoi face
+! for explicit grid. This will be used for particle tracking.
+! outputs in the format: mag(Res) where the row number is same as connection
+! number
+! author: Satish Karra, LANL
+! date: 04/24/13
+!
+! ************************************************************************** !
+subroutine OutputPrintExplicitFlowrates(realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Output_Common_module  
+ 
+  implicit none
+
+  class(realization_base_type) :: realization_base
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr  
+  PetscInt :: iconn
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
+
+  filename = OutputFilename(output_option,option,'dat','rates')
+  
+  call OutputGetExplicitFlowrates(realization_base)
+  
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write rate output file: ' // &
+                       trim(filename)
+    call printMsg(option)                       
+    open(unit=OUTPUT_UNIT,file=filename,action="write")
+  endif
+  
+1000 format(es13.6,1x)
+1009 format('')
+
+  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
+  if (option%myrank == option%io_rank) then
+    do iconn = 1,size(grid%unstructured_grid%explicit_grid%connections,2)
+      write(OUTPUT_UNIT,1000,advance='no') vec_ptr(iconn)
+      write(OUTPUT_UNIT,1009) 
+    enddo
+  endif
+  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+    
+  if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
+
+end subroutine OutputPrintExplicitFlowrates
 
 end module Output_Tecplot_module

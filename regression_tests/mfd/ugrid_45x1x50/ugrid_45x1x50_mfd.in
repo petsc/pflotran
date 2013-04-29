@@ -1,0 +1,204 @@
+:Description: 3D toy problem for richards equation
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+tracer
+/
+/
+
+:=========================== discretization ===================================
+GRID
+TYPE unstructured_mimetic ugrid_45x1x50_mesh.h5
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-14
+/
+
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.2d0
+LAMBDA 0.25d0
+ALPHA 1.d-4
+MAX_CAPILLARY_PRESSURE 1.d8
+BETAC 0.d0
+POWER 1.d0
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION sf1
+PERMEABILITY
+PERM_X 7.75d-12
+PERM_Y 1.d-12
+PERM_Z 3.25d-12
+PERM_XZ 3.8971d-12
+PERM_XY 0
+PERM_YZ 0
+/
+/
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION sf1
+PERMEABILITY
+PERM_X 7.75d-12
+PERM_Y 1.d-12
+PERM_Z 3.25d-12
+PERM_XZ -3.8971d-12
+PERM_XY 0
+PERM_YZ 0
+/
+/
+
+:=========================== output options ===================================
+OUTPUT
+  PERIODIC TIME  1 y  
+  :FORMAT TECPLOT BLOCK
+  FORMAT HDF5
+  VELOCITIES
+  PERMEABILITY
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 25 y
+:FINAL_TIME 0.0001 y
+INITIAL_TIMESTEP_SIZE 0.01 y
+MAXIMUM_TIMESTEP_SIZE 1 y
+/
+
+REFERENCE_PRESSURE 101325
+
+:=========================== regions ==========================================
+REGION all
+  FILE ugrid_45x1x50_mesh.h5
+  GRID unstructured
+END 
+
+REGION Top_part
+  FILE ugrid_45x1x50_mesh.h5
+  GRID unstructured
+END 
+
+REGION Bottom_part
+  FILE ugrid_45x1x50_mesh.h5
+  GRID unstructured
+END 
+
+REGION Top
+  FILE ugrid_45x1x50_mesh.h5
+  GRID unstructured
+END 
+
+REGION Bottom
+  FILE ugrid_45x1x50_mesh.h5
+  GRID unstructured
+END 
+
+REGION Top_middle
+  FILE ugrid_45x1x50_mesh.h5
+  GRID unstructured
+END 
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+   END
+   INTERPOLATION linear
+   DATUM 0.d0 0.d0 0.d0
+   PRESSURE 155800 
+END
+
+FLOW_CONDITION Top
+TYPE
+FLUX neumann
+END
+FLUX 1.58549d-8 !1.58549d-9 = 5 cm/yr darcy
+!FLUX 0.
+END
+
+FLOW_CONDITION Bottom
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 155800 
+END
+
+:=========================== transport conditions =============================
+
+TRANSPORT_CONDITION initial_c
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_c
+END
+END
+
+TRANSPORT_CONDITION source_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 source_c
+END
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial_c
+CONCENTRATIONS
+tracer    1.d-5   T
+/
+/
+
+CONSTRAINT source_c
+CONCENTRATIONS
+tracer    1.d0   T
+/
+/
+
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+END
+
+: top boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION Top
+TRANSPORT_CONDITION source_c
+REGION Top_middle
+END
+
+: bottom boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION Bottom
+TRANSPORT_CONDITION initial_c
+REGION Bottom
+END
+
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION Top_part
+MATERIAL soil1
+END
+
+STRATA
+REGION Bottom_part
+MATERIAL soil2
+END

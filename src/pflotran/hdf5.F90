@@ -1724,7 +1724,9 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt :: num_indices, i, local_id
   PetscInt, pointer :: indices(:)
   PetscInt, pointer :: integer_array(:)
-  
+
+  PetscBool :: grp_exits
+
   option => realization%option
 
 #if !defined(PETSC_HAVE_HDF5)
@@ -1785,13 +1787,17 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = '/Regions/' // trim(region%name) // '/Face Ids' //CHAR(0)
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)  
-  call HDF5ReadIntegerArray(option,file_id,string, &
-                            ZERO_INTEGER,indices,num_indices, &
-                            integer_array)
+  ! Check if the region dataset has "Face Ids" group
+  call h5lexists_f(grp_id2,string,grp_exits,hdf5_err)
+  if(grp_exits) then
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+    call printMsg(option)
+    call HDF5ReadIntegerArray(option,file_id,string, &
+                              ZERO_INTEGER,indices,num_indices, &
+                              integer_array)
                             
-  region%faces => integer_array
+    region%faces => integer_array
+  endif
   region%num_cells = num_indices
   deallocate(indices)
   nullify(indices)
@@ -1858,13 +1864,17 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = "Face Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)  
-  call HDF5ReadIntegerArray(option,grp_id2,string, &
-                            ZERO_INTEGER,indices,num_indices, &
-                            integer_array)
+  ! Check if the region dataset has "Face Ids" group
+  call h5lexists_f(grp_id2,string,grp_exits,hdf5_err)
+  if(grp_exits) then
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+    call printMsg(option)
+    call HDF5ReadIntegerArray(option,grp_id2,string, &
+                              ZERO_INTEGER,indices,num_indices, &
+                              integer_array)
                             
-  region%faces => integer_array
+    region%faces => integer_array
+  endif
   region%num_cells = num_indices
   deallocate(indices)
   nullify(indices)
@@ -2062,7 +2072,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     region%sideset => RegionCreateSideset()
     sideset => region%sideset
     sideset%nfaces = int(dims_h5(2)/option%mycommsize)
-    remainder = int(dims_h5(2)) - region%num_verts*option%mycommsize
+    remainder = int(dims_h5(2)) - sideset%nfaces*option%mycommsize
+    if (option%myrank < remainder) sideset%nfaces = sideset%nfaces + 1
 
      ! Find istart and iend
      istart = 0
