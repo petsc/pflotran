@@ -447,7 +447,7 @@ subroutine Init(simulation)
     end select
     
     ! by default turn off line search
-    call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+    call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 1) then
@@ -489,13 +489,13 @@ subroutine Init(simulation)
       case(RICHARDS_MODE)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%saturation_change_limit) > 0.d0) then
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
         endif
       case(G_MODE)
-        call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+        call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
         call SNESLineSearchSetPreCheck(linesearch, &
                                        GeneralCheckUpdatePre, &
                                        realization,ierr)
@@ -503,7 +503,7 @@ subroutine Init(simulation)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCheckUpdatePre, &
                                          realization,ierr)
@@ -512,7 +512,7 @@ subroutine Init(simulation)
         if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
             dabs(option%pressure_change_limit) > 0.d0 .or. &
             dabs(option%temperature_change_limit) > 0.d0) then
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          THCCheckUpdatePre, &
                                          realization,ierr)
@@ -523,22 +523,22 @@ subroutine Init(simulation)
     if (option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
                                           realization,ierr)
         case(G_MODE)
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           GeneralCheckUpdatePost, &
                                           realization,ierr)
         case(TH_MODE)
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCheckUpdatePost, &
                                           realization,ierr)
         case(THC_MODE)
-          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           THCCheckUpdatePost, &
                                           realization,ierr)
@@ -613,7 +613,7 @@ subroutine Init(simulation)
                             surf_flow_solver%Jpre, &
                             SurfaceFlowJacobian,simulation%surf_realization,ierr)
         ! by default turn off line search
-        call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
+        call SNESGetLineSearch(surf_flow_solver%snes, linesearch, ierr)
         call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 
         ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
@@ -701,7 +701,7 @@ subroutine Init(simulation)
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.
-      call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
+      call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
       
       if (option%use_mc) then
@@ -740,7 +740,7 @@ subroutine Init(simulation)
       ! to fail
       if (associated(realization%reaction)) then
         if (realization%reaction%check_update) then
-          call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
+          call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
                                          realization,ierr)
         endif
@@ -2367,9 +2367,18 @@ subroutine InitReadInput(simulation)
             endif
            option%store_flowrate = PETSC_TRUE
           else
-            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format'
-            call printErrMsg(option)
+            if (associated(grid%unstructured_grid%explicit_grid)) then
+#ifndef STORE_FLOWRATES
+              option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
+                'compile with -DSTORE_FLOWRATES'
+              call printErrMsg(option)
+#endif
+              output_option%print_explicit_flowrate = mass_flowrate
+            else
+              option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+                'only available in HDF5 format for implicit grid' 
+              call printErrMsg(option)
+            endif
           endif
         endif
 
