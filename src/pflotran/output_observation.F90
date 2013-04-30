@@ -18,7 +18,7 @@ module Output_Observation_module
   public :: OutputObservation, &
             OutputObservationInit, &
             OutputMassBalance
-
+            
 contains
 
 ! ************************************************************************** !
@@ -489,7 +489,7 @@ subroutine OutputObservationTecplotSecTXT(realization_base)
                                                   icolumn)
             else
               do icell=1,observation%region%num_cells
-                call WriteObservationHeaderForCellsec(fid,realization_base, &
+                call WriteObservationHeaderForCellSec(fid,realization_base, &
                                                    observation%region,icell, &
                                                    observation% &
                                                    print_secondary_data, &
@@ -645,7 +645,7 @@ end subroutine WriteObservationHeaderForCoordSec
 !
 ! WriteObservationHeaderSec: Print a header for secondary continuum data
 ! author: Satish Karra, LANL
-! date: 10/27/113
+! date: 10/27/13
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &

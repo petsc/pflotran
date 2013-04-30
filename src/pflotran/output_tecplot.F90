@@ -20,7 +20,7 @@ module Output_Tecplot_module
 #include "finclude/petscdm.h90"
 #include "finclude/petsclog.h"
 
-  public :: OutputTecplotBlock, &
+  public :: OutputTecplotBlock, & 
             OutputTecplotPoint, &
             OutputVelocitiesTecplotBlock, &
             OutputFluxVelocitiesTecplotBlk, &
@@ -30,7 +30,8 @@ module Output_Tecplot_module
             WriteTecplotDatasetFromVec, &
             WriteTecplotDatasetNumPerLine, &
             WriteTecplotDataset, &
-            OutputPrintExplicitFlowrates
+            OutputPrintExplicitFlowrates, &
+            OutputSecondaryContinuumTecplot 
 
 contains
 
@@ -2043,5 +2044,328 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
 end subroutine OutputPrintExplicitFlowrates
+
+
+! ************************************************************************** !
+!
+! OutputSecondaryContinuumTecplot: Print secondary continuum variables
+! in tecplot format. The output is at a given primary continuum node, 
+! and the coordinates in the output are the secondary continuum spatial 
+! coordinates 
+! author: Satish Karra, LANL
+! date: 04/30/2013
+!
+! ************************************************************************** !  
+subroutine OutputSecondaryContinuumTecplot(realization_base)
+
+  use Realization_Base_class, only : realization_base_type, &
+                                     RealizGetDatasetValueAtCell
+  use Discretization_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Reaction_Aux_module
+  use Observation_module
+  use Utility_module
+  use Secondary_Continuum_Aux_module, only : sec_transport_type, &
+                                             sec_heat_type
+
+ 
+  implicit none
+
+  class(realization_base_type) :: realization_base
+  
+  PetscInt :: i, comma_count, quote_count
+  PetscInt :: icolumn
+  character(len=MAXSTRINGLENGTH) :: filename, string, string2
+  character(len=MAXSTRINGLENGTH) :: string3
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXWORDLENGTH) :: word
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch 
+  type(output_option_type), pointer :: output_option
+  type(observation_type), pointer :: observation
+  type(sec_transport_type), pointer :: rt_sec_tranport_vars(:)
+  type(sec_heat_type), pointer :: sec_heat_vars(:)
+  PetscBool, save :: check_for_observation_points = PETSC_TRUE
+  PetscBool, save :: open_file = PETSC_FALSE
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscReal :: value
+  PetscInt :: ivar, isubvar, var_type
+  PetscErrorCode :: ierr  
+  PetscInt :: count, icell, fid
+  
+  discretization => realization_base%discretization
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
+  if (option%use_mc) then
+    if (option%ntrandof > 0) then
+      rt_sec_tranport_vars => patch%aux%SC_RT%sec_transport_vars
+    endif
+    if (option%iflowmode == TH_MODE .or. option%iflowmode == THC_MODE &
+        .or. option%iflowmode == MPH_MODE) then
+      sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
+    endif
+  endif
+
+  count = 0
+  observation => patch%observation%first
+  do 
+    if (.not.associated(observation)) exit
+    write(string,'(i6)') option%myrank
+    write(string2,'(i6)') count
+    string3 = OutputFilenameID(output_option,option)
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-sec-rank' // trim(adjustl(string)) // '-obs' &
+               // trim(adjustl(string2)) // '-' // trim(string3) // '.tec'    
+    
+    if (option%myrank == option%io_rank) then
+      option%io_buffer = '--> write tecplot output file: ' // trim(filename)
+      call printMsg(option)
+    endif
+    
+    ! open file
+    fid = 86
+    if (.not.FileExists(filename)) then
+      open(unit=fid,file=filename,action="write",status="replace")
+
+      ! must initialize icolumn here so that icolumn does not restart with
+      ! each observation point
+      if (output_option%print_column_ids) then
+        icolumn = 1
+      else
+        icolumn = -1
+      endif    
+    
+      ! write header
+      ! write title
+      write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
+                option%time/output_option%tconv,output_option%tunit
+
+      ! initial portion of header
+      header = 'VARIABLES=' // &
+               '"dist [m]"'
+               
+      write(fid,'(a)',advance='no') trim(header)
+                      
+      if (associated(observation%region%coordinates) .and. &
+              .not.observation%at_cell_center) then
+        option%io_buffer = 'Writing of data at coordinates not ' // &
+                'functioning properly for minerals.  Perhaps due to ' // &
+                'non-ghosting of vol frac....>? - geh'
+        call printErrMsg(option)
+        call WriteTecplotHeaderForCoordSec(fid,realization_base, &
+                                               observation%region, &
+                                               observation% &
+                                               print_secondary_data, &
+                                               icolumn)
+      else
+        do icell=1,observation%region%num_cells
+          call WriteTecplotHeaderForCellSec(fid,realization_base, &
+                                                observation%region,icell, &
+                                                observation% &
+                                                print_secondary_data, &
+                                                icolumn)
+        enddo
+      endif
+
+      write(fid,'(a)',advance='no') ""
+      ! write zone header
+      write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i5)') &
+                   option%time/output_option%tconv, &
+                   option%nsec_cells
+      string = trim(string) // ', DATAPACKING=POINT'
+      write(OUTPUT_UNIT,'(a)') trim(string)      
+      
+      close(fid)
+    endif
+    
+    observation => observation%next
+    count = count + 1
+    
+  enddo
+
+
+
+
+
+  
+end subroutine OutputSecondaryContinuumTecplot
+
+! ************************************************************************** !
+!
+! WriteTecplotHeaderForCellSec: Print tecplot header for data at a cell for
+! secondary continuum 
+! author: Satish Karra, LANL
+! date: 04/30/2013
+!
+! ************************************************************************** !  
+subroutine WriteTecplotHeaderForCellSec(fid,realization_base,region,icell, &
+                                            print_secondary_data, &
+                                            icolumn)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Option_module
+  use Output_Aux_module
+  use Patch_module
+  use Region_module
+  use Utility_module, only : BestFloat
+  
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(region_type) :: region
+  PetscInt :: icell
+  PetscBool :: print_secondary_data(3)
+  PetscInt :: icolumn
+  
+  PetscInt :: local_id
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  type(grid_type), pointer :: grid
+
+  grid => realization_base%patch%grid
+  
+  local_id = region%cell_ids(icell)
+  write(cell_string,*) grid%nG2A(grid%nL2G(region%cell_ids(icell)))
+  cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
+
+  ! add coordinate of cell center
+  x_string = BestFloat(grid%x(grid%nL2G(local_id)),1.d4,1.d-2)
+  y_string = BestFloat(grid%y(grid%nL2G(local_id)),1.d4,1.d-2)
+  z_string = BestFloat(grid%z(grid%nL2G(local_id)),1.d4,1.d-2)
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // &
+                ' ' // trim(adjustl(y_string)) // &
+                ' ' // trim(adjustl(z_string)) // ')'
+  
+  call WriteTecplotHeaderSec(fid,realization_base,cell_string, &
+                                 print_secondary_data,icolumn)
+
+end subroutine WriteTecplotHeaderForCellSec
+
+! ************************************************************************** !
+!
+! WriteTecplotHeaderForCoordSec: Print a header for data at a coordinate
+! for secondary continuum
+! author: Satish Karra, LANL
+! date: 04/30/2013
+!
+! ************************************************************************** !  
+subroutine WriteTecplotHeaderForCoordSec(fid,realization_base,region, &
+                                         print_secondary_data, &
+                                         icolumn)
+
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Patch_module
+  use Region_module
+  use Utility_module, only : BestFloat
+  
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(region_type) :: region
+  PetscBool :: print_secondary_data(3)
+  PetscInt :: icolumn
+  
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  
+  cell_string = trim(region%name)
+  
+  x_string = BestFloat(region%coordinates(ONE_INTEGER)%x,1.d4,1.d-2)
+  y_string = BestFloat(region%coordinates(ONE_INTEGER)%y,1.d4,1.d-2)
+  z_string = BestFloat(region%coordinates(ONE_INTEGER)%z,1.d4,1.d-2)
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
+                trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
+
+  call WriteTecplotHeaderSec(fid,realization_base,cell_string, &
+                             print_secondary_data,icolumn)
+
+end subroutine WriteTecplotHeaderForCoordSec
+
+! ************************************************************************** !
+!
+! WriteTecplotHeaderSec: Print a header for secondary continuum data
+! author: Satish Karra, LANL
+! date: 04/30/2013
+!
+! ************************************************************************** !  
+subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
+                                 print_secondary_data,icolumn)
+                                     
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Reaction_Aux_module
+
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(reaction_type), pointer :: reaction 
+  PetscBool :: print_secondary_data(3)
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  PetscInt :: icolumn
+  
+  PetscInt :: i,j
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option  
+  
+  option => realization_base%option
+  output_option => realization_base%output_option
+  
+  ! add secondary temperature to header
+  if (print_secondary_data(1)) then
+    select case (option%iflowmode) 
+      case (TH_MODE,THC_MODE, MPH_MODE)
+        header = ''
+        string = 'T'
+        call OutputAppendToHeader(header,string,'C',cell_string,icolumn)
+      case default
+        header = ''
+    end select
+    write(fid,'(a)',advance="no") trim(header)
+  endif
+  
+  ! add secondary concentrations to header
+  if (option%ntrandof > 0) then 
+    reaction => realization_base%reaction
+    if (print_secondary_data(2)) then
+      header = ''
+      do j = 1, reaction%naqcomp
+        string = 'Free ion ' // trim(reaction%primary_species_names(j))
+        call OutputAppendToHeader(header,string,'molal',cell_string, &
+                                  icolumn)
+      enddo
+      write(fid,'(a)',advance="no") trim(header)
+    endif
+  
+  
+    ! add secondary mineral volume fractions to header
+    if (print_secondary_data(3)) then
+      header = ''
+      do j = 1, reaction%naqcomp
+        string = trim(reaction%mineral%mineral_names(j)) // ' VF'
+        call OutputAppendToHeader(header,string,'',cell_string, &
+                                  icolumn)
+      enddo
+      write(fid,'(a)',advance="no") trim(header)
+    endif
+  endif 
+  
+end subroutine WriteTecplotHeaderSec
 
 end module Output_Tecplot_module
