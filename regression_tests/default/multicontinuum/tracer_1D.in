@@ -105,10 +105,10 @@ SATURATION_FUNCTION default
 
 :========================= output options =========================
 OUTPUT
-!TIMES s 2.6042e4 3.9063e4 5.2083e4 1.e6
-!PERIODIC_OBSERVATION TIMESTEP 1 
-!PRINT_COLUMN_IDS
-!FORMAT TECPLOT POINT
+:TIMES s 2.6042e4 3.9063e4 5.2083e4 1.e6
+:PERIODIC_OBSERVATION TIMESTEP 1 
+:PRINT_COLUMN_IDS
+:FORMAT TECPLOT POINT
 /
 
 :======================== times ====================================
