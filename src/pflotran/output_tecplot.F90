@@ -2060,15 +2060,15 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetDatasetValueAtCell
-  use Discretization_module
   use Option_module
   use Field_module
   use Patch_module
+  use Grid_module
   use Reaction_Aux_module
   use Observation_module
-  use Utility_module
+  use Variables_module
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &
-                                             sec_heat_type
+                                             sec_heat_type, sec_continuum_type
 
  
   implicit none
@@ -2079,39 +2079,54 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
   PetscInt :: icolumn
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
   character(len=MAXSTRINGLENGTH) :: string3
-  character(len=MAXHEADERLENGTH) :: header, header2
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXHEADERLENGTH) :: header
   type(option_type), pointer :: option
-  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch 
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
+  type(grid_type), pointer :: grid
   type(sec_transport_type), pointer :: rt_sec_tranport_vars(:)
   type(sec_heat_type), pointer :: sec_heat_vars(:)
-  PetscBool, save :: check_for_observation_points = PETSC_TRUE
-  PetscBool, save :: open_file = PETSC_FALSE
-  PetscInt :: local_id
-  PetscInt :: ghosted_id
+  type(reaction_type), pointer :: reaction   
   PetscReal :: value
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr  
-  PetscInt :: count, icell, fid
+  PetscInt :: count, icell, fid, sec_id
+  PetscInt :: ghosted_id, local_id
+  PetscInt :: naqcomp, nkinmnrl
+  PetscReal, pointer :: dist(:)
   
-  discretization => realization_base%discretization
   patch => realization_base%patch
   option => realization_base%option
   field => realization_base%field
+  grid => patch%grid
   output_option => realization_base%output_option
+
   if (option%use_mc) then
     if (option%ntrandof > 0) then
       rt_sec_tranport_vars => patch%aux%SC_RT%sec_transport_vars
+      reaction => realization_base%reaction
     endif
     if (option%iflowmode == TH_MODE .or. option%iflowmode == THC_MODE &
         .or. option%iflowmode == MPH_MODE) then
       sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
     endif
   endif
+
+  ! Here we are assuming that if there are secondary continua for both
+  ! heat and reactive transport, then the shape and type of secondary
+  ! continua are the same - SK
+  if (associated(sec_heat_vars)) then
+    dist => sec_heat_vars(1)%sec_continuum%distance
+  elseif (associated(rt_sec_tranport_vars)) then
+    dist => rt_sec_tranport_vars(1)%sec_continuum%distance
+  endif
+
+
+  ! write points
+1000 format(es13.6,1x)
+1009 format('')
 
   count = 0
   observation => patch%observation%first
@@ -2164,7 +2179,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
                                          print_secondary_data, &
                                          icolumn)
     else
-      do icell=1,observation%region%num_cells
+      do icell = 1,observation%region%num_cells
         call WriteTecplotHeaderForCellSec(fid,realization_base, &
                                           observation%region,icell, &
                                           observation% &
@@ -2180,23 +2195,42 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
                   option%nsec_cells
     string = trim(string) // ',J=1, K=1, DATAPACKING=POINT'
     write(fid,'(a)',advance='no') trim(string)     
+    write(fid,1009)
    
-    
-      
-     
+    do sec_id = 1,option%nsec_cells
+      write(fid,1000,advance='no') dist(sec_id)  
+      do icell = 1,observation%region%num_cells
+        local_id = observation%region%cell_ids(icell)
+        ghosted_id = grid%nL2G(local_id)
+        if (observation%print_secondary_data(1)) then
+          write(fid,1000,advance='no') &
+          RealizGetDatasetValueAtCell(realization_base,SECONDARY_TEMPERATURE, &
+                                      sec_id,ghosted_id)        
+        endif
+        if (observation%print_secondary_data(2)) then
+          do naqcomp = 1, reaction%naqcomp
+            write(fid,1000,advance='no') &
+            RealizGetDatasetValueAtCell(realization_base, &
+                                        SECONDARY_CONCENTRATION, &
+                                        sec_id,ghosted_id,naqcomp)
+          enddo
+        endif
+        if (observation%print_secondary_data(3)) then
+          do nkinmnrl = 1, reaction%mineral%nkinmnrl
+            write(fid,1000,advance='no') &
+            RealizGetDatasetValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
+                                        sec_id,ghosted_id,nkinmnrl) 
+          enddo
+        endif        
+      enddo
+      write(fid,1009)
+    enddo         
        
-    close(fid)
-  
+    close(fid)  
     observation => observation%next
-    count = count + 1
-    
+    count = count + 1    
   enddo
-
-
-
-
-
-  
+   
 end subroutine OutputSecondaryContinuumTecplot
 
 ! ************************************************************************** !
@@ -2208,8 +2242,8 @@ end subroutine OutputSecondaryContinuumTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteTecplotHeaderForCellSec(fid,realization_base,region,icell, &
-                                            print_secondary_data, &
-                                            icolumn)
+                                        print_secondary_data, &
+                                        icolumn)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
