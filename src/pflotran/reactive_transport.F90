@@ -2327,7 +2327,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 
   ! pass #2 for everything else
   call RTResidualPatch2(snes,xx,r,realization,ierr)
-
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &
                               viewer,ierr)
@@ -4205,6 +4205,33 @@ subroutine RTSetPlotVariables(realization)
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
                                    reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_EH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'Eh'
+      units = 'V'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,EH, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_pe .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'pe'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PE, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_O2 .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%o2_gas_id > 0) then
+      name = 'logfO2'
+      units = 'bars'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,O2, &
+                                   reaction%species_idx%o2_gas_id)
     endif
   endif  
   

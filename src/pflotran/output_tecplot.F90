@@ -29,7 +29,8 @@ module Output_Tecplot_module
             GetCellConnectionsTecplot, &
             WriteTecplotDatasetFromVec, &
             WriteTecplotDatasetNumPerLine, &
-            WriteTecplotDataset
+            WriteTecplotDataset, &
+            OutputPrintExplicitFlowrates
 
 contains
 
@@ -1977,5 +1978,70 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
   call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
 end subroutine WriteTecplotDataSetNumPerLine
+
+! ************************************************************************** !
+!
+! OutputPrintExplicitFlowrates: Prints out the flow rate through a voronoi face
+! for explicit grid. This will be used for particle tracking.
+! outputs in the format: mag(Res) where the row number is same as connection
+! number
+! author: Satish Karra, LANL
+! date: 04/24/13
+!
+! ************************************************************************** !
+subroutine OutputPrintExplicitFlowrates(realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Output_Common_module  
+ 
+  implicit none
+
+  class(realization_base_type) :: realization_base
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr  
+  PetscInt :: iconn
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
+
+  filename = OutputFilename(output_option,option,'dat','rates')
+  
+  call OutputGetExplicitFlowrates(realization_base)
+  
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write rate output file: ' // &
+                       trim(filename)
+    call printMsg(option)                       
+    open(unit=OUTPUT_UNIT,file=filename,action="write")
+  endif
+  
+1000 format(es13.6,1x)
+1009 format('')
+
+  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
+  if (option%myrank == option%io_rank) then
+    do iconn = 1,size(grid%unstructured_grid%explicit_grid%connections,2)
+      write(OUTPUT_UNIT,1000,advance='no') vec_ptr(iconn)
+      write(OUTPUT_UNIT,1009) 
+    enddo
+  endif
+  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+    
+  if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
+
+end subroutine OutputPrintExplicitFlowrates
 
 end module Output_Tecplot_module

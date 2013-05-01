@@ -797,7 +797,10 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[SECONDARY\_SPECIES] Output all secondary species concentrations
 \item[MINERALS] Output all kinetic mineral volume fractions and reaction rates
 \item[\tt Mineral Name] Output mineral saturation index
-\item[pH]
+\item[pH] Output pH
+\item[pe] Output pe
+\item[Eh] Output Eh [V]
+\item[O2] Output log $f_{\rm O_2}$ [$f_{\rm O_2}$ in bars]
 \item[TOTAL\_SORBED]
 \item[TOTAL\_SORBED\_MOBILE]
 \item[COLLOIDS]
@@ -1266,6 +1269,8 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[linear]
 \end{deflist}
 
+\item[SYNC\_TIMESTEP\_WITH\_UPDATE] ~
+
 \item[TYPE] ~
 
 \begin{deflist}{000000}
@@ -1335,6 +1340,8 @@ IPHASE & Phases present & CO$_2$ concentration\\
 \bf CYCLIC & Instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set\\
 \midrule
 \bf INTERPOLATION & Defines the method for interpolating between data set times\\
+\midrule
+\bf SYNC\_TIMESTEP\_WITH\_UPDATE & Synchronizes time step with waypoints\\
 \midrule
 \bf DATUM & Location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined\\
 \midrule
