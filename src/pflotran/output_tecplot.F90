@@ -2131,60 +2131,62 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
     
     ! open file
     fid = 86
-    if (.not.FileExists(filename)) then
-      open(unit=fid,file=filename,action="write",status="replace")
+    open(unit=fid,file=filename,action="write")
 
-      ! must initialize icolumn here so that icolumn does not restart with
-      ! each observation point
-      if (output_option%print_column_ids) then
-        icolumn = 1
-      else
-        icolumn = -1
-      endif    
+    ! must initialize icolumn here so that icolumn does not restart with
+    ! each observation point
+    if (output_option%print_column_ids) then
+      icolumn = 1
+    else
+      icolumn = -1
+    endif    
     
-      ! write header
-      ! write title
-      write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
-                option%time/output_option%tconv,output_option%tunit
+    ! write header
+    ! write title
+    write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
+              option%time/output_option%tconv,output_option%tunit
 
-      ! initial portion of header
-      header = 'VARIABLES=' // &
-               '"dist [m]"'
+    ! initial portion of header
+    header = 'VARIABLES=' // &
+              '"dist [m]"'
                
-      write(fid,'(a)',advance='no') trim(header)
+    write(fid,'(a)',advance='no') trim(header)
                       
-      if (associated(observation%region%coordinates) .and. &
-              .not.observation%at_cell_center) then
-        option%io_buffer = 'Writing of data at coordinates not ' // &
-                'functioning properly for minerals.  Perhaps due to ' // &
-                'non-ghosting of vol frac....>? - geh'
-        call printErrMsg(option)
-        call WriteTecplotHeaderForCoordSec(fid,realization_base, &
-                                               observation%region, &
-                                               observation% &
-                                               print_secondary_data, &
-                                               icolumn)
-      else
-        do icell=1,observation%region%num_cells
-          call WriteTecplotHeaderForCellSec(fid,realization_base, &
-                                                observation%region,icell, &
-                                                observation% &
-                                                print_secondary_data, &
-                                                icolumn)
-        enddo
-      endif
-
-      write(fid,'(a)',advance='no') ""
-      ! write zone header
-      write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i5)') &
-                   option%time/output_option%tconv, &
-                   option%nsec_cells
-      string = trim(string) // ', DATAPACKING=POINT'
-      write(OUTPUT_UNIT,'(a)') trim(string)      
-      
-      close(fid)
+    if (associated(observation%region%coordinates) .and. &
+            .not.observation%at_cell_center) then
+      option%io_buffer = 'Writing of data at coordinates not ' // &
+              'functioning properly for minerals.  Perhaps due to ' // &
+              'non-ghosting of vol frac....>? - geh'
+      call printErrMsg(option)
+      call WriteTecplotHeaderForCoordSec(fid,realization_base, &
+                                         observation%region, &
+                                         observation% &
+                                         print_secondary_data, &
+                                         icolumn)
+    else
+      do icell=1,observation%region%num_cells
+        call WriteTecplotHeaderForCellSec(fid,realization_base, &
+                                          observation%region,icell, &
+                                          observation% &
+                                          print_secondary_data, &
+                                          icolumn)
+      enddo
     endif
+
+    write(fid,'(a)',advance='yes') ""
+    ! write zone header
+    write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i5)') &
+                  option%time/output_option%tconv, &
+                  option%nsec_cells
+    string = trim(string) // ',J=1, K=1, DATAPACKING=POINT'
+    write(fid,'(a)',advance='no') trim(string)     
+   
     
+      
+     
+       
+    close(fid)
+  
     observation => observation%next
     count = count + 1
     
