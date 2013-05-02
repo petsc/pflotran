@@ -1397,6 +1397,7 @@ subroutine InitReadInput(simulation)
   use Regression_module
   use Output_Aux_module
   use Output_Tecplot_module
+  use Mass_Transfer_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -1459,6 +1460,7 @@ subroutine InitReadInput(simulation)
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
   type(dataset_type), pointer :: dataset
+  type(mass_transfer_type), pointer :: mass_transfer
   type(input_type), pointer :: input
 
   nullify(flow_stepper)
@@ -1676,6 +1678,16 @@ subroutine InitReadInput(simulation)
         call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
         nullify(coupler)        
+      
+!....................
+      case ('MASS_TRANSFER')
+        mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Mass Transfer name') 
+        call MassTransferRead(mass_transfer,input,option)
+        call MassTransferAddToList(mass_transfer, &
+                                   realization%mass_transfer_list)
+        nullify(mass_transfer)        
       
 !....................
       case ('STRATIGRAPHY','STRATA')

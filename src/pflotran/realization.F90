@@ -1394,6 +1394,9 @@ subroutine RealizationUpdate(realization)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
+  call MassTransferUpdate(realization%mass_transfer_list, &
+                          realization%option%time)
+
 end subroutine RealizationUpdate
 
 ! ************************************************************************** !
@@ -2528,7 +2531,8 @@ subroutine RealizationDestroy(realization)
   
   call ReactionDestroy(realization%reaction)
   
-  call TranConstraintDestroy(realization%sec_transport_constraint)  
+  call TranConstraintDestroy(realization%sec_transport_constraint)
+  call MassTransferDestroy(realization%mass_transfer_list)
   
 end subroutine RealizationDestroy
 

@@ -10,6 +10,7 @@ module Realization_Base_class
   use Output_Aux_module
   use Field_module
   use Reaction_Aux_module
+  use Mass_Transfer_module
 
   implicit none
 
@@ -28,6 +29,7 @@ module Realization_Base_class
     type(field_type), pointer :: field
     type(flow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
+    type(mass_transfer_type), pointer :: mass_transfer_list
     
     type(reaction_type), pointer :: reaction
     
@@ -71,6 +73,7 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%reaction)
 
   nullify(realization_base%patch)
+  nullify(realization_base%mass_transfer_list)
   
 end subroutine RealizationBaseInit
 
