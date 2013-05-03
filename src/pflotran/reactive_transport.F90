@@ -1453,7 +1453,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
     do
       if (.not.associated(cur_mass_transfer)) exit
       call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
-                            tran_rhs,ADD_VALUES,ierr)    
+                            field%tran_rhs,ADD_VALUES,ierr)    
       cur_mass_transfer => cur_mass_transfer%next
     enddo
   endif  

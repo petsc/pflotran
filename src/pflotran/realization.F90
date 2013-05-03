@@ -18,6 +18,7 @@ module Realization_class
   use Uniform_Velocity_module
   use Waypoint_module
   use Output_Aux_module
+  use Mass_Transfer_module  
   
   use Reaction_Aux_module
   
@@ -1395,7 +1396,9 @@ subroutine RealizationUpdate(realization)
 !  call RealizationUpdateSrcSinks(realization)
 
   call MassTransferUpdate(realization%mass_transfer_list, &
-                          realization%option%time)
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
 
 end subroutine RealizationUpdate
 

@@ -1,7 +1,6 @@
 module Mass_Transfer_module
  
-  use Dataset_Aux_module
-  use Dataset_module
+  use Dataset_Global_class
   
   implicit none
 
@@ -13,15 +12,16 @@ module Mass_Transfer_module
  
   type, public :: mass_transfer_type
     PetscInt :: idof
-    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXSTRINGLENGTH) :: filename
     character(len=MAXWORDLENGTH) :: dataset_name
-    type(dataset_type), pointer :: dataset
+    type(dataset_global_type), pointer :: dataset
     Vec :: vec
     type(mass_transfer_type), pointer :: next
   end type mass_transfer_type
   
   public :: MassTransferCreate, MassTransferDestroy, &
-            MassTransferRead, MassTransferAddToList
+            MassTransferRead, MassTransferAddToList, &
+            MassTransferUpdate
 
 contains
 
@@ -42,7 +42,7 @@ function MassTransferCreate()
   
   allocate(mass_transfer)
   mass_transfer%idof = 0
-  mass_transfer%name = ''
+  mass_transfer%filename = ''
   mass_transfer%dataset_name = ''
   nullify(mass_transfer%dataset)
   nullify(mass_transfer%next)
@@ -92,7 +92,11 @@ subroutine MassTransferRead(mass_transfer,input,option)
         call InputReadNChars(input,option, &
                              mass_transfer%dataset_name,&
                              MAXWORDLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'DATASET,NAME','MASS_TRANSFER')         
+        call InputErrorMsg(input,option,'DATASET,NAME','MASS_TRANSFER')
+      case('FILENAME') 
+        call InputReadNChars(input,option,mass_transfer%filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'FILENAME','MASS_TRANSFER')        
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in mass transfer'    
@@ -135,24 +139,41 @@ end subroutine MassTransferAddToList
 
 ! ************************************************************************** !
 !
-! MassTransferUpdate: Updates a mass transfer object
+! MassTransferUpdate: Updates a mass transfer object transfering data from
+!                     the buffer into the PETSc Vec
 ! author: Glenn Hammond
 ! date: 05/01/13
 !
 ! ************************************************************************** !
-recursive subroutine MassTransferUpdate(mass_transfer, time)
-
+recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
+                                        grid, option)
+  use Discretization_module
+  use Grid_module
+  use Option_module
+  
   implicit none
   
   type(mass_transfer_type), pointer :: mass_transfer
+  type(discretization_type) :: discretization
+  type(grid_type) :: grid
+  type(option_type) :: option  
   PetscReal :: time
+  
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
   
   if (.not.associated(mass_transfer)) return
   
   if (.not.associated(mass_transfer%dataset)) then
+    mass_transfer%dataset => DatabaseGlobalCreate()
+    mass_transfer%dataset%filename = mass_transfer%filename
+    mass_transfer%dataset%dataset_name = mass_transfer%dataset_name
   endif
-  
-  
+  call mass_transfer%dataset%Load(discretization,grid,option)
+
+  call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
+  vec_ptr(:) = mass_transfer%dataset%rarray(:)
+  call VecRestoreArrayF90(mass_transfer%vec,vec_ptr,ierr)
   
 end subroutine MassTransferUpdate
 

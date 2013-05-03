@@ -488,7 +488,7 @@ subroutine OutputHDF5UGrid(realization_base)
 #endif
 
   use hdf5
-  use HDF5_module
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
   use HDF5_Aux_module
   
   implicit none
@@ -807,7 +807,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 #endif
 
   use hdf5
-  use HDF5_module
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
   use HDF5_Aux_module
   
   implicit none
@@ -1157,7 +1157,7 @@ subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_i
   use Connection_module
   use Patch_module
   use hdf5
-  use HDF5_module
+  use HDF5_module, only : HDF5WriteStructuredDataSet, trick_hdf5
 
   implicit none
 
@@ -1432,7 +1432,6 @@ end subroutine WriteHDF5Coordinates
 subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 
   use hdf5
-  use HDF5_module
   use Grid_module
   use Option_module
   use Unstructured_Grid_Aux_module
@@ -1742,7 +1741,6 @@ end subroutine WriteHDF5CoordinatesUGrid
 subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 
   use hdf5
-  use HDF5_module
   use Realization_Base_class, only : realization_base_type
   use Grid_module
   use Option_module
@@ -2274,7 +2272,6 @@ end subroutine WriteHDF5CoordinatesUGridXDMF
 subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type)
 
   use hdf5
-  use HDF5_module
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module
