@@ -1404,10 +1404,10 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
   if(option%ntrandof > 0)then 
     if (iireac>0) then
      !H2O
-      mol(1) = mol(1) + vol * global_aux_var%reaction_rate_store(1) * &
+      mol(1) = mol(1) + vol_frac_prim*vol * global_aux_var%reaction_rate_store(1) * &
                option%flow_dt*1D-3 
       !CO2     
-      mol(2) = mol(2) + vol * global_aux_var%reaction_rate_store(2) * &
+      mol(2) = mol(2) + vol_frac_prim*vol * global_aux_var%reaction_rate_store(2) * &
                option%flow_dt*1D-3
     endif
   endif
