@@ -731,6 +731,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   PetscInt :: global_offset_new
   PetscInt :: ghosted_id
   PetscInt, allocatable :: local_connections(:), local_connection_offsets(:)
+  PetscInt, allocatable :: local_connections2(:), local_connection_offsets2(:)
   PetscInt, allocatable :: int_array(:), int_array2(:), int_array3(:)
   PetscInt, allocatable :: int_array4(:)
   PetscInt, allocatable :: int_array2d(:,:)
@@ -872,6 +873,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
+!  call printErrMsg(option,'debugg')
 
   ! Create the Dual matrix.
   call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
@@ -889,7 +891,45 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call MatAssemblyBegin(M_mat,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(M_mat,MAT_FINAL_ASSEMBLY,ierr)
   
-  call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Dual_mat,ierr)
+  !call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Dual_mat,ierr)
+  !call MatDestroy(M_mat,ierr)
+
+  ! Alternate method of creating Dual_mat
+  if (option%mycommsize>1) then
+    call MatMPIAIJGetLocalMat(M_mat,MAT_INITIAL_MATRIX,M_mat_loc,ierr)
+    call MatGetRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatGetRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
+
+  count=0
+  do icell = 1,num_rows
+    istart = ia_ptr(icell)
+    iend = ia_ptr(icell+1)-1
+    num_cols = iend-istart+1
+    count = count+num_cols
+  enddo
+  allocate(local_connections2(count))
+  allocate(local_connection_offsets2(num_rows+1))
+  local_connection_offsets2(1:num_rows+1) = ia_ptr(1:num_rows+1)
+  local_connections2(1:count)             = ja_ptr(1:count)
+
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
+  call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
+                       ugrid%nmax, &
+                       local_connection_offsets2, &
+                       local_connections2,PETSC_NULL_INTEGER,Dual_mat,ierr)
+
+  if (option%mycommsize>1) then
+    call MatRestoreRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatRestoreRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
   call MatDestroy(M_mat,ierr)
 
 #if UGRID_DEBUG
@@ -1043,7 +1083,12 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
                           temp_int,ia_ptr2,ja_ptr2,success,ierr)
   call MatDestroy(Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
-  
+  deallocate(local_connections)
+  deallocate(local_connection_offsets)
+  deallocate(local_connections2)
+  deallocate(local_connection_offsets2)
+
+
   ! is_scatter is destroyed within UGridNaturalToPetsc
   call UGridNaturalToPetsc(ugrid,option, &
                            cells_old,cells_local, &
