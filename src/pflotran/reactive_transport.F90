@@ -2917,7 +2917,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                   istartall = iendall-reaction%ncomp
                   Res(icomp) = -msrc(2)
                   r_p(istartall+icomp) = r_p(istartall+icomp) + Res(icomp)
-!                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
+!                 print *,'RT SC source', ieqgas,icomp, res(icomp)
                 endif 
               enddo
           end select 

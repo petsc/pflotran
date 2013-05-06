@@ -1401,10 +1401,10 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
   eng = eng * porXvol + (1.d0 - por) * vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
-! Note if iireac >0, then it is the node global index
+! Note if iireac > 0, then it is the node global index
 
   if(option%ntrandof > 0)then 
-    if (iireac>0) then
+    if (iireac > 0) then
      !H2O
       mol(1) = mol(1) + vol * global_aux_var%reaction_rate_store(1) * &
                option%flow_dt*1D-3 
@@ -1417,8 +1417,8 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
 ! if (option%use_isothermal)then
 !   Res(1:option%nflowdof) = mol(:)
 ! else
-    Res(1:option%nflowdof-1) = mol(:)
-    Res(option%nflowdof) = vol_frac_prim*eng
+    Res(1:option%nflowdof-1) = vol_frac_prim * mol(:)
+    Res(option%nflowdof) = vol_frac_prim * eng
 ! endif
 end subroutine MphaseAccumulation
 
@@ -1648,7 +1648,7 @@ end subroutine MphaseSourceSink
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
-                        option,vv_darcy,Res)
+                        option,vv_darcy,vol_frac_prim,Res)
   use Option_module                              
   
   implicit none
@@ -1661,7 +1661,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: Dk_up, Dk_dn
-  PetscReal :: vv_darcy(:),area
+  PetscReal :: vv_darcy(:),area,vol_frac_prim
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
@@ -1741,7 +1741,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
     (aux_var_up%sat(np) <= 0.d0) .and. (aux_var_dn%sat(np) <= 0.d0) &
     ) then
 !     single phase
-      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+      difff = vol_frac_prim * diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
       do ispec=1, option%nflowspec
         ind = ispec + (np-1)*option%nflowspec
@@ -1754,7 +1754,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
     else
 
 !     two-phase
-      difff = diffdp * 0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
+      difff = vol_frac_prim * diffdp * 0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
       do ispec=1, option%nflowspec
         ind = ispec + (np-1)*option%nflowspec
         
@@ -1778,7 +1778,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 !     aux_var_up%den(np),aux_var_dn%den(np),diffdp
 
 !   if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+      difff = vol_frac_prim * diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
       do ispec=1, option%nflowspec
         ind = ispec + (np-1)*option%nflowspec
@@ -1796,7 +1796,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
+  cond = vol_frac_prim * Dk*area * (aux_var_up%temp-aux_var_dn%temp)
   fluxe = fluxe + cond
  ! end if
 
@@ -1820,7 +1820,7 @@ end subroutine MphaseFlux
 ! ************************************************************************** !
 subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-     area,dist_gravity,option,vv_darcy,Res)
+     area,dist_gravity,option,vv_darcy,vol_frac_prim,Res)
   use Option_module
   
   implicit none
@@ -1831,7 +1831,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: dd_up, sir_dn(:)
   PetscReal :: aux_vars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
-  PetscReal :: vv_darcy(:), area
+  PetscReal :: vv_darcy(:), area, vol_frac_prim
   PetscReal :: Res(1:option%nflowdof) 
   
   PetscReal :: dist_gravity  ! distance along gravity vector
@@ -1944,7 +1944,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       do np = 1, option%nphase
         if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
-          diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
+          diff = vol_frac_prim * diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
                     (aux_var_up%den(np)+aux_var_up%den(np))
           do ispec = 1, option%nflowspec
             fluxm(ispec) = fluxm(ispec) + &
@@ -1962,7 +1962,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     select case(ibndtype(MPH_TEMPERATURE_DOF))
       case(DIRICHLET_BC)
         Dk =  Dk_dn / dd_up
-        cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
+        cond = vol_frac_prim * Dk*area*(aux_var_up%temp - aux_var_dn%temp)
         fluxe = fluxe + cond
       case(NEUMANN_BC)
         fluxe = fluxe + aux_vars(MPH_TEMPERATURE_DOF)*area*option%scale
@@ -2882,11 +2882,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
-         v_darcy,Res)
+         v_darcy,vol_frac_prim,Res)
+
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
+
       mphase%res_old_AR(local_id,1:option%nflowdof) = &
            mphase%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
@@ -2963,7 +2966,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
           tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
           dd_dn,perm_dn,D_dn, &
           cur_connection_set%area(iconn),distance_gravity, &
-          upweight,option,v_darcy,Res)
+          upweight,option,v_darcy,vol_frac_prim,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       mphase%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
@@ -3464,7 +3467,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
             cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
             cur_connection_set%area(iconn), &
             distance_gravity,option, &
-            vv_darcy,Res)
+            vv_darcy,vol_frac_prim,Res)
           ResInc(local_id,1:option%nflowdof,nvar) = &
               ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
         enddo
@@ -3603,7 +3606,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                          dd_dn,perm_dn,D_dn, &
                          cur_connection_set%area(iconn), &
                          distance_gravity, &
-                         upweight, option, vv_darcy, Res)
+                         upweight, option, vv_darcy, vol_frac_prim, Res)
                          
         ra(:,nvar) = (Res(:)-mphase%res_old_FL(iconn,:))/ &
                      mphase%delx(nvar,ghosted_id_up)
@@ -3619,7 +3622,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                          mphase_parameter%sir(:,icap_dn), &
                          dd_dn,perm_dn,D_dn, &
                          cur_connection_set%area(iconn),distance_gravity, &
-                         upweight, option, vv_darcy, Res)
+                         upweight, option, vv_darcy, vol_frac_prim, Res)
       
         ra(:,nvar+option%nflowdof) = (Res(:)-mphase%res_old_FL(iconn,:)) &
                                       /mphase%delx(nvar,ghosted_id_dn)

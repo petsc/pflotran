@@ -339,18 +339,18 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 '" in boundary condition ' // &
+      option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '" in boundary condition "' // &
                  trim(coupler%name) // &
-                 ' not found in region list'
+                 '" not found in region list'
       call printErrMsg(option)
     endif
     if (associated(patch%grid%structured_grid)) then
       if (coupler%region%num_cells > 0 .and. &
           (coupler%region%iface == 0 .and. &
            .not.associated(coupler%region%faces))) then
-        option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 ', which is tied to a boundary condition, has not ' // &
+        option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '", which is tied to a boundary condition, has not ' // &
                  'been assigned a face in the structured grid. '
         call printErrMsg(option)
       endif
@@ -363,9 +363,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in boundary condition ' // &
+                   '" in boundary condition "' // &
                    trim(coupler%name) // &
-                   ' not found in flow condition list'
+                   '" not found in flow condition list'
           call printErrMsg(option)
         endif
       else
@@ -382,9 +382,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%tran_condition)) then
            option%io_buffer = 'Transport condition "' // &
                    trim(coupler%tran_condition_name) // &
-                   '" in boundary condition ' // &
+                   '" in boundary condition "' // &
                    trim(coupler%name) // &
-                   ' not found in transport condition list'
+                   '" not found in transport condition list'
           call printErrMsg(option)
         endif
       else
@@ -405,10 +405,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 '" in initial condition ' // &
+      option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '" in initial condition "' // &
                  trim(coupler%name) // &
-                 ' not found in region list'
+                 '" not found in region list'
       call printErrMsg(option)
     endif
     ! pointer to flow condition
@@ -419,9 +419,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in initial condition ' // &
+                   '" in initial condition "' // &
                    trim(coupler%name) // &
-                   ' not found in flow condition list'
+                   '" not found in flow condition list'
           call printErrMsg(option)
         endif
       else
@@ -438,9 +438,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%tran_condition)) then
           option%io_buffer = 'Transport condition "' // &
                    trim(coupler%tran_condition_name) // &
-                   '" in initial condition ' // &
+                   '" in initial condition "' // &
                    trim(coupler%name) // &
-                   ' not found in transport condition list'
+                   '" not found in transport condition list'
           call printErrMsg(option)
         endif
       else
@@ -460,10 +460,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 '" in source/sink ' // &
+      option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '" in source/sink "' // &
                  trim(coupler%name) // &
-                 ' not found in region list'
+                 '" not found in region list'
       call printErrMsg(option)
     endif
     ! pointer to flow condition
@@ -474,9 +474,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in source/sink ' // &
+                   '" in source/sink "' // &
                    trim(coupler%name) // &
-                   ' not found in flow condition list'
+                   '" not found in flow condition list'
           call printErrMsg(option)
         endif
       else
@@ -494,9 +494,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%tran_condition)) then
           option%io_buffer = 'Transport condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in source/sink ' // &
+                   '" in source/sink "' // &
                    trim(coupler%name) // &
-                   ' not found in transport condition list'
+                   '" not found in transport condition list'
           call printErrMsg(option)
         endif
       else
@@ -521,7 +521,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       strata%region => RegionGetPtrFromList(strata%region_name, &
                                                   patch%regions)
       if (.not.associated(strata%region)) then
-        option%io_buffer = 'Region ' // trim(strata%region_name) // &
+        option%io_buffer = 'Region "' // trim(strata%region_name) // &
                  '" in strata not found in region list'
         call printErrMsg(option)
       endif
@@ -534,9 +534,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             MaterialPropGetPtrFromArray(strata%material_property_name, &
                                         patch%material_property_array)
           if (.not.associated(strata%material_property)) then
-            option%io_buffer = 'Material ' // &
+            option%io_buffer = 'Material "' // &
                               trim(strata%material_property_name) // &
-                              ' not found in material list'
+                              '" not found in material list'
             call printErrMsg(option)
           endif
         endif
@@ -547,9 +547,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
                                             patch%surf_material_property_array)
           if (.not.associated(strata%surf_material_property)) then
-            option%io_buffer = 'Material ' // &
+            option%io_buffer = 'Material "' // &
                               trim(strata%material_property_name) // &
-                              ' not found in material list'
+                              '" not found in material list'
             call printErrMsg(option)
           endif
         endif
@@ -586,9 +586,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(observation%region)) then
           option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
-                 '" in observation point ' // &
+                 '" in observation point "' // &
                  trim(observation%name) // &
-                 ' not found in region list'                   
+                 '" not found in region list'                   
           call printErrMsg(option)
         endif
         if (observation%region%num_cells == 0) then
@@ -601,9 +601,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (associated(coupler)) then
           observation%connection_set => coupler%connection_set
         else
-          option%io_buffer = 'Boundary Condition ' // &
+          option%io_buffer = 'Boundary Condition "' // &
                    trim(observation%linkage_name) // &
-                   ' not found in Boundary Condition list'
+                   '" not found in Boundary Condition list'
           call printErrMsg(option)
         endif
         if (observation%connection_set%num_connections == 0) then

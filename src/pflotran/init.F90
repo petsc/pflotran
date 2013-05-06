@@ -3005,13 +3005,16 @@ subroutine verifyCoupler(realization,patch,coupler_list)
     if (associated(coupler%connection_set)) then
       do iconn = 1, coupler%connection_set%num_connections
         local_id = coupler%connection_set%id_dn(iconn)
-        vec_ptr(local_id) = coupler%id
+!        vec_ptr(local_id) = coupler%id
+!geh: let's sum the # of connections
+         vec_ptr(local_id) = vec_ptr(local_id) + 1
       enddo
     else
       if (associated(coupler%region)) then
         do icell = 1, coupler%region%num_cells
           local_id = coupler%region%cell_ids(icell)
-          vec_ptr(local_id) = coupler%id
+!          vec_ptr(local_id) = coupler%id
+         vec_ptr(local_id) = vec_ptr(local_id) + 1
         enddo
       endif
     endif
