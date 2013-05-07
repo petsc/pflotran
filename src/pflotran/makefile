@@ -388,6 +388,9 @@ database_aux.o : option.o string.o input.o
 database_hpt.o : database.o reaction.o database_aux.o mineral_aux.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
 dataset_aux.o : string.o utility.o option.o input.o
+dataset_base.o : time_storage.o option.o utility.o
+dataset_global.o : dataset_base.o discretization.o grid.o option.o \
+                   time_storage.o logging.o 
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    input.o string.o mfd_aux.o mfd.o unstructured_grid_aux.o
 flash2.o : flash2_aux.o realization.o fluid.o global_aux.o variables.o \
@@ -435,6 +438,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          surface_init.o surface_th.o surface_global.o
 input.o : string.o option.o
 level.o : patch.o option.o
+mass_transfer.o : dataset_global.o option.o input.o string.o discretization.o \
+                  grid.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
              surface_material.o
 material_aux.o : option.o
