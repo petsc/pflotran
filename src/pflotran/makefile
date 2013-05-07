@@ -258,7 +258,10 @@ properties_obj = \
 dataset_obj = \
 	${common_src}dataset.o \
 	${common_src}dataset_aux.o \
-	${common_src}time_series.o 
+	${common_src}dataset_base.o \
+	${common_src}dataset_global.o \
+	${common_src}time_series.o \
+	${common_src}time_storage.o 
 
 io_obj = \
 	${common_src}hdf5.o \
@@ -285,6 +288,7 @@ misc_obj = \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}level.o \
+	${common_src}mass_transfer.o \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
 	${common_src}patch.o \
@@ -536,7 +540,7 @@ reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-                       secondary_continuum.o  
+                       secondary_continuum.o mass_transfer.o 
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -545,7 +549,10 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 discretization.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
                 dataset.o surface_field.o surface_material.o output_aux.o \
-                constraint.o realization_base.o
+                constraint.o realization_base.o mass_transfer.o
+realization_base.o : level.o patch.o discretization.o option.o input.o \
+                     debug.o output_aux.o field.o reaction_aux.o \
+                     mass_transfer.o 
 region.o : input.o utility.o logging.o string.o geometry.o option.o \
            unstructured_cell.o structured_grid.o
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
@@ -618,6 +625,7 @@ thc_aux.o : option.o material.o water_eos.o \
 thmc.o : thmc_aux.o realization.o saturation_function.o
 thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o \
              global_aux.o
+time_storage.o : option.o
 timestepper.o : th.o thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \

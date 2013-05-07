@@ -14,7 +14,7 @@ module Mass_Transfer_module
     PetscInt :: idof
     character(len=MAXSTRINGLENGTH) :: filename
     character(len=MAXWORDLENGTH) :: dataset_name
-    type(dataset_global_type), pointer :: dataset
+    class(dataset_global_type), pointer :: dataset
     Vec :: vec
     type(mass_transfer_type), pointer :: next
   end type mass_transfer_type
@@ -165,7 +165,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   if (.not.associated(mass_transfer)) return
   
   if (.not.associated(mass_transfer%dataset)) then
-    mass_transfer%dataset => DatabaseGlobalCreate()
+    mass_transfer%dataset => DatasetGlobalCreate()
     mass_transfer%dataset%filename = mass_transfer%filename
     mass_transfer%dataset%dataset_name = mass_transfer%dataset_name
   endif

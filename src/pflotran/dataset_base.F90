@@ -31,11 +31,11 @@ module Dataset_Base_class
   PetscInt, parameter :: DATASET_REAL = 2
   
   interface DatasetBaseInit
-    procedure :: BaseInit
+    module procedure :: BaseInit
   end interface
   
   interface DatasetBaseDestroy
-    procedure :: BaseDestroy
+    module procedure :: BaseDestroy
   end interface
   
   public :: DatasetBaseInit, &

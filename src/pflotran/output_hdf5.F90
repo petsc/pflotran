@@ -1435,6 +1435,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   use Grid_module
   use Option_module
   use Unstructured_Grid_Aux_module
+  use HDF5_module, only : trick_hdf5
   use Variables_module
   
   implicit none

@@ -12,60 +12,60 @@ module Dataset_Global_class
     character(len=MAXWORDLENGTH) :: dataset_name
     character(len=MAXSTRINGLENGTH) :: filename
   contains
-    procedure, public :: Init => DatabaseGlobalInit
-    procedure, public :: Load => DatabaseGlobalLoad
+    procedure, public :: Init => DatasetGlobalInit
+    procedure, public :: Load => DatasetGlobalLoad
   end type dataset_global_type
   
-  public :: DatabaseGlobalCreate, &
+  public :: DatasetGlobalCreate, &
             DatasetGlobalDestroy
   
 contains
 
 ! ************************************************************************** !
 !
-! DatabaseGlobalCreate: Creates global database class
+! DatasetGlobalCreate: Creates global dataset class
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-function DatabaseGlobalCreate()
+function DatasetGlobalCreate()
   
   implicit none
   
-  class(dataset_global_type), pointer :: DatabaseGlobalCreate
+  class(dataset_global_type), pointer :: DatasetGlobalCreate
   
-  allocate(DatabaseGlobalCreate)
-  call DatabaseGlobalCreate%Init()
+  allocate(DatasetGlobalCreate)
+  call DatasetGlobalCreate%Init()
     
-end function DatabaseGlobalCreate
+end function DatasetGlobalCreate
 
 ! ************************************************************************** !
 !
-! DatabaseGlobalInit: Initializes members of global database class
+! DatasetGlobalInit: Initializes members of global dataset class
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatabaseGlobalInit(this)
+subroutine DatasetGlobalInit(this)
   
   implicit none
   
   class(dataset_global_type) :: this
   
-  call DatabaseBaseInit(this)
+  call DatasetBaseInit(this)
   this%filename = ''
   this%dataset_name = ''
     
-end subroutine DatabaseGlobalInit
+end subroutine DatasetGlobalInit
 
 ! ************************************************************************** !
 !
-! DatabaseGlobalLoad: Load new data into database buffer
+! DatasetGlobalLoad: Load new data into dataset buffer
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatabaseGlobalLoad(this,discretization,grid,option)
+subroutine DatasetGlobalLoad(this,discretization,grid,option)
   
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
@@ -105,7 +105,7 @@ subroutine DatabaseGlobalLoad(this,discretization,grid,option)
     call this%InterpolateTime()
   endif
     
-end subroutine DatabaseGlobalLoad
+end subroutine DatasetGlobalLoad
 
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
@@ -329,6 +329,7 @@ end subroutine BasePrintMe
 subroutine BaseGetTimes(dataset, option, max_sim_time, time_array)
 
   use Option_module
+  use Time_Storage_module
 
   implicit none
   
