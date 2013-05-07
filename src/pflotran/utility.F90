@@ -278,13 +278,13 @@ subroutine ludcmp(A,N,INDX,D)
 
   D=1
   do i=1,N
-    aamax=0
+    aamax=0.d0
     do j=1,N
       if (abs(A(i,j)).gt.aamax) aamax=abs(A(i,j))
     enddo
-    if (aamax.eq.0) then
+    if (aamax <= 0.d0) then
       call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
-      print *, "ERROR: Singular value encountered in ludcmp() on processor: ", rank, ' aamax = ',aamax,' species = ',i
+      print *, "ERROR: Singular value encountered in ludcmp() on processor: ", rank, ' aamax = ',aamax,' row = ',i
       do k = 1, N
         print *, "Jacobian: ",k,(j,A(k,j),j=1,N)
       enddo
@@ -327,7 +327,7 @@ subroutine ludcmp(A,N,INDX,D)
     INDX(j)=imax
     if (A(j,j).eq.0.) A(j,j)=tiny
     if (j.ne.N) then
-      dum=1./A(j,j)
+      dum=1.d0/A(j,j)
       do i=j+1,N
         A(i,j)=A(i,j)*dum
       enddo
