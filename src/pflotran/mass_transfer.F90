@@ -169,7 +169,8 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
     mass_transfer%dataset%filename = mass_transfer%filename
     mass_transfer%dataset%dataset_name = mass_transfer%dataset_name
   endif
-  call mass_transfer%dataset%Load(discretization,grid,option)
+!  call mass_transfer%dataset%Load(discretization,grid,option)
+  call DatasetGlobalLoad(mass_transfer%dataset,discretization,grid,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
   vec_ptr(:) = mass_transfer%dataset%rarray(:)
@@ -196,7 +197,8 @@ recursive subroutine MassTransferDestroy(mass_transfer)
   
   ! Simply nullify the pointer as the dataset resides in a list to be
   ! destroyed separately.
-  nullify(mass_transfer%dataset)
+!  nullify(mass_transfer%dataset)
+  call DatasetGlobalDestroy(mass_transfer%dataset)
   if (mass_transfer%vec /= 0) &
     call VecDestroy(mass_transfer%vec ,ierr)
   call MassTransferDestroy(mass_transfer%next)

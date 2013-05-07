@@ -19,38 +19,32 @@ module Dataset_Base_class
     PetscReal, pointer :: rbuffer(:)
     PetscInt :: buffer_slice_offset ! index of the first time slice in the buffer
     PetscInt :: buffer_nslice ! # of time slices stored in buffer
-  contains
-    procedure, public :: Init => BaseInit
-    procedure, public :: InterpolateTime => BaseInterpolateTime
-    procedure, public :: Reorder => BaseReorder
-    procedure, public :: Strip => BaseStrip
+!  contains
+!    procedure, public :: Init => DatasetBaseInit
+!    procedure, public :: InterpolateTime => DatasetBaseInterpolateTime
+!    procedure, public :: Reorder => DatasetBaseReorder
+!    procedure, public :: Strip => DatasetBaseStrip
   end type dataset_base_type
 
   ! dataset types
   PetscInt, parameter :: DATASET_INTEGER = 1
   PetscInt, parameter :: DATASET_REAL = 2
   
-  interface DatasetBaseInit
-    module procedure :: BaseInit
-  end interface
-  
-  interface DatasetBaseDestroy
-    module procedure :: BaseDestroy
-  end interface
-  
   public :: DatasetBaseInit, &
+            DatasetBaseInterpolateTime, &
+            DatasetBaseReorder, &
+            DatasetBaseStrip, &
             DatasetBaseDestroy
-  
 contains
 
 ! ************************************************************************** !
 !
-! BaseInit: Initializes members of base database class
+! DatasetBaseInit: Initializes members of base database class
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine BaseInit(this)
+subroutine DatasetBaseInit(this)
   
   implicit none
   
@@ -67,16 +61,16 @@ subroutine BaseInit(this)
   this%buffer_slice_offset = 0
   this%buffer_nslice = 0
     
-end subroutine BaseInit
+end subroutine DatasetBaseInit
 
 ! ************************************************************************** !
 !
-! BaseInterpolateTime: Interpolates dataset between two buffer times
+! DatasetBaseInterpolateTime: Interpolates dataset between two buffer times
 ! author: Glenn Hammond
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine BaseInterpolateTime(this)
+subroutine DatasetBaseInterpolateTime(this)
 
   use Option_module
 
@@ -136,16 +130,16 @@ subroutine BaseInterpolateTime(this)
                         this%rbuffer(time2_start:time2_end)
   end select
 
-end subroutine BaseInterpolateTime
+end subroutine DatasetBaseInterpolateTime
 
 ! ************************************************************************** !
 !
-! BaseInterpolateSpace: Interpolates data from the dataset
+! DatasetBaseInterpolateSpace: Interpolates data from the dataset
 ! author: Glenn Hammond
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine BaseInterpolateSpace(this,xx,yy,zz,time,real_value,option)
+subroutine DatasetBaseInterpolateSpace(this,xx,yy,zz,time,real_value,option)
 
   use Utility_module, only : InterpolateBilinear
   use Option_module
@@ -158,11 +152,11 @@ subroutine BaseInterpolateSpace(this,xx,yy,zz,time,real_value,option)
   PetscReal :: real_value
   type(option_type) :: option
   
-end subroutine BaseInterpolateSpace
+end subroutine DatasetBaseInterpolateSpace
 
 ! ************************************************************************** !
 !
-! BaseReorder: If a dataset is loaded from an HDF5 file, and it was
+! DatasetBaseReorder: If a dataset is loaded from an HDF5 file, and it was
 !              multidimensional in the HDF5 file, the array needs to be
 !              reordered fro Fortran -> C indexing.  This subroutine
 !              takes care of the reordering.
@@ -170,7 +164,7 @@ end subroutine BaseInterpolateSpace
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine BaseReorder(this,option)
+subroutine DatasetBaseReorder(this,option)
 
   use Option_module
   
@@ -179,6 +173,7 @@ subroutine BaseReorder(this,option)
   class(dataset_base_type) :: this
   type(option_type) :: option
   
+#if 0
   PetscReal, allocatable :: temp_real(:)
   PetscInt :: i, j, k, l
   PetscInt :: dims(4), n1, n1Xn2, n1Xn2Xn3
@@ -226,17 +221,18 @@ subroutine BaseReorder(this,option)
 
   rarray = temp_real
   deallocate(temp_real)
+#endif
   
-end subroutine BaseReorder
+end subroutine DatasetBaseReorder
 
 ! ************************************************************************** !
 !
-! BasePrintMe: Prints dataset info
+! DatasetBasePrintMe: Prints dataset info
 ! author: Glenn Hammond
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine BasePrintMe(this,option)
+subroutine DatasetBasePrintMe(this,option)
 
   use Option_module
 
@@ -250,16 +246,16 @@ subroutine BasePrintMe(this,option)
   option%io_buffer = 'TODO(geh): add DatasetPrint()'
   call printMsg(option)
             
-end subroutine BasePrintMe
+end subroutine DatasetBasePrintMe
 
 ! ************************************************************************** !
 !
-! BaseGetTimes: Fills an array of times based on a dataset
+! DatasetBaseGetTimes: Fills an array of times based on a dataset
 ! author: Glenn Hammond
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine BaseGetTimes(this, option, max_sim_time, time_array)
+subroutine DatasetBaseGetTimes(this, option, max_sim_time, time_array)
 
   use Option_module
 
@@ -276,16 +272,16 @@ subroutine BaseGetTimes(this, option, max_sim_time, time_array)
                              time_array)
   endif
  
-end subroutine BaseGetTimes
+end subroutine DatasetBaseGetTimes
 
 ! ************************************************************************** !
 !
-! BaseStrip: Strips allocated objects within base dataset object
+! DatasetBaseStrip: Strips allocated objects within base dataset object
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine BaseStrip(this)
+subroutine DatasetBaseStrip(this)
 
   use Utility_module, only : DeallocateArray
 
@@ -299,16 +295,16 @@ subroutine BaseStrip(this)
   call DeallocateArray(this%rbuffer)
   call DeallocateArray(this%dims)
   
-end subroutine BaseStrip
+end subroutine DatasetBaseStrip
 
 ! ************************************************************************** !
 !
-! BaseDestroy: Destroys a dataset
+! DatasetBaseDestroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 01/12/11, 05/03/13
 !
 ! ************************************************************************** !
-subroutine BaseDestroy(dataset)
+subroutine DatasetBaseDestroy(dataset)
 
   implicit none
   
@@ -316,11 +312,11 @@ subroutine BaseDestroy(dataset)
   
   if (.not.associated(dataset)) return
   
-  call BaseStrip(dataset)
+  call DatasetBaseStrip(dataset)
   
   deallocate(dataset)
   nullify(dataset)
   
-end subroutine BaseDestroy
+end subroutine DatasetBaseDestroy
 
 end module Dataset_Base_class

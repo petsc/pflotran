@@ -11,12 +11,14 @@ module Dataset_Global_class
   type, public, extends(dataset_base_type) :: dataset_global_type
     character(len=MAXWORDLENGTH) :: dataset_name
     character(len=MAXSTRINGLENGTH) :: filename
-  contains
-    procedure, public :: Init => DatasetGlobalInit
-    procedure, public :: Load => DatasetGlobalLoad
+!  contains
+!    procedure, public :: Init => DatasetGlobalInit
+!    procedure, public :: Load => DatasetGlobalLoad
   end type dataset_global_type
   
   public :: DatasetGlobalCreate, &
+            DatasetGlobalInit, &
+            DatasetGlobalLoad, &
             DatasetGlobalDestroy
   
 contains
@@ -32,10 +34,14 @@ function DatasetGlobalCreate()
   
   implicit none
   
+  class(dataset_global_type), pointer :: dataset
+
   class(dataset_global_type), pointer :: DatasetGlobalCreate
   
-  allocate(DatasetGlobalCreate)
-  call DatasetGlobalCreate%Init()
+  allocate(dataset)
+  call DatasetGlobalInit(dataset)
+
+  DatasetGlobalCreate => dataset
     
 end function DatasetGlobalCreate
 
@@ -101,8 +107,10 @@ subroutine DatasetGlobalLoad(this,discretization,grid,option)
                               this%rbuffer, &
                               H5T_NATIVE_DOUBLE)
 #endif    
-    call this%Reorder(option)
-    call this%InterpolateTime()
+!    call this%Reorder(option)
+!    call this%InterpolateTime()
+     call DatasetBaseReorder(this,option)
+     call DatasetBaseInterpolateTime(this)
   endif
     
 end subroutine DatasetGlobalLoad
@@ -298,56 +306,6 @@ end subroutine HDF5CReadGlobalArray
 
 ! ************************************************************************** !
 !
-! BasePrintMe: Prints dataset info
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-subroutine BasePrintMe(dataset,option)
-
-  use Option_module
-
-  implicit none
-  
-  class(dataset_global_type) :: dataset
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-
-  option%io_buffer = 'TODO(geh): add DatasetPrint()'
-  call printMsg(option)
-            
-end subroutine BasePrintMe
-
-! ************************************************************************** !
-!
-! BaseGetTimes: Fills an array of times based on a dataset
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-subroutine BaseGetTimes(dataset, option, max_sim_time, time_array)
-
-  use Option_module
-  use Time_Storage_module
-
-  implicit none
-  
-  class(dataset_global_type) :: dataset
-  type(option_type) :: option
-  PetscReal :: max_sim_time
-  PetscReal, pointer :: time_array(:)
-  
-  
-  if (associated(dataset%time_storage)) then
-    call TimeStorageGetTimes(dataset%time_storage, option, max_sim_time, &
-                             time_array)
-  endif
- 
-end subroutine BaseGetTimes
-
-! ************************************************************************** !
-!
 ! DatasetGlobalDestroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 01/12/11
@@ -361,7 +319,7 @@ subroutine DatasetGlobalDestroy(this)
   
   if (.not.associated(this)) return
   
-  call this%Strip()
+  call DatasetBaseStrip(this)
   
   deallocate(this)
   nullify(this)
