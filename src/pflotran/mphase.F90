@@ -3002,8 +3002,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     endif
 
     istart = 1 + (local_id-1)*option%nflowdof
-!   if(volume_p(local_id)>1.D0) &    ! clu removed 05/02/2011
-      r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+    if(volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
+      r_p (istart:istart+option%nflowdof-1) = &
+        r_p(istart:istart+option%nflowdof-1)/volume_p(local_id)
     if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *, r_p (istart:istart+2)
   enddo
 
@@ -3519,8 +3520,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                jac_sec_heat*volume_p(local_id) 
     endif
 
-!    if(volume_p(local_id)>1.D0 )&    !clu removed 05/02/2011
-    Jup = Jup / volume_p(local_id)
+    if (volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
+      Jup = Jup / volume_p(local_id)
 
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
@@ -3637,11 +3638,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
       if (local_id_up > 0) then
         voltemp=1.D0
- !      if(volume_p(local_id_up)>1.D0)then   !clu removed 05/02/2011
-        voltemp = 1.D0/volume_p(local_id_up)
- !      endif
+        if (volume_p(local_id_up)>1.D0)then   ! karra added 05/06/2013
+          voltemp = 1.D0/volume_p(local_id_up)
+        endif
         Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+        Jdn(:,1:option%nflowdof)= &
+          ra(:,1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
 
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
@@ -3649,10 +3651,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
             Jdn,ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
-        voltemp=1.D0
- !      if(volume_p(local_id_dn)>1.D0)then   !clu removed 05/02/2011
-        voltemp=1.D0/volume_p(local_id_dn)
- !      endif
+        voltemp = 1.D0
+        if (volume_p(local_id_dn) > 1.D0) then   ! karra added 05/06/2013
+          voltemp = 1.D0/volume_p(local_id_dn)
+        endif
         Jup(:,1:option%nflowdof) = -ra(:,1:option%nflowdof)*voltemp !21
         Jdn(:,1:option%nflowdof) = -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
