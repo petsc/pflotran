@@ -26,6 +26,7 @@ if sys.version_info[0] == 2:
 else:
     import configparser as config_parser
 
+
 class TestStatus(object):
     def __init__(self):
         self.fail = 0
@@ -41,6 +42,7 @@ class TestStatus(object):
         message += "skipped = {0}\n".format(self.skipped)
         message += "test_count = {0}\n".format(self.test_count)
         return message
+
 
 class RegressionTest(object):
     """
@@ -155,7 +157,7 @@ class RegressionTest(object):
         #geh: kludge for -malloc 0
         command.append("-malloc")
         command.append("0")
-        if self._input_arg != None:
+        if self._input_arg is not None:
             command.append(self._input_arg)
             command.append(self.name())
 
@@ -270,7 +272,6 @@ class RegressionTest(object):
         if self._num_failed > 0:
             status.fail = 1
 
-
     def update(self, status, testlog):
         """
         Update the gold standard test results to the current
@@ -307,8 +308,6 @@ class RegressionTest(object):
             message += "    mv {0} {1}".format(current_name, gold_name)
             print(message, file=testlog)
             status.fail = 1
-
-
 
     def new_test(self, status, testlog):
         """
@@ -349,7 +348,6 @@ class RegressionTest(object):
             print(message, file=testlog)
             status.fail = 1
 
-
     def _get_sections(self, output):
         """
         Each section in the regression test file looks like:
@@ -386,7 +384,7 @@ class RegressionTest(object):
         name = gold_section['name']
         data_type = gold_section['type']
         section_status = 0
-        if self._check_performance == False and data_type.lower() == self._SOLUTION:
+        if self._check_performance is False and data_type.lower() == self._SOLUTION:
             # solution blocks contain platform dependent performance
             # metrics. We skip them unless they are explicitly
             # requested.
@@ -398,14 +396,15 @@ class RegressionTest(object):
                     section_status += 1
                     print("    FAIL: key '{0}' in section '{1}' found in gold "
                           "output but not current".format(
-                            k, gold_section['name']), file=testlog)
+                              k, gold_section['name']), file=testlog)
 
             # if key in current but not gold --> failed test
             for k in current_section:
                 if k not in gold_section:
                     section_status += 1
                     print("    FAIL: key '{0}' in section '{1}' found in current "
-                          "output but not gold".format(k, current_section['name']), file=testlog)
+                          "output but not gold".format(k, current_section['name']),
+                          file=testlog)
 
             # now compare the keys that are in both...
             for k in gold_section:
@@ -420,21 +419,21 @@ class RegressionTest(object):
                         section_status += 1
                         print("    FAIL: {0} : {1} : vector lengths not "
                               "equal. gold {2}, current {3}".format(
-                                name, k, len(gold), len(current)), file=testlog)
+                                  name, k, len(gold), len(current)), file=testlog)
                     else:
                         for i in range(len(gold)):
                             try:
-                                status = self._compare_values(name_str, data_type,
-                                                              gold[i], current[i], testlog)
+                                status = self._compare_values(
+                                    name_str, data_type, gold[i], current[i], testlog)
                                 section_status += status
                             except Exception as e:
                                 section_status += 1
                                 print("ERROR: {0} : {1}.\n  {2}".format(
-                                        self.name(), k, str(e)), file=testlog)
-
+                                    self.name(), k, str(e)), file=testlog)
 
         if False:
-            print("    {0} : status : {1}".format(name, section_status), file=testlog)
+            print("    {0} : status : {1}".format(
+                name, section_status), file=testlog)
         return section_status
 
     def _compare_values(self, name, key, previous, current, testlog):
@@ -454,7 +453,7 @@ class RegressionTest(object):
             key == self._RATE or
             key == self._VOLUME_FRACTION or
             key == self._PRESSURE or
-            key == self._SATURATION):
+                key == self._SATURATION):
             previous = float(previous)
             current = float(current)
             tolerance_type = self._tolerance[key][self._TOL_TYPE]
@@ -491,12 +490,12 @@ class RegressionTest(object):
         if delta > tolerance:
             status = 1
             print("    FAIL: {0} : {1} > {2} [{3}]".format(
-                    name, delta, tolerance,
-                    tolerance_type), file=testlog)
+                name, delta, tolerance,
+                tolerance_type), file=testlog)
         elif self._debug:
             print("    PASS: {0} : {1} <= {2} [{3}]".format(
-                    name, delta, tolerance,
-                    tolerance_type))
+                name, delta, tolerance,
+                tolerance_type))
 
         return status
 
@@ -543,7 +542,7 @@ class RegressionTest(object):
             tolerance_type = self._tolerance[self._RESIDUAL][self._TOL_TYPE]
         else:
             raise Exception("ERROR: unknown variable '{0}' in solution "
-                  "section '{1}'".format(param, section))
+                            "section '{1}'".format(param, section))
 
         return previous, current, tolerance_type, tolerance
 
@@ -635,7 +634,7 @@ class RegressionTest(object):
         criteria_type = criteria.split()[1]
         if (criteria_type.lower() != self._PERCENT and
             criteria_type.lower() != self._ABSOLUTE and
-            criteria_type.lower() != self._RELATIVE):
+                criteria_type.lower() != self._RELATIVE):
             raise Exception("ERROR : invalid test criteria string '{0}' "
                             "for '{1}'".format(criteria_type, key))
         return [value, criteria_type]
@@ -756,7 +755,8 @@ class RegressionTestManager(object):
     def _check_only(self, dry_run, testlog):
         if dry_run:
             print("Dry run:")
-        print("Checking existing test results from '{0}':".format(self._config_filename), file=testlog)
+        print("Checking existing test results from '{0}':".format(
+            self._config_filename), file=testlog)
         print(50 * '-', file=testlog)
 
         for t in self._tests:
@@ -824,9 +824,9 @@ class RegressionTestManager(object):
             print(" dry run.", file=testlog)
         else:
             if (status.fail == 0 and
-                status.warning == 0 and
-                status.error == 0 and
-                status.skipped == 0):
+                    status.warning == 0 and
+                    status.error == 0 and
+                    status.skipped == 0):
                 print(".", end='', file=sys.stdout)
                 print("{0}... {1}.".format(name, success_message), file=testlog)
             elif status.fail != 0:
@@ -843,7 +843,6 @@ class RegressionTestManager(object):
                 print("?", end='', file=sys.stdout)
 
         sys.stdout.flush()
-
 
     def _print_file_summary(self, dry_run, success_message, fail_message, testlog):
         # print a summary of the results for this config file
@@ -897,7 +896,7 @@ class RegressionTestManager(object):
 
         All other sections are assumed to be test names.
         """
-        if config_file == None:
+        if config_file is None:
             raise Exception("Error, must provide a config filename")
         self._config_filename = config_file
         config = config_parser.SafeConfigParser()
@@ -974,11 +973,10 @@ class RegressionTestManager(object):
             print("DEV WARNING : {0} : cfg validation : empty suite "
                   ": '{1}'".format(self._config_filename, s))
 
-
         if len(invalid_tests) != 0:
             raise Exception("ERROR : suites contain unknown tests in "
                             "configuration file '{0}' : {1}".format(
-                    self._config_filename, invalid_tests))
+                                self._config_filename, invalid_tests))
 
     def _validate_user_lists(self, user_suites, user_tests, testlog):
         """
@@ -1030,7 +1028,7 @@ class RegressionTestManager(object):
             except Exception as e:
                 raise Exception("ERROR : could not create test '{0}' from "
                                 "config file '{1}'. {2}".format(
-                        t, self._config_filename, str(e)))
+                                    t, self._config_filename, str(e)))
 
 
 def commandline_options():
@@ -1215,19 +1213,21 @@ def check_for_executable(options):
 def check_for_mpiexec(options, testlog):
     """
     Try to verify that we have something reasonable for the mpiexec executable
+
+    Notes:
+
+    geh: need to add code to determine full path of mpiexec if not specified
+
+    bja: the problem is that we don't know how to get the correct
+    mpiexec. On the mac, there is a system mpiexe that shows up in the
+    path, but this is provided by apple and it is not the correct one
+    to use because it doesn't include a fortran compiler. We need the
+    exact mpiexec/mpirun that was used to compile petsc, which may
+    come from a system installed package in /usr/bin or /opt/local/bin
+    or maybe petsc compiled it. This is best handled outside the test
+    manager, e.g. use make to identify mpiexec from the petsc
+    variables
     """
-    # geh: need to add code to determine full path of mpiexec if not specified
-
-    # bja: the problem is that we don't know how to get the correct
-    # mpiexec. On the mac, there is a system mpiexe that shows up in
-    # the path, but this is provided by apple and it is not the
-    # correct one to use because it doesn't include a fortran
-    # compiler. We need the exact mpiexec/mpirun that was used to
-    # compile petsc, which may come from a system installed package in
-    # /usr/bin or /opt/local/bin or maybe petsc compiled it. This is
-    # best handled outside the test manager, e.g. use make to
-    # identify mpiexec from the petsc variables
-
 
     # check for mpiexec
     mpiexec = None
@@ -1245,6 +1245,7 @@ def check_for_mpiexec(options, testlog):
         print(message, file=testlog)
 
     return mpiexec
+
 
 def summary_report_by_file(report, outfile):
     print(70 * '-', file=outfile)
@@ -1276,7 +1277,6 @@ def summary_report_by_file(report, outfile):
 
 
 def summary_report(run_time, report, outfile):
-    status = 0
     print(70 * '-', file=outfile)
     print("Regression test summary:", file=outfile)
     print("    Total run time: {0:4g} [s]".format(run_time), file=outfile)
@@ -1316,9 +1316,9 @@ def summary_report(run_time, report, outfile):
     if success:
         print("    All tests passed.", file=outfile)
 
-
     print("\n", file=outfile)
     return num_failures
+
 
 def setup_testlog():
     filename = "pflotran-tests-{0}.testlog".format(
@@ -1328,9 +1328,11 @@ def setup_testlog():
     print("PFloTran Regression Test Log", file=testlog)
     print("System Info :", file=testlog)
     print("    platform : {0}".format(sys.platform), file=testlog)
-    # TODO(bja): it would be nice to print misc compiler, petsc and pflotran info here....
+    # TODO(bja): it would be nice to print misc compiler, petsc and
+    # pflotran info here....
 
     return testlog
+
 
 def main(options):
     testlog = setup_testlog()
@@ -1342,7 +1344,6 @@ def main(options):
     config_file_list = generate_config_file_list(options)
 
     print("Running pflotran regression tests :")
-
 
     # loop through config files, cd into the appropriate directory,
     # read the appropriate config file and run the various tests.
@@ -1401,9 +1402,9 @@ def main(options):
         except Exception as e:
             message = txtwrap.fill(
                 "ERROR: a problem occured in file '{0}'.  This is "
-                       "probably an error with commandline options, the "
-                       "configuration file, or an internal error.  The "
-                       "error is:\n{1}".format(f, str(e)))
+                "probably an error with commandline options, the "
+                "configuration file, or an internal error.  The "
+                "error is:\n{1}".format(f, str(e)))
             print(''.join(['\n', message, '\n']), file=testlog)
             if options.backtrace:
                 traceback.print_exc()
@@ -1425,7 +1426,6 @@ def main(options):
             "Test results were updated! Please document why you modified the "
             "gold standard test results in your revision control commit message!\n")
         print(''.join(['\n', message, '\n']))
-
 
     testlog.close()
 
