@@ -1670,9 +1670,9 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
      
-  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)*vol_frac_prim
   diffdp = (por_up*tor_up * por_dn*tor_dn) / &
-    (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn) * area
+    (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area*vol_frac_prim 
   
   fluxm = 0.D0
   fluxe = 0.D0
@@ -1741,7 +1741,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
     (aux_var_up%sat(np) <= 0.d0) .and. (aux_var_dn%sat(np) <= 0.d0) &
     ) then
 !     single phase
-      difff = vol_frac_prim * diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
       do ispec=1, option%nflowspec
         ind = ispec + (np-1)*option%nflowspec
@@ -1754,7 +1754,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
     else
 
 !     two-phase
-      difff = vol_frac_prim * diffdp * 0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
+      difff = diffdp * 0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
       do ispec=1, option%nflowspec
         ind = ispec + (np-1)*option%nflowspec
         
@@ -1778,7 +1778,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 !     aux_var_up%den(np),aux_var_dn%den(np),diffdp
 
 !   if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-      difff = vol_frac_prim * diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
       do ispec=1, option%nflowspec
         ind = ispec + (np-1)*option%nflowspec
@@ -1848,14 +1848,14 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
-  diffdp = por_dn*tor_dn/dd_up*area
+  diffdp = por_dn*tor_dn/dd_up*area*vol_frac_prim
 
   ! Flow   
   do np = 1, option%nphase  
     select case(ibndtype(MPH_PRESSURE_DOF))
         ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-        Dq = perm_dn / dd_up
+        Dq = perm_dn / dd_up*vol_frac_prim
         ! Flow term
         ukvr=0.D0
         v_darcy=0.D0 
@@ -1944,7 +1944,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       do np = 1, option%nphase
         if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
-          diff = vol_frac_prim * diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
+          diff =  diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
                     (aux_var_up%den(np)+aux_var_up%den(np))
           do ispec = 1, option%nflowspec
             fluxm(ispec) = fluxm(ispec) + &
