@@ -178,7 +178,7 @@ class RegressionTest(object):
             while proc.poll() is None:
                 time.sleep(0.1)
                 if time.time() - start > self._timeout:
-                    proc.terminate()
+                    proc.kill()
                     time.sleep(0.1)
                     message = self._txtwrap.fill(
                         "ERROR: job '{0}' has exceeded timeout limit of "
