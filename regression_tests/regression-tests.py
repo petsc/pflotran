@@ -15,6 +15,7 @@ import math
 import os
 import pprint
 import re
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -1234,6 +1235,14 @@ def check_for_mpiexec(options, testlog):
     if options.mpiexec is not None:
         # mpiexec = os.path.abspath(options.mpiexec[0])
         mpiexec = options.mpiexec[0]
+        # try to log some info about mpiexec
+        print("MPI information :", file=testlog)
+        print("-----------------", file=testlog)
+        tempfile = "{0}/tmp-pflotran-regression-test-info.txt".format(os.getcwd())
+        command = [mpiexec, "--version"]
+        append_command_to_log(command, testlog, tempfile)
+        print("\n\n", file=testlog)
+        os.remove(tempfile)
         # is it a valid file?
 ###       if not os.path.isfile(mpiexec):
 ###           raise Exception("ERROR: mpiexec is not a valid file: "
@@ -1320,23 +1329,86 @@ def summary_report(run_time, report, outfile):
     return num_failures
 
 
-def setup_testlog():
-    filename = "pflotran-tests-{0}.testlog".format(
-        datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S"))
+def append_command_to_log(command, testlog, tempfile):
+    print("$ {0}".format(" ".join(command)), file=testlog)
+    testlog.flush()
+    with open(tempfile, "w") as tempinfo:
+        proc = subprocess.Popen(command, shell=False,
+                                stdout=tempinfo,
+                                stderr=subprocess.STDOUT)
+        time.sleep(0.5)
+    shutil.copyfileobj(open(tempfile,'r'), testlog)
+
+
+def setup_testlog(txtwrap):
+    now = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = "pflotran-tests-{0}.testlog".format(now)
     testlog = open(filename, 'w')
     print("  Test log file : {0}".format(filename))
+
+    # try to report some useful information about the environment,
+    # petsc, pflotran...
     print("PFloTran Regression Test Log", file=testlog)
+    print("Date : {0}".format(now), file=testlog)
     print("System Info :", file=testlog)
     print("    platform : {0}".format(sys.platform), file=testlog)
-    # TODO(bja): it would be nice to print misc compiler, petsc and
-    # pflotran info here....
+    test_dir = os.getcwd()
+    print("Test directory : ", file=testlog)
+    print("    {0}".format(test_dir), file=testlog)
+    
+    tempfile = "{0}/tmp-pflotran-regression-test-info.txt".format(test_dir)
 
+    print("\nPFLOTRAN repository status :", file=testlog)
+    print("----------------------------", file=testlog)
+    if os.path.isdir("{0}/../.hg".format(test_dir)):
+        cmd = ["hg", "parent"]
+        append_command_to_log(cmd, testlog, tempfile)
+        cmd = ["hg", "status", "-q"]
+        append_command_to_log(cmd, testlog, tempfile)
+        print("\n\n", file=testlog)
+    else:
+        print("    unknown", file=testlog)
+
+    print("PETSc information :", file=testlog)
+    print("-------------------", file=testlog)
+    petsc_dir = os.getenv("PETSC_DIR", None)
+    if petsc_dir:
+        message = txtwrap.fill(
+            "* WARNING * This information may be incorrect if you have more "
+            "than one version of petsc installed.\n")
+        print(message, file=testlog)
+        print("    PETSC_DIR : {0}".format(petsc_dir), file=testlog)
+        petsc_arch = os.getenv("PETSC_ARCH", None)
+        if petsc_arch:
+            print("    PETSC_ARCH : {0}".format(petsc_arch), file=testlog)
+        
+        os.chdir(petsc_dir)
+        print("    petsc repository status :", file=testlog)
+        if os.path.isdir("{0}/.git".format(petsc_dir)):
+            cmd = ["git", "log", "-1", "HEAD"]
+            append_command_to_log(cmd, testlog, tempfile)
+            cmd = ["git", "status", "-u", "no"]
+            append_command_to_log(cmd, testlog, tempfile)
+        elif os.path.isdir("{0}/.hg".format(petsc_dir)):
+            cmd = ["hg", "parent"]
+            append_command_to_log(cmd, testlog, tempfile)
+            cmd = ["hg", "status", "-q"]
+            append_command_to_log(cmd, testlog, tempfile)
+        else:
+            print("    No git or hg directory was found in your PETSC_DIR",
+                  file=testlog)
+        os.chdir(test_dir)
+        print("\n\n", file=testlog)
+    else:
+        print("    PETSC_DIR was not defined.", file=testlog)
+
+    os.remove(tempfile)
     return testlog
 
 
 def main(options):
-    testlog = setup_testlog()
     txtwrap = textwrap.TextWrapper(width=78, subsequent_indent=4*" ")
+    testlog = setup_testlog(txtwrap)
 
     check_options(options)
     executable = check_for_executable(options)
