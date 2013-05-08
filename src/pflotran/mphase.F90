@@ -270,6 +270,8 @@ subroutine MphaseSetupPatch(realization)
       allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
       allocate(mphase_sec_heat_vars(ghosted_id)%dm_minus(mphase_sec_heat_vars(ghosted_id)%ncells))
       allocate(mphase_sec_heat_vars(ghosted_id)%dm_plus(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(ghosted_id)%sec_continuum% &
+               distance(mphase_sec_heat_vars(ghosted_id)%ncells))
     
       call SecondaryContinuumType(&
                               mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
