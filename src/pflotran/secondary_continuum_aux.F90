@@ -29,7 +29,8 @@ module Secondary_Continuum_Aux_module
     type(slab_type) :: slab
     type(nested_cube_type) :: nested_cube
     type(nested_sphere_type) :: nested_sphere 
-  end type sec_continuum_type
+    PetscReal, pointer :: distance(:)         ! This is the array of positions of cells centers from the center
+  end type sec_continuum_type                 ! farthest is the cell center closest to interface between prim. and sec. continuua
 
   type, public :: sec_heat_type  
     PetscBool :: sec_temp_update               ! flag to check if the temp is updated

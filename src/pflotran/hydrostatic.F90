@@ -31,7 +31,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Region_module
   use Structured_Grid_module
   use Utility_module, only : DotProduct
-  use Dataset_module
   use Dataset_Aux_module
   
   use General_Aux_module
@@ -268,7 +267,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   dy_conn = 0.d0
   dz_conn = 0.d0
 
-  if (grid%itype==STRUCTURED_GRID_MIMETIC) then 
+  if (grid%itype==STRUCTURED_GRID_MIMETIC .or. &
+      grid%discretization_itype==UNSTRUCTURED_GRID_MIMETIC) then
       num_faces = coupler%numfaces_set
   else 
       num_faces = coupler%connection_set%num_connections
@@ -276,7 +276,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
 
   do iconn=1, num_faces !geh: this should really be num_faces!
-    if (grid%itype==STRUCTURED_GRID_MIMETIC) then
+    if (grid%itype==STRUCTURED_GRID_MIMETIC .or. &
+        grid%discretization_itype==UNSTRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
       face_id_ghosted = coupler%faces_set(iconn)
       conn_set_ptr => grid%faces(face_id_ghosted)%conn_set_ptr
@@ -326,7 +327,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
-      if (grid%itype==STRUCTURED_GRID_MIMETIC) then
+      if (grid%itype==STRUCTURED_GRID_MIMETIC.or. &
+          grid%discretization_itype==UNSTRUCTURED_GRID_MIMETIC) then
         dist_z_for_pressure = conn_set_ptr%cntr(3,conn_id)-(z(ipressure) + z_offset)
       else 
         dist_z_for_pressure = grid%z(ghosted_id)-dz_conn-(z(ipressure) + z_offset)
@@ -416,7 +418,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
   enddo
 
-  if ((grid%itype==STRUCTURED_GRID_MIMETIC).and.(coupler%itype == INITIAL_COUPLER_TYPE)) then
+  if ((grid%itype==STRUCTURED_GRID_MIMETIC.or. &
+       grid%discretization_itype==UNSTRUCTURED_GRID_MIMETIC).and. &
+      (coupler%itype == INITIAL_COUPLER_TYPE)) then
      num_regions = coupler%region%num_cells
      do iconn = 1, num_regions
 

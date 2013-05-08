@@ -1,7 +1,7 @@
 # Sarat: Simple makefile to make pdf
 # If references are added, uncomment bibtex etc.
 
-FILE=quick_guide
+FILE=user_manual
 all: $(FILE)
 $(FILE):
 	pdflatex $(FILE)

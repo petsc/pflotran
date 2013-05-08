@@ -24,6 +24,10 @@ ifdef BACKTRACE
 	TEST_OPTIONS += --backtrace
 endif
 
+ifneq ($(strip $(MPIEXEC)),)
+	TEST_OPTIONS += --mpiexec $(MPIEXEC)
+endif
+
 #
 # standard tests that are run to verify pflotran is built correctly
 #
@@ -39,16 +43,10 @@ STANDARD_CFG = \
 	ngee/ngee.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 
-STANDARD_PARALLEL_CFG = \
-	ascem/1d/1d-calcite/1d-calcite.cfg \
-	default/543/543.cfg
-
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg
 
-	STANDARD_PARALLEL_CFG += \
-		default/discretization/discretization.cfg
 endif
 
 #
@@ -83,13 +81,15 @@ MESH_CFG = \
 MFD_CFG = \
 	mfd/mfd.cfg
 
-check : standard standard_parallel
+CHECK_CFG = \
+	ascem/1d/1d-calcite/1d-calcite.cfg
 
-test : standard standard_parallel
+test : standard
 
 standard :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
-		 --suite standard --config-files $(STANDARD_CFG)
+		--suite standard standard_parallel \
+		--config-files $(STANDARD_CFG)
 ifeq ($(strip $(PARMETIS_LIB)),)
 	@echo "********************************************************"
 	@echo "  PFloTran does not appear to be compiled with Parmetis."
@@ -99,16 +99,15 @@ endif
 
 
 standard_parallel :
-ifneq ($(strip $(MPIEXEC)),)
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
-		--mpiexec $(MPIEXEC)  --suite standard_parallel \
-	--config-files $(STANDARD_PARALLEL_CFG)
-else
-	@echo "********************************************************"
-	@echo "  Could not find mpiexec."
-	@echo "  Skipping parallel tests."
-	@echo "********************************************************"
-endif
+		--suite standard_parallel \
+		--config-files $(STANDARD_CFG)
+
+check : 
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--suite standard standard_parallel \
+		--config-files $(CHECK_CFG)
+
 
 geochemistry :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \

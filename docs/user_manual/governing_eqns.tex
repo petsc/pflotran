@@ -1120,6 +1120,7 @@ CONSTRAINT initial
 Output is given in terms of $\alpha$ and $C$ from which the mean age $A$ can be obtained as $A\eq\alpha/C$. 
 
 \subsection{Thermodynamic Database}
+\label{thermo:database}
 
 PFLOTRAN reads thermodynamic data from a database that may be customized by the user. Reactions included in the database consist of aqueous complexation, mineral precipitation and dissolution, gaseous reactions, and surface complexation. Ion exchange reactions and their selectivity coefficients are entered directly from the input file. 
 A standard database supplied with the code is referred to as {\tt hanford.dat} and is found in the {\tt ./database} directory in the PFLOTRAN mercurial repository. This database is an ascii text file that can be edited by any editor and is equivalent to the EQ3/6 database:
@@ -1162,6 +1163,29 @@ Surface Complexes: & $>$name, nspec, $\nu$, $>$site,
 ($\nu$(n), name($n$), $n$=1, nspec-1), \\
 &\hspace{3in} log$K$(1:$N_{\rm temp}$), $z$, $w$\\
 \hline
+\end{tabular}
+\end{table}
+
+\subsection{Eh, pe}
+
+Output for Eh and pe is calculated from the half-cell reaction
+\EQ\label{redox}
+\rm 2 \, H_2O - 4 \, H^+ - 4\,e^- \arrows \rm O_2,
+\EN
+with the corresponding equilibrium constant fit to the Maier-Kelly expansion Eqn.\eqref{mk}. The fit coefficients are listed in Table~\ref{tmkfit}.
+
+\begin{table}[H]\centering
+\caption{Fit coefficients for log $K$ of reaction \ref{redox}.}
+\label{tmkfit}
+\vspace{3mm}
+\begin{tabular}{lr}
+\toprule
+$c_{-1}$ & 6.745529048\\
+$c_0$ & $-$48.295936593\\
+$c_1$ & $-$0.000557816\\
+$c_2$ & 27780.749538022\\
+$c_3$ & 4027.337694858\\
+\bottomrule
 \end{tabular}
 \end{table}
 

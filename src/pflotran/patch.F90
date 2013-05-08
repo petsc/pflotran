@@ -339,18 +339,18 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 '" in boundary condition ' // &
+      option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '" in boundary condition "' // &
                  trim(coupler%name) // &
-                 ' not found in region list'
+                 '" not found in region list'
       call printErrMsg(option)
     endif
     if (associated(patch%grid%structured_grid)) then
       if (coupler%region%num_cells > 0 .and. &
           (coupler%region%iface == 0 .and. &
            .not.associated(coupler%region%faces))) then
-        option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 ', which is tied to a boundary condition, has not ' // &
+        option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '", which is tied to a boundary condition, has not ' // &
                  'been assigned a face in the structured grid. '
         call printErrMsg(option)
       endif
@@ -363,9 +363,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in boundary condition ' // &
+                   '" in boundary condition "' // &
                    trim(coupler%name) // &
-                   ' not found in flow condition list'
+                   '" not found in flow condition list'
           call printErrMsg(option)
         endif
       else
@@ -382,9 +382,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%tran_condition)) then
            option%io_buffer = 'Transport condition "' // &
                    trim(coupler%tran_condition_name) // &
-                   '" in boundary condition ' // &
+                   '" in boundary condition "' // &
                    trim(coupler%name) // &
-                   ' not found in transport condition list'
+                   '" not found in transport condition list'
           call printErrMsg(option)
         endif
       else
@@ -405,10 +405,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 '" in initial condition ' // &
+      option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '" in initial condition "' // &
                  trim(coupler%name) // &
-                 ' not found in region list'
+                 '" not found in region list'
       call printErrMsg(option)
     endif
     ! pointer to flow condition
@@ -419,9 +419,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in initial condition ' // &
+                   '" in initial condition "' // &
                    trim(coupler%name) // &
-                   ' not found in flow condition list'
+                   '" not found in flow condition list'
           call printErrMsg(option)
         endif
       else
@@ -438,9 +438,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%tran_condition)) then
           option%io_buffer = 'Transport condition "' // &
                    trim(coupler%tran_condition_name) // &
-                   '" in initial condition ' // &
+                   '" in initial condition "' // &
                    trim(coupler%name) // &
-                   ' not found in transport condition list'
+                   '" not found in transport condition list'
           call printErrMsg(option)
         endif
       else
@@ -460,10 +460,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-                 '" in source/sink ' // &
+      option%io_buffer = 'Region "' // trim(coupler%region_name) // &
+                 '" in source/sink "' // &
                  trim(coupler%name) // &
-                 ' not found in region list'
+                 '" not found in region list'
       call printErrMsg(option)
     endif
     ! pointer to flow condition
@@ -474,9 +474,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in source/sink ' // &
+                   '" in source/sink "' // &
                    trim(coupler%name) // &
-                   ' not found in flow condition list'
+                   '" not found in flow condition list'
           call printErrMsg(option)
         endif
       else
@@ -494,9 +494,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(coupler%tran_condition)) then
           option%io_buffer = 'Transport condition "' // &
                    trim(coupler%flow_condition_name) // &
-                   '" in source/sink ' // &
+                   '" in source/sink "' // &
                    trim(coupler%name) // &
-                   ' not found in transport condition list'
+                   '" not found in transport condition list'
           call printErrMsg(option)
         endif
       else
@@ -521,7 +521,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       strata%region => RegionGetPtrFromList(strata%region_name, &
                                                   patch%regions)
       if (.not.associated(strata%region)) then
-        option%io_buffer = 'Region ' // trim(strata%region_name) // &
+        option%io_buffer = 'Region "' // trim(strata%region_name) // &
                  '" in strata not found in region list'
         call printErrMsg(option)
       endif
@@ -534,9 +534,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             MaterialPropGetPtrFromArray(strata%material_property_name, &
                                         patch%material_property_array)
           if (.not.associated(strata%material_property)) then
-            option%io_buffer = 'Material ' // &
+            option%io_buffer = 'Material "' // &
                               trim(strata%material_property_name) // &
-                              ' not found in material list'
+                              '" not found in material list'
             call printErrMsg(option)
           endif
         endif
@@ -547,9 +547,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
                                             patch%surf_material_property_array)
           if (.not.associated(strata%surf_material_property)) then
-            option%io_buffer = 'Material ' // &
+            option%io_buffer = 'Material "' // &
                               trim(strata%material_property_name) // &
-                              ' not found in material list'
+                              '" not found in material list'
             call printErrMsg(option)
           endif
         endif
@@ -586,9 +586,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (.not.associated(observation%region)) then
           option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
-                 '" in observation point ' // &
+                 '" in observation point "' // &
                  trim(observation%name) // &
-                 ' not found in region list'                   
+                 '" not found in region list'                   
           call printErrMsg(option)
         endif
         if (observation%region%num_cells == 0) then
@@ -601,9 +601,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         if (associated(coupler)) then
           observation%connection_set => coupler%connection_set
         else
-          option%io_buffer = 'Boundary Condition ' // &
+          option%io_buffer = 'Boundary Condition "' // &
                    trim(observation%linkage_name) // &
-                   ' not found in Boundary Condition list'
+                   '" not found in Boundary Condition list'
           call printErrMsg(option)
         endif
         if (observation%connection_set%num_connections == 0) then
@@ -649,13 +649,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   patch%surf_boundary_fluxes = 0.d0
 #endif
  
-  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
+  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC.or. &
+      patch%grid%discretization_itype == UNSTRUCTURED_GRID_MIMETIC ) then
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
                                                  patch%boundary_conditions, &
                                                  option)
   else  
     temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   end if
+
   if (temp_int > 0) then
     allocate(patch%boundary_velocities(option%nphase,temp_int)) 
     patch%boundary_velocities = 0.d0
@@ -2083,10 +2085,10 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
-  PetscReal :: xmass
+  PetscReal :: xmass, lnQKgas, ehfac, eh0, pe0, ph0, tk
   PetscReal :: tempreal
   PetscInt :: tempint
-  PetscInt :: irate, istate, irxn
+  PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -2542,11 +2544,13 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%pres(option%liquid_phase)
             enddo
           case(GAS_PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%pres(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%pres(option%gas_phase)
             enddo
           case(STATE)
             do local_id=1,grid%nlmax
@@ -2554,40 +2558,48 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%liquid_phase)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%liquid_phase)
             enddo
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%U(option%liquid_phase)
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
             enddo
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%gas_phase)
             enddo
           case(GAS_ENERGY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%U(option%gas_phase)
             enddo
           case(GAS_DENSITY) 
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%gas_phase)
             enddo
           case(GAS_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
             enddo
         end select         
       endif
       
-    case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
+    case(PH,PE,EH,O2,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
@@ -2595,8 +2607,9 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK, &
          IMMOBILE_SPECIES)
-         
+
       select case(ivar)
+
         case(PH)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
@@ -2609,6 +2622,110 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
               vec_ptr(local_id) = 0.d0
             endif
           enddo
+
+        case(EH)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+
+              ph0 = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+
+              ifo2 = reaction%species_idx%o2_gas_id
+      
+      ! compute gas partial pressure
+              lnQKgas = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+              if (reaction%eqgash2oid(ifo2) > 0) then
+                lnQKgas = lnQKgas + reaction%eqgash2ostoich(ifo2) * &
+                    patch%aux%RT%aux_vars(ghosted_id)%ln_act_h2o
+              endif
+              do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+                comp_id = reaction%eqgasspecid(jcomp,ifo2)
+                lnQKgas = lnQKgas + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(patch%aux%RT%aux_vars(ghosted_id)%pri_molal(comp_id)* &
+                        patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(comp_id))
+              enddo
+
+              tk = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)+273.15d0
+              ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+              eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
+              pe0 = eh0/ehfac
+              vec_ptr(local_id) = eh0
+
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
+          enddo
+
+        case(PE)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+
+              ph0 = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+
+              ifo2 = reaction%species_idx%o2_gas_id
+      
+      ! compute gas partial pressure
+              lnQKgas = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+              if (reaction%eqgash2oid(ifo2) > 0) then
+                lnQKgas = lnQKgas + reaction%eqgash2ostoich(ifo2) * &
+                    patch%aux%RT%aux_vars(ghosted_id)%ln_act_h2o
+              endif
+              do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+                comp_id = reaction%eqgasspecid(jcomp,ifo2)
+                lnQKgas = lnQKgas + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(patch%aux%RT%aux_vars(ghosted_id)%pri_molal(comp_id)* &
+                        patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(comp_id))
+              enddo
+
+              tk = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)+273.15d0
+              ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+              eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
+              pe0 = eh0/ehfac
+              vec_ptr(local_id) = pe0
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
+          enddo
+
+        case(O2)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+
+
+              ifo2 = reaction%species_idx%o2_gas_id
+      
+      ! compute gas partial pressure
+              lnQKgas = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+              if (reaction%eqgash2oid(ifo2) > 0) then
+                lnQKgas = lnQKgas + reaction%eqgash2ostoich(ifo2) * &
+                    patch%aux%RT%aux_vars(ghosted_id)%ln_act_h2o
+              endif
+              do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+                comp_id = reaction%eqgasspecid(jcomp,ifo2)
+                lnQKgas = lnQKgas + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(patch%aux%RT%aux_vars(ghosted_id)%pri_molal(comp_id)* &
+                        patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(comp_id))
+              enddo
+
+              vec_ptr(local_id) = lnQKgas * LN_TO_LOG
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
+          enddo
+
         case(PRIMARY_MOLALITY)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = &
@@ -2962,8 +3079,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   PetscInt :: iphase
   PetscInt :: ghosted_id
 
-  PetscReal :: value, xmass
-  PetscInt :: irate, istate, irxn
+  PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
+  PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
   PetscErrorCode :: ierr
@@ -3268,7 +3385,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         end select        
       endif
       
-    case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
+    case(PH,PE,EH,O2,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
@@ -3282,6 +3399,80 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           value = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
                          pri_act_coef(isubvar)* &
                          patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+        case(EH)
+          ph0 = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
+                         pri_act_coef(isubvar)* &
+                         patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+
+          ifo2 = reaction%species_idx%o2_gas_id
+      
+      ! compute gas partial pressure
+          lnQKgas = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+          if (reaction%eqgash2oid(ifo2) > 0) then
+            lnQKgas = lnQKgas + reaction%eqgash2ostoich(ifo2) * &
+                    patch%aux%RT%aux_vars(ghosted_id)%ln_act_h2o
+          endif
+          do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+            comp_id = reaction%eqgasspecid(jcomp,ifo2)
+            lnQKgas = lnQKgas + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(patch%aux%RT%aux_vars(ghosted_id)%pri_molal(comp_id)* &
+                        patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(comp_id))
+          enddo
+
+          tk = patch%aux%Global%aux_vars(grid%nL2G(ghosted_id))%temp(1)+273.15d0
+          ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+          eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
+
+          value = eh0
+
+        case(PE)
+          ph0 = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
+                         pri_act_coef(isubvar)* &
+                         patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+
+          ifo2 = reaction%species_idx%o2_gas_id
+      
+      ! compute gas partial pressure
+          lnQKgas = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+          if (reaction%eqgash2oid(ifo2) > 0) then
+            lnQKgas = lnQKgas + reaction%eqgash2ostoich(ifo2) * &
+                    patch%aux%RT%aux_vars(ghosted_id)%ln_act_h2o
+          endif
+          do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+            comp_id = reaction%eqgasspecid(jcomp,ifo2)
+            lnQKgas = lnQKgas + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(patch%aux%RT%aux_vars(ghosted_id)%pri_molal(comp_id)* &
+                        patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(comp_id))
+          enddo
+
+          tk = patch%aux%Global%aux_vars(grid%nL2G(ghosted_id))%temp(1)+273.15d0
+          ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+          eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
+          pe0 = eh0/ehfac
+          value = pe0
+
+        case(O2)
+      
+      ! compute gas partial pressure
+              ifo2 = reaction%species_idx%o2_gas_id
+              lnQKgas = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+              if (reaction%eqgash2oid(ifo2) > 0) then
+                lnQKgas = lnQKgas + reaction%eqgash2ostoich(ifo2) * &
+                    patch%aux%RT%aux_vars(ghosted_id)%ln_act_h2o
+              endif
+              do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+                comp_id = reaction%eqgasspecid(jcomp,ifo2)
+                lnQKgas = lnQKgas + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(patch%aux%RT%aux_vars(ghosted_id)%pri_molal(comp_id)* &
+                        patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(comp_id))
+              enddo
+           value = lnQKgas * LN_TO_LOG
         case(PRIMARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)
         case(PRIMARY_MOLARITY)

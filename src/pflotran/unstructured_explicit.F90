@@ -33,15 +33,16 @@ contains
 ! date: 10/03/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridRead(explicit_grid,filename,option)
+subroutine ExplicitUGridRead(unstructured_grid,filename,option)
 
   use Input_module
   use Option_module
   use String_module
   
   implicit none
-  
-  type(unstructured_explicit_type) :: explicit_grid
+ 
+  type(unstructured_grid_type) :: unstructured_grid 
+  type(unstructured_explicit_type), pointer :: explicit_grid
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
   
@@ -59,7 +60,9 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
   PetscErrorCode :: ierr
   PetscReal, allocatable :: temp_real_array(:,:)
   PetscInt, allocatable :: temp_int_array(:,:)
-  
+  PetscInt :: ivertex, num_vertices 
+
+  explicit_grid => unstructured_grid%explicit_grid 
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
 ! x_, y_, z_, area_, volume_ = real
@@ -346,20 +349,34 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
     call InputReadInt(input,option,num_elems)
     call InputErrorMsg(input,option,'number of elements',card)
         explicit_grid%num_elems = num_elems
-    allocate(explicit_grid%cell_connectivity(3,num_elems)) 
-    explicit_grid%cell_connectivity = 0
+    unstructured_grid%max_nvert_per_cell = 8 ! Initial guess
+    allocate(explicit_grid%cell_connectivity(0:unstructured_grid% &
+                                  max_nvert_per_cell,num_elems)) 
     do iconn = 1, num_elems
       call InputReadFlotranString(input,option)
       call InputReadStringErrorMsg(input,option,card)  
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(1,iconn))
-      call InputErrorMsg(input,option,'cell vertex 1',card)
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(2,iconn))
-      call InputErrorMsg(input,option,'cell vertex 2',card)
-      call InputReadInt(input,option, &
-                        explicit_grid%cell_connectivity(3,iconn))
-      call InputErrorMsg(input,option,'cell vertex 3',card)
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'element_type',card)
+      call StringtoUpper(word)
+      select case (word)
+        case('H')
+          num_vertices = 8
+        case('W')
+          num_vertices = 6
+        case('P')
+          num_vertices = 5
+        case('T')
+          num_vertices = 4
+        case('Q')
+          num_vertices = 4
+        case('TRI')
+          num_vertices = 3
+      end select
+      explicit_grid%cell_connectivity(0,iconn) = num_vertices
+      do ivertex = 1, num_vertices
+        call InputReadInt(input,option,explicit_grid%cell_connectivity(ivertex,iconn))
+        call InputErrorMsg(input,option,'vertex id',hint)
+      enddo
     enddo
     call InputReadFlotranString(input,option)
     ! read VERTICES card, not used for calcuations, only tecplot output
@@ -446,6 +463,7 @@ subroutine ExplicitUGridDecompose(ugrid,option)
   PetscInt :: global_offset_new
   PetscInt :: ghosted_id
   PetscInt, allocatable :: local_connections(:), local_connection_offsets(:)
+  PetscInt, allocatable :: local_connections2(:), local_connection_offsets2(:)
   PetscInt, allocatable :: int_array(:), int_array2(:), int_array3(:)
   PetscInt, allocatable :: int_array4(:)
   PetscInt, allocatable :: int_array2d(:,:)
@@ -587,6 +605,7 @@ subroutine ExplicitUGridDecompose(ugrid,option)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
+!  call printErrMsg(option,'debugg')
 
   ! Create the Dual matrix.
   call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
@@ -604,7 +623,45 @@ subroutine ExplicitUGridDecompose(ugrid,option)
   call MatAssemblyBegin(M_mat,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(M_mat,MAT_FINAL_ASSEMBLY,ierr)
   
-  call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Dual_mat,ierr)
+  !call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Dual_mat,ierr)
+  !call MatDestroy(M_mat,ierr)
+
+  ! Alternate method of creating Dual_mat
+  if (option%mycommsize>1) then
+    call MatMPIAIJGetLocalMat(M_mat,MAT_INITIAL_MATRIX,M_mat_loc,ierr)
+    call MatGetRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatGetRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
+
+  count=0
+  do icell = 1,num_rows
+    istart = ia_ptr(icell)
+    iend = ia_ptr(icell+1)-1
+    num_cols = iend-istart+1
+    count = count+num_cols
+  enddo
+  allocate(local_connections2(count))
+  allocate(local_connection_offsets2(num_rows+1))
+  local_connection_offsets2(1:num_rows+1) = ia_ptr(1:num_rows+1)
+  local_connections2(1:count)             = ja_ptr(1:count)
+
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
+  call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
+                       ugrid%nmax, &
+                       local_connection_offsets2, &
+                       local_connections2,PETSC_NULL_INTEGER,Dual_mat,ierr)
+
+  if (option%mycommsize>1) then
+    call MatRestoreRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatRestoreRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
   call MatDestroy(M_mat,ierr)
 
 #if UGRID_DEBUG
@@ -758,7 +815,12 @@ subroutine ExplicitUGridDecompose(ugrid,option)
                           temp_int,ia_ptr2,ja_ptr2,success,ierr)
   call MatDestroy(Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
-  
+  deallocate(local_connections)
+  deallocate(local_connection_offsets)
+  deallocate(local_connections2)
+  deallocate(local_connection_offsets2)
+
+
   ! is_scatter is destroyed within UGridNaturalToPetsc
   call UGridNaturalToPetsc(ugrid,option, &
                            cells_old,cells_local, &

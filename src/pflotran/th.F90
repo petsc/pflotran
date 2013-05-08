@@ -234,6 +234,8 @@ subroutine THSetupPatch(realization)
       allocate(TH_sec_heat_vars(ghosted_id)%vol(TH_sec_heat_vars(ghosted_id)%ncells))
       allocate(TH_sec_heat_vars(ghosted_id)%dm_minus(TH_sec_heat_vars(ghosted_id)%ncells))
       allocate(TH_sec_heat_vars(ghosted_id)%dm_plus(TH_sec_heat_vars(ghosted_id)%ncells))
+      allocate(TH_sec_heat_vars(ghosted_id)%sec_continuum% &
+             distance(TH_sec_heat_vars(ghosted_id)%ncells))
     
       call SecondaryContinuumType(TH_sec_heat_vars(ghosted_id)%sec_continuum, &
                                   TH_sec_heat_vars(ghosted_id)%ncells, &

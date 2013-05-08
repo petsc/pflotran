@@ -1884,7 +1884,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC
+  use Grid_module, only : STRUCTURED_GRID_MIMETIC, UNSTRUCTURED_GRID_MIMETIC
   
   implicit none
 
@@ -1979,7 +1979,8 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
       case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
       case(RICHARDS_MODE)
-        if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
+        if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+            discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
         else 
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)

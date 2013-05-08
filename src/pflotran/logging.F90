@@ -46,6 +46,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_write_real_array_hdf5
     PetscLogEvent :: event_write_int_array_hdf5
     PetscLogEvent :: event_read_array_hdf5    
+    PetscLogEvent :: event_read_xyz_dataset_hdf5    
     PetscLogEvent :: event_write_struct_dataset_hdf5
     PetscLogEvent :: event_region_read_hdf5
     PetscLogEvent :: event_region_read_ascii
@@ -67,6 +68,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_output_observation
     PetscLogEvent :: event_output_coordinates_hdf5
     PetscLogEvent :: event_output_hydrograph
+    PetscLogEvent :: event_output_secondary_tecplot
 
     PetscLogEvent :: event_r_residual
     PetscLogEvent :: event_r_jacobian
@@ -235,6 +237,9 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('OutputHDF5', &
                              logging%class_pflotran, &
                              logging%event_output_hdf5,ierr)
+  call PetscLogEventRegister('OutputSecondaryTecplot', &
+                             logging%class_pflotran, &
+                             logging%event_output_secondary_tecplot,ierr)
   call PetscLogEventRegister('WriteTecStrGrid', &
                              logging%class_pflotran, &
                              logging%event_output_str_grid_tecplot,ierr)

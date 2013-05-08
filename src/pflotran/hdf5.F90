@@ -2072,7 +2072,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     region%sideset => RegionCreateSideset()
     sideset => region%sideset
     sideset%nfaces = int(dims_h5(2)/option%mycommsize)
-    remainder = int(dims_h5(2)) - region%num_verts*option%mycommsize
+    remainder = int(dims_h5(2)) - sideset%nfaces*option%mycommsize
+    if (option%myrank < remainder) sideset%nfaces = sideset%nfaces + 1
 
      ! Find istart and iend
      istart = 0
