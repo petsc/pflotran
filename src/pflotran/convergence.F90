@@ -258,7 +258,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         case default
           write(string,'(i3)') reason
       end select
-      if (option%use_mc) then
+      if (option%use_mc .and. option%ntrandof > 0) then
         write(*,'(i3," fnrm:",es9.2, &
                 & " xnrm:",es9.2, &
                 & " pnrm:",es9.2, &
