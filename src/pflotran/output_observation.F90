@@ -18,7 +18,7 @@ module Output_Observation_module
   public :: OutputObservation, &
             OutputObservationInit, &
             OutputMassBalance
-
+            
 contains
 
 ! ************************************************************************** !
@@ -73,6 +73,9 @@ subroutine OutputObservation(realization_base)
 !      realization_base%output_option%print_hdf5) then
   if (realization_base%output_option%print_observation) then
     call OutputObservationTecplotColumnTXT(realization_base)
+    if (realization_base%option%use_mc) then
+      call OutputObservationTecplotSecTXT(realization_base)
+    endif
   endif
 
 end subroutine OutputObservation
@@ -175,16 +178,12 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
               call WriteObservationHeaderForCoord(fid,realization_base, &
                                                   observation%region, &
                                                   observation%print_velocities, &
-                                                  observation% &
-                                                  print_secondary_data, &
                                                   icolumn)
             else
               do icell=1,observation%region%num_cells
                 call WriteObservationHeaderForCell(fid,realization_base, &
                                                    observation%region,icell, &
                                                    observation%print_velocities, &
-                                                   observation% &
-                                                   print_secondary_data, &
                                                    icolumn)
               enddo
             endif
@@ -223,21 +222,6 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
                 if (observation%print_velocities) then
                   call WriteVelocityAtCell(fid,realization_base,local_id)
                 endif
-                if (observation%print_secondary_data(1)) then
-                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
-                                                           local_id, &
-                                                           PRINT_SEC_TEMP)
-                endif
-                if (observation%print_secondary_data(2)) then
-                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
-                                                           local_id, &
-                                                           PRINT_SEC_CONC)
-                endif
-                if (observation%print_secondary_data(3)) then
-                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
-                                                        local_id, &
-                                                        PRINT_SEC_MIN_VOLFRAC)
-                endif
               enddo
             endif
           case(OBSERVATION_FLUX)
@@ -267,7 +251,6 @@ end subroutine OutputObservationTecplotColumnTXT
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization_base,region,icell, &
                                          print_velocities, &
-                                         print_secondary_data, &
                                          icolumn)
 
   use Realization_Base_class, only : realization_base_type
@@ -285,7 +268,6 @@ subroutine WriteObservationHeaderForCell(fid,realization_base,region,icell, &
   type(region_type) :: region
   PetscInt :: icell
   PetscBool :: print_velocities
-  PetscBool :: print_secondary_data(3)
   PetscInt :: icolumn
   
   PetscInt :: local_id
@@ -308,8 +290,8 @@ subroutine WriteObservationHeaderForCell(fid,realization_base,region,icell, &
                 ' ' // trim(adjustl(y_string)) // &
                 ' ' // trim(adjustl(z_string)) // ')'
   
-  call WriteObservationHeader(fid,realization_base,cell_string,print_velocities, &
-                              print_secondary_data,icolumn)
+  call WriteObservationHeader(fid,realization_base,cell_string, &
+                              print_velocities,icolumn)
 
 end subroutine WriteObservationHeaderForCell
 
@@ -322,7 +304,6 @@ end subroutine WriteObservationHeaderForCell
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCoord(fid,realization_base,region, &
                                          print_velocities, &
-                                         print_secondary_data, &
                                          icolumn)
 
   use Realization_Base_class, only : realization_base_type
@@ -337,7 +318,6 @@ subroutine WriteObservationHeaderForCoord(fid,realization_base,region, &
   class(realization_base_type) :: realization_base
   type(region_type) :: region
   PetscBool :: print_velocities
-  PetscBool :: print_secondary_data(3)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header
@@ -353,8 +333,8 @@ subroutine WriteObservationHeaderForCoord(fid,realization_base,region, &
                 trim(adjustl(y_string)) // ' ' // &
                 trim(adjustl(z_string)) // ')'
 
-  call WriteObservationHeader(fid,realization_base,cell_string,print_velocities, &
-                              print_secondary_data,icolumn)
+  call WriteObservationHeader(fid,realization_base,cell_string, &
+                              print_velocities,icolumn)
 
 end subroutine WriteObservationHeaderForCoord
 
@@ -366,9 +346,8 @@ end subroutine WriteObservationHeaderForCoord
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeader(fid,realization_base,cell_string, &
-                                         print_velocities, &
-                                         print_secondary_data, &
-                                         icolumn)
+                                  print_velocities,icolumn)
+                                  
   use Realization_Base_class, only : realization_base_type
   use Option_module
   use Reaction_Aux_module
@@ -379,7 +358,6 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
   class(realization_base_type) :: realization_base
   type(reaction_type), pointer :: reaction 
   PetscBool :: print_velocities
-  PetscBool :: print_secondary_data(3)
   character(len=MAXSTRINGLENGTH) :: cell_string
   PetscInt :: icolumn
   
@@ -405,6 +383,295 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
     call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
     write(fid,'(a)',advance="no") trim(header)
   endif
+    
+end subroutine WriteObservationHeader
+
+! ************************************************************************** !
+!
+! OutputObservationTecplotSecTXT: Print to secondary continuum observation 
+! data to text file
+! author: Satish Karra
+! date: 04/08/13
+!
+! ************************************************************************** !  
+subroutine OutputObservationTecplotSecTXT(realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Discretization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Observation_module
+  use Utility_module
+ 
+  implicit none
+
+  class(realization_base_type) :: realization_base
+  
+  PetscInt :: fid, icell
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(output_option_type), pointer :: output_option
+  type(observation_type), pointer :: observation
+  PetscBool, save :: check_for_observation_points = PETSC_TRUE
+  PetscBool, save :: open_file = PETSC_FALSE
+  PetscInt :: local_id
+  PetscInt :: icolumn
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_output_observation,ierr)    
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
+  
+  if (check_for_observation_points) then
+    open_file = PETSC_FALSE
+    observation => patch%observation%first
+    do
+      if (.not.associated(observation)) exit
+      if (observation%itype == OBSERVATION_SCALAR .or. &
+          (observation%itype == OBSERVATION_FLUX .and. &
+           option%myrank == option%io_rank)) then
+        open_file = PETSC_TRUE
+        exit
+      endif
+      observation => observation%next
+    enddo
+    check_for_observation_points = PETSC_FALSE
+  endif
+  
+  
+  if (open_file) then
+    write(string,'(i6)') option%myrank
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-obs-sec-' // trim(adjustl(string)) // '.tec'
+  
+    ! open file
+    fid = 86
+    if (observation_first .or. .not.FileExists(filename)) then
+      open(unit=fid,file=filename,action="write",status="replace")
+      ! write header
+      ! write title
+      write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'
+      observation => patch%observation%first
+
+      ! must initialize icolumn here so that icolumn does not restart with
+      ! each observation point
+      if (output_option%print_column_ids) then
+        icolumn = 1
+      else
+        icolumn = -1
+      endif
+
+      do 
+        if (.not.associated(observation)) exit
+        
+        select case(observation%itype)
+          case(OBSERVATION_SCALAR)
+            if (associated(observation%region%coordinates) .and. &
+                .not.observation%at_cell_center) then
+              option%io_buffer = 'Writing of data at coordinates not ' // &
+                'functioning properly for minerals.  Perhaps due to ' // &
+                'non-ghosting of vol frac....>? - geh'
+              call printErrMsg(option)
+              call WriteObservationHeaderForCoordSec(fid,realization_base, &
+                                                  observation%region, &
+                                                  observation% &
+                                                  print_secondary_data, &
+                                                  icolumn)
+            else
+              do icell=1,observation%region%num_cells
+                call WriteObservationHeaderForCellSec(fid,realization_base, &
+                                                   observation%region,icell, &
+                                                   observation% &
+                                                   print_secondary_data, &
+                                                   icolumn)
+              enddo
+            endif
+        end select
+        observation => observation%next
+      enddo
+      write(fid,'(a)',advance="yes") ""
+    else
+      open(unit=fid,file=filename,action="write",status="old", &
+           position="append")
+    endif
+  
+    observation => patch%observation%first
+    write(fid,'(1es14.6)',advance="no") option%time/output_option%tconv
+    do 
+      if (.not.associated(observation)) exit
+        select case(observation%itype)
+          case(OBSERVATION_SCALAR)
+              do icell=1,observation%region%num_cells
+                local_id = observation%region%cell_ids(icell)
+                if (observation%print_secondary_data(1)) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
+                                                           local_id, &
+                                                           PRINT_SEC_TEMP)
+                endif
+                if (observation%print_secondary_data(2)) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
+                                                           local_id, &
+                                                           PRINT_SEC_CONC)
+                endif
+                if (observation%print_secondary_data(3)) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
+                                                        local_id, &
+                                                        PRINT_SEC_MIN_VOLFRAC)
+                endif
+              enddo
+      end select
+      observation => observation%next
+    enddo
+    write(fid,'(a)',advance="yes") ""
+    close(fid)
+
+  endif
+
+  observation_first = PETSC_FALSE
+  
+  call PetscLogEventEnd(logging%event_output_observation,ierr)    
+      
+end subroutine OutputObservationTecplotSecTXT
+
+! ************************************************************************** !
+!
+! WriteObservationHeaderForCellSec: Print a header for data at a cell for
+! secondary continuum 
+! author: Satish Karra, LANL
+! date: 04/08/13
+!
+! ************************************************************************** !  
+subroutine WriteObservationHeaderForCellSec(fid,realization_base,region,icell, &
+                                            print_secondary_data, &
+                                            icolumn)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Option_module
+  use Output_Aux_module
+  use Patch_module
+  use Region_module
+  use Utility_module, only : BestFloat
+  
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(region_type) :: region
+  PetscInt :: icell
+  PetscBool :: print_secondary_data(3)
+  PetscInt :: icolumn
+  
+  PetscInt :: local_id
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  type(grid_type), pointer :: grid
+
+  grid => realization_base%patch%grid
+  
+  local_id = region%cell_ids(icell)
+  write(cell_string,*) grid%nG2A(grid%nL2G(region%cell_ids(icell)))
+  cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
+
+  ! add coordinate of cell center
+  x_string = BestFloat(grid%x(grid%nL2G(local_id)),1.d4,1.d-2)
+  y_string = BestFloat(grid%y(grid%nL2G(local_id)),1.d4,1.d-2)
+  z_string = BestFloat(grid%z(grid%nL2G(local_id)),1.d4,1.d-2)
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // &
+                ' ' // trim(adjustl(y_string)) // &
+                ' ' // trim(adjustl(z_string)) // ')'
+  
+  call WriteObservationHeaderSec(fid,realization_base,cell_string, &
+                                 print_secondary_data,icolumn)
+
+end subroutine WriteObservationHeaderForCellSec
+
+! ************************************************************************** !
+!
+! WriteObservationHeaderForCoordSec: Print a header for data at a coordinate
+! for secondary continuum
+! author: Satish Karra, LANL
+! date: 04/08/13
+!
+! ************************************************************************** !  
+subroutine WriteObservationHeaderForCoordSec(fid,realization_base,region, &
+                                             print_secondary_data, &
+                                             icolumn)
+
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Patch_module
+  use Region_module
+  use Utility_module, only : BestFloat
+  
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(region_type) :: region
+  PetscBool :: print_secondary_data(3)
+  PetscInt :: icolumn
+  
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  
+  cell_string = trim(region%name)
+  
+  x_string = BestFloat(region%coordinates(ONE_INTEGER)%x,1.d4,1.d-2)
+  y_string = BestFloat(region%coordinates(ONE_INTEGER)%y,1.d4,1.d-2)
+  z_string = BestFloat(region%coordinates(ONE_INTEGER)%z,1.d4,1.d-2)
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
+                trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
+
+  call WriteObservationHeaderSec(fid,realization_base,cell_string, &
+                                 print_secondary_data,icolumn)
+
+end subroutine WriteObservationHeaderForCoordSec
+
+! ************************************************************************** !
+!
+! WriteObservationHeaderSec: Print a header for secondary continuum data
+! author: Satish Karra, LANL
+! date: 10/27/13
+!
+! ************************************************************************** !  
+subroutine WriteObservationHeaderSec(fid,realization_base,cell_string, &
+                                     print_secondary_data,icolumn)
+                                     
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Reaction_Aux_module
+
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(reaction_type), pointer :: reaction 
+  PetscBool :: print_secondary_data(3)
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  PetscInt :: icolumn
+  
+  PetscInt :: i,j
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option  
+  
+  option => realization_base%option
+  output_option => realization_base%output_option
   
   ! add secondary temperature to header
   if (print_secondary_data(1)) then
@@ -413,8 +680,8 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
         header = ''
         do i = 1, option%nsec_cells
           write(string,'(i2)') i
-          string = 'T_sec(' // trim(adjustl(string)) // ')'
-          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+          string = 'T(' // trim(adjustl(string)) // ')'
+          call OutputAppendToHeader(header,string,'C',cell_string,icolumn)
         enddo
       case default
         header = ''
@@ -430,9 +697,10 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
           do j = 1, reaction%naqcomp
             do i = 1, option%nsec_cells
               write(string,'(i2)') i
-              string = 'C_sec(' // trim(adjustl(string)) // ') ' &
+              string = 'C(' // trim(adjustl(string)) // ') ' &
                          // trim(reaction%primary_species_names(j))
-              call OutputAppendToHeader(header,string,'mol','',icolumn)
+              call OutputAppendToHeader(header,string,'molal',cell_string, &
+                                        icolumn)
             enddo
           enddo
       write(fid,'(a)',advance="no") trim(header)
@@ -444,7 +712,7 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
           do j = 1, reaction%mineral%nkinmnrl
             do i = 1, option%nsec_cells
               write(string,'(i2)') i
-              string = 'VF_sec(' // trim(adjustl(string)) // ') ' &
+              string = 'VF(' // trim(adjustl(string)) // ') ' &
                        // trim(reaction%mineral%mineral_names(j))
               call OutputAppendToHeader(header,string,'',cell_string,icolumn)
             enddo
@@ -453,7 +721,7 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
     endif  
   endif 
   
-end subroutine WriteObservationHeader
+end subroutine WriteObservationHeaderSec
 
 ! ************************************************************************** !
 !
