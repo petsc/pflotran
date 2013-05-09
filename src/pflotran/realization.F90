@@ -18,6 +18,7 @@ module Realization_class
   use Uniform_Velocity_module
   use Waypoint_module
   use Output_Aux_module
+  use Mass_Transfer_module  
   
   use Reaction_Aux_module
   
@@ -1394,6 +1395,11 @@ subroutine RealizationUpdate(realization)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
+  call MassTransferUpdate(realization%mass_transfer_list, &
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
+
 end subroutine RealizationUpdate
 
 ! ************************************************************************** !
@@ -2528,7 +2534,8 @@ subroutine RealizationDestroy(realization)
   
   call ReactionDestroy(realization%reaction)
   
-  call TranConstraintDestroy(realization%sec_transport_constraint)  
+  call TranConstraintDestroy(realization%sec_transport_constraint)
+  call MassTransferDestroy(realization%mass_transfer_list)
   
 end subroutine RealizationDestroy
 

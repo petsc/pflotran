@@ -46,6 +46,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_write_real_array_hdf5
     PetscLogEvent :: event_write_int_array_hdf5
     PetscLogEvent :: event_read_array_hdf5    
+    PetscLogEvent :: event_read_xyz_dataset_hdf5    
     PetscLogEvent :: event_write_struct_dataset_hdf5
     PetscLogEvent :: event_region_read_hdf5
     PetscLogEvent :: event_region_read_ascii

@@ -31,7 +31,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Region_module
   use Structured_Grid_module
   use Utility_module, only : DotProduct
-  use Dataset_module
   use Dataset_Aux_module
   
   use General_Aux_module
