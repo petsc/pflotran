@@ -801,6 +801,11 @@ subroutine RealizationProcessConditions(realization)
   if (realization%option%ntrandof > 0) then
     call RealProcessTranConditions(realization)
   endif
+  if (associated(realization%mass_transfer_list)) then
+    call MassTransferInit(realization%mass_transfer_list, &
+                          realization%discretization, &
+                          realization%option)
+  endif
  
 end subroutine RealizationProcessConditions
 
@@ -1488,6 +1493,7 @@ subroutine RealizationAddWaypointsToList(realization)
   type(tran_condition_type), pointer :: cur_tran_condition
   type(flow_sub_condition_type), pointer :: sub_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+  type(mass_transfer_type), pointer :: cur_mass_transfer
   type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
@@ -1580,6 +1586,21 @@ subroutine RealizationAddWaypointsToList(realization)
       enddo
     endif
   endif
+  
+  ! add waypoints for mass transfer
+  if (associated(realization%mass_transfer_list)) then
+    cur_mass_transfer => realization%mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
+        waypoint => WaypointCreate()
+        waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
+        waypoint%update_conditions = PETSC_TRUE
+        call WaypointInsertInList(waypoint,realization%waypoints)
+      enddo
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif  
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &

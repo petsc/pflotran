@@ -2997,6 +2997,8 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
     cur_mass_transfer => realization%mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
+      call VecGetArrayF90(cur_mass_transfer%vec, r_p, ierr)
+      call VecRestoreArrayF90(cur_mass_transfer%vec, r_p, ierr)
       call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
                             r,ADD_VALUES,ierr)    
       cur_mass_transfer => cur_mass_transfer%next

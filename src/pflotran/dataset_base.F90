@@ -88,11 +88,6 @@ subroutine DatasetBaseInterpolateTime(this)
   
   time_interpolation_method = INTERPOLATION_STEP
   
-  if (associated(this%time_storage)) then
-    ! sets correct cur_time_index
-    call TimeStorageUpdate(this%time_storage)
-  endif
-  
   if (this%time_storage%cur_time_index >= &
       this%time_storage%max_time_index) then
     ! dataset has reached the end of the time array and is not cyclic.
