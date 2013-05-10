@@ -90,6 +90,7 @@ subroutine Init(simulation)
 #endif
 
 #ifdef PROCESS_MODEL
+  use Synchronizer_module
   use Process_Model_Coupler_module
   use Process_Model_Richards_class
   use Process_Model_RT_class
@@ -1173,7 +1174,11 @@ subroutine Init(simulation)
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
   simulation%output_option => realization%output_option
-  simulation%waypoints => realization%waypoints
+  simulation%synchronizer => SynchronizerCreate()
+  simulation%synchronizer%option => realization%option
+  simulation%synchronizer%output_option => realization%output_option
+!  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
+  simulation%synchronizer%waypoints => realization%waypoints
   nullify(cur_process_model)
 
   nullify(surf_flow_process_model_coupler)
@@ -1256,6 +1261,9 @@ subroutine Init(simulation)
     simulation%process_model_coupler_list => sub_tran_process_model_coupler
   endif
 
+  simulation%synchronizer%process_model_coupler_list => &
+    simulation%process_model_coupler_list
+  
   ! For each ProcessModel, set:
   ! - realization (subsurface or surface),
   ! - stepper (flow/trans/surf_flow),
@@ -1632,11 +1640,6 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
                          subsurface_tran_stepper,subsurface_regression)
 #endif
 
-#ifdef PROCESS_MODEL
-  use Simulation_Base_module
-#else
-  use Simulation_module
-#endif
   use Option_module
   use Field_module
   use Grid_module
