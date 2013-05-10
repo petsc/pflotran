@@ -1142,7 +1142,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscBool :: use_log_formulation
   
   PetscReal :: Jac_num(reaction%naqcomp)
-  PetscReal :: Res_pert, pert, prev_value
+  PetscReal :: Res_pert, pert, prev_value, coh0
 
   PetscInt :: iphase
   PetscInt :: idof
@@ -1401,12 +1401,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
-!          Jac(:,icomp) = 0.d0
-          Jac(icomp,icomp) = 1.d0
           if (associated(reaction%species_idx)) then
             if (reaction%species_idx%h_ion_id > 0) then ! conc(icomp) = 10**-pH
               rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
                                             rt_auxvar%pri_act_coef(icomp)
+              Jac(icomp,icomp) = 1.d0
             else ! H+ is a complex
             
               icplx = abs(reaction%species_idx%h_ion_id)
@@ -1425,15 +1424,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
                               log(rt_auxvar%pri_molal(comp_id)* &
                               rt_auxvar%pri_act_coef(comp_id))
+                print *,'pH: ',icomp,jcomp,comp_id,lnQK,reaction%eqcplx_logK(icplx), &
+                reaction%eqcplxstoich(jcomp,icplx), conc(icomp), &
+                rt_auxvar%pri_molal(comp_id)
               enddo
-              lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
+              lnQK = lnQK + conc(icomp)*LOG_TO_LN ! this is log activity H+
               QK = exp(lnQK)
               
               Res(icomp) = 1.d0 - QK
 
               do jcomp = 1,reaction%eqcplxspecid(0,icplx)
                 comp_id = reaction%eqcplxspecid(jcomp,icplx)
-                Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
+                Jac(icomp,comp_id) = -QK/rt_auxvar%pri_molal(comp_id)* &
                                           reaction%eqcplxstoich(jcomp,icplx)
               enddo
             endif
@@ -1442,7 +1444,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_MINERAL)
 
           imnrl = constraint_id(icomp)
-          ! compute secondary species concentration
           lnQK = -mineral_reaction%mnrl_logK(imnrl)*LOG_TO_LN
 
           ! activity of water
@@ -1450,32 +1451,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             lnQK = lnQK + mineral_reaction%mnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
           endif
 
+          ! compute ion activity product
           do jcomp = 1, mineral_reaction%mnrlspecid(0,imnrl)
             comp_id = mineral_reaction%mnrlspecid(jcomp,imnrl)
             lnQK = lnQK + mineral_reaction%mnrlstoich(jcomp,imnrl)* &
                           log(rt_auxvar%pri_molal(comp_id)* &
                           rt_auxvar%pri_act_coef(comp_id))
           enddo
-!         QK = exp(lnQK)
           
-!         Res(icomp) = 1.d0 - QK
           Res(icomp) = lnQK
 
           do jcomp = 1,mineral_reaction%mnrlspecid(0,imnrl)
             comp_id = mineral_reaction%mnrlspecid(jcomp,imnrl)
-!           Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
-!                                reaction%mnrlstoich(jcomp,imnrl)
             Jac(icomp,comp_id) = mineral_reaction%mnrlstoich(jcomp,imnrl)/ &
               rt_auxvar%pri_molal(comp_id)
-                                 
           enddo
   
         case(CONSTRAINT_GAS)
 
           igas = constraint_id(icomp)
-          
-          ! compute secondary species concentration
-           lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
+          lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
  
           ! divide K by RT
           !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
@@ -1485,6 +1480,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
           endif
 
+          ! compute ion activity product
           do jcomp = 1, reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
             lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
@@ -1842,13 +1838,14 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscReal :: lnQKgas(reaction%ngas), QKgas(reaction%ngas)
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcplx+1)
-  PetscReal :: totj, retardation, kd
+  PetscReal :: totj, retardation, kd, ph
   PetscInt :: comp_id, jcomp
   PetscInt :: icount
-  PetscInt :: iphase
+  PetscInt :: iphase, ifo2
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
   PetscReal :: sum_molality, sum_mass, mole_fraction_h2o, mass_fraction_h2o, &
                mass_fraction_co2, mole_fraction_co2
+  PetscReal :: ehfac,eh,pe,tk
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1935,7 +1932,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       endif
 #endif                                     
     endif
-  
 
 200 format('')
 201 format(a20,i5)
@@ -1946,15 +1942,49 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
       constraint_coupler%num_iterations
+
     if (associated(reaction%species_idx)) then
+!    output pH
       if (reaction%species_idx%h_ion_id > 0) then
-        write(option%fid_out,203) '              pH: ', &
+        ph = &
           -log10(rt_auxvar%pri_molal(reaction%species_idx%h_ion_id)* &
                  rt_auxvar%pri_act_coef(reaction%species_idx%h_ion_id))
       else if (reaction%species_idx%h_ion_id < 0) then
-        write(option%fid_out,203) '              pH: ', &
+        ph = &
           -log10(rt_auxvar%sec_molal(abs(reaction%species_idx%h_ion_id))* &
                  rt_auxvar%sec_act_coef(abs(reaction%species_idx%h_ion_id)))
+      endif
+      if (reaction%species_idx%h_ion_id > 0 .or. reaction%species_idx%h_ion_id < 0) &
+      write(option%fid_out,203) '              pH: ',ph
+
+!    output Eh and pe
+      if (reaction%species_idx%o2_gas_id > 0 .and. (reaction%species_idx%h_ion_id > 0 &
+          .or. reaction%species_idx%h_ion_id < 0)) then
+
+        ifo2 = reaction%species_idx%o2_gas_id
+      
+      ! compute gas partial pressure
+        lnQKgas(ifo2) = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+      
+      ! activity of water
+        if (reaction%eqgash2oid(ifo2) > 0) then
+          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%eqgash2ostoich(ifo2)*rt_auxvar%ln_act_h2o
+        endif
+        do jcomp = 1, reaction%eqgasspecid(0,ifo2)
+          comp_id = reaction%eqgasspecid(jcomp,ifo2)
+          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%eqgasstoich(jcomp,ifo2)* &
+                      log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+        enddo
+
+        tk = global_auxvar%temp(1)+273.15d0
+        ehfac = IDEAL_GAS_CONST*tk*LOG_TO_LN/faraday
+        eh = ehfac*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
+        pe = eh/ehfac
+
+!       pe = (-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
+!       eh = pe*ehfac
+        write(option%fid_out,203) '              pe: ',pe
+        write(option%fid_out,203) '              Eh: ',eh
       endif
     endif
     
@@ -2013,6 +2043,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       endif
     endif
 #endif
+
     write(option%fid_out,90)
 
     102 format(/,'                        free        total')  
@@ -2379,7 +2410,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     
   if (reaction%ngas > 0) then
     
-    132 format(/,'  gas           log part. press.  part. press. [bars]   log K')
+    132 format(/,'  gas        log part. press.  part. press. [bars]      log K')
     133 format(2x,a10,2x,1pe12.4,6x,1pe12.4,8x,1pe12.4)
     
     write(option%fid_out,132)
@@ -2766,6 +2797,9 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_gas_species = PETSC_FALSE
         reaction%mineral%print_all = PETSC_FALSE
         reaction%print_pH = PETSC_FALSE
+        reaction%print_Eh = PETSC_FALSE
+        reaction%print_pe = PETSC_FALSE
+        reaction%print_O2 = PETSC_FALSE
         reaction%print_kd = PETSC_FALSE
         reaction%print_total_sorb = PETSC_FALSE
         reaction%print_total_sorb_mobile = PETSC_FALSE
@@ -2794,6 +2828,12 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%immobile%print_all = PETSC_TRUE
       case('PH')
         reaction%print_pH = PETSC_TRUE
+      case('EH')
+        reaction%print_Eh = PETSC_TRUE
+      case('PE')
+        reaction%print_pe = PETSC_TRUE
+      case('O2')
+        reaction%print_O2 = PETSC_TRUE
       case('KD')
         reaction%print_kd = PETSC_TRUE
       case('COLLOIDS')
@@ -4933,18 +4973,18 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
 #ifdef CHUAN_CO2
       if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
         ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
-        do iaqspec=1, ncomp  
+        do iaqspec = 1, ncomp  
           icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
           if (icomp == reaction%species_idx%co2_aq_id) then
             global_auxvar%reaction_rate(2) &
-              = global_auxvar%reaction_rate(2)& 
-              + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
-              * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
+              = global_auxvar%reaction_rate(2) & 
+              + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+              * reaction%mineral%mnrlstoich(ncomp,imnrl)/option%flow_dt
           else if (icomp == reaction%species_idx%h2o_aq_id) then
             global_auxvar%reaction_rate(1) &
               = global_auxvar%reaction_rate(1)& 
               + rt_auxvar%mnrl_rate(imnrl)* option%tran_dt&
-              * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
+              * reaction%mineral%mnrlstoich(ncomp,imnrl)/option%flow_dt
           endif
         enddo 
       endif   

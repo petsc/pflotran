@@ -269,7 +269,45 @@ subroutine CondControlAssignFlowInitCond(realization)
             if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
                 discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
+              use_dataset = PETSC_FALSE
+              dataset_flag = PETSC_FALSE
+              do idof = 1, option%nflowdof
+                dataset =>  initial_condition%flow_condition% &
+                                 sub_condition_ptr(idof)%ptr% &
+                                 flow_dataset%dataset
+                if (associated(dataset)) then
+                  if (dataset%is_cell_indexed) then
+                    use_dataset = PETSC_TRUE
+                    dataset_flag(idof) = PETSC_TRUE
+                    call ConditionControlMapDatasetToVec(realization, &
+                           initial_condition%flow_condition% &
+                             sub_condition_ptr(idof)%ptr% &
+                             flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                  endif
+                endif
+              enddo
               if (.not.associated(initial_condition%flow_aux_real_var)) then
+                conn_id_ptr => initial_condition%region%cell_ids
+
+                do iconn=1,initial_condition%region%num_cells
+                  local_id = conn_id_ptr(iconn)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  do idof = 1, option%nflowdof
+                    if (.not.dataset_flag(idof)) then
+                      xx_p(ibegin+idof-1) = &
+                        initial_condition%flow_condition% &
+                          sub_condition_ptr(idof)%ptr%flow_dataset% &
+                          time_series%cur_value(1)
+                    endif
+                  enddo
+                  xx_faces_p(ibegin:iend) = xx_p(ibegin:iend) ! for LP -formulation
+                  xx_faces_p(grid%nlmax_faces + &
+                            ibegin:grid%nlmax_faces + iend) = &
+                                xx_p(ibegin:iend) ! for LP -formulation
+                enddo
+
                 do icell=1,initial_condition%region%num_cells
                   local_id = initial_condition%region%cell_ids(icell)
                   ghosted_id = grid%nL2G(local_id)
@@ -421,7 +459,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 
   endif
 #endif
-!  stop 
+!  stop
 end subroutine CondControlAssignFlowInitCond
 
 ! ************************************************************************** !

@@ -335,7 +335,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
           grid%unstructured_grid => un_str_grid
         case(EXPLICIT_UNSTRUCTURED_GRID)
           un_str_grid%explicit_grid => UGridExplicitCreate()
-          call ExplicitUGridRead(un_str_grid%explicit_grid, &
+          call ExplicitUGridRead(un_str_grid, &
                                  discretization%filename,option)
           grid%unstructured_grid => un_str_grid
       end select

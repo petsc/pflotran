@@ -1242,7 +1242,8 @@ subroutine RTCalculateRHS_t1Patch(realization)
   use Coupler_module
   use Option_module
   use Field_module  
-  use Grid_module  
+  use Grid_module
+  use Mass_Transfer_module, only : mass_transfer_type  
 
   implicit none
   
@@ -1270,6 +1271,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: source_sink
+  type(mass_transfer_type), pointer :: cur_mass_transfer
   PetscInt :: sum_connection, iconn  
   PetscReal :: qsrc
   PetscInt :: offset, istartcoll, iendcoll, istartall, iendall, icomp, ieqgas
@@ -1445,6 +1447,17 @@ subroutine RTCalculateRHS_t1Patch(realization)
   call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
   call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
+  ! Mass Transfer
+  if (associated(realization%mass_transfer_list)) then
+    cur_mass_transfer => realization%mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
+                            field%tran_rhs,ADD_VALUES,ierr)    
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif  
+  
 end subroutine RTCalculateRHS_t1Patch
 
 ! ************************************************************************** !
@@ -2327,7 +2340,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 
   ! pass #2 for everything else
   call RTResidualPatch2(snes,xx,r,realization,ierr)
-
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &
                               viewer,ierr)
@@ -2670,7 +2683,8 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   use Field_module
   use Grid_module
   use Connection_module
-  use Coupler_module  
+  use Coupler_module
+  use Mass_Transfer_module, only : mass_transfer_type
   use Debug_module
   use Logging_module
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
@@ -2709,6 +2723,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   PetscReal :: Res(realization%reaction%ncomp)
   
   type(coupler_type), pointer :: source_sink
+  type(mass_transfer_type), pointer :: cur_mass_transfer  
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscReal :: qsrc, molality
@@ -2917,7 +2932,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                   istartall = iendall-reaction%ncomp
                   Res(icomp) = -msrc(2)
                   r_p(istartall+icomp) = r_p(istartall+icomp) + Res(icomp)
-!                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
+!                 print *,'RT SC source', ieqgas,icomp, res(icomp)
                 endif 
               enddo
           end select 
@@ -2928,6 +2943,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
      
 #endif
 #endif
+
 #if 1  
 ! Reactions
   if (associated(reaction)) then
@@ -2975,6 +2991,19 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
  
   call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
+  
+  ! Mass Transfer
+  if (associated(realization%mass_transfer_list)) then
+    cur_mass_transfer => realization%mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      call VecGetArrayF90(cur_mass_transfer%vec, r_p, ierr)
+      call VecRestoreArrayF90(cur_mass_transfer%vec, r_p, ierr)
+      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
+                            r,ADD_VALUES,ierr)    
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif
 
 end subroutine RTResidualPatch2
 
@@ -3549,6 +3578,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
   endif
 #endif
+  
+  ! Mass Transfer - since the current implementation of mass transfer has
+  ! mass transfer being fixed.  Nothing to do here as the contribution to
+  ! the derivatives is zero.
+! if (associated(realization%mass_transfer_list)) then
+! endif
  
   if (reaction%use_log_formulation) then
     call PetscLogEventBegin(logging%event_rt_jacobian_zero_calc,ierr)  
@@ -4205,6 +4240,33 @@ subroutine RTSetPlotVariables(realization)
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
                                    reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_EH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'Eh'
+      units = 'V'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,EH, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_pe .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'pe'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PE, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_O2 .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%o2_gas_id > 0) then
+      name = 'logfO2'
+      units = 'bars'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,O2, &
+                                   reaction%species_idx%o2_gas_id)
     endif
   endif  
   

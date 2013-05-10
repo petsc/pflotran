@@ -255,7 +255,7 @@ subroutine SolverSetSNESOptions(solver)
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes,ierr) 
 
-  call SNESGetSNESLineSearch(solver%snes, linesearch, ierr)
+  call SNESGetLineSearch(solver%snes, linesearch, ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
           PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
           PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &

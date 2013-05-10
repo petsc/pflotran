@@ -68,6 +68,7 @@ private
             SurfRealizProcessFlowConditions, &
             SurfRealizMapSurfSubsurfGrids, &
             SurfRealizInitAllCouplerAuxVars, &
+            SurfRealizAllCouplerAuxVars, &
             SurfRealizProcessMatProp, &
             SurfRealizUpdate, &
 !            SurfRealizCreateSurfSubsurfVec, &
@@ -451,7 +452,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
 
   ! set up nG2L, NL2G, etc.
   call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
-                        grid%nG2L,grid%nL2G,grid%nG2A,option)
+                        grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
   call GridComputeCoordinates(grid,discretization%origin,option, & 
                               discretization%dm_1dof%ugdm) 
   call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
@@ -728,6 +729,29 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
   enddo
 
 end subroutine SurfRealizInitAllCouplerAuxVars
+
+! ************************************************************************** !
+!> This routine updates auxiliary variables associated with couplers in the
+!! list.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/18/13
+! ************************************************************************** !
+subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
+
+  use Option_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  PetscBool :: force_update_flag
+
+  call PatchUpdateAllCouplerAuxVars(surf_realization%patch,force_update_flag, &
+                                    surf_realization%option)
+
+end subroutine SurfRealizAllCouplerAuxVars
 
 ! ************************************************************************** !
 !> This routine creates vector scatter contexts between surface and subsurface 
@@ -1285,10 +1309,14 @@ subroutine SurfRealizUpdate(surf_realization)
   
   type(surface_realization_type) :: surf_realization
 
+  PetscBool :: force_update_flag = PETSC_FALSE
+
   ! must update conditions first
   call FlowConditionUpdate(surf_realization%surf_flow_conditions, &
                            surf_realization%option, &
                            surf_realization%option%time)
+
+  call SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
 
 end subroutine SurfRealizUpdate
 

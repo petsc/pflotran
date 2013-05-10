@@ -144,6 +144,17 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
             tend-tstart
       call printMsg(option)        
     endif
+    
+    if (realization_base%output_option%print_explicit_flowrate) then
+      call PetscTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
+      call OutputPrintExplicitFlowrates(realization_base)
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
+      call PetscTime(tend,ierr) 
+      write(option%io_buffer,'(f10.2," Seconds to write to Rates file.")') &
+            tend-tstart
+      call printMsg(option)        
+    endif
 
     if (realization_base%output_option%print_vtk) then
       call PetscTime(tstart,ierr) 
@@ -167,6 +178,21 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
       call printMsg(option) 
+    endif
+    
+    ! Print secondary continuum variables vs sec. continuum dist.
+    if (option%use_mc) then
+      if (realization_base%output_option%print_tecplot) then
+        call PetscTime(tstart,ierr) 
+        call PetscLogEventBegin(logging%event_output_secondary_tecplot,ierr) 
+        call OutputSecondaryContinuumTecplot(realization_base)
+        call PetscLogEventEnd(logging%event_output_secondary_tecplot,ierr)    
+        call PetscTime(tend,ierr) 
+        write(option%io_buffer,'(f10.2," Seconds to write to secondary' // &
+              ' continuum Tecplot file(s)")') &
+              tend-tstart
+        call printMsg(option) 
+      endif
     endif
       
     if (option%compute_statistics) then

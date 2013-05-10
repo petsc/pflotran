@@ -35,8 +35,9 @@ module Output_Common_module
             OutputXMFAttribute, &
             OutputXMFFooter, &
             OutputGetFlowrates, &
-            ExplicitGetCellCoordinates
-  
+            ExplicitGetCellCoordinates, &
+            OutputGetExplicitFlowrates
+              
 contains
 
 ! ************************************************************************** !
@@ -937,7 +938,6 @@ end subroutine OutputXMFAttribute
 ! ************************************************************************** !
 subroutine OutputGetFlowrates(realization_base)
 
-  use hdf5
   use HDF5_module
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1135,5 +1135,68 @@ subroutine OutputGetFlowrates(realization_base)
   call UGridDMDestroy(ugdm)
   
 end subroutine OutputGetFlowrates
+
+! ************************************************************************** !
+!
+! OutputGetExplicitFlowrates: Forms a vector of magnitude of flowrates
+! which will be printed out to file for particle tracking.
+! author: Satish Karra, LANL
+! date: 04/24/13
+!
+! ************************************************************************** !
+subroutine OutputGetExplicitFlowrates(realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Field_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(field_type), pointer :: field
+  
+  PetscInt :: dof
+  PetscInt :: offset
+  PetscInt :: istart, iend
+  PetscInt :: iconn
+  PetscErrorCode :: ierr
+  PetscReal :: val
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  option => realization_base%option
+  field => realization_base%field
+
+
+  call VecGetOwnershipRange(field%flowrate_inst,istart,iend,ierr)
+  
+  offset = option%nflowdof
+
+  do iconn = istart,iend-1
+    do dof = 1,option%nflowdof
+      val = abs(patch%internal_fluxes(dof,1,iconn))
+      call VecSetValues(field%flowrate_inst,ONE_INTEGER,(iconn-1)*offset + dof, &
+                        val,INSERT_VALUES,ierr) 
+    enddo
+  enddo
+   
+ call VecAssemblyBegin(field%flowrate_inst)
+ call VecAssemblyEnd(field%flowrate_inst)
+
+end subroutine OutputGetExplicitFlowrates
+
 
 end module Output_Common_module

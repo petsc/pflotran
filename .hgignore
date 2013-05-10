@@ -48,6 +48,14 @@ src/pflotran/*xcode/*
 *.synctex.gz
 docs/tecnotes/chemistry/chemistry_implementation.pdf
 docs/user_manual/quick_guide.pdf
+docs/user_manual/user_manual.pdf
+docs/user_manual/user_manual.aux
+docs/user_manual/user_manual.lof
+docs/user_manual/user_manual.log
+docs/user_manual/user_manual.lot
+docs/user_manual/user_manual.out
+docs/user_manual/user_manual.synctex.gz
+docs/user_manual/user_manual.toc
 docs/user_manual/developer_guide.pdf
 *.bin
 *.bin.info

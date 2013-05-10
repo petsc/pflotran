@@ -82,7 +82,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       vm0 = nmat*dy*aream0
       interfacial_area = am0/vm0
      
-       do m = 1, nmat
+      do m = 1, nmat
         aream(m) = aream0
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
@@ -106,6 +106,13 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
 !       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
       endif
+      
+      ! Store the distances
+      sec_continuum%distance(1) = dm1(1)
+      do m = 2, nmat
+        sec_continuum%distance(m) = sec_continuum%distance(m-1) + &
+                                      dm2(m-1) + dm1(m)
+      enddo
           
     case(1) ! nested cubes
 
@@ -212,6 +219,13 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         enddo
       endif
 
+      ! Store the distances
+      sec_continuum%distance(1) = dm1(1)
+      do m = 2, nmat
+        sec_continuum%distance(m) = sec_continuum%distance(m-1) + &
+                                      dm2(m-1) + dm1(m)
+      enddo     
+
     case(2) ! nested spheres
     
       dy = sec_continuum%nested_sphere%radius/nmat
@@ -258,6 +272,13 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
 !       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
       endif
+      
+      ! Store the distances
+      sec_continuum%distance(1) = dm1(1)
+      do m = 2, nmat
+        sec_continuum%distance(m) = sec_continuum%distance(m-1) + &
+                                      dm2(m-1) + dm1(m)
+      enddo
                         
   end select
   
@@ -442,6 +463,8 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   allocate(rt_sec_transport_vars%vol(rt_sec_transport_vars%ncells))
   allocate(rt_sec_transport_vars%dm_minus(rt_sec_transport_vars%ncells))
   allocate(rt_sec_transport_vars%dm_plus(rt_sec_transport_vars%ncells))
+  allocate(rt_sec_transport_vars%sec_continuum% &
+             distance(rt_sec_transport_vars%ncells))
     
   call SecondaryContinuumType(rt_sec_transport_vars%sec_continuum, &
                               rt_sec_transport_vars%ncells, &
@@ -937,7 +960,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   rt_auxvar%pri_molal = conc_current_M ! in mol/kg
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
   total_current_M = rt_auxvar%total(:,1)
-  sec_sec_molal_M = rt_auxvar%sec_molal
+  if (reaction%neqcplx > 0) sec_sec_molal_M = rt_auxvar%sec_molal
   call RTAuxVarStrip(rt_auxvar)
   
 

@@ -18,6 +18,7 @@ module Realization_class
   use Uniform_Velocity_module
   use Waypoint_module
   use Output_Aux_module
+  use Mass_Transfer_module  
   
   use Reaction_Aux_module
   
@@ -456,20 +457,27 @@ subroutine RealizationCreateDiscretization(realization)
      realization%output_option%print_hdf5_energy_flowrate.or. &
      realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
      realization%output_option%print_hdf5_aveg_energy_flowrate) then
-
     call VecCreateMPI(option%mycomm, &
-         (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-          PETSC_DETERMINE,field%flowrate_inst,ierr)
+        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        PETSC_DETERMINE,field%flowrate_inst,ierr)
     call VecSet(field%flowrate_inst,0.d0,ierr)
 
+  endif
+  
+  if(realization%output_option%print_explicit_flowrate) then
+    call VecCreateMPI(option%mycomm, &
+         size(grid%unstructured_grid%explicit_grid%connections,2), &
+         PETSC_DETERMINE,field%flowrate_inst,ierr)
+    call VecSet(field%flowrate_inst,0.d0,ierr)
+  endif
+    
     ! If average flowrate has to be saved, create a vector for it
-    if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
-       realization%output_option%print_hdf5_aveg_energy_flowrate) then
-      call VecCreateMPI(option%mycomm, &
-          (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
-          PETSC_DETERMINE,field%flowrate_aveg,ierr)
+  if(realization%output_option%print_hdf5_aveg_mass_flowrate.or. &
+      realization%output_option%print_hdf5_aveg_energy_flowrate) then
+    call VecCreateMPI(option%mycomm, &
+        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        PETSC_DETERMINE,field%flowrate_aveg,ierr)
     call VecSet(field%flowrate_aveg,0.d0,ierr)
-    endif
   endif
 
 end subroutine RealizationCreateDiscretization
@@ -793,6 +801,11 @@ subroutine RealizationProcessConditions(realization)
   endif
   if (realization%option%ntrandof > 0) then
     call RealProcessTranConditions(realization)
+  endif
+  if (associated(realization%mass_transfer_list)) then
+    call MassTransferInit(realization%mass_transfer_list, &
+                          realization%discretization, &
+                          realization%option)
   endif
  
 end subroutine RealizationProcessConditions
@@ -1389,6 +1402,11 @@ subroutine RealizationUpdate(realization)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
+  call MassTransferUpdate(realization%mass_transfer_list, &
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
+
 end subroutine RealizationUpdate
 
 ! ************************************************************************** !
@@ -1477,6 +1495,7 @@ subroutine RealizationAddWaypointsToList(realization)
   type(tran_condition_type), pointer :: cur_tran_condition
   type(flow_sub_condition_type), pointer :: sub_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+  type(mass_transfer_type), pointer :: cur_mass_transfer
   type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
@@ -1569,6 +1588,21 @@ subroutine RealizationAddWaypointsToList(realization)
       enddo
     endif
   endif
+  
+  ! add waypoints for mass transfer
+  if (associated(realization%mass_transfer_list)) then
+    cur_mass_transfer => realization%mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
+        waypoint => WaypointCreate()
+        waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
+        waypoint%update_conditions = PETSC_TRUE
+        call WaypointInsertInList(waypoint,realization%waypoints)
+      enddo
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif  
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
@@ -2523,7 +2557,8 @@ subroutine RealizationDestroy(realization)
   
   call ReactionDestroy(realization%reaction)
   
-  call TranConstraintDestroy(realization%sec_transport_constraint)  
+  call TranConstraintDestroy(realization%sec_transport_constraint)
+  call MassTransferDestroy(realization%mass_transfer_list)
   
 end subroutine RealizationDestroy
 

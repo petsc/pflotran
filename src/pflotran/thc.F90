@@ -234,7 +234,9 @@ subroutine THCSetupPatch(realization)
       allocate(thc_sec_heat_vars(ghosted_id)%vol(thc_sec_heat_vars(ghosted_id)%ncells))
       allocate(thc_sec_heat_vars(ghosted_id)%dm_minus(thc_sec_heat_vars(ghosted_id)%ncells))
       allocate(thc_sec_heat_vars(ghosted_id)%dm_plus(thc_sec_heat_vars(ghosted_id)%ncells))
-    
+      allocate(thc_sec_heat_vars(ghosted_id)%sec_continuum% &
+             distance(thc_sec_heat_vars(ghosted_id)%ncells))
+                 
       call SecondaryContinuumType(thc_sec_heat_vars(ghosted_id)%sec_continuum, &
                                   thc_sec_heat_vars(ghosted_id)%ncells, &
                                   thc_sec_heat_vars(ghosted_id)%area, &
