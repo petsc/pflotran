@@ -2260,7 +2260,6 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 !if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
-#endif
 
 ! ************************************************************************** !
 !> This routine writes (mass/energy) flowrate for unstructured grid.
@@ -2530,5 +2529,8 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5FlowratesUGrid
+
+! PETSC_HAVE_HDF5
+#endif
 
 end module Output_HDF5_module
