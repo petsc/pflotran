@@ -1886,6 +1886,13 @@ subroutine InitReadInput(simulation)
 
 !....................
 
+      case ('CO2_DATABASE')
+        call InputReadNChars(input,option,option%co2_database_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'CO2_DATABASE','filename')
+        
+!....................
+
       case ('TIMESTEPPER')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)

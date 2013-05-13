@@ -43,7 +43,10 @@
 
       contains
     
-subroutine initialize_span_wagner(itable,myrank)
+subroutine initialize_span_wagner(itable,myrank,option)
+
+      use Input_module
+      use Option_module
 
       implicit none
       PetscInt, optional :: itable
@@ -61,6 +64,9 @@ subroutine initialize_span_wagner(itable,myrank)
       
       PetscReal :: temparray(15)
       PetscInt :: status
+      
+      type(input_type), pointer :: input
+      type(option_type) :: option
       
       tab = char(9)
       q = '","'
@@ -402,55 +408,63 @@ subroutine initialize_span_wagner(itable,myrank)
     enddo
   endif
   
+  if (len_trim(option%co2_database_filename) < 2) then
+    option%io_buffer = 'CO2 database filename not included in input deck.'
+    call printErrMsg(option)
+  endif
+  input => InputCreate(IUNIT_TEMP,option%co2_database_filename,option)
+  
   if (myrank == 0) then
     if (iitable == 1) then
       print *,'Writing Table lookup file ...'
-      if (myrank==0) print *,'--> open co2data.dat'
-      open(unit=122,file='co2data.dat',status='unknown',iostat=status)
+      if (myrank==0) print *,'--> open CO2 database file: ', &
+                             option%co2_database_filename
+      open(unit=input%fid,file=input%filename,status='unknown',iostat=status)
       if (status /= 0) then
-        print *, 'file: co2data.dat not found.  Copy from pflotran/database directory.'
+        print *, 'file:', option%co2_database_filename, ' not found.'
         stop
       endif
-      write(122,'(''TITLE= "'',''co2data.dat'',''"'')')
-      write(122,'(''VARIABLES= "'',a6,100(a3,a6))') &
+      write(input%fid,'(''TITLE= "'',''co2data.dat'',''"'')')
+      write(input%fid,'(''VARIABLES= "'',a6,100(a3,a6))') &
           'p',q,'T',q,'d',q,'dddT',q,'dddp',q,'fg',q,'dfgdp',q,'dfgdT',q, &
           'u',q,'h',q,'dhdT',q,'dhdp',q,'vis',q,'dvdT',q,'dvdp','"'
-      write(122,'(''ZONE T= "'',''",'','' I='',i4,'' , J='',i4)') ntab_t+1,ntab_p+1
+      write(input%fid,'(''ZONE T= "'',''",'','' I='',i4,'' , J='',i4)') ntab_t+1,ntab_p+1
       do i = 0, ntab_p
         tmp=tmp2
         pl = p0_tab + dp_tab * real(i)
         do j = 0, ntab_t
           tl = t0_tab + dt_tab * real(j)
-          write(122,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
+          write(input%fid,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
         enddo
       enddo
-      close (122)
+      close (input%fid)
     endif
   endif
   
   if (iitable == 2) then
     if (myrank == 0) print *,'Reading Table ...'
-    if (myrank == 0) print *,'--> open co2data0.dat'
-    open(unit = 122,file='co2data0.dat',status='old',iostat=status)
+    if (myrank == 0) print *,'--> CO2 database file: ', &
+                             option%co2_database_filename
+    open(unit = input%fid,file=input%filename,status='old',iostat=status)
     if (status /= 0) then
-      print *, 'file: co2data0.dat not found.  Copy from pflotran/database directory.'
+      print *, 'file:', option%co2_database_filename, ' not found.'
       stop
     endif
-!   open(unit=122,file='co2data0.dat',status='old')
-    read(122,*)
-    read(122,*)
-    read(122,*)
+!   open(unit=input%fid,file='co2data0.dat',status='old')
+    read(input%fid,*)
+    read(input%fid,*)
+    read(input%fid,*)
     do i = 0, ntab_p
       do j = 0, ntab_t
 #ifdef PC_BUG
-        read(122,'(1p15e14.6)') temparray
+        read(input%fid,'(1p15e14.6)') temparray
         co2_prop_spwag(i,j,1:15) = temparray(:)
 #else
-        read(122,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
+        read(input%fid,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
 #endif
       enddo
     enddo
-    close (122)
+    close (input%fid)
   endif
 
 end subroutine initialize_span_wagner
