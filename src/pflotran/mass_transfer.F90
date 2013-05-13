@@ -12,6 +12,7 @@ module Mass_Transfer_module
  
   type, public :: mass_transfer_type
     PetscInt :: idof
+    character(len=MAXWORDLENGTH) :: name
     character(len=MAXSTRINGLENGTH) :: filename
     character(len=MAXWORDLENGTH) :: dataset_name
     class(dataset_global_type), pointer :: dataset
@@ -21,7 +22,7 @@ module Mass_Transfer_module
   
   public :: MassTransferCreate, MassTransferDestroy, &
             MassTransferRead, MassTransferAddToList, &
-            MassTransferUpdate
+            MassTransferUpdate, MassTransferInit
 
 contains
 
@@ -42,6 +43,7 @@ function MassTransferCreate()
   
   allocate(mass_transfer)
   mass_transfer%idof = 0
+  mass_transfer%name = ''
   mass_transfer%filename = ''
   mass_transfer%dataset_name = ''
   nullify(mass_transfer%dataset)
@@ -139,6 +141,56 @@ end subroutine MassTransferAddToList
 
 ! ************************************************************************** !
 !
+! MassTransferInit: Initializes mass transfer object opening dataset to
+!                   set up times, vectors, etc.
+! author: Glenn Hammond
+! date: 05/09/13
+!
+! ************************************************************************** !
+recursive subroutine MassTransferInit(mass_transfer, discretization, option)
+
+  use Discretization_module
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"  
+  
+  type(mass_transfer_type), pointer :: mass_transfer
+  type(discretization_type) :: discretization
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  if (.not.associated(mass_transfer)) return
+  
+  if (.not.associated(mass_transfer%dataset)) then
+    mass_transfer%dataset => DatasetGlobalCreate()
+    mass_transfer%dataset%filename = mass_transfer%filename
+    mass_transfer%dataset%dataset_name = mass_transfer%dataset_name
+    call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
+                                    GLOBAL,option)
+    call VecZeroEntries(mass_transfer%vec,ierr)    
+  endif
+  
+  if (.not.associated(mass_transfer%dataset%time_storage)) then
+#if defined(PETSC_HAVE_HDF5)    
+    call DatasetGlobalReadTimes(mass_transfer%dataset%filename, &
+                                mass_transfer%dataset%dataset_name, &
+                                mass_transfer%dataset%time_storage,option)
+#endif
+  endif 
+  
+  ! update the next one
+  if (associated(mass_transfer%next)) then
+    call MassTransferInit(mass_transfer%next,discretization,option)
+  endif  
+  
+end subroutine MassTransferInit
+
+! ************************************************************************** !
+!
 ! MassTransferUpdate: Updates a mass transfer object transfering data from
 !                     the buffer into the PETSc Vec
 ! author: Glenn Hammond
@@ -153,6 +205,9 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"  
+  
   type(mass_transfer_type), pointer :: mass_transfer
   type(discretization_type) :: discretization
   type(grid_type) :: grid
@@ -163,18 +218,19 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   PetscErrorCode :: ierr
   
   if (.not.associated(mass_transfer)) return
-  
-  if (.not.associated(mass_transfer%dataset)) then
-    mass_transfer%dataset => DatasetGlobalCreate()
-    mass_transfer%dataset%filename = mass_transfer%filename
-    mass_transfer%dataset%dataset_name = mass_transfer%dataset_name
-  endif
+
 !  call mass_transfer%dataset%Load(discretization,grid,option)
   call DatasetGlobalLoad(mass_transfer%dataset,discretization,grid,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
-  vec_ptr(:) = mass_transfer%dataset%rarray(:)
+  ! multiply by -1.d0 for positive contribution to residual
+  vec_ptr(:) = -1.d0*mass_transfer%dataset%rarray(:)
   call VecRestoreArrayF90(mass_transfer%vec,vec_ptr,ierr)
+  
+  ! update the next one
+  if (associated(mass_transfer%next)) then
+    call MassTransferUpdate(mass_transfer%next,discretization,grid,option)
+  endif
   
 end subroutine MassTransferUpdate
 

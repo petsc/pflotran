@@ -960,7 +960,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   rt_auxvar%pri_molal = conc_current_M ! in mol/kg
   call RTotal(rt_auxvar,global_aux_var,reaction,option)
   total_current_M = rt_auxvar%total(:,1)
-  sec_sec_molal_M = rt_auxvar%sec_molal
+  if (reaction%neqcplx > 0) sec_sec_molal_M = rt_auxvar%sec_molal
   call RTAuxVarStrip(rt_auxvar)
   
 
