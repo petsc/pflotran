@@ -211,7 +211,6 @@ subroutine TimeStorageUpdate(time_storage)
   ! cycle times if at max_time_index and cyclic
   if (time_storage%cur_time_index == time_storage%max_time_index .and. &
       time_storage%is_cyclic .and. time_storage%max_time_index > 1) then
-      
     do cur_time_index = 1, time_storage%max_time_index
       time_storage%times(cur_time_index) = &
         time_storage%times(cur_time_index) + time_storage%time_shift
@@ -236,12 +235,24 @@ subroutine TimeStorageUpdate(time_storage)
       time_storage%cur_time_index_changed = PETSC_TRUE
     cur_time_index = next_time_index
     ! ensure that time index does not go beyond end of array
-    if (next_time_index < time_storage%max_time_index) &
+    if (next_time_index < time_storage%max_time_index) then
       next_time_index = next_time_index + 1
+    ! this conditional enable the code to find the correct
+    ! time index for a cyclic dataset
+    else if (time_storage%is_cyclic .and. time_storage%max_time_index > 1) then
+      do cur_time_index = 1, time_storage%max_time_index
+        time_storage%times(cur_time_index) = &
+          time_storage%times(cur_time_index) + time_storage%time_shift
+      enddo
+      cur_time_index = 1
+      next_time_index = 2
+    endif
   enddo
     
   time_storage%cur_time_index = cur_time_index
-  if (cur_time_index < time_storage%max_time_index) then
+  if (cur_time_index < 1) then
+    return
+  else if (cur_time_index < time_storage%max_time_index) then
     time_storage%cur_time_fraction_changed = PETSC_TRUE
     ! fraction = (t-t1)/(t2-t1)
     time_storage%cur_time_fraction = (time_storage%cur_time- &
@@ -249,10 +260,13 @@ subroutine TimeStorageUpdate(time_storage)
                                      (time_storage%times(next_time_index) - &
                                       time_storage%times(cur_time_index))
   else
-    if (dabs(time_storage%cur_time_fraction - 1.d0) < 1.d-10) &
+    if (dabs(time_storage%cur_time_fraction - 1.d0) < 1.d-10) then
       ! essentially zero change
       time_storage%cur_time_fraction_changed = PETSC_FALSE
-    time_storage%cur_time_fraction = 1.d0
+    else
+      time_storage%cur_time_fraction_changed = PETSC_TRUE
+      time_storage%cur_time_fraction = 1.d0
+    endif
   endif
 
 end subroutine TimeStorageUpdate

@@ -941,7 +941,6 @@ end subroutine OutputXMFAttribute
 ! ************************************************************************** !
 subroutine OutputGetFlowrates(realization_base)
 
-  use hdf5
   use HDF5_module
   use Realization_Base_class, only : realization_base_type
   use Patch_module

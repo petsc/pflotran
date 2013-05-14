@@ -1682,8 +1682,8 @@ subroutine InitReadInput(simulation)
 !....................
       case ('MASS_TRANSFER')
         mass_transfer => MassTransferCreate()
-!        call InputReadWord(input,option,mass_transfer%name,PETSC_TRUE)
-!        call InputDefaultMsg(input,option,'Mass Transfer name') 
+        call InputReadWord(input,option,mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Mass Transfer name') 
         call MassTransferRead(mass_transfer,input,option)
         call MassTransferAddToList(mass_transfer, &
                                    realization%mass_transfer_list)
