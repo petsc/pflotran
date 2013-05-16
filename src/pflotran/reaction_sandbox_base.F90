@@ -17,7 +17,6 @@ module Reaction_Sandbox_Base_class
 #else
     procedure, public :: Init => Base_Init
     procedure, public :: ReadInput => Base_Read
-    procedure, public :: SkipInput => Base_SkipBlock
     procedure, public :: Evaluate => Base_React
     procedure, public :: Destroy => Base_Destroy    
 #endif

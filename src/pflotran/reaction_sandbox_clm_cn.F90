@@ -35,7 +35,6 @@ module Reaction_Sandbox_CLM_CN_class
   contains
     procedure, public :: Init => CLM_CN_Init
     procedure, public :: ReadInput => CLM_CN_Read
-    procedure, public :: SkipInput => CLM_CN_ReadSkipBlock
     procedure, public :: Evaluate => CLM_CN_React
     procedure, public :: Destroy => CLM_CN_Destroy
   end type reaction_sandbox_clm_cn_type
@@ -306,46 +305,6 @@ subroutine CLM_CN_Read(this,input,option)
   enddo
   
 end subroutine CLM_CN_Read
-
-! ************************************************************************** !
-!
-! CLM_CN_ReadSkipBlock: Intelligently skips over block
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
-subroutine CLM_CN_ReadSkipBlock(this,input,option)
-
-  use Option_module
-  use String_module
-  use Input_module
-  use Utility_module
-  
-  implicit none
-  
-  class(reaction_sandbox_clm_cn_type) :: this
-  type(input_type) :: input
-  type(option_type) :: option
-  
-  character(len=MAXWORDLENGTH) :: word
-
-  do 
-    call InputReadFlotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,CLM-CN Skip Block')
-    call StringToUpper(word)   
-
-    select case(trim(word))
-      case('POOLS','REACTION')
-        call InputSkipToEnd(input,option,word)
-    end select
-  enddo
-  
-end subroutine CLM_CN_ReadSkipBlock
 
 ! ************************************************************************** !
 !
