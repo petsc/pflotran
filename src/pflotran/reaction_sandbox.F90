@@ -72,7 +72,7 @@ subroutine RSandboxSetup(reaction,option)
   cur_sandbox => sandbox_list
   do
     if (.not.associated(cur_sandbox)) exit
-    call cur_sandbox%init(reaction,option)
+    call cur_sandbox%Setup(reaction,option)
     cur_sandbox => cur_sandbox%next
   enddo 
 
