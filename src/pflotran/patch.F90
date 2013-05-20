@@ -3077,7 +3077,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   PetscInt :: iphase
-  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id, local_id
 
   PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
@@ -3630,10 +3630,12 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+      local_id = grid%nG2L(ghosted_id)
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%pri_molal(isubvar1)
     case(SEC_MIN_VOLFRAC)
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+      local_id = grid%nG2L(ghosted_id)        
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
      case default
       write(option%io_buffer, &

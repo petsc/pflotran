@@ -149,7 +149,7 @@ subroutine RTSetupPatch(realization)
   type(tran_constraint_type), pointer :: sec_tran_constraint
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: iphase
+  PetscInt :: iphase, local_id
   
   option => realization%option
   patch => realization%patch
@@ -186,11 +186,11 @@ subroutine RTSetupPatch(realization)
   if (option%use_mc) then
     patch%aux%SC_RT => SecondaryAuxRTCreate(option)
     initial_condition => patch%initial_conditions%first
-    allocate(rt_sec_transport_vars(grid%ngmax))  
-    do ghosted_id = 1, grid%ngmax
+    allocate(rt_sec_transport_vars(grid%nlmax))  
+    do local_id = 1, grid%nlmax
     ! Assuming the same secondary continuum type for all regions
       call SecondaryRTAuxVarInit(realization%material_property_array(1)%ptr, &
-                                 rt_sec_transport_vars(ghosted_id), &
+                                 rt_sec_transport_vars(local_id), &
                                  reaction,initial_condition, &
                                  sec_tran_constraint,option)
     enddo      
@@ -741,13 +741,14 @@ subroutine RTUpdateSolutionPatch(realization)
   
     ! update secondary continuum variables
     if (option%use_mc) then
-      do ghosted_id = 1, grid%ngmax
+      do local_id = 1, grid%nlmax
+        ghosted_id = grid%nL2G(local_id)
         if (patch%imat(ghosted_id) <= 0) cycle
           sec_porosity = realization%material_property_array(1)%ptr% &
                          secondary_continuum_porosity
 
-          call SecondaryRTUpdateTimestep(rt_sec_transport_vars(ghosted_id), &
-                                         global_aux_vars(ghosted_id), &
+          call SecondaryRTUpdateTimestep(rt_sec_transport_vars(local_id), &
+                                         global_aux_vars(local_id), &
                                          reaction,sec_porosity,option)                     
       enddo
     endif
@@ -851,7 +852,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     endif
     
     if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
     endif
 
     if (.not.option%use_isothermal) then
@@ -1988,7 +1989,7 @@ subroutine RTReactPatch(realization)
     iendaq = istart + reaction%naqcomp - 1
     
     if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
     endif
     
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
@@ -2499,7 +2500,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       ! time step.
       
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id_up)%epsilon
       endif  
       
       
@@ -2587,7 +2588,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
       endif  
       
 #ifndef CENTRAL_DIFFERENCE
@@ -2780,7 +2781,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       iendall = offset + reaction%ncomp
 
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
       endif  
       call RTAccumulation(rt_aux_vars(ghosted_id), &
                           global_aux_vars(ghosted_id), &
@@ -2829,9 +2830,9 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       sec_porosity = realization%material_property_array(1)%ptr% &
                      secondary_continuum_porosity
 
-      call SecondaryRTResJacMulti(rt_sec_transport_vars(ghosted_id), &
-                                  rt_aux_vars(ghosted_id), &
-                                  global_aux_vars(ghosted_id), &
+      call SecondaryRTResJacMulti(rt_sec_transport_vars(local_id), &
+                                  rt_aux_vars(local_id), &
+                                  global_aux_vars(local_id), &
                                   volume_p(local_id), &
                                   reaction, &
                                   sec_diffusion_coefficient, &
@@ -2968,7 +2969,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                      porosity_loc_p(ghosted_id), &
                      volume_p(local_id),reaction,option)
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
         Res = Res*vol_frac_prim
       endif 
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                    
@@ -3219,7 +3220,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
           patch%imat(ghosted_id_dn) <= 0) cycle
 
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id_up)%epsilon
       endif 
 
 #ifndef CENTRAL_DIFFERENCE
@@ -3306,7 +3307,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
     
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
       endif 
 
 #ifndef CENTRAL_DIFFERENCE
@@ -3453,7 +3454,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
       
       if (option%use_mc) then    
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
       endif      
       
       call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
@@ -3482,8 +3483,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           call printErrMsg(option)
         endif
         
-        if (rt_sec_transport_vars(ghosted_id)%sec_jac_update) then
-          jac_transport = rt_sec_transport_vars(ghosted_id)%sec_jac
+        if (rt_sec_transport_vars(local_id)%sec_jac_update) then
+          jac_transport = rt_sec_transport_vars(local_id)%sec_jac
         else
           option%io_buffer = 'RT secondary continuum term in primary '// &
                              'jacobian not updated'
@@ -3567,7 +3568,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                porosity_loc_p(ghosted_id), &
                                volume_p(local_id),reaction,option)
       if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
         Jup = Jup*vol_frac_prim
       endif
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1, &

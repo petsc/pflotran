@@ -1221,7 +1221,8 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
   max_inf_norm_sec = 0.d0
   
   if (option%use_mc) then
-    do ghosted_id = 1, grid%ngmax
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
         sec_diffusion_coefficient = realization% &
                                     material_property_array(1)%ptr% &
@@ -1230,14 +1231,14 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
                       secondary_continuum_porosity
 
         call SecondaryRTAuxVarComputeMulti(&
-                                      rt_sec_transport_vars(ghosted_id), &
-                                      global_aux_vars(ghosted_id), &
+                                      rt_sec_transport_vars(local_id), &
+                                      global_aux_vars(local_id), &
                                       reaction, &
                                       option)              
  
-        call SecondaryRTCheckResidual(rt_sec_transport_vars(ghosted_id), &
-                                      rt_aux_vars(ghosted_id), &
-                                      global_aux_vars(ghosted_id), &
+        call SecondaryRTCheckResidual(rt_sec_transport_vars(local_id), &
+                                      rt_aux_vars(local_id), &
+                                      global_aux_vars(local_id), &
                                       reaction,sec_diffusion_coefficient, &
                                       sec_porosity,option,inf_norm_sec)
                                       
