@@ -106,10 +106,14 @@ subroutine ImmisSetup(realization)
   if (realization%option%co2eos == EOS_SPAN_WAGNER)then
     select case(realization%option%itable)
        case(0,1,2)
-         call initialize_span_wagner(realization%option%itable,realization%option%myrank)
+         call initialize_span_wagner(realization%option%itable, &
+                                     realization%option%myrank, &
+                                     realization%option)
        case(4,5)
-         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank)
-         call initialize_sw_interp(realization%option%itable, realization%option%myrank)
+         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank, &
+                                     realization%option)
+         call initialize_sw_interp(realization%option%itable, &
+                                   realization%option%myrank)
        case(3)
          call sw_spline_read
        case default
