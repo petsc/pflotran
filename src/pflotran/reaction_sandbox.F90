@@ -268,6 +268,7 @@ subroutine RSandboxDestroy2(local_sandbox_list)
     if (.not.associated(cur_sandbox)) exit
     prev_sandbox => cur_sandbox%next
     call cur_sandbox%Destroy()
+    deallocate(cur_sandbox)
     cur_sandbox => prev_sandbox
   enddo  
 

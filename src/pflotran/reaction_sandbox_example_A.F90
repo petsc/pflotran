@@ -139,7 +139,7 @@ subroutine ExampleRead(this,input,option)
 !       call InputReadInt(input,option,this%example_integer)  
 ! 8. Inform the user of any errors if not read correctly.
 !       call InputErrorMsg(input,option,'example_integer', & 
-!                          'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
+!                          'CHEMISTRY,REACTION_SANDBOX,EXAMPLE') 
 ! 9. Repeat for other variables
 !     case('EXAMPLE_INTEGER_Array')
 !       allocate(this%example_integer_array(3))
@@ -147,7 +147,7 @@ subroutine ExampleRead(this,input,option)
 !       do i = 1, 3
 !         call InputReadInt(input,option,this%example_integer_array(i))  
 !         call InputErrorMsg(input,option,'example_integer_array', & 
-!                            'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
+!                            'CHEMISTRY,REACTION_SANDBOX,EXAMPLE') 
 !       
 !       enddo
 

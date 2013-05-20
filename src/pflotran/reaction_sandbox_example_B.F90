@@ -23,9 +23,12 @@ module Reaction_Sandbox_Example_class
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_example_type
 ! 3. Add variables/arrays associated with new reaction.
-    character(len=MAXWORDLENGTH) :: species_name
-    PetscInt :: species_id
-    PetscReal :: rate_constant
+    character(len=MAXWORDLENGTH) :: species_name  ! Name of primary species to 
+                                                  !   be decayed
+    PetscInt :: species_id                        ! ID of species among primary
+                                                  !   dependent variables
+    PetscReal :: rate_constant                    ! Double precision rate 
+                                                  !  constant
   contains
     procedure, public :: Setup => ExampleSetup
     procedure, public :: ReadInput => ExampleRead
@@ -39,7 +42,7 @@ contains
 
 ! ************************************************************************** !
 !
-! ExampleCreate: Allocates example reaction object.
+! ExampleCreate: Allocates example reaction class.
 ! author: John Doe (replace in all subroutine headers with name of developer) 
 ! date: 00/00/00 (replace in all subroutine headers with current date)
 !
@@ -50,7 +53,7 @@ function ExampleCreate()
   
   class(reaction_sandbox_example_type), pointer :: ExampleCreate
 
-! 4. Add code to allocate object and initialized all variables to zero and
+! 4. Add code to allocate class and initialized all variables to zero and
 !    nullify all pointers.
   allocate(ExampleCreate)
   ExampleCreate%species_name = ''
@@ -109,14 +112,20 @@ subroutine ExampleRead(this,input,option)
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word
   
-  do 
+  do
+    ! Read a new string from the input file
     call InputReadFlotranString(input,option)
+    ! Report an error if the string is not successfully read.
     if (InputError(input)) exit
+    ! Check for the end of the reaction block denoted by "/" or "END".
     if (InputCheckExit(input,option)) exit
-
+    
+    ! Read the card or keyword
     call InputReadWord(input,option,word,PETSC_TRUE)
+    ! Report an error if the card is not successfully read.
     call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,TEMPLATE')
+                       'CHEMISTRY,REACTION_SANDBOX,EXAMPLE')
+    ! Convert card to upper case
     call StringToUpper(word)   
 
     select case(trim(word))
@@ -132,41 +141,35 @@ subroutine ExampleRead(this,input,option)
 !   ...
 ! END
  
-! 6. Add case statement for reading variables.  E.g.
-!     case('EXAMPLE_INTEGER')
-! 7. Read the variable
-!       call InputReadInt(input,option,this%example_integer)  
-! 8. Inform the user of any errors if not read correctly.
-!       call InputErrorMsg(input,option,'example_integer', & 
-!                          'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
-! 9. Repeat for other variables
-!     case('EXAMPLE_INTEGER_Array')
-!       allocate(this%example_integer_array(3))
-!       this%example_integer_array = 0
-!       do i = 1, 3
-!         call InputReadInt(input,option,this%example_integer_array(i))  
-!         call InputErrorMsg(input,option,'example_integer_array', & 
-!                            'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
-!       
-!       enddo
-
+! 6. Add case statement for reading variables.
       case('SPECIES_NAME')
+! 7. Read the variable
+        ! Read the character string indicating which of the primary species
+        ! is being decayed.
         call InputReadWord(input,option,this%species_name,PETSC_TRUE)  
+! 8. Inform the user of any errors if not read correctly.
         call InputErrorMsg(input,option,'species_name', &
                            'CHEMISTRY,REACTION_SANDBOX,EXAMPLE')    
+! 9. Repeat for other variables
       case('RATE_CONSTANT')
+        ! Read the double precision rate constant
         call InputReadDouble(input,option,this%rate_constant)
         call InputErrorMsg(input,option,'rate_constant', &
                            'CHEMISTRY,REACTION_SANDBOX,EXAMPLE')
+        ! Read the units
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (InputError(input)) then
+          ! If units do not exist, assume default units of 1/s which are the
+          ! standard internal PFLOTRAN units for this rate constant.
           input%err_buf = 'REACTION_SANDBOX,EXAMPLE,RATE CONSTANT UNITS'
           call InputDefaultMsg(input,option)
         else              
+          ! If units exist, convert to internal units of 1/s
           this%rate_constant = this%rate_constant * &
             UnitsConvertToInternal(word,option)
         endif
       case default
+        ! If the keyword is not recognized, print an error message.
         option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,ExAMPLE keyword: ' // &
           trim(word) // ' not recognized.'
         call printErrMsg(option)
@@ -207,12 +210,17 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: L_water
   
 ! 10. Add code for Residual evaluation
+
+  ! Unit of the residual must be in moles/second
+  ! global_auxvar%sat(iphase) = saturation of cell
+  ! 1.d3 converts m^3 water -> L water
   L_water = porosity*global_auxvar%sat(iphase)*volume*1.d3
   ! alway subtract contribution from residual
-  ! units = (mol/sec)
   Residual(this%species_id) = Residual(this%species_id) - &
     this%rate_constant * &  ! 1/sec
     L_water * & ! L water
+    ! rt_auxvar%total(this%species_id,iphase) = species total component 
+    !   concentration
     rt_auxvar%total(this%species_id,iphase) ! mol/L water
     
   
@@ -228,6 +236,9 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
       this%rate_constant * & ! 1/sec
       L_water * & ! L water
                   ! kg water/L water
+      ! rt_auxvar%aqueous%dtotal(this%species_id,this%species_id,iphase) = 
+      !   derivative of total component concentration with respect to the
+      !   free ion concentration of the same species.
       rt_auxvar%aqueous%dtotal(this%species_id,this%species_id,iphase) 
 
   endif
@@ -248,7 +259,10 @@ subroutine ExampleDestroy(this)
   
   class(reaction_sandbox_example_type) :: this  
 
-! 12. Add code to deallocate contents of the example object
+! 12. Add code to deallocate contents of the example class
+
+! Nothing to destroy given no dynamic memory is utilized within the
+!   class.
 
 end subroutine ExampleDestroy
 
