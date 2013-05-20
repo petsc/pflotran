@@ -62,6 +62,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   PetscReal :: outer_spacing, matrix_block_size
   PetscReal :: grid_spacing(nmat)
   PetscBool :: log_spacing
+  PetscReal :: sum
 
   PetscInt, save :: icall
 
@@ -281,6 +282,23 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       enddo
                         
   end select
+  
+  
+  sum = 0.d0
+  do m = 1,nmat
+    if (volm(m)/vm0 > 1.d0) then
+      print *, 'Error: volume fraction for cell', m, 'is greater than 1.'
+      stop
+    else 
+      sum = sum + volm(m)/vm0
+    endif
+  enddo
+  
+  if (abs(sum - 1.d0) > 1.d-6) then
+    print *, 'Error: Sum of the volume fractions of the secondary cells' // & 
+             ' is not equal to 1.'
+    stop
+  endif
   
 end subroutine SecondaryContinuumType
 
