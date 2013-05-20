@@ -309,9 +309,6 @@ module Reaction_Aux_module
     PetscBool :: update_armor_mineral_surface
     PetscInt :: update_armor_mineral_surface_flag
 
-
-    PetscBool :: use_sandbox
-    
   end type reaction_type
 
   public :: ReactionCreate, &
@@ -548,8 +545,6 @@ function ReactionCreate()
 
   reaction%update_armor_mineral_surface = PETSC_FALSE
   reaction%update_armor_mineral_surface_flag = 0
-
-  reaction%use_sandbox = PETSC_FALSE
 
   ReactionCreate => reaction
   

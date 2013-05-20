@@ -1,8 +1,5 @@
 module Reaction_Sandbox_Template_class
 
-! 1. Change all references to "Template" as desired to rename the module and
-!    and subroutines within the module. 
-
   use Reaction_Sandbox_Base_class
   
   use Global_Aux_module
@@ -14,95 +11,57 @@ module Reaction_Sandbox_Template_class
   
 #include "definitions.h"
 
-! 2. Add module variables here.  Note that one must use the PETSc data types 
-!    PetscInt, PetscReal, PetscBool to declare variables of type integer
-!    float/real*8, and logical respectively.  E.g.
-!
-! PetscReal, parameter :: formula_weight_of_water = 18.01534d0
-  
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_template_type
-! 3. Add variables/arrays associated with new reaction.  E.g.
-!   PetscInt :: example_integer
-!   PetscInt, pointer :: example_integer_array(:)
-!    Character strings must be sized to either MAXWORDLENGTH or 
-!    MAXSTRINGLENGTH where max string length is a very long string.
   contains
-    procedure, public :: Setup => TemplateSetup
-    procedure, public :: ReadInput => TemplateRead
-    procedure, public :: Evaluate => TemplateReact
-    procedure, public :: Destroy => TemplateDestroy
+    procedure, public :: Init => RSandboxInit
+    procedure, public :: ReadInput => RSandboxRead
+    procedure, public :: Evaluate => RSandbox
+    procedure, public :: Destroy => RSandboxDestroy
   end type reaction_sandbox_template_type
-
-  public :: TemplateCreate
 
 contains
 
 ! ************************************************************************** !
 !
-! TemplateCreate: Allocates template reaction object.
-! author: John Doe (replace in all subroutine headers with name of developer) 
-! date: 00/00/00 (replace in all subroutine headers with current date)
+! RSandboxInit: Initializes reaction sandbox at beginning of simulation
+! author: Glenn Hammond
+! date: 11/08/12
 !
 ! ************************************************************************** !
-function TemplateCreate()
+subroutine RSandboxInit(reaction_sandbox)
 
   implicit none
   
-  class(reaction_sandbox_template_type), pointer :: TemplateCreate
-
-! 4. Add code to allocate object and initialized all variables to zero and
-!    nullify all pointers. E.g.
-! allocate(TemplateCreate)
-! TemplateCreate%example_integer = 0
-! nullify(TemplateCreate%example_integer_array)
+  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox
       
-end function TemplateCreate
+end subroutine RSandboxInit
 
 ! ************************************************************************** !
 !
-! TemplateSetup: Sets up the template reaction either with parameters either
-!                read from the input deck or hardwired.
-! author: John Doe
-! date: 00/00/00
+! RSandboxRead: Reads input deck for reaction sandbox parameters
+! author: Glenn Hammond
+! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine TemplateSetup(this,reaction,option)
-
-  use Reaction_Aux_module, only : reaction_type
-  use Option_module
-
-  implicit none
-  
-  class(reaction_sandbox_template_type) :: this
-  type(reaction_type) :: reaction
-  type(option_type) :: option
-
-! 5. Add code to initialize 
-      
-end subroutine TemplateSetup
-
-! ************************************************************************** !
-!
-! TemplateRead: Reads input deck for template reaction parameters (if any)
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
-subroutine TemplateRead(this,input,option)
+subroutine RSandboxRead(reaction_sandbox,input,option)
 
   use Option_module
   use String_module
   use Input_module
+  use Utility_module
   
   implicit none
   
-  class(reaction_sandbox_template_type) :: this
+  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox
   type(input_type) :: input
   type(option_type) :: option
 
-  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
+!  PetscReal :: example_real
+!  PetscInt :: example_int
+!  PetscBool :: example_bool
   
   do 
     call InputReadFlotranString(input,option)
@@ -110,8 +69,7 @@ subroutine TemplateRead(this,input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,TEMPLATE')
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,REACTION_SANDBOX')
     call StringToUpper(word)   
 
     select case(trim(word))
@@ -122,58 +80,59 @@ subroutine TemplateRead(this,input,option)
       !   ...
       !   REACTION_SANDBOX
       !   : begin user-defined input
-      !     TEMPLATE
-      !       EXAMPLE_INTEGER 1
-      !       EXAMPLE_INTEGER_ARRAY 2 3 4
-      !     END
+      !     RATE_CONSTANT 1.d-5
       !   : end user defined input
       !   END
       !   ...
       ! END
 
-! 6. Add case statement for reading variables.  E.g.
-!     case('EXAMPLE_INTEGER')
-! 7. Read the variable
-!       call InputReadInt(input,option,this%example_integer)  
-! 8. Inform the user of any errors if not read correctly.
-!       call InputErrorMsg(input,option,'example_integer', & 
-!                          'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
-! 9. Repeat for other variables
-!     case('EXAMPLE_INTEGER_Array')
-!       allocate(this%example_integer_array(3))
-!       this%example_integer_array = 0
-!       do i = 1, 3
-!         call InputReadInt(input,option,this%example_integer_array(i))  
-!         call InputErrorMsg(input,option,'example_integer_array', & 
-!                            'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
-!       
-!       enddo  
+      ! How to implement read in code:
+      ! 1. Add module variable 'rate_constant' to top of module file.  The 
+      !    following as data types are recommended (though the user is free 
+      !    to use any Fortran data type as long as accept the risk of compiler 
+      !    dependencies).
+      !   PetscReal - real*8
+      !   PetscInt - integer*4
+      !   PetscBool - logical
+      !   character(len=128) - String of length 128, best for reaction strings
+      !   character(len=32) - String of length 32, species names, etc.
+
+      !   Example (see also above at top of module):
+      !     PetscReal :: rate_constant
+
+      ! 2. Add case statement to this select case statement
+
+      !   Example:
+      !     case('RATE_CONSTANT')
+      !       call InputReadDouble(input,option,rate_constant)  
+      !       call InputDefaultMsg(input,option, &
+      !                             'CHEMISTRY,REACTION_SANDBOX,RATE_CONSTANT') 
+
       case default
-        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,TEMPLATE keyword: ' // &
+        option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &
           trim(word) // ' not recognized.'
         call printErrMsg(option)
     end select
   enddo
   
-end subroutine TemplateRead
+end subroutine RSandboxRead
 
 ! ************************************************************************** !
 !
-! TemplateReact: Evaluates reaction storing residual and/or Jacobian
-! author: John Doe
-! date: 00/00/00
+! RMicrobial: Evaluates reaction storing residual and/or Jacobian
+! author: Glenn Hammond
+! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
-                         rt_auxvar,global_auxvar,porosity,volume,reaction, &
-                         option)
+subroutine RSandbox(reaction_sandbox,Residual,Jacobian,compute_derivative, &
+                    rt_auxvar,global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
   use Reaction_Aux_module
   
   implicit none
   
-  class(reaction_sandbox_template_type) :: this  
+  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox  
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
@@ -203,7 +162,7 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
   !   message when compute_derivative is true.  E.g.
   !
   !   option%io_buffer = 'NUMERICAL_JACOBIAN_RXN must always be used ' // &
-  !                      'due to assumptions in Template'
+  !                      'due to assumptions in RSandbox'
   !   call printErrMsg(option)
   !
   ! rt_auxvar - Object holding chemistry information (e.g. concentrations,
@@ -239,15 +198,12 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
   
   saturation = global_auxvar%sat(iphase)
 
-! 10. Add code for Residual evaluation
+  ! add code for Residual evaluation
   
   if (compute_derivative) then
-
-! 11. If using an analytical Jacobian, add code for Jacobian evaluation
-
     ! remove this error statement if analytical derivatives are provided.
     option%io_buffer = 'NUMERICAL_JACOBIAN_RXN must always be used ' // &
-                       'due to assumptions in Template'
+                       'due to assumptions in RSandbox'
     call printErrMsg(option)
     ! add code for Jacobian evaluation
     !geh: If you study other reactions built into PFLOTRAN you will see that I
@@ -255,26 +211,22 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
     !     entries.  This is my preference that you do not need to follow.
   endif
   
-end subroutine TemplateReact
+end subroutine RSandbox
 
 ! ************************************************************************** !
 !
-! TemplateDestroy: Destroys allocatable or pointer objects created in this 
+! RSandboxDestroy: Destroys allocatable or pointer objects created in this 
 !                  module
-! author: John Doe
-! date: 00/00/00
+! author: Glenn Hammond
+! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine TemplateDestroy(this)
+subroutine RSandboxDestroy(reaction_sandbox)
 
   implicit none
   
-  class(reaction_sandbox_template_type) :: this  
+  class(reaction_sandbox_clm_cn_type) :: reaction_sandbox  
 
-! 12. Add code to deallocate contents of the template object
-  deallocate(this%example_integer_array)
-  nullify(this%example_integer_array) 
-
-end subroutine TemplateDestroy
+end subroutine RSandboxDestroy
 
 end module Reaction_Sandbox_Template_class
