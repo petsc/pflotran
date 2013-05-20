@@ -138,7 +138,7 @@ subroutine THCSetupPatch(realization)
   PetscReal :: area_per_vol
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: i, iphase
+  PetscInt :: i, iphase, local_id
   
   
   option => realization%option
@@ -203,14 +203,14 @@ subroutine THCSetupPatch(realization)
  
   if (option%use_mc) then
     initial_condition => patch%initial_conditions%first
-    allocate(thc_sec_heat_vars(grid%ngmax))
+    allocate(thc_sec_heat_vars(grid%nlmax))
   
-    do ghosted_id = 1, grid%ngmax
+    do local_id = 1, grid%nlmax
   
     ! Assuming the same secondary continuum for all regions (need to make it an array)
     ! S. Karra 07/18/12
       call SecondaryContinuumSetProperties( &
-        thc_sec_heat_vars(ghosted_id)%sec_continuum, &
+        thc_sec_heat_vars(local_id)%sec_continuum, &
         realization%material_property_array(1)%ptr%secondary_continuum_name, &
         realization%material_property_array(1)%ptr%secondary_continuum_length, &
         realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
@@ -219,54 +219,54 @@ subroutine THCSetupPatch(realization)
         realization%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
         
-      thc_sec_heat_vars(ghosted_id)%ncells = &
+      thc_sec_heat_vars(local_id)%ncells = &
         realization%material_property_array(1)%ptr%secondary_continuum_ncells
-      thc_sec_heat_vars(ghosted_id)%aperture = &
+      thc_sec_heat_vars(local_id)%aperture = &
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
-      thc_sec_heat_vars(ghosted_id)%epsilon = &
+      thc_sec_heat_vars(local_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
-      thc_sec_heat_vars(ghosted_id)%log_spacing = &
+      thc_sec_heat_vars(local_id)%log_spacing = &
         realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
-      thc_sec_heat_vars(ghosted_id)%outer_spacing = &
+      thc_sec_heat_vars(local_id)%outer_spacing = &
         realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
                 
-      allocate(thc_sec_heat_vars(ghosted_id)%area(thc_sec_heat_vars(ghosted_id)%ncells))
-      allocate(thc_sec_heat_vars(ghosted_id)%vol(thc_sec_heat_vars(ghosted_id)%ncells))
-      allocate(thc_sec_heat_vars(ghosted_id)%dm_minus(thc_sec_heat_vars(ghosted_id)%ncells))
-      allocate(thc_sec_heat_vars(ghosted_id)%dm_plus(thc_sec_heat_vars(ghosted_id)%ncells))
-      allocate(thc_sec_heat_vars(ghosted_id)%sec_continuum% &
-             distance(thc_sec_heat_vars(ghosted_id)%ncells))
+      allocate(thc_sec_heat_vars(local_id)%area(thc_sec_heat_vars(local_id)%ncells))
+      allocate(thc_sec_heat_vars(local_id)%vol(thc_sec_heat_vars(local_id)%ncells))
+      allocate(thc_sec_heat_vars(local_id)%dm_minus(thc_sec_heat_vars(local_id)%ncells))
+      allocate(thc_sec_heat_vars(local_id)%dm_plus(thc_sec_heat_vars(local_id)%ncells))
+      allocate(thc_sec_heat_vars(local_id)%sec_continuum% &
+             distance(thc_sec_heat_vars(local_id)%ncells))
                  
-      call SecondaryContinuumType(thc_sec_heat_vars(ghosted_id)%sec_continuum, &
-                                  thc_sec_heat_vars(ghosted_id)%ncells, &
-                                  thc_sec_heat_vars(ghosted_id)%area, &
-                                  thc_sec_heat_vars(ghosted_id)%vol, &
-                                  thc_sec_heat_vars(ghosted_id)%dm_minus, &
-                                  thc_sec_heat_vars(ghosted_id)%dm_plus, &
-                                  thc_sec_heat_vars(ghosted_id)%aperture, &
-                                  thc_sec_heat_vars(ghosted_id)%epsilon, &
-                                  thc_sec_heat_vars(ghosted_id)%log_spacing, &
-                                  thc_sec_heat_vars(ghosted_id)%outer_spacing, &
+      call SecondaryContinuumType(thc_sec_heat_vars(local_id)%sec_continuum, &
+                                  thc_sec_heat_vars(local_id)%ncells, &
+                                  thc_sec_heat_vars(local_id)%area, &
+                                  thc_sec_heat_vars(local_id)%vol, &
+                                  thc_sec_heat_vars(local_id)%dm_minus, &
+                                  thc_sec_heat_vars(local_id)%dm_plus, &
+                                  thc_sec_heat_vars(local_id)%aperture, &
+                                  thc_sec_heat_vars(local_id)%epsilon, &
+                                  thc_sec_heat_vars(local_id)%log_spacing, &
+                                  thc_sec_heat_vars(local_id)%outer_spacing, &
                                   area_per_vol,option)
                                 
-      thc_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
-        (1.d0 - thc_sec_heat_vars(ghosted_id)%epsilon)* &
+      thc_sec_heat_vars(local_id)%interfacial_area = area_per_vol* &
+        (1.d0 - thc_sec_heat_vars(local_id)%epsilon)* &
         realization%material_property_array(1)%ptr% &
         secondary_continuum_area_scaling
 
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/26/12
-      allocate(thc_sec_heat_vars(ghosted_id)%sec_temp(thc_sec_heat_vars(ghosted_id)%ncells))
+      allocate(thc_sec_heat_vars(local_id)%sec_temp(thc_sec_heat_vars(local_id)%ncells))
       
       if (option%set_secondary_init_temp) then
-        thc_sec_heat_vars(ghosted_id)%sec_temp = &
+        thc_sec_heat_vars(local_id)%sec_temp = &
           realization%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
-        thc_sec_heat_vars(ghosted_id)%sec_temp = &
+        thc_sec_heat_vars(local_id)%sec_temp = &
         initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
       endif
       
-      thc_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
+      thc_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
     
     enddo
       
@@ -1245,7 +1245,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
 
 
     if (option%use_mc) then
-      vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+      vol_frac_prim = thc_sec_heat_vars(local_id)%epsilon
     endif
     
     iphase_loc_p(ghosted_id) = iphase
@@ -3336,7 +3336,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
 
     if (option%use_mc) then
-      vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+      vol_frac_prim = thc_sec_heat_vars(local_id)%epsilon
     endif
 
     call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
@@ -3362,20 +3362,20 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
     
-      sec_dencpr = thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
+      sec_dencpr = thc_parameter%dencpr(int(ithrm_loc_p(local_id))) ! secondary rho*c_p same as primary for now
 
       if (option%sec_vars_update) then
-        call THCSecHeatAuxVarCompute(thc_sec_heat_vars(ghosted_id), &
-                            global_aux_vars(ghosted_id), &
-                            thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+        call THCSecHeatAuxVarCompute(thc_sec_heat_vars(local_id), &
+                            global_aux_vars(local_id), &
+                            thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
                             sec_dencpr, &
                             option)
       endif       
     
-      call THCSecondaryHeat(thc_sec_heat_vars(ghosted_id), &
-                          global_aux_vars(ghosted_id), &
-!                         thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
-                          thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+      call THCSecondaryHeat(thc_sec_heat_vars(local_id), &
+                          global_aux_vars(local_id), &
+!                         thc_parameter%ckdry(int(ithrm_loc_p(local_id))), &
+                          thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
                           sec_dencpr, &
                           option,res_sec_heat)
 
@@ -3887,7 +3887,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     icap = int(icap_loc_p(ghosted_id))
     
     if (option%use_mc) then    
-      vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+      vol_frac_prim = sec_heat_vars(local_id)%epsilon
     endif
     
     call THCAccumDerivative(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
@@ -3899,9 +3899,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                             vol_frac_prim,Jup) 
 
     if (option%use_mc) then
-      call THCSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
-                        thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
-                        thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+      call THCSecondaryHeatJacobian(sec_heat_vars(local_id), &
+                        thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
+                        thc_parameter%dencpr(int(ithrm_loc_p(local_id))), &
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
