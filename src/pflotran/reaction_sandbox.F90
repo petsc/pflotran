@@ -41,6 +41,7 @@ subroutine RSandboxInit(option)
   use Option_module
   implicit none
   type(option_type) :: option
+
   if (associated(sandbox_list)) then
     call RSandboxDestroy()
   endif
@@ -124,8 +125,6 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   class(reaction_sandbox_base_type), pointer :: new_sandbox, cur_sandbox
-  
-  call RSandboxInit(option)
   
   nullify(new_sandbox)
   do 
