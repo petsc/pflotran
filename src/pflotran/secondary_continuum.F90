@@ -294,10 +294,15 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
     endif
   enddo
   
+  if (icall /= 2 .and. OptionPrintToFile(Option)) then
+    icall = 2
+    write(option%fid_out,'(/,"sum of volume fractions:",1x,1pe12.4)') sum
+  endif
+  
   if (abs(sum - 1.d0) > 1.d-6) then
-    print *, 'Error: Sum of the volume fractions of the secondary cells' // & 
-             ' is not equal to 1.'
-    stop
+    option%io_buffer = 'Error: Sum of the volume fractions of the' // &
+                       ' secondary cells is not equal to 1.'
+    call printErrMsg(option)
   endif
   
 end subroutine SecondaryContinuumType
@@ -396,7 +401,6 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
       call printErrMsg(option)
   endif
   
-! delta = 0.85d0
   delta = 0.99d0
   
   do i = 1, maxit
@@ -410,6 +414,12 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
     if (delta < 0.d0) delta = 0.5d0
 !   if (delta > 1.d0) delta = 0.9d0
   enddo
+  
+  if (i == maxit) then
+     option%io_buffer = 'Log Grid spacing solution has not converged' // &
+                        ' with given fracture values.'
+     call printErrMsg(option)    
+  endif
 
   inner_grid_size = outer_grid_size/delta**(sec_num_cells - 1)
   
@@ -417,7 +427,7 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
     grid_spacing(i) = inner_grid_size*delta**(i-1)
   enddo
 
-  write(option%fid_out,'("  Logarithmic grid spacing: delta = ",1pe12.4)') delta
+!  write(option%fid_out,'("  Logarithmic grid spacing: delta = ",1pe12.4)') delta
     
 end subroutine SecondaryContinuumCalcLogSpacing
 
@@ -707,7 +717,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
   ncomp = reaction%naqcomp
-
+  
   do j = 1, ncomp
     do i = 1, ngcells
       total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
@@ -1017,7 +1027,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
                   (total_current_M - total_primary_node)*prim_vol*1.d3 ! in mol/s
-                         
+                                           
   ! Calculate the jacobian contribution due to coupling term
   sec_jac = area_fm*pordiff/dm_plus(ngcells)*(dPsisec_dCprim - dtotal_prim)* &
             prim_vol*1.d3 ! in kg water/s
