@@ -396,7 +396,8 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
       call printErrMsg(option)
   endif
   
-  delta = 0.85d0
+! delta = 0.85d0
+  delta = 0.99d0
   
   do i = 1, maxit
     F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells-1) - &
@@ -407,7 +408,7 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
     if ((abs(F) < tol)) exit
     delta = delta_new
     if (delta < 0.d0) delta = 0.5d0
-    if (delta > 1.d0) delta = 0.9d0
+!   if (delta > 1.d0) delta = 0.9d0
   enddo
 
   inner_grid_size = outer_grid_size/delta**(sec_num_cells - 1)
@@ -415,6 +416,8 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
   do i = 1, sec_num_cells
     grid_spacing(i) = inner_grid_size*delta**(i-1)
   enddo
+
+  write(option%fid_out,'("  Logarithmic grid spacing: delta = ",1pe12.4)') delta
     
 end subroutine SecondaryContinuumCalcLogSpacing
 
