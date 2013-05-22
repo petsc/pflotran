@@ -272,8 +272,8 @@ subroutine TemplateDestroy(this)
   class(reaction_sandbox_template_type) :: this  
 
 ! 12. Add code to deallocate contents of the template object
-  deallocate(this%example_integer_array)
-  nullify(this%example_integer_array) 
+! deallocate(this%example_integer_array)
+! nullify(this%example_integer_array) 
 
 end subroutine TemplateDestroy
 
