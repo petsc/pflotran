@@ -53,10 +53,11 @@ function TemplateCreate()
 
 ! 4. Add code to allocate object and initialized all variables to zero and
 !    nullify all pointers. E.g.
-! allocate(TemplateCreate)
+  allocate(TemplateCreate)
 ! TemplateCreate%example_integer = 0
 ! nullify(TemplateCreate%example_integer_array)
-      
+  nullify(TemplateCreate%next)
+  
 end function TemplateCreate
 
 ! ************************************************************************** !

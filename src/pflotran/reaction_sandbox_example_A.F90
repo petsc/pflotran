@@ -56,7 +56,8 @@ function ExampleCreate()
   ExampleCreate%species_name = ''
   ExampleCreate%species_id = 0
   ExampleCreate%rate_constant = 0.d0
-      
+  nullify(ExampleCreate%next)
+  
 end function ExampleCreate
 
 ! ************************************************************************** !

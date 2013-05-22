@@ -31,12 +31,13 @@ PetscReal :: rate_constant
 \end{verbatim}
   \item Add the necessary functionality within the following subroutines:
     \begin{enumerate}[label=\alph*]
-      \item[] ExampleCreate: Allocate the reaction object, initializing all variables to zero and nullifying arrays.  E.g.,
+      \item ExampleCreate: Allocate the reaction object, initializing all variables to zero and nullifying arrays.  {\bf Be sure to nullify ExampleCreate\%next which comes from the base class.}  E.g.,
   \begin{verbatim}
   allocate(ExampleCreate)
   ExampleCreate%species_name = ''
   ExampleCreate%species_id = 0
   ExampleCreate%rate_constant = 0.d0
+  nullify(ExampleCreate%next)
   \end{verbatim}
       \item ExampleRead: Read parameters in from the input file block \verb+EXAMPLE+.  E.g.,
   \begin{verbatim}
