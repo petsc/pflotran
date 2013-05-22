@@ -27,8 +27,8 @@ module Reaction_Sandbox_Example_class
     PetscInt :: species_id
     PetscReal :: rate_constant
   contains
-    procedure, public :: Setup => ExampleSetup
     procedure, public :: ReadInput => ExampleRead
+    procedure, public :: Setup => ExampleSetup
     procedure, public :: Evaluate => ExampleReact
     procedure, public :: Destroy => ExampleDestroy
   end type reaction_sandbox_example_type
@@ -58,33 +58,6 @@ function ExampleCreate()
   ExampleCreate%rate_constant = 0.d0
       
 end function ExampleCreate
-
-! ************************************************************************** !
-!
-! ExampleSetup: Sets up the example reaction either with parameters either
-!                read from the input deck or hardwired.
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
-subroutine ExampleSetup(this,reaction,option)
-
-  use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
-  use Option_module
-
-  implicit none
-  
-  class(reaction_sandbox_example_type) :: this
-  type(reaction_type) :: reaction
-  type(option_type) :: option
-
-! 5. Add code to initialize   
-  this%species_name = 'A(aq)'
-  this%species_id = &
-    GetPrimarySpeciesIDFromName(this%species_name,reaction,option)
-  this%rate_constant = 4.3959d-9 ! 5 yr half-life
-  
-end subroutine ExampleSetup
 
 ! ************************************************************************** !
 !
@@ -133,14 +106,14 @@ subroutine ExampleRead(this,input,option)
 !   ...
 ! END
  
-! 6. Add case statement for reading variables.  E.g.
+! 5. Add case statement for reading variables.  E.g.
 !     case('EXAMPLE_INTEGER')
-! 7. Read the variable
+! 6. Read the variable
 !       call InputReadInt(input,option,this%example_integer)  
-! 8. Inform the user of any errors if not read correctly.
+! 7. Inform the user of any errors if not read correctly.
 !       call InputErrorMsg(input,option,'example_integer', & 
 !                          'CHEMISTRY,REACTION_SANDBOX,EXAMPLE') 
-! 9. Repeat for other variables
+! 8. Repeat for other variables
 !     case('EXAMPLE_INTEGER_Array')
 !       allocate(this%example_integer_array(3))
 !       this%example_integer_array = 0
@@ -159,6 +132,33 @@ subroutine ExampleRead(this,input,option)
   enddo
   
 end subroutine ExampleRead
+
+! ************************************************************************** !
+!
+! ExampleSetup: Sets up the example reaction either with parameters either
+!                read from the input deck or hardwired.
+! author: John Doe
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine ExampleSetup(this,reaction,option)
+
+  use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
+  use Option_module
+
+  implicit none
+  
+  class(reaction_sandbox_example_type) :: this
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+! 9. Add code to initialize   
+  this%species_name = 'A(aq)'
+  this%species_id = &
+    GetPrimarySpeciesIDFromName(this%species_name,reaction,option)
+  this%rate_constant = 4.3959d-9 ! 5 yr half-life
+  
+end subroutine ExampleSetup
 
 ! ************************************************************************** !
 !

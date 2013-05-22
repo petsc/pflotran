@@ -10,8 +10,8 @@ module Reaction_Sandbox_Base_class
     class(reaction_sandbox_base_type), pointer :: next
   contains
 #if 0  
-    procedure(Base_Setup), public, deferred :: Setup 
     procedure(Base_Read), public, deferred :: ReadInput
+    procedure(Base_Setup), public, deferred :: Setup 
     procedure(Base_React), public, deferred :: Evaluate
     procedure(Base_Destroy), public, deferred :: Destroy
 #else

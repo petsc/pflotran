@@ -33,8 +33,8 @@ module Reaction_Sandbox_CLM_CN_class
     type(pool_type), pointer :: pools
     type(clm_cn_reaction_type), pointer :: reactions
   contains
-    procedure, public :: Setup => CLM_CN_Setup
     procedure, public :: ReadInput => CLM_CN_Read
+    procedure, public :: Setup => CLM_CN_Setup
     procedure, public :: Evaluate => CLM_CN_React
     procedure, public :: Destroy => CLM_CN_Destroy
   end type reaction_sandbox_clm_cn_type
@@ -88,28 +88,6 @@ function CLM_CN_Create()
   nullify(CLM_CN_Create%reactions)
 
 end function CLM_CN_Create
-
-! ************************************************************************** !
-!
-! CLM_CN_Setup: Sets up CLM-CN reaction after it has been read from input
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
-subroutine CLM_CN_Setup(this,reaction,option)
-
-  use Reaction_Aux_module, only : reaction_type
-  use Option_module
-  
-  implicit none
-  
-  class(reaction_sandbox_clm_cn_type) :: this
-  type(reaction_type) :: reaction  
-  type(option_type) :: option
-  
-  call CLM_CN_Map(this,reaction,option)
-
-end subroutine CLM_CN_Setup
 
 ! ************************************************************************** !
 !
@@ -305,6 +283,28 @@ subroutine CLM_CN_Read(this,input,option)
   enddo
   
 end subroutine CLM_CN_Read
+
+! ************************************************************************** !
+!
+! CLM_CN_Setup: Sets up CLM-CN reaction after it has been read from input
+! author: Glenn Hammond
+! date: 02/04/13
+!
+! ************************************************************************** !
+subroutine CLM_CN_Setup(this,reaction,option)
+
+  use Reaction_Aux_module, only : reaction_type
+  use Option_module
+  
+  implicit none
+  
+  class(reaction_sandbox_clm_cn_type) :: this
+  type(reaction_type) :: reaction  
+  type(option_type) :: option
+  
+  call CLM_CN_Map(this,reaction,option)
+
+end subroutine CLM_CN_Setup
 
 ! ************************************************************************** !
 !

@@ -28,8 +28,8 @@ module Reaction_Sandbox_Template_class
 !    Character strings must be sized to either MAXWORDLENGTH or 
 !    MAXSTRINGLENGTH where max string length is a very long string.
   contains
-    procedure, public :: Setup => TemplateSetup
     procedure, public :: ReadInput => TemplateRead
+    procedure, public :: Setup => TemplateSetup
     procedure, public :: Evaluate => TemplateReact
     procedure, public :: Destroy => TemplateDestroy
   end type reaction_sandbox_template_type
@@ -58,29 +58,6 @@ function TemplateCreate()
 ! nullify(TemplateCreate%example_integer_array)
       
 end function TemplateCreate
-
-! ************************************************************************** !
-!
-! TemplateSetup: Sets up the template reaction either with parameters either
-!                read from the input deck or hardwired.
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
-subroutine TemplateSetup(this,reaction,option)
-
-  use Reaction_Aux_module, only : reaction_type
-  use Option_module
-
-  implicit none
-  
-  class(reaction_sandbox_template_type) :: this
-  type(reaction_type) :: reaction
-  type(option_type) :: option
-
-! 5. Add code to initialize 
-      
-end subroutine TemplateSetup
 
 ! ************************************************************************** !
 !
@@ -131,14 +108,14 @@ subroutine TemplateRead(this,input,option)
       !   ...
       ! END
 
-! 6. Add case statement for reading variables.  E.g.
+! 5. Add case statement for reading variables.  E.g.
 !     case('EXAMPLE_INTEGER')
-! 7. Read the variable
+! 6. Read the variable
 !       call InputReadInt(input,option,this%example_integer)  
-! 8. Inform the user of any errors if not read correctly.
+! 7. Inform the user of any errors if not read correctly.
 !       call InputErrorMsg(input,option,'example_integer', & 
 !                          'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
-! 9. Repeat for other variables
+! 8. Repeat for other variables
 !     case('EXAMPLE_INTEGER_Array')
 !       allocate(this%example_integer_array(3))
 !       this%example_integer_array = 0
@@ -156,6 +133,29 @@ subroutine TemplateRead(this,input,option)
   enddo
   
 end subroutine TemplateRead
+
+! ************************************************************************** !
+!
+! TemplateSetup: Sets up the template reaction either with parameters either
+!                read from the input deck or hardwired.
+! author: John Doe
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine TemplateSetup(this,reaction,option)
+
+  use Reaction_Aux_module, only : reaction_type
+  use Option_module
+
+  implicit none
+  
+  class(reaction_sandbox_template_type) :: this
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+! 9. Add code to initialize 
+      
+end subroutine TemplateSetup
 
 ! ************************************************************************** !
 !
