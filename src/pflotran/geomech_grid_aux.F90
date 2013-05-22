@@ -1,5 +1,5 @@
 #ifdef GEOMECH
-module Geomech_Grid_module
+module Geomech_Grid_Aux_module
 
   use Unstructured_Cell_module
  
@@ -96,7 +96,7 @@ end function GMDMCreate
 
 ! ************************************************************************** !
 !
-! GMGridCreate: Creates an geomechanics grid object
+! GMGridCreate: Creates a geomechanics grid object
 ! author: Satish Karra, LANL
 ! date: 05/22/13
 !
@@ -125,12 +125,77 @@ function GMGridCreate()
   geomech_grid%max_elem_sharing_a_node = 0
   nullify(geomech_grid%elem_type)
   nullify(geomech_grid%elem_node)
+  nullify(geomech_grid%nodes)
 
   GMGridCreate => geomech_grid
   
 end function GMGridCreate
 
 
-end module Geomech_Grid_module
+! ************************************************************************** !
+!
+! GMDMDestroy: Deallocates a geomechanics grid distributed mesh object
+! author: Satish Karra, LANL
+! date: 05/22/13
+!
+! ************************************************************************** !
+subroutine GMGridDestroy(geomech_grid)
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  type(geomech_grid_type), pointer :: geomech_grid
+  
+  PetscErrorCode :: ierr
+  
+  if (.not.associated(geomech_grid)) return
+  
+  call DeallocateArray(geomech_grid%elem_ids_natural)
+  call DeallocateArray(geomech_grid%elem_ids_petsc)
+  call DeallocateArray(geomech_grid%elem_type)
+  call DeallocateArray(geomech_grid%elem_node)
+
+  if (associated(geomech_grid%nodes)) &
+    deallocate(geomech_grid%nodes)
+  nullify(geomech_grid%nodes)
+  
+  deallocate(geomech_grid)
+  nullify(geomech_grid)
+  
+end subroutine GMGridDestroy
+
+! ************************************************************************** !
+!
+! GMGridDestroy: Deallocates a geomechanics grid object
+! author: Satish Karra, LANL
+! date: 05/22/13
+!
+! ************************************************************************** !
+subroutine GMDMDestroy(gmdm)
+
+  implicit none
+  
+  type(gmdm_type), pointer :: gmdm
+  
+  PetscErrorCode :: ierr
+  
+  if (.not.associated(gmdm)) return
+  
+  call ISDestroy(gmdm%is_local_local,ierr)
+  call ISDestroy(gmdm%is_local_petsc,ierr)
+  call ISDestroy(gmdm%is_local_natural,ierr)
+  call VecScatterDestroy(gmdm%scatter_nton,ierr)
+  call VecScatterDestroy(gmdm%scatter_gton,ierr)
+  call VecScatterDestroy(gmdm%scatter_ntog,ierr)
+  call VecDestroy(gmdm%global_vec,ierr)
+  call VecDestroy(gmdm%local_vec,ierr)
+  
+  deallocate(gmdm)
+  nullify(gmdm)
+
+end subroutine GMDMDestroy
+
+end module Geomech_Grid_Aux_module
 #endif !GEOMECH
 

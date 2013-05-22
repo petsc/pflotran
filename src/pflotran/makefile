@@ -417,7 +417,7 @@ general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
                  option.o logging.o hdf5_aux.o discretization.o field.o \
                  patch.o
 geometry.o : input.o option.o
-geomech_grid_aux.o : unstructured_cell.o
+geomech_grid_aux.o : unstructured_cell.o utility.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o
 global_aux.o : option.o
