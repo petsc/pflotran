@@ -530,7 +530,7 @@ reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  microbial_aux.o immobile_aux.o
 reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
                      input.o utility.o global_aux.o reaction_sandbox_base.o \
-                     reaction_sandbox_clm_cn.o
+                     reaction_sandbox_clm_cn.o reaction_sandbox_example.o
 reaction_sandbox_base.o : reaction_aux.o reactive_transport_aux.o \
                           global_aux.o
 reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
