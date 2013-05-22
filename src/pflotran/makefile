@@ -7,6 +7,10 @@ pflotran_test_dir = ../../regression_tests
 
 MYFLAGS = -I.
 
+ifdef geomech
+  MYFLAGS += -DGEOMECH
+endif
+
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
@@ -243,7 +247,8 @@ grid_obj = \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o 
+	${common_src}structured_grid.o\
+	${common_src}geomech_grid_aux.o 
 
 relations_obj = \
 	${common_src}saturation.o \
@@ -412,6 +417,7 @@ general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
                  option.o logging.o hdf5_aux.o discretization.o field.o \
                  patch.o
 geometry.o : input.o option.o
+geomech_grid_aux.o : unstructured_cell.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o
 global_aux.o : option.o
