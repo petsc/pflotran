@@ -35,23 +35,22 @@ module Geomech_Grid_Aux_module
     PetscInt :: max_nnode_per_elem           ! Max. number of nodes per element
     PetscInt :: max_elem_sharing_a_node      
     PetscInt, pointer :: elem_type(:)        ! Type of element
-    PetscInt, pointer :: elem_node(:,:)      ! Node number on each element
-    type(point_type), pointer :: nodes(:)             ! Coordinates of the nodes
+    PetscInt, pointer :: elem_nodes(:,:)     ! Node number on each element
+    type(point_type), pointer :: nodes(:)    ! Coordinates of the nodes
   end type geomech_grid_type
   
 
   type, public :: gmdm_type                  ! Geomech. DM type
     ! Ghosting of elements not required
     PetscInt :: ndof
-    ! local = local (non-ghosted) cells
-    IS :: is_local_local                     ! IS for local cells with local on-processor numbering
-    IS :: is_local_petsc                     ! IS for local cells with petsc numbering
-    IS :: is_local_natural                   ! IS for local cells with natural (global) numbering
-    VecScatter :: scatter_nton               ! scatter context for natural to natural updates
+    ! local = local (non-ghosted) elements
+    IS :: is_local_local                     ! IS for local elems with local on-processor numbering
+    IS :: is_local_petsc                     ! IS for local elems with petsc numbering
+    IS :: is_local_natural                   ! IS for local elems with natural (global) numbering
     VecScatter :: scatter_gton               ! scatter context for global to natural updates
     VecScatter :: scatter_ntog               ! scatter context for natural to global updates
-    Vec :: global_vec                        ! global vec (no ghost cells), petsc-ordering
-    Vec :: local_vec                         ! local vec (includes local cells), local ordering
+    Vec :: global_vec                        ! global vec (no ghost elems), petsc-ordering
+    Vec :: local_vec                         ! local vec (includes local elems), local ordering
   end type gmdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -62,7 +61,11 @@ module Geomech_Grid_Aux_module
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 
-  public :: GMGridCreate
+  public :: GMGridCreate, &
+            GMGridDestroy, &
+            GMDMCreate, &
+            GMDMDestroy
+            
   
 contains
 
@@ -84,7 +87,6 @@ function GMDMCreate()
   gmdm%is_local_local = 0
   gmdm%is_local_petsc = 0
   gmdm%is_local_natural = 0
-  gmdm%scatter_nton = 0
   gmdm%scatter_gton = 0
   gmdm%scatter_ntog = 0
   gmdm%global_vec = 0
@@ -124,7 +126,7 @@ function GMGridCreate()
   geomech_grid%max_nnode_per_elem = 0
   geomech_grid%max_elem_sharing_a_node = 0
   nullify(geomech_grid%elem_type)
-  nullify(geomech_grid%elem_node)
+  nullify(geomech_grid%elem_nodes)
   nullify(geomech_grid%nodes)
 
   GMGridCreate => geomech_grid
@@ -154,7 +156,7 @@ subroutine GMGridDestroy(geomech_grid)
   call DeallocateArray(geomech_grid%elem_ids_natural)
   call DeallocateArray(geomech_grid%elem_ids_petsc)
   call DeallocateArray(geomech_grid%elem_type)
-  call DeallocateArray(geomech_grid%elem_node)
+  call DeallocateArray(geomech_grid%elem_nodes)
 
   if (associated(geomech_grid%nodes)) &
     deallocate(geomech_grid%nodes)
@@ -185,7 +187,6 @@ subroutine GMDMDestroy(gmdm)
   call ISDestroy(gmdm%is_local_local,ierr)
   call ISDestroy(gmdm%is_local_petsc,ierr)
   call ISDestroy(gmdm%is_local_natural,ierr)
-  call VecScatterDestroy(gmdm%scatter_nton,ierr)
   call VecScatterDestroy(gmdm%scatter_gton,ierr)
   call VecScatterDestroy(gmdm%scatter_ntog,ierr)
   call VecDestroy(gmdm%global_vec,ierr)
@@ -197,5 +198,6 @@ subroutine GMDMDestroy(gmdm)
 end subroutine GMDMDestroy
 
 end module Geomech_Grid_Aux_module
-#endif !GEOMECH
+#endif 
+!GEOMECH
 

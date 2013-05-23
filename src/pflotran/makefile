@@ -247,8 +247,7 @@ grid_obj = \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o\
-	${common_src}geomech_grid_aux.o 
+	${common_src}structured_grid.o
 
 relations_obj = \
 	${common_src}saturation.o \
@@ -327,11 +326,18 @@ surface_obj = \
 	${common_src}surface_realization.o \
 	${common_src}surface_th_aux.o \
 	${common_src}surface_th.o
+  
+geomech_obj = \
+  ${common_src}geomechanics_realization.o \
+  ${common_src}geomechanics_discretization.o \
+  ${common_src}geomech_grid.o \
+  ${common_src}geomech_grid_aux.o \
 
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
 	$(relations_obj) $(properties_obj) $(dataset_obj) \
-	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
+	$(io_obj) $(misc_obj) $(surface_obj) ${geomech_obj} \
+  ${pflotran_src}pflotran.o
 
 pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
@@ -418,6 +424,11 @@ general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
                  patch.o
 geometry.o : input.o option.o
 geomech_grid_aux.o : unstructured_cell.o utility.o
+geomech_grid.o : geomech_grid_aux.o unstructured_cell.o utility.o \
+                 input.o option.o string.o
+geomechanics_discretization: geomech_grid.o geomech_grid_aux.o
+geomechanics_realization.o : geomech_grid.o geomechanics_discretization.o \
+                             geomech_grid_aux.o 
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o
 global_aux.o : option.o
