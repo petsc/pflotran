@@ -2,6 +2,9 @@ module Reaction_Sandbox_module
 
   use Reaction_Sandbox_Base_class
   use Reaction_Sandbox_CLM_CN_class
+  use Reaction_Sandbox_Example_class
+  
+  ! Add new reacton sandbox classes here.
   
   implicit none
   
@@ -139,6 +142,9 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
     select case(trim(word))
       case('CLM-CN')
         new_sandbox => CLM_CN_Create()
+      ! Add new cases statements for new reacton sandbox classes here.
+      case('EXAMPLE')
+        new_sandbox => EXAMPLECreate()
       case default
         option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &
           trim(word) // ' not recognized.'
