@@ -15,10 +15,7 @@ module Geomech_Grid_Aux_module
 #if defined(SCORPIO)
   include "scorpiof.h"
 #endif
-
-  PetscInt, parameter, public :: TWO_DIM_GRID = 1
-  PetscInt, parameter, public :: THREE_DIM_GRID = 2 
-  
+ 
   type, public :: geomech_grid_type
     ! variables for geomechanics grid (unstructured) for finite element formulation
     ! The dofs (displacements, here) are solved at the nodes 

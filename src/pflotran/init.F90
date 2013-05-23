@@ -85,6 +85,11 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
 #endif
 
+#ifdef GEOMECH
+  use Geomechanics_Realization_module
+  use Geomechanics_Init_module 
+#endif
+
   implicit none
   
   type(simulation_type) :: simulation
@@ -119,6 +124,9 @@ subroutine Init(simulation)
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
 #endif
+#ifdef GEOMECH
+  type(geomech_realization_type), pointer :: geomech_realization
+#endif
 
   ! popped in TimestepperInitializeRun()
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
@@ -137,6 +145,9 @@ subroutine Init(simulation)
   surf_realization  => simulation%surf_realization
   surf_flow_stepper => simulation%surf_flow_stepper
   surf_field        => surf_realization%surf_field  
+#endif
+#ifdef GEOMECH
+  geomech_realization => simulation%geomech_realization
 #endif
   
   option%init_stage = PETSC_TRUE
@@ -168,6 +179,11 @@ subroutine Init(simulation)
   surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
   call SurfaceInitReadRequiredCards(simulation%surf_realization)
+#endif
+
+#ifdef GEOMECH
+  geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
+  call GeomechicsInitReadRequiredCards(geomech_realization)
 #endif
 
   patch => realization%patch

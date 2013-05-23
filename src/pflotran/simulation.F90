@@ -8,6 +8,9 @@ module Simulation_module
 #ifdef SURFACE_FLOW
   use Surface_Realization_class
 #endif
+#ifdef GEOMECH
+  use Geomechanics_Realization_module
+#endif
   implicit none
 
 #include "definitions.h"
@@ -24,6 +27,9 @@ module Simulation_module
 #endif
 #ifdef SURFACE_FLOW
     type(surface_realization_type), pointer :: surf_realization
+#endif
+#ifdef GEOMECH
+    type(geomech_realization_type), pointer :: geomech_realization
 #endif
     type(regression_type), pointer :: regression
   end type simulation_type
@@ -89,6 +95,9 @@ function SimulationCreate2(option)
 #ifdef SURFACE_FLOW
   simulation%surf_flow_stepper => TimestepperCreate()
   simulation%surf_realization => SurfRealizCreate(option)
+#endif
+#ifdef GEOMECH
+  simulation%geomech_realization => GeomechRealizCreate(option)
 #endif
   nullify(simulation%regression)
   

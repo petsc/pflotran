@@ -66,6 +66,10 @@ module Option_module
     PetscBool :: surf_flow_explicit
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
 #endif
+
+#ifdef GEOMECH
+    PetscInt :: ngeomechdof
+#endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id

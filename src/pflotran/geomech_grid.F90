@@ -29,7 +29,7 @@ module Geomech_Grid_module
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 
-!  public 
+  public :: GeomechGridRead 
 
 contains
 

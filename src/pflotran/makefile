@@ -329,6 +329,7 @@ surface_obj = \
 	${common_src}surface_th.o
   
 geomech_obj = \
+  ${common_src}geomechanics_init.o \
   ${common_src}geomechanics_realization.o \
   ${common_src}geomechanics_discretization.o \
   ${common_src}geomech_grid.o \
@@ -424,12 +425,15 @@ general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
                  option.o logging.o hdf5_aux.o discretization.o field.o \
                  patch.o
 geometry.o : input.o option.o
+geomechanics_init.o : geomechanics_discretization.o geomech_grid.o \
+                      geomechanics_realization.o geomech_grid_aux.o \
+					  input.o string.o patch.o level.o option.o
 geomech_grid_aux.o : unstructured_cell.o utility.o
 geomech_grid.o : geomech_grid_aux.o unstructured_cell.o utility.o \
                  input.o option.o string.o
 geomechanics_discretization: geomech_grid.o geomech_grid_aux.o
 geomechanics_realization.o : geomech_grid.o geomechanics_discretization.o \
-                             geomech_grid_aux.o 
+                             geomech_grid_aux.o input.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o
 global_aux.o : option.o
@@ -457,7 +461,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          uniform_velocity.o dataset.o condition_control.o surface_flow.o \
          database_hpt.o output_aux.o variables.o constraint.o output_tecplot.o \
          output.o output_surface.o reaction_aux.o richards_mfd.o \
-         surface_init.o surface_th.o surface_global.o
+         surface_init.o surface_th.o surface_global.o \
+		 geomechanics_init.o
 input.o : string.o option.o
 level.o : patch.o option.o
 mass_transfer.o : dataset_global.o option.o input.o string.o discretization.o \
@@ -524,7 +529,8 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           variables.o constraint.o general_aux.o reaction_aux.o richards_aux.o \
           reactive_transport_aux.o dataset_aux.o thc_aux.o thmc_aux.o \
           global_aux.o mphase_aux.o immis_aux.o miscible_aux.o mineral_aux.o \
-          surface_complexation_aux.o surface_auxiliary.o
+          surface_complexation_aux.o surface_auxiliary.o \
+		  geomech_grid_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o
@@ -596,7 +602,8 @@ secondary_continuum.o : string.o secondary_continuum_aux.o reaction_aux.o\
                         block_solve.o global_aux.o mphase_aux.o reaction.o\
 						block_tridiag.o
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
-simulation.o : timestepper.o realization.o regression.o
+simulation.o : timestepper.o realization.o regression.o \
+               geomechanics_realization.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o \
                    mineral_aux.o utility.o mineral.o input.o
 solid_solution_aux.o : mineral_aux.o
