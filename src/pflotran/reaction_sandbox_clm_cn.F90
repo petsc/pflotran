@@ -512,7 +512,7 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
   PetscReal :: resp_frac
   PetscReal :: stoich_N
   PetscReal :: stoich_C
-  PetscReal :: stoich_downstream_pool
+  PetscReal :: stoich_downstreamC_pool
   PetscReal :: stoich_upstreamC_pool, stoich_upstreamN_pool
   
   PetscReal :: N_inhibition, d_N_inhibition
@@ -592,17 +592,17 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       ispec_pool_down = this%pool_id_to_species_id(SOM_INDEX,ipool_down)
       CN_ratio_down = this%CN_ratio(ipool_down)
       ! c = (1-resp_frac) * a
-      stoich_downstream_pool = (1.d0-resp_frac) * stoich_upstreamC_pool
+      stoich_downstreamC_pool = (1.d0-resp_frac) * stoich_upstreamC_pool
     else    
       ispec_pool_down = 0
-      stoich_downstream_pool = 0.d0
+      stoich_downstreamC_pool = 0.d0
       CN_ratio_down = 1.d0 ! to prevent divide by zero below.
     endif
       
     ! d = resp_frac * a
     stoich_C = resp_frac * stoich_upstreamC_pool
     ! e = b - c / CN_ratio_dn
-    stoich_N = stoich_upstreamN_pool - stoich_downstream_pool / CN_ratio_down
+    stoich_N = stoich_upstreamN_pool - stoich_downstreamC_pool / CN_ratio_down
  
     ! Inhibition by nitrogen (inhibition concentration > 0 and N is a reactant)
     ! must be calculated here as the sign on the stoichiometry for N is 
@@ -655,9 +655,9 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       ! downstream pool
       ires_pool_down = reaction%offset_immobile + ispec_pool_down
       Residual(ires_pool_down) = Residual(ires_pool_down) - &
-        stoich_downstream_pool * rate
-      sumC = sumC + stoich_downstream_pool * rate
-      sumN = sumN + stoich_downstream_pool / CN_ratio_down * rate
+        stoich_downstreamC_pool * rate
+      sumC = sumC + stoich_downstreamC_pool * rate
+      sumN = sumN + stoich_downstreamC_pool / CN_ratio_down * rate
     endif
     
     !for debugging
@@ -687,11 +687,11 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
       if (ispec_pool_down > 0) then
         Jacobian(ires_pool_down,iresC_pool_up) = &
           Jacobian(ires_pool_down,iresC_pool_up) - &
-          stoich_downstream_pool * drate
+          stoich_downstreamC_pool * drate
         if (use_N_inhibition) then
           Jacobian(ires_pool_down,ires_N) = &
             Jacobian(ires_pool_down,ires_N) - &
-            stoich_downstream_pool * drate_dN_inhibition
+            stoich_downstreamC_pool * drate_dN_inhibition
         endif
       endif
       
@@ -737,7 +737,7 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
         ! dstoichC_dN_pool_up = 0
 
         ! nitrogen (stoichiometry a function of upstream C/N)
-        ! stoich_N = stoich_upstreamN_pool - stoich_downstream_pool / &
+        ! stoich_N = stoich_upstreamN_pool - stoich_downstreamC_pool / &
         !                                    CN_ratio_down
         ! latter half is constant
         dstoichN_dC_pool_up = dstoich_upstreamN_pool_dC_pool_up

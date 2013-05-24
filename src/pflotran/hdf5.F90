@@ -1980,7 +1980,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   call h5pclose_f(prop_id,hdf5_err)
   
   ! Open dataset
-  string = 'Region/'//trim(region%name)
+  string = 'Regions/'//trim(region%name)
   call h5dopen_f(file_id,string,data_set_id,hdf5_err)
 
   ! Get dataset's dataspace
