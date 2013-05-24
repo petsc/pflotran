@@ -88,6 +88,7 @@ subroutine Init(simulation)
 #ifdef GEOMECH
   use Geomechanics_Realization_module
   use Geomechanics_Init_module 
+  use Geomech_Grid_module
 #endif
 
   implicit none
@@ -289,7 +290,9 @@ subroutine Init(simulation)
   endif
 #endif  
 
-!  call CopySurfaceGridtoGeomechGrid(realization,geomech_realization)
+#ifdef GEOMECH
+  call CopySurfaceGridtoGeomechGrid(realization,geomech_realization,option)
+#endif
 
   call RegressionCreateMapping(simulation%regression,realization)
 
@@ -1423,6 +1426,7 @@ subroutine InitReadInput(simulation)
 #endif
 #ifdef GEOMECH
   use Geomechanics_Init_module
+  use Geomechanics_Realization_module
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1483,6 +1487,10 @@ subroutine InitReadInput(simulation)
   type(dataset_type), pointer :: dataset
   type(mass_transfer_type), pointer :: mass_transfer
   type(input_type), pointer :: input
+  
+#ifdef GEOMECH
+  type(geomech_realization_type), pointer :: geomech_realization
+#endif
 
   nullify(flow_stepper)
   nullify(tran_stepper)
@@ -1491,6 +1499,10 @@ subroutine InitReadInput(simulation)
   
   realization => simulation%realization
   patch => realization%patch
+  
+#ifdef GEOMECH
+  geomech_realization => simulation%geomech_realization
+#endif
 
   if (associated(patch)) grid => patch%grid
 
@@ -2522,9 +2534,9 @@ subroutine InitReadInput(simulation)
 !......................
 #ifdef GEOMECH
       case ('GEOMECHANICS')
-        call GeomechanicsInitReadInput(simulation%geomech_realization, &
+        call GeomechanicsInitReadInput(geomech_realization, &
                                        input,option)
-
+                                       
 #endif
 
 !......................

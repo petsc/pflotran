@@ -1194,7 +1194,7 @@ end subroutine MphaseUpdateSolution
 !
 ! MphaseUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! written based on RichardsUpdateSolutionPatch
 ! date: 08/23/11
 !
@@ -1969,7 +1969,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       case(NEUMANN_BC)
         fluxe = fluxe + aux_vars(MPH_TEMPERATURE_DOF)*area*option%scale
 	  ! aux_vars(MPH_TEMPERATURE_DOF) stores heat flux, 1.d-6 is to convert
-	  ! from W to MW, Added by Satish Karra 10/05/11
+	  ! from W to MW, Added by Satish Karra, LANL 10/05/11
       case(ZERO_GRADIENT_BC)
       ! No change in fluxe
     end select
@@ -4262,7 +4262,7 @@ end subroutine MphaseSetPlotVariables
 !
 ! MphaseSecondaryHeat: Calculates the source term contribution due to secondary
 ! continuum in the primary continuum residual 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 06/26/12
 !
 ! ************************************************************************** !
@@ -4360,7 +4360,7 @@ end subroutine MphaseSecondaryHeat
 !
 ! MphaseSecondaryHeatJacobian: Calculates the source term jacobian contribution 
 ! due to secondary continuum in the primary continuum residual 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 06/6/12
 !
 ! ************************************************************************** !

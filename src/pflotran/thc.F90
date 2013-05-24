@@ -339,7 +339,7 @@ end subroutine THCSetupPatch
 ! ************************************************************************** !
 !
 ! THCCheckUpdatePre: Checks update prior to update
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 08/02/12
 !
 ! ************************************************************************** !
@@ -492,7 +492,7 @@ end subroutine THCCheckUpdatePre
 ! ************************************************************************** !
 !
 ! THCCheckUpdatePost: Checks update after each update
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 07/25/12
 !
 ! ************************************************************************** !
@@ -696,7 +696,7 @@ end subroutine THCComputeMassBalancePatch
 ! ************************************************************************** !
 !
 ! THCZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 12/13/11
 !
 ! ************************************************************************** !
@@ -1100,7 +1100,7 @@ end subroutine THCUpdateSolution
 !
 ! THCUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 12/13/11
 !
 ! ************************************************************************** !
@@ -1949,7 +1949,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
  
 
 #ifdef ICE
-  ! Added by Satish Karra, updated 11/11/11
+  ! Added by Satish Karra, LANL, updated 11/11/11
   satg_up = aux_var_up%sat_gas
   satg_dn = aux_var_dn%sat_gas
   if ((satg_up > eps) .and. (satg_dn > eps)) then
@@ -4689,7 +4689,7 @@ end subroutine THCSetPlotVariables
 ! least square fit of values from neighboring cells
 ! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
 ! for incompressible linear elasticity, CMAME
-! Author: Satish Karra
+! Author: Satish Karra, LANL
 ! Date: 2/20/12
 !
 ! ************************************************************************** !
@@ -4753,7 +4753,7 @@ end subroutine THCComputeGradient
 !
 ! THCSecondaryHeat: Calculates the source term contribution due to secondary
 ! continuum in the primary continuum residual 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 06/2/12
 !
 ! ************************************************************************** !
@@ -4847,7 +4847,7 @@ end subroutine THCSecondaryHeat
 !
 ! THCSecondaryHeatJacobian: Calculates the source term jacobian contribution 
 ! due to secondary continuum in the primary continuum residual 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 06/6/12
 !
 ! ************************************************************************** !

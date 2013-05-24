@@ -339,7 +339,7 @@ end subroutine THSetupPatch
 ! ************************************************************************** !
 !
 ! THCheckUpdatePre: Checks update prior to update
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 08/02/12
 !
 ! ************************************************************************** !
@@ -492,7 +492,7 @@ end subroutine THCheckUpdatePre
 ! ************************************************************************** !
 !
 ! THCheckUpdatePost: Checks update after each update
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 07/25/12
 !
 ! ************************************************************************** !
@@ -696,7 +696,7 @@ end subroutine THComputeMassBalancePatch
 ! ************************************************************************** !
 !
 ! THZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 12/13/11
 !
 ! ************************************************************************** !
@@ -1100,7 +1100,7 @@ end subroutine THUpdateSolution
 !
 ! THUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 12/13/11
 !
 ! ************************************************************************** !
@@ -4609,7 +4609,7 @@ end subroutine THSetPlotVariables
 ! least square fit of values from neighboring cells
 ! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
 ! for incompressible linear elasticity, CMAME
-! Author: Satish Karra
+! Author: Satish Karra, LANL
 ! Date: 2/20/12
 !
 ! ************************************************************************** !
@@ -4672,7 +4672,7 @@ end subroutine THComputeGradient
 !
 ! THSecondaryHeat: Calculates the source term contribution due to secondary
 ! continuum in the primary continuum residual 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 06/2/12
 !
 ! ************************************************************************** !
@@ -4766,7 +4766,7 @@ end subroutine THSecondaryHeat
 !
 ! THSecondaryHeatJacobian: Calculates the source term jacobian contribution 
 ! due to secondary continuum in the primary continuum residual 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 06/6/12
 !
 ! ************************************************************************** !

@@ -37,7 +37,7 @@ contains
 !
 ! SecondaryContinuumType: The area, volume, grid sizes for secondary continuum
 ! are calculated based on the input dimensions and geometry
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 07/11/12
 !
 ! ************************************************************************** !
@@ -288,7 +288,7 @@ end subroutine SecondaryContinuumType
 !
 ! SecondaryContinuumSetProperties: The type, dimensions of the secondary
 ! continuum are set 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 07/17/12
 !
 ! ************************************************************************** !
@@ -580,7 +580,7 @@ end subroutine SecondaryRTAuxVarInit
 ! RTSecondaryTransportMulti:  Calculates the source term contribution due to 
 ! secondary continuum in the primary continuum residual for multicomponent
 ! system assuming only aqueous reaction
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 1/31/13
 !
 ! ************************************************************************** !
@@ -1329,7 +1329,7 @@ end subroutine SecondaryRTUpdateTimestep
 !
 ! SecondaryRTCheckResidual: The residual of the secondary domain are checked
 ! to ensure convergence
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 1/31/13
 !
 ! ************************************************************************** !
@@ -1481,7 +1481,7 @@ end subroutine SecondaryRTCheckResidual
 !
 ! SecondaryRTAuxVarComputeMulti: Updates the secondary continuum 
 ! concentrations at end of each time step for multicomponent system
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 2/1/13
 !
 ! ************************************************************************** !
@@ -1580,7 +1580,7 @@ end subroutine SecondaryRTAuxVarComputeMulti
 ! 
 ! THCSecHeatAuxVarCompute: Computes secondary auxillary variables for each
 !                            grid cell for heat transfer only
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! Date: 06/5/12
 !
 ! ************************************************************************** !
@@ -1675,7 +1675,7 @@ end subroutine THCSecHeatAuxVarCompute
 ! 
 ! THSecHeatAuxVarCompute: Computes secondary auxillary variables for each
 !                            grid cell for heat transfer only
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! Date: 06/5/12
 !
 ! ************************************************************************** !
@@ -1771,7 +1771,7 @@ end subroutine THSecHeatAuxVarCompute
 ! 
 ! MphaseSecHeatAuxVarCompute: Computes secondary auxillary variables in each
 !                             grid cell for heat transfer only
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! Date: 06/28/12
 !
 ! ************************************************************************** !

@@ -79,7 +79,6 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
-  use Grid_module, only : UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC
   
   implicit none
   
@@ -783,7 +782,6 @@ subroutine OutputAvegVars(realization_base)
   use Output_Aux_module
   use Output_Common_module, only : OutputGetVarFromArray  
   use Field_module
-  use Grid_module, only : UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC
 
   implicit none
   

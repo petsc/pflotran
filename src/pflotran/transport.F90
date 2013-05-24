@@ -122,7 +122,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
     diffusion(iphase) = disp_ave_over_dist*dabs(q) + &
                         stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
                         
-! Add the effect of temperature on diffusivity, Satish Karra, 10/29/2011
+! Add the effect of temperature on diffusivity, Satish Karra, LANL, 10/29/2011
 
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
     T_ref_inv = 1.d0/(25.d0 + 273.15d0)
@@ -164,7 +164,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
               disp_ave_over_dist*dabs(q) + &
               stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
 
-! Add the effect of temperature on diffusivity, Satish Karra, 11/1/2011
+! Add the effect of temperature on diffusivity, Satish Karra, LANL, 11/1/2011
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
           T_ref_inv = 1.d0/(25.d0 + 273.15d0)
           temp_up = global_aux_var_up%temp(1)      

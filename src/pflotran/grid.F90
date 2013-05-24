@@ -18,12 +18,6 @@ module Grid_module
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 
-  PetscInt, parameter, public :: NULL_GRID = 0
-  PetscInt, parameter, public :: STRUCTURED_GRID = 1
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
-  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 6
-
   type, public :: grid_type 
   
     character(len=MAXWORDLENGTH) :: ctype
@@ -2154,7 +2148,7 @@ end subroutine GridGetGhostedNeighbors
 !
 ! GridGetNeighborsWithCorners: Returns an array of neighboring cells along with corner
 ! cells
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 02/19/12
 !
 ! ************************************************************************** !

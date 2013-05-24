@@ -322,7 +322,7 @@ end subroutine MiscibleComputeMassBalancePatch
 ! ************************************************************************** !
 !
 ! MiscibleZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 12/13/11
 !
 ! ************************************************************************** !
@@ -748,7 +748,7 @@ end subroutine MiscibleUpdateSolution
 !
 ! MiscibleUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! written based on RichardsUpdateSolutionPatch
 ! date: 08/23/11
 !

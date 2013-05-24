@@ -390,7 +390,7 @@ end subroutine WriteObservationHeader
 !
 ! OutputObservationTecplotSecTXT: Print to secondary continuum observation 
 ! data to text file
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 04/08/13
 !
 ! ************************************************************************** !  
@@ -1383,7 +1383,7 @@ end function GetVelocityAtCoord
 ! ************************************************************************** !
 !
 ! WriteObservationSecondaryDataAtCell: Print data for data at a cell
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 10/4/12
 !
 ! ************************************************************************** !  

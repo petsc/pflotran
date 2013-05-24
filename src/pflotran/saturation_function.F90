@@ -791,7 +791,7 @@ end subroutine SaturationFunctionCompute3
 !                              and liquid water given the saturation function
 !                              temperature, water vapor pressure and liquid
 !                              water pressure 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 11/14/11
 !
 ! ************************************************************************** !
@@ -1027,7 +1027,7 @@ end subroutine SatFuncGetRelPermFromSat
 ! This threshold value depends only on van Genuchten parameters alpha and lambda
 ! This is used mainly for ice problem, so that the pressure doesnt go to large
 ! negative values
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 09/12/12
 !
 ! ************************************************************************** !
@@ -1074,7 +1074,7 @@ end subroutine CapillaryPressureThreshold
 !
 ! ResidualCapPressThre: Computes the residual to calculate capillary pressure
 ! thresold in the subroutine CapillaryPressureThreshold
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 09/12/12
 !
 ! ************************************************************************** !
@@ -1095,7 +1095,7 @@ end subroutine ResidualCapPressThre
 !
 ! JacobianCapPressThre: Computes the jacobian to calculate capillary pressure
 ! thresold in the subroutine CapillaryPressureThreshold
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 09/12/12
 !
 ! ************************************************************************** !

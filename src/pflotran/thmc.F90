@@ -1241,7 +1241,7 @@ end subroutine THMCAccumulation
 !
 ! THMCFluxDerivative1: Computes the derivatives of the internal flux terms
 !                     for the Jacobian
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 3/2/12
 !
 ! ************************************************************************** ! 
@@ -1827,7 +1827,7 @@ end subroutine THMCFluxDerivative1
 !
 ! THMCFluxDerivative2: Computes the derivatives of the internal flux terms
 !                     for the Jacobian
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 4/13/12
 !
 ! ************************************************************************** ! 
@@ -2243,7 +2243,7 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
 
 
 #ifdef ICE
-  ! Added by Satish Karra, 10/24/11
+  ! Added by Satish Karra, LANL, 10/24/11
   satg_up = aux_var_up%sat_gas
   satg_dn = aux_var_dn%sat_gas
  if ((satg_up > eps) .and. (satg_dn > eps)) then
@@ -2577,7 +2577,7 @@ subroutine THMCBCFluxDerivative(ibndtype,aux_vars, &
       Jdn(option%nflowdof-option%nmechdof,2) = & 
                          Jdn(option%nflowdof-option%nmechdof,2)+Dk*area*(-1.d0)
 #ifdef ICE
-      ! Added by Satish Karra, 11/21/11
+      ! Added by Satish Karra, LANL, 11/21/11
       satg_up = aux_var_up%sat_gas
       satg_dn = aux_var_dn%sat_gas
       if ((satg_up > eps) .and. (satg_dn > eps)) then
@@ -2892,7 +2892,7 @@ subroutine THMCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       fluxe = fluxe + cond
 
 #ifdef ICE
-  ! Added by Satish Karra,
+  ! Added by Satish Karra, LANL,
       satg_up = aux_var_up%sat_gas
       satg_dn = aux_var_dn%sat_gas
  if ((satg_up > eps) .and. (satg_dn > eps)) then
@@ -4251,7 +4251,7 @@ end subroutine THMCResidualToMass
 ! 
 ! THMCComputeStressFromDispGrad: Computes the stress from given displacement
 ! gradient
-! Author: Satish Karra
+! Author: Satish Karra, LANL
 ! Date: 3/20/12
 ! Stress is in MPa
 !
@@ -4292,7 +4292,7 @@ end subroutine THMCComputeStressFromDispGrad
 ! least square fit of values from neighboring cells
 ! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
 ! for incompressible linear elasticity, CMAME
-! Author: Satish Karra
+! Author: Satish Karra, LANL
 ! Date: 2/20/12
 !
 ! ************************************************************************** !
@@ -4364,7 +4364,7 @@ end subroutine THMCComputeDisplacementGradient
 ! ************************************************************************** !
 ! 
 ! THMCComputeMinv: Computes the inverse of the 
-! Author: Satish Karra
+! Author: Satish Karra, LANL
 ! Date: 2/20/12
 !
 ! ************************************************************************** !
@@ -4428,7 +4428,7 @@ end subroutine THMCComputeMinv
 ! 
 ! THMCComputeDisplacementGradientPert: Computes the perturbation of the 
 ! gradient of displacement
-! Author: Satish Karra
+! Author: Satish Karra, LANL
 ! Date: 4/13/12
 !
 ! ************************************************************************** !

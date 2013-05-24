@@ -97,7 +97,7 @@ contains
 ! ************************************************************************** !
 !
 ! VISW_temp: Viscosity of water which is a function of temperature only
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 04/12/12
 ! T in C, VW in Pa.s
 !
@@ -1716,7 +1716,7 @@ end subroutine Tsat
 ! DensityIce: Subroutine to calculate the density of ice at given temperature
 !             and pressure
 !
-! Written by Satish Karra
+! Written by Satish Karra, LANL
 ! Date: 11/16/11
 ! T is in deg C, P is in Pa, density is in kmol/m3
 !===============================================================================
@@ -1745,7 +1745,7 @@ end subroutine DensityIce
 ! InternalEnergyIce: Subroutine to calculate the internal energy of ice at given
 !                    temperature and pressure
 !
-! Written by Satish Karra
+! Written by Satish Karra, LANL
 ! Date: 11/16/11
 ! T is in deg C, internal energy is in J/mol
 !===============================================================================
@@ -1777,7 +1777,7 @@ end subroutine InternalEnergyIce
 ! ************************************************************************** !
 !
 ! wateos_simple: Simple water equation of state from Scott Painter
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 02/1/12
 ! T in C, P in Pa
 !

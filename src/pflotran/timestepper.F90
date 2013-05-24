@@ -1884,7 +1884,6 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC, UNSTRUCTURED_GRID_MIMETIC
   
   implicit none
 
@@ -2224,7 +2223,6 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC
   
   implicit none
 
@@ -2392,7 +2390,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC
   
   implicit none
 
@@ -3788,7 +3785,6 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC, UNSTRUCTURED_GRID_MIMETIC
   use Richards_module, only : RichardsInitializeTimestep
 
   implicit none

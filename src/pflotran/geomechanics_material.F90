@@ -33,7 +33,7 @@ contains
 ! ************************************************************************** !
 !
 ! GeomechanicsMaterialPropertyCreate: Creates a geomechanics material property
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !
@@ -62,7 +62,7 @@ end function GeomechanicsMaterialPropertyCreate
 !
 ! GeomechanicsMaterialPropertyRead: Reads geomechanics material properties
 ! property
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !
@@ -118,7 +118,7 @@ end subroutine GeomechanicsMaterialPropertyRead
 !
 ! GeomechanicsMaterialPropertyAddToList: Destroys a geomechanics material
 ! property
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !
@@ -148,7 +148,7 @@ end subroutine GeomechanicsMaterialPropertyAddToList
 !
 ! GeomechanicsMaterialPropConvertListToArray: Destroys a geomechanics material
 ! property
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !
@@ -249,7 +249,7 @@ end subroutine GeomechanicsMaterialPropConvertListToArray
 !
 ! GeomechanicsMaterialPropGetPtrFromArray: Destroys a geomechanics material
 ! property
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !
@@ -293,7 +293,7 @@ end function GeomechanicsMaterialPropGetPtrFromArray
 !
 ! GeomechanicsMaterialPropertyDestroy: Destroys a geomechanics material
 ! property
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !

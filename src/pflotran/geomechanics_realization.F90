@@ -51,6 +51,7 @@ function GeomechRealizCreate(option)
   type(geomech_realization_type), pointer :: geomech_realization
   type(option_type), pointer              :: option
   
+  allocate(geomech_realization)
   geomech_realization%id = 0
   if (associated(option)) then
     geomech_realization%option => option

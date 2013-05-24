@@ -213,4 +213,16 @@ PetscInt, parameter :: LSM_FLUX       = 1
 PetscInt, parameter :: PRINT_SEC_TEMP =           0
 PetscInt, parameter :: PRINT_SEC_CONC =           1
 PetscInt, parameter :: PRINT_SEC_MIN_VOLFRAC =    2
+
+! Grid type
+PetscInt, parameter :: STRUCTURED_GRID = 1
+PetscInt, parameter :: UNSTRUCTURED_GRID = 2
+PetscInt, parameter :: IMPLICIT_UNSTRUCTURED_GRID = 4
+PetscInt, parameter :: EXPLICIT_UNSTRUCTURED_GRID = 5
+PetscInt, parameter :: NULL_GRID = 0
+PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 3
+PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 6
+PetscInt, parameter :: THREE_DIM_GRID = 3
+PetscInt, parameter :: TWO_DIM_GRID = 2
+
 #define HASH

@@ -373,7 +373,7 @@ end subroutine THCAuxVarCompute
 ! 
 ! THCAuxVarComputeIce: Computes auxillary variables for each grid cell when
 !                      ice and vapor phases are present
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! Date: 11/16/11
 !
 ! ************************************************************************** !

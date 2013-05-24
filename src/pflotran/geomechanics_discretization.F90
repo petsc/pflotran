@@ -43,7 +43,7 @@ contains
 ! ************************************************************************** !
 !
 ! GeomechDiscretizationCreate: Creates a geomechanics discretization
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/2013
 !
 ! ************************************************************************** !
@@ -76,7 +76,7 @@ end function GeomechDiscretizationCreate
 ! ************************************************************************** !
 !
 ! GeomechDiscretizationDestroy: Deallocates a geomechanics discretization
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 05/23/2013
 !
 ! ************************************************************************** !

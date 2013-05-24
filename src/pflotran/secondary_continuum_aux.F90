@@ -89,7 +89,7 @@ contains
 !
 ! SecondaryAuxHeatCreate: Allocate and initialize secondary continuum heat
 ! auxiliary object
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 01/10/13
 !
 ! ************************************************************************** !
@@ -115,7 +115,7 @@ end function SecondaryAuxHeatCreate
 !
 ! SecondaryAuxHeatDestroy: Deallocates a secondary continuum heat
 ! auxiliary object
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 01/10/13
 !
 ! ************************************************************************** !
@@ -137,7 +137,7 @@ end subroutine SecondaryAuxHeatDestroy
 !
 ! SecondaryAuxRTCreate: Allocate and initialize secondary continuum
 ! reactive transport auxiliary object
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 01/10/13
 !
 ! ************************************************************************** !
@@ -163,7 +163,7 @@ end function SecondaryAuxRTCreate
 !
 ! SecondaryAuxVarRTDestroy: Deallocates a secondary continuum reactive 
 ! transport auxiliary variable object
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 02/10/13
 !
 ! ************************************************************************** !
@@ -192,7 +192,7 @@ end subroutine SecondaryAuxVarRTDestroy
 !
 ! SecondaryAuxRTDestroy: Deallocates a secondary continuum reactive 
 ! transport auxiliary object
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 01/10/13
 !
 ! ************************************************************************** !

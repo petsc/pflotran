@@ -580,7 +580,7 @@ end subroutine RichardsUpdateMassBalancePatch
 ! ************************************************************************** !
 !
 ! RichardsUpdatePermPatch: Updates the permeability based on pressure
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! Date: 01/09/12
 !
 ! ************************************************************************** !
@@ -685,7 +685,6 @@ subroutine RichardsUpdateAuxVars(realization)
 
   use Realization_class
   use Richards_MFD_module
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   type(realization_type) :: realization
   

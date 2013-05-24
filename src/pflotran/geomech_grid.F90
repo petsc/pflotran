@@ -17,10 +17,6 @@ module Geomech_Grid_module
   include "scorpiof.h"
 #endif
 
-  PetscInt, parameter, public :: STRUCTURED_GRID = 1
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
-
-
   !  PetscInt, parameter :: HEX_TYPE          = 1
   !  PetscInt, parameter :: TET_TYPE          = 2
   !  PetscInt, parameter :: WEDGE_TYPE        = 3
@@ -29,7 +25,8 @@ module Geomech_Grid_module
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 
-  public :: GeomechGridRead 
+  public :: GeomechGridRead, &
+            CopySurfaceGridtoGeomechGrid 
 
 contains
 
@@ -260,6 +257,61 @@ subroutine GeomechGridRead(geomech_grid,filename,option)
 
 end subroutine GeomechGridRead
 
+! ************************************************************************** !
+!
+! CopySurfaceGridtoGeomechGrid: Subroutine to copy subsurface grid info.
+! to geomechanics grid
+! author: Satish Karra, LANL
+! date: 05/23/13
+!
+! ************************************************************************** !
+subroutine CopySurfaceGridtoGeomechGrid(subsurface_realization, &
+                                        geomech_realization,option)
+                                        
+  use Realization_class
+  use Geomechanics_Realization_module
+  use Unstructured_Grid_Aux_module
+  use Geomech_Grid_Aux_module
+  use Option_module
+  
+  implicit none
+  
+  type(realization_type), pointer            :: subsurface_realization
+  type(geomech_realization_type), pointer    :: geomech_realization
+  type(unstructured_grid_type), pointer      :: ugrid
+  type(geomech_Grid_type), pointer           :: geomech_grid
+  type(option_type), pointer                 :: option
+  
+  ugrid => subsurface_realization%discretization%grid%unstructured_grid
+  geomech_grid => geomech_realization%discretization%grid
+  
+  if (option%myrank == option%io_rank) then
+    write(*,*),'GEOMECHANICS: Subsurface unstructured grid will be used for '// &
+               'geomechanics.'
+  endif  
+  
+  geomech_grid%global_offset = ugrid%global_offset
+  geomech_grid%nmax_elem = ugrid%nmax
+  geomech_grid%nlmax_elem = ugrid%nlmax
+  geomech_grid%nmax_node = ugrid%num_vertices_global
+  geomech_grid%nlmax_node = ugrid%num_vertices_local
+  allocate(geomech_grid%elem_ids_natural(size(ugrid%cell_ids_natural)))
+  geomech_grid%elem_ids_natural = ugrid%cell_ids_natural
+  allocate(geomech_grid%elem_ids_petsc(size(ugrid%cell_ids_petsc)))
+  geomech_grid%elem_ids_petsc = ugrid%cell_ids_petsc
+  geomech_grid%ao_natural_to_petsc = ugrid%ao_natural_to_petsc
+  geomech_grid%max_ndual_per_elem = ugrid%max_ndual_per_cell
+  geomech_grid%max_nnode_per_elem = ugrid%max_nvert_per_cell
+  geomech_grid%max_elem_sharing_a_node = ugrid%max_cells_sharing_a_vertex
+  allocate(geomech_grid%elem_type(size(ugrid%cell_type)))
+  geomech_grid%elem_type = ugrid%cell_type
+  allocate(geomech_grid%elem_nodes(size(ugrid%cell_vertices,ONE_INTEGER), &
+           size(ugrid%cell_vertices,TWO_INTEGER)))
+  allocate(geomech_grid%nodes(size(ugrid%vertices)))
+  geomech_grid%nodes = ugrid%vertices
+  geomech_grid%elem_nodes = ugrid%cell_vertices
+  
+end subroutine CopySurfaceGridtoGeomechGrid
 
 end module Geomech_Grid_module
 #endif 
