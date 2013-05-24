@@ -291,4 +291,123 @@ END
 \end{semiverbatim}
 \end{frame}
 
+%-----------------------------------------------------------------------------
+\subsection{PFLOTRAN Numerical Implementation}
+\frame{\frametitle{Kinetic Reaction Equations}
+\BA
+\text{Lit1C} + \frac{1}{\text{CN}_{\text{Lit1C}}} {\text {Lit1N}} &\eq \left(1-f_1\right) \text{SOM1} + f_1 \text{CO}_2 + n_1 \text{N}_\text{mineral} \\
+\text{Lit2C} + \frac{1}{\text{CN}_{\text{Lit2C}}} {\text {Lit2N}} &\eq \left(1-f_2\right) \text{SOM2} + f_2 \text{CO}_2 + n_2 \text{N}_\text{mineral} \\
+\text{Lit3C} + \frac{1}{\text{CN}_{\text{Lit3C}}} {\text {Lit3N}} &\eq \left(1-f_3\right) \text{SOM3} + f_3 \text{CO}_2 + n_3 \text{N}_\text{mineral} \\
+\text{SOM1} &\eq \left(1-f_4\right) \text{SOM2} + f_4 \text{CO}_2 + n_4 \text{N}_\text{mineral} \\
+\text{SOM2} &\eq \left(1-f_5\right) \text{SOM3} + f_5 \text{CO}_2 + n_5 \text{N}_\text{mineral} \\
+\text{SOM3} &\eq \left(1-f_6\right) \text{SOM4} + f_6 \text{CO}_2 + n_6 \text{N}_\text{mineral} \\
+\text{SOM4} &\eq f_7 \text{CO}_2 + n_7 \text{N}_\text{mineral} \\
+\EA
+}
+
+\frame{\frametitle{Kinetic Reaction Equations}
+
+\BA
+\text{CN}_{\text{Lit1C}} & \eq  \frac{\text{Lit1C}}{\text{Lit1N}} \\
+\text{CN}_{\text{Lit2C}} & \eq \frac{\text{Lit2C}}{\text{Lit2N}} \\
+\text{CN}_{\text{Lit3C}} & \eq \frac{\text{Lit3C}}{\text{Lit3N}} \\
+\EA
+
+{\begin{center}
+\begin{tabular}{ c || c }
+  $\text{CN}_{\text{SOM1}} \eq 12$ & $\text{CN}_{\text{SOM2}} \eq 12$  \\
+  \hline
+  $\text{CN}_{\text{SOM3}} \eq 10$ & $\text{CN}_{\text{SOM4}} \eq 10$  \\
+  \hline
+  $f_1 \eq 0.39 $ & $f_2 \eq 0.55 $ \\
+  \hline
+  $f_3 \eq 0.29 $ & $f_4 \eq 0.28 $ \\
+  \hline
+  $f_5 \eq 0.46 $ & $f_5 \eq 0.55 $ \\
+  \hline
+  $f_7 \eq 1.0 $ & \\
+\end{tabular}
+\end{center}
+}
+}
+
+\frame{\frametitle{Kinetic Reaction Equations}
+\BA
+n_1 &\eq \frac{1}{\text{CN}_{\text{Lit1C}}} - \left(1-f_1\right) \frac{1}{\text{CN}_{\text{SOM1}}} \\
+n_2 &\eq \frac{1}{\text{CN}_{\text{Lit2C}}} - \left(1-f_2\right) \frac{1}{\text{CN}_{\text{SOM2}}} \\
+n_3 &\eq \frac{1}{\text{CN}_{\text{Lit3C}}} - \left(1-f_3\right) \frac{1}{\text{CN}_{\text{SOM3}}} \\
+n_4 &\eq \frac{1}{\text{CN}_{\text{SOM1}}} - \left(1-f_4\right) \frac{1}{\text{CN}_{\text{SOM2}}} \\
+n_5 &\eq \frac{1}{\text{CN}_{\text{SOM2}}} - \left(1-f_5\right) \frac{1}{\text{CN}_{\text{SOM3}}} \\
+n_6 &\eq \frac{1}{\text{CN}_{\text{SOM3}}} - \left(1-f_6\right) \frac{1}{\text{CN}_{\text{SOM4}}} \\
+n_7 &\eq \frac{1}{\text{CN}_{\text{SOM4}}} 
+\EA
+}
+
+\frame{\frametitle{Kinetic Reaction Equations}
+\BA
+R_1 \eq f_T f_\theta f_\text{pi} k \text{Lit1C} \\
+R_2 \eq f_T f_\theta f_\text{pi} k \text{Lit2C} \\
+R_3 \eq f_T f_\theta f_\text{pi} k \text{Lit3C} \\
+R_4 \eq f_T f_\theta f_\text{pi} k \text{SOM1} \\
+R_5 \eq f_T f_\theta f_\text{pi} k \text{SOM2} \\
+R_6 \eq f_T f_\theta f_\text{pi} k \text{SOM3} \\
+R_7 \eq f_T f_\theta f_\text{pi} k \text{SOM4} 
+\EA
+}
+
+
+\frame{\frametitle{Mass Conservation Equations}
+The CLM-CN reaction network results in 12 basis species for which the mass conservation equation are given by: 
+\BA
+\frac{\p}{\p t} \left(\text{N}_\text{mineral}\right) &\eq n_1R_1 + n_2R_2 + n_3R_3 +n_4R_4 +n_5R_5 +n_6R_6 + n_7R_7 \\
+\frac{\p}{\p t} \left(\text{CO}_2\right) &\eq  f_1R_1 + f_2R_2 + f_3R_3 + f_4R_4 + f_5R_5 + f_6R_6 + f_7R_7 \\
+\frac{\p}{\p t} \left(\text{SOM1}\right) &\eq  (1-f_1)R_1 - R_4\\
+\frac{\p}{\p t} \left(\text{SOM2}\right) &\eq  (1-f_2)R_2 + (1-f_4)R_4 - R_5\\
+\frac{\p}{\p t} \left(\text{SOM3}\right) &\eq  (1-f_3)R_3 + (1-f_5)R_5 - R_6\\
+\frac{\p}{\p t} \left(\text{SOM4}\right) &\eq  (1-f_6)R_6 - R_7
+\EA
+}
+
+\frame{\frametitle{Mass Conservation Equations}
+\BA
+\frac{\p}{\p t} \left(\text{Lit1C}\right) &\eq  -R_1 \\
+\frac{\p}{\p t} \left(\text{Lit2C}\right) &\eq  -R_2 \\
+\frac{\p}{\p t} \left(\text{Lit3C}\right) &\eq  -R_3 \\
+\frac{\p}{\p t} \left(\text{Lit1N}\right) &\eq   \frac{-1}{\text{CN}_{\text{Lit1C}}}R_1\\
+\frac{\p}{\p t} \left(\text{Lit3N}\right) &\eq  \frac{-1}{\text{CN}_{\text{Lit2C}}}R_2 \\
+\frac{\p}{\p t} \left(\text{Lit3N}\right) &\eq  \frac{-1}{\text{CN}_{\text{Lit3C}}}R_3 
+\EA
+}
+
+\frame{\frametitle{Numerical Implementation in PFLOTRAN}
+Applying finite-volume spatial discretization on mass conservation equation for Lit1C:
+\EQ
+\int \frac{\p}{\p t} \left(\text{Lit1C}\right) dV \eq  \int -R_1 dV
+\EN
+
+\EQ
+\frac{\p}{\p t} \left(\text{Lit1C }\Delta V\right)  \eq   -R_1 \Delta V
+\EN
+
+Implicit time discretization:
+\EQ
+\frac{\Delta V}{\Delta t} \left(\text{Lit1C}^{t+1} - \text{Lit1C}^t\right)  \eq   -R_1^{t+1} \Delta V
+\EN
+
+Residual equation:
+\EQ
+\mathcal{R}_7 \eq  \frac{\Delta V}{\Delta t} \left(\text{Lit1C}^{t+1} - \text{Lit1C}^t\right)  + R_1^{t+1} \Delta V
+\EN
+Note: The residual equation for Lit1C is $\mathcal{R}_7$ since Lit1C is the 7-th basis specie
+}
+
+\frame{\frametitle{Numerical Implementation in PFLOTRAN}
+Jacobian for Lit1C:
+\BA
+\mathcal{J}_{7,7} & \eq \frac{\p \mathcal{R}_7 }{\p \left(\text{Lit1C}^{t+1} \right)} \\
+\mathcal{J}_{7,1} & \eq \frac{\p \mathcal{R}_7 }{\p \left(\text{N}_\text{mineral}^{t+1} \right)} \\
+\mathcal{J}_{7,i} & \eq 0 \text{\hspace{2cm}i $\neq 1, 7$ }
+\EA
+}
+
 \end{document}
