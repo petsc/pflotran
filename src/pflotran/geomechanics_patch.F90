@@ -72,6 +72,8 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
   if (associated(geomech_patch%imat)) deallocate(geomech_patch%imat)
   nullify(geomech_patch%imat)
   
+  call GMGridDestroy(geomech_patch%geomech_grid)
+  
   if (associated(geomech_patch%geomech_material_property_array)) &
     deallocate(geomech_patch%geomech_material_property_array)
   nullify(geomech_patch%geomech_material_property_array)

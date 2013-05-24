@@ -269,6 +269,10 @@ subroutine SimulationDestroy(simulation)
   call SurfRealizDestroy(simulation%surf_realization)
 #endif
 
+#ifdef GEOMECH
+  call GeomechRealizDestroy(simulation%geomech_realization)
+#endif
+
   call RegressionDestroy(simulation%regression)
 
   deallocate(simulation)

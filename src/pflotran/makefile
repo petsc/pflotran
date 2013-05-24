@@ -429,17 +429,17 @@ general_grid.o : grid.o realization.o hdf5.o logging.o hdf5_aux.o connection.o \
 geometry.o : input.o option.o
 geomechanics_init.o : geomechanics_discretization.o geomech_grid.o \
                       geomechanics_realization.o geomech_grid_aux.o \
-					  input.o string.o geomechanics_patch.o level.o option.o\
-					  geomechanics_material.o 
+                      input.o string.o geomechanics_patch.o level.o \
+                      option.o geomechanics_material.o 
 geomech_grid_aux.o : unstructured_cell.o utility.o
 geomech_grid.o : geomech_grid_aux.o unstructured_cell.o utility.o \
-                 input.o option.o string.o
+                 input.o option.o string.o 
 geomechanics_discretization: geomech_grid.o geomech_grid_aux.o
 geomech_patch.o : option.o geomech_grid.o geomech_grid_aux.o \
                   geomechanics_material.o region.o strata.o
 geomechanics_realization.o : geomech_grid.o geomechanics_discretization.o \
                              geomech_grid_aux.o input.o \
-							 geomechanics_material.o geomechanics_patch.o
+	                     geomechanics_material.o geomechanics_patch.o
 geomechanics_material.o : option.o string.o input.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o

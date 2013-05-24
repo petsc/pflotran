@@ -26,7 +26,7 @@ module Geomech_Grid_module
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 
   public :: GeomechGridRead, &
-            CopySurfaceGridtoGeomechGrid 
+            CopySubsurfaceGridtoGeomechGrid 
 
 contains
 
@@ -259,31 +259,23 @@ end subroutine GeomechGridRead
 
 ! ************************************************************************** !
 !
-! CopySurfaceGridtoGeomechGrid: Subroutine to copy subsurface grid info.
+! CopySubsurfaceGridtoGeomechGrid: Subroutine to copy subsurface grid info.
 ! to geomechanics grid
 ! author: Satish Karra, LANL
 ! date: 05/23/13
 !
 ! ************************************************************************** !
-subroutine CopySurfaceGridtoGeomechGrid(subsurface_realization, &
-                                        geomech_realization,option)
+subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                                         
-  use Realization_class
-  use Geomechanics_Realization_module
   use Unstructured_Grid_Aux_module
   use Geomech_Grid_Aux_module
   use Option_module
   
   implicit none
   
-  type(realization_type), pointer            :: subsurface_realization
-  type(geomech_realization_type), pointer    :: geomech_realization
   type(unstructured_grid_type), pointer      :: ugrid
   type(geomech_Grid_type), pointer           :: geomech_grid
   type(option_type), pointer                 :: option
-  
-  ugrid => subsurface_realization%discretization%grid%unstructured_grid
-  geomech_grid => geomech_realization%discretization%grid
   
   if (option%myrank == option%io_rank) then
     write(*,*),'GEOMECHANICS: Subsurface unstructured grid will be used for '// &
@@ -311,7 +303,7 @@ subroutine CopySurfaceGridtoGeomechGrid(subsurface_realization, &
   geomech_grid%nodes = ugrid%vertices
   geomech_grid%elem_nodes = ugrid%cell_vertices
   
-end subroutine CopySurfaceGridtoGeomechGrid
+end subroutine CopySubsurfaceGridtoGeomechGrid
 
 end module Geomech_Grid_module
 #endif 

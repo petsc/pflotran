@@ -86,6 +86,11 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   if(.not.associated(geomech_realization)) return
   
+  if (associated(geomech_realization%geomech_material_property_array)) &
+    deallocate(geomech_realization%geomech_material_property_array)
+  nullify(geomech_realization%geomech_material_property_array)
+  call GeomechanicsMaterialPropertyDestroy(geomech_realization% &
+                                           geomech_material_properties)
   call GeomechDiscretizationDestroy(geomech_realization%discretization)
   
 

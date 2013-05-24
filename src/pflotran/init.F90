@@ -291,7 +291,8 @@ subroutine Init(simulation)
 #endif  
 
 #ifdef GEOMECH
-  call CopySurfaceGridtoGeomechGrid(realization,geomech_realization,option)
+  call CopySubsurfaceGridtoGeomechGrid(realization%discretization%grid%&
+    unstructured_grid,geomech_realization%discretization%grid,option)
 #endif
 
   call RegressionCreateMapping(simulation%regression,realization)
