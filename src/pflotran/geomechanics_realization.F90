@@ -3,10 +3,11 @@
 module Geomechanics_Realization_module
 
   use Geomechanics_Discretization_module
+  use Geomechanics_Patch_module
   use Input_module
-  use Patch_module
   use Option_module
   use Level_module
+  use Geomechanics_Material_module
   
   implicit none
   
@@ -20,9 +21,13 @@ private
     PetscInt :: id
     type(geomech_discretization_type), pointer :: discretization
     type(input_type), pointer :: input
-    type(patch_type), pointer :: patch
+    type(geomech_patch_type), pointer :: geomech_patch
     type(option_type), pointer :: option
-    type(level_list_type), pointer :: level_list
+    type(geomech_material_property_type), &
+                           pointer :: geomech_material_properties
+    type(geomech_material_property_ptr_type), &
+                           pointer :: geomech_material_property_array(:)
+
 
   end type geomech_realization_type
 
@@ -55,9 +60,11 @@ function GeomechRealizCreate(option)
   
   nullify(geomech_realization%input)
   geomech_realization%discretization => GeomechDiscretizationCreate()
-  geomech_realization%level_list     => LevelCreateList()
   
-  nullify(geomech_realization%patch)
+  nullify(geomech_realization%geomech_material_properties)
+  nullify(geomech_realization%geomech_material_property_array)
+  
+  nullify(geomech_realization%geomech_patch)
 
   GeomechRealizCreate => geomech_realization
   
@@ -78,7 +85,6 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   if(.not.associated(geomech_realization)) return
   
-  call LevelDestroyList(geomech_realization%level_list)
   call GeomechDiscretizationDestroy(geomech_realization%discretization)
   
 

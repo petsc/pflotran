@@ -183,7 +183,7 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
-  call GeomechicsInitReadRequiredCards(geomech_realization)
+  call GeomechicsInitReadRequiredCards(simulation%geomech_realization)
 #endif
 
   patch => realization%patch
@@ -288,6 +288,8 @@ subroutine Init(simulation)
     call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
+
+!  call CopySurfaceGridtoGeomechGrid(realization,geomech_realization)
 
   call RegressionCreateMapping(simulation%regression,realization)
 
@@ -1419,6 +1421,9 @@ subroutine InitReadInput(simulation)
   use Surface_Flow_module
   use Surface_Init_module
 #endif
+#ifdef GEOMECH
+  use Geomechanics_Init_module
+#endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile
 #endif
@@ -2512,6 +2517,14 @@ subroutine InitReadInput(simulation)
         waypoint%time = realization%waypoints%last%time
         waypoint%print_output = PETSC_TRUE
         call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
+#endif
+
+!......................
+#ifdef GEOMECH
+      case ('GEOMECHANICS')
+        call GeomechanicsInitReadInput(simulation%geomech_realization, &
+                                       input,option)
+
 #endif
 
 !......................

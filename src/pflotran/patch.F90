@@ -16,9 +16,6 @@ module Patch_module
   use Surface_Material_module
   use Surface_Auxiliary_module
 #endif
-#ifdef GEOMECH
-  use Geomech_Grid_Aux_module
-#endif
   
   use Auxiliary_module
 
@@ -80,10 +77,6 @@ module Patch_module
     
     PetscReal,pointer :: surf_internal_fluxes(:,:)
     PetscReal,pointer :: surf_boundary_fluxes(:,:)
-#endif
-
-#ifdef GEOMECH
-    type(geomech_grid_type), pointer :: geomech_grid
 #endif
 
   end type patch_type
