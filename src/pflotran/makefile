@@ -225,8 +225,9 @@ chem_obj = \
 	${common_src}reaction.o \
 	${common_src}reaction_aux.o \
 	${common_src}reaction_sandbox.o \
-	${common_src}reaction_sandbox_clm_cn.o \
 	${common_src}reaction_sandbox_base.o \
+	${common_src}reaction_sandbox_clm_cn.o \
+	${common_src}reaction_sandbox_example.o \
 	${common_src}solid_solution.o \
 	${common_src}solid_solution_aux.o \
 	${common_src}surface_complexation.o \
@@ -529,13 +530,15 @@ reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  microbial_aux.o immobile_aux.o
 reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
                      input.o utility.o global_aux.o reaction_sandbox_base.o \
-                     reaction_sandbox_clm_cn.o
+                     reaction_sandbox_clm_cn.o reaction_sandbox_example.o
 reaction_sandbox_base.o : reaction_aux.o reactive_transport_aux.o \
                           global_aux.o
 reaction_sandbox_clm_cn.o : option.o reaction_aux.o reactive_transport_aux.o \
                             string.o input.o utility.o global_aux.o \
                             reaction_sandbox_base.o database_aux.o \
                             immobile_aux.o
+reaction_sandbox_example.o : reaction_aux.o option.o reactive_transport_aux.o \
+                             global_aux.o units.o string.o input.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \

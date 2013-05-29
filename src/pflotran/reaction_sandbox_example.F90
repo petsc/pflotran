@@ -1,6 +1,6 @@
-module Reaction_Sandbox_Template_class
+module Reaction_Sandbox_Example_class
 
-! 1. Change all references to "Template" as desired to rename the module and
+! 1. Change all references to "Example" as desired to rename the module and
 !    and subroutines within the module. 
 
   use Reaction_Sandbox_Base_class
@@ -21,61 +21,62 @@ module Reaction_Sandbox_Template_class
 ! PetscReal, parameter :: formula_weight_of_water = 18.01534d0
   
   type, public, &
-    extends(reaction_sandbox_base_type) :: reaction_sandbox_template_type
-! 3. Add variables/arrays associated with new reaction.  E.g.
-!   PetscInt :: example_integer
-!   PetscInt, pointer :: example_integer_array(:)
-!    Character strings must be sized to either MAXWORDLENGTH or 
-!    MAXSTRINGLENGTH where max string length is a very long string.
+    extends(reaction_sandbox_base_type) :: reaction_sandbox_example_type
+! 3. Add variables/arrays associated with new reaction.  
+    character(len=MAXWORDLENGTH) :: species_name
+    PetscInt :: species_id
+    PetscReal :: rate_constant
   contains
-    procedure, public :: ReadInput => TemplateRead
-    procedure, public :: Setup => TemplateSetup
-    procedure, public :: Evaluate => TemplateReact
-    procedure, public :: Destroy => TemplateDestroy
-  end type reaction_sandbox_template_type
+    procedure, public :: ReadInput => ExampleRead
+    procedure, public :: Setup => ExampleSetup
+    procedure, public :: Evaluate => ExampleReact
+    procedure, public :: Destroy => ExampleDestroy
+  end type reaction_sandbox_example_type
 
-  public :: TemplateCreate
+  public :: ExampleCreate
 
 contains
 
 ! ************************************************************************** !
 !
-! TemplateCreate: Allocates template reaction object.
+! ExampleCreate: Allocates example reaction object.
 ! author: John Doe (replace in all subroutine headers with name of developer) 
 ! date: 00/00/00 (replace in all subroutine headers with current date)
 !
 ! ************************************************************************** !
-function TemplateCreate()
+function ExampleCreate()
 
   implicit none
   
-  class(reaction_sandbox_template_type), pointer :: TemplateCreate
+  class(reaction_sandbox_example_type), pointer :: ExampleCreate
 
 ! 4. Add code to allocate object and initialized all variables to zero and
 !    nullify all pointers. E.g.
-  allocate(TemplateCreate)
-! TemplateCreate%example_integer = 0
-! nullify(TemplateCreate%example_integer_array)
-  nullify(TemplateCreate%next)
-  
-end function TemplateCreate
+  allocate(ExampleCreate)
+  ExampleCreate%species_name = ''
+  ExampleCreate%species_id = 0
+  ExampleCreate%rate_constant = 0.d0
+  nullify(ExampleCreate%next)  
+      
+end function ExampleCreate
 
 ! ************************************************************************** !
 !
-! TemplateRead: Reads input deck for template reaction parameters (if any)
+! ExampleRead: Reads input deck for example reaction parameters (if any)
 ! author: John Doe
 ! date: 00/00/00
 !
 ! ************************************************************************** !
-subroutine TemplateRead(this,input,option)
+subroutine ExampleRead(this,input,option)
 
   use Option_module
   use String_module
   use Input_module
+  use Units_module, only : UnitsConvertToInternal
   
   implicit none
   
-  class(reaction_sandbox_template_type) :: this
+  class(reaction_sandbox_example_type) :: this
   type(input_type) :: input
   type(option_type) :: option
 
@@ -109,23 +110,33 @@ subroutine TemplateRead(this,input,option)
       !   ...
       ! END
 
-! 5. Add case statement for reading variables.  E.g.
-!     case('EXAMPLE_INTEGER')
+! 5. Add case statement for reading variables.
+      case('SPECIES_NAME')
 ! 6. Read the variable
-!       call InputReadInt(input,option,this%example_integer)  
+        ! Read the character string indicating which of the primary species
+        ! is being decayed.
+        call InputReadWord(input,option,this%species_name,PETSC_TRUE)  
 ! 7. Inform the user of any errors if not read correctly.
-!       call InputErrorMsg(input,option,'example_integer', & 
-!                          'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
+        call InputErrorMsg(input,option,'species_name', &
+                           'CHEMISTRY,REACTION_SANDBOX,EXAMPLE')    
 ! 8. Repeat for other variables
-!     case('EXAMPLE_INTEGER_Array')
-!       allocate(this%example_integer_array(3))
-!       this%example_integer_array = 0
-!       do i = 1, 3
-!         call InputReadInt(input,option,this%example_integer_array(i))  
-!         call InputErrorMsg(input,option,'example_integer_array', & 
-!                            'CHEMISTRY,REACTION_SANDBOX,TEMPLATE') 
-!       
-!       enddo  
+      case('RATE_CONSTANT')
+        ! Read the double precision rate constant
+        call InputReadDouble(input,option,this%rate_constant)
+        call InputErrorMsg(input,option,'rate_constant', &
+                           'CHEMISTRY,REACTION_SANDBOX,EXAMPLE')
+        ! Read the units
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (InputError(input)) then
+          ! If units do not exist, assume default units of 1/s which are the
+          ! standard internal PFLOTRAN units for this rate constant.
+          input%err_buf = 'REACTION_SANDBOX,EXAMPLE,RATE CONSTANT UNITS'
+          call InputDefaultMsg(input,option)
+        else              
+          ! If units exist, convert to internal units of 1/s
+          this%rate_constant = this%rate_constant * &
+            UnitsConvertToInternal(word,option)
+        endif
       case default
         option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX,TEMPLATE keyword: ' // &
           trim(word) // ' not recognized.'
@@ -133,39 +144,41 @@ subroutine TemplateRead(this,input,option)
     end select
   enddo
   
-end subroutine TemplateRead
+end subroutine ExampleRead
 
 ! ************************************************************************** !
 !
-! TemplateSetup: Sets up the template reaction either with parameters either
+! ExampleSetup: Sets up the example reaction either with parameters either
 !                read from the input deck or hardwired.
 ! author: John Doe
 ! date: 00/00/00
 !
 ! ************************************************************************** !
-subroutine TemplateSetup(this,reaction,option)
+subroutine ExampleSetup(this,reaction,option)
 
-  use Reaction_Aux_module, only : reaction_type
+  use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Option_module
 
   implicit none
   
-  class(reaction_sandbox_template_type) :: this
+  class(reaction_sandbox_example_type) :: this
   type(reaction_type) :: reaction
   type(option_type) :: option
 
 ! 9. Add code to initialize 
+  this%species_id = &
+    GetPrimarySpeciesIDFromName(this%species_name,reaction,option)
       
-end subroutine TemplateSetup
+end subroutine ExampleSetup
 
 ! ************************************************************************** !
 !
-! TemplateReact: Evaluates reaction storing residual and/or Jacobian
+! ExampleReact: Evaluates reaction storing residual and/or Jacobian
 ! author: John Doe
 ! date: 00/00/00
 !
 ! ************************************************************************** !
-subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
+subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
                          rt_auxvar,global_auxvar,porosity,volume,reaction, &
                          option)
 
@@ -174,7 +187,7 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
   
   implicit none
   
-  class(reaction_sandbox_template_type) :: this  
+  class(reaction_sandbox_example_type) :: this  
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
@@ -187,7 +200,7 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
   type(global_auxvar_type) :: global_auxvar
 
   PetscInt, parameter :: iphase = 1
-  PetscReal :: saturation
+  PetscReal :: L_water
   
   ! Description of subroutine arguments:
 
@@ -204,7 +217,7 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
   !   message when compute_derivative is true.  E.g.
   !
   !   option%io_buffer = 'NUMERICAL_JACOBIAN_RXN must always be used ' // &
-  !                      'due to assumptions in Template'
+  !                      'due to assumptions in Example'
   !   call printErrMsg(option)
   !
   ! rt_auxvar - Object holding chemistry information (e.g. concentrations,
@@ -238,44 +251,56 @@ subroutine TemplateReact(this,Residual,Jacobian,compute_derivative, &
   ! option - Provides handle for controlling simulation, catching and
   !          reporting errors.
   
-  saturation = global_auxvar%sat(iphase)
-
-! 10. Add code for Residual evaluation
+  ! Unit of the residual must be in moles/second
+  ! global_auxvar%sat(iphase) = saturation of cell
+  ! 1.d3 converts m^3 water -> L water
+  L_water = porosity*global_auxvar%sat(iphase)*volume*1.d3
+  ! alway subtract contribution from residual
+  Residual(this%species_id) = Residual(this%species_id) - &
+    this%rate_constant * &  ! 1/sec
+    L_water * & ! L water
+    ! rt_auxvar%total(this%species_id,iphase) = species total component 
+    !   concentration
+    rt_auxvar%total(this%species_id,iphase) ! mol/L water
+    
+  
   
   if (compute_derivative) then
 
 ! 11. If using an analytical Jacobian, add code for Jacobian evaluation
 
-    ! remove this error statement if analytical derivatives are provided.
-    option%io_buffer = 'NUMERICAL_JACOBIAN_RXN must always be used ' // &
-                       'due to assumptions in Template'
-    call printErrMsg(option)
-    ! add code for Jacobian evaluation
-    !geh: If you study other reactions built into PFLOTRAN you will see that I
-    !     first calculate the residual and then modify it to get the Jacobian
-    !     entries.  This is my preference that you do not need to follow.
+    ! always add contribution to Jacobian
+    ! units = (mol/sec)*(kg water/mol) = kg water/sec
+    Jacobian(this%species_id,this%species_id) = &
+    Jacobian(this%species_id,this%species_id) + &
+      this%rate_constant * & ! 1/sec
+      L_water * & ! L water
+                  ! kg water/L water
+      ! rt_auxvar%aqueous%dtotal(this%species_id,this%species_id,iphase) = 
+      !   derivative of total component concentration with respect to the
+      !   free ion concentration of the same species.
+      rt_auxvar%aqueous%dtotal(this%species_id,this%species_id,iphase) 
+
   endif
   
-end subroutine TemplateReact
+end subroutine ExampleReact
 
 ! ************************************************************************** !
 !
-! TemplateDestroy: Destroys allocatable or pointer objects created in this 
+! ExampleDestroy: Destroys allocatable or pointer objects created in this 
 !                  module
 ! author: John Doe
 ! date: 00/00/00
 !
 ! ************************************************************************** !
-subroutine TemplateDestroy(this)
+subroutine ExampleDestroy(this)
 
   implicit none
   
-  class(reaction_sandbox_template_type) :: this  
+  class(reaction_sandbox_example_type) :: this  
 
-! 12. Add code to deallocate contents of the template object
-! deallocate(this%example_integer_array)
-! nullify(this%example_integer_array) 
+! 12. Add code to deallocate contents of the example object
 
-end subroutine TemplateDestroy
+end subroutine ExampleDestroy
 
-end module Reaction_Sandbox_Template_class
+end module Reaction_Sandbox_Example_class
