@@ -890,25 +890,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                         
   rhs = -res   
   
-  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
-  do i = 1, ncomp
-    do j = 1, ncomp
-      D_M(i,j) = coeff_diag(i,j,ngcells)
-      if (j == i) then
-        identity(i,j) = 1.d0
-      else
-        identity(i,j) = 0.d0
-      endif
-    enddo
-  enddo
-  
-  ! Find the inverse of D_M
-  call ludcmp(D_M,ncomp,indx,d) 
-  do j = 1, ncomp
-    call lubksb(D_M,ncomp,indx,identity(1,j))
-  enddo  
-  inv_D_M = identity          
-          
   if (reaction%use_log_formulation) then
   ! scale the jacobian by concentrations
     i = 1
@@ -972,7 +953,26 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                          'HINDMARSH or KEARST. For single component'// &
                          'chemistry THOMAS can be used.'
       call printErrMsg(option)  
-    end select
+  end select
+    
+  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
+  do i = 1, ncomp
+    do j = 1, ncomp
+      D_M(i,j) = coeff_diag(i,j,ngcells)
+      if (j == i) then
+        identity(i,j) = 1.d0
+      else
+        identity(i,j) = 0.d0
+      endif
+    enddo
+  enddo
+  
+  ! Find the inverse of D_M
+  call ludcmp(D_M,ncomp,indx,d) 
+  do j = 1, ncomp
+    call lubksb(D_M,ncomp,indx,identity(1,j))
+  enddo  
+  inv_D_M = identity      
   
   ! Update the secondary concentrations
   do i = 1, ncomp
@@ -1004,24 +1004,27 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   ! Calculate the dervative of outer matrix node total with respect to the 
   ! primary node concentration
   dPsisec_dCprim = dCsec_dCprim       ! dimensionless
-  do icplx = 1, reaction%neqcplx
-    ncompeq = reaction%eqcplxspecid(0,icplx)
-    do j = 1, ncompeq
-      jcomp = reaction%eqcplxspecid(j,icplx)
-      do l = 1, ncompeq
-        lcomp = reaction%eqcplxspecid(l,icplx)
-        do k = 1, ncompeq
-          kcomp = reaction%eqcplxspecid(k,icplx)
-          dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
-                                        reaction%eqcplxstoich(j,icplx)* &
-                                        reaction%eqcplxstoich(k,icplx)* &
-                                        dCsec_dCprim(kcomp,lcomp)* &
-                                        sec_sec_molal_M(icplx)/ &
-                                        conc_current_M(kcomp)
-        enddo
-      enddo      
+  
+  if (reaction%neqcplx > 0) then
+    do icplx = 1, reaction%neqcplx
+      ncompeq = reaction%eqcplxspecid(0,icplx)
+      do j = 1, ncompeq
+        jcomp = reaction%eqcplxspecid(j,icplx)
+        do l = 1, ncompeq
+          lcomp = reaction%eqcplxspecid(l,icplx)
+          do k = 1, ncompeq
+            kcomp = reaction%eqcplxspecid(k,icplx)
+            dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
+                                          reaction%eqcplxstoich(j,icplx)* &
+                                          reaction%eqcplxstoich(k,icplx)* &
+                                          dCsec_dCprim(kcomp,lcomp)* &
+                                          sec_sec_molal_M(icplx)/ &
+                                          conc_current_M(kcomp)
+          enddo
+        enddo      
+      enddo
     enddo
-  enddo
+  endif
   
   dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3 ! in kg/L
             
