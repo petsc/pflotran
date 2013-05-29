@@ -966,6 +966,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                     m*coeff_right(ncomp,ncomp,i-1)
         rhs(i) = rhs(i) - m*rhs(i-1)
       enddo        
+      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
     case default
       option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
                          'HINDMARSH or KEARST. For single component'// &
@@ -1045,7 +1046,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
-  
+
 !============== Numerical jacobian for coupling term ===========================
 
 
@@ -1145,6 +1146,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                       m*coeff_right_pert(ncomp,ncomp,i-1)
           rhs(i) = rhs(i) - m*rhs(i-1)
         enddo        
+      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
       case default
         option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
                            'HINDMARSH or KEARST. For single component'// &
@@ -1273,12 +1275,11 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
                                       reaction,sec_diffusion_coefficient, &
                                       sec_porosity,option,inf_norm_sec)
                                       
-        max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                               
+        max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                                                                   
     enddo 
     call MPI_Allreduce(max_inf_norm_sec,option%infnorm_res_sec,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
-    
   endif
   
       
@@ -1578,7 +1579,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
     case(2)
       call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
     case(3)
-      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
       do i = ngcells-1, 1, -1
         rhs(i) = (rhs(i) - coeff_right(ncomp,ncomp,i)*rhs(i+1))/ &
                              coeff_diag(ncomp,ncomp,i)

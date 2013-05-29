@@ -2812,7 +2812,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
 ! ========== Secondary continuum transport source terms -- MULTICOMPONENT ======
   if (option%use_mc) then
-  ! Secondary continuum contribution (SK 1/31/2012)
+  ! Secondary continuum contribution (SK 1/31/2013)
   ! only one secondary continuum for now for each primary continuum node
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -2841,7 +2841,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
       r_p(istartall:iendall) = r_p(istartall:iendall) - &
                                res_sec_transport(1:reaction%ncomp) ! in mol/s
-
+                               
     enddo   
   endif
 ! ============== end secondary continuum coupling terms ========================
