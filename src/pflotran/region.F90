@@ -484,7 +484,7 @@ subroutine RegionRead(region,input,option)
           case('TOP')
             region%iface = TOP_FACE
         end select
-    case('GRID','SURF_GRID')
+      case('GRID','SURF_GRID')
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'GRID','REGION')
         call StringToUpper(word)
@@ -496,7 +496,7 @@ subroutine RegionRead(region,input,option)
           case default
             option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
           call printErrMsg(option)
-      end select
+        end select
       case default
         option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
         call printErrMsg(option)

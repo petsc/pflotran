@@ -2,6 +2,9 @@ module Reaction_Sandbox_module
 
   use Reaction_Sandbox_Base_class
   use Reaction_Sandbox_CLM_CN_class
+  use Reaction_Sandbox_Example_class
+  
+  ! Add new reacton sandbox classes here.
   
   implicit none
   
@@ -11,6 +14,16 @@ module Reaction_Sandbox_module
 
   class(reaction_sandbox_base_type), pointer, public :: sandbox_list
 
+  interface RSandboxRead
+    module procedure :: RSandboxRead1
+    module procedure :: RSandboxRead2
+  end interface
+  
+  interface RSandboxDestroy
+    module procedure :: RSandboxDestroy1
+    module procedure :: RSandboxDestroy2
+  end interface
+  
   public :: RSandboxInit, &
             RSandboxRead, &
             RSandboxSkipInput, &
@@ -28,11 +41,8 @@ contains
 !
 ! ************************************************************************** !
 subroutine RSandboxInit(option)
-
   use Option_module
-  
   implicit none
-  
   type(option_type) :: option
 
   if (associated(sandbox_list)) then
@@ -44,7 +54,8 @@ end subroutine RSandboxInit
 
 ! ************************************************************************** !
 !
-! RSandboxInit: Initializes the sandbox list
+! RSandboxSetup: Calls all the initialization routines for all reactions in
+!                the sandbox list
 ! author: Glenn Hammond
 ! date: 01/28/13
 !
@@ -52,19 +63,20 @@ end subroutine RSandboxInit
 subroutine RSandboxSetup(reaction,option)
 
   use Option_module
-  use Reaction_Aux_module  
+  use Reaction_Aux_module, only : reaction_type 
   
   implicit none
   
-  type(option_type) :: option
   type(reaction_type) :: reaction
+  type(option_type) :: option
+  
   class(reaction_sandbox_base_type), pointer :: cur_sandbox  
 
   ! sandbox reactions
   cur_sandbox => sandbox_list
   do
     if (.not.associated(cur_sandbox)) exit
-    call cur_sandbox%init(reaction,option)
+    call cur_sandbox%Setup(reaction,option)
     cur_sandbox => cur_sandbox%next
   enddo 
 
@@ -72,12 +84,12 @@ end subroutine RSandboxSetup
 
 ! ************************************************************************** !
 !
-! RSandboxRead: Reads input deck for reaction sandbox parameters
+! RSandboxRead1: Reads input deck for reaction sandbox parameters
 ! author: Glenn Hammond
-! date: 11/08/12
+! date: 05/16/13
 !
 ! ************************************************************************** !
-subroutine RSandboxRead(input,option)
+subroutine RSandboxRead1(input,option)
 
   use Option_module
   use String_module
@@ -89,11 +101,33 @@ subroutine RSandboxRead(input,option)
   type(input_type) :: input
   type(option_type) :: option
 
+  call RSandboxRead(sandbox_list,input,option)
+
+end subroutine RSandboxRead1
+
+! ************************************************************************** !
+!
+! RSandboxRead: Reads input deck for reaction sandbox parameters
+! author: Glenn Hammond
+! date: 11/08/12
+!
+! ************************************************************************** !
+subroutine RSandboxRead2(local_sandbox_list,input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  
+  implicit none
+  
+  class(reaction_sandbox_base_type), pointer :: local_sandbox_list  
+  type(input_type) :: input
+  type(option_type) :: option
+
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   class(reaction_sandbox_base_type), pointer :: new_sandbox, cur_sandbox
-  
-  call RSandboxInit(option)
   
   nullify(new_sandbox)
   do 
@@ -108,6 +142,9 @@ subroutine RSandboxRead(input,option)
     select case(trim(word))
       case('CLM-CN')
         new_sandbox => CLM_CN_Create()
+      ! Add new cases statements for new reacton sandbox classes here.
+      case('EXAMPLE')
+        new_sandbox => EXAMPLECreate()
       case default
         option%io_buffer = 'CHEMISTRY,REACTION_SANDBOX keyword: ' // &
           trim(word) // ' not recognized.'
@@ -116,10 +153,10 @@ subroutine RSandboxRead(input,option)
     
     call new_sandbox%ReadInput(input,option)
     
-    if (.not.associated(sandbox_list)) then
-      sandbox_list => new_sandbox
+    if (.not.associated(local_sandbox_list)) then
+      local_sandbox_list => new_sandbox
     else
-      cur_sandbox => sandbox_list
+      cur_sandbox => local_sandbox_list
       do
         if (.not.associated(cur_sandbox%next)) exit
         cur_sandbox => cur_sandbox%next
@@ -128,7 +165,7 @@ subroutine RSandboxRead(input,option)
     endif
   enddo
   
-end subroutine RSandboxRead
+end subroutine RSandboxRead2
 
 ! ************************************************************************** !
 !
@@ -148,18 +185,12 @@ subroutine RSandboxSkipInput(input,option)
   
   type(input_type) :: input
   type(option_type) :: option
-
-  class(reaction_sandbox_base_type), pointer :: cur_sandbox
   
-  cur_sandbox => sandbox_list
-  do 
+  class(reaction_sandbox_base_type), pointer :: dummy_list
   
-    call InputReadFlotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-    call cur_sandbox%SkipInput(input,option)
-    cur_sandbox => cur_sandbox%next
-  enddo
+  nullify(dummy_list)
+  call RSandboxRead(dummy_list,input,option)
+  call RSandboxDestroy(dummy_list)
   
 end subroutine RSandboxSkipInput
 
@@ -208,27 +239,44 @@ end subroutine RSandbox
 
 ! ************************************************************************** !
 !
-! RSandboxDestroy: Destroys allocatable or pointer objects created in this 
-!                  module
+! RSandboxDestroy1: Destroys master sandbox list
+! author: Glenn Hammond
+! date: 05/16/13
+!
+! ************************************************************************** !
+subroutine RSandboxDestroy1()
+
+  implicit none
+
+  call RSandboxDestroy(sandbox_list)
+  
+end subroutine RSandboxDestroy1
+
+! ************************************************************************** !
+!
+! RSandboxDestroy2: Destroys arbitrary sandbox list
 ! author: Glenn Hammond
 ! date: 11/08/12
 !
 ! ************************************************************************** !
-subroutine RSandboxDestroy()
+subroutine RSandboxDestroy2(local_sandbox_list)
 
   implicit none
+
+  class(reaction_sandbox_base_type), pointer :: local_sandbox_list
 
   class(reaction_sandbox_base_type), pointer :: cur_sandbox, prev_sandbox
   
   ! sandbox reactions
-  cur_sandbox => sandbox_list
+  cur_sandbox => local_sandbox_list
   do
     if (.not.associated(cur_sandbox)) exit
     prev_sandbox => cur_sandbox%next
     call cur_sandbox%Destroy()
+    deallocate(cur_sandbox)
     cur_sandbox => prev_sandbox
   enddo  
 
-end subroutine RSandboxDestroy
+end subroutine RSandboxDestroy2
 
 end module Reaction_Sandbox_module
