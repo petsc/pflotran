@@ -56,17 +56,21 @@ contains
 subroutine RTTimeCut(realization)
  
   use Realization_class
+  use Option_module
   use Field_module
   use Global_module
+  use Secondary_Continuum_module, only : SecondaryRTTimeCut
  
   implicit none
   
   type(realization_type) :: realization
   type(field_type), pointer :: field
+  type(option_type), pointer :: option
   
   PetscErrorCode :: ierr
 
   field => realization%field
+  option => realization%option
  
   ! copy previous solution back to current solution
   call VecCopy(field%tran_yy,field%tran_xx,ierr)
@@ -86,6 +90,10 @@ subroutine RTTimeCut(realization)
   endif
 
   call RTUpdateTransportCoefs(realization)
+  
+  if (option%use_mc) then
+    call SecondaryRTTimeCut(realization)
+  endif
  
 end subroutine RTTimeCut
 

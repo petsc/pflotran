@@ -29,7 +29,8 @@ module Secondary_Continuum_module
             THSecHeatAuxVarCompute, &
             MphaseSecHeatAuxVarCompute, &
             SecondaryRTUpdateIterate, &
-            SecondaryRTUpdateTimestep
+            SecondaryRTUpdateTimestep, &
+            SecondaryRTTimeCut
 
 contains
 
@@ -430,6 +431,50 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
 !  write(option%fid_out,'("  Logarithmic grid spacing: delta = ",1pe12.4)') delta
     
 end subroutine SecondaryContinuumCalcLogSpacing
+
+! ************************************************************************** !
+!
+! SecondaryRTTimeCut: Resets secondary concentrations to previous time
+! step when there is a time cut
+! author: Satish Karra, LANL
+! date: 05/29/13
+!
+! ************************************************************************** !
+subroutine SecondaryRTTimeCut(realization)
+
+  use Realization_class
+  use Grid_module
+  use Reaction_Aux_module
+  
+  implicit none
+  type(realization_type) :: realization
+  type(reaction_type), pointer :: reaction
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  type(grid_type), pointer :: grid
+  
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: ngcells, ncomp
+  PetscInt :: cell, comp
+
+  reaction => realization%reaction
+  rt_sec_transport_vars => realization%patch%aux%SC_RT%sec_transport_vars
+  grid => realization%patch%grid  
+  
+  ncomp = reaction%naqcomp
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (realization%patch%imat(ghosted_id) <= 0) cycle
+    do comp = 1, ncomp
+      ngcells = rt_sec_transport_vars(local_id)%ncells
+      do cell = 1, ngcells
+        rt_sec_transport_vars(local_id)%updated_conc(comp,cell) = &
+          rt_sec_transport_vars(local_id)%sec_rt_auxvar(cell)%pri_molal(comp)
+      enddo
+    enddo
+  enddo
+ 
+end subroutine SecondaryRTTimeCut
 
 ! ************************************************************************** !
 !
@@ -1049,7 +1094,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
   ! Store the solution of the forward solve
   sec_transport_vars%r = rhs
-
+  
 !============== Numerical jacobian for coupling term ===========================
 
 
@@ -1195,7 +1240,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 
     call RTAuxVarStrip(rt_auxvar)
     sec_transport_vars%sec_jac = sec_jac_num 
-  
+
   endif
   
 
@@ -1260,25 +1305,25 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
-        sec_diffusion_coefficient = realization% &
-                                    material_property_array(1)%ptr% &
-                                    secondary_continuum_diff_coeff
-        sec_porosity = realization%material_property_array(1)%ptr% &
-                      secondary_continuum_porosity
+      sec_diffusion_coefficient = realization% &
+                                  material_property_array(1)%ptr% &
+                                  secondary_continuum_diff_coeff
+      sec_porosity = realization%material_property_array(1)%ptr% &
+                    secondary_continuum_porosity
 
-        call SecondaryRTAuxVarComputeMulti(&
-                                      rt_sec_transport_vars(local_id), &
-                                      global_aux_vars(local_id), &
-                                      reaction, &
-                                      option)              
+      call SecondaryRTAuxVarComputeMulti(&
+                                    rt_sec_transport_vars(local_id), &
+                                    global_aux_vars(local_id), &
+                                    reaction, &
+                                    option)              
  
-        call SecondaryRTCheckResidual(rt_sec_transport_vars(local_id), &
-                                      rt_aux_vars(local_id), &
-                                      global_aux_vars(local_id), &
-                                      reaction,sec_diffusion_coefficient, &
-                                      sec_porosity,option,inf_norm_sec)
+      call SecondaryRTCheckResidual(rt_sec_transport_vars(local_id), &
+                                    rt_aux_vars(local_id), &
+                                    global_aux_vars(local_id), &
+                                    reaction,sec_diffusion_coefficient, &
+                                    sec_porosity,option,inf_norm_sec)
                                       
-        max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                                                                   
+      max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                                                                   
     enddo 
     call MPI_Allreduce(max_inf_norm_sec,option%infnorm_res_sec,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
