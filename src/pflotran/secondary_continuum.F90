@@ -1146,7 +1146,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                       m*coeff_right_pert(ncomp,ncomp,i-1)
           rhs(i) = rhs(i) - m*rhs(i-1)
         enddo        
-      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
+        rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
       case default
         option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
                            'HINDMARSH or KEARST. For single component'// &
