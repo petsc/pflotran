@@ -738,15 +738,15 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
           dims(1) = temp_int
           length(1) = dims(1)
         endif
-           ! offset is zero-based
-           offset(1) = integer_count
-           length(1) = dims(1)
-           call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-           call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
-                offset, file_id, dataset_name, option%ioread_group_id, ierr)
-           !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
-                          !hdf5_err,memory_space_id,file_space_id,prop_id)   
-           call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
+        ! offset is zero-based
+        offset(1) = integer_count
+        length(1) = dims(1)
+        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+        call scorpio_read_same_sub_dataset(integer_buffer_i4, &
+                                           SCORPIO_INTEGER, rank_mpi, dims, &
+                                           offset, file_id, dataset_name, l&
+                                           option%ioread_group_id, ierr)
+        call PetscLogEventEnd(logging%event_h5dread_f,ierr)
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
@@ -762,17 +762,16 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
       dims(1) = temp_int
       length(1) = dims(1)
     endif
-    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
-       ! offset is zero-based
-       offset(1) = integer_count
-       length(1) = dims(1)
-       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-       call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
-                offset, file_id, dataset_name, option%ioread_group_id, ierr)
-       !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
-                      !hdf5_err,memory_space_id,file_space_id,prop_id)   
-       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
-    endif 
+    ! offset is zero-based
+    offset(1) = integer_count
+    length(1) = dims(1)
+    call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+    call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, &
+                                       rank_mpi, dims, & 
+             offset, file_id, dataset_name, option%ioread_group_id, ierr)
+    !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
+                   !hdf5_err,memory_space_id,file_space_id,prop_id)   
+    call PetscLogEventEnd(logging%event_h5dread_f,ierr)
     integer_count = integer_count + length(1)                  
   enddo
   deallocate(integer_buffer_i4)
