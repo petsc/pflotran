@@ -1725,7 +1725,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, pointer :: integer_array(:)
 
-  PetscBool :: grp_exits
+  PetscBool :: grp_exists
 
   option => realization%option
 
@@ -1788,8 +1788,14 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   integer_array = 0
   string = '/Regions/' // trim(region%name) // '/Face Ids' //CHAR(0)
   ! Check if the region dataset has "Face Ids" group
-  call h5lexists_f(grp_id2,string,grp_exits,hdf5_err)
-  if(grp_exits) then
+!geh: h5lexists will not work here because the grp_id2 is not defined, and
+!     even if file_id were used, it is a SCORPIO file handle, not a an HDF5 file
+!     handle.  SCORPIO does provide a function 'scorpio_group_exists', but this
+!     will fail when called with reference to the DATASET 'Face Ids'; it only
+!     works for groups.  Therefore, we need a function scorpio_dataset_exists().!     Commenting out for now.
+!  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
+  grp_exists = PETSC_TRUE !geh: remove when h5lexists_f is resolved.
+  if(grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,file_id,string, &
@@ -1865,8 +1871,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   integer_array = 0
   string = "Face Ids"
   ! Check if the region dataset has "Face Ids" group
-  call h5lexists_f(grp_id2,string,grp_exits,hdf5_err)
-  if(grp_exits) then
+  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
+  if(grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,grp_id2,string, &
