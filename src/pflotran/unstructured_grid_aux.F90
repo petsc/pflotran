@@ -59,13 +59,6 @@ module Unstructured_Grid_Aux_module
     type(point_type), pointer :: vertices(:)
     type(point_type), pointer :: face_centroid(:)
     PetscReal, pointer :: face_area(:)
-    ! Following are needed for geomechanics, sk, 05/30/2013
-    PetscInt, pointer :: cell_vertices_without_ghosted(:,:) ! vertices for cells local to a process (ghosted cells not included)
-    PetscInt, pointer :: vertex_ids_natural_without_ghosted(:) ! natural vertex ids for cells local to a process (without ghosted cells)
-    PetscInt :: num_vertices_local_with_border ! This includes number of border nodes shared by neighboring elements on different processes
-    type(point_type), pointer :: vertices_with_border(:) ! vertices for local elements without ghosted elements
-    PetscInt, pointer :: cell_type_without_ghosted(:) ! cell type without ghosted elements
-    Petscint, pointer :: cell_ids_natural_without_ghosted(:) ! natural cell ids without ghosted cells
   end type unstructured_grid_type
   
   type, public :: unstructured_explicit_type
@@ -229,13 +222,6 @@ function UGridCreate()
   nullify(unstructured_grid%connection_to_face)
   nullify(unstructured_grid%face_centroid)
   nullify(unstructured_grid%face_area)
-  
-  unstructured_grid%num_vertices_local_with_border = 0
-  nullify(unstructured_grid%cell_vertices_without_ghosted)
-  nullify(unstructured_grid%vertex_ids_natural_without_ghosted)
-  nullify(unstructured_grid%vertices_with_border)
-  nullify(unstructured_grid%cell_type_without_ghosted) 
-  nullify(unstructured_grid%cell_ids_natural_without_ghosted)
   
   UGridCreate => unstructured_grid
   
@@ -1568,14 +1554,6 @@ subroutine UGridDestroy(unstructured_grid)
     deallocate(unstructured_grid%face_centroid)
   nullify(unstructured_grid%face_centroid)  
   call DeallocateArray(unstructured_grid%face_area)
-  
-  call DeallocateArray(unstructured_grid%cell_vertices_without_ghosted)
-  call DeallocateArray(unstructured_grid%vertex_ids_natural_without_ghosted)
-  if (associated(unstructured_grid%vertices_with_border))  &
-    deallocate(unstructured_grid%vertices_with_border)
-  nullify(unstructured_grid%vertices_with_border)
-  call DeallocateArray(unstructured_grid%cell_type_without_ghosted)
-  call DeallocateArray(unstructured_grid%cell_ids_natural_without_ghosted)
   
   deallocate(unstructured_grid)
   nullify(unstructured_grid)

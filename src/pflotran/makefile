@@ -11,6 +11,10 @@ ifdef geomech
   MYFLAGS += -DGEOMECH
 endif
 
+ifdef satish
+  MYFLAGS += -DGEOMECH_DEBUG
+endif
+
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
 endif

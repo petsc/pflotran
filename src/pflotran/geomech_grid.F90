@@ -262,7 +262,7 @@ end subroutine GeomechGridRead
 ! CopySubsurfaceGridtoGeomechGrid: Subroutine to copy subsurface grid info.
 ! to geomechanics grid
 ! author: Satish Karra, LANL
-! date: 05/23/13
+! date: 05/30/13
 !
 ! ************************************************************************** !
 subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
@@ -276,36 +276,170 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   type(unstructured_grid_type), pointer      :: ugrid
   type(geomech_Grid_type), pointer           :: geomech_grid
   type(option_type), pointer                 :: option
+  PetscInt                                   :: local_id
+  PetscInt                                   :: vertex_count
+  PetscInt                                   :: ivertex
+  PetscInt                                   :: vertex_id
+  PetscInt                                   :: count
+  PetscInt, allocatable                      :: int_array(:)
+  PetscInt, allocatable                      :: int_array2(:)
+  PetscInt, allocatable                      :: int_array3(:)
+  PetscInt, allocatable                      :: int_array4(:)
+  PetscErrorCode                             :: ierr
+  character(len=MAXSTRINGLENGTH)             :: string, string1
   
-  if (option%myrank == option%io_rank) then
-    write(*,*),'GEOMECHANICS: Subsurface unstructured grid will be used for '// &
-               'geomechanics.'
-  endif  
+  call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
+                  'be used for geomechanics.')
+  
+#ifdef GEOMECH_DEBUG
+  call printMsg(option,'Copying unstructured grid to geomechanics grid')
+#endif
   
   geomech_grid%global_offset = ugrid%global_offset
   geomech_grid%nmax_elem = ugrid%nmax
   geomech_grid%nlmax_elem = ugrid%nlmax
   geomech_grid%nmax_node = ugrid%num_vertices_global
-  geomech_grid%nlmax_node = ugrid%num_vertices_local
-  allocate(geomech_grid%elem_ids_natural(size(ugrid%cell_ids_natural)))
-  geomech_grid%elem_ids_natural = ugrid%cell_ids_natural
+  
+  allocate(geomech_grid%elem_ids_natural(geomech_grid%nlmax_elem))
+  do local_id = 1, geomech_grid%nlmax_elem
+    geomech_grid%elem_ids_natural(local_id) = ugrid%cell_ids_natural(local_id)
+  enddo
+  
   allocate(geomech_grid%elem_ids_petsc(size(ugrid%cell_ids_petsc)))
   geomech_grid%elem_ids_petsc = ugrid%cell_ids_petsc
   geomech_grid%ao_natural_to_petsc = ugrid%ao_natural_to_petsc
   geomech_grid%max_ndual_per_elem = ugrid%max_ndual_per_cell
   geomech_grid%max_nnode_per_elem = ugrid%max_nvert_per_cell
   geomech_grid%max_elem_sharing_a_node = ugrid%max_cells_sharing_a_vertex
-  allocate(geomech_grid%elem_type(size(ugrid%cell_type_without_ghosted)))
-  geomech_grid%elem_type = ugrid%cell_type_without_ghosted
-  allocate(geomech_grid%elem_nodes &
-            (size(ugrid%cell_vertices_without_ghosted,ONE_INTEGER), &
-             size(ugrid%cell_vertices_without_ghosted,TWO_INTEGER)))
-  allocate(geomech_grid%nodes(size(ugrid%vertices_with_border)))
-  geomech_grid%nodes = ugrid%vertices_with_border
-  geomech_grid%elem_nodes = ugrid%cell_vertices_without_ghosted
-  allocate(geomech_grid%node_ids_natural &
-            (size(ugrid%vertex_ids_natural_without_ghosted)))
-  geomech_grid%node_ids_natural = ugrid%vertex_ids_natural_without_ghosted
+
+#ifdef GEOMECH_DEBUG
+  call printMsg(option,'Removing ghosted elements (cells)')
+#endif
+  
+  allocate(geomech_grid%elem_type(geomech_grid%nlmax_elem))
+  do local_id = 1, geomech_grid%nlmax_elem
+    geomech_grid%elem_type(local_id) = ugrid%cell_type(local_id)
+  enddo
+
+#ifdef GEOMECH_DEBUG
+  call printMsg(option,'Reordering nodes (vertices)')
+#endif
+
+  ! Read all the cells including ghosted ones and remove the ghosted ones
+  ! Find the nodes which are on the local cells
+  vertex_count = 0
+  ! First calculate number of nodes on local domain (without ghosted elements)
+  do local_id = 1, geomech_grid%nlmax_elem
+    vertex_count = vertex_count + ugrid%cell_vertices(0,local_id)
+  enddo
+  
+  count = 0
+  allocate(int_array(vertex_count))
+  do local_id = 1, geomech_grid%nlmax_elem
+    do ivertex = 1, ugrid%cell_vertices(0,local_id)
+      count = count + 1
+      int_array(count) = ugrid%cell_vertices(ivertex,local_id)
+    enddo
+  enddo
+
+  ! Sort the vertex ids
+  allocate(int_array2(vertex_count))
+  do ivertex = 1, vertex_count
+    int_array2(ivertex) = ivertex 
+  enddo
+  int_array2 = int_array2 - 1
+  call PetscSortIntWithPermutation(vertex_count,int_array,int_array2,ierr)
+  int_array2 = int_array2+1
+    
+  ! Remove duplicates
+  allocate(int_array3(vertex_count))
+  allocate(int_array4(vertex_count))
+  int_array3 = 0
+  int_array4 = 0
+  int_array3(1) = int_array(int_array2(1))
+  count = 1
+  int_array4(int_array2(1)) = count
+  do ivertex = 2, vertex_count
+    vertex_id = int_array(int_array2(ivertex))
+    if (vertex_id > int_array3(count)) then
+      count = count + 1
+      int_array3(count) = vertex_id
+    endif
+    int_array4(int_array2(ivertex)) = count
+  enddo
+  vertex_count = count
+  deallocate(int_array)
+  
+  allocate(geomech_grid%node_ids_natural(vertex_count))
+  do ivertex = 1, vertex_count
+    geomech_grid%node_ids_natural(ivertex) = ugrid% &
+      vertex_ids_natural(int_array3(ivertex))  
+  enddo
+
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_node_ids_natural' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do local_id = 1, vertex_count
+    write(86,'(i5)') geomech_grid%node_ids_natural(local_id)
+  enddo  
+  close(86)
+#endif 
+
+  allocate(geomech_grid%elem_nodes( &
+            0:geomech_grid%max_nnode_per_elem,geomech_grid%nlmax_elem))
+  geomech_grid%elem_nodes = 0
+  
+  count = 0
+  do local_id = 1, geomech_grid%nlmax_elem
+    geomech_grid%elem_nodes(0,local_id) = ugrid%cell_vertices(0,local_id)
+    do ivertex = 1, geomech_grid%elem_nodes(0,local_id)
+      count = count + 1     
+      geomech_grid%elem_nodes(ivertex,local_id) = int_array4(count)
+    enddo
+  enddo
+  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_elem_nodes' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do local_id = 1, geomech_grid%nlmax_elem
+    write(86,'(i5)') geomech_grid%elem_nodes(0,local_id)
+    do ivertex = 1, geomech_grid%max_nnode_per_elem
+      write(86,'(i5)') geomech_grid%elem_nodes(ivertex,local_id)
+    enddo
+  enddo  
+  close(86)
+#endif   
+  
+  deallocate(int_array2)
+  deallocate(int_array4)
+    
+  allocate(geomech_grid%nodes(vertex_count))
+  do ivertex = 1, vertex_count
+    geomech_grid%nodes(ivertex)%id = geomech_grid%node_ids_natural(ivertex)
+    geomech_grid%nodes(ivertex)%x = ugrid%vertices(int_array3(ivertex))%x
+    geomech_grid%nodes(ivertex)%y = ugrid%vertices(int_array3(ivertex))%y
+    geomech_grid%nodes(ivertex)%z = ugrid%vertices(int_array3(ivertex))%z    
+  enddo
+  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_node_coordinates' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ivertex = 1, vertex_count
+    write(86,'(i5)') geomech_grid%nodes(ivertex)%id
+    write(86,'(1pe12.4)') geomech_grid%nodes(ivertex)%x
+    write(86,'(1pe12.4)') geomech_grid%nodes(ivertex)%y
+    write(86,'(1pe12.4)') geomech_grid%nodes(ivertex)%z
+  enddo  
+  close(86)
+#endif  
+
+  geomech_grid%nlmax_node = vertex_count
+
+  deallocate(int_array3)
+
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
