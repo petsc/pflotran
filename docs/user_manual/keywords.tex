@@ -21,6 +21,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
 \hyperlink{target_stat}{\bf COMPUTE\_STATISTICS} & \\
+\hyperlink{target_co2dat}{\bf CO2\_DATABASE} & \\
 \hyperlink{target_constraint}{\bf CONSTRAINT} & transport (optional)\\
 \hyperlink{target_datset}{\bf DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
@@ -986,6 +987,7 @@ END
 \newpage
 \protect\hypertarget{target_stat}{}
 
+
 \subsection{Keyword: COMPUTE\_STATISTICS}
 
 \noindent
@@ -1009,6 +1011,27 @@ COMPUTE_STATISTICS
 \end{mdframed}
 
 \hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_co2dat}{}
+
+
+\subsection{Keyword: CO2\_DATABASE}
+
+\noindent
+{\bf Description:}
+CO2\_DATABASE  is for specifying the path to CO$_2$ database file. This keyword is required for MPHASE, FLASH2 and IMMIS modes.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item [CO2\_DATABASE] \{\tt Path/Database\_Name\}
+\end{deflist}
+
+\hyperlink{target_key}{\return}
+
 
 %========================================================================
 

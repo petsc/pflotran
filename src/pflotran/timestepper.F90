@@ -669,6 +669,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
         endif
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag,surf_plot_flag)
+        surf_plot_flag = plot_flag
 
         ! Update subsurface pressure of top soil layer for surface flow model
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
@@ -906,6 +907,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 !    endif
 #ifdef SURFACE_FLOW
     !plot_flag_surf = plot_flag
+    surf_plot_flag = plot_flag
     !transient_plot_flag_surf = transient_plot_flag
 #endif
     call Output(realization,plot_flag,transient_plot_flag)
@@ -4038,9 +4040,10 @@ subroutine StepperUpdateSolution(realization)
     call StepperUpdateTransportSolution(realization)
 
 #ifdef SURFACE_FLOW
-  call SurfRealizUpdate(surf_realization)
-  if (surf_realization%option%nsurfflowdof > 0) &
+  if(surf_realization%option%nsurfflowdof > 0) then
+    call SurfRealizUpdate(surf_realization)
     call StepperUpdateSurfaceFlowSolution(surf_realization)
+  endif
 #endif
     
 end subroutine StepperUpdateSolution
