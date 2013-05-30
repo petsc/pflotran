@@ -295,13 +295,17 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%max_ndual_per_elem = ugrid%max_ndual_per_cell
   geomech_grid%max_nnode_per_elem = ugrid%max_nvert_per_cell
   geomech_grid%max_elem_sharing_a_node = ugrid%max_cells_sharing_a_vertex
-  allocate(geomech_grid%elem_type(size(ugrid%cell_type)))
-  geomech_grid%elem_type = ugrid%cell_type
-  allocate(geomech_grid%elem_nodes(size(ugrid%cell_vertices,ONE_INTEGER), &
-           size(ugrid%cell_vertices,TWO_INTEGER)))
-  allocate(geomech_grid%nodes(size(ugrid%vertices)))
-  geomech_grid%nodes = ugrid%vertices
-  geomech_grid%elem_nodes = ugrid%cell_vertices
+  allocate(geomech_grid%elem_type(size(ugrid%cell_type_without_ghosted)))
+  geomech_grid%elem_type = ugrid%cell_type_without_ghosted
+  allocate(geomech_grid%elem_nodes &
+            (size(ugrid%cell_vertices_without_ghosted,ONE_INTEGER), &
+             size(ugrid%cell_vertices_without_ghosted,TWO_INTEGER)))
+  allocate(geomech_grid%nodes(size(ugrid%vertices_with_border)))
+  geomech_grid%nodes = ugrid%vertices_with_border
+  geomech_grid%elem_nodes = ugrid%cell_vertices_without_ghosted
+  allocate(geomech_grid%node_ids_natural &
+            (size(ugrid%vertex_ids_natural_without_ghosted)))
+  geomech_grid%node_ids_natural = ugrid%vertex_ids_natural_without_ghosted
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
