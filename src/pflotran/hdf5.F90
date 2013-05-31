@@ -744,7 +744,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
         call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
         call scorpio_read_same_sub_dataset(integer_buffer_i4, &
                                            SCORPIO_INTEGER, rank_mpi, dims, &
-                                           offset, file_id, dataset_name, l&
+                                           offset, file_id, dataset_name, &
                                            option%ioread_group_id, ierr)
         call PetscLogEventEnd(logging%event_h5dread_f,ierr)
         prev_integer_count = integer_count
