@@ -9,6 +9,8 @@ module Dataset_Base_class
 #include "definitions.h"
 
   type, public :: dataset_base_type
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXSTRINGLENGTH) :: filename
     type(time_storage_type), pointer :: time_storage ! stores transient times
     PetscInt :: rank  ! size of dims(:)
     PetscInt, pointer :: dims(:)    ! dimensions of arrays (excludes time)
@@ -19,6 +21,7 @@ module Dataset_Base_class
     PetscReal, pointer :: rbuffer(:)
     PetscInt :: buffer_slice_offset ! index of the first time slice in the buffer
     PetscInt :: buffer_nslice ! # of time slices stored in buffer
+    class(dataset_base_type), pointer :: next
 !  contains
 !    procedure, public :: Init => DatasetBaseInit
 !    procedure, public :: InterpolateTime => DatasetBaseInterpolateTime
@@ -50,6 +53,8 @@ subroutine DatasetBaseInit(this)
   
   class(dataset_base_type) :: this
   
+  this%name = ''
+  this%filename = ''
   this%rank = 0
   this%data_type = 0
   nullify(this%time_storage)
@@ -60,6 +65,7 @@ subroutine DatasetBaseInit(this)
   nullify(this%rbuffer)
   this%buffer_slice_offset = 0
   this%buffer_nslice = 0
+  nullify(this%next)
     
 end subroutine DatasetBaseInit
 
@@ -268,6 +274,78 @@ subroutine DatasetBaseGetTimes(this, option, max_sim_time, time_array)
   endif
  
 end subroutine DatasetBaseGetTimes
+
+! ************************************************************************** !
+!
+! DatasetBaseAddToList: Adds a dataset to linked list
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine DatasetBaseAddToList(dataset,list)
+
+  implicit none
+  
+  class(dataset_base_type), pointer :: dataset
+  class(dataset_base_type), pointer :: list
+
+  class(dataset_base_type), pointer :: cur_dataset
+  
+  if (associated(list)) then
+    cur_dataset => list
+    ! loop to end of list
+    do
+      if (.not.associated(cur_dataset%next)) exit
+      cur_dataset => cur_dataset%next
+    enddo
+    cur_dataset%next => dataset
+  else
+    list => dataset
+  endif
+  
+end subroutine DatasetBaseAddToList
+
+! ************************************************************************** !
+!
+! DatasetBaseGetPointer: Returns the pointer to the dataset named "name"
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+function DatasetBaseGetPointer(dataset_list, dataset_name, debug_string, &
+                               option)
+
+  use Option_module
+  use String_module
+  
+  class(dataset_base_type), pointer :: dataset_list
+  character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: debug_string
+  type(option_type) :: option
+
+  class(dataset_base_type), pointer :: DatasetBaseGetPointer
+  PetscBool :: found
+  class(dataset_base_type), pointer :: cur_dataset
+
+  found = PETSC_FALSE
+  cur_dataset => dataset_list
+  do 
+    if (.not.associated(cur_dataset)) exit
+    if (StringCompare(dataset_name, &
+                      cur_dataset%name,MAXWORDLENGTH)) then
+      found = PETSC_TRUE
+      DatasetBaseGetPointer => cur_dataset
+      return
+    endif
+    cur_dataset => cur_dataset%next
+  enddo
+  if (.not.found) then
+    option%io_buffer = 'Dataset "' // trim(dataset_name) // '" in "' // &
+             trim(debug_string) // '" not found among available datasets.'
+    call printErrMsgByRank(option)    
+  endif
+
+end function DatasetBaseGetPointer
 
 ! ************************************************************************** !
 !
