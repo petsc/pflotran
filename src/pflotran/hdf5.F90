@@ -1752,11 +1752,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
-          file_id, ierr)
-  string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)
+  call scorpio_open_file(filename, option%ioread_group_id, &
+                         SCORPIO_FILE_READONLY, file_id, ierr)
 
   allocate(indices(grid%nlmax))
   ! Read Cell Ids  
@@ -1764,8 +1761,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,file_id,string,ZERO_INTEGER,indices, &
-                                    num_indices)
+  call HDF5MapLocalToNaturalIndices(grid,option,file_id,string,ZERO_INTEGER, &
+                                    indices,num_indices)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
@@ -1778,7 +1775,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! convert cell ids from natural to local
   call PetscLogEventBegin(logging%event_hash_map,ierr)
   do i=1,num_indices
-    integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
+    integer_array(i) = &
+      grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
   enddo
   call PetscLogEventEnd(logging%event_hash_map,ierr)
   region%cell_ids => integer_array
@@ -1847,8 +1845,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,ZERO_INTEGER,indices, &
-                                    num_indices)
+  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,ZERO_INTEGER, &
+                                    indices,num_indices)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = "Cell Ids"
