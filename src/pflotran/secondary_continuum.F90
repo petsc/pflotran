@@ -29,7 +29,8 @@ module Secondary_Continuum_module
             THSecHeatAuxVarCompute, &
             MphaseSecHeatAuxVarCompute, &
             SecondaryRTUpdateIterate, &
-            SecondaryRTUpdateTimestep
+            SecondaryRTUpdateTimestep, &
+            SecondaryRTTimeCut
 
 contains
 
@@ -62,6 +63,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   PetscReal :: outer_spacing, matrix_block_size
   PetscReal :: grid_spacing(nmat)
   PetscBool :: log_spacing
+  PetscReal :: sum
 
   PetscInt, save :: icall
 
@@ -282,6 +284,28 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
                         
   end select
   
+  
+  sum = 0.d0
+  do m = 1,nmat
+    if (volm(m)/vm0 > 1.d0) then
+      print *, 'Error: volume fraction for cell', m, 'is greater than 1.'
+      stop
+    else 
+      sum = sum + volm(m)/vm0
+    endif
+  enddo
+  
+  if (icall /= 2 .and. OptionPrintToFile(Option)) then
+    icall = 2
+    write(option%fid_out,'(/,"sum of volume fractions:",1x,1pe12.4)') sum
+  endif
+  
+  if (abs(sum - 1.d0) > 1.d-6) then
+    option%io_buffer = 'Error: Sum of the volume fractions of the' // &
+                       ' secondary cells is not equal to 1.'
+    call printErrMsg(option)
+  endif
+  
 end subroutine SecondaryContinuumType
 
 ! ************************************************************************** !
@@ -378,7 +402,7 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
       call printErrMsg(option)
   endif
   
-  delta = 0.85d0
+  delta = 0.99d0
   
   do i = 1, maxit
     F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells-1) - &
@@ -389,16 +413,68 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
     if ((abs(F) < tol)) exit
     delta = delta_new
     if (delta < 0.d0) delta = 0.5d0
-    if (delta > 1.d0) delta = 0.9d0
+!   if (delta > 1.d0) delta = 0.9d0
   enddo
+  
+  if (i == maxit) then
+     option%io_buffer = 'Log Grid spacing solution has not converged' // &
+                        ' with given fracture values.'
+     call printErrMsg(option)    
+  endif
 
   inner_grid_size = outer_grid_size/delta**(sec_num_cells - 1)
   
   do i = 1, sec_num_cells
     grid_spacing(i) = inner_grid_size*delta**(i-1)
   enddo
+
+!  write(option%fid_out,'("  Logarithmic grid spacing: delta = ",1pe12.4)') delta
     
 end subroutine SecondaryContinuumCalcLogSpacing
+
+! ************************************************************************** !
+!
+! SecondaryRTTimeCut: Resets secondary concentrations to previous time
+! step when there is a time cut
+! author: Satish Karra, LANL
+! date: 05/29/13
+!
+! ************************************************************************** !
+subroutine SecondaryRTTimeCut(realization)
+
+  use Realization_class
+  use Grid_module
+  use Reaction_Aux_module
+  
+  implicit none
+  type(realization_type) :: realization
+  type(reaction_type), pointer :: reaction
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  type(grid_type), pointer :: grid
+  
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: ngcells, ncomp
+  PetscInt :: cell, comp
+
+  reaction => realization%reaction
+  rt_sec_transport_vars => realization%patch%aux%SC_RT%sec_transport_vars
+  grid => realization%patch%grid  
+  
+  ncomp = reaction%naqcomp
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (realization%patch%imat(ghosted_id) <= 0) cycle
+    do comp = 1, ncomp
+      ngcells = rt_sec_transport_vars(local_id)%ncells
+      do cell = 1, ngcells
+        rt_sec_transport_vars(local_id)%updated_conc(comp,cell) = &
+          rt_sec_transport_vars(local_id)%sec_rt_auxvar(cell)%pri_molal(comp)
+      enddo
+    enddo
+  enddo
+ 
+end subroutine SecondaryRTTimeCut
 
 ! ************************************************************************** !
 !
@@ -686,7 +762,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
   ncomp = reaction%naqcomp
-
+  
   do j = 1, ncomp
     do i = 1, ngcells
       total_prev(j,i) = sec_transport_vars%sec_rt_auxvar(i)%total(j,1)
@@ -859,25 +935,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                         
   rhs = -res   
   
-  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
-  do i = 1, ncomp
-    do j = 1, ncomp
-      D_M(i,j) = coeff_diag(i,j,ngcells)
-      if (j == i) then
-        identity(i,j) = 1.d0
-      else
-        identity(i,j) = 0.d0
-      endif
-    enddo
-  enddo
-  
-  ! Find the inverse of D_M
-  call ludcmp(D_M,ncomp,indx,d) 
-  do j = 1, ncomp
-    call lubksb(D_M,ncomp,indx,identity(1,j))
-  enddo  
-  inv_D_M = identity          
-          
   if (reaction%use_log_formulation) then
   ! scale the jacobian by concentrations
     i = 1
@@ -935,12 +992,32 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                     m*coeff_right(ncomp,ncomp,i-1)
         rhs(i) = rhs(i) - m*rhs(i-1)
       enddo        
+      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
     case default
       option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
                          'HINDMARSH or KEARST. For single component'// &
                          'chemistry THOMAS can be used.'
       call printErrMsg(option)  
-    end select
+  end select
+    
+  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
+  do i = 1, ncomp
+    do j = 1, ncomp
+      D_M(i,j) = coeff_diag(i,j,ngcells)
+      if (j == i) then
+        identity(i,j) = 1.d0
+      else
+        identity(i,j) = 0.d0
+      endif
+    enddo
+  enddo
+  
+  ! Find the inverse of D_M
+  call ludcmp(D_M,ncomp,indx,d) 
+  do j = 1, ncomp
+    call lubksb(D_M,ncomp,indx,identity(1,j))
+  enddo  
+  inv_D_M = identity      
   
   ! Update the secondary concentrations
   do i = 1, ncomp
@@ -972,31 +1049,34 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   ! Calculate the dervative of outer matrix node total with respect to the 
   ! primary node concentration
   dPsisec_dCprim = dCsec_dCprim       ! dimensionless
-  do icplx = 1, reaction%neqcplx
-    ncompeq = reaction%eqcplxspecid(0,icplx)
-    do j = 1, ncompeq
-      jcomp = reaction%eqcplxspecid(j,icplx)
-      do l = 1, ncompeq
-        lcomp = reaction%eqcplxspecid(l,icplx)
-        do k = 1, ncompeq
-          kcomp = reaction%eqcplxspecid(k,icplx)
-          dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
-                                        reaction%eqcplxstoich(j,icplx)* &
-                                        reaction%eqcplxstoich(k,icplx)* &
-                                        dCsec_dCprim(kcomp,lcomp)* &
-                                        sec_sec_molal_M(icplx)/ &
-                                        conc_current_M(kcomp)
-        enddo
-      enddo      
+  
+  if (reaction%neqcplx > 0) then
+    do icplx = 1, reaction%neqcplx
+      ncompeq = reaction%eqcplxspecid(0,icplx)
+      do j = 1, ncompeq
+        jcomp = reaction%eqcplxspecid(j,icplx)
+        do l = 1, ncompeq
+          lcomp = reaction%eqcplxspecid(l,icplx)
+          do k = 1, ncompeq
+            kcomp = reaction%eqcplxspecid(k,icplx)
+            dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
+                                          reaction%eqcplxstoich(j,icplx)* &
+                                          reaction%eqcplxstoich(k,icplx)* &
+                                          dCsec_dCprim(kcomp,lcomp)* &
+                                          sec_sec_molal_M(icplx)/ &
+                                          conc_current_M(kcomp)
+          enddo
+        enddo      
+      enddo
     enddo
-  enddo
+  endif
   
   dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3 ! in kg/L
             
   ! Calculate the coupling term
   res_transport = pordiff/dm_plus(ngcells)*area_fm* &
                   (total_current_M - total_primary_node)*prim_vol*1.d3 ! in mol/s
-                         
+                                           
   ! Calculate the jacobian contribution due to coupling term
   sec_jac = area_fm*pordiff/dm_plus(ngcells)*(dPsisec_dCprim - dtotal_prim)* &
             prim_vol*1.d3 ! in kg water/s
@@ -1114,6 +1194,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                       m*coeff_right_pert(ncomp,ncomp,i-1)
           rhs(i) = rhs(i) - m*rhs(i-1)
         enddo        
+        rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
       case default
         option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
                            'HINDMARSH or KEARST. For single component'// &
@@ -1159,7 +1240,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 
     call RTAuxVarStrip(rt_auxvar)
     sec_transport_vars%sec_jac = sec_jac_num 
-  
+
   endif
   
 
@@ -1221,32 +1302,32 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
   max_inf_norm_sec = 0.d0
   
   if (option%use_mc) then
-    do ghosted_id = 1, grid%ngmax
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
-        sec_diffusion_coefficient = realization% &
-                                    material_property_array(1)%ptr% &
-                                    secondary_continuum_diff_coeff
-        sec_porosity = realization%material_property_array(1)%ptr% &
-                      secondary_continuum_porosity
+      sec_diffusion_coefficient = realization% &
+                                  material_property_array(1)%ptr% &
+                                  secondary_continuum_diff_coeff
+      sec_porosity = realization%material_property_array(1)%ptr% &
+                    secondary_continuum_porosity
 
-        call SecondaryRTAuxVarComputeMulti(&
-                                      rt_sec_transport_vars(ghosted_id), &
-                                      global_aux_vars(ghosted_id), &
-                                      reaction, &
-                                      option)              
+      call SecondaryRTAuxVarComputeMulti(&
+                                    rt_sec_transport_vars(local_id), &
+                                    global_aux_vars(local_id), &
+                                    reaction, &
+                                    option)              
  
-        call SecondaryRTCheckResidual(rt_sec_transport_vars(ghosted_id), &
-                                      rt_aux_vars(ghosted_id), &
-                                      global_aux_vars(ghosted_id), &
-                                      reaction,sec_diffusion_coefficient, &
-                                      sec_porosity,option,inf_norm_sec)
+      call SecondaryRTCheckResidual(rt_sec_transport_vars(local_id), &
+                                    rt_aux_vars(local_id), &
+                                    global_aux_vars(local_id), &
+                                    reaction,sec_diffusion_coefficient, &
+                                    sec_porosity,option,inf_norm_sec)
                                       
-        max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                               
+      max_inf_norm_sec = max(max_inf_norm_sec,inf_norm_sec)                                                                   
     enddo 
     call MPI_Allreduce(max_inf_norm_sec,option%infnorm_res_sec,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
-    
   endif
   
       
@@ -1546,7 +1627,6 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
     case(2)
       call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
     case(3)
-      rhs(ngcells) = rhs(ngcells)/coeff_diag(ncomp,ncomp,ngcells)
       do i = ngcells-1, 1, -1
         rhs(i) = (rhs(i) - coeff_right(ncomp,ncomp,i)*rhs(i+1))/ &
                              coeff_diag(ncomp,ncomp,i)

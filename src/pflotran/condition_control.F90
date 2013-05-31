@@ -821,7 +821,7 @@ subroutine CondControlAssignTranInitCond(realization)
           string2 = trim(string2) // &
             '" has zero concentration (' // &
             trim(adjustl(string)) // ').'
-        call printMsg(option)
+        call printMsg(option,string2)
       endif
     enddo
     option%io_buffer = 'Free ion concentations must be positive.  Try ' // &

@@ -3077,7 +3077,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   PetscInt :: iphase
-  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id, local_id
 
   PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
@@ -3141,7 +3141,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(LIQUID_ENERGY)
             value = patch%aux%THC%aux_vars(ghosted_id)%u
           case(SECONDARY_TEMPERATURE)
-            value = patch%aux%SC_heat%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
+            local_id = grid%nG2L(ghosted_id)
+            value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
         end select
      else if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -3176,7 +3177,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(LIQUID_ENERGY)
             value = patch%aux%TH%aux_vars(ghosted_id)%u
           case(SECONDARY_TEMPERATURE)
-            value = patch%aux%SC_heat%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
+            local_id = grid%nG2L(ghosted_id)
+            value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
         end select
      else if (associated(patch%aux%THMC)) then
         select case(ivar)
@@ -3306,7 +3308,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(SC_FUGA_COEFF)
             value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
           case(SECONDARY_TEMPERATURE)
-            value = patch%aux%SC_heat%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
+            local_id = grid%nG2L(ghosted_id)
+            value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
         end select
       else if (associated(patch%aux%Immis)) then
         select case(ivar)
@@ -3630,10 +3633,12 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+      local_id = grid%nG2L(ghosted_id)
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%pri_molal(isubvar1)
     case(SEC_MIN_VOLFRAC)
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+      local_id = grid%nG2L(ghosted_id)        
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
      case default
       write(option%io_buffer, &

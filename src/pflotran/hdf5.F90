@@ -738,15 +738,15 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
           dims(1) = temp_int
           length(1) = dims(1)
         endif
-           ! offset is zero-based
-           offset(1) = integer_count
-           length(1) = dims(1)
-           call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-           call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
-                offset, file_id, dataset_name, option%ioread_group_id, ierr)
-           !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
-                          !hdf5_err,memory_space_id,file_space_id,prop_id)   
-           call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
+        ! offset is zero-based
+        offset(1) = integer_count
+        length(1) = dims(1)
+        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+        call scorpio_read_same_sub_dataset(integer_buffer_i4, &
+                                           SCORPIO_INTEGER, rank_mpi, dims, &
+                                           offset, file_id, dataset_name, &
+                                           option%ioread_group_id, ierr)
+        call PetscLogEventEnd(logging%event_h5dread_f,ierr)
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
@@ -762,17 +762,16 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
       dims(1) = temp_int
       length(1) = dims(1)
     endif
-    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
-       ! offset is zero-based
-       offset(1) = integer_count
-       length(1) = dims(1)
-       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-       call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, rank_mpi, dims, & 
-                offset, file_id, dataset_name, option%ioread_group_id, ierr)
-       !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
-                      !hdf5_err,memory_space_id,file_space_id,prop_id)   
-       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
-    endif 
+    ! offset is zero-based
+    offset(1) = integer_count
+    length(1) = dims(1)
+    call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+    call scorpio_read_same_sub_dataset(integer_buffer_i4, SCORPIO_INTEGER, &
+                                       rank_mpi, dims, & 
+             offset, file_id, dataset_name, option%ioread_group_id, ierr)
+    !call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
+                   !hdf5_err,memory_space_id,file_space_id,prop_id)   
+    call PetscLogEventEnd(logging%event_h5dread_f,ierr)
     integer_count = integer_count + length(1)                  
   enddo
   deallocate(integer_buffer_i4)
@@ -1725,7 +1724,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, pointer :: integer_array(:)
 
-  PetscBool :: grp_exits
+  PetscBool :: grp_exists
 
   option => realization%option
 
@@ -1753,11 +1752,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   endif
 
   filename = trim(filename) // CHAR(0)
-  call scorpio_open_file(filename, option%ioread_group_id, SCORPIO_FILE_READONLY, &
-          file_id, ierr)
-  string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)
+  call scorpio_open_file(filename, option%ioread_group_id, &
+                         SCORPIO_FILE_READONLY, file_id, ierr)
 
   allocate(indices(grid%nlmax))
   ! Read Cell Ids  
@@ -1765,8 +1761,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,file_id,string,ZERO_INTEGER,indices, &
-                                    num_indices)
+  call HDF5MapLocalToNaturalIndices(grid,option,file_id,string,ZERO_INTEGER, &
+                                    indices,num_indices)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
@@ -1779,7 +1775,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! convert cell ids from natural to local
   call PetscLogEventBegin(logging%event_hash_map,ierr)
   do i=1,num_indices
-    integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
+    integer_array(i) = &
+      grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
   enddo
   call PetscLogEventEnd(logging%event_hash_map,ierr)
   region%cell_ids => integer_array
@@ -1788,8 +1785,14 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   integer_array = 0
   string = '/Regions/' // trim(region%name) // '/Face Ids' //CHAR(0)
   ! Check if the region dataset has "Face Ids" group
-  call h5lexists_f(grp_id2,string,grp_exits,hdf5_err)
-  if(grp_exits) then
+!geh: h5lexists will not work here because the grp_id2 is not defined, and
+!     even if file_id were used, it is a SCORPIO file handle, not a an HDF5 file
+!     handle.  SCORPIO does provide a function 'scorpio_group_exists', but this
+!     will fail when called with reference to the DATASET 'Face Ids'; it only
+!     works for groups.  Therefore, we need a function scorpio_dataset_exists().!     Commenting out for now.
+!  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
+  grp_exists = PETSC_TRUE !geh: remove when h5lexists_f is resolved.
+  if(grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,file_id,string, &
@@ -1842,8 +1845,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,ZERO_INTEGER,indices, &
-                                    num_indices)
+  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,ZERO_INTEGER, &
+                                    indices,num_indices)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = "Cell Ids"
@@ -1865,8 +1868,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   integer_array = 0
   string = "Face Ids"
   ! Check if the region dataset has "Face Ids" group
-  call h5lexists_f(grp_id2,string,grp_exits,hdf5_err)
-  if(grp_exits) then
+  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
+  if(grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
     call HDF5ReadIntegerArray(option,grp_id2,string, &
