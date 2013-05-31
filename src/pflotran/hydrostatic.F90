@@ -31,7 +31,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Region_module
   use Structured_Grid_module
   use Utility_module, only : DotProduct
-  use Dataset_Aux_module
+  use Dataset_XYZ_class
   
   use General_Aux_module
   
@@ -59,7 +59,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: gravity_magnitude
   PetscReal :: z_offset
   
-  type(dataset_type), pointer :: datum_dataset
+  type(dataset_xyz_type), pointer :: datum_dataset
   
   type(flow_condition_type), pointer :: condition
   

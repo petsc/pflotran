@@ -10,7 +10,7 @@ module Realization_class
   use Constraint_module
   use Material_module
   use Saturation_Function_module
-  use Dataset_Aux_module
+  use Dataset_Base_class
   use Fluid_module
   use Discretization_module
   use Field_module
@@ -43,7 +43,7 @@ private
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
-    type(dataset_type), pointer :: datasets
+    class(dataset_base_type), pointer :: datasets
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
@@ -787,13 +787,13 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationProcessConditions(realization)
 
-  use Dataset_module
+  use Dataset_Common_HDF5_module
   
   implicit none
   
   type(realization_type) :: realization
 
-  call DatasetProcessDatasets(realization%datasets,realization%option)
+  call DatasetCommonHDF5Process(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -942,7 +942,7 @@ end subroutine RealProcessFluidProperties
 ! ************************************************************************** !
 subroutine RealProcessFlowConditions(realization)
 
-  use Dataset_module
+  use Dataset_Base_class
 
   implicit none
 
@@ -954,7 +954,7 @@ subroutine RealProcessFlowConditions(realization)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: i
-  type(dataset_type), pointer :: dataset
+  class(dataset_base_type), pointer :: dataset
   
   option => realization%option
   

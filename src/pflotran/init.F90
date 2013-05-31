@@ -1373,7 +1373,8 @@ subroutine InitReadInput(simulation)
   use Solver_module
   use Material_module
   use Saturation_Function_module  
-  use Dataset_Aux_module
+  use Dataset_Base_class
+  use Dataset_Common_HDF5_class
   use Fluid_module
   use Realization_class
   use Timestepper_module
@@ -1459,7 +1460,7 @@ subroutine InitReadInput(simulation)
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
-  type(dataset_type), pointer :: dataset
+  type(dataset_common_hdf5_type), pointer :: dataset
   type(mass_transfer_type), pointer :: mass_transfer
   type(input_type), pointer :: input
 
@@ -1698,11 +1699,11 @@ subroutine InitReadInput(simulation)
         
 !.....................
       case ('DATASET') 
-        dataset => DatasetCreate()
+        dataset => DatasetCommonHDF5Create()
         call InputReadWord(input,option,dataset%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Dataset name') 
-        call DatasetRead(dataset,input,option)
-        call DatasetAddToList(dataset,realization%datasets)
+        call DatasetCommonHDF5Read(dataset,input,option)
+        call DatasetBaseAddToList(dataset,realization%datasets)
         nullify(dataset)
         
 !....................

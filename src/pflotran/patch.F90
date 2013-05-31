@@ -7,7 +7,7 @@ module Patch_module
   use Strata_module
   use Region_module
   use Reaction_Aux_module
-  use Dataset_Aux_module
+  use Dataset_Base_class
   use Material_module
   use Field_module
   use Saturation_Function_module
@@ -61,7 +61,7 @@ module Patch_module
     ! Pointers to objects in mother realization object
     type(field_type), pointer :: field 
     type(reaction_type), pointer :: reaction
-    type(dataset_type), pointer :: datasets
+    type(dataset_base_type), pointer :: datasets
     
     type(auxiliary_type) :: aux
     
@@ -730,7 +730,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Global_Aux_module
   use Condition_module
   use Constraint_module
-  use Dataset_Aux_module
   
   implicit none
   
@@ -743,7 +742,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   
   type(coupler_type), pointer :: coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
-  type(dataset_type), pointer :: dataset
   PetscInt :: idof
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -921,10 +919,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Hydrostatic_module
   use Saturation_module
   use Water_EOS_module
-  use Dataset_Aux_module
   
   use General_Aux_module
   use Grid_module
+  use Dataset_Common_HDF5_class
 
   implicit none
   
@@ -937,7 +935,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(flow_general_condition_type), pointer :: general
-  type(dataset_type), pointer :: dataset
+  type(dataset_common_hdf5_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat

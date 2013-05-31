@@ -38,7 +38,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Field_module
   use Coupler_module
   use Condition_module
-  use Dataset_Aux_module
+  use Dataset_Common_HDF5_class
   use Grid_module
   use Level_module
   use Patch_module
@@ -73,7 +73,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
-  type(dataset_type), pointer :: dataset
+  type(dataset_common_hdf5_type), pointer :: dataset
   type(global_auxvar_type) :: global_aux
   type(general_auxvar_type) :: general_aux
   PetscBool :: use_dataset
@@ -480,7 +480,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Condition_module
   use Constraint_module
   use Grid_module
-  use Dataset_Aux_module
+  use Dataset_Common_HDF5_module
   use Level_module
   use Patch_module
   use Reactive_Transport_Aux_module
@@ -519,7 +519,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscInt :: offset
   PetscBool :: re_equilibrate_at_each_cell
   character(len=MAXSTRINGLENGTH) :: string, string2
-  type(dataset_type), pointer :: dataset
+  type(dataset_common_hdf5_type), pointer :: dataset
   PetscInt :: aq_dataset_to_idof(realization%reaction%naqcomp)
   PetscInt :: iaqdataset, num_aq_datasets
   PetscBool :: use_aq_dataset
@@ -849,7 +849,7 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
   use Realization_class
   use Option_module
   use Field_module
-  use Dataset_Aux_module
+  use Dataset_Common_HDF5_module
   use HDF5_module
   use Discretization_module
 

@@ -3,7 +3,7 @@ module Condition_module
 !  use Reaction_Aux_module
 !  use Reactive_Transport_Aux_module
   use Global_Aux_module
-  use Dataset_Aux_module
+  use Dataset_XYZ_class
   use Time_Series_module
   
   use Constraint_module
@@ -22,7 +22,7 @@ module Condition_module
 
   type, public :: flow_condition_dataset_type
     type(time_series_type), pointer :: time_series
-    type(dataset_type), pointer ::  dataset
+    type(dataset_xyz_type), pointer ::  dataset
   end type flow_condition_dataset_type
   
   type, public :: flow_condition_type
@@ -2080,7 +2080,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
     input%err_buf2 = trim(keyword) // ', DATASET'
     input%err_buf = 'dataset name'
     call InputErrorMsg(input,option)
-    flow_dataset%dataset => DatasetCreate()
+    flow_dataset%dataset => DatasetXYZCreate()
     flow_dataset%dataset%name = word
   else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
     if (flow_dataset%time_series%rank <= 3) then
@@ -2609,7 +2609,7 @@ end subroutine FlowConditionUpdate
 subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
 
   use Option_module
-  use Dataset_module
+  use Dataset_XYZ_class
   
   implicit none
   
@@ -2628,7 +2628,7 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
     if ((time < 1.d-40 .or. &
          flow_condition_dataset%dataset%is_transient) .and. &
         .not.flow_condition_dataset%dataset%is_cell_indexed) then
-      call DatasetLoad(flow_condition_dataset%dataset,option)
+      call DatasetXYZLoad(flow_condition_dataset%dataset,option)
     endif
   endif
   
