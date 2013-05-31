@@ -1270,7 +1270,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   Vec :: elements_old
   Vec :: vertices_old
   Vec :: vertices_new
-  Vec :: elements_local2
   IS :: is_new
   IS :: is_scatter
   IS :: is_gather
