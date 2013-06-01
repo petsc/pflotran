@@ -45,10 +45,15 @@ module Geomech_Grid_Aux_module
     IS :: is_local_local                     ! IS for local elems with local on-processor numbering
     IS :: is_local_petsc                     ! IS for local elems with petsc numbering
     IS :: is_local_natural                   ! IS for local elems with natural (global) numbering
+    VecScatter :: scatter_ltog               ! scatter context for local to global updates
+    VecScatter :: scatter_gtol               ! scatter context for global to local updates
+    VecScatter :: scatter_ltol               ! scatter context for local to local updates
     VecScatter :: scatter_gton               ! scatter context for global to natural updates
     VecScatter :: scatter_ntog               ! scatter context for natural to global updates
     Vec :: global_vec                        ! global vec (no ghost elems), petsc-ordering
     Vec :: local_vec                         ! local vec (includes local elems), local ordering
+    ISLocalToGlobalMapping :: mapping_ltog   ! local to global mapping
+    ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
   end type gmdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -85,8 +90,13 @@ function GMDMCreate()
   gmdm%is_local_local = 0
   gmdm%is_local_petsc = 0
   gmdm%is_local_natural = 0
+  gmdm%scatter_ltog = 0
+  gmdm%scatter_gtol = 0
+  gmdm%scatter_ltol  = 0
   gmdm%scatter_gton = 0
   gmdm%scatter_ntog = 0
+  gmdm%mapping_ltog = 0
+  gmdm%mapping_ltogb = 0
   gmdm%global_vec = 0
   gmdm%local_vec = 0
 
@@ -132,6 +142,75 @@ function GMGridCreate()
   
 end function GMGridCreate
 
+! ************************************************************************** !
+!
+! GMCreateGMDM: Mapping/scatter contexts are created for PETSc DM object
+! author: Satish Karra, LANL
+! date: 05/30/13
+!
+! ************************************************************************** !
+subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
+
+  use Option_module
+  use Utility_module, only: reallocateIntArray
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscdm.h"  
+#include "finclude/petscdm.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+  type(geomech_grid_type)             :: geomech_grid
+  type(option_type)                   :: option
+  type(gmdm_type), pointer            :: gmdm
+  PetscInt                            :: ndof
+  
+  PetscInt, pointer :: int_ptr(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: idof
+  IS :: is_tmp
+  Vec :: vec_tmp
+  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: ndof_word
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  PetscViewer :: viewer
+
+  PetscInt, allocatable :: int_array(:)
+  
+  gmdm => GMDMCreate()
+  gmdm%ndof = ndof
+  
+#if GEOMECH_DEBUG
+  write(ndof_word,*) ndof
+  ndof_word = adjustl(ndof_word)
+  ndof_word = '_' // trim(ndof_word)
+  string = 'Vectors' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  ! create global vec
+  call VecCreate(option%mycomm,gmdm%global_vec,ierr)
+  call VecSetSizes(gmdm%global_vec,PETSC_DECIDE,geomech_grid%nmax_node*ndof, &
+                    ierr)  
+  call VecSetBlockSize(gmdm%global_vec,ndof,ierr)
+  call VecSetFromOptions(gmdm%global_vec,ierr)
+
+  ! create local vec
+  call VecCreate(PETSC_COMM_SELF,gmdm%local_vec,ierr)
+  call VecSetSizes(gmdm%local_vec,geomech_grid%nlmax_node*ndof,PETSC_DECIDE,ierr)
+  call VecSetBlockSize(gmdm%local_vec,ndof,ierr)
+  call VecSetFromOptions(gmdm%local_vec,ierr)
+
+
+
+end subroutine GMCreateGMDM
 
 ! ************************************************************************** !
 !
@@ -187,8 +266,14 @@ subroutine GMDMDestroy(gmdm)
   call ISDestroy(gmdm%is_local_local,ierr)
   call ISDestroy(gmdm%is_local_petsc,ierr)
   call ISDestroy(gmdm%is_local_natural,ierr)
+  call VecScatterDestroy(gmdm%scatter_ltog,ierr)
+  call VecScatterDestroy(gmdm%scatter_gtol,ierr)
+  call VecScatterDestroy(gmdm%scatter_ltol,ierr)
   call VecScatterDestroy(gmdm%scatter_gton,ierr)
   call VecScatterDestroy(gmdm%scatter_ntog,ierr)
+  call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog,ierr)
+  if (gmdm%mapping_ltogb /= 0) &
+    call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltogb,ierr)
   call VecDestroy(gmdm%global_vec,ierr)
   call VecDestroy(gmdm%local_vec,ierr)
   
