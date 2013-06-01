@@ -16,9 +16,12 @@ module Dataset_Common_HDF5_class
     PetscBool :: is_transient
   end type dataset_common_hdf5_type
 
-  public :: DatasetCommonHDF5Init, &
+  public :: DatasetCommonHDF5Create, &
+            DatasetCommonHDF5Init, &
+            DatasetCommonHDF5Cast, &
+            DatasetCommonHDF5Read, &
             DatasetCommonHDF5Load, &
-            DatasetCommonHDF5Process, &
+            DatasetCommonHDF5IsCellIndexed, &
             DatasetCommonHDF5Strip, &
             DatasetCommonHDF5Destroy
   
@@ -28,8 +31,28 @@ module Dataset_Common_HDF5_class
 
 contains
 
-! No DatasetCommonCreate as this module solely provides 
-! common functionality.
+
+! ************************************************************************** !
+!
+! DatasetCommonHDF5Create: Creates members of common hdf5 database class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetCommonHDF5Create()
+  
+  implicit none
+  
+  class(dataset_common_hdf5_type), pointer :: dataset
+
+  class(dataset_common_hdf5_type), pointer :: DatasetCommonHDF5Create
+  
+  allocate(dataset)
+  call DatasetCommonHDF5Init(dataset)
+
+  DatasetCommonHDF5Create => dataset
+    
+end function DatasetCommonHDF5Create
 
 ! ************************************************************************** !
 !
@@ -52,6 +75,29 @@ subroutine DatasetCommonHDF5Init(this)
   this%is_transient = PETSC_FALSE
     
 end subroutine DatasetCommonHDF5Init
+
+! ************************************************************************** !
+!
+! DatasetCommonHDF5Init: Initializes members of common hdf5 dataset class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetCommonHDF5Cast(this)
+  
+  implicit none
+
+  class(dataset_base_type), pointer :: this
+
+  class(dataset_common_hdf5_type), pointer :: DatasetCommonHDF5Cast
+  
+  nullify(DatasetCommonHDF5Cast)
+  select type (this)
+    class is (dataset_common_hdf5_type)
+      DatasetCommonHDF5Cast => this
+  end select
+    
+end function DatasetCommonHDF5Cast
 
 ! ************************************************************************** !
 !
@@ -265,8 +311,6 @@ function DatasetCommonHDF5Load(this,option)
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
 #endif
-  use Discretization_module
-  use Grid_module
   use Option_module
   use Time_Storage_module
 
@@ -305,43 +349,12 @@ function DatasetCommonHDF5Load(this,option)
     
 end function DatasetCommonHDF5Load
 
-! *********************a***************************************************** !
-!
-! DatasetCommonHDF5Process: Determine whether a dataset is indexed by cell ids
-! author: Glenn Hammond
-! date: 03/26/12
-!
-! ************************************************************************** !
-subroutine DatasetCommonHDF5Process(datasets,option)
-
-  use Option_module
-  
-  implicit none
-  
-  class(dataset_base_type), pointer :: datasets
-  type(option_type) :: option
-  
-  class(dataset_base_type), pointer :: cur_dataset
-  
-  cur_dataset => datasets
-  do
-    if (.not.associated(cur_dataset)) exit
-    select type(cur_dataset)
-      class is(dataset_common_hdf5_type)
-        cur_dataset%is_cell_indexed = &
-          DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
-    end select
-    cur_dataset => cur_dataset%next
-  enddo
-  
-end subroutine DatasetCommonHDF5Process
-
 ! ************************************************************************** !
 !
 ! DatasetCommonHDF5IsCellIndexed: Determine whether a dataset is indexed by 
 !                                 cell ids
 ! author: Glenn Hammond
-! date: 03/26/12
+! date: 05/03/13
 !
 ! ************************************************************************** !
 function DatasetCommonHDF5IsCellIndexed(dataset,option)
@@ -364,6 +377,42 @@ function DatasetCommonHDF5IsCellIndexed(dataset,option)
 #endif
  
 end function DatasetCommonHDF5IsCellIndexed
+
+! ************************************************************************** !
+!
+! DatasetCommonHDF5GetPointer: Returns the pointer to the dataset named "name"
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetCommonHDF5GetPointer(dataset_list, dataset_name, &
+                                     debug_string, option)
+
+  use Option_module
+  use String_module
+  
+  class(dataset_base_type), pointer :: dataset_list
+  character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: debug_string
+  type(option_type) :: option
+
+  class(dataset_common_hdf5_type), pointer :: DatasetCommonHDF5GetPointer
+  
+  class(dataset_base_type), pointer :: dataset
+
+  nullify(DatasetCommonHDF5GetPointer)
+  dataset => DatasetBaseGetPointer(dataset_list, dataset_name, &
+                                   debug_string, option)
+  select type(dataset)
+    class is (dataset_common_hdf5_type)
+      DatasetCommonHDF5GetPointer => dataset
+    class default
+      option%io_buffer = 'Dataset "' // trim(dataset_name) // '" in "' // &
+             trim(debug_string) // '" not of type Common HDF5.'
+      call printErrMsg(option)    
+  end select
+
+end function DatasetCommonHDF5GetPointer
 
 ! ************************************************************************** !
 !
@@ -400,7 +449,7 @@ subroutine DatasetCommonHDF5Destroy(this)
   
   if (.not.associated(this)) return
   
-  call DatasetBaseStrip(this)
+  call DatasetCommonHDF5Strip(this)
   
   deallocate(this)
   nullify(this)

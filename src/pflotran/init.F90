@@ -1460,7 +1460,7 @@ subroutine InitReadInput(simulation)
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
-  type(dataset_common_hdf5_type), pointer :: dataset
+  class(dataset_base_type), pointer :: dataset
   type(mass_transfer_type), pointer :: mass_transfer
   type(input_type), pointer :: input
 
@@ -1702,7 +1702,8 @@ subroutine InitReadInput(simulation)
         dataset => DatasetCommonHDF5Create()
         call InputReadWord(input,option,dataset%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Dataset name') 
-        call DatasetCommonHDF5Read(dataset,input,option)
+        call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
+                                   option)
         call DatasetBaseAddToList(dataset,realization%datasets)
         nullify(dataset)
         

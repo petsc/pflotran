@@ -3,7 +3,7 @@ module Condition_module
 !  use Reaction_Aux_module
 !  use Reactive_Transport_Aux_module
   use Global_Aux_module
-  use Dataset_XYZ_class
+  use Dataset_Base_class
   use Time_Series_module
   
   use Constraint_module
@@ -22,7 +22,7 @@ module Condition_module
 
   type, public :: flow_condition_dataset_type
     type(time_series_type), pointer :: time_series
-    type(dataset_xyz_type), pointer ::  dataset
+    class(dataset_base_type), pointer ::  dataset
   end type flow_condition_dataset_type
   
   type, public :: flow_condition_type
@@ -527,6 +527,7 @@ end subroutine FlowConditionDatasetVerify
 subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
                                         max_sim_time, times)
   use Option_module
+  use Time_Storage_module
 
   implicit none
   
@@ -550,8 +551,8 @@ subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
                             times)
   endif
   if (associated(flow_dataset%dataset)) then
-    call DatasetGetTimes(option, flow_dataset%dataset, max_sim_time, &
-                            times)
+    call TimeStorageGetTimes(flow_dataset%dataset%time_storage, option, &
+                             max_sim_time, times)
   endif
  
 end subroutine FlowConditionDatasetGetTimes
@@ -1942,6 +1943,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
   use Logging_module
   use HDF5_Aux_module
   use Units_module
+  use Dataset_Base_class
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
@@ -2080,7 +2082,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
     input%err_buf2 = trim(keyword) // ', DATASET'
     input%err_buf = 'dataset name'
     call InputErrorMsg(input,option)
-    flow_dataset%dataset => DatasetXYZCreate()
+    flow_dataset%dataset => DatasetBaseCreate()
     flow_dataset%dataset%name = word
   else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
     if (flow_dataset%time_series%rank <= 3) then
@@ -2507,7 +2509,9 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     call TimeSeriesPrint(subcondition%datum%time_series,option)
   endif
   if (associated(subcondition%datum%dataset)) then
-    call DatasetPrint(subcondition%datum%dataset,option)
+!geh    call DatasetPrint(subcondition%datum%dataset,option)
+    option%io_buffer = 'TODO(geh): add DatasetPrint()'
+    call printMsg(option)
   endif
   
   write(option%fid_out,110) 'Gradient:'
@@ -2515,7 +2519,9 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     call TimeSeriesPrint(subcondition%gradient%time_series,option)
   endif
   if (associated(subcondition%gradient%dataset)) then
-    call DatasetPrint(subcondition%gradient%dataset,option)
+!geh    call DatasetPrint(subcondition%gradient%dataset,option)
+    option%io_buffer = 'TODO(geh): add DatasetPrint()'
+    call printMsg(option)
   endif
 
   write(option%fid_out,110) 'Dataset:'
@@ -2523,7 +2529,9 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     call TimeSeriesPrint(subcondition%flow_dataset%time_series,option)
   endif
   if (associated(subcondition%flow_dataset%dataset)) then
-    call DatasetPrint(subcondition%flow_dataset%dataset,option)
+!geh    call DatasetPrint(subcondition%flow_dataset%dataset,option)
+    option%io_buffer = 'TODO(geh): add DatasetPrint()'
+    call printMsg(option)
   endif
             
 end subroutine FlowConditionPrintSubCondition
@@ -2610,6 +2618,8 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
 
   use Option_module
   use Dataset_XYZ_class
+  use Dataset_Map_class
+  use Dataset_Common_HDF5_class
   
   implicit none
   
@@ -2625,11 +2635,19 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
   endif
   
   if (associated(flow_condition_dataset%dataset)) then
-    if ((time < 1.d-40 .or. &
-         flow_condition_dataset%dataset%is_transient) .and. &
-        .not.flow_condition_dataset%dataset%is_cell_indexed) then
-      call DatasetXYZLoad(flow_condition_dataset%dataset,option)
-    endif
+    select type(dataset=>flow_condition_dataset%dataset)
+      class is(dataset_common_hdf5_type)
+        if ((time < 1.d-40 .or. &
+             dataset%is_transient) .and. &
+            .not.dataset%is_cell_indexed) then
+          select type(dataset)
+            class is(dataset_xyz_type)
+              call DatasetXYZLoad(dataset,option)
+            class is(dataset_map_type)
+              call DatasetMapLoad(dataset,option)
+          end select
+        endif
+    end select
   endif
   
 end subroutine FlowSubConditionUpdateDataset
@@ -2903,6 +2921,8 @@ end function FlowSubConditionIsTransient
 ! ************************************************************************** !
 function FlowDatasetIsTransient(flow_dataset)
 
+  use Dataset_Common_HDF5_class
+
   implicit none
   
   type(flow_condition_dataset_type) :: flow_dataset
@@ -2917,9 +2937,12 @@ function FlowDatasetIsTransient(flow_dataset)
     endif
   endif
   if (associated(flow_dataset%dataset)) then
-    if (flow_dataset%dataset%is_transient) then
-      FlowDatasetIsTransient = PETSC_TRUE
-    endif
+    select type(dataset=>flow_dataset%dataset)
+      class is(dataset_common_hdf5_type)
+        if (dataset%is_transient) then
+          FlowDatasetIsTransient = PETSC_TRUE
+        endif
+    end select
   endif
   
 end function FlowDatasetIsTransient

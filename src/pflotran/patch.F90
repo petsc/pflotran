@@ -61,7 +61,7 @@ module Patch_module
     ! Pointers to objects in mother realization object
     type(field_type), pointer :: field 
     type(reaction_type), pointer :: reaction
-    type(dataset_base_type), pointer :: datasets
+    class(dataset_base_type), pointer :: datasets
     
     type(auxiliary_type) :: aux
     
@@ -935,7 +935,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(flow_general_condition_type), pointer :: general
-  type(dataset_common_hdf5_type), pointer :: dataset
+  class(dataset_common_hdf5_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat
@@ -1536,8 +1536,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
   use Connection_module
   use Condition_module
   use Grid_module
-  use Dataset_module
-  use Dataset_Aux_module
+  use Dataset_Map_class
 
   implicit none
 
@@ -1559,7 +1558,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
   PetscInt,pointer::cell_ids_nat(:)
   type(flow_sub_condition_type) :: flow_sub_condition
 
-  type(dataset_type), pointer :: dataset
+  class(dataset_map_type), pointer :: dataset
 
   grid => patch%grid
   
@@ -1583,11 +1582,20 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
 !    call printErrMsg(option)
 !  endif
 
-  dataset => flow_dataset%dataset
+  select type(selector=>flow_dataset%dataset)
+    class is(dataset_map_type)
+      dataset => selector
+    class default
+      option%io_buffer = 'Incorrect class in PatchUpdateHetroCouplerAuxVars'
+      call printErrMsg(option)
+  end select
+  
   cur_connection_set => coupler%connection_set
 
   if(associated(dataset)) then
 
+!geh: commenting out the old approach in favor of new
+#if 0  
     if(.not.associated(dataset%dataset_map)) then
       !
       ! Older scheme: Only works on a single proc run and assumes SS values are
@@ -1610,12 +1618,13 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       enddo
 
     else !if(.not.associated(dataset%dataset_map))
+#endif    
 
       ! New scheme: Mapping data is provided in HDF file
       !
     
       ! If called for the first time, create the map
-      if (dataset%dataset_map%first_time) then
+      if (dataset%first_time) then
         allocate(cell_ids_nat(cur_connection_set%num_connections))
         do iconn=1,cur_connection_set%num_connections
           sum_connection = sum_connection + 1
@@ -1624,10 +1633,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
           cell_ids_nat(iconn)=grid%nG2A(ghosted_id)
         enddo
 
-        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset%dataset_map,&
+        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset,&
                 cell_ids_nat,cur_connection_set%num_connections,option)
 
-        dataset%dataset_map%first_time = PETSC_FALSE
+        dataset%first_time = PETSC_FALSE
         deallocate(cell_ids_nat)
 
       endif
@@ -1635,10 +1644,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       ! Save the data in the array
       do iconn=1,cur_connection_set%num_connections
         coupler%flow_aux_real_var(isub_condition,iconn) = &
-          dataset%rarray(dataset%dataset_map%datatocell_ids(iconn))
+          dataset%rarray(dataset%datatocell_ids(iconn))
       enddo
 
-    endif !if(.not.associated(dataset%dataset_map))
+!geh    endif !if(.not.associated(dataset%dataset_map))
 
   else ! if(associated(dataset)) 
 
@@ -1661,7 +1670,7 @@ end subroutine PatchUpdateHetroCouplerAuxVars
 subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,option)
 
   use Grid_module
-  use Dataset_module
+  use Dataset_Map_class
   use Option_module
   
   implicit none
@@ -1672,7 +1681,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
 #include "finclude/petscviewer.h"
 
   type(grid_type) :: grid
-  type(dataset_map_type) :: dataset_map
+  class(dataset_map_type) :: dataset_map
   type(option_type):: option
   PetscInt,pointer :: cell_ids(:)
   PetscInt :: ncells

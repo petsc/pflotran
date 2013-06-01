@@ -31,6 +31,7 @@ module Dataset_XYZ_class
   public :: DatasetXYZCreate, &
             DatasetXYZInit, &
             DatasetXYZLoad, &
+            DatasetXYZInterpolateReal, &
             DatasetXYZStrip, &
             DatasetXYZDestroy
   
@@ -90,6 +91,7 @@ subroutine DatasetXYZLoad(this,option)
   
   use Option_module
   use Time_Storage_module
+  use Dataset_Base_class  
 
   implicit none
   
@@ -424,12 +426,12 @@ subroutine DatasetXYZReadData(this,option)
 !    this%rmin = minval(this%rarray)
   endif
   
-  call PetscLogEventEnd(logging%event_h5dread_f,ierr)  
-  
   call h5pclose_f(prop_id,hdf5_err)
   if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(dataset_id,hdf5_err)  
+
+  call PetscLogEventEnd(logging%event_h5dread_f,ierr) 
 
   option%io_buffer = 'Closing group: ' // trim(this%hdf5_dataset_name)
   call printMsg(option)  
@@ -731,7 +733,7 @@ subroutine DatasetXYZDestroy(this)
   
   if (.not.associated(this)) return
   
-  call DatasetBaseStrip(this)
+  call DatasetXYZStrip(this)
   
   deallocate(this)
   nullify(this)

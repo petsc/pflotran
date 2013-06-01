@@ -33,8 +33,6 @@ module HDF5_Aux_module
             HDF5ReadDatasetReal2D, &
             HDF5GroupExists, &
 #else
-            HDF5ReadDataset, &
-            HDF5ReadDatasetMap, &
             HDF5GroupExists, &
 #endif
 ! SCORPIO
@@ -143,6 +141,7 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
                           
 end subroutine HDF5ReadNDimRealArray
 
+#if 0
 ! ************************************************************************** !
 !
 ! HDF5ReadDataset: Read in a general dataset from an hdf5 file
@@ -621,6 +620,7 @@ subroutine HDF5ReadDatasetMap(dataset,option)
 
 
 end subroutine HDF5ReadDatasetMap
+#endif
 
 #if defined(SCORPIO)
 

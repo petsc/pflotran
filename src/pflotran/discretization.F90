@@ -7,6 +7,7 @@ module Discretization_module
   use Unstructured_Explicit_module
   use MFD_Aux_module
   use MFD_Module
+  use DM_Kludge_module
 
   implicit none
 
@@ -22,13 +23,6 @@ module Discretization_module
 #include "finclude/petscdm.h90"
 #include "finclude/petscdmda.h"
 #include "finclude/petscdmshell.h90"
-
-  type, public :: dm_ptr_type
-    DM :: dm  ! PETSc DM
-    type(ugdm_type), pointer :: ugdm
-      ! Unstructured grid "private" dm.  This gets wrapped in a PETSc DM via 
-      ! DMShell routines.
-  end type dm_ptr_type
 
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)

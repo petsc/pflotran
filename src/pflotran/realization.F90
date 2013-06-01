@@ -179,6 +179,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Coupler_module
   use Discretization_module
   use Unstructured_Cell_module
+  use DM_Kludge_module
   
   implicit none
   
@@ -787,13 +788,11 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationProcessConditions(realization)
 
-  use Dataset_Common_HDF5_module
-  
   implicit none
   
   type(realization_type) :: realization
 
-  call DatasetCommonHDF5Process(realization%datasets,realization%option)
+  call RealizationProcessDatasets(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -821,6 +820,7 @@ end subroutine RealizationProcessConditions
 subroutine RealProcessMatPropAndSatFunc(realization)
 
   use String_module
+  use Dataset_Common_HDF5_class
   
   implicit none
   
@@ -832,6 +832,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   type(material_property_type), pointer :: cur_material_property
   type(patch_type), pointer :: patch
   character(len=MAXSTRINGLENGTH) :: string
+  class(dataset_base_type), pointer :: dataset
 
   option => realization%option
   patch => realization%patch
@@ -871,18 +872,32 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),POROSITY'
-      cur_material_property%porosity_dataset => &
-        DatasetGetPointer(realization%datasets, &
-                          cur_material_property%porosity_dataset_name, &
-                          string,option)
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%porosity_dataset_name, &
+                              string,option)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%porosity_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for porosity.'
+          call printErrMsg(option)
+      end select
     endif
     if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),PERMEABILITY'
-      cur_material_property%permeability_dataset => &
-        DatasetGetPointer(realization%datasets, &
-                          cur_material_property%permeability_dataset_name, &
-                          string,option)
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%permeability_dataset_name, &
+                              string,option)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%permeability_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for porosity.'
+          call printErrMsg(option)
+      end select      
     endif
     
     cur_material_property => cur_material_property%next
@@ -933,6 +948,40 @@ subroutine RealProcessFluidProperties(realization)
   
 end subroutine RealProcessFluidProperties
 
+
+! *************************************************************************** !
+!
+! RealizationProcessDatasets: Determine whether a dataset is indexed by cell 
+!                             ids
+! author: Glenn Hammond
+! date: 03/26/12
+!
+! ************************************************************************** !
+subroutine RealizationProcessDatasets(datasets,option)
+
+  use Option_module
+  use Dataset_Common_HDF5_class
+  
+  implicit none
+  
+  class(dataset_base_type), pointer :: datasets
+  type(option_type) :: option
+  
+  class(dataset_base_type), pointer :: cur_dataset
+  
+  cur_dataset => datasets
+  do
+    if (.not.associated(cur_dataset)) exit
+    select type(cur_dataset)
+      class is(dataset_common_hdf5_type)
+        cur_dataset%is_cell_indexed = &
+          DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
+    end select
+    cur_dataset => cur_dataset%next
+  enddo
+  
+end subroutine RealizationProcessDatasets
+
 ! ************************************************************************** !
 !
 ! RealProcessFlowConditions: Sets linkage of flow conditions to dataset
@@ -943,6 +992,7 @@ end subroutine RealProcessFluidProperties
 subroutine RealProcessFlowConditions(realization)
 
   use Dataset_Base_class
+  use Dataset_New_module
 
   implicit none
 
@@ -978,7 +1028,7 @@ subroutine RealProcessFlowConditions(realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
             dataset => &
-              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
               dataset
             nullify(dataset)
@@ -993,7 +1043,7 @@ subroutine RealProcessFlowConditions(realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
             dataset => &
-              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
               dataset
             nullify(dataset)
@@ -1008,7 +1058,7 @@ subroutine RealProcessFlowConditions(realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
             dataset => &
-              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
               dataset
             nullify(dataset)
@@ -2510,6 +2560,8 @@ end subroutine RealizationNonInitializedData
 !
 ! ************************************************************************** !
 subroutine RealizationDestroy(realization)
+
+  use Dataset_New_module
 
   implicit none
   

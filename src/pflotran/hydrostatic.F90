@@ -59,7 +59,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: gravity_magnitude
   PetscReal :: z_offset
   
-  type(dataset_xyz_type), pointer :: datum_dataset
+  class(dataset_xyz_type), pointer :: datum_dataset
+  PetscReal :: datum_dataset_rmax
+  PetscReal :: datum_dataset_rmin
   
   type(flow_condition_type), pointer :: condition
   
@@ -122,12 +124,21 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
           condition%pressure%datum%time_series%cur_value(1:3)
         nullify(datum_dataset)
       else
-        datum_dataset => condition%pressure%datum%dataset
+        select type(dataset=>condition%pressure%datum%dataset)
+          class is (dataset_xyz_type)
+            datum_dataset => dataset
+          class default
+            option%io_buffer = &
+              'Incorrect dataset type in HydrostaticUpdateCoupler'
+            call printErrMsg(option)
+        end select
         !TODO(geh): move this to FlowSubConditionUpdateDataset()
         !call DatasetLoad(datum_dataset,option)
         ! set datum here equal to estimated mid value of dataset
         datum(1:3) = -999.d0
-        datum(3) = 0.5d0*(datum_dataset%rmax+datum_dataset%rmin)
+        datum_dataset_rmax = maxval(datum_dataset%rarray)
+        datum_dataset_rmin = minval(datum_dataset%rarray)
+        datum(3) = 0.5d0*(datum_dataset_rmax+datum_dataset_rmin)
         ! round the number to the nearest whole number
         datum(3) = int(datum(3))
       endif
@@ -163,8 +174,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     ! interpolate the values from that array
     if (associated(datum_dataset)) then
       temp_real = grid%z_max_global - grid%z_min_global
-      max_z = max(grid%z_max_global,datum_dataset%rmax+temp_real)+1.d0
-      min_z = min(grid%z_min_global,datum_dataset%rmin-temp_real)-1.d0
+      max_z = max(grid%z_max_global,datum_dataset_rmax+temp_real)+1.d0
+      min_z = min(grid%z_min_global,datum_dataset_rmin-temp_real)-1.d0
     else
       max_z = max(grid%z_max_global,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
       min_z = min(grid%z_min_global,datum(Z_DIRECTION))-1.d0
@@ -307,11 +318,11 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         dist_x = 0.d0
         dist_y = 0.d0
         !TODO(geh): check that sign is correct for dx/y_conn
-        call DatasetInterpolateReal(datum_dataset, &
-                                    grid%x(ghosted_id)-dx_conn, &
-                                    grid%y(ghosted_id)-dy_conn, &
-                                    0.d0, &
-                                    0.d0,temp_real,option)
+        call DatasetXYZInterpolateReal(datum_dataset, &
+                                       grid%x(ghosted_id)-dx_conn, &
+                                       grid%y(ghosted_id)-dy_conn, &
+                                       0.d0, &
+                                       0.d0,temp_real,option)
         ! temp_real is now the real datum
         dist_z = grid%z(ghosted_id)-dz_conn-temp_real
         z_offset = temp_real-datum(Z_DIRECTION)

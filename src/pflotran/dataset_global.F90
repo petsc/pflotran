@@ -1,6 +1,5 @@
 module Dataset_Global_class
  
-  use Dataset_Base_class
   use Dataset_Common_HDF5_class
   
   implicit none
@@ -10,6 +9,8 @@ module Dataset_Global_class
 #include "definitions.h"
 
   type, public, extends(dataset_common_hdf5_type) :: dataset_global_type
+    PetscInt :: local_size
+    PetscInt :: global_size
 !  contains
 !    procedure, public :: Init => DatasetGlobalInit
 !    procedure, public :: Load => DatasetGlobalLoad
@@ -57,7 +58,9 @@ subroutine DatasetGlobalInit(this)
   
   class(dataset_global_type) :: this
   
-  call DatasetBaseInit(this)
+  call DatasetCommonHDF5Init(this)
+  this%local_size = 0
+  this%global_size = 0
     
 end subroutine DatasetGlobalInit
 
@@ -68,25 +71,24 @@ end subroutine DatasetGlobalInit
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalLoad(this,discretization,grid,option)
+subroutine DatasetGlobalLoad(this,dm_wrapper,option)
   
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
 #endif
-  use Discretization_module
-  use Grid_module
   use Option_module
   use Time_Storage_module
+  use DM_Kludge_module
+  use Dataset_Base_class  
 
   implicit none
   
   class(dataset_global_type) :: this
-  type(discretization_type) :: discretization
-  type(grid_type) :: grid
+  type(dm_ptr_type) :: dm_wrapper
   type(option_type) :: option
   
   if (.not.associated(this%rarray)) then
-    allocate(this%rarray(grid%nlmax))
+    allocate(this%rarray(this%local_size))
     this%rarray = 0.d0
   endif
   
@@ -94,12 +96,11 @@ subroutine DatasetGlobalLoad(this,discretization,grid,option)
     if (.not.associated(this%rbuffer)) then ! not initialized
       this%buffer_nslice = min(this%max_buffer_size, &
                                this%time_storage%max_time_index)
-      allocate(this%rbuffer(grid%nlmax*this%buffer_nslice))
+      allocate(this%rbuffer(this%local_size*this%buffer_nslice))
       this%rbuffer = 0.d0
     endif
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetGlobalReadData(this,discretization,grid,option, &
-                               H5T_NATIVE_DOUBLE)
+    call DatasetGlobalReadData(this,dm_wrapper,option,H5T_NATIVE_DOUBLE)
 #endif    
     call DatasetBaseReorder(this,option)
   endif
@@ -115,24 +116,25 @@ end subroutine DatasetGlobalLoad
 ! date: 01/12/08
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
+subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
                          
   use hdf5
   use Logging_module
   use Option_module
-  use Grid_Module
-  use Discretization_module
+  use DM_Kludge_module
   
   implicit none
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
+#include "finclude/petscdmda.h"
 
 ! Default HDF5 Mechanism 
  
   class(dataset_global_type) :: this
-  type(discretization_type) :: discretization
-  type(grid_type) :: grid
+  type(dm_ptr_type) :: dm_wrapper
   type(option_type) :: option
   integer(HID_T) :: data_type 
   
@@ -157,6 +159,17 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
   PetscMPIInt :: hdf5_err
   
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
+
+  if (dm_wrapper%dm /= 0) then
+    call DMCreateGlobalVector(dm_wrapper%dm,global_vec,ierr)
+    call DMDACreateNaturalVector(dm_wrapper%dm,natural_vec,ierr)
+  else
+    option%io_buffer = 'ugdm not yet supported in DatasetGlobalReadData()'
+    call printErrMsg(option)
+  endif
+  
+  call VecZeroEntries(natural_vec,ierr)
+  call VecZeroEntries(global_vec,ierr)
 
   ! open the file
   call h5open_f(hdf5_err)
@@ -185,7 +198,7 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
   call h5sget_simple_extent_dims_f(file_space_id,dims,max_dims,hdf5_err)
   
   buffer_size = size(this%rbuffer)
-  buffer_rank2_size = buffer_size / grid%nlmax
+  buffer_rank2_size = buffer_size / this%local_size
   file_rank1_size = dims(1)
   if (ndims > 1) then
     file_rank2_size = dims(2)
@@ -193,23 +206,23 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
     file_rank2_size = 1
   endif
 
-  if (mod(buffer_size,grid%nlmax) /= 0) then
+  if (mod(buffer_size,this%local_size) /= 0) then
     write(option%io_buffer, &
-          '(a," buffer dimension (",i9,") is not a multiple of domain",&
+          '(a," buffer dimension (",i9,") is not a multiple of local domain",&
            &" dimension (",i9,").")') trim(this%hdf5_dataset_name), &
-           size(this%rbuffer,1), grid%nlmax
+           size(this%rbuffer,1), this%local_size
     call printErrMsg(option)   
   endif
 
-  if (mod(file_rank1_size,grid%nlmax) /= 0) then
+  if (mod(file_rank1_size,this%global_size) /= 0) then
     write(option%io_buffer, &
           '(a," data space dimension (",i9,") is not a multiple of domain",&
            &" dimension (",i9,").")') trim(this%hdf5_dataset_name), &
-           file_rank1_size, grid%nlmax
+           file_rank1_size, this%global_size
     call printErrMsg(option)   
   endif
 
-  call MPI_Exscan(grid%nlmax,istart,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+  call MPI_Exscan(this%local_size,istart,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                   option%mycomm,ierr)
   
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
@@ -217,19 +230,9 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
 
-  call DiscretizationCreateVector(discretization,ONEDOF, &
-                                  natural_vec,NATURAL,option)
-  call DiscretizationCreateVector(discretization,ONEDOF, &
-                                  global_vec,GLOBAL,option)
-  call VecZeroEntries(natural_vec,ierr)
-  call VecZeroEntries(global_vec,ierr)
-
   ! must initialize here to avoid error below when closing memory space
   memory_space_id = -1
   
-  ! Find sizes of array.  Must use identical data types
-  
-
   ! offset is zero-based
   offset = 0
   length = 0
@@ -242,9 +245,9 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
     length(1) = file_rank1_size
     length(2) = min(buffer_rank2_size,file_rank2_size-this%buffer_slice_offset)
   else
-    offset(1) = this%buffer_slice_offset*grid%nlmax
+    offset(1) = this%buffer_slice_offset*this%local_size
     length(1) = min(buffer_size, &
-                    file_rank1_size-this%buffer_slice_offset*grid%nlmax)
+                    file_rank1_size-this%buffer_slice_offset*this%local_size)
   endif
   call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                              length,hdf5_err,stride,stride) 
@@ -253,10 +256,10 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
   rank_mpi = 1
   if (ndims > 1) then
     dims(1) = min(buffer_size, &
-                  grid%nlmax*(file_rank2_size-this%buffer_slice_offset))
+                  this%local_size*(file_rank2_size-this%buffer_slice_offset))
   else
     dims(1) = min(buffer_size, &
-                  file_rank1_size-this%buffer_slice_offset*grid%nlmax)
+                  file_rank1_size-this%buffer_slice_offset*this%local_size)
   endif
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
@@ -275,7 +278,7 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
                    hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     do i = 1, min(buffer_size, &
-                  grid%nlmax*(file_rank2_size-this%buffer_slice_offset))
+                  this%local_size*(file_rank2_size-this%buffer_slice_offset))
       this%rbuffer(i) = real(integer_buffer_i4(i))
     enddo
     deallocate(integer_buffer_i4)
@@ -296,14 +299,16 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
   istart = 0
   do i = 1, min(buffer_rank2_size,file_rank2_size-this%buffer_slice_offset)
     call VecGetArrayF90(natural_vec,vec_ptr,ierr)
-    vec_ptr(:) = this%rbuffer(istart+1:istart+grid%nlmax)
+    vec_ptr(:) = this%rbuffer(istart+1:istart+this%local_size)
     call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
-    call DiscretizationNaturalToGlobal(discretization,natural_vec, &
-                                       global_vec,ONEDOF)
+    call DMDANaturalToGlobalBegin(dm_wrapper%dm,natural_vec,INSERT_VALUES, &
+                                  global_vec,ierr)
+    call DMDANaturalToGlobalEnd(dm_wrapper%dm,natural_vec,INSERT_VALUES, &
+                                global_vec,ierr)
     call VecGetArrayF90(global_vec,vec_ptr,ierr)
-    this%rbuffer(istart+1:istart+grid%nlmax) = vec_ptr(:)
+    this%rbuffer(istart+1:istart+this%local_size) = vec_ptr(:)
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
-    istart = istart + grid%nlmax
+    istart = istart + this%local_size
   enddo
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -313,6 +318,25 @@ subroutine DatasetGlobalReadData(this,discretization,grid,option,data_type)
 
 end subroutine DatasetGlobalReadData
 #endif
+
+! ************************************************************************** !
+!
+! DatasetGlobalStrip: Strips allocated objects within XYZ dataset object
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+subroutine DatasetGlobalStrip(this)
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  class(dataset_global_type)  :: this
+  
+  call DatasetCommonHDF5Strip(this)
+  
+end subroutine DatasetGlobalStrip
 
 ! ************************************************************************** !
 !
@@ -329,7 +353,7 @@ subroutine DatasetGlobalDestroy(this)
   
   if (.not.associated(this)) return
   
-  call DatasetBaseStrip(this)
+  call DatasetGlobalStrip(this)
   
   deallocate(this)
   nullify(this)

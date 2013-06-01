@@ -221,7 +221,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   if (.not.associated(mass_transfer)) return
 
 !  call mass_transfer%dataset%Load(discretization,grid,option)
-  call DatasetGlobalLoad(mass_transfer%dataset,discretization,grid,option)
+  call DatasetGlobalLoad(mass_transfer%dataset,discretization%dm_1dof,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
   ! multiply by -1.d0 for positive contribution to residual

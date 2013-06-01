@@ -33,12 +33,37 @@ module Dataset_Base_class
   PetscInt, parameter :: DATASET_INTEGER = 1
   PetscInt, parameter :: DATASET_REAL = 2
   
-  public :: DatasetBaseInit, &
+  public :: DatasetBaseCreate, &
+            DatasetBaseInit, &
             DatasetBaseInterpolateTime, &
             DatasetBaseReorder, &
+            DatasetBaseGetPointer, &
+            DatasetBaseAddToList, &
             DatasetBaseStrip, &
             DatasetBaseDestroy
 contains
+
+! ************************************************************************** !
+!
+! DatasetBaseCreate: Creates members of base database class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetBaseCreate()
+  
+  implicit none
+  
+  class(dataset_base_type), pointer :: dataset
+
+  class(dataset_base_type), pointer :: DatasetBaseCreate
+  
+  allocate(dataset)
+  call DatasetBaseInit(dataset)
+
+  DatasetBaseCreate => dataset
+    
+end function DatasetBaseCreate
 
 ! ************************************************************************** !
 !
