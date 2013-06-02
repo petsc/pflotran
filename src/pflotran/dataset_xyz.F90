@@ -27,6 +27,8 @@ module Dataset_XYZ_class
   PetscInt, parameter, public :: DIM_YZ = 6
   PetscInt, parameter, public :: DIM_XYZ = 7
   PetscInt, parameter, public :: DIM_CELL = 8
+  
+  PetscInt, parameter :: MAX_NSLICE = 4
 
   public :: DatasetXYZCreate, &
             DatasetXYZInit, &
@@ -73,7 +75,7 @@ subroutine DatasetXYZInit(this)
   class(dataset_xyz_type) :: this
   
   call DatasetCommonHDF5Init(this)
-  this%is_cell_centered = PETSC_TRUE
+  this%is_cell_centered = PETSC_FALSE
   this%data_dim = DIM_NULL
   nullify(this%origin)
   nullify(this%discretization)
@@ -136,7 +138,7 @@ subroutine DatasetXYZReadData(this,option)
   integer(HID_T) :: prop_id
   integer(HID_T) :: grp_id
   integer(HID_T) :: attribute_id
-  integer(HID_T) :: ndims_hdf5
+  integer(HID_T) :: ndims_h5
   integer(HID_T) :: atype_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: attribute_dim(3)
@@ -145,9 +147,9 @@ subroutine DatasetXYZReadData(this,option)
   integer(SIZE_T) size_t_int
   PetscInt :: i, temp_int, temp_array(4)
   PetscInt :: num_spatial_dims, time_dim, num_times
+  PetscInt :: num_dims_in_h5_file, num_times_in_h5_file
   PetscMPIInt :: array_rank_mpi
   PetscBool :: attribute_exists
-  PetscBool :: read_times
   PetscReal :: units_conversion
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
@@ -329,15 +331,24 @@ subroutine DatasetXYZReadData(this,option)
 
   ! get dataset dimensions
   if (.not.associated(this%dims)) then
-    call h5sget_simple_extent_ndims_f(file_space_id,ndims_hdf5,hdf5_err)
-    allocate(dims_h5(ndims_hdf5))
-    allocate(max_dims_h5(ndims_hdf5))
+    call h5sget_simple_extent_ndims_f(file_space_id,ndims_h5,hdf5_err)
+    allocate(dims_h5(ndims_h5))
+    allocate(max_dims_h5(ndims_h5))
     call h5sget_simple_extent_dims_f(file_space_id,dims_h5,max_dims_h5,hdf5_err)
-    allocate(this%dims(ndims_hdf5))
-    this%rank = ndims_hdf5
-    ! have to invert dimensions
+    if (associated(this%time_storage)) then
+      ! if dataset is time dependent, need to remove that time index from 
+      ! dimensions and decrement rank (we don't want to include time)
+      this%rank = ndims_h5-1
+      ! the first dimension of dims_h5 is the time dimension
+      num_times_in_h5_file = dims_h5(1)
+    else
+      this%rank = ndims_h5
+      num_times_in_h5_file = 0
+    endif
+    allocate(this%dims(this%rank))
+    ! have to invert dimensions, but do not count the time dimension
     do i = 1, this%rank
-      this%dims(i) = int(dims_h5(this%rank-i+1))
+      this%dims(i) = int(dims_h5(ndims_h5-i+1))
     enddo
     deallocate(dims_h5)
     deallocate(max_dims_h5) 
@@ -349,11 +360,14 @@ subroutine DatasetXYZReadData(this,option)
       temp_int = temp_int * this%dims(i)
     enddo
     if (num_data_values/num_times /= temp_int) then
-      option%io_buffer = 'Number of values in dataset does not match dimensions.'
+      option%io_buffer = &
+        'Number of values in dataset does not match dimensions.'
       call printErrMsg(option)
     endif
-    if (read_times .and. this%dims(this%rank) /= num_times) then
-      option%io_buffer = 'Number of times does not match last dimension of data array.'
+    if (associated(this%time_storage) .and. &
+        num_times_in_h5_file /= num_times) then
+      option%io_buffer = &
+        'Number of times does not match last dimension of data array.'
       call printErrMsg(option)
     endif
     if (.not.associated(this%rarray)) then
@@ -362,22 +376,26 @@ subroutine DatasetXYZReadData(this,option)
     this%rarray = 0.d0
     if (associated(this%time_storage) .and. .not.associated(this%rbuffer)) then
       ! buffered array
-      allocate(this%rbuffer(size(this%rarray)*this%buffer_nslice))
+      allocate(this%rbuffer(size(this%rarray)*MAX_NSLICE))
       this%rbuffer = 0.d0
     endif
   endif
 
-  
   call PetscLogEventBegin(logging%event_h5dread_f,ierr)
- 
+
+  if (associated(this%time_storage)) then
+    num_dims_in_h5_file = this%rank + 1
+  else
+    num_dims_in_h5_file = this%rank
+  endif
+  
   array_rank_mpi = 1
   length = 1
   ! length (or size) must be adjusted according to the size of the 
   ! remaining data in the file
+  this%buffer_nslice = min(MAX_NSLICE,(num_times-this%buffer_slice_offset))
   if (time_dim > 0) then
-    length(1) = min(size(this%rarray), &
-                    (num_times-this%buffer_slice_offset)* &
-                    size(this%rarray))
+    length(1) = size(this%rarray) * this%buffer_nslice
   else
     length(1) = size(this%rarray)
   endif
@@ -391,22 +409,20 @@ subroutine DatasetXYZReadData(this,option)
   enddo
   ! cannot read beyond end of the buffer
   if (time_dim > 0) then
-    this%buffer_nslice = &
-      min(this%time_storage%max_time_index, &
-          num_times-this%buffer_slice_offset)
     length(time_dim) = this%buffer_nslice
     offset(time_dim) = this%buffer_slice_offset
   endif
   
+  
   !geh: for some reason, we have to invert here.  Perhaps because the
   !     dataset was generated in C???
-  temp_array(1:this%rank) = int(length(1:this%rank))
-  do i = 1, this%rank
-    length(i) = temp_array(this%rank-i+1)
+  temp_array(1:num_dims_in_h5_file) = int(length(1:num_dims_in_h5_file))
+  do i = 1, num_dims_in_h5_file
+    length(i) = temp_array(num_dims_in_h5_file-i+1)
   enddo
-  temp_array(1:this%rank) = int(offset(1:this%rank))
-  do i = 1, this%rank
-    offset(i) = temp_array(this%rank-i+1)
+  temp_array(1:num_dims_in_h5_file) = int(offset(1:num_dims_in_h5_file))
+  do i = 1, num_dims_in_h5_file
+    offset(i) = temp_array(num_dims_in_h5_file-i+1)
   enddo
   ! stride is fine
   

@@ -35,6 +35,7 @@ module Dataset_Base_class
   
   public :: DatasetBaseCreate, &
             DatasetBaseInit, &
+            DatasetBaseCopy, &
             DatasetBaseInterpolateTime, &
             DatasetBaseReorder, &
             DatasetBaseGetPointer, &
@@ -93,6 +94,55 @@ subroutine DatasetBaseInit(this)
   nullify(this%next)
     
 end subroutine DatasetBaseInit
+
+! ************************************************************************** !
+!
+! DatasetBaseCopy: Copies members of base database class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+subroutine DatasetBaseCopy(this, that)
+  
+  implicit none
+  
+  class(dataset_base_type) :: this
+  class(dataset_base_type) :: that
+  
+  that%name = this%name
+  that%filename = this%filename
+  that%rank = this%rank
+  that%data_type = this%data_type
+  if (associated(this%time_storage)) then
+    that%time_storage => this%time_storage
+    nullify(this%time_storage)
+  endif
+  if (associated(this%dims)) then
+    that%dims => this%dims
+    nullify(this%dims)
+  endif
+  if (associated(this%iarray)) then
+    that%iarray => this%iarray
+    nullify(this%iarray)
+  endif
+  if (associated(this%ibuffer)) then
+    that%ibuffer => this%ibuffer
+    nullify(this%ibuffer)
+  endif
+  if (associated(this%rarray)) then
+    that%rarray => this%rarray
+    nullify(this%rarray)
+  endif
+  if (associated(this%rbuffer)) then
+    that%rbuffer => this%rbuffer
+    nullify(this%rbuffer)
+  endif
+  that%buffer_slice_offset = this%buffer_slice_offset
+  that%buffer_nslice = this%buffer_nslice
+  that%next => this%next
+  nullify(this%next)
+    
+end subroutine DatasetBaseCopy
 
 ! ************************************************************************** !
 !
@@ -199,7 +249,6 @@ subroutine DatasetBaseReorder(this,option)
   class(dataset_base_type) :: this
   type(option_type) :: option
   
-#if 0
   PetscReal, allocatable :: temp_real(:)
   PetscInt :: i, j, k, l
   PetscInt :: dims(4), n1, n1Xn2, n1Xn2Xn3
@@ -216,7 +265,7 @@ subroutine DatasetBaseReorder(this,option)
   dims(1:this%rank) = this%dims(1:this%rank)
   if (associated(this%rbuffer)) then
     rarray => this%rbuffer
-    dims(this%rank+1) = this%time_storage%max_time_index
+    dims(this%rank+1) = this%buffer_nslice
   else
     rarray => this%rarray
   endif
@@ -233,6 +282,7 @@ subroutine DatasetBaseReorder(this,option)
   n1 = dims(1)
   n1Xn2 = n1*dims(2)
   n1Xn2Xn3 = n1Xn2*dims(3)
+  count = 0
   do i = 1, dims(1)
     do j = 0, dims(2)-1
       do k = 0, dims(3)-1
@@ -247,7 +297,6 @@ subroutine DatasetBaseReorder(this,option)
 
   rarray = temp_real
   deallocate(temp_real)
-#endif
   
 end subroutine DatasetBaseReorder
 

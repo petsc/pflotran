@@ -12,9 +12,65 @@ module Dataset_New_module
   
 #include "definitions.h"
 
-  public :: DatasetDestroy
+  public :: DatasetProcessDatasets, &
+            DatasetDestroy
 
 contains
+
+! *************************************************************************** !
+!
+! DatasetProcessDatasets: Determine whether a dataset is indexed by cell 
+!                             ids
+! author: Glenn Hammond
+! date: 03/26/12
+!
+! ************************************************************************** !
+subroutine DatasetProcessDatasets(datasets,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(dataset_base_type), pointer :: datasets
+  type(option_type) :: option
+  
+  class(dataset_base_type), pointer :: cur_dataset
+  class(dataset_base_type), pointer :: prev_dataset
+  class(dataset_xyz_type), pointer :: dataset_xyz
+  PetscBool :: swapped
+  
+  cur_dataset => datasets
+  do
+    if (.not.associated(cur_dataset)) exit
+    nullify(dataset_xyz)
+    swapped = PETSC_FALSE
+    select type(cur_dataset)
+      class is(dataset_common_hdf5_type)
+        cur_dataset%is_cell_indexed = &
+          DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
+        if (.not.cur_dataset%is_cell_indexed) then
+          swapped = PETSC_TRUE
+          dataset_xyz => DatasetXYZCreate()
+          call DatasetCommonHDF5Copy(cur_dataset,dataset_xyz)
+        endif
+    end select
+    if (swapped) then
+      ! dataset_xyz%next is already set to cur_dataset%next
+      if (associated(prev_dataset)) then
+        prev_dataset%next => dataset_xyz
+      else
+        datasets => dataset_xyz
+      endif
+      ! just to be sure
+      nullify(cur_dataset%next)
+      call DatasetDestroy(cur_dataset)
+      cur_dataset => dataset_xyz
+    endif
+    prev_dataset => cur_dataset
+    cur_dataset => cur_dataset%next
+  enddo
+  
+end subroutine DatasetProcessDatasets
 
 ! ************************************************************************** !
 !

@@ -788,11 +788,13 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationProcessConditions(realization)
 
+  use Dataset_New_module
+  
   implicit none
   
   type(realization_type) :: realization
 
-  call RealizationProcessDatasets(realization%datasets,realization%option)
+  call DatasetProcessDatasets(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -947,40 +949,6 @@ subroutine RealProcessFluidProperties(realization)
   endif
   
 end subroutine RealProcessFluidProperties
-
-
-! *************************************************************************** !
-!
-! RealizationProcessDatasets: Determine whether a dataset is indexed by cell 
-!                             ids
-! author: Glenn Hammond
-! date: 03/26/12
-!
-! ************************************************************************** !
-subroutine RealizationProcessDatasets(datasets,option)
-
-  use Option_module
-  use Dataset_Common_HDF5_class
-  
-  implicit none
-  
-  class(dataset_base_type), pointer :: datasets
-  type(option_type) :: option
-  
-  class(dataset_base_type), pointer :: cur_dataset
-  
-  cur_dataset => datasets
-  do
-    if (.not.associated(cur_dataset)) exit
-    select type(cur_dataset)
-      class is(dataset_common_hdf5_type)
-        cur_dataset%is_cell_indexed = &
-          DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
-    end select
-    cur_dataset => cur_dataset%next
-  enddo
-  
-end subroutine RealizationProcessDatasets
 
 ! ************************************************************************** !
 !

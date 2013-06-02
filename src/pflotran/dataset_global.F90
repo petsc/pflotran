@@ -87,12 +87,11 @@ subroutine DatasetGlobalLoad(this,dm_wrapper,option)
   type(dm_ptr_type) :: dm_wrapper
   type(option_type) :: option
   
-  if (.not.associated(this%rarray)) then
-    allocate(this%rarray(this%local_size))
-    this%rarray = 0.d0
-  endif
-  
   if (DatasetCommonHDF5Load(this,option)) then
+    if (.not.associated(this%rarray)) then
+      allocate(this%rarray(this%local_size))
+      this%rarray = 0.d0
+    endif
     if (.not.associated(this%rbuffer)) then ! not initialized
       this%buffer_nslice = min(this%max_buffer_size, &
                                this%time_storage%max_time_index)
@@ -184,7 +183,7 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
   call h5fopen_f(this%filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  string = trim(this%hdf5_dataset_name) // '/Data'
+  string = trim(this%hdf5_dataset_name) // '/data'
   if (this%realization_dependent) then
     write(word,'(i9)') option%id
     string = trim(string) // trim(adjustl(word))

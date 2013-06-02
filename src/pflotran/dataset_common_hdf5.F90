@@ -18,6 +18,7 @@ module Dataset_Common_HDF5_class
 
   public :: DatasetCommonHDF5Create, &
             DatasetCommonHDF5Init, &
+            DatasetCommonHDF5Copy, &
             DatasetCommonHDF5Cast, &
             DatasetCommonHDF5Read, &
             DatasetCommonHDF5Load, &
@@ -75,6 +76,29 @@ subroutine DatasetCommonHDF5Init(this)
   this%is_transient = PETSC_FALSE
     
 end subroutine DatasetCommonHDF5Init
+
+! ************************************************************************** !
+!
+! DatasetCommonHDF5Copy: Copies members of common hdf5 dataset class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+subroutine DatasetCommonHDF5Copy(this, that)
+  
+  implicit none
+  
+  class(dataset_common_hdf5_type) :: this
+  class(dataset_common_hdf5_type) :: that
+  
+  call DatasetBaseCopy(this,that)
+  that%hdf5_dataset_name = this%hdf5_dataset_name
+  that%realization_dependent = this%realization_dependent
+  that%max_buffer_size = this%max_buffer_size
+  that%is_cell_indexed = this%is_cell_indexed
+  that%is_transient = this%is_transient
+    
+end subroutine DatasetCommonHDF5Copy
 
 ! ************************************************************************** !
 !
@@ -204,13 +228,11 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   PetscMPIInt :: int_mpi
   PetscInt :: temp_int
   PetscMPIInt :: hdf5_err
-  PetscBool :: attribute_exists
+  PetscBool :: attribute_exists, group_exists
   PetscErrorCode :: ierr
   
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
   
-  time_storage => TimeStorageCreate()
-
   if (option%myrank == option%io_rank) then
     ! open the file
     call h5open_f(hdf5_err)
@@ -244,21 +266,36 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
       call printWrnMsg(option)
       time_units = 's'
     endif
-  
-    !geh: Should check to see if "Times" dataset exists.
-    string = 'Times'
-    option%io_buffer = 'Opening data set: ' // trim(string)
-    call printMsg(option)  
-    call h5dopen_f(grp_id,string,dataset_id,hdf5_err)
-    call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
-    call h5sget_simple_extent_npoints_f(file_space_id,num_times,hdf5_err)
-    temp_int = num_times
+
+    ! Check whether a time array actually exists
+    string = 'time'
+    call h5lexists_f(grp_id,string,group_exists,hdf5_err)
+
+    if (group_exists) then
+      !geh: Should check to see if "Times" dataset exists.
+      option%io_buffer = 'Opening data set: ' // trim(string)
+      call printMsg(option)  
+      call h5dopen_f(grp_id,string,dataset_id,hdf5_err)
+      call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
+      call h5sget_simple_extent_npoints_f(file_space_id,num_times,hdf5_err)
+      temp_int = num_times
+    else
+      temp_int = -1
+    endif
   endif
   
   int_mpi = 1
   call MPI_Bcast(temp_int,int_mpi,MPI_INTEGER,option%io_rank, &
                  option%mycomm,ierr)
   num_times = temp_int
+  
+  if (num_times == -1) then
+    ! no times exist, simply return
+    return
+  endif
+  
+  time_storage => TimeStorageCreate()
+  time_storage => TimeStorageCreate()
   time_storage%max_time_index = num_times
   allocate(time_storage%times(num_times))
   time_storage%times = 0.d0
@@ -321,6 +358,8 @@ function DatasetCommonHDF5Load(this,option)
   class(dataset_common_hdf5_type) :: this
   type(option_type) :: option
   
+  PetscBool :: read_due_to_time
+  
   DatasetCommonHDF5Load = PETSC_FALSE
   
   if (.not.associated(this%time_storage)) then
@@ -328,22 +367,36 @@ function DatasetCommonHDF5Load(this,option)
     call DatasetCommonHDF5ReadTimes(this%filename,this%hdf5_dataset_name, &
                                     this%time_storage,option)
 #endif
+    ! if no times are read, this%time_storage will be null coming out of
+    ! DatasetCommonHDF5ReadTimes()
+    if (associated(this%time_storage)) then
+      this%is_transient = PETSC_TRUE
+    endif
   endif
   
-  this%time_storage%cur_time = option%time
-  ! sets correct cur_time_index
-  call TimeStorageUpdate(this%time_storage)
-  
-  if (this%time_storage%cur_time_index > 0 .and. &
-      this%time_storage%cur_time_index >= &
+  if (associated(this%time_storage)) then
+    this%time_storage%cur_time = option%time
+    ! sets correct cur_time_index
+    call TimeStorageUpdate(this%time_storage)
+    read_due_to_time = &
+      (this%time_storage%cur_time_index > 0 & 
+       .and. &
+       this%time_storage%cur_time_index >= &
         ! both of the below will be zero initially
-        this%buffer_slice_offset + this%buffer_nslice &
-      .and. &
-      (this%time_storage%cur_time_index < &
-        this%time_storage%max_time_index .or. &
+         this%buffer_slice_offset + this%buffer_nslice &
+       .and. &
+       this%time_storage%cur_time_index < &
+         this%time_storage%max_time_index)
+  else
+    read_due_to_time = PETSC_FALSE
+  endif
+  
+  if (read_due_to_time .or. &
        ! essentially gets the data set read if only one time slice
-       .not.associated(this%rbuffer))) then
-    this%buffer_slice_offset = this%time_storage%cur_time_index - 1
+      .not.associated(this%rarray)) then
+    if (associated(this%time_storage)) then
+      this%buffer_slice_offset = this%time_storage%cur_time_index - 1
+    endif
     DatasetCommonHDF5Load = PETSC_TRUE
   endif
     
