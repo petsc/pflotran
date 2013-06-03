@@ -6,7 +6,6 @@ module Geomechanics_Realization_module
   use Geomechanics_Patch_module
   use Input_module
   use Option_module
-  use Level_module
   use Geomechanics_Material_module
   
   implicit none
@@ -32,7 +31,8 @@ private
   end type geomech_realization_type
 
 public :: GeomechRealizCreate, &
-          GeomechRealizDestroy
+          GeomechRealizDestroy, &
+          GeomechRealizCreateDiscretization
 
 contains
 
@@ -70,6 +70,37 @@ function GeomechRealizCreate(option)
   GeomechRealizCreate => geomech_realization
   
 end function GeomechRealizCreate
+
+! ************************************************************************** !
+!
+! GeomechRealizCreateDiscretization: Creates grid
+! author: Glenn Hammond
+! date: 02/22/08
+!
+! ************************************************************************** !
+subroutine GeomechRealizCreateDiscretization(realization)
+
+  use Geomech_Grid_Aux_module
+  
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(geomech_realization_type) :: realization
+  
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  
+  discretization => realization%discretization
+  grid => discretization%grid
+  option => realization%option
+  
+  call GeomechDiscretizationCreateDMs(discretization,option)
+
+  
+end subroutine GeomechRealizCreateDiscretization
 
 ! ************************************************************************** !
 !

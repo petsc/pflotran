@@ -447,6 +447,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call MPI_Exscan(geomech_grid%nlmax_node,global_offset_old, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
                   
+  geomech_grid%global_offset = global_offset_old
+                  
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
   print *, 'Number of local vertices on process' // &
@@ -456,6 +458,13 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   print *, 'Number of ghosted of vertices on process' // &
   trim(adjustl(string)) // ' is:', geomech_grid%ngmax_node  
 #endif
+  
+  ! Create an AO for node (vertex) natural ids to petsc ids
+  allocate(int_array(geomech_grid%nlmax_node))
+  do local_id = 1, geomech_grid%nlmax_node
+    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
+  enddo
+
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
 

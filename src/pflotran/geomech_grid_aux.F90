@@ -75,7 +75,8 @@ module Geomech_Grid_Aux_module
   public :: GMGridCreate, &
             GMGridDestroy, &
             GMDMCreate, &
-            GMDMDestroy
+            GMDMDestroy, &
+            GMCreateGMDM
             
   
 contains
@@ -182,15 +183,14 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   type(option_type)                   :: option
   type(gmdm_type), pointer            :: gmdm
   PetscInt                            :: ndof
-  
-  PetscInt, pointer :: int_ptr(:)
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: idof
-  IS :: is_tmp
-  Vec :: vec_tmp
-  PetscErrorCode :: ierr
-  character(len=MAXWORDLENGTH) :: ndof_word
-  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt, pointer                   :: int_ptr(:)
+  PetscInt                            :: local_id, ghosted_id
+  PetscInt                            :: idof
+  IS                                  :: is_tmp
+  Vec                                 :: vec_tmp
+  PetscErrorCode                      :: ierr
+  character(len=MAXWORDLENGTH)        :: ndof_word
+  character(len=MAXSTRINGLENGTH)      :: string
   
   PetscViewer :: viewer
 
@@ -209,16 +209,46 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
 
   ! create global vec
   call VecCreate(option%mycomm,gmdm%global_vec,ierr)
-  call VecSetSizes(gmdm%global_vec,PETSC_DECIDE,geomech_grid%nmax_node*ndof, &
+  call VecSetSizes(gmdm%global_vec,PETSC_DECIDE,geomech_grid%nlmax_node*ndof, &
                     ierr)  
   call VecSetBlockSize(gmdm%global_vec,ndof,ierr)
   call VecSetFromOptions(gmdm%global_vec,ierr)
 
   ! create local vec
   call VecCreate(PETSC_COMM_SELF,gmdm%local_vec,ierr)
-  call VecSetSizes(gmdm%local_vec,geomech_grid%nlmax_node*ndof,PETSC_DECIDE,ierr)
+  call VecSetSizes(gmdm%local_vec,geomech_grid%ngmax_node*ndof,PETSC_DECIDE,ierr)
   call VecSetBlockSize(gmdm%local_vec,ndof,ierr)
   call VecSetFromOptions(gmdm%local_vec,ierr)
+  
+  ! IS for global numbering of local, non-ghosted vertices
+  ! ISCreateBlock requires block ids, not indices.  Therefore, istart should be
+  ! the offset of the block from the beginning of the vector.
+  allocate(int_array(geomech_grid%nlmax_node))
+  do local_id = 1, geomech_grid%nlmax_node
+    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
+  enddo
+
+  ! arguments for ISCreateBlock():
+  ! option%mycomm  - the MPI communicator
+  ! ndof  - number of elements in each block
+  ! geomech_grid%nlmax  - the length of the index set
+  !                                      (the number of blocks
+  ! int_array  - the list of integers, one for each block and count
+  !              of block not indices
+  ! PETSC_COPY_VALUES  - see PetscCopyMode, only PETSC_COPY_VALUES and
+  !                      PETSC_OWN_POINTER are supported in this routine
+  ! ugdm%is_local_petsc - the new index set
+  ! ierr - PETScErrorCode
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_node, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_local_petsc,ierr)
+  deallocate(int_array)
+  
+#if GEOMECH_DEBUG
+  string = 'geomech_is_local_petsc' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_local_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
 
 
 
