@@ -244,6 +244,7 @@ chem_obj = \
 grid_obj = \
 	${common_src}connection.o \
 	${common_src}discretization.o \
+	${common_src}dm_kludge.o \
 	${common_src}general_grid.o \
 	${common_src}grid.o \
 	${common_src}mfd.o \
@@ -265,10 +266,12 @@ properties_obj = \
 	${common_src}material.o 
 
 dataset_obj = \
-	${common_src}dataset.o \
-	${common_src}dataset_aux.o \
 	${common_src}dataset_base.o \
+	${common_src}dataset_common_hdf5.o \
 	${common_src}dataset_global.o \
+	${common_src}dataset_map.o \
+	${common_src}dataset_new.o \
+	${common_src}dataset_xyz.o \
 	${common_src}time_series.o \
 	${common_src}time_storage.o 
 
