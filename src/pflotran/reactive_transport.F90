@@ -3683,8 +3683,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   use Logging_module
   
 #ifdef XINGYUAN_BC
-  use Dataset_module
-  use Dataset_Aux_module
+!  use Dataset_module
+!  use Dataset_Aux_module
   use Output_Tecplot_module
 #endif
   

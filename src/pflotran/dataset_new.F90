@@ -13,6 +13,7 @@ module Dataset_New_module
 #include "definitions.h"
 
   public :: DatasetProcessDatasets, &
+            DatasetLoad, &
             DatasetDestroy
 
 contains
@@ -40,6 +41,7 @@ subroutine DatasetProcessDatasets(datasets,option)
   PetscBool :: swapped
   
   cur_dataset => datasets
+  nullify(prev_dataset)
   do
     if (.not.associated(cur_dataset)) exit
     nullify(dataset_xyz)
@@ -71,6 +73,47 @@ subroutine DatasetProcessDatasets(datasets,option)
   enddo
   
 end subroutine DatasetProcessDatasets
+
+! ************************************************************************** !
+!
+! DatasetLoad: Loads a dataset based on type
+! author: Glenn Hammond
+! date: 06/03/13
+!
+! ************************************************************************** !
+recursive subroutine DatasetLoad(dataset, dm_wrapper, option)
+
+  use DM_Kludge_module
+  use Option_module
+  
+  implicit none
+  
+  class(dataset_base_type), pointer :: dataset
+  type(dm_ptr_type), pointer :: dm_wrapper
+  type(option_type) :: option
+
+  class(dataset_global_type), pointer :: dataset_global
+  class(dataset_xyz_type), pointer :: dataset_xyz
+  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_base_type), pointer :: dataset_base
+
+  select type (selector => dataset)
+    class is (dataset_global_type)
+      dataset_global => selector
+      call DatasetGlobalLoad(dataset_global,dm_wrapper,option)
+    class is (dataset_xyz_type)
+      dataset_xyz => selector
+      call DatasetXYZLoad(dataset_xyz,option)
+    class is (dataset_map_type)
+      dataset_map => selector
+      call DatasetMapLoad(dataset_map,option)
+    class is (dataset_base_type)
+      dataset_base => selector
+      option%io_buffer = 'DatasetLoad not yet supported for base dataset class.'
+      call printErrMsg(option)
+  end select
+  
+end subroutine DatasetLoad
 
 ! ************************************************************************** !
 !

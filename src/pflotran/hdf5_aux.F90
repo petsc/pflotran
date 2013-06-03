@@ -152,7 +152,7 @@ end subroutine HDF5ReadNDimRealArray
 subroutine HDF5ReadDataset(dataset,option)
 
   use hdf5
-  use Dataset_Aux_module
+!  use Dataset_Aux_module
   use Option_module
   use Units_module
   
@@ -483,7 +483,7 @@ end subroutine HDF5ReadDataset
 subroutine HDF5ReadDatasetMap(dataset,option)
 
   use hdf5
-  use Dataset_Aux_module
+!  use Dataset_Aux_module
   use Option_module
   use Units_module
   

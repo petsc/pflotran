@@ -2627,6 +2627,9 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
   PetscReal :: time
   type(flow_condition_dataset_type) :: flow_condition_dataset
 
+  class(dataset_xyz_type), pointer :: dataset_xyz
+  class(dataset_map_type), pointer :: dataset_map
+
   if (associated(flow_condition_dataset%time_series)) then
     if (time < 1.d-40 .or. &
         flow_condition_dataset%time_series%is_transient) then
@@ -2640,11 +2643,13 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
         if ((time < 1.d-40 .or. &
              dataset%is_transient) .and. &
             .not.dataset%is_cell_indexed) then
-          select type(dataset)
+          select type(common_hdf5_dataset=>dataset)
             class is(dataset_xyz_type)
-              call DatasetXYZLoad(dataset,option)
+              dataset_xyz => common_hdf5_dataset
+              call DatasetXYZLoad(dataset_xyz,option)
             class is(dataset_map_type)
-              call DatasetMapLoad(dataset,option)
+              dataset_map => common_hdf5_dataset
+              call DatasetMapLoad(dataset_map,option)
           end select
         endif
     end select
