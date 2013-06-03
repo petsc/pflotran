@@ -1,5 +1,10 @@
 import sys
-import re
+
+# Author: Glenn Hammond
+# Date: 06/03/13
+# This python script calculates the dependencies between PFLOTRAN source files
+# and writes the dependencies to pflotran_dependencies.txt.  The developer
+# must then insert the contents of this file within the PFLOTRAN makefile.
 
 def get_filename(root,suffix):
   filename = []
