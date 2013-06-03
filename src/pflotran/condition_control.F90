@@ -824,6 +824,15 @@ subroutine CondControlAssignTranInitCond(realization)
         call printMsg(option,string2)
       endif
     enddo
+    option%io_buffer = ''
+    call printMsg(option)
+    option%io_buffer = '*** Begin Note'
+    call printMsg(option)
+    option%io_buffer = 'If concentrations = -999., they have not ' // &
+              'been initialized properly.'
+    call printMsg(option)
+    option%io_buffer = '*** End Note'
+    call printMsg(option)
     option%io_buffer = 'Free ion concentations must be positive.  Try ' // &
       'using a small value such as 1.e-20 or 1.e-40 instead of zero.'
     call printErrMsg(option)
