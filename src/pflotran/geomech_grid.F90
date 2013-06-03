@@ -287,6 +287,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   PetscInt, allocatable                      :: int_array4(:)
   PetscErrorCode                             :: ierr
   character(len=MAXSTRINGLENGTH)             :: string, string1
+  PetscInt                                   :: global_offset_old
   
   call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
                   'be used for geomechanics.')
@@ -311,6 +312,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%max_ndual_per_elem = ugrid%max_ndual_per_cell
   geomech_grid%max_nnode_per_elem = ugrid%max_nvert_per_cell
   geomech_grid%max_elem_sharing_a_node = ugrid%max_cells_sharing_a_vertex
+  geomech_grid%nlmax_node = ugrid%num_vertices_natural
 
 #ifdef GEOMECH_DEBUG
   call printMsg(option,'Removing ghosted elements (cells)')
@@ -436,10 +438,24 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   close(86)
 #endif  
 
-  geomech_grid%nlmax_node = vertex_count
+  geomech_grid%ngmax_node = vertex_count
 
   deallocate(int_array3)
-
+  
+  ! Find the global_offset for vertices on this rank
+  global_offset_old = 0
+  call MPI_Exscan(geomech_grid%nlmax_node,global_offset_old, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+                  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  print *, 'Number of local vertices on process' // &
+  trim(adjustl(string)) // ' is:', geomech_grid%nlmax_node
+  print *, 'Global offset of vertices on process' // &
+  trim(adjustl(string)) // ' is:', global_offset_old  
+  print *, 'Number of ghosted of vertices on process' // &
+  trim(adjustl(string)) // ' is:', geomech_grid%ngmax_node  
+#endif
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
 

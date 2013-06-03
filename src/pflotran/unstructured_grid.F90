@@ -1734,6 +1734,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array)
 
   ! resize vertex array to new size
+  unstructured_grid%num_vertices_natural = unstructured_grid%num_vertices_local
   unstructured_grid%num_vertices_local = vertex_count
   allocate(unstructured_grid%vertices(vertex_count))
   do ivertex = 1, vertex_count

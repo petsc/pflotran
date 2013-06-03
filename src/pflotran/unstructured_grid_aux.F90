@@ -35,6 +35,7 @@ module Unstructured_Grid_Aux_module
     PetscInt :: grid_type         ! 3D subsurface (default) or 2D surface grid
     PetscInt :: num_vertices_global ! number of vertices in entire problem domain
     PetscInt :: num_vertices_local  ! number of vertices in local grid cells
+    PetscInt :: num_vertices_natural ! number of vertices read initially
     PetscInt :: max_ndual_per_cell
     PetscInt :: max_nvert_per_cell
     PetscInt :: max_cells_sharing_a_vertex

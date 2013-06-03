@@ -25,6 +25,7 @@ module Geomech_Grid_Aux_module
     PetscInt :: nlmax_elem                   ! Total number of non-ghosted elements on a processor
     PetscInt :: nmax_node                    ! Total number of nodes in the global domain 
     PetscInt :: nlmax_node                   ! Total number of non-ghosted nodes on a processor
+    PetscInt :: ngmax_node                   ! Total number of ghosted nodes on a processor
     PetscInt, pointer :: elem_ids_natural(:) ! Natural numbering of elements on a processor
     PetscInt, pointer :: elem_ids_petsc(:)   ! Petsc numbering of elements on a processor
     AO :: ao_natural_to_petsc                ! mapping of natural to Petsc ordering
@@ -39,21 +40,28 @@ module Geomech_Grid_Aux_module
   
 
   type, public :: gmdm_type                  ! Geomech. DM type
-    ! Ghosting of elements not required
+    ! local: included both local (non-ghosted) and ghosted nodes
+    ! global: includes only local (non-ghosted) nodes
     PetscInt :: ndof
-    ! local = local (non-ghosted) elements
-    IS :: is_local_local                     ! IS for local elems with local on-processor numbering
-    IS :: is_local_petsc                     ! IS for local elems with petsc numbering
-    IS :: is_local_natural                   ! IS for local elems with natural (global) numbering
+    ! for the below
+    ! ghosted = local (non-ghosted) and ghosted nodes
+    ! local = local (non-ghosted) nodes
+    IS :: is_ghosted_local                   ! IS for ghosted nodes with local on-processor numbering
+    IS :: is_local_local                     ! IS for local nodes with local on-processor numbering
+    IS :: is_ghosted_petsc                   ! IS for ghosted nodes with petsc numbering
+    IS :: is_local_petsc                     ! IS for local nodes with petsc numbering
+    IS :: is_ghosts_local                    ! IS for ghost nodes with local on-processor numbering
+    IS :: is_ghosts_petsc                    ! IS for ghost nodes with petsc numbering
+    IS :: is_local_natural                   ! IS for local nodes with natural (global) numbering
     VecScatter :: scatter_ltog               ! scatter context for local to global updates
     VecScatter :: scatter_gtol               ! scatter context for global to local updates
     VecScatter :: scatter_ltol               ! scatter context for local to local updates
     VecScatter :: scatter_gton               ! scatter context for global to natural updates
     VecScatter :: scatter_ntog               ! scatter context for natural to global updates
-    Vec :: global_vec                        ! global vec (no ghost elems), petsc-ordering
-    Vec :: local_vec                         ! local vec (includes local elems), local ordering
-    ISLocalToGlobalMapping :: mapping_ltog   ! local to global mapping
+    ISLocalToGlobalMapping :: mapping_ltog   ! petsc vec local to global mapping
     ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
+    Vec :: global_vec                        ! global vec (no ghost nodes), petsc-ordering
+    Vec :: local_vec                         ! local vec (includes local and ghosted nodes), local ordering
   end type gmdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -87,8 +95,12 @@ function GMDMCreate()
   type(gmdm_type), pointer :: gmdm
 
   allocate(gmdm)
+  gmdm%is_ghosted_local = 0
   gmdm%is_local_local = 0
+  gmdm%is_ghosted_petsc = 0
   gmdm%is_local_petsc = 0
+  gmdm%is_ghosts_local = 0
+  gmdm%is_ghosts_petsc = 0
   gmdm%is_local_natural = 0
   gmdm%scatter_ltog = 0
   gmdm%scatter_gtol = 0
@@ -263,8 +275,12 @@ subroutine GMDMDestroy(gmdm)
   
   if (.not.associated(gmdm)) return
   
+  call ISDestroy(gmdm%is_ghosted_local,ierr)
   call ISDestroy(gmdm%is_local_local,ierr)
+  call ISDestroy(gmdm%is_ghosted_petsc,ierr)
   call ISDestroy(gmdm%is_local_petsc,ierr)
+  call ISDestroy(gmdm%is_ghosts_local,ierr)
+  call ISDestroy(gmdm%is_ghosts_petsc,ierr)
   call ISDestroy(gmdm%is_local_natural,ierr)
   call VecScatterDestroy(gmdm%scatter_ltog,ierr)
   call VecScatterDestroy(gmdm%scatter_gtol,ierr)
