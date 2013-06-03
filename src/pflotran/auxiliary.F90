@@ -9,7 +9,7 @@ module Auxiliary_module
   use Mphase_Aux_module
   use Immis_Aux_module
   use Miscible_Aux_module
-  use Flash2_Aux_Module
+  use Flash2_Aux_module
   use General_Aux_module
   use Material_Aux_module
   use Secondary_Continuum_Aux_module

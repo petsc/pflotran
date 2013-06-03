@@ -1,9 +1,10 @@
-module mphase_pckr_module
-use Material_module
-use Option_module
-implicit none
+module Mphase_pckr_module
 
-private
+  use Material_module
+  use Option_module
+  implicit none
+
+  private
 #include "definitions.h"
   PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
   
@@ -616,4 +617,4 @@ end subroutine pckrHY_noderiv
 
 
 
-end module mphase_pckr_module
+end module Mphase_pckr_module

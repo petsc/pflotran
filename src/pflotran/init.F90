@@ -52,7 +52,7 @@ subroutine Init(simulation)
   use Condition_Control_module
   
   use Flash2_module
-  use MPHASE_module
+  use Mphase_module
   use Immis_module
   use Miscible_module
   use Richards_module
@@ -77,7 +77,7 @@ subroutine Init(simulation)
     
 #ifdef SURFACE_FLOW
   use Surface_Field_module
-  use Surface_Flow_Module
+  use Surface_Flow_module
   use Surface_Global_module
   use Surface_Init_module
   use Surface_Realization_class

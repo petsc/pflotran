@@ -12,7 +12,7 @@ module Patch_module
   use Field_module
   use Saturation_Function_module
 #ifdef SURFACE_FLOW
-  use Surface_field_module
+  use Surface_Field_module
   use Surface_Material_module
   use Surface_Auxiliary_module
 #endif

@@ -497,7 +497,7 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  use Water_EOS_module
   use Saturation_Function_module
   use Fluid_module
   
@@ -563,7 +563,8 @@ end subroutine Flash2AuxVarDestroy
 !
 ! ************************************************************************** !
 subroutine Flash2AuxDestroy(aux, option)
-use option_module
+
+  use Option_module
   implicit none
 
   type(Flash2_type), pointer :: aux

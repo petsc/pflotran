@@ -398,8 +398,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
-  use Gas_Eos_module
+  use Water_EOS_module
+  use Gas_EOS_module
   use Saturation_Function_module
   
   implicit none
