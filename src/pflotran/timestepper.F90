@@ -1863,7 +1863,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
 
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
-  use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
+  use Mphase_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
@@ -2371,7 +2371,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
-  use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
+  use Mphase_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
@@ -4062,7 +4062,7 @@ end subroutine StepperUpdateSolution
 subroutine StepperUpdateFlowSolution(realization)
   
   use Flash2_module, only: Flash2UpdateSolution
-  use MPHASE_module, only: MphaseUpdateSolution
+  use Mphase_module, only: MphaseUpdateSolution
   use Immis_module, only: ImmisUpdateSolution
   use Miscible_module, only: MiscibleUpdateSolution 
   use Richards_module, only : RichardsUpdateSolution
@@ -4203,7 +4203,7 @@ end subroutine StepperJumpStart
 subroutine StepperUpdateFlowAuxVars(realization)
   
   use Flash2_module, only: Flash2UpdateAuxVars
-  use MPHASE_module, only: MphaseUpdateAuxVars
+  use Mphase_module, only: MphaseUpdateAuxVars
   use Immis_module, only: ImmisUpdateAuxVars
   use Miscible_module, only: MiscibleUpdateAuxVars
   use Richards_module, only : RichardsUpdateAuxVars

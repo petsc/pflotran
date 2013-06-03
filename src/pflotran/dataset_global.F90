@@ -286,7 +286,7 @@ subroutine DatasetGlobalReadData(discretization,grid,option,filename, &
   use hdf5
   use Logging_module
   use Option_module
-  use Grid_Module
+  use Grid_module
   use Discretization_module
   
   implicit none

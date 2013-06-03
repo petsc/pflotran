@@ -1648,7 +1648,7 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Field_module
   use Option_module
-  use grid_module 
+  use Grid_module 
 
   implicit none
 

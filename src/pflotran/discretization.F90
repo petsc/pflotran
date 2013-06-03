@@ -6,7 +6,7 @@ module Discretization_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Explicit_module
   use MFD_Aux_module
-  use MFD_Module
+  use MFD_module
 
   implicit none
 

@@ -182,7 +182,7 @@ end subroutine RichardsUpdateCellPressure
 !   use Grid_module
 !   use Connection_module
 !   use MFD_module
-!   use MFD_aux_module
+!   use MFD_Aux_module
 !   
 !   implicit none
 ! 
@@ -319,7 +319,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   use Grid_module
   use Connection_module
   use MFD_module
-  use MFD_aux_module
+  use MFD_Aux_module
   
   implicit none
 
@@ -437,7 +437,7 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
   use Material_module
   use Logging_module
   use MFD_module
-  use MFD_aux_module
+  use MFD_Aux_module
   
   implicit none
 
@@ -965,7 +965,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   use MFD_module
-  use MFD_aux_module
+  use MFD_Aux_module
   
   implicit none
 
@@ -1459,7 +1459,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   use MFD_module
-  use MFD_aux_module
+  use MFD_Aux_module
   
   implicit none
 
@@ -1901,7 +1901,7 @@ end subroutine RichardsJacobianMFDLP
 subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
        
   use Water_EOS_module
-  use mfd_aux_module
+  use MFD_Aux_module
   use Connection_module
   use Realization_class
   use Option_module
@@ -2097,7 +2097,7 @@ end subroutine RichardsJacobianPatchMFD
 subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
        
   use Water_EOS_module
-  use mfd_aux_module
+  use MFD_Aux_module
   use Connection_module
   use Realization_class
   use Option_module

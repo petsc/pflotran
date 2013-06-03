@@ -1665,7 +1665,7 @@ end subroutine GetCellConnectionsTecplot
 ! ************************************************************************** !
 subroutine WriteTecplotDataSetFromVec(fid,realization_base,vec,datatype)
 
-  use Realization_base_class, only : realization_base_type
+  use Realization_Base_class, only : realization_base_type
   
   implicit none
 

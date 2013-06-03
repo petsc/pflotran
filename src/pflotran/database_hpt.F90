@@ -3,7 +3,7 @@ module Database_hpt_module
   use Reaction_module
   use Reaction_Aux_module
   use Database_module
-  use Database_aux_module
+  use Database_Aux_module
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
 
