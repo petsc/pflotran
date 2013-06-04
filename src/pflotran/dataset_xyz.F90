@@ -223,93 +223,6 @@ subroutine DatasetXYZReadData(this,option)
                      attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
     endif
-#if 0
-    !geh: don't need this anymorel  Key off # times
-    attribute_name = "Transient"
-    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
-    if (attribute_exists) then
-      read_times = PETSC_TRUE
-    else
-      read_times = PETSC_FALSE
-    endif  
-    attribute_name = "Cell Centered"
-    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
-    if (attribute_exists) then
-      this%is_cell_centered = PETSC_TRUE
-    else
-      this%is_cell_centered = PETSC_FALSE
-    endif 
-#endif    
-
-#if 0    
-    if (read_times) then
-      this%is_transient = PETSC_TRUE
-      units_conversion = 1.d0
-      attribute_name = "Time Units"
-      call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
-      if (attribute_exists) then
-        attribute_dim = 1
-        call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
-        size_t_int = MAXWORDLENGTH
-        call h5tset_size_f(atype_id,size_t_int,hdf5_err)
-        call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
-        call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
-        call h5aclose_f(attribute_id,hdf5_err)
-        units_conversion = UnitsConvertToInternal(word,option)
-      endif
-      ! open the "time" dataset, if it exists
-      dataset_name = 'time'
-      call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
-      call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
-      call h5sget_simple_extent_npoints_f(file_space_id,num_data_values,hdf5_err)
-      allocate(this%buffer%time_array(num_data_values))
-      this%buffer%time_array = 0.d0
-      call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-      array_rank_mpi = 1
-      offset(1) = 0
-      length(1) = num_data_values
-      stride(1) = 1
-      call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-      call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
-#endif
-      call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err,length)    
-      call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,this%buffer%time_array, &
-                     length,hdf5_err,memory_space_id,file_space_id,prop_id)
-      this%buffer%time_array = this%buffer%time_array * units_conversion
-      call PetscLogEventEnd(logging%event_h5dread_f,ierr)  
-      call h5pclose_f(prop_id,hdf5_err)
-      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-      call h5sclose_f(file_space_id,hdf5_err)
-      call h5dclose_f(dataset_id,hdf5_err)
-      this%buffer%num_times_total = size(this%buffer%time_array)
-      this%buffer%time_offset = 0
-      this%buffer%cur_time_index = 1
-      ! if maximum buffer size has not been set in the PFLOTRAN input file
-      if (this%max_buffer_size == 0) then
-        attribute_name = "Max Buffer Size"
-        call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
-        if (attribute_exists) then
-          attribute_dim(1) = 1
-          call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
-          call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,temp_int, &
-                         attribute_dim,hdf5_err)
-          call h5aclose_f(attribute_id,hdf5_err)
-          this%buffer%num_times_in_buffer = temp_int
-        endif
-        if (this%buffer%num_times_in_buffer == 0) then
-          this%buffer%num_times_in_buffer = this%buffer%num_times_total
-          if (this%buffer%num_times_in_buffer > 20) then
-            this%buffer%num_times_in_buffer = 20
-            option%io_buffer = 'Size of dataset buffer truncated to 20.'
-            call printMsg(option)
-          endif
-        endif
-      else
-        this%buffer%num_times_in_buffer = this%max_buffer_size
-      endif
-    endif
-#endif    
   endif ! this%data_dim == DIM_NULL
   
   num_spatial_dims = DatasetGetNDimensions(this)
@@ -321,7 +234,7 @@ subroutine DatasetXYZReadData(this,option)
   endif
   
   ! open the "data" dataset
-  dataset_name = 'data'
+  dataset_name = 'Data'
   if (this%realization_dependent) then
     write(word,'(i9)') option%id
     dataset_name = trim(dataset_name) // trim(adjustl(word))

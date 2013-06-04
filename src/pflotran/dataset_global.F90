@@ -89,6 +89,10 @@ subroutine DatasetGlobalLoad(this,dm_wrapper,option)
   
   if (DatasetCommonHDF5Load(this,option)) then
     if (.not.associated(this%rarray)) then
+      if (this%local_size == 0) then
+        option%io_buffer = 'Local size of Global Dataset has not been set.'
+        call printErrMsg(option)
+      endif
       allocate(this%rarray(this%local_size))
       this%rarray = 0.d0
     endif
@@ -100,8 +104,8 @@ subroutine DatasetGlobalLoad(this,dm_wrapper,option)
     endif
 #if defined(PETSC_HAVE_HDF5)    
     call DatasetGlobalReadData(this,dm_wrapper,option,H5T_NATIVE_DOUBLE)
-#endif    
-    call DatasetBaseReorder(this,option)
+#endif  
+    ! no need to reorder since it is 1D in the h5 file.
   endif
   call DatasetBaseInterpolateTime(this)
     
@@ -183,7 +187,7 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
   call h5fopen_f(this%filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  string = trim(this%hdf5_dataset_name) // '/data'
+  string = trim(this%hdf5_dataset_name) // '/Data'
   if (this%realization_dependent) then
     write(word,'(i9)') option%id
     string = trim(string) // trim(adjustl(word))
@@ -205,6 +209,10 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
     file_rank2_size = 1
   endif
 
+  allocate(this%dims(1))
+  this%dims = size(this%rarray)
+  this%rank = 1
+
   if (mod(buffer_size,this%local_size) /= 0) then
     write(option%io_buffer, &
           '(a," buffer dimension (",i9,") is not a multiple of local domain",&
@@ -221,6 +229,7 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
     call printErrMsg(option)   
   endif
 
+  istart = 0
   call MPI_Exscan(this%local_size,istart,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                   option%mycomm,ierr)
   

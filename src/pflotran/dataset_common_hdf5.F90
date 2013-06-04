@@ -268,7 +268,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
     endif
 
     ! Check whether a time array actually exists
-    string = 'time'
+    string = 'Times'
     call h5lexists_f(grp_id,string,group_exists,hdf5_err)
 
     if (group_exists) then
@@ -294,7 +294,6 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
     return
   endif
   
-  time_storage => TimeStorageCreate()
   time_storage => TimeStorageCreate()
   time_storage%max_time_index = num_times
   allocate(time_storage%times(num_times))
@@ -395,7 +394,9 @@ function DatasetCommonHDF5Load(this,option)
        ! essentially gets the data set read if only one time slice
       .not.associated(this%rarray)) then
     if (associated(this%time_storage)) then
-      this%buffer_slice_offset = this%time_storage%cur_time_index - 1
+      if (this%time_storage%cur_time_index > 0) then
+        this%buffer_slice_offset = this%time_storage%cur_time_index - 1
+      endif
     endif
     DatasetCommonHDF5Load = PETSC_TRUE
   endif

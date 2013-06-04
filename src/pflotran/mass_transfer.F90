@@ -168,6 +168,8 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, option)
   
   if (.not.associated(mass_transfer%dataset)) then
     mass_transfer%dataset => DatasetGlobalCreate()
+    mass_transfer%dataset%local_size = discretization%grid%nlmax
+    mass_transfer%dataset%global_size = discretization%grid%nmax
     mass_transfer%dataset%filename = mass_transfer%filename
     mass_transfer%dataset%hdf5_dataset_name = mass_transfer%dataset_name
     call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &

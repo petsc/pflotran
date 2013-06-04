@@ -1610,12 +1610,14 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_mass_transfer => realization%mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
-      do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
-        waypoint => WaypointCreate()
-        waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
-        waypoint%update_conditions = PETSC_TRUE
-        call WaypointInsertInList(waypoint,realization%waypoints)
-      enddo
+      if (associated(cur_mass_transfer%dataset%time_storage)) then
+        do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
+          waypoint => WaypointCreate()
+          waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,realization%waypoints)
+        enddo
+      endif
       cur_mass_transfer => cur_mass_transfer%next
     enddo
   endif  
