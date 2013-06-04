@@ -128,11 +128,11 @@ subroutine GeomechDiscretizationCreateDM(discretization,dm_ptr,ndof,option)
   
   implicit none
   
-  type(geomech_discretization_type) :: discretization
-  type(gmdm_ptr_type), pointer                         :: dm_ptr
-  PetscInt                                             :: ndof
-  type(option_type)                                    :: option
-  PetscErrorCode                                       :: ierr
+  type(geomech_discretization_type)                :: discretization
+  type(gmdm_ptr_type), pointer                     :: dm_ptr
+  type(option_type)                                :: option
+  PetscInt                                         :: ndof
+  PetscErrorCode                                   :: ierr
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)
@@ -143,11 +143,144 @@ subroutine GeomechDiscretizationCreateDM(discretization,dm_ptr,ndof,option)
       call GMCreateGMDM(discretization%grid, &
                         dm_ptr%gmdm,ndof,option)
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr)
- !     call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%gmdm%scatter_gtol,ierr)
+      call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%gmdm%scatter_gtol,ierr)
   end select
 
 end subroutine GeomechDiscretizationCreateDM
 
+! ************************************************************************** !
+!
+! GeomechDiscretizationCreateVector: Creates a PETSc vector for the nodes
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationCreateVector(discretization,dm_index,vector, &
+                                             vector_type,option)
+  use Option_module                                      
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(option_type)                             :: option
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  PetscInt                                      :: dm_index
+  Vec                                           :: vector
+  PetscInt                                      :: vector_type
+  PetscInt                                      :: ndof
+  PetscErrorCode                                :: ierr
+  
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+
+  call GMGridDMCreateVector(discretization%grid,dm_ptr%gmdm,vector, &
+                            vector_type,option)
+                            
+  call VecSet(vector,0.d0,ierr)
+  
+end subroutine GeomechDiscretizationCreateVector
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationDuplicateVector: Duplicates a Petsc vector
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationDuplicateVector(discretization,vector1,vector2)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  Vec                                           :: vector1
+  Vec                                           :: vector2
+  PetscErrorCode                                :: ierr
+  
+  call VecDuplicate(vector1,vector2,ierr)
+  call VecCopy(vector1,vector2,ierr)
+  
+end subroutine GeomechDiscretizationDuplicateVector
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationGetDMPtrFromIndex: Returns the integer pointer for 
+! the Geomech DM referenced
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+function GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: GeomechDiscretizationGetDMPtrFromIndex
+  PetscInt                                      :: dm_index
+  
+  select case (dm_index)
+    case(ONEDOF)
+      GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_1dof
+    case(NGEODOF)
+      GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_ngeodof
+  end select  
+  
+end function GeomechDiscretizationGetDMPtrFromIndex
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationGlobalToLocal: Performs global to local communication
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationGlobalToLocal(discretization,global_vec, &
+                                              local_vec,dm_index)
+
+  implicit none
+
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: local_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+    
+  call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
+  call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
+  
+end subroutine GeomechDiscretizationGlobalToLocal
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationLocalToGlobal: Performs local to global communication
+! with DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationLocalToGlobal(discretization,local_vec, &
+                                              global_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec
+  Vec                                           :: global_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine GeomechDiscretizationLocalToGlobal
 
 ! ************************************************************************** !
 !

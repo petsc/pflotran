@@ -85,6 +85,7 @@ PetscInt, parameter :: THREENPDOF = 3
 PetscInt, parameter :: NFLOWDOF = 4
 PetscInt, parameter :: NTRANDOF = 5
 PetscInt, parameter :: SURF_ONEDOF = 6
+PetscInt, parameter :: NGEODOF = 7
 
 PetscInt, parameter :: GLOBAL = 1
 PetscInt, parameter :: LOCAL = 2

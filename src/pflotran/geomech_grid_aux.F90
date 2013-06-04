@@ -81,7 +81,8 @@ module Geomech_Grid_Aux_module
             GMGridDestroy, &
             GMDMCreate, &
             GMDMDestroy, &
-            GMCreateGMDM
+            GMCreateGMDM, &
+            GMGridDMCreateVector
             
   
 contains
@@ -494,8 +495,106 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-
 end subroutine GMCreateGMDM
+
+
+! ************************************************************************** !
+!
+! GMGridDMCreateVector: Creates a global vector with PETSc ordering
+! author: Satish Karra, LANL
+! date: 06/04/13
+!
+! ************************************************************************** !
+subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(geomech_grid_type)              :: geomech_grid
+  type(gmdm_type)                      :: gmdm
+  type(option_type)                    :: option 
+  Vec                                  :: vec
+  PetscInt                             :: vec_type
+  PetscErrorCode                       :: ierr
+  
+  select case(vec_type)
+    case(GLOBAL)
+      call VecCreate(option%mycomm,vec,ierr)
+      call VecSetSizes(vec,geomech_grid%nlmax_node*gmdm%ndof, &
+                       PETSC_DECIDE,ierr)  
+      call VecSetLocalToGlobalMapping(vec,gmdm%mapping_ltog,ierr)
+      call VecSetLocalToGlobalMappingBlock(vec,gmdm%mapping_ltogb,ierr)
+      call VecSetBlockSize(vec,gmdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
+    case(LOCAL)
+      call VecCreate(PETSC_COMM_SELF,vec,ierr)
+      call VecSetSizes(vec,geomech_grid%ngmax_node*gmdm%ndof, &
+                  PETSC_DECIDE,ierr)  
+      call VecSetBlockSize(vec,gmdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
+    case(NATURAL)
+      call VecCreate(option%mycomm,vec,ierr)
+      call VecSetSizes(vec,geomech_grid%nlmax_node*gmdm%ndof, &
+                       PETSC_DECIDE,ierr)  
+      call VecSetBlockSize(vec,gmdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
+  end select
+    
+end subroutine GMGridDMCreateVector
+
+! ************************************************************************** !
+!
+! GMGridMapIndices: Maps global, local and natural indices of nodes to
+! each other for geomech grid.
+! author: Satish Karra, LANL
+! date: 06/04/13
+!
+! ************************************************************************** !
+subroutine GMGridMapIndices(geomech_grid,gmdm,nG2L,nL2G,nG2A,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(geomech_grid_type)               :: geomech_grid
+  type(gmdm_type)                       :: gmdm
+  type(option_type)                     :: option
+  PetscInt, pointer                     :: nG2L(:)
+  PetscInt, pointer                     :: nL2G(:)
+  PetscInt, pointer                     :: nG2A(:)
+  PetscInt, pointer                     :: int_ptr(:)
+  PetscErrorCode                        :: ierr
+  PetscInt                              :: local_id
+  PetscInt                              :: ghosted_id
+
+  ! The index mapping arrays are the following:
+  ! nL2G :  not collective, local processor: local  =>  ghosted local  
+  ! nG2L :  not collective, local processor:  ghosted local => local  
+  ! nG2A :  not collective, ghosted local => natural
+
+  allocate(nG2L(geomech_grid%ngmax_node))
+  allocate(nL2G(geomech_grid%nlmax_node))
+  allocate(nG2A(geomech_grid%ngmax_node))
+  
+  nG2L = 0
+
+  do local_id = 1, geomech_grid%nlmax_node
+    nL2G(local_id) = local_id
+    nG2L(local_id) = local_id
+  enddo
+
+  call ISGetIndicesF90(gmdm%is_ghosted_petsc,int_ptr,ierr)
+  do ghosted_id = 1, geomech_grid%ngmax_node
+    nG2A(ghosted_id) = int_ptr(ghosted_id)
+  enddo
+  call ISRestoreIndicesF90(gmdm%is_ghosted_petsc,int_ptr,ierr)
+  call AOPetscToApplication(geomech_grid%ao_natural_to_petsc_nodes, &
+                            geomech_grid%ngmax_node, &
+                            nG2A,ierr)
+  nG2A = nG2A + 1 ! 1-based
+
+end subroutine GMGridMapIndices
 
 ! ************************************************************************** !
 !
