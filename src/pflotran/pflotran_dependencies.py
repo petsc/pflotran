@@ -99,6 +99,11 @@ for root in source_file_roots:
     file_list = list(file_set)
     # sort
     sorted_file_list = sorted(file_list)
+    # remove the root file if it is listed
+    filename = get_filename(root,'o')
+    if filename in sorted_file_list:
+      sorted_file_list.remove(filename)
+      print('Removing %s from own dependency.\n' % filename)
 #    print(sorted_file_list)
     # remove files that are not needed for pfltoran rxn
     if num_times_to_print == 2 and iprint == 0:

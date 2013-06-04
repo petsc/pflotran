@@ -373,7 +373,7 @@ auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               secondary_continuum_aux.o th_aux.o thc_aux.o thmc_aux.o
 block_solve.o :
 block_tridiag.o :
-checkpoint.o : checkpoint.o discretization.o field.o flash2.o grid.o immis.o \
+checkpoint.o : discretization.o field.o flash2.o grid.o immis.o \
                logging.o miscible.o mphase.o option.o output_aux.o \
                reaction_aux.o reactive_transport.o realization.o \
                realization_base.o variables.o
