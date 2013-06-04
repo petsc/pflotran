@@ -307,6 +307,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   PetscBool                                  :: vertex_found
   PetscInt                                   :: int_rank
   PetscInt                                   :: vertex_count2
+  IS                                         :: is_rank 
+
   
   call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
                   'be used for geomechanics.')
@@ -522,17 +524,25 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     endif
     if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count2
   enddo
-  call VecRestoreArrayF90(node_rank,vec_ptr,ierr)
   
   allocate(int_array(geomech_grid%nlmax_node))
-  
-  allocate(int_array2(vertex_count)) 
-  do ivertex = 1, vertex_count
-    int_array2(ivertex) = int_array(ivertex)
+  count = 0
+  do local_id = 1, iend-istart
+    int_array(local_id) = int(vec_ptr(local_id)) 
+    count = count + 1
   enddo
+    
+  call VecRestoreArrayF90(node_rank,vec_ptr,ierr)
   
+  call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES,is_rank,ierr)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_rank_nodes.out', &
+                            viewer,ierr)
+  call ISView(is_rank,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
   deallocate(int_array)
-  geomech_grid%nlmax_node = vertex_count
       
   ! Find the global_offset for vertices on this rank
   global_offset_old = 0
@@ -551,6 +561,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   trim(adjustl(string)) // ' is:', geomech_grid%ngmax_node  
 #endif
 
+
   vertex_count = 0 
   allocate(int_array3(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
   do ivertex = 1, geomech_grid%ngmax_node
@@ -567,15 +578,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
      endif
   enddo
 
-  ! Create an AO for node (vertex) natural ids to petsc ids
-!  allocate(int_array(geomech_grid%nlmax_node))
-!  do local_id = 1, geomech_grid%nlmax_node
-!    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
-!  enddo
-  
-  
-
-  
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
 end module Geomech_Grid_module
