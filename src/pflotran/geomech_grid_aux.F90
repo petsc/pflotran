@@ -26,6 +26,7 @@ module Geomech_Grid_Aux_module
     PetscInt :: nmax_node                    ! Total number of nodes in the global domain 
     PetscInt :: nlmax_node                   ! Total number of non-ghosted nodes on a processor
     PetscInt :: ngmax_node                   ! Total number of ghosted nodes on a processor
+    PetscInt :: num_ghost_nodes              ! Number of ghost nodes on a processor
     PetscInt, pointer :: elem_ids_natural(:) ! Natural numbering of elements on a processor
     PetscInt, pointer :: elem_ids_petsc(:)   ! Petsc numbering of elements on a processor
     AO :: ao_natural_to_petsc                ! mapping of natural to Petsc ordering
@@ -36,9 +37,10 @@ module Geomech_Grid_Aux_module
     PetscInt, pointer :: elem_type(:)        ! Type of element
     PetscInt, pointer :: elem_nodes(:,:)     ! Node number on each element
     type(point_type), pointer :: nodes(:)    ! Coordinates of the nodes
-    PetscInt, pointer :: node_ids_ghosted_natural(:) ! Natural ids of ghosted nodes
+    PetscInt, pointer :: node_ids_ghosted_natural(:) ! Natural ids of ghosted local nodes
     PetscInt, pointer :: node_ids_local_natural(:)   ! Natural ids of local nodes
-    PetscInt, pointer :: ghosted_node_ids_natural(:) ! Natural ids of the ghosted nodes
+    PetscInt, pointer :: ghosted_node_ids_natural(:) ! Natural ids of the ghost nodes only
+    PetscInt, pointer :: ghosted_node_ids_petsc(:)   ! Petsc ids of the ghost nodes only
   end type geomech_grid_type
   
 
@@ -143,6 +145,7 @@ function GMGridCreate()
   geomech_grid%nlmax_elem = 0
   geomech_grid%nmax_node = 0
   geomech_grid%nlmax_node = 0
+  geomech_grid%num_ghost_nodes = 0
   nullify(geomech_grid%elem_ids_natural)
   nullify(geomech_grid%elem_ids_petsc)
   geomech_grid%ao_natural_to_petsc = 0
@@ -155,6 +158,7 @@ function GMGridCreate()
   nullify(geomech_grid%nodes)
   nullify(geomech_grid%node_ids_ghosted_natural)
   nullify(geomech_grid%ghosted_node_ids_natural)
+  nullify(geomech_grid%ghosted_node_ids_petsc)
 
   GMGridCreate => geomech_grid
   
@@ -196,10 +200,8 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   PetscErrorCode                      :: ierr
   character(len=MAXWORDLENGTH)        :: ndof_word
   character(len=MAXSTRINGLENGTH)      :: string
-  
-  PetscViewer :: viewer
-
-  PetscInt, allocatable :: int_array(:)
+  PetscViewer                         :: viewer
+  PetscInt, allocatable               :: int_array(:)
   
   gmdm => GMDMCreate()
   gmdm%ndof = ndof
@@ -208,7 +210,7 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   write(ndof_word,*) ndof
   ndof_word = adjustl(ndof_word)
   ndof_word = '_' // trim(ndof_word)
-  string = 'Vectors' // ndof_word
+  string = 'Vectors_nodes' // ndof_word
   call printMsg(option,string)
 #endif
 
@@ -228,6 +230,14 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   ! IS for global numbering of local, non-ghosted vertices
   ! ISCreateBlock requires block ids, not indices.  Therefore, istart should be
   ! the offset of the block from the beginning of the vector.
+
+#if GEOMECH_DEBUG
+  string = 'Index_sets_nodes' // ndof_word
+  call printMsg(option,string)
+#endif  
+  
+  ! SK, Note: All the numbering are to be 0-based before creating IS
+  
   allocate(int_array(geomech_grid%nlmax_node))
   do local_id = 1, geomech_grid%nlmax_node
     int_array(local_id) = (local_id-1) + geomech_grid%global_offset
@@ -242,7 +252,7 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   !              of block not indices
   ! PETSC_COPY_VALUES  - see PetscCopyMode, only PETSC_COPY_VALUES and
   !                      PETSC_OWN_POINTER are supported in this routine
-  ! ugdm%is_local_petsc - the new index set
+  ! gmdm%is_local_petsc - the new index set
   ! ierr - PETScErrorCode
   call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_node, &
                      int_array,PETSC_COPY_VALUES,gmdm%is_local_petsc,ierr)
@@ -255,6 +265,234 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
 
+  ! IS for local numbering of ghost nodes
+  if (geomech_grid%num_ghost_nodes > 0) then
+    allocate(int_array(geomech_grid%num_ghost_nodes))
+    do ghosted_id = 1, geomech_grid%num_ghost_nodes
+      int_array(ghosted_id) = (ghosted_id+geomech_grid%nlmax_node-1)
+    enddo
+  endif
+  
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_ghosts_local,ierr)
+                     
+  if (allocated(int_array)) deallocate(int_array) 
+                                       
+#if GEOMECH_DEBUG
+  string = 'geomech_is_ghosts_local' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_ghosts_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+
+  ! IS for petsc numbering of ghost nodes
+  if (geomech_grid%num_ghost_nodes > 0) then
+    allocate(int_array(geomech_grid%num_ghost_nodes))
+    do ghosted_id = 1, geomech_grid%num_ghost_nodes
+      int_array(ghosted_id) = &
+        (geomech_grid%ghosted_node_ids_petsc(ghosted_id)-1)
+    enddo
+  endif
+  
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_ghosts_petsc,ierr)
+                     
+  if (allocated(int_array)) deallocate(int_array) 
+                                       
+#if GEOMECH_DEBUG
+  string = 'geomech_is_ghosts_petsc' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_ghosts_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif 
+
+  ! IS for local numbering of local, non-ghosted cells
+  allocate(int_array(geomech_grid%nlmax_node))
+  do local_id = 1, geomech_grid%nlmax_node
+    int_array(local_id) = (local_id-1)
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_node, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_local_local,ierr)
+  deallocate(int_array)
+  
+#if GEOMECH_DEBUG
+  string = 'geomech_is_local_local' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_local_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+  
+  ! IS for ghosted numbering of local ghosted cells
+  allocate(int_array(geomech_grid%ngmax_node))
+  do ghosted_id = 1, geomech_grid%ngmax_node
+    int_array(ghosted_id) = (ghosted_id-1)
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%ngmax_node, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_ghosted_local,ierr)
+  deallocate(int_array)
+  
+#if GEOMECH_DEBUG
+  string = 'geomech_is_ghosted_local' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_ghosted_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+                  
+  ! IS for petsc numbering of local ghosted cells
+  allocate(int_array(geomech_grid%ngmax_node))
+  do local_id = 1, geomech_grid%nlmax_node
+    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
+  enddo
+  if (geomech_grid%num_ghost_nodes > 0) then
+    do ghosted_id = 1,geomech_grid%num_ghost_nodes
+      int_array(geomech_grid%nlmax_node+ghosted_id) = &
+        (geomech_grid%ghosted_node_ids_petsc(ghosted_id)-1)
+    enddo
+  endif
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%ngmax_node, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_ghosted_petsc,ierr)
+  deallocate(int_array)
+  
+#if GEOMECH_DEBUG
+  string = 'geomech_is_ghosted_petsc' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_ghosted_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif    
+
+! create a local to global mapping
+#if GEOMECH_DEBUG
+  string = 'geomech_ISLocalToGlobalMapping' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  call ISLocalToGlobalMappingCreateIS(gmdm%is_ghosted_petsc, &
+                                      gmdm%mapping_ltog,ierr)
+
+#if GEOMECH_DEBUG
+  string = 'geomech_mapping_ltog' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISLocalToGlobalMappingView(gmdm%mapping_ltog,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+               
+  ! create a block local to global mapping 
+#if GEOMECH_DEBUG
+  string = 'geomech_ISLocalToGlobalMappingBlock' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  call ISLocalToGlobalMappingBlock(gmdm%mapping_ltog,ndof, &
+                                   gmdm%mapping_ltogb,ierr)
+                                      
+#if GEOMECH_DEBUG
+  string = 'geomech_mapping_ltogb' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISLocalToGlobalMappingView(gmdm%mapping_ltogb,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+#if GEOMECH_DEBUG
+  string = 'geomech_local to global' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  ! Create local to global scatter
+  call VecScatterCreate(gmdm%local_vec,gmdm%is_local_local,gmdm%global_vec, &
+                        gmdm%is_local_petsc,gmdm%scatter_ltog,ierr)
+                        
+#if GEOMECH_DEBUG
+  string = 'geomech_scatter_ltog' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(gmdm%scatter_ltog,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+#if GEOMECH_DEBUG
+  string = 'geomech_global to local' // ndof_word
+  call printMsg(option,string)
+#endif
+
+  ! Create global to local scatter
+  call VecScatterCreate(gmdm%global_vec,gmdm%is_ghosted_petsc,gmdm%local_vec, &
+                        gmdm%is_ghosted_local,gmdm%scatter_gtol,ierr)
+                        
+#if GEOMECH_DEBUG
+  string = 'geomech_scatter_gtol' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(gmdm%scatter_gtol,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+#if GEOMECH_DEBUG
+  string = 'geomech_local to local' // ndof_word
+  call printMsg(option,string)
+#endif
+  
+  ! Create local to local scatter.  Essentially remap the global to local as
+  ! PETSc does in daltol.c
+  call VecScatterCopy(gmdm%scatter_gtol,gmdm%scatter_ltol,ierr)
+  call ISGetIndicesF90(gmdm%is_local_local,int_ptr,ierr)
+  call VecScatterRemap(gmdm%scatter_ltol,int_ptr,PETSC_NULL_INTEGER,ierr)
+  call ISRestoreIndicesF90(gmdm%is_local_local,int_ptr,ierr)
+
+#if GEOMECH_DEBUG
+  string = 'geomech_scatter_ltol' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(gmdm%scatter_ltol,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  allocate(int_array(geomech_grid%nlmax_node))
+  do local_id = 1, geomech_grid%nlmax_node 
+    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
+  enddo
+  call ISCreateGeneral(option%mycomm,geomech_grid%nlmax_node, &
+                       int_array,PETSC_COPY_VALUES,is_tmp,ierr) 
+  deallocate(int_array)
+  
+  call AOPetscToApplicationIS(geomech_grid%ao_natural_to_petsc_nodes, &
+                              is_tmp,ierr)
+
+  allocate(int_array(geomech_grid%nlmax_node))
+  call ISGetIndicesF90(is_tmp,int_ptr,ierr)
+  do local_id = 1, geomech_grid%nlmax_node
+    int_array(local_id) = int_ptr(local_id)
+  enddo
+  call ISRestoreIndicesF90(is_tmp,int_ptr,ierr)
+  call ISDestroy(is_tmp,ierr)
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_node, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_local_natural,ierr)
+  deallocate(int_array)
+
+#if GEOMECH_DEBUG
+  string = 'geomech_is_local_natural' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call ISView(gmdm%is_local_natural,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  call VecCreate(option%mycomm,vec_tmp,ierr)
+  call VecSetSizes(vec_tmp,geomech_grid%nlmax_node*ndof,PETSC_DECIDE,ierr)
+  call VecSetBlockSize(vec_tmp,ndof,ierr)
+  call VecSetFromOptions(vec_tmp,ierr)
+  call VecScatterCreate(gmdm%global_vec,gmdm%is_local_petsc,vec_tmp, &
+                        gmdm%is_local_natural,gmdm%scatter_gton,ierr)
+  call VecScatterCreate(gmdm%global_vec,gmdm%is_local_natural,vec_tmp, &
+                        gmdm%is_local_petsc,gmdm%scatter_ntog,ierr)
+  call VecDestroy(vec_tmp,ierr)
+
+#if GEOMECH_DEBUG
+  string = 'geomech_scatter_gton' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(gmdm%scatter_gton,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  string = 'geomech_scatter_ntog' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(gmdm%scatter_ntog,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
 
 
 end subroutine GMCreateGMDM
@@ -285,6 +523,7 @@ subroutine GMGridDestroy(geomech_grid)
   call DeallocateArray(geomech_grid%node_ids_ghosted_natural)
   call DeallocateArray(geomech_grid%node_ids_local_natural)
   call DeallocateArray(geomech_grid%ghosted_node_ids_natural)
+  call DeallocateArray(geomech_grid%ghosted_node_ids_petsc)
   if (geomech_grid%ao_natural_to_petsc /= 0) &
     call AODestroy(geomech_grid%ao_natural_to_petsc,ierr)
   if (geomech_grid%ao_natural_to_petsc_nodes /= 0) &

@@ -287,6 +287,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   type(geomech_Grid_type), pointer           :: geomech_grid
   type(option_type), pointer                 :: option
   PetscInt                                   :: local_id
+  PetscInt                                   :: ghosted_id
   PetscInt                                   :: vertex_count
   PetscInt                                   :: ivertex
   PetscInt                                   :: vertex_id
@@ -310,6 +311,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   IS                                         :: is_rank 
   IS                                         :: is_rank_new
   IS                                         :: is_natural
+  IS                                         :: is_ghost_petsc
   PetscReal                                  :: max_val
   PetscInt                                   :: row
   PetscScalar, allocatable                   :: val(:)
@@ -646,9 +648,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
 
-  geomech_grid%ao_natural_to_petsc_nodes = ao_natural_to_petsc_nodes
-  call AODestroy(ao_natural_to_petsc_nodes,ierr)
-  
   ! Get the local indices (natural)
   allocate(geomech_grid%node_ids_local_natural(geomech_grid%nlmax_node))
   call ISGetIndicesF90(is_natural,int_ptr,ierr)
@@ -682,6 +681,11 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     enddo
   endif
   
+  if (vertex_count /= geomech_grid%ngmax_node - geomech_grid%nlmax_node) then
+    option%io_buffer = 'Error in number of ghost nodes!'
+    call printErrMsg(option)
+  endif
+  
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
   string = 'geomech_node_ids_ghosts_natural' // trim(adjustl(string)) // '.out'
@@ -696,11 +700,55 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   close(86)
 #endif 
     
+  geomech_grid%num_ghost_nodes = geomech_grid%ngmax_node - &
+                                   geomech_grid%nlmax_node  
+    
+  ! Changing the index to 0 based
+  if (allocated(int_array2))  int_array2 = int_array2 - 1    
+    
+  ! Create a new IS with local PETSc numbering
+  call ISCreateGeneral(option%mycomm,geomech_grid%num_ghost_nodes, &
+                       int_array2,PETSC_COPY_VALUES,is_ghost_petsc,ierr)
+  
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_ghost_natural.out', &
+                            viewer,ierr)
+  call ISView(is_ghost_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+  
+  ! Rewrite the IS with natural numbering
+  call AOApplicationtoPetscIS(ao_natural_to_petsc_nodes,is_ghost_petsc,ierr)
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_ghost_petsc.out', &
+                            viewer,ierr)
+  call ISView(is_ghost_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif     
+ 
   if (allocated(int_array2)) then
     allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
     geomech_grid%ghosted_node_ids_natural = int_array2
     deallocate(int_array2)
   endif
+  
+  ! Get the petsc indices for ghost nodes
+  if (geomech_grid%num_ghost_nodes  > 0) then
+    allocate(geomech_grid%ghosted_node_ids_petsc(geomech_grid%num_ghost_nodes))
+    call ISGetIndicesF90(is_ghost_petsc,int_ptr,ierr)
+    do ghosted_id = 1, geomech_grid%num_ghost_nodes
+      geomech_grid%ghosted_node_ids_petsc(ghosted_id) = int_ptr(ghosted_id) 
+    enddo
+    call ISRestoreIndicesF90(is_ghost_petsc,int_ptr,ierr)
+  endif
+  call ISDestroy(is_ghost_petsc,ierr)
+  
+  
+  ! Changing back to 1-based
+  if (geomech_grid%num_ghost_nodes > 0) &
+  geomech_grid%ghosted_node_ids_petsc = geomech_grid%ghosted_node_ids_petsc + 1
+
+  geomech_grid%ao_natural_to_petsc_nodes = ao_natural_to_petsc_nodes
 
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
