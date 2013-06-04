@@ -284,6 +284,303 @@ end subroutine GeomechDiscretizationLocalToGlobal
 
 ! ************************************************************************** !
 !
+! GeomechDiscretizationLocalToLocal: Performs local to local communication 
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationLocalToLocal(discretization,local_vec1, &
+                                             local_vec2,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec1
+  Vec                                           :: local_vec2
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)    
+  
+end subroutine GeomechDiscretizationLocalToLocal
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationGlobalToNatural: Performs global to natural
+! communication with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationGlobalToNatural(discretization,global_vec, &
+                                                natural_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: natural_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+
+  call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)       
+  
+end subroutine GeomechDiscretizationGlobalToNatural
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationNaturalToGlobal: Performs natural to global 
+! communication with DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationNaturalToGlobal(discretization,natural_vec, &
+                                                global_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: natural_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine GeomechDiscretizationNaturalToGlobal
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationGlobalToLocalBegin: Begins global to local 
+! communication with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationGlobalToLocalBegin(discretization,global_vec, &
+                                                   local_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec
+  Vec                                           :: global_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine GeomechDiscretizationGlobalToLocalBegin
+  
+! ************************************************************************** !
+!
+! GeomechDiscretizationGlobalToLocalEnd: Ends global to local communication
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationGlobalToLocalEnd(discretization,global_vec, &
+                                                 local_vec,dm_index)
+
+ implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec
+  Vec                                           :: global_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterEnd(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine GeomechDiscretizationGlobalToLocalEnd
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationLocalToLocalBegin: Begins local to local communication 
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationLocalToLocalBegin(discretization,local_vec1, &
+                                                  local_vec2,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec1
+  Vec                                           :: local_vec2
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+end subroutine GeomechDiscretizationLocalToLocalBegin
+  
+! ************************************************************************** !
+!
+! GeomechDiscretizationLocalToLocalEnd: Ends local to local communication 
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationLocalToLocalEnd(discretization,local_vec1, &
+                                                local_vec2,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec1
+  Vec                                           :: local_vec2
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterEnd(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)    
+
+end subroutine GeomechDiscretizationLocalToLocalEnd
+  
+! ************************************************************************** !
+!
+! GeomechDiscretizGlobalToNaturalBegin: Begins global to natural communication
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizGlobalToNaturalBegin(discretization,global_vec, &
+                                                natural_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: natural_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine GeomechDiscretizGlobalToNaturalBegin
+
+! ************************************************************************** !
+!
+! GeomechDiscretizGlobalToNaturalEnd: Ends global to natural communication 
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizGlobalToNaturalEnd(discretization,global_vec, &
+                                              natural_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: natural_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterEnd(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)       
+  
+end subroutine GeomechDiscretizGlobalToNaturalEnd
+
+! ************************************************************************** !
+!
+! GeomechDiscretizNaturalToGlobalBegin: Begins natural to global communication
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizNaturalToGlobalBegin(discretization,natural_vec, & 
+                                                global_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: natural_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+    
+end subroutine GeomechDiscretizNaturalToGlobalBegin
+
+! ************************************************************************** !
+!
+! GeomechDiscretizNaturalToGlobalEnd: Ends natural to global communication
+! with geomech DM
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizNaturalToGlobalEnd(discretization,natural_vec, &
+                                              global_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: global_vec
+  Vec                                           :: natural_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+end subroutine GeomechDiscretizNaturalToGlobalEnd
+
+! ************************************************************************** !
+!
 ! GeomechDiscretizationDestroy: Deallocates a geomechanics discretization
 ! author: Satish Karra, LANL
 ! date: 05/23/2013
