@@ -301,15 +301,18 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   Mat                                        :: Rank_Mat
   PetscReal                                  :: rank
   PetscViewer                                :: viewer
-  Vec                                        :: node_rank
   PetscReal, pointer                         :: vec_ptr(:) 
   PetscInt                                   :: istart,iend
   PetscBool                                  :: vertex_found
   PetscInt                                   :: int_rank
   PetscInt                                   :: vertex_count2
   IS                                         :: is_rank 
+  PetscReal                                  :: max_val
+  PetscInt                                   :: row
+  PetscScalar, allocatable                   :: val(:)
+  PetscInt                                   :: ncols
+  PetscInt, allocatable                      :: cols(:) 
 
-  
   call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
                   'be used for geomechanics.')
   
@@ -484,33 +487,42 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
 
-  call VecCreate(option%mycomm,node_rank,ierr)
-  call VecSetSizes(node_rank,PETSC_DECIDE,geomech_grid%nmax_node,ierr)
-  call VecSetFromOptions(node_rank,ierr)
-  call MatGetRowMax(Rank_Mat,node_rank,PETSC_NULL_INTEGER,ierr)
+  allocate(val(option%mycommsize))
+  allocate(cols(option%mycommsize))
+  call MatGetOwnershipRange(Rank_Mat,istart,iend,ierr)
+  allocate(int_array(iend-istart))
+  count = 0
+  do row = istart, iend-1
+    call MatGetRow(Rank_Mat,row,ncols,cols,val,ierr)
+      max_val = 0.d0
+      do local_id = 1, ncols
+        max_val = max(max_val,val(local_id))
+      enddo
+    count = count + 1
+    int_array(count) = int(max_val)
+    call MatRestoreRow(Rank_Mat,row,ncols,cols,val,ierr)
+  enddo
+  deallocate(val)
+  deallocate(cols)
   
   ! Change rank to start from 0
-  call VecGetOwnershipRange(node_rank,istart,iend,ierr)
-  call VecGetArrayF90(node_rank,vec_ptr,ierr)
-  do local_id = 1,iend-istart
-    vec_ptr(local_id) = vec_ptr(local_id) - 1
-  enddo
-  call VecRestoreArrayF90(node_rank,vec_ptr,ierr)
+  int_array = int_array - 1
 
 #ifdef GEOMECH_DEBUG
-  string = 'geomech_node_assigned_rank.out'
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
-  call VecView(node_rank,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif   
-  
+  write(string,*) option%myrank
+  string = 'geomech_node_ranks' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do row = 1, count
+    write(86,'(i5)') int_array(count)
+  enddo  
+  close(86)
+#endif    
+    
   ! Find the local nodes on a process
-  call VecGetOwnershipRange(node_rank,istart,iend,ierr)
-  call VecGetArrayF90(node_rank,vec_ptr,ierr)
   do int_rank = 0, option%mycommsize
     vertex_count = 0
-    do local_id = 1, iend-istart
-      if (vec_ptr(local_id) == int_rank) then
+    do local_id = 1, count
+      if (int_array(local_id) == int_rank) then
         vertex_count = vertex_count + 1
       endif
     enddo
@@ -524,16 +536,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     endif
     if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count2
   enddo
-  
-  allocate(int_array(geomech_grid%nlmax_node))
-  count = 0
-  do local_id = 1, iend-istart
-    int_array(local_id) = int(vec_ptr(local_id)) 
-    count = count + 1
-  enddo
     
-  call VecRestoreArrayF90(node_rank,vec_ptr,ierr)
-  
   call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES,is_rank,ierr)
 
 #if GEOMECH_DEBUG
@@ -561,22 +564,23 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   trim(adjustl(string)) // ' is:', geomech_grid%ngmax_node  
 #endif
 
-
+#if 0
   vertex_count = 0 
-  allocate(int_array3(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
+  allocate(int_array2(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
   do ivertex = 1, geomech_grid%ngmax_node
     do local_id = 1, geomech_grid%nlmax_node
       vertex_found = PETSC_FALSE
-      if (geomech_grid%node_ids_natural(ivertex) == int_array2(local_id)) then
+      if (geomech_grid%node_ids_natural(ivertex) == int_array(local_id)) then
         vertex_found = PETSC_TRUE
         exit
       endif
      enddo
      if (.not.vertex_found) then
        vertex_count = vertex_count + 1
-       int_array3(vertex_count) = geomech_grid%node_ids_natural(ivertex)
+       int_array2(vertex_count) = geomech_grid%node_ids_natural(ivertex)
      endif
   enddo
+#endif
 
 end subroutine CopySubsurfaceGridtoGeomechGrid
 

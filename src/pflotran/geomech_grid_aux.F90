@@ -211,7 +211,7 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
 
   ! create global vec
   call VecCreate(option%mycomm,gmdm%global_vec,ierr)
-  call VecSetSizes(gmdm%global_vec,PETSC_DECIDE,geomech_grid%nlmax_node*ndof, &
+  call VecSetSizes(gmdm%global_vec,geomech_grid%nlmax_node*ndof,PETSC_DECIDE,&
                     ierr)  
   call VecSetBlockSize(gmdm%global_vec,ndof,ierr)
   call VecSetFromOptions(gmdm%global_vec,ierr)
