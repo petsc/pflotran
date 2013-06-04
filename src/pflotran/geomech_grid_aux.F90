@@ -29,6 +29,7 @@ module Geomech_Grid_Aux_module
     PetscInt, pointer :: elem_ids_natural(:) ! Natural numbering of elements on a processor
     PetscInt, pointer :: elem_ids_petsc(:)   ! Petsc numbering of elements on a processor
     AO :: ao_natural_to_petsc                ! mapping of natural to Petsc ordering
+    AO :: ao_natural_to_petsc_nodes          ! mapping of natural to Petsc ordering of vertices
     PetscInt :: max_ndual_per_elem           ! Max. number of dual elements connected to an element
     PetscInt :: max_nnode_per_elem           ! Max. number of nodes per element
     PetscInt :: max_elem_sharing_a_node      
@@ -145,6 +146,7 @@ function GMGridCreate()
   nullify(geomech_grid%elem_ids_natural)
   nullify(geomech_grid%elem_ids_petsc)
   geomech_grid%ao_natural_to_petsc = 0
+  geomech_grid%ao_natural_to_petsc_nodes = 0
   geomech_grid%max_ndual_per_elem = 0
   geomech_grid%max_nnode_per_elem = 0
   geomech_grid%max_elem_sharing_a_node = 0
@@ -281,7 +283,12 @@ subroutine GMGridDestroy(geomech_grid)
   call DeallocateArray(geomech_grid%elem_type)
   call DeallocateArray(geomech_grid%elem_nodes)
   call DeallocateArray(geomech_grid%node_ids_ghosted_natural)
+  call DeallocateArray(geomech_grid%node_ids_local_natural)
   call DeallocateArray(geomech_grid%ghosted_node_ids_natural)
+  if (geomech_grid%ao_natural_to_petsc /= 0) &
+    call AODestroy(geomech_grid%ao_natural_to_petsc,ierr)
+  if (geomech_grid%ao_natural_to_petsc_nodes /= 0) &
+    call AODestroy(geomech_grid%ao_natural_to_petsc_nodes,ierr)
   
   if (associated(geomech_grid%nodes)) &
     deallocate(geomech_grid%nodes)

@@ -645,6 +645,9 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call ISView(is_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
+
+  geomech_grid%ao_natural_to_petsc_nodes = ao_natural_to_petsc_nodes
+  call AODestroy(ao_natural_to_petsc_nodes,ierr)
   
   ! Get the local indices (natural)
   allocate(geomech_grid%node_ids_local_natural(geomech_grid%nlmax_node))
@@ -654,36 +657,50 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   call ISRestoreIndicesF90(is_natural,int_ptr,ierr)
   call ISDestroy(is_natural,ierr)
+  
+  ! Changing to 1-based
+  geomech_grid%node_ids_local_natural = geomech_grid%node_ids_local_natural + 1
 
   ! Find the natural ids of ghost nodes (vertices)
-  vertex_count = 0 
-  allocate(int_array2(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
-  do ivertex = 1, geomech_grid%ngmax_node
-    do local_id = 1, geomech_grid%nlmax_node
-      vertex_found = PETSC_FALSE
-      if (geomech_grid%node_ids_ghosted_natural(ivertex) == &
-          geomech_grid%node_ids_local_natural(local_id)) then
-        vertex_found = PETSC_TRUE
-        exit
-      endif
-     enddo
-     if (.not.vertex_found) then
-       vertex_count = vertex_count + 1
-       int_array2(vertex_count) = geomech_grid%node_ids_ghosted_natural(ivertex)
-     endif
-  enddo
+
+  if (geomech_grid%ngmax_node - geomech_grid%nlmax_node > 0) then  
+    vertex_count = 0 
+    allocate(int_array2(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
+    do ivertex = 1, geomech_grid%ngmax_node
+      do local_id = 1, geomech_grid%nlmax_node
+        vertex_found = PETSC_FALSE
+        if (geomech_grid%node_ids_ghosted_natural(ivertex) == &
+            geomech_grid%node_ids_local_natural(local_id)) then
+          vertex_found = PETSC_TRUE
+          exit
+        endif
+       enddo
+       if (.not.vertex_found) then
+         vertex_count = vertex_count + 1
+         int_array2(vertex_count) = geomech_grid%node_ids_ghosted_natural(ivertex)
+       endif
+    enddo
+  endif
   
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
   string = 'geomech_node_ids_ghosts_natural' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
-  do local_id = 1, vertex_count
-    write(86,'(i5)') int_array2(local_id)
-  enddo  
+  if (allocated(int_array2)) then
+    do local_id = 1, vertex_count
+      write(86,'(i5)') int_array2(local_id)
+    enddo
+  else
+    write(86,*) 'There are no ghost nodes (vertices) on this process.'
+  endif
   close(86)
 #endif 
-
+    
+  if (allocated(int_array2)) then
+    allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
+    geomech_grid%ghosted_node_ids_natural = int_array2
     deallocate(int_array2)
+  endif
 
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
