@@ -36,6 +36,7 @@ module Geomech_Grid_Aux_module
     PetscInt, pointer :: elem_nodes(:,:)     ! Node number on each element
     type(point_type), pointer :: nodes(:)    ! Coordinates of the nodes
     PetscInt, pointer :: node_ids_natural(:) ! Natural ids of the nodes
+    PetscInt, pointer :: ghosted_node_ids_natural(:) ! Natural ids of the ghosted nodes
   end type geomech_grid_type
   
 
@@ -150,6 +151,7 @@ function GMGridCreate()
   nullify(geomech_grid%elem_nodes)
   nullify(geomech_grid%nodes)
   nullify(geomech_grid%node_ids_natural)
+  nullify(geomech_grid%ghosted_node_ids_natural)
 
   GMGridCreate => geomech_grid
   
@@ -278,6 +280,7 @@ subroutine GMGridDestroy(geomech_grid)
   call DeallocateArray(geomech_grid%elem_type)
   call DeallocateArray(geomech_grid%elem_nodes)
   call DeallocateArray(geomech_grid%node_ids_natural)
+  call DeallocateArray(geomech_grid%ghosted_node_ids_natural)
   
   if (associated(geomech_grid%nodes)) &
     deallocate(geomech_grid%nodes)

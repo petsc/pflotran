@@ -273,6 +273,16 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscdm.h"  
+#include "finclude/petscdm.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"  
+  
   type(unstructured_grid_type), pointer      :: ugrid
   type(geomech_Grid_type), pointer           :: geomech_grid
   type(option_type), pointer                 :: option
@@ -288,6 +298,15 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   PetscErrorCode                             :: ierr
   character(len=MAXSTRINGLENGTH)             :: string, string1
   PetscInt                                   :: global_offset_old
+  Mat                                        :: Rank_Mat
+  PetscReal                                  :: rank
+  PetscViewer                                :: viewer
+  Vec                                        :: node_rank
+  PetscReal, pointer                         :: vec_ptr(:) 
+  PetscInt                                   :: istart,iend
+  PetscBool                                  :: vertex_found
+  PetscInt                                   :: int_rank
+  PetscInt                                   :: vertex_count2
   
   call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
                   'be used for geomechanics.')
@@ -441,7 +460,80 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%ngmax_node = vertex_count
 
   deallocate(int_array3)
+    
+  call MatCreateAIJ(option%mycomm,PETSC_DECIDE,ONE_INTEGER, &
+                    geomech_grid%nmax_node,option%mycommsize, &
+                    option%mycommsize,PETSC_NULL_INTEGER, &
+                    option%mycommsize,PETSC_NULL_INTEGER,Rank_Mat,ierr)
   
+  call MatZeroEntries(Rank_Mat,ierr)
+  
+  rank = option%myrank + 1
+  do ivertex = 1, geomech_grid%ngmax_node
+    call MatSetValue(Rank_Mat,geomech_grid%node_ids_natural(ivertex)-1, &
+                     option%myrank,rank,INSERT_VALUES,ierr)
+  enddo
+  call MatAssemblyBegin(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
+  
+#ifdef GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_Rank_Mat.out',viewer,ierr)
+  call MatView(Rank_Mat,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+
+  call VecCreate(option%mycomm,node_rank,ierr)
+  call VecSetSizes(node_rank,PETSC_DECIDE,geomech_grid%nmax_node,ierr)
+  call VecSetFromOptions(node_rank,ierr)
+  call MatGetRowMax(Rank_Mat,node_rank,PETSC_NULL_INTEGER,ierr)
+  
+  ! Change rank to start from 0
+  call VecGetOwnershipRange(node_rank,istart,iend,ierr)
+  call VecGetArrayF90(node_rank,vec_ptr,ierr)
+  do local_id = 1,iend-istart
+    vec_ptr(local_id) = vec_ptr(local_id) - 1
+  enddo
+  call VecRestoreArrayF90(node_rank,vec_ptr,ierr)
+
+#ifdef GEOMECH_DEBUG
+  string = 'geomech_node_assigned_rank.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecView(node_rank,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+  
+  ! Find the local nodes on a process
+  call VecGetOwnershipRange(node_rank,istart,iend,ierr)
+  call VecGetArrayF90(node_rank,vec_ptr,ierr)
+  do int_rank = 0, option%mycommsize
+    vertex_count = 0
+    do local_id = 1, iend-istart
+      if (vec_ptr(local_id) == int_rank) then
+        vertex_count = vertex_count + 1
+      endif
+    enddo
+    call MPI_Allreduce(vertex_count,vertex_count2, &
+                       ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                       option%mycomm,ierr)
+    if (vertex_count2> geomech_grid%ngmax_node) then
+      option%io_buffer = 'Error: nlmax_node cannot be greater than' // &
+                         ' ngmax_node.'
+      call printErrMsg(option)
+    endif
+    if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count2
+  enddo
+  call VecRestoreArrayF90(node_rank,vec_ptr,ierr)
+  
+  allocate(int_array(geomech_grid%nlmax_node))
+  
+  allocate(int_array2(vertex_count)) 
+  do ivertex = 1, vertex_count
+    int_array2(ivertex) = int_array(ivertex)
+  enddo
+  
+  deallocate(int_array)
+  geomech_grid%nlmax_node = vertex_count
+      
   ! Find the global_offset for vertices on this rank
   global_offset_old = 0
   call MPI_Exscan(geomech_grid%nlmax_node,global_offset_old, &
@@ -458,12 +550,30 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   print *, 'Number of ghosted of vertices on process' // &
   trim(adjustl(string)) // ' is:', geomech_grid%ngmax_node  
 #endif
-  
-  ! Create an AO for node (vertex) natural ids to petsc ids
-  allocate(int_array(geomech_grid%nlmax_node))
-  do local_id = 1, geomech_grid%nlmax_node
-    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
+
+  vertex_count = 0 
+  allocate(int_array3(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
+  do ivertex = 1, geomech_grid%ngmax_node
+    do local_id = 1, geomech_grid%nlmax_node
+      vertex_found = PETSC_FALSE
+      if (geomech_grid%node_ids_natural(ivertex) == int_array2(local_id)) then
+        vertex_found = PETSC_TRUE
+        exit
+      endif
+     enddo
+     if (.not.vertex_found) then
+       vertex_count = vertex_count + 1
+       int_array3(vertex_count) = geomech_grid%node_ids_natural(ivertex)
+     endif
   enddo
+
+  ! Create an AO for node (vertex) natural ids to petsc ids
+!  allocate(int_array(geomech_grid%nlmax_node))
+!  do local_id = 1, geomech_grid%nlmax_node
+!    int_array(local_id) = (local_id-1) + geomech_grid%global_offset
+!  enddo
+  
+  
 
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
