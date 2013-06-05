@@ -1,211 +1,209 @@
-:Description: 3D groundwater flow and solute transport
+:Description: Test problem for verifying functionality of datasets in the 
+:             context of datums.
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    ! eight corners
+    1
+    5
+    21
+    25
+    101
+    105
+    121
+    125
+    ! center of each side
+    13 ! bottom
+    53 ! south
+    61 ! west
+    65 ! east
+    73 ! north
+    113 ! top
+  /
+END
 
 :=========================== flow mode ========================================
 MODE RICHARDS
 
+DEBUG
+:  PRINT_COUPLERS outlet east_bc
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  TYPE structured
+  NXYZ 5 5 5
+  BOUNDS
+    0.d0 5.d0
+    0.d0 5.d0
+    0.d0 5.d0
+  /
 END
 
-:=========================== datasets =================================
-DATASET MAPPED et_dataset
-  FILENAME SiteABCD_10p00000dx_10p00000dy_0p4Z_prism_mass_flux_c130404.h5
-  HDF5_DATASET_NAME ET_3D
-  MAX_BUFFER_SIZE 10
-  MAP_HDF5_DATASET_NAME Map_ET_onto_10x10x5
+DATASET xy_dataset
+  FILENAME datum_dataset_in.h5
+  HDF5_DATASET_NAME test_surface
 END
 
-:=========================== fluid properties =================================
-FLUID_PROPERTY
-  DIFFUSION_COEFFICIENT 1.d-9
+DATASET y_dataset
+  FILENAME datum_dataset_in.h5
+  HDF5_DATASET_NAME y_line
+END
+
+DATASET x_dataset
+  FILENAME datum_dataset_in.h5
+  HDF5_DATASET_NAME x_line
 END
 
 :=========================== material properties ==============================
-MATERIAL_PROPERTY prop_mineral
+MATERIAL_PROPERTY soil1
   ID 1
-  POROSITY 0.55d0
-  TORTUOSITY 0.5d0
-  ROCK_DENSITY 2.8E3
-  SPECIFIC_HEAT 1E3
-  THERMAL_CONDUCTIVITY_DRY 0.5
-  THERMAL_CONDUCTIVITY_WET 0.5
-  SATURATION_FUNCTION sf_mineral
+  POROSITY 0.25d0
   PERMEABILITY
-    PERM_X 7.918d-11
-    PERM_Y 7.918d-11
-    PERM_Z 7.918d-13
+    PERM_ISO 1.d-12
   /
-END
-
-MATERIAL_PROPERTY prop_organic_bot
-  ID 3
-  POROSITY 0.86d0
-  TORTUOSITY 0.5d0
-  ROCK_DENSITY 2.8E3
-  SPECIFIC_HEAT 1E3
-  THERMAL_CONDUCTIVITY_DRY 0.5
-  THERMAL_CONDUCTIVITY_WET 0.5
-  SATURATION_FUNCTION sf_organic_bot
-  PERMEABILITY
-    PERM_X 9.465d-10
-    PERM_Y 9.465d-10
-    PERM_Z 9.465d-12
-  /
-END
-
-MATERIAL_PROPERTY prop_organic_top
-  ID 2
-  POROSITY 0.90d0
-  ROCK_DENSITY 2.8E3
-  SPECIFIC_HEAT 1E3
-  THERMAL_CONDUCTIVITY_DRY 0.5
-  THERMAL_CONDUCTIVITY_WET 0.5
-  SATURATION_FUNCTION sf_organic_top
-  PERMEABILITY
-    PERM_X 1.7656d-09
-    PERM_Y 1.7656d-09
-    PERM_Z 1.7656d-11
-  /
+  SATURATION_FUNCTION sf1
 END
 
 :=========================== saturation functions =============================
-SATURATION_FUNCTION sf_mineral
+SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.05d0
-  LAMBDA 0.2593d0
-  ALPHA 1.53391d-03
-  MAX_CAPILLARY_PRESSURE 1.d8
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.5d0
+  ALPHA 1.d-4
 END
 
-SATURATION_FUNCTION sf_organic_bot
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.05d0
-  LAMBDA 0.2593d0
-  ALPHA 1.0226d-03
-  MAX_CAPILLARY_PRESSURE 1.d8
-END
-
-SATURATION_FUNCTION sf_organic_top
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.05d0
-  LAMBDA 0.2593d0
-  ALPHA 2.0452d-03
-  MAX_CAPILLARY_PRESSURE 1.d8
-END
+OBSERVATION obs
+  REGION obs_pt
+/
 
 :=========================== output options ===================================
 OUTPUT
-  PERIODIC TIME 3600. s
-  FORMAT HDF5
+:  TIMES y 0.01 0.1 1.0
+:  FORMAT TECPLOT POINT
+:  PERIODIC_OBSERVATION TIMESTEP 1
 END
+
 :=========================== times ============================================
 TIME
-  FINAL_TIME 36000 s
-  INITIAL_TIMESTEP_SIZE 3600.0 s
-  MAXIMUM_TIMESTEP_SIZE 3600.0 s        ! produces CFL ~<= 1.
+  FINAL_TIME 50.d0 s
+  INITIAL_TIMESTEP_SIZE 2.5d0 s
+  MAXIMUM_TIMESTEP_SIZE 10.d0 s 
 END
 
 :=========================== regions ==========================================
 REGION all
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
-END
-
-REGION Layer01
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
-END
-
-REGION Layer02
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
-END
-
-REGION Layer03
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
-END
-
-REGION Layer04
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
-END
-
-REGION Layer05
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
+  /
 END
 
 REGION top
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
-  GRID unstructured
+  FACE top
+  COORDINATES
+    0.d0 0.d0 5.d0
+    5.d0 5.d0 5.d0
+  /
+END
+
+REGION obs_pt
+  COORDINATE 2.5 2.5 2.5
+/
+
+REGION east
+  FACE east
+  COORDINATES
+    5.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
+  /
+END
+
+REGION south
+  FACE south
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5.d0 0.d0 5.d0
+  /
+END
+
+REGION bottom
+  FACE bottom
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5.d0 5.d0 0.d0
+  /
 END
 
 :=========================== flow conditions ==================================
 FLOW_CONDITION initial
-  UNITS Pa
   TYPE
     PRESSURE hydrostatic
   /
+  DATUM DATASET xy_dataset
   PRESSURE 101325.d0
 END
 
-FLOW_CONDITION et
+FLOW_CONDITION east_line
   TYPE
-    RATE heterogeneous_mass_rate
+    PRESSURE hydrostatic
   /
-  RATE DATASET et_dataset
+  DATUM DATASET y_dataset
+  PRESSURE 101325.d0
 END
 
-FLOW_CONDITION from_surface
+FLOW_CONDITION south_line
   TYPE
-    RATE heterogeneous_mass_rate
+    PRESSURE hydrostatic
   /
-  RATE 0d-6
+  DATUM DATASET x_dataset
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 10 cm/y
 END
 
 :=========================== condition couplers ===============================
 : initial condition
-INITIAL_CONDITION initial_copuler
+INITIAL_CONDITION
   FLOW_CONDITION initial
   REGION all
 END
 
-SOURCE_SINK root_uptake
-  FLOW_CONDITION et
-  REGION all
+BOUNDARY_CONDITION outlet
+  FLOW_CONDITION initial
+  REGION bottom
 END
 
-SOURCE_SINK from_surface_ss
-  FLOW_CONDITION from_surface
+BOUNDARY_CONDITION east_bc
+  FLOW_CONDITION east_line
+  REGION east
+END
+
+BOUNDARY_CONDITION south_bc
+  FLOW_CONDITION south_line
+  REGION south
+END
+
+BOUNDARY_CONDITION initial
+  FLOW_CONDITION recharge
   REGION top
 END
 
 :=========================== stratigraphy couplers ============================
 STRATA
-  REGION Layer01
-  MATERIAL prop_mineral
-END
-
-STRATA
-  REGION Layer02
-  MATERIAL prop_mineral
-END
-
-STRATA
-  REGION Layer03
-  MATERIAL prop_mineral
-END
-
-STRATA
-  REGION Layer04
-  MATERIAL prop_organic_bot
-END
-
-STRATA
-  REGION Layer05
-  MATERIAL prop_organic_top
+  REGION all
+  MATERIAL soil1
 END
 
 

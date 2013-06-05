@@ -128,6 +128,11 @@ subroutine DatasetMapRead(this,input,option)
   character(len=MAXWORDLENGTH) :: keyword
   PetscBool :: found
 
+  if (option%mysize > 1) then
+    option%io_buffer = 'DatasetMap not yet supported in parallel.'
+    call printErrMsg(option)
+  endif
+
   input%ierr = 0
   do
   
