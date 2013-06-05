@@ -57,7 +57,9 @@ subroutine DatasetRead(input,dataset,option)
 !    case(
     case default ! CELL_INDEXED, GLOBAL, XYZ
       dataset => DatasetCommonHDF5Create()
-      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+      if (.not.InputError(input)) then
+        dataset%name = trim(word)
+      endif
       call InputDefaultMsg(input,option,'Dataset name') 
       call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
                                  option)
@@ -94,6 +96,8 @@ subroutine DatasetProcessDatasets(datasets,option)
     nullify(dataset_xyz)
     swapped = PETSC_FALSE
     select type(cur_dataset)
+      class is(dataset_map_type)
+        ! do nothing
       class is(dataset_common_hdf5_type)
         cur_dataset%is_cell_indexed = &
           DatasetCommonHDF5IsCellIndexed(cur_dataset,option)

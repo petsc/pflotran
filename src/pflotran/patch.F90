@@ -1582,17 +1582,9 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
 !    call printErrMsg(option)
 !  endif
 
-  select type(selector=>flow_dataset%dataset)
-    class is(dataset_map_type)
-      dataset => selector
-    class default
-      option%io_buffer = 'Incorrect class in PatchUpdateHetroCouplerAuxVars'
-      call printErrMsg(option)
-  end select
-  
   cur_connection_set => coupler%connection_set
 
-  if(associated(dataset)) then
+  if(associated(flow_dataset%dataset)) then
 
 !geh: commenting out the old approach in favor of new
 #if 0  
@@ -1618,8 +1610,16 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       enddo
 
     else !if(.not.associated(dataset%dataset_map))
-#endif    
+#endif
 
+    select type(selector=>flow_dataset%dataset)
+      class is(dataset_map_type)
+        dataset => selector
+      class default
+        option%io_buffer = 'Incorrect class in PatchUpdateHetroCouplerAuxVars'
+        call printErrMsg(option)
+    end select
+  
       ! New scheme: Mapping data is provided in HDF file
       !
     

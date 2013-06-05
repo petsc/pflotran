@@ -26,7 +26,6 @@ module Dataset_XYZ_class
   PetscInt, parameter, public :: DIM_XZ = 5
   PetscInt, parameter, public :: DIM_YZ = 6
   PetscInt, parameter, public :: DIM_XYZ = 7
-  PetscInt, parameter, public :: DIM_CELL = 8
   
   PetscInt, parameter :: MAX_NSLICE = 4
 
@@ -114,7 +113,7 @@ end subroutine DatasetXYZLoad
 #if defined(PETSC_HAVE_HDF5)    
 ! ************************************************************************** !
 !
-! DatasetXYZReadData: Read an hdf5 array into a Petsc Vec
+! DatasetXYZReadData: Read an hdf5 data into arrays
 ! author: Glenn Hammond
 ! date: 10/25/11, 05/29/13
 !
@@ -206,11 +205,8 @@ subroutine DatasetXYZReadData(this,option)
                      attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
     else
-      if(this%data_dim/=DIM_CELL) then
-        option%io_buffer = &
-          'Discretization attribute must be included in hdf5 dataset file.'
-        call printErrMsg(option)
-      endif
+      option%io_buffer = &
+        '"Discretization" attribute must be included in XYZ hdf5 dataset file.'
     endif
     attribute_name = "Origin"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
@@ -408,8 +404,6 @@ subroutine DatasetSetDimension(this,word)
       this%data_dim = DIM_YZ
     case('XYZ')
       this%data_dim = DIM_XYZ
-    case('CELL')
-      this%data_dim = DIM_CELL
   end select
       
 end subroutine DatasetSetDimension
@@ -430,7 +424,7 @@ function DatasetGetNDimensions(this)
   PetscInt :: DatasetGetNDimensions
 
   select case(this%data_dim)
-    case(DIM_X,DIM_Y,DIM_Z,DIM_CELL)
+    case(DIM_X,DIM_Y,DIM_Z)
       DatasetGetNDimensions = ONE_INTEGER
     case(DIM_XY,DIM_XZ,DIM_YZ)
       DatasetGetNDimensions = TWO_INTEGER
