@@ -82,7 +82,8 @@ module Geomech_Grid_Aux_module
             GMDMCreate, &
             GMDMDestroy, &
             GMCreateGMDM, &
-            GMGridDMCreateVector
+            GMGridDMCreateVector, &
+            GMGridDMCreateJacobian
             
   
 contains
@@ -496,6 +497,89 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
 #endif
 
 end subroutine GMCreateGMDM
+
+! ************************************************************************** !
+!
+! GMGridDMCreateJacobian: Creates a Jacobian matrix
+! author: Satish Karra, LANL
+! date: 06/05/13
+!
+! ************************************************************************** !
+subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(geomech_grid_type)              :: geomech_grid
+  type(gmdm_type)                      :: gmdm
+  type(option_type)                    :: option 
+  MatType                              :: mat_type
+  Mat                                  :: J
+  IS                                   :: is_tmp
+
+  PetscInt, allocatable                :: d_nnz(:), o_nnz(:)
+  PetscInt                             :: local_id, ineighbor, neighbor_id
+  PetscInt                             :: ndof_local
+  PetscInt                             :: ielem, node_count
+  PetscInt                             :: ivertex1, ivertex2
+  PetscInt                             :: local_id1, local_id2
+  PetscErrorCode                       :: ierr
+  
+  allocate(d_nnz(geomech_grid%nlmax_node))
+  allocate(o_nnz(geomech_grid%nlmax_node))
+
+  d_nnz = 1 ! vertex connected to itself
+  o_nnz = 0
+  do ielem = 1, geomech_grid%nlmax_elem
+    do ivertex1 = 1, geomech_grid%elem_nodes(0,ielem)
+      local_id1 = geomech_grid%elem_nodes(ivertex1,ielem)
+      do ivertex2 = 1, geomech_grid%elem_nodes(0,ielem)
+        local_id2 = geomech_grid%elem_nodes(ivertex2,ielem)
+        if (local_id2 /= local_id1) then ! Already took care of vertex to itself
+          if (local_id2 <= geomech_grid%nlmax_node) then ! local
+            d_nnz(local_id1) = d_nnz(local_id1) + 1
+          else
+            o_nnz(local_id1) = d_nnz(local_id1) + 1
+          endif
+        endif
+      enddo
+    enddo      
+  enddo
+  
+  ndof_local = geomech_grid%nlmax_node*gmdm%ndof
+  
+  select case(mat_type)
+    case(MATAIJ)
+      d_nnz = d_nnz*gmdm%ndof
+      o_nnz = o_nnz*gmdm%ndof
+      call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
+                        PETSC_DETERMINE,PETSC_DETERMINE, &
+                        PETSC_NULL_INTEGER,d_nnz, &
+                        PETSC_NULL_INTEGER,o_nnz,J,ierr)
+      call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
+                                      gmdm%mapping_ltog,ierr)
+      call MatSetLocalToGlobalMappingBlock(J,gmdm%mapping_ltogb, &
+                                           gmdm%mapping_ltogb,ierr)
+    case(MATBAIJ)
+      call MatCreateBAIJ(option%mycomm,gmdm%ndof,ndof_local,ndof_local, &
+                         PETSC_DETERMINE,PETSC_DETERMINE, &
+                         PETSC_NULL_INTEGER,d_nnz, &
+                         PETSC_NULL_INTEGER,o_nnz,J,ierr)
+      call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
+                                      gmdm%mapping_ltog,ierr)
+      call MatSetLocalToGlobalMappingBlock(J,gmdm%mapping_ltogb, &
+                                           gmdm%mapping_ltogb,ierr)
+    case default
+      option%io_buffer = 'MatType not recognized in GMGridDMCreateJacobian'
+      call printErrMsg(option)
+  end select 
+  
+                        
+  deallocate(d_nnz)
+  deallocate(o_nnz)
+  
+end subroutine GMGridDMCreateJacobian
 
 ! ************************************************************************** !
 !

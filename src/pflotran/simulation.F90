@@ -30,6 +30,7 @@ module Simulation_module
 #endif
 #ifdef GEOMECH
     type(geomech_realization_type), pointer :: geomech_realization
+    type(solver_type), pointer :: geomech_solver
 #endif
     type(regression_type), pointer :: regression
   end type simulation_type
@@ -98,6 +99,7 @@ function SimulationCreate2(option)
 #endif
 #ifdef GEOMECH
   simulation%geomech_realization => GeomechRealizCreate(option)
+  simulation%geomech_solver => SolverCreate()
 #endif
   nullify(simulation%regression)
   
@@ -271,6 +273,7 @@ subroutine SimulationDestroy(simulation)
 
 #ifdef GEOMECH
   call GeomechRealizDestroy(simulation%geomech_realization)
+  call SolverDestroy(simulation%geomech_solver)
 #endif
 
   call RegressionDestroy(simulation%regression)

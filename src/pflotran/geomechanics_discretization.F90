@@ -39,7 +39,7 @@ module Geomechanics_Discretization_module
             GeomechDiscretizationDestroy, &
             GeomechDiscretizationCreateVector, &
             GeomechDiscretizationDuplicateVector, &         
-!            GeomechDiscretizationCreateJacobian, &
+            GeomechDiscretizationCreateJacobian, &
             GeomechDiscretizationGlobalToLocal, &
             GeomechDiscretizationLocalToGlobal, &
             GeomechDiscretizationLocalToLocal, &
@@ -243,6 +243,39 @@ function GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
   end select  
   
 end function GeomechDiscretizationGetDMPtrFromIndex
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationCreateJacobian: Creates Jacobian matrix associated 
+! with geomechanics discretization
+! author: Satish Karra, LANL
+! date: 06/05/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationCreateJacobian(discretization,dm_index, &
+                                               mat_type,Jacobian,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(geomech_discretization_type)             :: discretization
+  type(option_type)                             :: option
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  MatType                                       :: mat_type
+  Mat                                           :: Jacobian
+
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+
+
+  call GMGridDMCreateJacobian(discretization%grid,dm_ptr%gmdm, &
+                              mat_type,Jacobian,option)
+  call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+  call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+
+end subroutine GeomechDiscretizationCreateJacobian
 
 ! ************************************************************************** !
 !

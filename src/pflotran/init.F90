@@ -89,6 +89,7 @@ subroutine Init(simulation)
   use Geomechanics_Realization_module
   use Geomechanics_Init_module 
   use Geomech_Grid_module
+  use Geomechanics_Discretization_module
 #endif
 
   implicit none
@@ -126,6 +127,7 @@ subroutine Init(simulation)
   type(surface_realization_type), pointer   :: surf_realization
 #endif
 #ifdef GEOMECH
+  type(solver_type), pointer                :: geomech_solver
   type(geomech_realization_type), pointer :: geomech_realization
 #endif
 
@@ -232,6 +234,18 @@ subroutine Init(simulation)
     call TimestepperDestroy(simulation%surf_flow_stepper)
     nullify(surf_flow_solver)
   endif
+#endif
+
+#ifdef GEOMECH
+  ! initialize geomechanics mode
+  if (option%ngeomechdof > 0) then
+    geomech_solver => simulation%geomech_solver
+    waypoint_list => WaypointListCreate()
+    geomech_realization%waypoints => waypoint_list
+  else
+    nullify(geomech_solver)
+  endif
+  ! SK, Note: There is no time stepper for geomechanics
 #endif
 
   ! initialize plot variables
@@ -665,7 +679,96 @@ subroutine Init(simulation)
 
   endif
 
+#ifdef GEOMECH
+
+  ! update geomechanics mode based on optional input
+  if (option%ngeomechdof > 0) then
+
+    if (geomech_solver%J_mat_type == MATAIJ) then
+      option%io_buffer = 'AIJ matrix not supported for geomechanics.'
+      call printErrMsg(option)
+    endif
+
+    call printMsg(option,"  Beginning setup of GEOMECH SNES ")
+    
+    call SolverCreateSNES(geomech_solver,option%mycomm)  
+    call SNESSetOptionsPrefix(geomech_solver%snes, "geomech_",ierr)
+    call SolverCheckCommandLine(geomech_solver)
+        
+    if (geomech_solver%Jpre_mat_type == '') then
+      geomech_solver%Jpre_mat_type = geomech_solver%J_mat_type
+    endif
+    call GeomechDiscretizationCreateJacobian(geomech_realization% &
+                                             discretization,NGEODOF, &
+                                             geomech_solver%Jpre_mat_type, &
+                                             geomech_solver%Jpre,option)
+
+    geomech_solver%J = geomech_solver%Jpre
+    call MatSetOptionsPrefix(geomech_solver%Jpre,"geomech_",ierr)
+    
+#if 0
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+
+      call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
+                           realization,ierr)
+      
+      call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
+                           RTJacobian,realization,ierr)
+
+      ! this could be changed in the future if there is a way to ensure that the linesearch
+      ! update does not perturb concentrations negative.
+      call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
+      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+      
+      if (option%use_mc) then
+        call SNESLineSearchSetPostCheck(linesearch, &
+                                        SecondaryRTUpdateIterate, &
+                                        realization,ierr)      
+      endif
+      
+      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+      if (option%verbosity >= 1) then
+        string = '-tran_snes_view'
+        call PetscOptionsInsertString(string, ierr)
+      endif
+
+    endif
+
+    ! ensure setting of SNES options since they set KSP and PC options too
+    call SolverSetSNESOptions(tran_solver)
+
+    option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
+    call printMsg(option)
+    option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
+    call printMsg(option)
+
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+
+      ! shell for custom convergence test.  The default SNES convergence test  
+      ! is call within this function. 
+      tran_stepper%convergence_context => &
+        ConvergenceContextCreate(tran_solver,option,grid)
+      call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
+                                  tran_stepper%convergence_context, &
+                                  PETSC_NULL_FUNCTION,ierr) 
+
+      ! this update check must be in place, otherwise reactive transport is likely
+      ! to fail
+      if (associated(realization%reaction)) then
+        if (realization%reaction%check_update) then
+          call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
+                                         realization,ierr)
+        endif
+      endif
+    endif
+#endif    
+    call printMsg(option,"  Finished setting up GEOMECH SNES ")
   
+  endif
+
+#endif
+
   ! update transport mode based on optional input
   if (option%ntrandof > 0) then
 

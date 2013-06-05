@@ -7,6 +7,7 @@ module Geomechanics_Realization_module
   use Input_module
   use Option_module
   use Geomechanics_Material_module
+  use Waypoint_module
   
   implicit none
   
@@ -26,7 +27,7 @@ private
                            pointer :: geomech_material_properties
     type(geomech_material_property_ptr_type), &
                            pointer :: geomech_material_property_array(:)
-
+    type(waypoint_list_type), pointer  :: waypoints
 
   end type geomech_realization_type
 
