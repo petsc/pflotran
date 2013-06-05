@@ -37,7 +37,25 @@ module Geomechanics_Discretization_module
 
   public :: GeomechDiscretizationCreate, &
             GeomechDiscretizationDestroy, &
-            GeomechDiscretizationCreateDMs
+            GeomechDiscretizationCreateVector, &
+            GeomechDiscretizationDuplicateVector, &         
+!            GeomechDiscretizationCreateJacobian, &
+            GeomechDiscretizationGlobalToLocal, &
+            GeomechDiscretizationLocalToGlobal, &
+            GeomechDiscretizationLocalToLocal, &
+            GeomechDiscretizationGlobalToNatural, &
+            GeomechDiscretizationNaturalToGlobal, &
+            GeomechDiscretizationGlobalToLocalBegin, &
+            GeomechDiscretizationGlobalToLocalEnd, &
+            GeomechDiscretizationLocalToLocalBegin, &
+            GeomechDiscretizationLocalToLocalEnd, &
+            GeomechDiscretizGlobalToNaturalBegin, &
+            GeomechDiscretizGlobalToNaturalEnd, &
+            GeomechDiscretizNaturalToGlobalBegin, &
+            GeomechDiscretizNaturalToGlobalEnd, &
+            GeomechDiscretizationCreateDMs,&
+            GeomechDiscretizationGetDMPtrFromIndex, &
+            GeomechDiscretAOApplicationToPetsc
             
 contains
 
@@ -578,6 +596,30 @@ subroutine GeomechDiscretizNaturalToGlobalEnd(discretization,natural_vec, &
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
 end subroutine GeomechDiscretizNaturalToGlobalEnd
+
+! ************************************************************************** !
+!
+! GeomechDiscretAOApplicationToPetsc: Maps application ordering to petsc
+! author: Satish Karra, LANL
+! date: 06/02/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretAOApplicationToPetsc(discretization,int_array)
+
+  implicit none
+  
+#include "finclude/petscao.h"  
+  
+  type(geomech_discretization_type)             :: discretization
+  PetscInt                                      :: int_array(:)
+  PetscErrorCode                                :: ierr
+  AO                                            :: ao
+  
+  ao = discretization%grid%ao_natural_to_petsc_nodes
+  
+  call AOApplicationToPetsc(ao,size(int_array),int_array,ierr)
+  
+end subroutine GeomechDiscretAOApplicationToPetsc
 
 ! ************************************************************************** !
 !

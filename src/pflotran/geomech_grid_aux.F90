@@ -497,7 +497,6 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
 
 end subroutine GMCreateGMDM
 
-
 ! ************************************************************************** !
 !
 ! GMGridDMCreateVector: Creates a global vector with PETSc ordering
