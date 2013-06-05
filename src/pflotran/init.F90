@@ -1374,7 +1374,7 @@ subroutine InitReadInput(simulation)
   use Material_module
   use Saturation_Function_module  
   use Dataset_Base_class
-  use Dataset_New_module
+  use Dataset_module
   use Dataset_Common_HDF5_class
   use Fluid_module
   use Realization_class

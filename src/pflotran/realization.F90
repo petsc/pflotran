@@ -788,7 +788,7 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationProcessConditions(realization)
 
-  use Dataset_New_module
+  use Dataset_module
   
   implicit none
   
@@ -960,7 +960,7 @@ end subroutine RealProcessFluidProperties
 subroutine RealProcessFlowConditions(realization)
 
   use Dataset_Base_class
-  use Dataset_New_module
+  use Dataset_module
 
   implicit none
 
@@ -2531,7 +2531,7 @@ end subroutine RealizationNonInitializedData
 ! ************************************************************************** !
 subroutine RealizationDestroy(realization)
 
-  use Dataset_New_module
+  use Dataset_module
 
   implicit none
   

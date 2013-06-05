@@ -270,7 +270,7 @@ dataset_obj = \
 	${common_src}dataset_common_hdf5.o \
 	${common_src}dataset_global.o \
 	${common_src}dataset_map.o \
-	${common_src}dataset_new.o \
+	${common_src}dataset.o \
 	${common_src}dataset_xyz.o \
 	${common_src}time_series.o \
 	${common_src}time_storage.o 
@@ -373,10 +373,10 @@ auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               secondary_continuum_aux.o th_aux.o thc_aux.o thmc_aux.o
 block_solve.o :
 block_tridiag.o :
-checkpoint.o : discretization.o field.o flash2.o grid.o immis.o \
-               logging.o miscible.o mphase.o option.o output_aux.o \
-               reaction_aux.o reactive_transport.o realization.o \
-               realization_base.o variables.o
+checkpoint.o : discretization.o field.o flash2.o grid.o immis.o logging.o \
+               miscible.o mphase.o option.o output_aux.o reaction_aux.o \
+               reactive_transport.o realization.o realization_base.o \
+               variables.o
 co2_span_wagner.o : co2_sw_rtsafe.o option.o
 co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
@@ -414,15 +414,15 @@ database_aux.o : input.o option.o string.o
 database_hpt.o : database.o database_aux.o input.o mineral_aux.o option.o \
                  reaction.o reaction_aux.o string.o surface_complexation_aux.o \
                  utility.o
+dataset.o : dataset_base.o dataset_common_hdf5.o dataset_global.o \
+            dataset_map.o dataset_xyz.o dm_kludge.o input.o option.o string.o
 dataset_base.o : option.o string.o time_storage.o utility.o
 dataset_common_hdf5.o : dataset_base.o hdf5_aux.o input.o logging.o option.o \
                         string.o time_storage.o units.o utility.o
 dataset_global.o : dataset_base.o dataset_common_hdf5.o dm_kludge.o logging.o \
                    option.o time_storage.o utility.o
-dataset_map.o : dataset_base.o dataset_common_hdf5.o logging.o option.o \
-                time_storage.o units.o utility.o
-dataset_new.o : dataset_base.o dataset_common_hdf5.o dataset_global.o \
-                dataset_map.o dataset_xyz.o dm_kludge.o option.o
+dataset_map.o : dataset_base.o dataset_common_hdf5.o input.o logging.o \
+                option.o string.o time_storage.o units.o utility.o
 dataset_xyz.o : dataset_base.o dataset_common_hdf5.o logging.o option.o \
                 string.o time_storage.o units.o utility.o
 debug.o : input.o option.o
@@ -458,7 +458,7 @@ grid.o : connection.o logging.o mfd_aux.o option.o region.o structured_grid.o \
          unstructured_grid_aux.o utility.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          realization.o realization_base.o region.o unstructured_cell.o
-hdf5_aux.o : logging.o option.o units.o
+hdf5_aux.o : logging.o option.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \
                 water_eos.o
@@ -472,12 +472,12 @@ immis_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
 immobile.o : immobile_aux.o input.o option.o string.o utility.o
 immobile_aux.o : database_aux.o option.o string.o utility.o
 init.o : condition.o condition_control.o connection.o constraint.o \
-         convergence.o coupler.o database.o database_hpt.o dataset_base.o \
-         dataset_common_hdf5.o debug.o discretization.o field.o flash2.o \
-         fluid.o general.o general_grid.o global.o grid.o hdf5.o immis.o \
-         input.o level.o logging.o mass_transfer.o material.o mineral.o \
-         miscible.o mphase.o observation.o option.o output.o output_aux.o \
-         output_tecplot.o patch.o reaction.o reaction_aux.o \
+         convergence.o coupler.o database.o database_hpt.o dataset.o \
+         dataset_base.o dataset_common_hdf5.o debug.o discretization.o field.o \
+         flash2.o fluid.o general.o general_grid.o global.o grid.o hdf5.o \
+         immis.o input.o level.o logging.o mass_transfer.o material.o \
+         mineral.o miscible.o mphase.o observation.o option.o output.o \
+         output_aux.o output_tecplot.o patch.o reaction.o reaction_aux.o \
          reactive_transport.o realization.o region.o regression.o richards.o \
          richards_mfd.o saturation_function.o secondary_continuum.o \
          simulation.o solid_solution.o solver.o stochastic_aux.o strata.o \
@@ -610,8 +610,8 @@ reactive_transport.o : condition.o connection.o constraint.o coupler.o debug.o \
                        secondary_continuum_aux.o transport.o variables.o
 reactive_transport_aux.o : matrix_block_aux.o option.o reaction_aux.o \
                            surface_complexation_aux.o utility.o
-realization.o : condition.o connection.o constraint.o coupler.o dataset_base.o \
-                dataset_common_hdf5.o dataset_new.o debug.o discretization.o \
+realization.o : condition.o connection.o constraint.o coupler.o dataset.o \
+                dataset_base.o dataset_common_hdf5.o debug.o discretization.o \
                 dm_kludge.o field.o fluid.o grid.o input.o level.o \
                 mass_transfer.o material.o mfd.o mfd_aux.o observation.o \
                 option.o output_aux.o patch.o reaction.o reaction_aux.o \
@@ -692,9 +692,9 @@ surface_init.o : condition.o coupler.o dataset_base.o debug.o discretization.o \
                  surface_realization.o units.o unstructured_grid.o \
                  unstructured_grid_aux.o waypoint.o
 surface_material.o : input.o option.o string.o
-surface_realization.o : condition.o coupler.o dataset_base.o dataset_new.o \
-                        debug.o discretization.o field.o grid.o input.o \
-                        level.o option.o output_aux.o patch.o reaction_aux.o \
+surface_realization.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
+                        discretization.o field.o grid.o input.o level.o \
+                        option.o output_aux.o patch.o reaction_aux.o \
                         realization.o realization_base.o region.o strata.o \
                         string.o surface_field.o surface_material.o \
                         unstructured_cell.o unstructured_grid.o \

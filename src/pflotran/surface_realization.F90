@@ -617,7 +617,7 @@ end subroutine SurfRealizLocalToLocalWithArray
 subroutine SurfRealizProcessFlowConditions(surf_realization)
 
   use Dataset_Base_class
-  use Dataset_New_module
+  use Dataset_module
 
   implicit none
 
