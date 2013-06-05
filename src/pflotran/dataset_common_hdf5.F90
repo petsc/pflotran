@@ -21,6 +21,7 @@ module Dataset_Common_HDF5_class
             DatasetCommonHDF5Copy, &
             DatasetCommonHDF5Cast, &
             DatasetCommonHDF5Read, &
+            DatasetCommonHDF5ReadSelectCase, &
             DatasetCommonHDF5Load, &
             DatasetCommonHDF5IsCellIndexed, &
             DatasetCommonHDF5Strip, &
@@ -127,7 +128,7 @@ end function DatasetCommonHDF5Cast
 !
 ! DatasetCommonHDF5Read: Reads in contents of a dataset card
 ! author: Glenn Hammond
-! date: 01/12/11
+! date: 01/12/11, 06/04/13
 ! 
 ! ************************************************************************** !
 subroutine DatasetCommonHDF5Read(this,input,option)
@@ -138,11 +139,12 @@ subroutine DatasetCommonHDF5Read(this,input,option)
 
   implicit none
   
-  type(dataset_common_hdf5_type) :: this
+  class(dataset_common_hdf5_type) :: this
   type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscBool :: found
 
   input%ierr = 0
   do
@@ -155,28 +157,13 @@ subroutine DatasetCommonHDF5Read(this,input,option)
     call InputErrorMsg(input,option,'keyword','DATASET')
     call StringToUpper(keyword)   
       
-    select case(trim(keyword))
-    
-      case('NAME') 
-        call InputReadWord(input,option,this%name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'name','DATASET')
-      case('HDF5_DATASET_NAME') 
-        call InputReadWord(input,option,this%hdf5_dataset_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'hdf5_dataset_name','DATASET')
-      case('FILENAME') 
-        call InputReadNChars(input,option,this%filename, &
-                             MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'name','DATASET')
-      case('REALIZATION_DEPENDENT')
-        this%realization_dependent = PETSC_TRUE
-      case('MAX_BUFFER_SIZE') 
-        call InputReadInt(input,option,this%max_buffer_size)
-        call InputErrorMsg(input,option,'max_buffer_size','DATASET')
-      case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in dataset'    
-        call printErrMsg(option)
-    end select  
+    call DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
+
+    if (.not.found) then
+      option%io_buffer = 'Keyword: ' // trim(keyword) // &
+                         ' not recognized in dataset'    
+      call printErrMsg(option)
+    endif
   
   enddo
   
@@ -185,6 +172,51 @@ subroutine DatasetCommonHDF5Read(this,input,option)
   endif
   
 end subroutine DatasetCommonHDF5Read
+
+! ************************************************************************** !
+!
+! DatasetCommonHDF5ReadSelectCase: Compares keyword against HDF5 common
+!                                  keywords
+! author: Glenn Hammond
+! date: 06/04/13
+! 
+! ************************************************************************** !
+subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+
+  implicit none
+  
+  class(dataset_common_hdf5_type) :: this
+  type(input_type) :: input
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscBool :: found
+  type(option_type) :: option
+
+  found = PETSC_TRUE
+  select case(trim(keyword))
+    case('NAME') 
+      call InputReadWord(input,option,this%name,PETSC_TRUE)
+      call InputErrorMsg(input,option,'name','DATASET')
+    case('HDF5_DATASET_NAME') 
+      call InputReadWord(input,option,this%hdf5_dataset_name,PETSC_TRUE)
+      call InputErrorMsg(input,option,'hdf5_dataset_name','DATASET')
+    case('FILENAME') 
+      call InputReadNChars(input,option,this%filename, &
+                            MAXSTRINGLENGTH,PETSC_TRUE)
+      call InputErrorMsg(input,option,'name','DATASET')
+    case('REALIZATION_DEPENDENT')
+      this%realization_dependent = PETSC_TRUE
+    case('MAX_BUFFER_SIZE') 
+      call InputReadInt(input,option,this%max_buffer_size)
+      call InputErrorMsg(input,option,'max_buffer_size','DATASET')
+    case default
+      found = PETSC_FALSE
+  end select  
+  
+end subroutine DatasetCommonHDF5ReadSelectCase
 
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !

@@ -150,7 +150,6 @@ subroutine DatasetXYZReadData(this,option)
   PetscInt :: num_dims_in_h5_file, num_times_in_h5_file
   PetscMPIInt :: array_rank_mpi
   PetscBool :: attribute_exists
-  PetscReal :: units_conversion
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word

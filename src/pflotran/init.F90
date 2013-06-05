@@ -1374,6 +1374,7 @@ subroutine InitReadInput(simulation)
   use Material_module
   use Saturation_Function_module  
   use Dataset_Base_class
+  use Dataset_New_module
   use Dataset_Common_HDF5_class
   use Fluid_module
   use Realization_class
@@ -1698,12 +1699,9 @@ subroutine InitReadInput(simulation)
         nullify(strata)
         
 !.....................
-      case ('DATASET') 
-        dataset => DatasetCommonHDF5Create()
-        call InputReadWord(input,option,dataset%name,PETSC_TRUE)
-        call InputDefaultMsg(input,option,'Dataset name') 
-        call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
-                                   option)
+      case ('DATASET')
+        nullify(dataset)
+        call DatasetRead(input,dataset,option)
         call DatasetBaseAddToList(dataset,realization%datasets)
         nullify(dataset)
         

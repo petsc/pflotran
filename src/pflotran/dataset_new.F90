@@ -12,11 +12,58 @@ module Dataset_New_module
   
 #include "definitions.h"
 
-  public :: DatasetProcessDatasets, &
+  public :: DatasetRead, &
+            DatasetProcessDatasets, &
             DatasetLoad, &
             DatasetDestroy
 
 contains
+
+! *************************************************************************** !
+!
+! DatasetRead: Reads a dataset from the input file
+! author: Glenn Hammond
+! date: 03/26/12
+!
+! ************************************************************************** !
+subroutine DatasetRead(input,dataset,option)
+
+  use Input_module
+  use Option_module
+  use String_module
+  
+  implicit none
+
+  type(input_type) :: input
+  class(dataset_base_type), pointer :: dataset
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: word, word2
+
+  ! read from the buffer on the first line the type of dataset.  If it does
+  ! not match any of type in the select case, assume default and use the 
+  ! word as the name.
+  
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  word2 = word
+  call StringToUpper(word2)
+  
+  select case(word2)
+    case('MAPPED')
+      dataset => DatasetMapCreate()
+      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+      call InputDefaultMsg(input,option,'Dataset name') 
+      call DatasetMapRead(DatasetMapCast(dataset),input,option)
+!    case(
+    case default ! CELL_INDEXED, GLOBAL, XYZ
+      dataset => DatasetCommonHDF5Create()
+      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+      call InputDefaultMsg(input,option,'Dataset name') 
+      call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
+                                 option)
+  end select
+
+end subroutine DatasetRead
 
 ! *************************************************************************** !
 !

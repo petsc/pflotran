@@ -1700,7 +1700,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
   PetscViewer :: viewer
   
   ! Step-1: Rearrange map dataset
-  nloc = maxval(dataset_map%map(2,:))
+  nloc = maxval(dataset_map%mapping(2,:))
   call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max,option%mycomm,ierr)
   call VecCreateMPI(option%mycomm,dataset_map%map_dims_local(2),&
                     PETSC_DETERMINE,map_ids_1,ierr)
@@ -1723,7 +1723,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
   
   allocate(int_array(dataset_map%map_dims_local(2)))
   do ii=1,dataset_map%map_dims_local(2)
-    int_array(ii)=dataset_map%map(2,ii)
+    int_array(ii)=dataset_map%mapping(2,ii)
   enddo
   int_array=int_array-1
 
@@ -1741,7 +1741,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
 
   call VecGetArrayF90(map_ids_1,vec_ptr,ierr)
   do ii=1,dataset_map%map_dims_local(2)
-    vec_ptr(ii)=dataset_map%map(1,ii)
+    vec_ptr(ii)=dataset_map%mapping(1,ii)
   enddo
   call VecRestoreArrayF90(map_ids_1,vec_ptr,ierr)
 
