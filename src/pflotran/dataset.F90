@@ -57,9 +57,14 @@ subroutine DatasetRead(input,dataset,option)
 !    case(
     case default ! CELL_INDEXED, GLOBAL, XYZ
       dataset => DatasetCommonHDF5Create()
-      if (.not.InputError(input)) then
-        dataset%name = trim(word)
-      endif
+      select case(word2)
+        case('CELL_INDEXED', 'GLOBAL', 'XYZ')
+          call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+        case default
+          if (.not.InputError(input)) then
+            dataset%name = trim(word)
+          endif
+      end select
       call InputDefaultMsg(input,option,'Dataset name') 
       call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
                                  option)
