@@ -1,16 +1,32 @@
 :Description: 3D groundwater flow and solute transport
 
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    5
+    105 
+    205 
+    305 
+    405 
+    505 
+    605 
+    705 
+    805 
+    905 
+  /
+END
+
 :=========================== flow mode ========================================
 MODE RICHARDS
 
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  TYPE unstructured dataset_map_grid.h5
 END
 
-:=========================== datasets =================================
+:=========================== datasets =========================================
 DATASET MAPPED et_dataset
-  FILENAME SiteABCD_10p00000dx_10p00000dy_0p4Z_prism_mass_flux_c130404.h5
+  FILENAME dataset_map_data.h5
   HDF5_DATASET_NAME ET_3D
   MAX_BUFFER_SIZE 10
   MAP_HDF5_DATASET_NAME Map_ET_onto_10x10x5
@@ -96,49 +112,49 @@ END
 
 :=========================== output options ===================================
 OUTPUT
-  PERIODIC TIME 3600. s
-  FORMAT HDF5
+:  PERIODIC TIME 1. d
+:  FORMAT HDF5
 END
 :=========================== times ============================================
 TIME
-  FINAL_TIME 36000 s
+  FINAL_TIME 2 d
   INITIAL_TIMESTEP_SIZE 3600.0 s
   MAXIMUM_TIMESTEP_SIZE 3600.0 s        ! produces CFL ~<= 1.
 END
 
 :=========================== regions ==========================================
 REGION all
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
 REGION Layer01
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
 REGION Layer02
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
 REGION Layer03
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
 REGION Layer04
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
 REGION Layer05
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
 REGION top
-  FILE B_10p00000dx_10p00000dy_0p4Z_prism_c130529.h5
+  FILE dataset_map_grid.h5
   GRID unstructured
 END
 
