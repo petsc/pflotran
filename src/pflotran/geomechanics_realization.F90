@@ -10,6 +10,7 @@ module Geomechanics_Realization_module
   use Waypoint_module
   use Geomechanics_Field_module
   use Geomechanics_Debug_module
+  use Output_Aux_module
  
   implicit none
   
