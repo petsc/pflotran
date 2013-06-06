@@ -65,7 +65,7 @@ function GeomechRealizCreate(option)
   nullify(geomech_realization%input)
   geomech_realization%discretization => GeomechDiscretizationCreate()
   
-  geomech_realization%geomech_field => GeomechFieldCreate()
+  geomech_realization%geomech_field => GeomechanicsFieldCreate()
 
   nullify(geomech_realization%geomech_material_properties)
   nullify(geomech_realization%geomech_material_property_array)
@@ -131,6 +131,10 @@ subroutine GeomechRealizCreateDiscretization(realization)
                                             geomech_field%work_loc)
 
   grid => discretization%grid
+  
+  ! set up nG2L, NL2G, etc.
+  call GMGridMapIndices(grid,discretization%dm_1dof%gmdm, &
+                        grid%nG2L,grid%nL2G,grid%nG2A,option)
 
   
 end subroutine GeomechRealizCreateDiscretization
@@ -150,7 +154,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   if(.not.associated(geomech_realization)) return
   
-  call GeomechFieldDestroy(geomech_realization%geomech_field)
+  call GeomechanicsFieldDestroy(geomech_realization%geomech_field)
   
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)

@@ -1095,6 +1095,14 @@ subroutine Init(simulation)
                                string)
   endif
 #endif
+#ifdef GEOMECH
+  if (associated(geomech_solver)) then
+    string = 'Geomechanics Newton Solver:'
+    call SolverPrintNewtonInfo(geomech_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
+  endif  
+#endif
   if (associated(flow_solver)) then
     string = 'Flow Linear Solver:'
     call SolverPrintLinearInfo(flow_solver,string,option)
@@ -1115,6 +1123,12 @@ subroutine Init(simulation)
       write(*,*),string
     endif
     call TSView(surf_flow_solver%ts,PETSC_VIEWER_STDOUT_WORLD,ierr)
+  endif
+#endif
+#ifdef GEOMECH
+  if (associated(geomech_solver)) then
+    string = 'Geomechanics Linear Solver:'
+    call SolverPrintLinearInfo(geomech_solver,string,option)
   endif
 #endif
 
@@ -1210,6 +1224,16 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
   endif ! option%nsurfflowdof > 0
+#endif
+
+#ifdef GEOMECH
+  if (option%ngeomechdof > 0) then
+  
+  
+  
+  
+  
+  endif
 #endif
 
   call printMsg(option," ")

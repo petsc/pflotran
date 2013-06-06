@@ -41,6 +41,7 @@ module Geomech_Grid_Aux_module
     PetscInt, pointer :: node_ids_local_natural(:)   ! Natural ids of local nodes
     PetscInt, pointer :: ghosted_node_ids_natural(:) ! Natural ids of the ghost nodes only
     PetscInt, pointer :: ghosted_node_ids_petsc(:)   ! Petsc ids of the ghost nodes only
+    PetscInt, pointer :: nL2G(:),nG2L(:),nG2A(:)
   end type geomech_grid_type
   
 
@@ -83,7 +84,8 @@ module Geomech_Grid_Aux_module
             GMDMDestroy, &
             GMCreateGMDM, &
             GMGridDMCreateVector, &
-            GMGridDMCreateJacobian
+            GMGridDMCreateJacobian, &
+            GMGridMapIndices
             
   
 contains
