@@ -1,7 +1,7 @@
 #ifdef GEOMECH
-module Geomech_Grid_module
+module Geomechanics_Grid_module
 
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_Aux_module
   use Unstructured_Cell_module
   
   implicit none
@@ -268,7 +268,7 @@ end subroutine GeomechGridRead
 subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                                         
   use Unstructured_Grid_Aux_module
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_Aux_module
   use Option_module
   
   implicit none
@@ -849,6 +849,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
-end module Geomech_Grid_module
+end module Geomechanics_Grid_module
 #endif 
 ! GEOMECH

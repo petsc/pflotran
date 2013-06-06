@@ -34,7 +34,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
-  use Geomech_Grid_module
+  use Geomechanics_Grid_module
   use Input_module
   use String_module
   use Patch_module
@@ -76,8 +76,8 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   use Option_module
   use Input_module
   use String_module
-  use Geomech_Grid_module
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
@@ -120,8 +120,8 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
-  use Geomech_Grid_module
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
   use Waypoint_module
   use Geomechanics_Material_module
   use Solver_module

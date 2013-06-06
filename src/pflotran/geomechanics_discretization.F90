@@ -1,8 +1,8 @@
 #ifdef GEOMECH
 module Geomechanics_Discretization_module
 
-  use Geomech_Grid_module
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
   
   implicit none
 

@@ -9,6 +9,7 @@ module Geomechanics_Realization_module
   use Geomechanics_Material_module
   use Waypoint_module
   use Geomechanics_Field_module
+  use Geomechanics_Debug_module
  
   implicit none
   
@@ -29,7 +30,9 @@ private
     type(geomech_material_property_ptr_type), &
                            pointer :: geomech_material_property_array(:)
     type(waypoint_list_type), pointer  :: waypoints
-    type(geomechanics_field_type), pointer :: geomech_field
+    type(geomech_field_type), pointer :: geomech_field
+    type(geomech_debug_type), pointer :: debug
+    type(output_option_type), pointer :: output_option
 
   end type geomech_realization_type
 
@@ -65,7 +68,7 @@ function GeomechRealizCreate(option)
   nullify(geomech_realization%input)
   geomech_realization%discretization => GeomechDiscretizationCreate()
   
-  geomech_realization%geomech_field => GeomechanicsFieldCreate()
+  geomech_realization%geomech_field => GeomechFieldCreate()
 
   nullify(geomech_realization%geomech_material_properties)
   nullify(geomech_realization%geomech_material_property_array)
@@ -85,7 +88,7 @@ end function GeomechRealizCreate
 ! ************************************************************************** !
 subroutine GeomechRealizCreateDiscretization(realization)
 
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_Aux_module
   
   implicit none
   
@@ -96,7 +99,7 @@ subroutine GeomechRealizCreateDiscretization(realization)
   type(geomech_discretization_type), pointer     :: discretization
   type(geomech_grid_type), pointer               :: grid
   type(option_type), pointer                     :: option
-  type(geomechanics_field_type), pointer         :: geomech_field
+  type(geomech_field_type), pointer              :: geomech_field
   type(gmdm_ptr_type), pointer                   :: dm_ptr
   PetscErrorCode                                 :: ierr
 
@@ -157,7 +160,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   if(.not.associated(geomech_realization)) return
   
-  call GeomechanicsFieldDestroy(geomech_realization%geomech_field)
+  call GeomechFieldDestroy(geomech_realization%geomech_field)
   
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)

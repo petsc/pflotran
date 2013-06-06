@@ -88,7 +88,7 @@ subroutine Init(simulation)
 #ifdef GEOMECH
   use Geomechanics_Realization_module
   use Geomechanics_Init_module 
-  use Geomech_Grid_module
+  use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
 #endif
@@ -130,7 +130,7 @@ subroutine Init(simulation)
 #ifdef GEOMECH
   type(solver_type), pointer                :: geomech_solver
   type(stepper_type), pointer               :: geomech_stepper
-  type(geomechanics_field_type), pointer    :: geomech_field
+  type(geomech_field_type), pointer         :: geomech_field
   type(geomech_realization_type), pointer   :: geomech_realization
 #endif
 

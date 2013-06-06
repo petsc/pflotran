@@ -2,9 +2,9 @@
 module Geomechanics_Patch_module
 
   use Option_module
-  use Geomech_Grid_module
+  use Geomechanics_Grid_module
   use Geomechanics_Material_module
-  use Geomech_Grid_Aux_module
+  use Geomechanics_Grid_Aux_module
   use Region_module
   use Strata_module
   

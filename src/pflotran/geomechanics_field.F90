@@ -12,7 +12,7 @@ module Geomechanics_Field_module
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type, public :: geomechanics_field_type
+  type, public :: geomech_field_type
     Vec :: work
     Vec :: work_loc
     ! residual vectors
@@ -21,71 +21,71 @@ module Geomechanics_Field_module
     ! Solution vectors (yy = previous solution, xx = current iterate)
     Vec :: disp_xx, disp_xx_loc, disp_dxx, disp_yy, disp_accum
 
-  end type geomechanics_field_type
+  end type geomech_field_type
 
-  public :: GeomechanicsFieldCreate, &
-            GeomechanicsFieldDestroy
+  public :: GeomechFieldCreate, &
+            GeomechFieldDestroy
 
 contains
 
 ! ************************************************************************** !
 !
-! GeomechanicsFieldCreate: Allocates and initializes a new geomechanics
-!                          Field object
+! GeomechFieldCreate: Allocates and initializes a new geomechanics
+!                     Field object
 ! author: Satish Karra, LANL
 ! date: 06/05/13
 !
 ! ************************************************************************** !
-function GeomechanicsFieldCreate()
+function GeomechFieldCreate()
 
   implicit none
   
-  type(geomechanics_field_type), pointer     :: GeomechanicsFieldCreate
-  type(geomechanics_field_type), pointer     :: geomechanics_field
+  type(geomech_field_type), pointer     :: GeomechFieldCreate
+  type(geomech_field_type), pointer     :: geomech_field
   
-  allocate(geomechanics_field)
+  allocate(geomech_field)
 
   ! nullify PetscVecs
-  geomechanics_field%work = 0
-  geomechanics_field%work_loc = 0
+  geomech_field%work = 0
+  geomech_field%work_loc = 0
   
-  geomechanics_field%disp_r = 0
-  geomechanics_field%disp_xx = 0
-  geomechanics_field%disp_xx_loc = 0
-  geomechanics_field%disp_dxx = 0
-  geomechanics_field%disp_yy = 0
-  geomechanics_field%disp_accum = 0
+  geomech_field%disp_r = 0
+  geomech_field%disp_xx = 0
+  geomech_field%disp_xx_loc = 0
+  geomech_field%disp_dxx = 0
+  geomech_field%disp_yy = 0
+  geomech_field%disp_accum = 0
   
-  GeomechanicsFieldCreate => geomechanics_field
+  GeomechFieldCreate => geomech_field
 
-end function GeomechanicsFieldCreate
+end function GeomechFieldCreate
 
 ! ************************************************************************** !
 !
-! GeomechanicsFieldDestroy: Deallocates a geomechanics field object
+! GeomechFieldDestroy: Deallocates a geomechanics field object
 ! author: Satish Karra, LANL
 ! date: 06/05/13
 !
 ! ************************************************************************** !
-subroutine GeomechanicsFieldDestroy(geomechanics_field)
+subroutine GeomechFieldDestroy(geomech_field)
 
   implicit none
   
-  type(geomechanics_field_type), pointer     :: geomechanics_field
-  PetscErrorCode                             :: ierr
+  type(geomech_field_type), pointer     :: geomech_field
+  PetscErrorCode                        :: ierr
   
   ! Destroy PetscVecs
-  if (geomechanics_field%work /= 0) call VecDestroy(geomechanics_field%work,ierr)
-  if (geomechanics_field%work_loc  /= 0) call VecDestroy(geomechanics_field%work_loc,ierr)
+  if (geomech_field%work /= 0) call VecDestroy(geomech_field%work,ierr)
+  if (geomech_field%work_loc  /= 0) call VecDestroy(geomech_field%work_loc,ierr)
 
-  if (geomechanics_field%disp_r /= 0) call VecDestroy(geomechanics_field%disp_r,ierr)
-  if (geomechanics_field%disp_xx /= 0) call VecDestroy(geomechanics_field%disp_xx,ierr)
-  if (geomechanics_field%disp_xx_loc /= 0) call VecDestroy(geomechanics_field%disp_xx_loc,ierr)
-  if (geomechanics_field%disp_dxx /= 0) call VecDestroy(geomechanics_field%disp_dxx,ierr)
-  if (geomechanics_field%disp_yy /= 0) call VecDestroy(geomechanics_field%disp_yy,ierr)
-  if (geomechanics_field%disp_accum /= 0) call VecDestroy(geomechanics_field%disp_accum,ierr)
+  if (geomech_field%disp_r /= 0) call VecDestroy(geomech_field%disp_r,ierr)
+  if (geomech_field%disp_xx /= 0) call VecDestroy(geomech_field%disp_xx,ierr)
+  if (geomech_field%disp_xx_loc /= 0) call VecDestroy(geomech_field%disp_xx_loc,ierr)
+  if (geomech_field%disp_dxx /= 0) call VecDestroy(geomech_field%disp_dxx,ierr)
+  if (geomech_field%disp_yy /= 0) call VecDestroy(geomech_field%disp_yy,ierr)
+  if (geomech_field%disp_accum /= 0) call VecDestroy(geomech_field%disp_accum,ierr)
   
-end subroutine GeomechanicsFieldDestroy
+end subroutine GeomechFieldDestroy
 
 end module Geomechanics_Field_module
 

@@ -1,5 +1,5 @@
 #ifdef GEOMECH
-module Geomech_Grid_Aux_module
+module Geomechanics_Grid_Aux_module
 
   use Unstructured_Cell_module
  
@@ -792,7 +792,7 @@ subroutine GMDMDestroy(gmdm)
 
 end subroutine GMDMDestroy
 
-end module Geomech_Grid_Aux_module
+end module Geomechanics_Grid_Aux_module
 #endif 
 !GEOMECH
 
