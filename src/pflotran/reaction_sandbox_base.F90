@@ -22,6 +22,9 @@ module Reaction_Sandbox_Base_class
 #endif
   end type reaction_sandbox_base_type
   
+! for some reason cannot use the interfaces when passing in "this"
+! with Intel
+#if 0 
   abstract interface
   
     subroutine Base_Setup(this,reaction,option)

@@ -68,7 +68,7 @@ end function StructuredCommunicatorCreate
 ! ************************************************************************** !
 subroutine StructuredSetDM(this,dm_ptr)
 
-  use Discretization_module
+  use DM_Kludge_module
 
   implicit none
   

@@ -73,7 +73,7 @@ end function UnstructuredCommunicatorCreate
 ! ************************************************************************** !
 subroutine UnstructuredSetDM(this,dm_ptr)
 
-  use Discretization_module
+  use DM_Kludge_module
 
   implicit none
   
