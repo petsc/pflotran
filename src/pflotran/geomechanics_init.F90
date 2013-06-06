@@ -122,7 +122,6 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Patch_module
   use Geomech_Grid_module
   use Geomech_Grid_Aux_module
-  use Dataset_Aux_module
   use Waypoint_module
   use Geomechanics_Material_module
   use Solver_module
@@ -137,7 +136,6 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(option_type)                            :: option
   
   type(geomech_discretization_type), pointer   :: discretization
-  type(dataset_type), pointer                  :: dataset
   type(geomech_material_property_type),pointer :: geomech_material_property
   type(waypoint_type), pointer                 :: waypoint
   type(geomech_grid_type), pointer             :: grid
