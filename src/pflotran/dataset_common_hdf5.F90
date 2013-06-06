@@ -273,9 +273,11 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   
     ! set read file access property
     call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
-#endif
+    !geh: DO NOT call h5pset_fapl_mpio_f here since the attribute is only being
+    !     read by the io_rank process.
+!#ifndef SERIAL_HDF5
+!    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+!#endif
     call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
     call h5pclose_f(prop_id,hdf5_err)
 
