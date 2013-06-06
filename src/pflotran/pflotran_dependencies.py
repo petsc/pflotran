@@ -45,6 +45,10 @@ source_file_roots.append('pflotran')
 # Alphabetize
 source_file_roots.sort()
 #print(source_file_roots)
+f = open('pflotran_source_files.txt','w')
+for root in source_file_roots:
+  f.write(get_filename(root,'F90')+'\n')
+f.close()
 
 # Obtain a list of modules
 module_list = []
