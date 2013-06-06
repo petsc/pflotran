@@ -529,6 +529,9 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
   allocate(d_nnz(geomech_grid%nlmax_node))
   allocate(o_nnz(geomech_grid%nlmax_node))
 
+
+  ! The following is an approximate estimate only. 
+  ! Some of the connections might be repeated.
   d_nnz = 1 ! vertex connected to itself
   o_nnz = 0
   do ielem = 1, geomech_grid%nlmax_elem
@@ -545,6 +548,13 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
         endif
       enddo
     enddo      
+  enddo
+  
+  do local_id1 = 1, geomech_grid%nlmax_node
+    if (d_nnz(local_id1) > geomech_grid%nlmax_node) &
+      d_nnz(local_id1) = geomech_grid%nlmax_node
+    if (o_nnz(local_id1) > geomech_grid%num_ghost_nodes) &
+      o_nnz(local_id1) = geomech_grid%num_ghost_nodes
   enddo
   
   ndof_local = geomech_grid%nlmax_node*gmdm%ndof
