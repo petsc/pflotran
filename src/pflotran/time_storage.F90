@@ -105,7 +105,7 @@ subroutine TimeStorageGetTimes(time_storage, option, max_sim_time, time_array)
 
   implicit none
   
-  type(time_storage_type) :: time_storage
+  type(time_storage_type), pointer :: time_storage
   type(option_type) :: option
   PetscReal :: max_sim_time
   PetscReal, pointer :: time_array(:)
@@ -115,6 +115,11 @@ subroutine TimeStorageGetTimes(time_storage, option, max_sim_time, time_array)
   PetscReal :: time_shift
   PetscReal, allocatable :: temp_times(:)
 
+  if (.not.associated(time_storage)) then
+    nullify(time_array)
+    return
+  endif
+  
   if (.not.time_storage%is_cyclic .or. time_storage%max_time_index == 1) then
     allocate(time_array(time_storage%max_time_index))
     time_array =  time_storage%times

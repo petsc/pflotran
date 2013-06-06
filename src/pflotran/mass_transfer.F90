@@ -150,6 +150,7 @@ end subroutine MassTransferAddToList
 recursive subroutine MassTransferInit(mass_transfer, discretization, option)
 
   use Discretization_module
+  use Dataset_Common_HDF5_class
   use Option_module
 
   implicit none
@@ -167,8 +168,10 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, option)
   
   if (.not.associated(mass_transfer%dataset)) then
     mass_transfer%dataset => DatasetGlobalCreate()
+    mass_transfer%dataset%local_size = discretization%grid%nlmax
+    mass_transfer%dataset%global_size = discretization%grid%nmax
     mass_transfer%dataset%filename = mass_transfer%filename
-    mass_transfer%dataset%dataset_name = mass_transfer%dataset_name
+    mass_transfer%dataset%hdf5_dataset_name = mass_transfer%dataset_name
     call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
                                     GLOBAL,option)
     call VecZeroEntries(mass_transfer%vec,ierr)    
@@ -176,9 +179,9 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, option)
   
   if (.not.associated(mass_transfer%dataset%time_storage)) then
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetGlobalReadTimes(mass_transfer%dataset%filename, &
-                                mass_transfer%dataset%dataset_name, &
-                                mass_transfer%dataset%time_storage,option)
+    call DatasetCommonHDF5ReadTimes(mass_transfer%dataset%filename, &
+                                    mass_transfer%dataset%hdf5_dataset_name, &
+                                    mass_transfer%dataset%time_storage,option)
 #endif
   endif 
   
@@ -220,7 +223,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   if (.not.associated(mass_transfer)) return
 
 !  call mass_transfer%dataset%Load(discretization,grid,option)
-  call DatasetGlobalLoad(mass_transfer%dataset,discretization,grid,option)
+  call DatasetGlobalLoad(mass_transfer%dataset,discretization%dm_1dof,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
   ! multiply by -1.d0 for positive contribution to residual

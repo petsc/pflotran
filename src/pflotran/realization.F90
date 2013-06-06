@@ -10,7 +10,7 @@ module Realization_class
   use Constraint_module
   use Material_module
   use Saturation_Function_module
-  use Dataset_Aux_module
+  use Dataset_Base_class
   use Fluid_module
   use Discretization_module
   use Field_module
@@ -43,7 +43,7 @@ private
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
-    type(dataset_type), pointer :: datasets
+    class(dataset_base_type), pointer :: datasets
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
@@ -179,6 +179,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Coupler_module
   use Discretization_module
   use Unstructured_Cell_module
+  use DM_Kludge_module
   
   implicit none
   
@@ -821,6 +822,7 @@ end subroutine RealizationProcessConditions
 subroutine RealProcessMatPropAndSatFunc(realization)
 
   use String_module
+  use Dataset_Common_HDF5_class
   
   implicit none
   
@@ -832,6 +834,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   type(material_property_type), pointer :: cur_material_property
   type(patch_type), pointer :: patch
   character(len=MAXSTRINGLENGTH) :: string
+  class(dataset_base_type), pointer :: dataset
 
   option => realization%option
   patch => realization%patch
@@ -871,18 +874,32 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),POROSITY'
-      cur_material_property%porosity_dataset => &
-        DatasetGetPointer(realization%datasets, &
-                          cur_material_property%porosity_dataset_name, &
-                          string,option)
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%porosity_dataset_name, &
+                              string,option)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%porosity_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for porosity.'
+          call printErrMsg(option)
+      end select
     endif
     if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),PERMEABILITY'
-      cur_material_property%permeability_dataset => &
-        DatasetGetPointer(realization%datasets, &
-                          cur_material_property%permeability_dataset_name, &
-                          string,option)
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%permeability_dataset_name, &
+                              string,option)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%permeability_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for porosity.'
+          call printErrMsg(option)
+      end select      
     endif
     
     cur_material_property => cur_material_property%next
@@ -942,6 +959,7 @@ end subroutine RealProcessFluidProperties
 ! ************************************************************************** !
 subroutine RealProcessFlowConditions(realization)
 
+  use Dataset_Base_class
   use Dataset_module
 
   implicit none
@@ -954,7 +972,7 @@ subroutine RealProcessFlowConditions(realization)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: i
-  type(dataset_type), pointer :: dataset
+  class(dataset_base_type), pointer :: dataset
   
   option => realization%option
   
@@ -978,7 +996,7 @@ subroutine RealProcessFlowConditions(realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
             dataset => &
-              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
               dataset
             nullify(dataset)
@@ -993,7 +1011,7 @@ subroutine RealProcessFlowConditions(realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
             dataset => &
-              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
               dataset
             nullify(dataset)
@@ -1008,7 +1026,7 @@ subroutine RealProcessFlowConditions(realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
             dataset => &
-              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
               dataset
             nullify(dataset)
@@ -1592,12 +1610,14 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_mass_transfer => realization%mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
-      do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
-        waypoint => WaypointCreate()
-        waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
-        waypoint%update_conditions = PETSC_TRUE
-        call WaypointInsertInList(waypoint,realization%waypoints)
-      enddo
+      if (associated(cur_mass_transfer%dataset%time_storage)) then
+        do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
+          waypoint => WaypointCreate()
+          waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,realization%waypoints)
+        enddo
+      endif
       cur_mass_transfer => cur_mass_transfer%next
     enddo
   endif  
@@ -2511,6 +2531,8 @@ end subroutine RealizationNonInitializedData
 ! ************************************************************************** !
 subroutine RealizationDestroy(realization)
 
+  use Dataset_module
+
   implicit none
   
   type(realization_type), pointer :: realization
@@ -2557,6 +2579,11 @@ subroutine RealizationDestroy(realization)
   
   call TranConstraintDestroy(realization%sec_transport_constraint)
   call MassTransferDestroy(realization%mass_transfer_list)
+  
+  call WaypointListDestroy(realization%waypoints)
+  
+  deallocate(realization)
+  nullify(realization)
   
 end subroutine RealizationDestroy
 

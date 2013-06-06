@@ -6,7 +6,8 @@ module Discretization_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Explicit_module
   use MFD_Aux_module
-  use MFD_Module
+  use MFD_module
+  use DM_Kludge_module
 
   implicit none
 
@@ -22,13 +23,6 @@ module Discretization_module
 #include "finclude/petscdm.h90"
 #include "finclude/petscdmda.h"
 #include "finclude/petscdmshell.h90"
-
-  type, public :: dm_ptr_type
-    DM :: dm  ! PETSc DM
-    type(ugdm_type), pointer :: ugdm
-      ! Unstructured grid "private" dm.  This gets wrapped in a PETSc DM via 
-      ! DMShell routines.
-  end type dm_ptr_type
 
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
@@ -359,6 +353,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   end select
   grid%discretization_itype=discretization%itype
   discretization%grid => grid
+  nullify(grid)
 
 end subroutine DiscretizationReadRequiredCards
 
@@ -1991,6 +1986,12 @@ subroutine DiscretizationDestroy(discretization)
 
   if (discretization%tvd_ghost_scatter /= 0) &
     call VecScatterDestroy(discretization%tvd_ghost_scatter)
+  
+  ! solely nullify grid since destroyed in patch
+  call GridDestroy(discretization%grid)
+  
+  deallocate(discretization)
+  nullify(discretization)
   
 end subroutine DiscretizationDestroy
  

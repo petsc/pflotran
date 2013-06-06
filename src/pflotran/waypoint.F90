@@ -32,6 +32,7 @@ module Waypoint_module
   
   public :: WaypointCreate, &
             WaypointListCreate, &
+            WaypointListDestroy, &
             WaypointInsertInList, &
             WaypointDeleteFromList, &
             WaypointListFillIn, &
@@ -422,41 +423,6 @@ end subroutine WaypointMerge
 
 ! ************************************************************************** !
 !
-! WaypointListDestroy: Deallocates a waypoint list
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
-subroutine WaypointListDestroy(waypoint_list)
-
-  implicit none
-  
-  type(waypoint_list_type), pointer :: waypoint_list
-  
-  type(waypoint_type), pointer :: waypoint, prev_waypoint
-  
-  if (.not.associated(waypoint_list)) return
-
-  if (associated(waypoint_list%array)) deallocate(waypoint_list%array)
-  nullify(waypoint_list%array)
-  
-  waypoint => waypoint_list%first
-  do
-    if (.not.associated(waypoint)) exit
-    prev_waypoint => waypoint
-    waypoint => waypoint%next
-    call WaypointDestroy(prev_waypoint)
-  enddo
-  
-  nullify(waypoint_list%first)
-  nullify(waypoint_list%last)
-  deallocate(waypoint_list)
-  nullify(waypoint_list)
-  
-end subroutine WaypointListDestroy
-
-! ************************************************************************** !
-!
 ! WaypointSkipToTime: Returns a pointer to the first waypoint after time
 ! author: Glenn Hammond
 ! date: 1/03/08
@@ -601,7 +567,40 @@ subroutine WaypointPrint(waypoint,option,output_option)
  
 end subroutine WaypointPrint
 
+! ************************************************************************** !
+!
+! WaypointListDestroy: Destroys a simulation waypoint list
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+subroutine WaypointListDestroy(waypoint_list)
 
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  type(waypoint_type), pointer :: cur_waypoint, next_waypoint
+  
+  if (.not.associated(waypoint_list)) return
+  
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    next_waypoint => cur_waypoint%next
+    call WaypointDestroy(cur_waypoint)
+    cur_waypoint => next_waypoint
+  enddo
+  
+  nullify(waypoint_list%first)
+  nullify(waypoint_list%last)
+  if (associated(waypoint_list%array)) deallocate(waypoint_list%array)
+  nullify(waypoint_list%array)
+
+  deallocate(waypoint_list)
+  nullify(waypoint_list)
+  
+end subroutine WaypointListDestroy 
 
 ! ************************************************************************** !
 !
@@ -610,6 +609,8 @@ end subroutine WaypointPrint
 ! date: 11/09/07
 !
 ! ************************************************************************** !
+!geh: DO NOT make this subroutine recursive as waypoints within lists need to
+!     be destroyed without recursively destroying the remainder of the list.
 subroutine WaypointDestroy(waypoint)
 
   implicit none

@@ -504,7 +504,8 @@ end subroutine ImmisAuxVarDestroy
 !
 ! ************************************************************************** !
 subroutine ImmisAuxDestroy(aux, option)
-  use option_module
+
+  use Option_module
   implicit none
 
   type(Immis_type), pointer :: aux

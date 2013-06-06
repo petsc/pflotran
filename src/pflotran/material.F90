@@ -1,6 +1,6 @@
 module Material_module
  
-  use Dataset_Aux_module
+  use Dataset_Common_HDF5_class
 
   implicit none
 
@@ -16,10 +16,10 @@ module Material_module
     PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
     PetscReal :: permeability_scaling_factor
     character(len=MAXWORDLENGTH) :: permeability_dataset_name
-    type(dataset_type), pointer :: permeability_dataset
+    class(dataset_common_hdf5_type), pointer :: permeability_dataset
     PetscReal :: porosity
     character(len=MAXWORDLENGTH) :: porosity_dataset_name
-    type(dataset_type), pointer :: porosity_dataset
+    class(dataset_common_hdf5_type), pointer :: porosity_dataset
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
@@ -178,7 +178,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
-  type(dataset_type), pointer :: dataset
 
   PetscInt :: length
 

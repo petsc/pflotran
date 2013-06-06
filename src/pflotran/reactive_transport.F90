@@ -3683,8 +3683,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   use Logging_module
   
 #ifdef XINGYUAN_BC
-  use Dataset_module
-  use Dataset_Aux_module
+!  use Dataset_module
+!  use Dataset_Aux_module
   use Output_Tecplot_module
 #endif
   
@@ -3725,7 +3725,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
   PetscInt :: idof_aq_dataset
-  type(dataset_type), pointer :: dataset
+  class(dataset_type), pointer :: dataset
   PetscReal :: temp_real
   PetscBool, save :: first = PETSC_TRUE
   PetscReal, pointer :: work_p(:)

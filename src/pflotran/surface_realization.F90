@@ -15,7 +15,7 @@ module Surface_Realization_class
   use Surface_Field_module
   use Surface_Material_module
   use Waypoint_module
-  use Dataset_Aux_module
+  use Dataset_Base_class
   use Reaction_Aux_module
   use Output_Aux_module
   
@@ -616,6 +616,7 @@ end subroutine SurfRealizLocalToLocalWithArray
 ! ************************************************************************** !
 subroutine SurfRealizProcessFlowConditions(surf_realization)
 
+  use Dataset_Base_class
   use Dataset_module
 
   implicit none
@@ -651,10 +652,11 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
             dataset => &
-              DatasetGetPointer(surf_realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
             cur_surf_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
+                             option)
           endif
           if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
                           datum%dataset)) then
@@ -666,10 +668,10 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
             dataset => &
-              DatasetGetPointer(surf_realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
             cur_surf_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            call DatasetXYZLoad(dataset,option)
           endif
           if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
                           gradient%dataset)) then
@@ -684,7 +686,8 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
               DatasetGetPointer(surf_realization%datasets,dataset_name,string,option)
             cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
+                             option)
           endif
         enddo
       case default

@@ -197,14 +197,19 @@ class RegressionTest(object):
         # pflotran returns 0 on an error (e.g. can't find an input
         # file), 86 on success. 59 for timeout errors?
         if pflotran_status != self._PFLOTRAN_SUCCESS:
+            status.fail = 1
             message = self._txtwrap.fill(
                 "FAIL : {name} : pflotran return an error "
                 "code ({status}) indicating the simulation may have "
                 "failed. Please check '{name}.out' and '{name}.stdout' "
-                "for error messages.".format(
+                "for error messages (included below).".format(
                     name=self.name(), status=pflotran_status))
             print("".join(['\n', message, '\n']), file=testlog)
-            status.fail = 1
+            print("~~~~~ {0}.stdout ~~~~~".format(self.name()), file=testlog)
+            shutil.copyfileobj(open("{0}.stdout".format(self.name()),'r'), testlog)
+            print("~~~~~ {0}.out ~~~~~".format(self.name()), file=testlog)
+            shutil.copyfileobj(open("{0}.out".format(self.name()),'r'), testlog)
+            print("~~~~~~~~~~", file=testlog)
 
     def check(self, status, testlog):
         """

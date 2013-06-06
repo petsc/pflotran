@@ -1,6 +1,10 @@
 module Dataset_module
  
-  use Dataset_Aux_module
+  use Dataset_Base_class
+  use Dataset_Common_HDF5_class
+  use Dataset_XYZ_class
+  use Dataset_Map_class
+  use Dataset_Global_class
   
   implicit none
 
@@ -8,116 +12,70 @@ module Dataset_module
   
 #include "definitions.h"
 
-  public :: DatasetLoad, &
+  public :: DatasetRead, &
             DatasetProcessDatasets, &
-            DatasetIsCellIndexed
+            DatasetLoad, &
+            DatasetDestroy
 
 contains
 
-! ************************************************************************** !
+! *************************************************************************** !
 !
-! DatasetLoad: Loads a dataset from file
+! DatasetRead: Reads a dataset from the input file
 ! author: Glenn Hammond
-! date: 10/26/11
+! date: 03/26/12
 !
 ! ************************************************************************** !
-subroutine DatasetLoad(dataset,option)
+subroutine DatasetRead(input,dataset,option)
 
+  use Input_module
   use Option_module
-  use HDF5_Aux_module
-  use Utility_module, only : Equal
-
-  implicit none
+  use String_module
   
-  type(dataset_type) :: dataset
+  implicit none
+
+  type(input_type) :: input
+  class(dataset_base_type), pointer :: dataset
   type(option_type) :: option
 
-  PetscBool :: read_dataset
-  PetscBool :: interpolate_dataset
-  PetscInt :: itime
+  character(len=MAXWORDLENGTH) :: word, word2
+
+  ! read from the buffer on the first line the type of dataset.  If it does
+  ! not match any of type in the select case, assume default and use the 
+  ! word as the name.
   
-    ! update the offset of the data array
-  read_dataset = PETSC_FALSE
-  interpolate_dataset = PETSC_FALSE
-  if (associated(dataset%buffer)) then
-    ! if we have reached the last time, no updates needed
-    if (dataset%buffer%cur_time_index == -1) return
-    if (.not.Equal(option%time,dataset%buffer%cur_time)) then
-      !TODO(geh): modify so that interpolate_dataset is only set to
-      !           true if linear interpolation (currently hardwired to step)
-      !           or the current time index changes
-      ! currently, I am updated every time.  Expensive!
-      interpolate_dataset = PETSC_TRUE
-      ! increment time index until within buffer
-      itime = dataset%buffer%cur_time_index
-      do
-        if (itime >= dataset%buffer%num_times_total) then
-          dataset%buffer%cur_time_index = dataset%buffer%num_times_total
-          exit
-        endif
-        if (option%time >= dataset%buffer%time_array(itime+1)) then
-          itime = itime + 1
-        else
-          dataset%buffer%cur_time_index = itime
-          exit
-        endif
-      enddo
-      ! is time outside range of buffer
-      if (dataset%buffer%cur_time_index >= dataset%buffer%time_offset + &
-                                           dataset%buffer%num_times_in_buffer &
-          .and. dataset%buffer%cur_time_index < &
-                dataset%buffer%num_times_total) then
-        dataset%buffer%time_offset = dataset%buffer%cur_time_index - 1
-        read_dataset = PETSC_TRUE
-      endif
-    endif
-  else if (dataset%data_dim == DIM_NULL) then ! has not been read
-    read_dataset = PETSC_TRUE
-  endif
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  word2 = word
+  call StringToUpper(word2)
   
-  if (read_dataset) then
-#if !defined(PETSC_HAVE_HDF5)
-    option%io_buffer = 'DataSetLoad() requires HDF5 support'
-    call printErrMsg(option)
-  endif
-#else
+  select case(word2)
+    case('MAPPED')
+      dataset => DatasetMapCreate()
+      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+      call InputDefaultMsg(input,option,'Dataset name') 
+      call DatasetMapRead(DatasetMapCast(dataset),input,option)
+!    case(
+    case default ! CELL_INDEXED, GLOBAL, XYZ
+      dataset => DatasetCommonHDF5Create()
+      select case(word2)
+        case('CELL_INDEXED', 'GLOBAL', 'XYZ')
+          call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+        case default
+          if (.not.InputError(input)) then
+            dataset%name = trim(word)
+          endif
+      end select
+      call InputDefaultMsg(input,option,'Dataset name') 
+      call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
+                                 option)
+  end select
 
-#ifdef SCORPIO
-      option%io_buffer='In DataLoad: HDF5ReadDataset() not supported with ' // &
-        ' SCORPIO'
-#else
-    if(.not.associated(dataset%dataset_map)) then
-      call HDF5ReadDataset(dataset,option)
-    else
-      call HDF5ReadDataset(dataset,option)
-      if(dataset%dataset_map%first_time) then
-        call HDF5ReadDatasetMap(dataset,option)
-      endif
-    endif
-#endif
-    call DatasetReorder(dataset,option)
-    if (associated(dataset%buffer)) then
-      interpolate_dataset = PETSC_TRUE ! just to be sure
-    endif
-  endif
-  if (interpolate_dataset) then
-    call DatasetInterpolateBetweenTimes(dataset,option)
-    if (associated(dataset%buffer)) then
-      dataset%buffer%cur_time = option%time
-    endif
-    ! calculate min/max values
-    if (associated(dataset%rarray)) then
-      dataset%rmax = maxval(dataset%rarray)
-      dataset%rmin = minval(dataset%rarray)
-    endif
-  endif
-#endif
+end subroutine DatasetRead
 
-end subroutine DatasetLoad
-
-! *********************a***************************************************** !
+! *************************************************************************** !
 !
-! DatasetProcessDatasets: Determine whether a dataset is indexed by cell ids
+! DatasetProcessDatasets: Determine whether a dataset is indexed by cell 
+!                             ids
 ! author: Glenn Hammond
 ! date: 03/26/12
 !
@@ -128,15 +86,45 @@ subroutine DatasetProcessDatasets(datasets,option)
   
   implicit none
   
-  type(dataset_type), pointer :: datasets
+  class(dataset_base_type), pointer :: datasets
   type(option_type) :: option
   
-  type(dataset_type), pointer :: cur_dataset
+  class(dataset_base_type), pointer :: cur_dataset
+  class(dataset_base_type), pointer :: prev_dataset
+  class(dataset_xyz_type), pointer :: dataset_xyz
+  PetscBool :: swapped
   
   cur_dataset => datasets
+  nullify(prev_dataset)
   do
     if (.not.associated(cur_dataset)) exit
-    cur_dataset%is_cell_indexed = DatasetIsCellIndexed(cur_dataset,option)
+    nullify(dataset_xyz)
+    swapped = PETSC_FALSE
+    select type(cur_dataset)
+      class is(dataset_map_type)
+        ! do nothing
+      class is(dataset_common_hdf5_type)
+        cur_dataset%is_cell_indexed = &
+          DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
+        if (.not.cur_dataset%is_cell_indexed) then
+          swapped = PETSC_TRUE
+          dataset_xyz => DatasetXYZCreate()
+          call DatasetCommonHDF5Copy(cur_dataset,dataset_xyz)
+        endif
+    end select
+    if (swapped) then
+      ! dataset_xyz%next is already set to cur_dataset%next
+      if (associated(prev_dataset)) then
+        prev_dataset%next => dataset_xyz
+      else
+        datasets => dataset_xyz
+      endif
+      ! just to be sure
+      nullify(cur_dataset%next)
+      call DatasetDestroy(cur_dataset)
+      cur_dataset => dataset_xyz
+    endif
+    prev_dataset => cur_dataset
     cur_dataset => cur_dataset%next
   enddo
   
@@ -144,30 +132,88 @@ end subroutine DatasetProcessDatasets
 
 ! ************************************************************************** !
 !
-! DatasetIsCellIndexed: Determine whether a dataset is indexed by cell ids
+! DatasetLoad: Loads a dataset based on type
 ! author: Glenn Hammond
-! date: 03/26/12
+! date: 06/03/13
 !
 ! ************************************************************************** !
-function DatasetIsCellIndexed(dataset,option)
+recursive subroutine DatasetLoad(dataset, dm_wrapper, option)
 
+  use DM_Kludge_module
   use Option_module
-  use HDF5_Aux_module
+  
+  implicit none
+  
+  class(dataset_base_type), pointer :: dataset
+  type(dm_ptr_type), pointer :: dm_wrapper
+  type(option_type) :: option
+
+  class(dataset_global_type), pointer :: dataset_global
+  class(dataset_xyz_type), pointer :: dataset_xyz
+  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_base_type), pointer :: dataset_base
+
+  select type (selector => dataset)
+    class is (dataset_global_type)
+      dataset_global => selector
+      call DatasetGlobalLoad(dataset_global,dm_wrapper,option)
+    class is (dataset_xyz_type)
+      dataset_xyz => selector
+      call DatasetXYZLoad(dataset_xyz,option)
+    class is (dataset_map_type)
+      dataset_map => selector
+      call DatasetMapLoad(dataset_map,option)
+    class is (dataset_base_type)
+      dataset_base => selector
+      option%io_buffer = 'DatasetLoad not yet supported for base dataset class.'
+      call printErrMsg(option)
+  end select
+  
+end subroutine DatasetLoad
+
+! ************************************************************************** !
+!
+! DatasetDestroy: Destroys a dataset
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+recursive subroutine DatasetDestroy(dataset)
 
   implicit none
   
-  type(dataset_type) :: dataset
-  type(option_type) :: option
+  class(dataset_base_type), pointer :: dataset
   
-  PetscBool :: DatasetIsCellIndexed
+  class(dataset_global_type), pointer :: dataset_global
+  class(dataset_xyz_type), pointer :: dataset_xyz
+  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5
+  class(dataset_base_type), pointer :: dataset_base
+
+  if (.not.associated(dataset)) return
   
-#if defined(PETSC_HAVE_HDF5)
-
-  DatasetIsCellIndexed = &
-    .not.HDF5GroupExists(dataset%filename,dataset%h5_dataset_name,option)
-
-#endif
- 
-end function DatasetIsCellIndexed
+  if (associated(dataset%next)) then
+    call DatasetDestroy(dataset%next)
+  endif
+  
+  select type (selector => dataset)
+    class is (dataset_global_type)
+      dataset_global => selector
+      call DatasetGlobalDestroy(dataset_global)
+    class is (dataset_xyz_type)
+      dataset_xyz => selector
+      call DatasetXYZDestroy(dataset_xyz)
+    class is (dataset_map_type)
+      dataset_map => selector
+      call DatasetMapDestroy(dataset_map)
+    class is (dataset_common_hdf5_type)
+      dataset_common_hdf5 => selector
+      call DatasetCommonHDF5Destroy(dataset_common_hdf5)
+    class is (dataset_base_type)
+      dataset_base => selector
+      call DatasetBaseDestroy(dataset_base)
+  end select
+  
+end subroutine DatasetDestroy
 
 end module Dataset_module

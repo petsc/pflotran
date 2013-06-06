@@ -1905,7 +1905,7 @@ end subroutine SurfaceFlowRHSFunction
 ! ************************************************************************** !
 subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use water_eos_module
+  use Water_EOS_module
   use Connection_module
   use Surface_Realization_class
   use Patch_module
