@@ -643,7 +643,7 @@ subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
     case(LOCAL)
       call VecCreate(PETSC_COMM_SELF,vec,ierr)
       call VecSetSizes(vec,geomech_grid%ngmax_node*gmdm%ndof, &
-                  PETSC_DECIDE,ierr)  
+                       PETSC_DECIDE,ierr)  
       call VecSetBlockSize(vec,gmdm%ndof,ierr)
       call VecSetFromOptions(vec,ierr)
     case(NATURAL)

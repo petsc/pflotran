@@ -680,7 +680,6 @@ subroutine Init(simulation)
   endif
 
 #ifdef GEOMECH
-
   ! update geomechanics mode based on optional input
   if (option%ngeomechdof > 0) then
 
@@ -707,6 +706,7 @@ subroutine Init(simulation)
     call MatSetOptionsPrefix(geomech_solver%Jpre,"geomech_",ierr)
     
 #if 0
+    ! SK, Need to modify the following for geomechanics
     if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
       call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
@@ -719,12 +719,6 @@ subroutine Init(simulation)
       ! update does not perturb concentrations negative.
       call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-      
-      if (option%use_mc) then
-        call SNESLineSearchSetPostCheck(linesearch, &
-                                        SecondaryRTUpdateIterate, &
-                                        realization,ierr)      
-      endif
       
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
@@ -2641,7 +2635,17 @@ subroutine InitReadInput(simulation)
       case ('GEOMECHANICS')
         call GeomechanicsInitReadInput(geomech_realization, &
                                        input,option)
-                                       
+        ! Add first waypoint
+        waypoint => WaypointCreate()
+        waypoint%time = 0.d0
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
+
+        ! Add final_time waypoint to geomech_realization
+        waypoint => WaypointCreate()
+        waypoint%final = PETSC_TRUE
+        waypoint%time = realization%waypoints%last%time
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,simulation%geomech_realization%waypoints)
 #endif
 
 !......................

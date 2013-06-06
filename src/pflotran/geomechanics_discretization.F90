@@ -672,20 +672,11 @@ subroutine GeomechDiscretizationDestroy(discretization)
     
   if (.not.associated(discretization)) return
       
-  select case(discretization%itype)
-    case(STRUCTURED_GRID)
-      if (discretization%dm_1dof%dm /= 0) &
-        call DMDestroy(discretization%dm_1dof%dm,ierr)
-      discretization%dm_1dof%dm = 0
-      if (discretization%dm_ngeodof%dm /= 0) &
-        call DMDestroy(discretization%dm_ngeodof%dm,ierr)
-      discretization%dm_ngeodof%dm = 0
-    case(UNSTRUCTURED_GRID)
-      if (associated(discretization%dm_1dof%gmdm)) &
-        call GMDMDestroy(discretization%dm_1dof%gmdm)
-      if (associated(discretization%dm_ngeodof%gmdm)) &
-        call GMDMDestroy(discretization%dm_ngeodof%gmdm)
-  end select
+  if (associated(discretization%dm_1dof%gmdm)) &
+    call GMDMDestroy(discretization%dm_1dof%gmdm)
+  if (associated(discretization%dm_ngeodof%gmdm)) &
+    call GMDMDestroy(discretization%dm_ngeodof%gmdm)
+
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)
   nullify(discretization%dm_1dof)

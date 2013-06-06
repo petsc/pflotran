@@ -8,7 +8,8 @@ module Geomechanics_Realization_module
   use Option_module
   use Geomechanics_Material_module
   use Waypoint_module
-  
+  use Geomechanics_Field_module
+ 
   implicit none
   
 private
@@ -28,6 +29,7 @@ private
     type(geomech_material_property_ptr_type), &
                            pointer :: geomech_material_property_array(:)
     type(waypoint_list_type), pointer  :: waypoints
+    type(geomechanics_field_type), pointer :: geomech_field
 
   end type geomech_realization_type
 
@@ -48,9 +50,9 @@ function GeomechRealizCreate(option)
 
   implicit none
 
-  type(geomech_realization_type), pointer :: GeomechRealizCreate
-  type(geomech_realization_type), pointer :: geomech_realization
-  type(option_type), pointer              :: option
+  type(geomech_realization_type), pointer    :: GeomechRealizCreate
+  type(geomech_realization_type), pointer    :: geomech_realization
+  type(option_type), pointer                 :: option
   
   allocate(geomech_realization)
   geomech_realization%id = 0
@@ -88,17 +90,45 @@ subroutine GeomechRealizCreateDiscretization(realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(geomech_realization_type) :: realization
-  
-  type(geomech_discretization_type), pointer :: discretization
-  type(geomech_grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  
+  type(geomech_realization_type)                 :: realization
+  type(geomech_discretization_type), pointer     :: discretization
+  type(geomech_grid_type), pointer               :: grid
+  type(option_type), pointer                     :: option
+  type(geomechanics_field_type), pointer         :: geomech_field
+  type(gmdm_ptr_type), pointer                   :: dm_ptr
+  PetscErrorCode                                 :: ierr
+
   discretization => realization%discretization
   grid => discretization%grid
   option => realization%option
+  geomech_field => realization%geomech_field
   
   call GeomechDiscretizationCreateDMs(discretization,option)
+  
+  ! n degree of freedom, global
+  call GeomechDiscretizationCreateVector(discretization,NGEODOF,geomech_field%disp_xx, &
+                                         GLOBAL,option)
+  call VecSet(geomech_field%disp_xx,0.d0,ierr)
+
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+                                            geomech_field%disp_yy)
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+                                            geomech_field%disp_dxx)
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+                                            geomech_field%disp_r)
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+                                            geomech_field%disp_accum)
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+                                            geomech_field%work)
+
+  ! n degrees of freedom, local
+  call GeomechDiscretizationCreateVector(discretization,NGEODOF,geomech_field%disp_xx_loc, &
+                                         LOCAL,option)
+  call VecSet(geomech_field%disp_xx_loc,0.d0,ierr)
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx_loc, &
+                                            geomech_field%work_loc)
+
+  grid => discretization%grid
 
   
 end subroutine GeomechRealizCreateDiscretization

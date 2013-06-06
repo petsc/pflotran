@@ -339,7 +339,9 @@ geomech_obj = \
   ${common_src}geomech_grid.o \
   ${common_src}geomech_grid_aux.o \
   ${common_src}geomechanics_material.o \
-  ${common_src}geomechanics_patch.o
+  ${common_src}geomechanics_patch.o\
+  ${common_src}geomechanics_field.o
+
 
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
@@ -443,7 +445,8 @@ geomech_patch.o : option.o geomech_grid.o geomech_grid_aux.o \
                   geomechanics_material.o region.o strata.o
 geomechanics_realization.o : geomech_grid.o geomechanics_discretization.o \
                              geomech_grid_aux.o input.o \
-	                     geomechanics_material.o geomechanics_patch.o
+	                     geomechanics_material.o geomechanics_patch.o\
+	                     waypoint.o geomechanics_field.o option.o
 geomechanics_material.o : option.o string.o input.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o variables.o realization_base.o
