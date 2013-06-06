@@ -457,7 +457,8 @@ grid.o : connection.o logging.o mfd_aux.o option.o region.o structured_grid.o \
          unstructured_cell.o unstructured_explicit.o unstructured_grid.o \
          unstructured_grid_aux.o utility.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
-         realization.o realization_base.o region.o unstructured_cell.o
+         realization.o realization_base.o region.o unstructured_cell.o \
+         utility.o
 hdf5_aux.o : logging.o option.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \
@@ -565,7 +566,7 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           reactive_transport_aux.o region.o richards_aux.o saturation.o \
           saturation_function.o strata.o surface_auxiliary.o \
           surface_complexation_aux.o surface_field.o surface_material.o \
-          th_aux.o thc_aux.o thmc_aux.o variables.o water_eos.o
+          th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
 pflotran.o : init.o input.o logging.o option.o realization.o regression.o \
              simulation.o stochastic.o stochastic_aux.o timestepper.o
 ifdef PFLOTRAN_RXN_FLAG
@@ -673,39 +674,39 @@ surface_complexation.o : global_aux.o input.o matrix_block_aux.o option.o \
 surface_complexation_aux.o : database_aux.o option.o utility.o
 surface_field.o :
 surface_flow.o : condition.o connection.o coupler.o debug.o discretization.o \
-                 field.o global_aux.o grid.o level.o logging.o option.o \
-                 output_aux.o patch.o realization.o realization_base.o \
-                 region.o saturation_function.o string.o surface_field.o \
-                 surface_global_aux.o surface_material.o surface_realization.o \
-                 unstructured_cell.o unstructured_grid.o \
+                 dm_kludge.o field.o global_aux.o grid.o level.o logging.o \
+                 option.o output_aux.o patch.o realization.o \
+                 realization_base.o region.o saturation_function.o string.o \
+                 surface_field.o surface_global_aux.o surface_material.o \
+                 surface_realization.o unstructured_cell.o unstructured_grid.o \
                  unstructured_grid_aux.o variables.o water_eos.o
 surface_flow_aux.o :
 surface_global.o : connection.o coupler.o discretization.o grid.o level.o \
                    option.o patch.o surface_field.o surface_global_aux.o \
                    surface_realization.o variables.o
 surface_global_aux.o : option.o utility.o
-surface_init.o : condition.o coupler.o dataset_base.o debug.o discretization.o \
-                 field.o grid.o hdf5.o input.o level.o material.o option.o \
-                 output_aux.o output_surface.o output_tecplot.o patch.o \
-                 region.o solver.o strata.o string.o structured_grid.o \
-                 surface_auxiliary.o surface_field.o surface_material.o \
-                 surface_realization.o units.o unstructured_grid.o \
-                 unstructured_grid_aux.o waypoint.o
+surface_init.o : condition.o coupler.o dataset_base.o dataset_common_hdf5.o \
+                 debug.o discretization.o field.o grid.o hdf5.o input.o \
+                 level.o material.o option.o output_aux.o output_surface.o \
+                 output_tecplot.o patch.o region.o solver.o strata.o string.o \
+                 structured_grid.o surface_auxiliary.o surface_field.o \
+                 surface_material.o surface_realization.o units.o \
+                 unstructured_grid.o unstructured_grid_aux.o waypoint.o
 surface_material.o : input.o option.o string.o
 surface_realization.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
-                        discretization.o field.o grid.o input.o level.o \
-                        option.o output_aux.o patch.o reaction_aux.o \
+                        discretization.o dm_kludge.o field.o grid.o input.o \
+                        level.o option.o output_aux.o patch.o reaction_aux.o \
                         realization.o realization_base.o region.o strata.o \
                         string.o surface_field.o surface_material.o \
                         unstructured_cell.o unstructured_grid.o \
                         unstructured_grid_aux.o waypoint.o
 surface_th.o : condition.o connection.o coupler.o debug.o discretization.o \
-               field.o fluid.o grid.o level.o option.o output_aux.o patch.o \
-               realization.o realization_base.o region.o saturation_function.o \
-               string.o surface_field.o surface_global_aux.o \
-               surface_material.o surface_realization.o surface_th_aux.o \
-               unstructured_cell.o unstructured_grid.o unstructured_grid_aux.o \
-               variables.o water_eos.o
+               dm_kludge.o field.o fluid.o grid.o level.o option.o \
+               output_aux.o patch.o realization.o realization_base.o region.o \
+               saturation_function.o string.o surface_field.o \
+               surface_global_aux.o surface_material.o surface_realization.o \
+               surface_th_aux.o unstructured_cell.o unstructured_grid.o \
+               unstructured_grid_aux.o variables.o water_eos.o
 surface_th_aux.o : option.o saturation_function.o surface_global_aux.o \
                    water_eos.o
 th.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
