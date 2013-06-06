@@ -90,6 +90,7 @@ subroutine Init(simulation)
   use Geomechanics_Init_module 
   use Geomech_Grid_module
   use Geomechanics_Discretization_module
+  use Geomechanics_Field_module
 #endif
 
   implicit none
@@ -128,7 +129,9 @@ subroutine Init(simulation)
 #endif
 #ifdef GEOMECH
   type(solver_type), pointer                :: geomech_solver
-  type(geomech_realization_type), pointer :: geomech_realization
+  type(stepper_type), pointer               :: geomech_stepper
+  type(geomechanics_field_type), pointer    :: geomech_field
+  type(geomech_realization_type), pointer   :: geomech_realization
 #endif
 
   ! popped in TimestepperInitializeRun()
@@ -151,6 +154,8 @@ subroutine Init(simulation)
 #endif
 #ifdef GEOMECH
   geomech_realization => simulation%geomech_realization
+  geomech_stepper => simulation%geomech_stepper
+  geomech_field => geomech_realization%geomech_field
 #endif
   
   option%init_stage = PETSC_TRUE
@@ -237,15 +242,15 @@ subroutine Init(simulation)
 #endif
 
 #ifdef GEOMECH
-  ! initialize geomechanics mode
+  ! initialize surface-flow mode
   if (option%ngeomechdof > 0) then
-    geomech_solver => simulation%geomech_solver
+    geomech_solver => geomech_stepper%solver
     waypoint_list => WaypointListCreate()
     geomech_realization%waypoints => waypoint_list
   else
+    call TimestepperDestroy(simulation%geomech_stepper)
     nullify(geomech_solver)
   endif
-  ! SK, Note: There is no time stepper for geomechanics
 #endif
 
   ! initialize plot variables
@@ -707,55 +712,37 @@ subroutine Init(simulation)
     
 #if 0
     ! SK, Need to modify the following for geomechanics
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    call SNESSetFunction(geomech_solver%snes,geomech_field%disp_r, &
+                         GeomechanicsResidual, &
+                         simulation%geomech_realization,ierr)
 
-      call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
-                           realization,ierr)
-      
-      call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
-                           RTJacobian,realization,ierr)
+    call SNESSetJacobian(geomech_solver%snes,geomech_solver%J, &
+                         geomech_solver%Jpre,GeomechanicsJacobian, &
+                         simulation%geomech_realization,ierr)
+    ! by default turn off line search
+    call SNESGetLineSearch(geomech_solver%snes,linesearch, ierr)
+    call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC,ierr)
 
-      ! this could be changed in the future if there is a way to ensure that the linesearch
-      ! update does not perturb concentrations negative.
-      call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
-      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
-      
-      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-      if (option%verbosity >= 1) then
-        string = '-tran_snes_view'
-        call PetscOptionsInsertString(string, ierr)
-      endif
-
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-geomech_snes_view'
+      call PetscOptionsInsertString(string, ierr)
     endif
 
-    ! ensure setting of SNES options since they set KSP and PC options too
-    call SolverSetSNESOptions(tran_solver)
+    call SolverSetSNESOptions(geomech_solver)
 
-    option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
+    option%io_buffer = 'Solver: ' // trim(geomech_solver%ksp_type)
     call printMsg(option)
-    option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
+    option%io_buffer = 'Preconditioner: ' // trim(geomech_solver%pc_type)
     call printMsg(option)
 
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-
-      ! shell for custom convergence test.  The default SNES convergence test  
-      ! is call within this function. 
-      tran_stepper%convergence_context => &
-        ConvergenceContextCreate(tran_solver,option,grid)
-      call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                  tran_stepper%convergence_context, &
-                                  PETSC_NULL_FUNCTION,ierr) 
-
-      ! this update check must be in place, otherwise reactive transport is likely
-      ! to fail
-      if (associated(realization%reaction)) then
-        if (realization%reaction%check_update) then
-          call SNESGetLineSearch(tran_solver%snes, linesearch, ierr)
-          call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
-                                         realization,ierr)
-        endif
-      endif
-    endif
+    ! shell for custom convergence test.  The default SNES convergence test
+    ! is call within this function.
+    geomech_stepper%convergence_context => &
+    ConvergenceContextCreate(geomech_solver,option,grid) ! Need to change this for geomech
+    call SNESSetConvergenceTest(geomech_solver%snes,ConvergenceTest, &
+                                geomech_stepper%convergence_context, &
+                                PETSC_NULL_FUNCTION,ierr)
 #endif    
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
   
@@ -2658,7 +2645,7 @@ subroutine InitReadInput(simulation)
 #ifdef GEOMECH
       case ('GEOMECHANICS')
         call GeomechanicsInitReadInput(geomech_realization, &
-                                       input,option)
+                         simulation%geomech_stepper%solver,input,option)
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0

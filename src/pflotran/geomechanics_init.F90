@@ -111,7 +111,8 @@ end subroutine GeomechanicsInit
 ! date: 05/23/13
 !
 ! ************************************************************************** !
-subroutine GeomechanicsInitReadInput(geomech_realization,input,option)
+subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
+                                     input,option)
 
   use Option_module
   use Input_module
@@ -124,11 +125,14 @@ subroutine GeomechanicsInitReadInput(geomech_realization,input,option)
   use Dataset_Aux_module
   use Waypoint_module
   use Geomechanics_Material_module
+  use Solver_module
+
   ! Still need to add other geomech modules for output, etc once created
   
   implicit none
   
   type(geomech_realization_type)               :: geomech_realization
+  type(solver_type)                            :: geomech_solver
   type(input_type)                             :: input
   type(option_type)                            :: option
   
@@ -181,6 +185,15 @@ subroutine GeomechanicsInitReadInput(geomech_realization,input,option)
         call GeomechanicsMaterialPropertyAddToList(geomech_material_property, &
                                 geomech_realization%geomech_material_properties)
         nullify(geomech_material_property)
+        
+      !.........................................................................
+      case('NEWTON_SOLVER')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case(word)
+          case('GEOMECHANICS')
+            call SolverReadNewton(geomech_solver,input,option)
+        end select        
              
       !.........................................................................
       case default
