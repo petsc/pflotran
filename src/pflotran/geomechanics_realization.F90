@@ -65,6 +65,8 @@ function GeomechRealizCreate(option)
   nullify(geomech_realization%input)
   geomech_realization%discretization => GeomechDiscretizationCreate()
   
+  geomech_realization%geomech_field => GeomechFieldCreate()
+
   nullify(geomech_realization%geomech_material_properties)
   nullify(geomech_realization%geomech_material_property_array)
   
@@ -148,6 +150,8 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   if(.not.associated(geomech_realization)) return
   
+  call GeomechFieldDestroy(geomech_realization%geomech_field)
+  
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)
   nullify(geomech_realization%geomech_material_property_array)
@@ -157,8 +161,6 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
 
 end subroutine GeomechRealizDestroy
-
-
 
 end module Geomechanics_Realization_module
 #endif
