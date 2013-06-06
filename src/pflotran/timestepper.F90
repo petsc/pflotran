@@ -669,6 +669,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
         endif
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag,surf_plot_flag)
+        surf_plot_flag = plot_flag
 
         ! Update subsurface pressure of top soil layer for surface flow model
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
@@ -906,6 +907,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 !    endif
 #ifdef SURFACE_FLOW
     !plot_flag_surf = plot_flag
+    surf_plot_flag = plot_flag
     !transient_plot_flag_surf = transient_plot_flag
 #endif
     call Output(realization,plot_flag,transient_plot_flag)
@@ -1861,7 +1863,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
 
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
-  use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
+  use Mphase_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
@@ -2370,7 +2372,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
-  use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
+  use Mphase_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
@@ -3790,7 +3792,9 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   use Option_module
   use Solver_module
   use Field_module
-  
+  use Grid_module, only : STRUCTURED_GRID_MIMETIC, UNSTRUCTURED_GRID_MIMETIC
+  use Richards_module, only : RichardsInitializeTimestep
+
   implicit none
 
 #include "finclude/petscvec.h"
@@ -3838,7 +3842,23 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
     
   if (option%print_screen_flag) write(*,'(/,2("=")," FLOW (STEADY STATE) ",37("="))')
 
-  call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      call RichardsInitializeTimestep(realization)
+  end select
+
+  select case(option%iflowmode)
+    case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+    case(RICHARDS_MODE)
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+          discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
+      else
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+      end if
+
+  end select
 
   call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
   call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
@@ -4027,9 +4047,10 @@ subroutine StepperUpdateSolution(realization)
     call StepperUpdateTransportSolution(realization)
 
 #ifdef SURFACE_FLOW
-  call SurfRealizUpdate(surf_realization)
-  if (surf_realization%option%nsurfflowdof > 0) &
+  if(surf_realization%option%nsurfflowdof > 0) then
+    call SurfRealizUpdate(surf_realization)
     call StepperUpdateSurfaceFlowSolution(surf_realization)
+  endif
 #endif
     
 end subroutine StepperUpdateSolution
@@ -4044,7 +4065,7 @@ end subroutine StepperUpdateSolution
 subroutine StepperUpdateFlowSolution(realization)
   
   use Flash2_module, only: Flash2UpdateSolution
-  use MPHASE_module, only: MphaseUpdateSolution
+  use Mphase_module, only: MphaseUpdateSolution
   use Immis_module, only: ImmisUpdateSolution
   use Miscible_module, only: MiscibleUpdateSolution 
   use Richards_module, only : RichardsUpdateSolution
@@ -4185,7 +4206,7 @@ end subroutine StepperJumpStart
 subroutine StepperUpdateFlowAuxVars(realization)
   
   use Flash2_module, only: Flash2UpdateAuxVars
-  use MPHASE_module, only: MphaseUpdateAuxVars
+  use Mphase_module, only: MphaseUpdateAuxVars
   use Immis_module, only: ImmisUpdateAuxVars
   use Miscible_module, only: MiscibleUpdateAuxVars
   use Richards_module, only : RichardsUpdateAuxVars

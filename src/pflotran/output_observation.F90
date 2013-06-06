@@ -56,7 +56,7 @@ end subroutine OutputObservationInit
 subroutine OutputObservation(realization_base)
 
   use Realization_Base_class, only : realization_base_type
-  use Option_Module
+  use Option_module
   
   implicit none
   

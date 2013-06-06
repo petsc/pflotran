@@ -141,6 +141,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   PetscInt :: srfcplx_count
   PetscInt :: temp_srfcplx_count
   PetscBool :: found
+  PetscBool :: reaction_sandbox_read
 
   nullify(prev_species)
   nullify(prev_gas)
@@ -150,6 +151,8 @@ subroutine ReactionReadPass1(reaction,input,option)
   nullify(prev_general_rxn)
   nullify(prev_kd_rxn)
   nullify(prev_ionx_rxn)
+  
+  reaction_sandbox_read = PETSC_FALSE
   
   srfcplx_count = 0
   input%ierr = 0
@@ -360,6 +363,7 @@ subroutine ReactionReadPass1(reaction,input,option)
 
       case('REACTION_SANDBOX')
         call RSandboxRead(input,option)
+        reaction_sandbox_read = PETSC_TRUE
       case('MICROBIAL_REACTION')
         call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
@@ -737,7 +741,8 @@ subroutine ReactionReadPass1(reaction,input,option)
   endif
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
       reaction%ngeneral_rxn + reaction%microbial%nrxn + &
-      reaction%immobile%nimmobile > 0) then
+      reaction%immobile%nimmobile > 0 .or. &
+      reaction_sandbox_read) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
       

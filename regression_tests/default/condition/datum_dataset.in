@@ -56,6 +56,11 @@ DATASET y_dataset
   HDF5_DATASET_NAME y_line
 END
 
+DATASET x_dataset
+  FILENAME datum_dataset_in.h5
+  HDF5_DATASET_NAME x_line
+END
+
 :=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
@@ -120,6 +125,14 @@ REGION east
   /
 END
 
+REGION south
+  FACE south
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5.d0 0.d0 5.d0
+  /
+END
+
 REGION bottom
   FACE bottom
   COORDINATES
@@ -145,6 +158,14 @@ FLOW_CONDITION east_line
   PRESSURE 101325.d0
 END
 
+FLOW_CONDITION south_line
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM DATASET x_dataset
+  PRESSURE 101325.d0
+END
+
 FLOW_CONDITION recharge
   TYPE
     FLUX neumann
@@ -167,6 +188,11 @@ END
 BOUNDARY_CONDITION east_bc
   FLOW_CONDITION east_line
   REGION east
+END
+
+BOUNDARY_CONDITION south_bc
+  FLOW_CONDITION south_line
+  REGION south
 END
 
 BOUNDARY_CONDITION initial

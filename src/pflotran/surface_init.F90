@@ -207,7 +207,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
-  use Dataset_Aux_module
+  use Dataset_Base_class
   use Unstructured_Grid_Aux_module
   use Discretization_module
   use Region_module
@@ -238,7 +238,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   type(flow_condition_type), pointer           :: flow_condition
   type(coupler_type), pointer                  :: coupler
   type(strata_type), pointer                   :: strata
-  type(dataset_type), pointer                  :: dataset
+  type(dataset_base_type), pointer             :: dataset
 
   type(patch_type), pointer                    :: patch
   type(output_option_type), pointer            :: output_option
@@ -754,11 +754,12 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         enddo
       !.........................................................................
       case ('SURF_DATASET')
-      dataset => DatasetCreate()
+      dataset => DatasetCommonHDF5Create()
       call InputReadWord(input,option,dataset%name,PETSC_TRUE)
       call InputDefaultMsg(input,option,'Dataset name')
-      call DatasetRead(dataset,input,option)
-      call DatasetAddToList(dataset,surf_realization%datasets)
+      call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
+                                 option)
+      call DatasetBaseAddToList(dataset,surf_realization%datasets)
       nullify(dataset)
       
       !.........................................................................

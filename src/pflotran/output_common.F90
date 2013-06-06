@@ -1193,8 +1193,8 @@ subroutine OutputGetExplicitFlowrates(realization_base)
     enddo
   enddo
    
- call VecAssemblyBegin(field%flowrate_inst)
- call VecAssemblyEnd(field%flowrate_inst)
+ call VecAssemblyBegin(field%flowrate_inst,ierr)
+ call VecAssemblyEnd(field%flowrate_inst,ierr)
 
 end subroutine OutputGetExplicitFlowrates
 

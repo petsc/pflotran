@@ -33,9 +33,8 @@ module Reaction_Sandbox_CLM_CN_class
     type(pool_type), pointer :: pools
     type(clm_cn_reaction_type), pointer :: reactions
   contains
-    procedure, public :: Init => CLM_CN_Init
     procedure, public :: ReadInput => CLM_CN_Read
-    procedure, public :: SkipInput => CLM_CN_ReadSkipBlock
+    procedure, public :: Setup => CLM_CN_Setup
     procedure, public :: Evaluate => CLM_CN_React
     procedure, public :: Destroy => CLM_CN_Destroy
   end type reaction_sandbox_clm_cn_type
@@ -61,7 +60,7 @@ contains
 
 ! ************************************************************************** !
 !
-! RSandboxInit: Initializes reaction sandbox at beginning of simulation
+! CLM_CN_Create: Allocates CLM-CN reaction object.
 ! author: Glenn Hammond
 ! date: 02/04/13
 !
@@ -89,28 +88,6 @@ function CLM_CN_Create()
   nullify(CLM_CN_Create%reactions)
 
 end function CLM_CN_Create
-
-! ************************************************************************** !
-!
-! CLM_CN_Init: Initializes reaction sandbox at beginning of simulation
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
-subroutine CLM_CN_Init(this,reaction,option)
-
-  use Reaction_Aux_module, only : reaction_type
-  use Option_module
-  
-  implicit none
-  
-  class(reaction_sandbox_clm_cn_type) :: this
-  type(option_type) :: option
-  type(reaction_type) :: reaction  
-  
-  call CLM_CN_Map(this,reaction,option)
-
-end subroutine CLM_CN_Init
 
 ! ************************************************************************** !
 !
@@ -309,43 +286,25 @@ end subroutine CLM_CN_Read
 
 ! ************************************************************************** !
 !
-! CLM_CN_ReadSkipBlock: Intelligently skips over block
+! CLM_CN_Setup: Sets up CLM-CN reaction after it has been read from input
 ! author: Glenn Hammond
 ! date: 02/04/13
 !
 ! ************************************************************************** !
-subroutine CLM_CN_ReadSkipBlock(this,input,option)
+subroutine CLM_CN_Setup(this,reaction,option)
 
+  use Reaction_Aux_module, only : reaction_type
   use Option_module
-  use String_module
-  use Input_module
-  use Utility_module
   
   implicit none
   
   class(reaction_sandbox_clm_cn_type) :: this
-  type(input_type) :: input
+  type(reaction_type) :: reaction  
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: word
+  call CLM_CN_Map(this,reaction,option)
 
-  do 
-    call InputReadFlotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,CLM-CN Skip Block')
-    call StringToUpper(word)   
-
-    select case(trim(word))
-      case('POOLS','REACTION')
-        call InputSkipToEnd(input,option,word)
-    end select
-  enddo
-  
-end subroutine CLM_CN_ReadSkipBlock
+end subroutine CLM_CN_Setup
 
 ! ************************************************************************** !
 !
@@ -508,7 +467,7 @@ end subroutine CLM_CN_Map
 ! date: 02/04/13
 !
 ! ************************************************************************** !
-subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
+subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
                         global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
@@ -521,8 +480,8 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
   ! the following arrays must be declared after reaction
-  PetscReal :: Res(reaction%ncomp)
-  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: Residual(reaction%ncomp)
+  PetscReal :: Jacobian(reaction%ncomp,reaction%ncomp)
   PetscReal :: porosity
   PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -553,7 +512,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: resp_frac
   PetscReal :: stoich_N
   PetscReal :: stoich_C
-  PetscReal :: stoich_downstream_pool
+  PetscReal :: stoich_downstreamC_pool
   PetscReal :: stoich_upstreamC_pool, stoich_upstreamN_pool
   
   PetscReal :: N_inhibition, d_N_inhibition
@@ -633,17 +592,17 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       ispec_pool_down = this%pool_id_to_species_id(SOM_INDEX,ipool_down)
       CN_ratio_down = this%CN_ratio(ipool_down)
       ! c = (1-resp_frac) * a
-      stoich_downstream_pool = (1.d0-resp_frac) * stoich_upstreamC_pool
+      stoich_downstreamC_pool = (1.d0-resp_frac) * stoich_upstreamC_pool
     else    
       ispec_pool_down = 0
-      stoich_downstream_pool = 0.d0
+      stoich_downstreamC_pool = 0.d0
       CN_ratio_down = 1.d0 ! to prevent divide by zero below.
     endif
       
     ! d = resp_frac * a
     stoich_C = resp_frac * stoich_upstreamC_pool
     ! e = b - c / CN_ratio_dn
-    stoich_N = stoich_upstreamN_pool - stoich_downstream_pool / CN_ratio_down
+    stoich_N = stoich_upstreamN_pool - stoich_downstreamC_pool / CN_ratio_down
  
     ! Inhibition by nitrogen (inhibition concentration > 0 and N is a reactant)
     ! must be calculated here as the sign on the stoichiometry for N is 
@@ -668,17 +627,17 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     ! calculation of residual
     
     ! carbon
-    Res(ires_C) = Res(ires_C) - stoich_C * rate
+    Residual(ires_C) = Residual(ires_C) - stoich_C * rate
     sumC = sumC + stoich_C * rate
     
     ! nitrogen
-    Res(ires_N) = Res(ires_N) - stoich_N * rate
+    Residual(ires_N) = Residual(ires_N) - stoich_N * rate
     sumN = sumN + stoich_N * rate
 
     ! C species in upstream pool (litter or SOM)
     iresC_pool_up = reaction%offset_immobile + ispecC_pool_up
     ! scaled by negative one since it is a reactant 
-    Res(iresC_pool_up) = Res(iresC_pool_up) - &
+    Residual(iresC_pool_up) = Residual(iresC_pool_up) - &
       (-1.d0) * stoich_upstreamC_pool * rate
     sumC = sumC - stoich_upstreamC_pool * rate
     
@@ -687,7 +646,7 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       ! N species in upstream pool
       iresN_pool_up = reaction%offset_immobile + ispecN_pool_up
       ! scaled by negative one since it is a reactant 
-      Res(iresN_pool_up) = Res(iresN_pool_up) - &
+      Residual(iresN_pool_up) = Residual(iresN_pool_up) - &
         (-1.d0) * stoich_upstreamN_pool * rate
     endif
     sumN = sumN - stoich_upstreamN_pool * rate
@@ -695,9 +654,10 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
     if (ispec_pool_down > 0) then
       ! downstream pool
       ires_pool_down = reaction%offset_immobile + ispec_pool_down
-      Res(ires_pool_down) = Res(ires_pool_down) - stoich_downstream_pool * rate
-      sumC = sumC + stoich_downstream_pool * rate
-      sumN = sumN + stoich_downstream_pool / CN_ratio_down * rate
+      Residual(ires_pool_down) = Residual(ires_pool_down) - &
+        stoich_downstreamC_pool * rate
+      sumC = sumC + stoich_downstreamC_pool * rate
+      sumN = sumN + stoich_downstreamC_pool / CN_ratio_down * rate
     endif
     
     !for debugging
@@ -711,24 +671,27 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
       drate = scaled_rate_const * N_inhibition
       
       ! upstream C pool
-      Jac(iresC_pool_up,iresC_pool_up) = Jac(iresC_pool_up,iresC_pool_up) - &
+      Jacobian(iresC_pool_up,iresC_pool_up) = &
+        Jacobian(iresC_pool_up,iresC_pool_up) - &
         ! scaled by negative one since it is a reactant 
         (-1.d0) * stoich_upstreamC_pool * drate
       if (use_N_inhibition) then
         drate_dN_inhibition = rate / N_inhibition * d_N_inhibition
         ! scaled by negative one since it is a reactant 
-        Jac(iresC_pool_up,ires_N) = &
-          Jac(iresC_pool_up,ires_N) - &
+        Jacobian(iresC_pool_up,ires_N) = &
+          Jacobian(iresC_pool_up,ires_N) - &
           (-1.d0) * stoich_upstreamC_pool * drate_dN_inhibition
       endif
       
       ! downstream pool
       if (ispec_pool_down > 0) then
-        Jac(ires_pool_down,iresC_pool_up) = Jac(ires_pool_down,iresC_pool_up) - &
-          stoich_downstream_pool * drate
+        Jacobian(ires_pool_down,iresC_pool_up) = &
+          Jacobian(ires_pool_down,iresC_pool_up) - &
+          stoich_downstreamC_pool * drate
         if (use_N_inhibition) then
-          Jac(ires_pool_down,ires_N) = Jac(ires_pool_down,ires_N) - &
-            stoich_downstream_pool * drate_dN_inhibition
+          Jacobian(ires_pool_down,ires_N) = &
+            Jacobian(ires_pool_down,ires_N) - &
+            stoich_downstreamC_pool * drate_dN_inhibition
         endif
       endif
       
@@ -737,11 +700,13 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
 
         ! derivative of upstream N pool with respect to upstream C pool
         ! scaled by negative one since it is a reactant 
-        Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) - &
+        Jacobian(iresN_pool_up,iresC_pool_up) = &
+          Jacobian(iresN_pool_up,iresC_pool_up) - &
           (-1.d0) * stoich_upstreamN_pool * drate
         if (use_N_inhibition) then
           ! scaled by negative one since it is a reactant 
-          Jac(iresN_pool_up,ires_N) = Jac(iresN_pool_up,ires_N) - &
+          Jacobian(iresN_pool_up,ires_N) = &
+            Jacobian(iresN_pool_up,ires_N) - &
             (-1.d0) * stoich_upstreamN_pool * drate_dN_inhibition
         endif
 
@@ -758,10 +723,12 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
         dstoich_upstreamN_pool_dC_pool_up = temp_real * dCN_ratio_up_dC_pool_up
         dstoich_upstreamN_pool_dN_pool_up = temp_real * dCN_ratio_up_dN_pool_up        
 
-        Jac(iresN_pool_up,iresC_pool_up) = Jac(iresN_pool_up,iresC_pool_up) - &
+        Jacobian(iresN_pool_up,iresC_pool_up) = &
+          Jacobian(iresN_pool_up,iresC_pool_up) - &
           ! scaled by negative one since it is a reactant 
           (-1.d0) * dstoich_upstreamN_pool_dC_pool_up * rate
-        Jac(iresN_pool_up,iresN_pool_up) = Jac(iresN_pool_up,iresN_pool_up) - &
+        Jacobian(iresN_pool_up,iresN_pool_up) = &
+          Jacobian(iresN_pool_up,iresN_pool_up) - &
           ! scaled by negative one since it is a reactant 
           (-1.d0) * dstoich_upstreamN_pool_dN_pool_up * rate
 
@@ -770,25 +737,27 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
         ! dstoichC_dN_pool_up = 0
 
         ! nitrogen (stoichiometry a function of upstream C/N)
-        ! stoich_N = stoich_upstreamN_pool - stoich_downstream_pool / &
+        ! stoich_N = stoich_upstreamN_pool - stoich_downstreamC_pool / &
         !                                    CN_ratio_down
         ! latter half is constant
         dstoichN_dC_pool_up = dstoich_upstreamN_pool_dC_pool_up
         dstoichN_dN_pool_up = dstoich_upstreamN_pool_dN_pool_up
-        Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) - &
+        Jacobian(ires_N,iresC_pool_up) = Jacobian(ires_N,iresC_pool_up) - &
           dstoichN_dC_pool_up * rate
-        Jac(ires_N,iresN_pool_up) = Jac(ires_N,iresN_pool_up) - &
+        Jacobian(ires_N,iresN_pool_up) = Jacobian(ires_N,iresN_pool_up) - &
           dstoichN_dN_pool_up * rate
       endif
       
       ! carbon
-      Jac(ires_C,iresC_pool_up) = Jac(ires_C,iresC_pool_up) - stoich_C * drate
+      Jacobian(ires_C,iresC_pool_up) = Jacobian(ires_C,iresC_pool_up) - &
+        stoich_C * drate
       ! nitrogen
-      Jac(ires_N,iresC_pool_up) = Jac(ires_N,iresC_pool_up) - stoich_N * drate
+      Jacobian(ires_N,iresC_pool_up) = Jacobian(ires_N,iresC_pool_up) - &
+        stoich_N * drate
       if (use_N_inhibition) then
-        Jac(ires_C,ires_N) = Jac(ires_C,ires_N) - & 
+        Jacobian(ires_C,ires_N) = Jacobian(ires_C,ires_N) - & 
           stoich_C * drate_dN_inhibition
-        Jac(ires_N,ires_N) = Jac(ires_N,ires_N) - &
+        Jacobian(ires_N,ires_N) = Jacobian(ires_N,ires_N) - &
           stoich_N * drate_dN_inhibition
       endif
     endif

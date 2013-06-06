@@ -122,7 +122,7 @@ subroutine Checkpoint(realization, &
   use Grid_module
   
   use Flash2_module
-  use MPHASE_module
+  use Mphase_module
   use Immis_module
   use Miscible_module
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
@@ -542,7 +542,7 @@ subroutine Restart(realization, &
   use Grid_module
 
   use Flash2_module
-  use MPHASE_module
+  use Mphase_module
   use Immis_module
   use Miscible_module
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &

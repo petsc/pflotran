@@ -7,12 +7,12 @@ module Patch_module
   use Strata_module
   use Region_module
   use Reaction_Aux_module
-  use Dataset_Aux_module
+  use Dataset_Base_class
   use Material_module
   use Field_module
   use Saturation_Function_module
 #ifdef SURFACE_FLOW
-  use Surface_field_module
+  use Surface_Field_module
   use Surface_Material_module
   use Surface_Auxiliary_module
 #endif
@@ -61,7 +61,7 @@ module Patch_module
     ! Pointers to objects in mother realization object
     type(field_type), pointer :: field 
     type(reaction_type), pointer :: reaction
-    type(dataset_type), pointer :: datasets
+    class(dataset_base_type), pointer :: datasets
     
     type(auxiliary_type) :: aux
     
@@ -730,7 +730,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Global_Aux_module
   use Condition_module
   use Constraint_module
-  use Dataset_Aux_module
   
   implicit none
   
@@ -743,7 +742,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   
   type(coupler_type), pointer :: coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
-  type(dataset_type), pointer :: dataset
   PetscInt :: idof
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -921,10 +919,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Hydrostatic_module
   use Saturation_module
   use Water_EOS_module
-  use Dataset_Aux_module
   
   use General_Aux_module
   use Grid_module
+  use Dataset_Common_HDF5_class
 
   implicit none
   
@@ -937,7 +935,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(flow_general_condition_type), pointer :: general
-  type(dataset_type), pointer :: dataset
+  class(dataset_common_hdf5_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat
@@ -1538,8 +1536,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
   use Connection_module
   use Condition_module
   use Grid_module
-  use Dataset_module
-  use Dataset_Aux_module
+  use Dataset_Map_class
 
   implicit none
 
@@ -1561,7 +1558,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
   PetscInt,pointer::cell_ids_nat(:)
   type(flow_sub_condition_type) :: flow_sub_condition
 
-  type(dataset_type), pointer :: dataset
+  class(dataset_map_type), pointer :: dataset
 
   grid => patch%grid
   
@@ -1585,11 +1582,12 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
 !    call printErrMsg(option)
 !  endif
 
-  dataset => flow_dataset%dataset
   cur_connection_set => coupler%connection_set
 
-  if(associated(dataset)) then
+  if(associated(flow_dataset%dataset)) then
 
+!geh: commenting out the old approach in favor of new
+#if 0  
     if(.not.associated(dataset%dataset_map)) then
       !
       ! Older scheme: Only works on a single proc run and assumes SS values are
@@ -1612,12 +1610,21 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       enddo
 
     else !if(.not.associated(dataset%dataset_map))
+#endif
 
+    select type(selector=>flow_dataset%dataset)
+      class is(dataset_map_type)
+        dataset => selector
+      class default
+        option%io_buffer = 'Incorrect class in PatchUpdateHetroCouplerAuxVars'
+        call printErrMsg(option)
+    end select
+  
       ! New scheme: Mapping data is provided in HDF file
       !
     
       ! If called for the first time, create the map
-      if (dataset%dataset_map%first_time) then
+      if (dataset%first_time) then
         allocate(cell_ids_nat(cur_connection_set%num_connections))
         do iconn=1,cur_connection_set%num_connections
           sum_connection = sum_connection + 1
@@ -1626,10 +1633,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
           cell_ids_nat(iconn)=grid%nG2A(ghosted_id)
         enddo
 
-        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset%dataset_map,&
+        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset,&
                 cell_ids_nat,cur_connection_set%num_connections,option)
 
-        dataset%dataset_map%first_time = PETSC_FALSE
+        dataset%first_time = PETSC_FALSE
         deallocate(cell_ids_nat)
 
       endif
@@ -1637,10 +1644,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       ! Save the data in the array
       do iconn=1,cur_connection_set%num_connections
         coupler%flow_aux_real_var(isub_condition,iconn) = &
-          dataset%rarray(dataset%dataset_map%datatocell_ids(iconn))
+          dataset%rarray(dataset%datatocell_ids(iconn))
       enddo
 
-    endif !if(.not.associated(dataset%dataset_map))
+!geh    endif !if(.not.associated(dataset%dataset_map))
 
   else ! if(associated(dataset)) 
 
@@ -1663,7 +1670,7 @@ end subroutine PatchUpdateHetroCouplerAuxVars
 subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,option)
 
   use Grid_module
-  use Dataset_module
+  use Dataset_Map_class
   use Option_module
   
   implicit none
@@ -1674,7 +1681,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
 #include "finclude/petscviewer.h"
 
   type(grid_type) :: grid
-  type(dataset_map_type) :: dataset_map
+  class(dataset_map_type) :: dataset_map
   type(option_type):: option
   PetscInt,pointer :: cell_ids(:)
   PetscInt :: ncells
@@ -1693,7 +1700,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
   PetscViewer :: viewer
   
   ! Step-1: Rearrange map dataset
-  nloc = maxval(dataset_map%map(2,:))
+  nloc = maxval(dataset_map%mapping(2,:))
   call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max,option%mycomm,ierr)
   call VecCreateMPI(option%mycomm,dataset_map%map_dims_local(2),&
                     PETSC_DETERMINE,map_ids_1,ierr)
@@ -1716,7 +1723,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
   
   allocate(int_array(dataset_map%map_dims_local(2)))
   do ii=1,dataset_map%map_dims_local(2)
-    int_array(ii)=dataset_map%map(2,ii)
+    int_array(ii)=dataset_map%mapping(2,ii)
   enddo
   int_array=int_array-1
 
@@ -1734,7 +1741,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,o
 
   call VecGetArrayF90(map_ids_1,vec_ptr,ierr)
   do ii=1,dataset_map%map_dims_local(2)
-    vec_ptr(ii)=dataset_map%map(1,ii)
+    vec_ptr(ii)=dataset_map%mapping(1,ii)
   enddo
   call VecRestoreArrayF90(map_ids_1,vec_ptr,ierr)
 
@@ -3077,7 +3084,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   PetscInt :: iphase
-  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id, local_id
 
   PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
   PetscInt :: irate, istate, irxn, ifo2, jcomp, comp_id
@@ -3141,7 +3148,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(LIQUID_ENERGY)
             value = patch%aux%THC%aux_vars(ghosted_id)%u
           case(SECONDARY_TEMPERATURE)
-            value = patch%aux%SC_heat%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
+            local_id = grid%nG2L(ghosted_id)
+            value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
         end select
      else if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -3176,7 +3184,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(LIQUID_ENERGY)
             value = patch%aux%TH%aux_vars(ghosted_id)%u
           case(SECONDARY_TEMPERATURE)
-            value = patch%aux%SC_heat%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
+            local_id = grid%nG2L(ghosted_id)
+            value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
         end select
      else if (associated(patch%aux%THMC)) then
         select case(ivar)
@@ -3306,7 +3315,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(SC_FUGA_COEFF)
             value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
           case(SECONDARY_TEMPERATURE)
-            value = patch%aux%SC_heat%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
+            local_id = grid%nG2L(ghosted_id)
+            value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
         end select
       else if (associated(patch%aux%Immis)) then
         select case(ivar)
@@ -3630,10 +3640,12 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
       ! Note that the units are in mol/kg
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+      local_id = grid%nG2L(ghosted_id)
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%pri_molal(isubvar1)
     case(SEC_MIN_VOLFRAC)
-      value = patch%aux%SC_RT%sec_transport_vars(ghosted_id)% &
+      local_id = grid%nG2L(ghosted_id)        
+      value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
      case default
       write(option%io_buffer, &

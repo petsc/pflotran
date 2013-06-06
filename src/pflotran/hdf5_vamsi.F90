@@ -833,7 +833,7 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
   use hdf5
   
   use Option_module
-  use Grid_Module
+  use Grid_module
   use Discretization_module
   
   implicit none

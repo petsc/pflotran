@@ -1759,7 +1759,11 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
         write(*,*),'In SurfaceFlowFlux: ', surf_global_aux_vars(ghosted_id_up)%head(1), &
           surf_global_aux_vars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
           option%io_buffer='stopping: -ve head values '
-          call printErrMsg(option)
+          !call printErrMsg(option)
+          if(surf_global_aux_vars(ghosted_id_up)%head(1)<0.d0) &
+            surf_global_aux_vars(ghosted_id_up)%head(1)=0.d0
+          if(surf_global_aux_vars(ghosted_id_dn)%head(1)<0.d0) &
+            surf_global_aux_vars(ghosted_id_dn)%head(1)=0.d0
       endif
 
       select case(option%surface_flow_formulation)
@@ -1901,7 +1905,7 @@ end subroutine SurfaceFlowRHSFunction
 ! ************************************************************************** !
 subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use water_eos_module
+  use Water_EOS_module
   use Connection_module
   use Surface_Realization_class
   use Patch_module
@@ -2592,18 +2596,18 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
   call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
 
   do local_id=1,surf_grid%nlmax
-    dist_x = (xx_p(local_id) - surf_grid%x(local_id))
-    dist_y = (yy_p(local_id) - surf_grid%y(local_id))
-    dist_z = (zz_p(local_id) - surf_grid%z(local_id))
+    dist_x = -(xx_p(local_id) - surf_grid%x(local_id))
+    dist_y = -(yy_p(local_id) - surf_grid%y(local_id))
+    dist_z = -(zz_p(local_id) - surf_grid%z(local_id))
       
     dist = sqrt(dist_x*dist_x + dist_y*dist_y + dist_z*dist_z)
 
     Dq_p(local_id) = (perm_xx_p(local_id)*abs(dist_x)/dist + &
                       perm_yy_p(local_id)*abs(dist_y)/dist + &
                       perm_zz_p(local_id)*abs(dist_z)/dist)/dist
-    dist_p(local_id) = dist*(dist_x*option%gravity(1)+ &
-                             dist_y*option%gravity(2)+ &
-                             dist_z*option%gravity(3))
+    dist_p(local_id) = (dist_x*option%gravity(1)+ &
+                        dist_y*option%gravity(2)+ &
+                        dist_z*option%gravity(3))
   enddo
 
   call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
@@ -3049,6 +3053,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
           endif
         else
           ! Exfiltration is occuring
+          !v_darcy=0.d0
         endif
         
         vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt

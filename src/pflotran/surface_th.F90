@@ -1024,7 +1024,7 @@ end subroutine SurfaceTHGetSubsurfProp
 ! ************************************************************************** !
 subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
-  use water_eos_module
+  use Water_EOS_module
   use Connection_module
   use Surface_Realization_class
   use Discretization_module
@@ -1298,7 +1298,7 @@ end subroutine SurfaceTHRHSFunction
 ! ************************************************************************** !
 subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use water_eos_module
+  use Water_EOS_module
   use Connection_module
   use Surface_Realization_class
   use Patch_module

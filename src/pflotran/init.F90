@@ -56,7 +56,7 @@ subroutine Init(simulation)
   use Condition_Control_module
   
   use Flash2_module
-  use MPHASE_module
+  use Mphase_module
   use Immis_module
   use Miscible_module
   use Richards_module
@@ -81,7 +81,7 @@ subroutine Init(simulation)
     
 #ifdef SURFACE_FLOW
   use Surface_Field_module
-  use Surface_Flow_Module
+  use Surface_Flow_module
   use Surface_Global_module
   use Surface_Init_module
   use Surface_Realization_class
@@ -1648,7 +1648,9 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   use Solver_module
   use Material_module
   use Saturation_Function_module  
-  use Dataset_Aux_module
+  use Dataset_Base_class
+  use Dataset_module
+  use Dataset_Common_HDF5_class
   use Fluid_module
   use Realization_class
   use Timestepper_module
@@ -1743,7 +1745,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
-  type(dataset_type), pointer :: dataset
+  class(dataset_base_type), pointer :: dataset
   type(mass_transfer_type), pointer :: mass_transfer
   type(input_type), pointer :: input
 
@@ -1981,12 +1983,10 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
         nullify(strata)
         
 !.....................
-      case ('DATASET') 
-        dataset => DatasetCreate()
-        call InputReadWord(input,option,dataset%name,PETSC_TRUE)
-        call InputDefaultMsg(input,option,'Dataset name') 
-        call DatasetRead(dataset,input,option)
-        call DatasetAddToList(dataset,realization%datasets)
+      case ('DATASET')
+        nullify(dataset)
+        call DatasetRead(input,dataset,option)
+        call DatasetBaseAddToList(dataset,realization%datasets)
         nullify(dataset)
         
 !....................
@@ -2168,6 +2168,13 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
       case ('COMPUTE_STATISTICS')
         option%compute_statistics = PETSC_TRUE
 
+!....................
+
+      case ('CO2_DATABASE')
+        call InputReadNChars(input,option,option%co2_database_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'CO2_DATABASE','filename')
+        
 !....................
 
       case ('TIMESTEPPER')

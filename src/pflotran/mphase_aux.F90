@@ -1,6 +1,6 @@
 module Mphase_Aux_module
   
-  use mphase_pckr_module
+  use Mphase_pckr_module
 
   implicit none
   
@@ -250,7 +250,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   use co2_sw_module, only: co2_sw_interp
   use Saturation_Function_module
   use Fluid_module
-  use mphase_pckr_module
+  use Mphase_pckr_module
   
   implicit none
 

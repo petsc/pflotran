@@ -105,10 +105,12 @@ subroutine init_span_wanger(realization)
     select case(realization%option%itable)
        case(0,1,2)
          call initialize_span_wagner(realization%option%itable, &
-                                     realization%option%myrank)
+                                     realization%option%myrank, &
+                                     realization%option)
        case(4,5)
          myrank = realization%option%myrank
-         call initialize_span_wagner(ZERO_INTEGER,myrank)
+         call initialize_span_wagner(ZERO_INTEGER,myrank, &
+                                     realization%option)
          call initialize_sw_interp(realization%option%itable,myrank)
        case(3)
          call sw_spline_read
@@ -1670,7 +1672,11 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
      
-  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)*vol_frac_prim
+  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+#if 0
+! This factor 2/3 is multiplied to get bulk perm k=delta^3/12/l, karra 05/14/2013   
+  if (option%use_mc) Dq = Dq*2.d0/3.d0*vol_frac_prim
+#endif
   diffdp = (por_up*tor_up * por_dn*tor_dn) / &
     (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area*vol_frac_prim 
   
@@ -1855,7 +1861,11 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     select case(ibndtype(MPH_PRESSURE_DOF))
         ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-        Dq = perm_dn / dd_up*vol_frac_prim
+        Dq = perm_dn / dd_up
+#if 0        
+! This factor 2/3 is multiplied to get bulk perm k=delta^3/12/l, karra 05/14/2013   
+        if (option%use_mc) Dq = Dq*2.d0/3.d0*vol_frac_prim
+#endif
         ! Flow term
         ukvr=0.D0
         v_darcy=0.D0 
@@ -1994,7 +2004,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Field_module
   use Option_module
-  use grid_module 
+  use Grid_module 
 
   implicit none
 

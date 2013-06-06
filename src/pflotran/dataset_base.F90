@@ -9,6 +9,8 @@ module Dataset_Base_class
 #include "definitions.h"
 
   type, public :: dataset_base_type
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXSTRINGLENGTH) :: filename
     type(time_storage_type), pointer :: time_storage ! stores transient times
     PetscInt :: rank  ! size of dims(:)
     PetscInt, pointer :: dims(:)    ! dimensions of arrays (excludes time)
@@ -19,6 +21,7 @@ module Dataset_Base_class
     PetscReal, pointer :: rbuffer(:)
     PetscInt :: buffer_slice_offset ! index of the first time slice in the buffer
     PetscInt :: buffer_nslice ! # of time slices stored in buffer
+    class(dataset_base_type), pointer :: next
 !  contains
 !    procedure, public :: Init => DatasetBaseInit
 !    procedure, public :: InterpolateTime => DatasetBaseInterpolateTime
@@ -30,12 +33,38 @@ module Dataset_Base_class
   PetscInt, parameter :: DATASET_INTEGER = 1
   PetscInt, parameter :: DATASET_REAL = 2
   
-  public :: DatasetBaseInit, &
+  public :: DatasetBaseCreate, &
+            DatasetBaseInit, &
+            DatasetBaseCopy, &
             DatasetBaseInterpolateTime, &
             DatasetBaseReorder, &
+            DatasetBaseGetPointer, &
+            DatasetBaseAddToList, &
             DatasetBaseStrip, &
             DatasetBaseDestroy
 contains
+
+! ************************************************************************** !
+!
+! DatasetBaseCreate: Creates members of base database class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetBaseCreate()
+  
+  implicit none
+  
+  class(dataset_base_type), pointer :: dataset
+
+  class(dataset_base_type), pointer :: DatasetBaseCreate
+  
+  allocate(dataset)
+  call DatasetBaseInit(dataset)
+
+  DatasetBaseCreate => dataset
+    
+end function DatasetBaseCreate
 
 ! ************************************************************************** !
 !
@@ -50,6 +79,8 @@ subroutine DatasetBaseInit(this)
   
   class(dataset_base_type) :: this
   
+  this%name = ''
+  this%filename = ''
   this%rank = 0
   this%data_type = 0
   nullify(this%time_storage)
@@ -60,8 +91,58 @@ subroutine DatasetBaseInit(this)
   nullify(this%rbuffer)
   this%buffer_slice_offset = 0
   this%buffer_nslice = 0
+  nullify(this%next)
     
 end subroutine DatasetBaseInit
+
+! ************************************************************************** !
+!
+! DatasetBaseCopy: Copies members of base database class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+subroutine DatasetBaseCopy(this, that)
+  
+  implicit none
+  
+  class(dataset_base_type) :: this
+  class(dataset_base_type) :: that
+  
+  that%name = this%name
+  that%filename = this%filename
+  that%rank = this%rank
+  that%data_type = this%data_type
+  if (associated(this%time_storage)) then
+    that%time_storage => this%time_storage
+    nullify(this%time_storage)
+  endif
+  if (associated(this%dims)) then
+    that%dims => this%dims
+    nullify(this%dims)
+  endif
+  if (associated(this%iarray)) then
+    that%iarray => this%iarray
+    nullify(this%iarray)
+  endif
+  if (associated(this%ibuffer)) then
+    that%ibuffer => this%ibuffer
+    nullify(this%ibuffer)
+  endif
+  if (associated(this%rarray)) then
+    that%rarray => this%rarray
+    nullify(this%rarray)
+  endif
+  if (associated(this%rbuffer)) then
+    that%rbuffer => this%rbuffer
+    nullify(this%rbuffer)
+  endif
+  that%buffer_slice_offset = this%buffer_slice_offset
+  that%buffer_nslice = this%buffer_nslice
+  that%next => this%next
+  nullify(this%next)
+    
+end subroutine DatasetBaseCopy
 
 ! ************************************************************************** !
 !
@@ -168,7 +249,6 @@ subroutine DatasetBaseReorder(this,option)
   class(dataset_base_type) :: this
   type(option_type) :: option
   
-#if 0
   PetscReal, allocatable :: temp_real(:)
   PetscInt :: i, j, k, l
   PetscInt :: dims(4), n1, n1Xn2, n1Xn2Xn3
@@ -185,7 +265,7 @@ subroutine DatasetBaseReorder(this,option)
   dims(1:this%rank) = this%dims(1:this%rank)
   if (associated(this%rbuffer)) then
     rarray => this%rbuffer
-    dims(this%rank+1) = this%time_storage%max_time_index
+    dims(this%rank+1) = this%buffer_nslice
   else
     rarray => this%rarray
   endif
@@ -202,6 +282,7 @@ subroutine DatasetBaseReorder(this,option)
   n1 = dims(1)
   n1Xn2 = n1*dims(2)
   n1Xn2Xn3 = n1Xn2*dims(3)
+  count = 0
   do i = 1, dims(1)
     do j = 0, dims(2)-1
       do k = 0, dims(3)-1
@@ -216,7 +297,6 @@ subroutine DatasetBaseReorder(this,option)
 
   rarray = temp_real
   deallocate(temp_real)
-#endif
   
 end subroutine DatasetBaseReorder
 
@@ -268,6 +348,78 @@ subroutine DatasetBaseGetTimes(this, option, max_sim_time, time_array)
   endif
  
 end subroutine DatasetBaseGetTimes
+
+! ************************************************************************** !
+!
+! DatasetBaseAddToList: Adds a dataset to linked list
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine DatasetBaseAddToList(dataset,list)
+
+  implicit none
+  
+  class(dataset_base_type), pointer :: dataset
+  class(dataset_base_type), pointer :: list
+
+  class(dataset_base_type), pointer :: cur_dataset
+  
+  if (associated(list)) then
+    cur_dataset => list
+    ! loop to end of list
+    do
+      if (.not.associated(cur_dataset%next)) exit
+      cur_dataset => cur_dataset%next
+    enddo
+    cur_dataset%next => dataset
+  else
+    list => dataset
+  endif
+  
+end subroutine DatasetBaseAddToList
+
+! ************************************************************************** !
+!
+! DatasetBaseGetPointer: Returns the pointer to the dataset named "name"
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+function DatasetBaseGetPointer(dataset_list, dataset_name, debug_string, &
+                               option)
+
+  use Option_module
+  use String_module
+  
+  class(dataset_base_type), pointer :: dataset_list
+  character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: debug_string
+  type(option_type) :: option
+
+  class(dataset_base_type), pointer :: DatasetBaseGetPointer
+  PetscBool :: found
+  class(dataset_base_type), pointer :: cur_dataset
+
+  found = PETSC_FALSE
+  cur_dataset => dataset_list
+  do 
+    if (.not.associated(cur_dataset)) exit
+    if (StringCompare(dataset_name, &
+                      cur_dataset%name,MAXWORDLENGTH)) then
+      found = PETSC_TRUE
+      DatasetBaseGetPointer => cur_dataset
+      return
+    endif
+    cur_dataset => cur_dataset%next
+  enddo
+  if (.not.found) then
+    option%io_buffer = 'Dataset "' // trim(dataset_name) // '" in "' // &
+             trim(debug_string) // '" not found among available datasets.'
+    call printErrMsgByRank(option)    
+  endif
+
+end function DatasetBaseGetPointer
 
 ! ************************************************************************** !
 !
