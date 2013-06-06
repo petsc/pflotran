@@ -525,10 +525,10 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
   PetscInt                             :: ivertex1, ivertex2
   PetscInt                             :: local_id1, local_id2
   PetscErrorCode                       :: ierr
+  character(len=MAXSTRINGLENGTH)       :: string
   
   allocate(d_nnz(geomech_grid%nlmax_node))
   allocate(o_nnz(geomech_grid%nlmax_node))
-
 
   ! The following is an approximate estimate only. 
   ! Some of the connections might be repeated.
@@ -537,28 +537,48 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
   do ielem = 1, geomech_grid%nlmax_elem
     do ivertex1 = 1, geomech_grid%elem_nodes(0,ielem)
       local_id1 = geomech_grid%elem_nodes(ivertex1,ielem)
-      do ivertex2 = 1, geomech_grid%elem_nodes(0,ielem)
-        local_id2 = geomech_grid%elem_nodes(ivertex2,ielem)
-        if (local_id2 /= local_id1) then ! Already took care of vertex to itself
-          if (local_id2 <= geomech_grid%nlmax_node) then ! local
-            d_nnz(local_id1) = d_nnz(local_id1) + 1
-          else
-            o_nnz(local_id1) = d_nnz(local_id1) + 1
+      if (local_id1 <= geomech_grid%nlmax_node) then
+        do ivertex2 = 1, geomech_grid%elem_nodes(0,ielem)
+          local_id2 = geomech_grid%elem_nodes(ivertex2,ielem)
+          if (local_id2 /= local_id1) then ! Already took care of vertex to itself
+            if (local_id2 <= geomech_grid%nlmax_node) then ! local
+              d_nnz(local_id1) = d_nnz(local_id1) + 1
+            else
+              o_nnz(local_id1) = o_nnz(local_id1) + 1
+            endif
           endif
-        endif
-      enddo
+        enddo
+      endif
     enddo      
   enddo
   
+  ! Check to see that d_nnz and o_nnz do not exceed maximum number of 
+  ! local nodes and ghost nodes, respectively
   do local_id1 = 1, geomech_grid%nlmax_node
     if (d_nnz(local_id1) > geomech_grid%nlmax_node) &
       d_nnz(local_id1) = geomech_grid%nlmax_node
     if (o_nnz(local_id1) > geomech_grid%num_ghost_nodes) &
       o_nnz(local_id1) = geomech_grid%num_ghost_nodes
   enddo
-  
+    
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_d_nnz_jacobian' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do local_id1 = 1, geomech_grid%nlmax_node
+    write(86,'(i5)') d_nnz(local_id1)
+  enddo  
+  close(86)
+  write(string,*) option%myrank
+  string = 'geomech_o_nnz_jacobian' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do local_id1 = 1, geomech_grid%nlmax_node
+    write(86,'(i5)') o_nnz(local_id1)
+  enddo  
+  close(86) 
+#endif   
+    
   ndof_local = geomech_grid%nlmax_node*gmdm%ndof
-  
   select case(mat_type)
     case(MATAIJ)
       d_nnz = d_nnz*gmdm%ndof
