@@ -136,8 +136,8 @@ subroutine GeomechRealizCreateDiscretization(realization)
   call GMGridMapIndices(grid,discretization%dm_1dof%gmdm, &
                         grid%nG2L,grid%nL2G,grid%nG2A,option)
                         
-  ! Need to add a subroutine to ensure right hand rule
-  ! Need to add a subroutine equivalent to UGridComputeCoord                      
+  ! SK, Need to add a subroutine to ensure right hand rule
+  ! SK, Need to add a subroutine equivalent to UGridComputeCoord                      
 
   
 end subroutine GeomechRealizCreateDiscretization

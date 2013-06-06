@@ -350,8 +350,9 @@ geomech_obj = \
   ${common_src}geomech_grid.o \
   ${common_src}geomech_grid_aux.o \
   ${common_src}geomechanics_material.o \
-  ${common_src}geomechanics_patch.o\
-  ${common_src}geomechanics_field.o
+  ${common_src}geomechanics_patch.o \
+  ${common_src}geomechanics_field.o \
+  ${common_src}geomechanics_debug.o  
 
 # End Source Block
 
