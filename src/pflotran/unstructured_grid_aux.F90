@@ -992,7 +992,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
                                natural_id_offset,is_scatter)
 
   use Option_module
-  use Utility_module, only: reallocateIntArray  
+  use Utility_module, only: reallocateIntArray, DeallocateArray
   
   implicit none
 
@@ -1358,13 +1358,12 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     enddo
     call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
 
-    deallocate(int_array_pointer)
-    nullify(int_array_pointer)
     deallocate(int_array2)
     deallocate(int_array3)
     deallocate(int_array4)
     deallocate(int_array5)
   endif
+  call DeallocateArray(int_array_pointer)
 
   ugrid%nlmax = num_cells_local_new
   ugrid%num_ghost_cells = ghost_cell_count

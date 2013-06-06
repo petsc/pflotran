@@ -4849,28 +4849,21 @@ end subroutine PatchDestroyList
 ! ************************************************************************** !
 subroutine PatchDestroy(patch)
 
+  use Utility_module, only : DeallocateArray
+
   implicit none
   
   type(patch_type), pointer :: patch
   
-  if (associated(patch%imat)) deallocate(patch%imat)
-  nullify(patch%imat)
-  if (associated(patch%sat_func_id)) deallocate(patch%sat_func_id)
-  nullify(patch%sat_func_id)
-  if (associated(patch%internal_velocities)) deallocate(patch%internal_velocities)
-  nullify(patch%internal_velocities)
-  if (associated(patch%boundary_velocities)) deallocate(patch%boundary_velocities)
-  nullify(patch%boundary_velocities)
-  if (associated(patch%internal_fluxes)) deallocate(patch%internal_fluxes)
-  nullify(patch%internal_fluxes)
-  if (associated(patch%boundary_fluxes)) deallocate(patch%boundary_fluxes)
-  nullify(patch%boundary_fluxes)
-  if (associated(patch%internal_tran_coefs)) deallocate(patch%internal_tran_coefs)
-  nullify(patch%internal_tran_coefs)
-  if (associated(patch%boundary_tran_coefs)) deallocate(patch%boundary_tran_coefs)
-  nullify(patch%boundary_tran_coefs)
-  if (associated(patch%ss_fluid_fluxes)) deallocate(patch%ss_fluid_fluxes)
-  nullify(patch%ss_fluid_fluxes)
+  call DeallocateArray(patch%imat)
+  call DeallocateArray(patch%sat_func_id)
+  call DeallocateArray(patch%internal_velocities)
+  call DeallocateArray(patch%boundary_velocities)
+  call DeallocateArray(patch%internal_fluxes)
+  call DeallocateArray(patch%boundary_fluxes)
+  call DeallocateArray(patch%internal_tran_coefs)
+  call DeallocateArray(patch%boundary_tran_coefs)
+  call DeallocateArray(patch%ss_fluid_fluxes)
 
   if (associated(patch%material_property_array)) &
     deallocate(patch%material_property_array)
@@ -4895,7 +4888,8 @@ subroutine PatchDestroy(patch)
   nullify(patch%surf_boundary_fluxes)
 #endif
 
-  call GridDestroy(patch%grid)
+  ! solely nullify grid since destroyed in discretization
+  nullify(patch%grid)
   call RegionDestroyList(patch%regions)
   call CouplerDestroyList(patch%boundary_conditions)
   call CouplerDestroyList(patch%initial_conditions)

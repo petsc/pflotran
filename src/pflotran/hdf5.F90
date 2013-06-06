@@ -1928,6 +1928,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   use Patch_module
   use HDF5_Aux_module
   use Unstructured_Cell_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -1947,7 +1948,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   PetscInt          :: ndims
   PetscInt          :: remainder
   PetscInt          :: istart, iend, ii, jj
-  PetscInt,pointer  :: int_buffer(:,:)
+  PetscInt, pointer :: int_buffer_1d(:)
+  PetscInt, pointer :: int_buffer_2d(:,:)
   character(len=MAXSTRINGLENGTH) :: string
 
 #if defined(PETSC_HAVE_HDF5)
@@ -2036,7 +2038,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
   
     ! Initialize data buffer
-    allocate(int_buffer(length(1),1))
+    allocate(int_buffer_1d(length(1)))
     
     ! Create property list
     call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
@@ -2045,7 +2047,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 #endif
   
     ! Read the dataset collectively
-    call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
+    call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer_1d,&
                    dims_h5,hdf5_err,memory_space_id,data_space_id)
 
     ! allocate array to store vertices for each cell
@@ -2055,12 +2057,13 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     ! It is assumed that cell ids in the HDF5 are 1-based. Converting them to
     ! 0-based
     do ii = 1,region%num_cells
-      if(int_buffer(ii,1) < 1 ) then
+      if(int_buffer_1d(ii) < 1 ) then
         write(option%io_buffer,'("Cell ids in the HDF5 for region less than 1")')
         call printErrMsg(option)
       endif
-      region%cell_ids(ii) = int_buffer(ii,1) - 1
+      region%cell_ids(ii) = int_buffer_1d(ii) - 1
     enddo
+     call DeallocateArray(int_buffer_1d)
     
   case(2)
     !
@@ -2103,7 +2106,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
      call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
   
      ! Initialize data buffer
-     allocate(int_buffer(length(1),length(2)))
+     allocate(int_buffer_2d(length(1),length(2)))
   
      ! Create property list
      call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
@@ -2112,7 +2115,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 #endif
   
      ! Read the dataset collectively
-     call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
+     call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer_2d,&
           dims_h5,hdf5_err,memory_space_id,data_space_id)
      
      if (dims_h5(1) == 2) then
@@ -2125,8 +2128,8 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        region%num_verts = 0
        
        do ii = 1, region%num_cells
-         region%cell_ids(ii) = int_buffer(1,ii)
-         region%faces(ii) = int_buffer(2,ii)
+         region%cell_ids(ii) = int_buffer_2d(1,ii)
+         region%faces(ii) = int_buffer_2d(2,ii)
        enddo
      else
        !
@@ -2137,16 +2140,16 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
        sideset%face_vertices = -999
   
        do ii = 1,sideset%nfaces
-        do jj = 2,int_buffer(1,ii)+1
-         sideset%face_vertices(jj-1,ii) = int_buffer(jj,ii)
+        do jj = 2,int_buffer_2d(1,ii)+1
+         sideset%face_vertices(jj-1,ii) = int_buffer_2d(jj,ii)
         enddo
        enddo
      endif
+     call DeallocateArray(int_buffer_2d)
   end select
     
   deallocate(dims_h5)
   deallocate(max_dims_h5)
-  deallocate(int_buffer)
 
   call h5pclose_f(prop_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)

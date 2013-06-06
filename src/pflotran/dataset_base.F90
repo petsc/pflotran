@@ -442,6 +442,8 @@ subroutine DatasetBaseStrip(this)
   call DeallocateArray(this%rbuffer)
   call DeallocateArray(this%dims)
   
+  call TimeStorageDestroy(this%time_storage)
+  
 end subroutine DatasetBaseStrip
 
 ! ************************************************************************** !

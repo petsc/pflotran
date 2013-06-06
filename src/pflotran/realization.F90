@@ -2580,6 +2580,11 @@ subroutine RealizationDestroy(realization)
   call TranConstraintDestroy(realization%sec_transport_constraint)
   call MassTransferDestroy(realization%mass_transfer_list)
   
+  call WaypointListDestroy(realization%waypoints)
+  
+  deallocate(realization)
+  nullify(realization)
+  
 end subroutine RealizationDestroy
 
 end module Realization_class
