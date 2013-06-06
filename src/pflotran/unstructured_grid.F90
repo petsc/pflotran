@@ -608,8 +608,8 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   PetscInt          :: num_vertices_local
   PetscInt          :: num_vertices_local_save
   PetscInt          :: remainder
-  PetscInt,pointer  :: int_buffer(:,:)
-  PetscReal,pointer :: double_buffer(:,:)
+  PetscInt, pointer :: int_buffer(:,:)
+  PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
   PetscErrorCode    :: ierr
 
@@ -732,6 +732,8 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   
   call h5dclose_f(data_set_id, hdf5_err)
   
+  deallocate(int_buffer)
+  nullify(int_buffer)
   deallocate(dims_h5)
   deallocate(max_dims_h5)
 
@@ -828,6 +830,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   
   
   deallocate(double_buffer)
+  nullify(double_buffer)
   deallocate(dims_h5)
   deallocate(max_dims_h5)
   
@@ -885,8 +888,8 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   PetscInt          :: num_vertices_local
   PetscInt          :: num_vertices_local_save
   PetscInt          :: remainder
-  PetscInt,pointer  :: int_buffer(:,:)
-  PetscReal,pointer :: double_buffer(:,:)
+  PetscInt, pointer  :: int_buffer(:,:)
+  PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
   PetscErrorCode    :: ierr
 
@@ -1009,6 +1012,8 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   
   call h5dclose_f(data_set_id, hdf5_err)
   
+  deallocate(int_buffer)
+  nullify(int_buffer)
   deallocate(dims_h5)
   deallocate(max_dims_h5)
 
@@ -1103,8 +1108,8 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
     unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
   enddo
   
-  
   deallocate(double_buffer)
+  nullify(double_buffer)
   deallocate(dims_h5)
   deallocate(max_dims_h5)
   
@@ -1188,6 +1193,8 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
       unstructured_grid%cell_vertices(jj-1, ii) = int_buffer(jj, ii)
     enddo
   enddo
+  deallocate(int_buffer)
+  nullify(int_buffer)
 
   ! Read Vertices
   call HDF5ReadDatasetReal2D(filename, &
@@ -1209,6 +1216,8 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
     unstructured_grid%vertices(ii)%y = double_buffer(2, ii)
     unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
   enddo
+  deallocate(double_buffer)
+  nullify(double_buffer)
 
   unstructured_grid%max_nvert_per_cell = max_nvert_per_cell
   unstructured_grid%nlmax = num_cells_local

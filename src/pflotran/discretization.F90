@@ -353,6 +353,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   end select
   grid%discretization_itype=discretization%itype
   discretization%grid => grid
+  nullify(grid)
 
 end subroutine DiscretizationReadRequiredCards
 
@@ -1985,6 +1986,12 @@ subroutine DiscretizationDestroy(discretization)
 
   if (discretization%tvd_ghost_scatter /= 0) &
     call VecScatterDestroy(discretization%tvd_ghost_scatter)
+  
+  ! solely nullify grid since destroyed in patch
+  call GridDestroy(discretization%grid)
+  
+  deallocate(discretization)
+  nullify(discretization)
   
 end subroutine DiscretizationDestroy
  

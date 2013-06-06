@@ -688,6 +688,9 @@ subroutine OutputOptionDestroy(output_option)
   
   if (.not.associated(output_option)) return
   
+  call OutputVariableListDestroy(output_option%output_variable_list)
+  call OutputVariableListDestroy(output_option%aveg_output_variable_list)
+  
   deallocate(output_option)
   nullify(output_option)
   
