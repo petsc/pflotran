@@ -98,7 +98,8 @@ module Input_module
             InputGetCommandLineInt, &
             InputGetCommandLineReal, &
             InputGetCommandLineTruth, &
-            InputGetCommandLineString
+            InputGetCommandLineString, &
+            InputReadFilenames
 
 contains
 
@@ -1623,6 +1624,72 @@ subroutine getCommandLineArgument(i,arg)
 #endif
 
 end subroutine getCommandLineArgument
+
+! ************************************************************************** !
+!
+! InputReadFilenames: Reads filenames for multi-simulation runs
+! author: Glenn Hammond
+! date: 08/11/09
+!
+! ************************************************************************** !
+subroutine InputReadFilenames(option,filenames)
+
+  use Option_module
+
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
+
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: filename_count
+  type(input_type), pointer :: input
+  PetscBool :: card_found
+
+  input => InputCreate(IN_UNIT,option%input_filename,option)
+
+  string = "FILENAMES"
+  call InputFindStringInFile(input,option,string) 
+
+  card_found = PETSC_FALSE
+  if (InputError(input)) then
+    ! if the FILENAMES card is not included, we will assume that only
+    ! filenames exist in the file.
+    rewind(input%fid)
+  else
+    card_found = PETSC_TRUE
+  endif
+    
+  filename_count = 0     
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit  
+    call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
+    filename_count = filename_count + 1
+  enddo
+  
+  allocate(filenames(filename_count))
+  filenames = ''
+  rewind(input%fid) 
+
+  if (card_found) then
+    string = "FILENAMES"
+    call InputFindStringInFile(input,option,string) 
+  endif
+  
+  filename_count = 0     
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit  
+    call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
+    filename_count = filename_count + 1
+    filenames(filename_count) = filename
+  enddo
+
+  call InputDestroy(input)
+
+end subroutine InputReadFilenames
 
 ! ************************************************************************** !
 !

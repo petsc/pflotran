@@ -39,11 +39,8 @@
 !=======================================================================
 program pflotran
   
-  use Simulation_module
-  use Realization_class
-  use Timestepper_module
   use Option_module
-  use Init_module
+  use Input_module
   use Stochastic_module
   use Stochastic_Aux_module
   use PFLOTRAN_Factory_module
@@ -51,84 +48,32 @@ program pflotran
   implicit none
 
 #include "definitions.h"
-#include "finclude/petsclog.h"
 
-  PetscInt :: init_status
   PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
   type(stochastic_type), pointer :: stochastic
-  type(simulation_type), pointer :: simulation
-  type(realization_type), pointer :: realization
-  type(stepper_type), pointer :: master_stepper
   type(option_type), pointer :: option
   
-  call InitializePFLOTRAN(option)
+  call PFLOTRANInitialize(option)
   
   select case(option%simulation_type)
     case(STOCHASTIC_SIM_TYPE)
       stochastic => StochasticCreate()
+      ! PETSc initialized within StochasticInit()
       call StochasticInit(stochastic,option)
       call StochasticRun(stochastic,option)
     case(SUBSURFACE_SIM_TYPE,MULTISIMULATION_SIM_TYPE)
-      if (option%simulation_type == SUBSURFACE_SIM_TYPE) then
-        PETSC_COMM_WORLD = MPI_COMM_WORLD
-        call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-      else
-        call InitDivvyUpSimulations(option)
+      if (option%simulation_type == MULTISIMULATION_SIM_TYPE) then
+        call InputReadFilenames(option,filenames)
+        call OptionDivvyUpSimulations(option,filenames)
+        deallocate(filenames)
+        nullify(filenames)
       endif
-
-      simulation => SimulationCreate(option)
-      realization => simulation%realization
-
-      call Init(simulation)
-
-#ifdef SURFACE_FLOW
-      call TimestepperInitializeRun(simulation%realization, &
-                                    simulation%surf_realization, &
-                                    master_stepper, &
-                                    simulation%flow_stepper, &
-                                    simulation%tran_stepper, &
-                                    simulation%surf_flow_stepper, &
-                                    init_status)
-      select case(init_status)
-        case(TIMESTEPPER_INIT_PROCEED)
-          call  TimestepperExecuteRun(simulation%realization, &
-                                      simulation%surf_realization, &
-                                      master_stepper, &
-                                      simulation%flow_stepper, &
-                                      simulation%tran_stepper, &
-                                      simulation%surf_flow_stepper)
-          call  TimestepperFinalizeRun(simulation%realization, &
-                                       simulation%surf_realization, &
-                                       master_stepper, &
-                                       simulation%flow_stepper, &
-                                       simulation%tran_stepper, &
-                                       simulation%surf_flow_stepper)
-        case(TIMESTEPPER_INIT_FAIL)
-        case(TIMESTEPPER_INIT_DONE)
-      end select
-#else
-      call TimestepperInitializeRun(simulation%realization, &
-                                    master_stepper, &
-                                    simulation%flow_stepper, &
-                                    simulation%tran_stepper, &
-                                    init_status)
-      select case(init_status)
-        case(TIMESTEPPER_INIT_PROCEED)
-          call  TimestepperExecuteRun(simulation%realization, &
-                                      master_stepper, &
-                                      simulation%flow_stepper, &
-                                      simulation%tran_stepper)
-          call  TimestepperFinalizeRun(simulation%realization, &
-                                       master_stepper, &
-                                       simulation%flow_stepper, &
-                                       simulation%tran_stepper)
-        case(TIMESTEPPER_INIT_FAIL)
-        case(TIMESTEPPER_INIT_DONE)
-      end select
-#endif
+      call OptionInitPetsc(option)
+      call OptionBeginLogging(option)
+      call PFLOTRANRun(option)
   end select
 
-  call FinalizePFLOTRAN(simulation)
-  call exit(86)  
+  call PFLOTRANFinalize(option)
 
 end program pflotran
