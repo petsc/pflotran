@@ -15,8 +15,12 @@ module Init_module
 #include "finclude/petscts.h"
 
 
-  public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
-
+  public :: Init, &
+            InitPFLOTRANCommandLineSettings, &
+            InitDivvyUpSimulations, &
+            InitMPI, &
+            InitCreateProcessorGroups
+  
 contains
 
 ! ************************************************************************** !
@@ -1097,46 +1101,6 @@ subroutine Init(simulation)
   call PetscLogEventEnd(logging%event_init,ierr)
 
 end subroutine Init
-
-! ************************************************************************** !
-!
-! InitReadStochasticCardFromInput: Reads stochastic card from input file
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
-subroutine InitReadStochasticCardFromInput(stochastic,option)
-
-  use Option_module
-  use Input_module
-  use Stochastic_Aux_module
-
-  implicit none
-  
-  type(stochastic_type), pointer :: stochastic
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  type(input_type), pointer :: input
-  PetscBool :: print_warning
-  
-  input => InputCreate(IN_UNIT,option%input_filename,option)
-
-  ! MODE information
-  string = "STOCHASTIC"
-  print_warning = PETSC_FALSE
-  call InputFindStringInFile(input,option,string,print_warning)
-
-  if (.not.InputError(input)) then
-    if (.not.associated(stochastic)) then
-      stochastic => StochasticCreate()
-    endif
-    call StochasticRead(stochastic,input,option)
-  endif
-  
-  call InputDestroy(input)
-
-end subroutine InitReadStochasticCardFromInput
 
 ! ************************************************************************** !
 !
@@ -3914,5 +3878,207 @@ subroutine InitReadVelocityField(realization)
   enddo
   
 end subroutine InitReadVelocityField
-            
+
+! ************************************************************************** !
+!
+! InitMPI: Initializes base MPI communicator
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine InitMPI(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  call MPI_Init(ierr)
+  option%global_comm = MPI_COMM_WORLD
+  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
+  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
+  option%mycomm = option%global_comm
+  option%myrank = option%global_rank
+  option%mycommsize = option%global_commsize
+  option%mygroup = option%global_group
+
+end subroutine InitMPI
+
+
+! ************************************************************************** !
+!
+! InitCreateProcessorGroups: Splits MPI_COMM_WORLD into N separate
+!                            processor groups
+! author: Glenn Hammond
+! date: 08/11/09
+!
+! ************************************************************************** !
+subroutine InitCreateProcessorGroups(option,num_groups)
+
+  use Option_module
+
+  type(option_type) :: option
+  PetscInt :: num_groups
+
+  PetscInt :: local_commsize
+  PetscInt :: offset, delta, remainder
+  PetscInt :: igroup
+  PetscMPIInt :: mycolor_mpi, mykey_mpi
+  PetscErrorCode :: ierr
+
+  local_commsize = option%global_commsize / num_groups
+  remainder = option%global_commsize - num_groups * local_commsize
+  offset = 0
+  do igroup = 1, num_groups
+    delta = local_commsize
+    if (igroup < remainder) delta = delta + 1
+    if (option%global_rank >= offset .and. &
+        option%global_rank < offset + delta) exit
+    offset = offset + delta
+  enddo
+  mycolor_mpi = igroup
+  option%mygroup_id = igroup
+  mykey_mpi = option%global_rank - offset
+  call MPI_Comm_split(MPI_COMM_WORLD,mycolor_mpi,mykey_mpi,option%mycomm,ierr)
+  call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
+
+  PETSC_COMM_WORLD = option%mycomm
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
+  call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
+
+end subroutine InitCreateProcessorGroups
+
+! ************************************************************************** !
+!
+! InitPFLOTRANCommandLineSettings: Initializes PFLOTRAN output filenames, etc.
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine InitPFLOTRANCommandLineSettings(option)
+
+  use Option_module
+  use Input_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: option_found
+  PetscBool :: bool_flag
+  PetscBool :: pflotranin_option_found
+  PetscBool :: input_prefix_option_found
+  PetscInt :: i
+  PetscErrorCode :: ierr
+  
+  ! check for non-default input filename
+  option%input_filename = 'pflotran.in'
+  string = '-pflotranin'
+  call InputGetCommandLineString(string,option%input_filename, &
+                                 pflotranin_option_found,option)
+  string = '-input_prefix'
+  call InputGetCommandLineString(string,option%input_prefix, &
+                                 input_prefix_option_found,option)
+  
+  if (pflotranin_option_found .and. input_prefix_option_found) then
+    option%io_buffer = 'Cannot specify both "-pflotranin" and ' // &
+      '"-input_prefix" on the command lines.'
+    call printErrMsg(option)
+  else if (pflotranin_option_found) then
+    !TODO(geh): replace this with StringSplit()
+    i = index(option%input_filename,'.',PETSC_TRUE)
+    if (i > 1) then
+      i = i-1
+    else
+      ! for some reason len_trim doesn't work on MS Visual Studio in 
+      ! this location
+      i = len(trim(option%input_filename)) 
+    endif
+    option%input_prefix = option%input_filename(1:i)
+  else if (input_prefix_option_found) then
+    option%input_filename = trim(option%input_prefix) // '.in'
+  endif
+  
+  string = '-output_prefix'
+  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
+  if (.not.option_found) option%global_prefix = option%input_prefix  
+  
+  string = '-screen_output'
+  call InputGetCommandLineTruth(string,option%print_to_screen,option_found,option)
+
+  string = '-file_output'
+  call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
+
+  string = '-v'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) option%verbosity = 1
+ 
+  if (option%verbosity > 0) then 
+    call PetscLogBegin(ierr)
+    string = '-log_summary'
+    call PetscOptionsInsertString(string, ierr)
+  endif
+  
+  string = '-multisimulation'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) option%simulation_type = MULTISIMULATION_SIM_TYPE
+
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) option%simulation_type = STOCHASTIC_SIM_TYPE
+
+  ! this will get overwritten if stochastic
+  option_found = PETSC_FALSE
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
+                          i, option_found, ierr)
+  if (option_found) option%id = i
+
+end subroutine InitPFLOTRANCommandLineSettings
+
+! ************************************************************************** !
+!
+! InitDivvyUpSimulations: Divides simulation in to multple simulations with
+!                         multiple input decks
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine InitDivvyUpSimulations(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
+  
+  call InitReadInputFilenames(option,filenames)
+  i = size(filenames) 
+  call InitCreateProcessorGroups(option,i)
+  option%input_filename = filenames(option%mygroup_id)
+  deallocate(filenames)
+  nullify(filenames)
+  i = index(option%input_filename,'.',PETSC_TRUE)
+  if (i > 1) then
+    i = i-1
+  else
+    ! for some reason len_trim doesn't work on MS Visual Studio in 
+    ! this location
+    i = len(trim(option%input_filename)) 
+  endif
+  option%global_prefix = option%input_filename(1:i)
+  write(string,*) option%mygroup_id
+  option%group_prefix = 'G' // trim(adjustl(string))
+  
+end subroutine InitDivvyUpSimulations
+      
 end module Init_module

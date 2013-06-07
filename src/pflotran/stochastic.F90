@@ -25,6 +25,7 @@ subroutine StochasticInit(stochastic,option)
   use Simulation_module
   use Option_module
   use Input_module
+  use Init_module
   
   implicit none
 
@@ -41,6 +42,8 @@ subroutine StochasticInit(stochastic,option)
   character(len=MAXSTRINGLENGTH) :: filename
   type(input_type), pointer :: input
   PetscErrorCode :: ierr
+  
+  call StochasticReadCardFromInput(stochastic,option)
 
   ! query user for number of communicator groups and realizations
   string = '-num_groups'
@@ -94,7 +97,7 @@ subroutine StochasticInit(stochastic,option)
     stochastic%num_realizations = 1
   endif
   
-  call SimulationCreateProcessorGroups(option,stochastic%num_groups)
+  call InitCreateProcessorGroups(option,stochastic%num_groups)
   
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -126,6 +129,43 @@ subroutine StochasticInit(stochastic,option)
   endif
 
 end subroutine StochasticInit
+
+! ************************************************************************** !
+!
+! StochasticReadCardFromInput: Reads stochastic card from input file
+! author: Glenn Hammond
+! date: 02/04/09
+!
+! ************************************************************************** !
+subroutine StochasticReadCardFromInput(stochastic,option)
+
+  use Option_module
+  use Input_module
+  use Stochastic_Aux_module
+
+  implicit none
+  
+  type(stochastic_type) :: stochastic
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input
+  PetscBool :: print_warning
+  
+  input => InputCreate(IN_UNIT,option%input_filename,option)
+
+  ! MODE information
+  string = "STOCHASTIC"
+  print_warning = PETSC_FALSE
+  call InputFindStringInFile(input,option,string,print_warning)
+
+  if (.not.InputError(input)) then
+    call StochasticRead(stochastic,input,option)
+  endif
+  
+  call InputDestroy(input)
+
+end subroutine StochasticReadCardFromInput
 
 ! ************************************************************************** !
 !
@@ -161,11 +201,6 @@ subroutine StochasticRun(stochastic,option)
   PetscErrorCode :: ierr
   PetscInt :: status
   
-  call OptionCheckCommandLine(option)
-
-  ! moved outside due to errors when allocating/deallocating  over and over
-  call LoggingCreate()
-
   do irealization = 1, stochastic%num_local_realizations
 
     call OptionInitRealization(option)
@@ -251,9 +286,6 @@ subroutine StochasticRun(stochastic,option)
 
   enddo
   
-  ! moved outside due to errors when allocating/deallocating  over and over
-  call LoggingDestroy()
-    
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun

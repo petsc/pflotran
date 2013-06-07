@@ -189,8 +189,14 @@ module Option_module
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
+    
+    PetscInt :: simulation_type
 
   end type option_type
+  
+  PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
+  PetscInt, parameter, public :: MULTISIMULATION_SIM_TYPE = 2
+  PetscInt, parameter, public :: STOCHASTIC_SIM_TYPE = 3
   
   interface printMsg
     module procedure printMsg1
@@ -319,6 +325,8 @@ subroutine OptionInitAll(option)
   option%use_upwinding = PETSC_TRUE
 
   option%out_of_table = PETSC_FALSE
+  
+  option%simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)
 
@@ -341,7 +349,7 @@ subroutine OptionInitRealization(option)
   ! These variables should be initialized once at the beginning of every 
   ! PFLOTRAN realization or simulation of a single realization
     
-  option%fid_out = 0
+  option%fid_out = OUT_UNIT
 
   option%iflag = 0
   option%io_buffer = ''
@@ -568,12 +576,6 @@ subroutine OptionCheckCommandLine(option)
                            option_found, ierr)
   if (option_found) option%flowmode = "flash2"                           
  
- 
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
-                          temp_int,option_found, ierr)
-  if (option_found) option%id = temp_int
-
 end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !

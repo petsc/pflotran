@@ -47,7 +47,7 @@ end function StochasticCreate
 
 ! ************************************************************************** !
 !
-! DebugReadPflow: Reads debugging data from the input file
+! StochasticRead: Reads debugging data from the input file
 ! author: Glenn Hammond
 ! date: 02/04/09
 !
