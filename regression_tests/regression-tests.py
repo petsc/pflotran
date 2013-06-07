@@ -78,6 +78,7 @@ class RegressionTest(object):
         self._input_arg = "-input_prefix"
         self._input_suffix = "in"
         self._np = None
+        self._pflotran_args = None
         self._timeout = 60.0
         self._check_performance = False
         self._num_failed = 0
@@ -161,6 +162,12 @@ class RegressionTest(object):
         if self._input_arg is not None:
             command.append(self._input_arg)
             command.append(self.name())
+
+        if self._pflotran_args is not None:
+            # assume that we already called split() on the
+            # pflotran_args string. That will always return a list (it
+            # may be empty)
+            command = command + self._pflotran_args
 
         if os.path.isfile(self.name() + ".regression"):
             os.rename(self.name() + ".regression",
@@ -584,6 +591,10 @@ class RegressionTest(object):
         Set the test criteria for different categories of variables.
         """
         self._np = test_data.pop('np', None)
+
+        self._pflotran_args = test_data.pop('pflotran_args', None)
+        if self._pflotran_args is not None:
+            self._pflotran_args = self._pflotran_args.split()
 
         self._check_performance = check_performance
 
