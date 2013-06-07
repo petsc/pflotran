@@ -751,7 +751,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 
   geomech_grid%ao_natural_to_petsc_nodes = ao_natural_to_petsc_nodes
   
-  
   ! The following is for re-ordering of local ghosted numbering such that 
   ! the first nlmax_node values are local nodes and the rest are ghost nodes
   allocate(int_array(geomech_grid%ngmax_node))

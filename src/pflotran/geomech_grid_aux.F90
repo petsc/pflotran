@@ -738,8 +738,8 @@ subroutine GMGridDestroy(geomech_grid)
   call DeallocateArray(geomech_grid%node_ids_local_natural)
   call DeallocateArray(geomech_grid%ghosted_node_ids_natural)
   call DeallocateArray(geomech_grid%ghosted_node_ids_petsc)
-  if (geomech_grid%ao_natural_to_petsc /= 0) &
-    call AODestroy(geomech_grid%ao_natural_to_petsc,ierr)
+!  if (geomech_grid%ao_natural_to_petsc /= 0) &
+!    call AODestroy(geomech_grid%ao_natural_to_petsc,ierr) ! Already destroyed in UGridDestroy
   if (geomech_grid%ao_natural_to_petsc_nodes /= 0) &
     call AODestroy(geomech_grid%ao_natural_to_petsc_nodes,ierr)
   

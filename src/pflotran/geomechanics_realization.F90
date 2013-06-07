@@ -43,6 +43,7 @@ private
 
 public :: GeomechRealizCreate, &
           GeomechRealizDestroy, &
+          GeomechRealizAddStrata, &
           GeomechRealizCreateDiscretization
 
 contains
@@ -89,9 +90,41 @@ end function GeomechRealizCreate
 
 ! ************************************************************************** !
 !
+! GeomechRealizAddStrata: Adds strata to a list
+! author: Satish Karra, LANL
+! date: 05/23/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizAddStrata(geomech_realization,strata)
+
+  use Geomechanics_Strata_module
+
+  implicit none
+  
+  type(geomech_realization_type)          :: geomech_realization
+  type(geomech_strata_type), pointer      :: strata
+  
+  type(geomech_patch_type), pointer       :: geomech_patch
+  type(geomech_strata_type), pointer      :: new_strata
+  
+  geomech_patch => geomech_realization%geomech_patch
+
+  if (.not.associated(geomech_patch)) return
+ 
+  new_strata => GeomechStrataCreate(strata)
+  call GeomechStrataAddToList(new_strata,geomech_patch%geomech_strata)
+  nullify(new_strata)
+  
+  call GeomechStrataDestroy(strata)
+ 
+end subroutine GeomechRealizAddStrata
+
+
+! ************************************************************************** !
+!
 ! GeomechRealizCreateDiscretization: Creates grid
-! author: Glenn Hammond
-! date: 02/22/08
+! author: Satish Karra, LANL
+! date: 05/23/13
 !
 ! ************************************************************************** !
 subroutine GeomechRealizCreateDiscretization(realization)
@@ -177,7 +210,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   nullify(geomech_realization%geomech_material_property_array)
   call GeomechanicsMaterialPropertyDestroy(geomech_realization% &
                                            geomech_material_properties)
-                                           
+  call GeomechanicsPatchDestroy(geomech_realization%geomech_patch)                                       
   call GeomechDiscretizationDestroy(geomech_realization%discretization)
   
 end subroutine GeomechRealizDestroy

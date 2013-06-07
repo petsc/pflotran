@@ -5,8 +5,8 @@ module Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Material_module
   use Geomechanics_Grid_Aux_module
-  use Region_module
-  use Strata_module
+  use Geomechanics_Region_module
+  use Geomechanics_Strata_module
   
   implicit none
   
@@ -21,6 +21,8 @@ module Geomechanics_Patch_module
     type(geomech_material_property_type), pointer :: geomech_material_properties
     type(geomech_material_property_ptr_type),&
        pointer :: geomech_material_property_array(:)
+    type(geomech_strata_list_type), pointer :: geomech_strata
+    type(gm_region_list_type), pointer :: geomech_regions
   end type geomech_patch_type
 
 
@@ -53,6 +55,12 @@ function GeomechanicsPatchCreate()
   nullify(patch%geomech_material_properties)
   nullify(patch%geomech_material_property_array)
   
+  allocate(patch%geomech_strata)
+  call GeomechStrataInitList(patch%geomech_strata)
+
+  allocate(patch%geomech_regions)
+  call GeomechRegionInitList(patch%geomech_regions)
+  
   GeomechanicsPatchCreate => patch
   
 end function GeomechanicsPatchCreate
@@ -72,14 +80,15 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
   if (associated(geomech_patch%imat)) deallocate(geomech_patch%imat)
   nullify(geomech_patch%imat)
   
-  call GMGridDestroy(geomech_patch%geomech_grid)
-  
   if (associated(geomech_patch%geomech_material_property_array)) &
     deallocate(geomech_patch%geomech_material_property_array)
   nullify(geomech_patch%geomech_material_property_array)
-    if (associated(geomech_patch%geomech_material_properties)) &
+  if (associated(geomech_patch%geomech_material_properties)) &
     deallocate(geomech_patch%geomech_material_properties)
   nullify(geomech_patch%geomech_material_properties)
+
+  call GeomechStrataDestroyList(geomech_patch%geomech_strata)
+  call GeomechRegionDestroyList(geomech_patch%geomech_regions)
 
   deallocate(geomech_patch)
   nullify(geomech_patch)

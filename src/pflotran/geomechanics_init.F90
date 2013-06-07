@@ -124,6 +124,8 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Material_module
   use Geomechanics_Region_module
+  use Geomechanics_Debug_module
+  use Geomechanics_Strata_module
   use Solver_module
   use Waypoint_module
 
@@ -141,7 +143,8 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(waypoint_type), pointer                 :: waypoint
   type(geomech_grid_type), pointer             :: grid
   type(gm_region_type), pointer                :: region
-
+  type(geomech_debug_type), pointer            :: debug
+  type(geomech_strata_type), pointer      :: strata
   
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXWORDLENGTH)                 :: card
@@ -206,8 +209,19 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         select case(word)
           case('GEOMECHANICS')
             call SolverReadNewton(geomech_solver,input,option)
-        end select        
-             
+        end select     
+        
+      !.........................................................................
+      case ('GEOMECHANICS_DEBUG')
+        call GeomechDebugRead(geomech_realization%debug,input,option)       
+        
+       !.........................................................................
+      case ('GEOMECHANICS_STRATIGRAPHY','GEOMECHANICS_STRATA')
+        strata => GeomechStrataCreate()
+        call GeomechStrataRead(strata,input,option)
+        call GeomechRealizAddStrata(geomech_realization,strata)
+        nullify(strata)       
+        
       !.........................................................................
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
