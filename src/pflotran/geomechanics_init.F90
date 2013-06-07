@@ -122,9 +122,10 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
-  use Waypoint_module
   use Geomechanics_Material_module
+  use Geomechanics_Region_module
   use Solver_module
+  use Waypoint_module
 
   ! Still need to add other geomech modules for output, etc once created
   
@@ -139,6 +140,8 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(geomech_material_property_type),pointer :: geomech_material_property
   type(waypoint_type), pointer                 :: waypoint
   type(geomech_grid_type), pointer             :: grid
+  type(gm_region_type), pointer                :: region
+
   
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXWORDLENGTH)                 :: card
@@ -183,6 +186,18 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call GeomechanicsMaterialPropertyAddToList(geomech_material_property, &
                                 geomech_realization%geomech_material_properties)
         nullify(geomech_material_property)
+
+      !.........................................................................
+      case ('GEOMECHANICS_REGION')
+        region => GeomechRegionCreate()
+        call InputReadWord(input,option,region%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','GEOMECHANICS_REGION')
+        call printMsg(option,region%name)
+        call GeomechRegionRead(region,input,option)
+        ! we don't copy regions down to patches quite yet, since we
+        ! don't want to duplicate IO in reading the regions
+        call GeomechRegionAddToList(region,geomech_realization%geomech_regions)
+        nullify(region)
         
       !.........................................................................
       case('NEWTON_SOLVER')

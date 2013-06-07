@@ -352,6 +352,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   PetscBool                         :: continuation_flag
   character(len=MAXWORDLENGTH)      :: word
   character(len=1)                  :: backslash
+  character(len=MAXSTRINGLENGTH)    :: string, string1
 
   PetscInt, pointer :: temp_int_array(:)
   PetscInt, pointer :: vertex_ids(:)
@@ -428,7 +429,20 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
    call printErrMsg(option) 
   endif
   
-  deallocate(temp_int_array) 
+  deallocate(temp_int_array)
+  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  write(string1,*) region%name
+  string = 'geomech_region_' // trim(adjustl(string1)) // '_vertex_ids' &
+    // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ii = 1, region%num_verts
+    write(86,'(i5)') region%vertex_ids(ii)
+  enddo  
+  close(86)
+#endif    
+    
 
   call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
 

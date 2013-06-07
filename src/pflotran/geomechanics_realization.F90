@@ -11,6 +11,8 @@ module Geomechanics_Realization_module
   use Geomechanics_Field_module
   use Geomechanics_Debug_module
   use Output_Aux_module
+  use Geomechanics_Region_module
+
  
   implicit none
   
@@ -34,6 +36,8 @@ private
     type(geomech_field_type), pointer :: geomech_field
     type(geomech_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
+    type(gm_region_list_type), pointer :: geomech_regions
+
 
   end type geomech_realization_type
 
@@ -70,6 +74,9 @@ function GeomechRealizCreate(option)
   geomech_realization%discretization => GeomechDiscretizationCreate()
   
   geomech_realization%geomech_field => GeomechFieldCreate()
+  
+  allocate(geomech_realization%geomech_regions)
+  call GeomechRegionInitList(geomech_realization%geomech_regions)
 
   nullify(geomech_realization%geomech_material_properties)
   nullify(geomech_realization%geomech_material_property_array)
@@ -163,14 +170,16 @@ subroutine GeomechRealizDestroy(geomech_realization)
   
   call GeomechFieldDestroy(geomech_realization%geomech_field)
   
+  call GeomechRegionDestroyList(geomech_realization%geomech_regions)
+  
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)
   nullify(geomech_realization%geomech_material_property_array)
   call GeomechanicsMaterialPropertyDestroy(geomech_realization% &
                                            geomech_material_properties)
+                                           
   call GeomechDiscretizationDestroy(geomech_realization%discretization)
   
-
 end subroutine GeomechRealizDestroy
 
 end module Geomechanics_Realization_module
