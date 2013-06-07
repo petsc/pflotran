@@ -208,6 +208,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Structured_Grid_module
   use Unstructured_Grid_module
   use Dataset_Base_class
+  use Dataset_Common_HDF5_class
   use Unstructured_Grid_Aux_module
   use Discretization_module
   use Region_module
@@ -238,7 +239,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   type(flow_condition_type), pointer           :: flow_condition
   type(coupler_type), pointer                  :: coupler
   type(strata_type), pointer                   :: strata
-  type(dataset_base_type), pointer             :: dataset
+  class(dataset_base_type), pointer            :: dataset
 
   type(patch_type), pointer                    :: patch
   type(output_option_type), pointer            :: output_option

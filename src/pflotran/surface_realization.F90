@@ -42,7 +42,7 @@ private
     character(len=MAXSTRINGLENGTH)                    :: surf_filename
     character(len=MAXSTRINGLENGTH)                    :: subsurf_filename
 
-    type(dataset_type), pointer                       :: datasets
+    class(dataset_base_type), pointer :: datasets
     
     PetscReal :: dt_max
     PetscReal :: dt_min
@@ -369,6 +369,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   use Coupler_module
   use Discretization_module
   use Unstructured_Cell_module
+  use DM_Kludge_module
   
   implicit none
 
@@ -628,7 +629,7 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
   type(option_type), pointer             :: option
   character(len=MAXSTRINGLENGTH)         :: string
   character(len=MAXWORDLENGTH)           :: dataset_name
-  type(dataset_type), pointer            :: dataset
+  class(dataset_base_type), pointer      :: dataset
   PetscInt                               :: i
   
   option => surf_realization%option
@@ -655,8 +656,8 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
               DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
             cur_surf_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
               dataset
-            call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
-                             option)
+            !call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
+            !                 option)
           endif
           if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
                           datum%dataset)) then
@@ -671,7 +672,7 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
               DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
             cur_surf_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
               dataset
-            call DatasetXYZLoad(dataset,option)
+            !call DatasetXYZLoad(dataset,option)
           endif
           if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
                           gradient%dataset)) then
@@ -683,11 +684,11 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
             dataset => &
-              DatasetGetPointer(surf_realization%datasets,dataset_name,string,option)
+              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
             cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
               dataset
-            call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
-                             option)
+            !call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
+            !                 option)
           endif
         enddo
       case default
@@ -1068,6 +1069,7 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   use Unstructured_Grid_module
   use Discretization_module
   use Unstructured_Grid_Aux_module
+  use DM_Kludge_module
 
   implicit none
   
