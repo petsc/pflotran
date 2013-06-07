@@ -641,16 +641,16 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   call h5pclose_f(prop_id, hdf5_err)
   
   !
-  ! Domain/Cells
+  ! Regions/top
   !
   
   ! Open group
-  group_name = "Domain"
+  group_name = "Regions"
   option%io_buffer = 'Opening group: ' // trim(group_name)
   call printMsg(option)
 
   ! Open dataset
-  call h5dopen_f(file_id, "Region/top", data_set_id, hdf5_err)
+  call h5dopen_f(file_id, "Regions/top", data_set_id, hdf5_err)
 
   ! Get dataset's dataspace
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)

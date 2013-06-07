@@ -196,6 +196,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
   use Connection_module
   use Surface_Realization_class
   use Realization_Base_class
+  use DM_Kludge_module
 
   implicit none
   
@@ -320,6 +321,7 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
+  use DM_Kludge_module
 
   implicit none
   
@@ -437,6 +439,7 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
+  use DM_Kludge_module
 
   implicit none
   
@@ -546,6 +549,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   use Saturation_Function_module
   use Surface_Realization_class
   use Realization_Base_class
+  use DM_Kludge_module
   
   implicit none
   
@@ -755,6 +759,7 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
   use Connection_module
   use Surface_Realization_class
   use Realization_Base_class
+  use DM_Kludge_module
 
   implicit none
   
