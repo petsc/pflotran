@@ -11,7 +11,7 @@ module Region_module
   PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2
 
-  type, public :: block_type
+  type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
     type(block_type), pointer :: next
   end type block_type

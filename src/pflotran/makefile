@@ -352,7 +352,8 @@ geomech_obj = \
   ${common_src}geomechanics_material.o \
   ${common_src}geomechanics_patch.o \
   ${common_src}geomechanics_field.o \
-  ${common_src}geomechanics_debug.o  
+  ${common_src}geomechanics_debug.o \
+  ${common_src}geomechanics_region.o  
 
 # End Source Block
 
@@ -486,6 +487,7 @@ geomechanics_realization.o : geomech_grid_aux.o geomechanics_debug.o \
                              geomechanics_field.o geomechanics_material.o \
                              geomechanics_patch.o input.o option.o \
                              output_aux.o waypoint.o
+geomechanics_region.o : geometry.o
 geometry.o : input.o option.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
            level.o option.o patch.o realization.o realization_base.o \
