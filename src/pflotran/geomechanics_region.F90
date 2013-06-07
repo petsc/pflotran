@@ -12,12 +12,9 @@ module Geomechanics_Region_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXSTRINGLENGTH) :: filename
-    PetscInt :: i1,i2,j1,j2,k1,k2
     type(point3d_type), pointer :: coordinates(:)
-    PetscInt :: iface
     PetscInt :: num_verts 
     PetscInt, pointer :: vertex_ids(:) 
-    type(gm_region_vset_type), pointer :: vset
     type(gm_region_type), pointer :: next
   end type gm_region_type
   
@@ -31,13 +28,8 @@ module Geomechanics_Region_module
     type(gm_region_type), pointer :: last
     type(gm_region_type), pointer :: array(:)
   end type gm_region_list_type
-  
-  type, public :: gm_region_vset_type   ! vset implies vertex set
-    PetscInt, pointer :: vertex_ids(:)
-  end type gm_region_vset_type 
 
   interface GeomechRegionCreate
-    module procedure GeomechRegionCreateWithBlock
     module procedure GeomechRegionCreateWithList
     module procedure GeomechRegionCreateWithNothing
   end interface GeomechRegionCreate
@@ -78,76 +70,14 @@ function GeomechRegionCreateWithNothing()
   region%id = 0
   region%name = ""
   region%filename = ""
-  region%i1 = 0
-  region%i2 = 0
-  region%j1 = 0
-  region%j2 = 0
-  region%k1 = 0
-  region%k2 = 0
-  region%iface = 0
   region%num_verts = 0
   nullify(region%coordinates)
   nullify(region%vertex_ids)
-  nullify(region%vset)
   nullify(region%next)
   
   GeomechRegionCreateWithNothing => region
 
 end function GeomechRegionCreateWithNothing
-
-! ************************************************************************** !
-!
-! GeomechRegionCreateVSet: Creates a vertex set
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
-function GeomechRegionCreateVSet()
-
-  implicit none
-  
-  type(gm_region_vset_type), pointer     :: GeomechRegionCreateVSet
-  
-  type(gm_region_vset_type), pointer     :: vset
-  
-  allocate(vset)
-  nullify(vset%vertex_ids)
-  
-  GeomechRegionCreateVSet => vset
-
-end function GeomechRegionCreateVSet  
-
-! ************************************************************************** !
-!
-! GeomechRegionCreateWithBlock: Creates a region with i,j,k indices for 
-!                               arguments
-! author: Satish Karra, LANL
-! date: 06/06/13
-!
-! ************************************************************************** !
-function GeomechRegionCreateWithBlock(i1,i2,j1,j2,k1,k2)
-
-  implicit none
-  
-  PetscInt :: i1, i2, j1, j2, k1, k2
-  
-  type(gm_region_type), pointer        :: GeomechRegionCreateWithBlock
-
-  type(gm_region_type), pointer        :: region
-  
-  region => GeomechRegionCreateWithNothing()
-  region%i1 = i1
-  region%i2 = i2
-  region%j1 = j2
-  region%j2 = j2
-  region%k1 = k1
-  region%k2 = k2
-  region%num_verts = (abs(i2-i1)+1)*(abs(j2-j1)+1)* &
-                                    (abs(k2-k1)+1)
-                                    
-  GeomechRegionCreateWithBlock => region                                    
-
-end function GeomechRegionCreateWithBlock
 
 ! ************************************************************************** !
 !
@@ -250,25 +180,6 @@ subroutine GeomechRegionRead(region,input,option)
     call StringToUpper(keyword)   
 
     select case(trim(keyword))
-      case('BLOCK')
-        call InputReadInt(input,option,region%i1) 
-        if (InputError(input)) then
-          input%ierr = 0
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'GEOMECHANICS_REGION')
-          call InputReadInt(input,option,region%i1) 
-        endif
-        call InputErrorMsg(input,option,'i1','GEOMECHANICS_REGION')
-        call InputReadInt(input,option,region%i2)
-        call InputErrorMsg(input,option,'i2','GEOMECHANICS_REGION')
-        call InputReadInt(input,option,region%j1)
-        call InputErrorMsg(input,option,'j1','GEOMECHANICS_REGION')
-        call InputReadInt(input,option,region%j2)
-        call InputErrorMsg(input,option,'j2','GEOMECHANICS_REGION')
-        call InputReadInt(input,option,region%k1)
-        call InputErrorMsg(input,option,'k1','GEOMECHANICS_REGION')
-        call InputReadInt(input,option,region%k2)
-        call InputErrorMsg(input,option,'k2','GEOMECHANICS_REGION')
       case('COORDINATE')
         allocate(region%coordinates(1))
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
@@ -539,8 +450,6 @@ subroutine GeomechRegionDestroy(region)
   nullify(region%vertex_ids)
   if (associated(region%coordinates)) deallocate(region%coordinates)
   nullify(region%coordinates)
-  if (associated(region%vset)) deallocate(region%vset)
-  nullify(region%vset) 
   
   nullify(region%next)
 

@@ -477,17 +477,19 @@ geomechanics_discretization.o : geomech_grid.o geomech_grid_aux.o option.o
 geomechanics_field.o :
 geomechanics_init.o : geomech_grid.o geomech_grid_aux.o \
                       geomechanics_discretization.o geomechanics_material.o \
-                      geomechanics_patch.o geomechanics_realization.o input.o \
-                      option.o patch.o solver.o string.o waypoint.o
+                      geomechanics_patch.o geomechanics_realization.o \
+                      geomechanics_region.o input.o option.o patch.o solver.o \
+                      string.o waypoint.o
 geomechanics_material.o : input.o option.o string.o
 geomechanics_patch.o : geomech_grid.o geomech_grid_aux.o \
                        geomechanics_material.o option.o region.o strata.o
 geomechanics_realization.o : geomech_grid_aux.o geomechanics_debug.o \
                              geomechanics_discretization.o \
                              geomechanics_field.o geomechanics_material.o \
-                             geomechanics_patch.o input.o option.o \
-                             output_aux.o waypoint.o
-geomechanics_region.o : geometry.o
+                             geomechanics_patch.o geomechanics_region.o \
+                             input.o option.o output_aux.o waypoint.o
+geomechanics_region.o : geometry.o input.o logging.o option.o string.o \
+                        unstructured_cell.o utility.o
 geometry.o : input.o option.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
            level.o option.o patch.o realization.o realization_base.o \
