@@ -27,6 +27,7 @@ module Geomechanics_Patch_module
 
 
   public :: GeomechanicsPatchCreate, &
+            GeomechPatchLocalizeRegions, &
             GeomechanicsPatchDestroy
 
 contains
@@ -64,6 +65,41 @@ function GeomechanicsPatchCreate()
   GeomechanicsPatchCreate => patch
   
 end function GeomechanicsPatchCreate
+
+! ************************************************************************** !
+!
+! GeomechPatchLocalizeRegions: Localizes regions within each patch
+! author: Glenn Hammond
+! date: 02/22/08
+!
+! ************************************************************************** !
+subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
+
+  use Option_module
+  use Geomechanics_Region_module
+
+  implicit none
+  
+  type(geomech_patch_type)           :: geomech_patch
+  type(gm_region_list_type)          :: regions
+  type(option_type)                  :: option
+  
+  type(gm_region_type), pointer      :: cur_region
+  type(gm_region_type), pointer      :: patch_region
+  
+  cur_region => regions%first
+  do
+    if (.not.associated(cur_region)) exit
+    patch_region => GeomechRegionCreate(cur_region)
+    call GeomechRegionAddToList(patch_region,geomech_patch%geomech_regions)
+    cur_region => cur_region%next
+  enddo
+  
+ ! Need a call to a subroutine similar to GridlocalizeRegions 
+ ! call GridLocalizeRegions(patch%grid,patch%regions,option)
+ 
+end subroutine GeomechPatchLocalizeRegions
+
 
 ! ************************************************************************** !
 !

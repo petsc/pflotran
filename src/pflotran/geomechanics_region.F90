@@ -32,6 +32,7 @@ module Geomechanics_Region_module
   interface GeomechRegionCreate
     module procedure GeomechRegionCreateWithList
     module procedure GeomechRegionCreateWithNothing
+    module procedure GeomechRegionCreateWithGeomechRegion
   end interface GeomechRegionCreate
   
   interface GeomechRegionReadFromFile
@@ -104,6 +105,45 @@ function GeomechRegionCreateWithList(list)
   GeomechRegionCreateWithList => region
 
 end function GeomechRegionCreateWithList
+
+! ************************************************************************** !
+!
+! GeomechRegionCreateWithGeomechRegion: Creates a copy of a region
+! author: Satish Karra, LANL
+! date: 06/06/13
+!
+! ************************************************************************** !
+function GeomechRegionCreateWithGeomechRegion(region)
+
+  use Unstructured_Cell_module
+
+  implicit none
+  
+  type(gm_region_type), pointer     :: GeomechRegionCreateWithGeomechRegion
+  type(gm_region_type), pointer     :: region
+  
+  type(gm_region_type), pointer     :: new_region
+  PetscInt                          :: icount, temp_int
+  
+  new_region => GeomechRegionCreateWithNothing()
+  
+  new_region%id = region%id
+  new_region%name = region%name
+  new_region%filename = region%filename
+  new_region%num_verts = region%num_verts
+  if (associated(region%coordinates)) then
+    call GeometryCopyCoordinates(region%coordinates, &
+                                 new_region%coordinates)
+  endif
+  if (associated(region%vertex_ids)) then
+    allocate(new_region%vertex_ids(new_region%num_verts))
+    new_region%vertex_ids(1:new_region%num_verts) = &
+    region%vertex_ids(1:new_region%num_verts)
+  endif
+ 
+  GeomechRegionCreateWithGeomechRegion => new_region
+  
+end function GeomechRegionCreateWithGeomechRegion
 
 ! ************************************************************************** !
 !

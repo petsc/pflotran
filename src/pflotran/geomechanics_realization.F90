@@ -44,6 +44,7 @@ private
 public :: GeomechRealizCreate, &
           GeomechRealizDestroy, &
           GeomechRealizAddStrata, &
+          GeomechRealizLocalizeRegions, &
           GeomechRealizCreateDiscretization
 
 contains
@@ -119,6 +120,34 @@ subroutine GeomechRealizAddStrata(geomech_realization,strata)
  
 end subroutine GeomechRealizAddStrata
 
+! ************************************************************************** !
+!
+! GeomechRealizLocalizeRegions: This routine localizes geomechanics regions
+!                               within each patch
+! author: Satish Karra, LANL
+! date: 06/07/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizLocalizeRegions(geomech_realization)
+
+  use Option_module
+  use String_module
+
+  implicit none
+  
+  type(geomech_realization_type)               :: geomech_realization
+  type(geomech_patch_type), pointer            :: cur_patch
+  type(option_type), pointer                   :: option
+
+  option => geomech_realization%option
+
+  ! localize the regions on each patch
+  cur_patch => geomech_realization%geomech_patch
+  call GeomechPatchLocalizeRegions(cur_patch, &
+                                   geomech_realization%geomech_regions, &
+                                   option)
+                                   
+end subroutine GeomechRealizLocalizeRegions
 
 ! ************************************************************************** !
 !

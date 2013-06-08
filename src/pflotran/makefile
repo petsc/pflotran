@@ -490,7 +490,7 @@ geomechanics_realization.o : geomech_grid_aux.o geomechanics_debug.o \
                              geomechanics_field.o geomechanics_material.o \
                              geomechanics_patch.o geomechanics_region.o \
                              geomechanics_strata.o input.o option.o \
-                             output_aux.o waypoint.o
+                             output_aux.o string.o waypoint.o
 geomechanics_region.o : geometry.o input.o logging.o option.o string.o \
                         unstructured_cell.o utility.o
 geomechanics_strata.o : geomechanics_material.o geomechanics_region.o input.o \
