@@ -23,7 +23,6 @@ contains
 subroutine PFLOTRANInitialize(option)
 
   use Option_module
-  use Logging_module
   
   implicit none
   
@@ -65,6 +64,8 @@ subroutine PFLOTRANRun(option)
 
   PetscInt :: init_status
   
+  call OptionBeginTiming(option)
+
   simulation => SimulationCreate(option)
   call Init(simulation)
 
@@ -120,6 +121,8 @@ subroutine PFLOTRANRun(option)
 ! Clean things up.
   call SimulationDestroy(simulation)
   
+  call OptionEndTiming(option)
+  
 end subroutine PFLOTRANRun
 
 ! ************************************************************************** !
@@ -132,17 +135,14 @@ end subroutine PFLOTRANRun
 subroutine PFLOTRANFinalize(option)
 
   use Option_module
-  use Logging_module
   
   implicit none
   
   type(option_type), pointer :: option
   
-  call OptionEndLogging(option)
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif
-  call OptionFinalize(option)
 
 end subroutine PFLOTRANFinalize
 

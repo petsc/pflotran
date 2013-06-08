@@ -178,6 +178,7 @@ subroutine StochasticRun(stochastic,option)
   use Option_module
   use Init_module
   use PFLOTRAN_Factory_module
+  use Logging_module
 
   implicit none
 
@@ -193,10 +194,10 @@ subroutine StochasticRun(stochastic,option)
   PetscInt :: status
   
   call OptionInitPetsc(option)
-  
+  call LoggingCreate()
+
   do irealization = 1, stochastic%num_local_realizations
 
-    call OptionBeginLogging(option)
     call OptionInitRealization(option)
 
     ! Set group prefix based on id
@@ -231,6 +232,7 @@ subroutine StochasticRun(stochastic,option)
 
   enddo
   
+  call LoggingDestroy()
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun

@@ -246,8 +246,8 @@ module Option_module
             OptionInitPETSc, &
             OptionDivvyUpSimulations, &
             OptionCreateProcessorGroups, &
-            OptionBeginLogging, &
-            OptionEndLogging, &
+            OptionBeginTiming, &
+            OptionEndTiming, &
             OptionFinalize, &
             OptionDestroy
 
@@ -1018,18 +1018,18 @@ subroutine OptionInitPETSc(option)
     call PetscLogBegin(ierr)
     string = '-log_summary'
     call PetscOptionsInsertString(string, ierr)
-  endif  
+  endif 
   
 end subroutine OptionInitPETSc
 
 ! ************************************************************************** !
 !
-! OptionBeginLogging: Initialization logging including PETSc logging.
+! OptionBeginTiming: Start outer timing.
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine OptionBeginLogging(option)
+subroutine OptionBeginTiming(option)
 
   use Logging_module
   
@@ -1042,20 +1042,19 @@ subroutine OptionBeginLogging(option)
   PetscLogDouble :: timex_wall
   PetscErrorCode :: ierr
   
-  call LoggingCreate()
   call PetscTime(timex_wall, ierr)
   option%start_time = timex_wall
   
-end subroutine OptionBeginLogging
+end subroutine OptionBeginTiming
 
 ! ************************************************************************** !
 !
-! OptionEndLogging: Destroy logging including PETSc logging.
+! OptionEndTiming: End timing.
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine OptionEndLogging(option)
+subroutine OptionEndTiming(option)
 
   use Logging_module
   
@@ -1089,9 +1088,7 @@ subroutine OptionEndLogging(option)
     endif
   endif
 
-  call LoggingDestroy()
-  
-end subroutine OptionEndLogging
+end subroutine OptionEndTiming
 
 ! ************************************************************************** !
 !
@@ -1178,6 +1175,8 @@ end subroutine OptionCreateProcessorGroups
 !
 ! ************************************************************************** !
 subroutine OptionFinalize(option)
+
+  use Logging_module
 
   implicit none
   

@@ -44,6 +44,7 @@ program pflotran
   use Stochastic_module
   use Stochastic_Aux_module
   use PFLOTRAN_Factory_module
+  use Logging_module
   
   implicit none
 
@@ -70,10 +71,12 @@ program pflotran
         nullify(filenames)
       endif
       call OptionInitPetsc(option)
-      call OptionBeginLogging(option)
+      call LoggingCreate()
       call PFLOTRANRun(option)
+      call PFLOTRANFinalize(option)
+      call LoggingDestroy()
   end select
 
-  call PFLOTRANFinalize(option)
+  call OptionFinalize(option)
 
 end program pflotran
