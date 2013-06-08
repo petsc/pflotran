@@ -43,6 +43,7 @@ STANDARD_CFG = \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
+	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)

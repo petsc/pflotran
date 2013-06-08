@@ -79,6 +79,7 @@ class RegressionTest(object):
         self._input_suffix = "in"
         self._np = None
         self._pflotran_args = None
+        self._stochastic_realizations = None
         self._timeout = 60.0
         self._check_performance = False
         self._num_failed = 0
@@ -112,14 +113,14 @@ class RegressionTest(object):
         return message
 
     def setup(self, executable_args, default_criteria, test_data,
-              timeout, check_performance):
+              timeout, check_performance, testlog):
         self._test_name = test_data["name"]
 
         if executable_args is not None:
             self._set_executable_args(executable_args)
 
         self._set_test_data(default_criteria, test_data,
-                            timeout, check_performance)
+                            timeout, check_performance, testlog)
 
     def name(self):
         return self._test_name
@@ -220,13 +221,31 @@ class RegressionTest(object):
 
     def check(self, status, testlog):
         """
+        Check the test results against the gold standard
+
+        Some tests generate multiple regression files, i.e. stochastic
+        realizations. In that case, we need to loop over a group of
+        regression files.
+        """
+        run_id = ''
+        if self._stochastic_realizations is not None:
+            print("\n    {0} : Test has {1} stochastic realizations\n".format(
+                self.name(), self._stochastic_realizations), file=testlog)
+            for i in range(1, self._stochastic_realizations + 1):
+                run_id = "R{0}".format(i)
+                self._check_gold(status, run_id, testlog)
+        else:
+            self._check_gold(status, run_id, testlog)
+
+    def _check_gold(self, status, run_id, testlog):
+        """
         Test the output from the run against the known "gold standard"
         output and determine if the test succeeded or failed.
 
         We return zero on success, one on failure so that the test
         manager can track how many tests succeeded and failed.
         """
-        gold_filename = self.name() + ".regression.gold"
+        gold_filename = self.name() + run_id + ".regression.gold"
         if not os.path.isfile(gold_filename):
             message = self._txtwrap.fill(
                 "FAIL: could not find regression test gold file "
@@ -239,7 +258,7 @@ class RegressionTest(object):
             with open(gold_filename, 'rU') as gold_file:
                 gold_output = gold_file.readlines()
 
-        current_filename = self.name() + ".regression"
+        current_filename = self.name() + run_id + ".regression"
         if not os.path.isfile(current_filename):
             message = self._txtwrap.fill(
                 "FAIL: could not find regression test file '{0}'."
@@ -586,15 +605,27 @@ class RegressionTest(object):
         if "input suffix" in executable_args:
             self._input_suffix = executable_args["input suffix"]
 
-    def _set_test_data(self, default_criteria, test_data, timeout, check_performance):
+    def _set_test_data(self, default_criteria, test_data, timeout,
+                       check_performance, testlog):
         """
         Set the test criteria for different categories of variables.
         """
         self._np = test_data.pop('np', None)
 
-        self._pflotran_args = test_data.pop('pflotran_args', None)
+        self._pflotran_args = test_data.pop('input_arguments', None)
         if self._pflotran_args is not None:
+            # save the arg list so we can append it to the run command
             self._pflotran_args = self._pflotran_args.split()
+            # additional processing that may change the test manager behavior
+            if "-stochastic" in self._pflotran_args:
+                if "-num_realizations" in self._pflotran_args:
+                    index = self._pflotran_args.index("-num_realizations")
+                    self._stochastic_realizations = int(self._pflotran_args[index + 1])
+                else:
+                    raise Exception("ERROR : stochastic simulations require a "
+                                    "num_realizations flag as well. "
+                                    "test : {0}".format(self.name()))
+
 
         self._check_performance = check_performance
 
@@ -712,7 +743,8 @@ class RegressionTestManager(object):
         self._validate_suites()
         user_suites, user_tests = self._validate_user_lists(user_suites,
                                                             user_tests, testlog)
-        self._create_tests(user_suites, user_tests, timeout, check_performance)
+        self._create_tests(user_suites, user_tests, timeout, check_performance,
+                           testlog)
 
     def run_tests(self, mpiexec, executable,
                   dry_run, update, new_test, check_only, testlog):
@@ -1030,7 +1062,8 @@ class RegressionTestManager(object):
 
         return u_suites, u_tests
 
-    def _create_tests(self, user_suites, user_tests, timeout, check_performance):
+    def _create_tests(self, user_suites, user_tests, timeout, check_performance,
+                      testlog):
         all_tests = user_tests
         for s in user_suites:
             for t in self._available_suites[s].split():
@@ -1040,7 +1073,8 @@ class RegressionTestManager(object):
             try:
                 test = RegressionTest()
                 test.setup(self._executable_args, self._default_test_criteria,
-                           self._available_tests[t], timeout, check_performance)
+                           self._available_tests[t], timeout, check_performance,
+                           testlog)
                 self._tests.append(test)
             except Exception as e:
                 raise Exception("ERROR : could not create test '{0}' from "
