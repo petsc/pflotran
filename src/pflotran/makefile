@@ -304,6 +304,7 @@ misc_obj = \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
 	${common_src}patch.o \
+	${common_src}pflotran_factory.o \
 	${common_src}realization.o \
 	${common_src}realization_base.o \
 	${common_src}region.o \
@@ -457,7 +458,8 @@ grid.o : connection.o logging.o mfd_aux.o option.o region.o structured_grid.o \
          unstructured_cell.o unstructured_explicit.o unstructured_grid.o \
          unstructured_grid_aux.o utility.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
-         realization.o realization_base.o region.o unstructured_cell.o
+         realization.o realization_base.o region.o unstructured_cell.o \
+         utility.o
 hdf5_aux.o : logging.o option.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \
@@ -480,12 +482,11 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          output_aux.o output_tecplot.o patch.o reaction.o reaction_aux.o \
          reactive_transport.o realization.o region.o regression.o richards.o \
          richards_mfd.o saturation_function.o secondary_continuum.o \
-         simulation.o solid_solution.o solver.o stochastic_aux.o strata.o \
-         string.o structured_grid.o surface_field.o surface_flow.o \
-         surface_global.o surface_init.o surface_realization.o surface_th.o \
-         th.o thc.o thmc.o timestepper.o uniform_velocity.o units.o \
-         unstructured_grid.o unstructured_grid_aux.o variables.o water_eos.o \
-         waypoint.o
+         simulation.o solid_solution.o solver.o strata.o string.o \
+         structured_grid.o surface_field.o surface_flow.o surface_global.o \
+         surface_init.o surface_realization.o surface_th.o th.o thc.o thmc.o \
+         timestepper.o uniform_velocity.o units.o unstructured_grid.o \
+         unstructured_grid_aux.o variables.o water_eos.o waypoint.o
 input.o : option.o string.o
 level.o : patch.o
 logging.o :
@@ -521,7 +522,7 @@ mphase_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                saturation_function.o water_eos.o
 mphase_pckr_mod.o : material.o option.o saturation_function.o
 observation.o : connection.o input.o option.o region.o string.o
-option.o :
+option.o : logging.o
 output.o : connection.o coupler.o debug.o discretization.o field.o grid.o \
            hdf5.o input.o level.o logging.o option.o output_aux.o \
            output_common.o output_hdf5.o output_observation.o output_tecplot.o \
@@ -565,9 +566,11 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           reactive_transport_aux.o region.o richards_aux.o saturation.o \
           saturation_function.o strata.o surface_auxiliary.o \
           surface_complexation_aux.o surface_field.o surface_material.o \
-          th_aux.o thc_aux.o thmc_aux.o variables.o water_eos.o
-pflotran.o : init.o input.o logging.o option.o realization.o regression.o \
-             simulation.o stochastic.o stochastic_aux.o timestepper.o
+          th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
+pflotran.o : input.o logging.o option.o pflotran_factory.o stochastic.o \
+             stochastic_aux.o
+pflotran_factory.o : init.o input.o option.o realization.o regression.o \
+                     simulation.o timestepper.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : constraint.o global_aux.o immobile.o immobile_aux.o input.o \
              microbial.o microbial_aux.o mineral.o mineral_aux.o option.o \
@@ -660,8 +663,8 @@ solid_solution.o : input.o mineral.o mineral_aux.o option.o reaction_aux.o \
 solid_solution_aux.o : mineral_aux.o
 solver.o : input.o option.o string.o
 spline.o :
-stochastic.o : init.o input.o logging.o option.o realization.o regression.o \
-               simulation.o stochastic_aux.o timestepper.o
+stochastic.o : init.o input.o logging.o option.o pflotran_factory.o \
+               simulation.o stochastic_aux.o
 stochastic_aux.o : input.o option.o simulation.o
 strata.o : input.o material.o option.o region.o string.o surface_material.o
 string.o :
