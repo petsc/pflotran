@@ -89,15 +89,15 @@ CHECK_CFG = \
 test : standard
 
 standard :
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
-		--suite standard standard_parallel \
-		--config-files $(STANDARD_CFG)
 ifeq ($(strip $(PARMETIS_LIB)),)
 	@echo "********************************************************"
 	@echo "  PFloTran does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
+	$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--suite standard standard_parallel \
+		--config-files $(STANDARD_CFG)
 
 
 standard_parallel :
