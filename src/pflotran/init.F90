@@ -14,9 +14,8 @@ module Init_module
 #include "finclude/petscpc.h"
 #include "finclude/petscts.h"
 
-
-  public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
-
+  public :: Init
+  
 contains
 
 ! ************************************************************************** !
@@ -1364,46 +1363,6 @@ subroutine Init(simulation)
 #endif  
 
 end subroutine Init
-
-! ************************************************************************** !
-!
-! InitReadStochasticCardFromInput: Reads stochastic card from input file
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
-subroutine InitReadStochasticCardFromInput(stochastic,option)
-
-  use Option_module
-  use Input_module
-  use Stochastic_Aux_module
-
-  implicit none
-  
-  type(stochastic_type), pointer :: stochastic
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  type(input_type), pointer :: input
-  PetscBool :: print_warning
-  
-  input => InputCreate(IN_UNIT,option%input_filename,option)
-
-  ! MODE information
-  string = "STOCHASTIC"
-  print_warning = PETSC_FALSE
-  call InputFindStringInFile(input,option,string,print_warning)
-
-  if (.not.InputError(input)) then
-    if (.not.associated(stochastic)) then
-      stochastic => StochasticCreate()
-    endif
-    call StochasticRead(stochastic,input,option)
-  endif
-  
-  call InputDestroy(input)
-
-end subroutine InitReadStochasticCardFromInput
 
 ! ************************************************************************** !
 !
@@ -4198,5 +4157,5 @@ subroutine InitReadVelocityField(realization)
   enddo
   
 end subroutine InitReadVelocityField
-            
+
 end module Init_module

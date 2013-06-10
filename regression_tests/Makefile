@@ -43,6 +43,7 @@ STANDARD_CFG = \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
+	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
@@ -89,15 +90,15 @@ CHECK_CFG = \
 test : standard
 
 standard :
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
-		--suite standard standard_parallel \
-		--config-files $(STANDARD_CFG)
 ifeq ($(strip $(PARMETIS_LIB)),)
 	@echo "********************************************************"
 	@echo "  PFloTran does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
+	$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--suite standard standard_parallel \
+		--config-files $(STANDARD_CFG)
 
 
 standard_parallel :

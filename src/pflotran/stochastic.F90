@@ -46,6 +46,8 @@ subroutine StochasticInit(stochastic,option)
   character(len=MAXSTRINGLENGTH) :: filename
   type(input_type), pointer :: input
   PetscErrorCode :: ierr
+  
+  call StochasticReadCardFromInput(stochastic,option)
 
   ! query user for number of communicator groups and realizations
   string = '-num_groups'
@@ -99,7 +101,11 @@ subroutine StochasticInit(stochastic,option)
     stochastic%num_realizations = 1
   endif
   
+<<<<<<< local
   call CommCreateProcessorGroups(option,stochastic%num_groups)
+=======
+  call OptionCreateProcessorGroups(option,stochastic%num_groups)
+>>>>>>> other
   
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -134,6 +140,43 @@ end subroutine StochasticInit
 
 ! ************************************************************************** !
 !
+! StochasticReadCardFromInput: Reads stochastic card from input file
+! author: Glenn Hammond
+! date: 02/04/09
+!
+! ************************************************************************** !
+subroutine StochasticReadCardFromInput(stochastic,option)
+
+  use Option_module
+  use Input_module
+  use Stochastic_Aux_module
+
+  implicit none
+  
+  type(stochastic_type) :: stochastic
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input
+  PetscBool :: print_warning
+  
+  input => InputCreate(IN_UNIT,option%input_filename,option)
+
+  ! MODE information
+  string = "STOCHASTIC"
+  print_warning = PETSC_FALSE
+  call InputFindStringInFile(input,option,string,print_warning)
+
+  if (.not.InputError(input)) then
+    call StochasticRead(stochastic,input,option)
+  endif
+  
+  call InputDestroy(input)
+
+end subroutine StochasticReadCardFromInput
+
+! ************************************************************************** !
+!
 ! StochasticRun: Runs a stochastic simulation
 ! author: Glenn Hammond
 ! date: 02/04/09
@@ -150,8 +193,8 @@ subroutine StochasticRun(stochastic,option)
   use Timestepper_module
   use Option_module
   use Init_module
+  use PFLOTRAN_Factory_module
   use Logging_module
-  use Regression_module
 
   implicit none
 
@@ -160,37 +203,35 @@ subroutine StochasticRun(stochastic,option)
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
 
-  PetscLogDouble :: timex_wall(4)
+  type(simulation_type), pointer :: simulation
+  type(stepper_type), pointer :: master_stepper
   PetscInt :: irealization
 #ifdef PROCESS_MODEL  
   class(simulation_base_type), pointer :: simulation
 #else
   type(simulation_type), pointer :: simulation
 #endif
-  type(realization_type), pointer :: realization
   type(stepper_type), pointer :: master_stepper
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: init_status
   PetscErrorCode :: ierr
   PetscInt :: status
   
-  call OptionCheckCommandLine(option)
-
-  ! moved outside due to errors when allocating/deallocating  over and over
+  call OptionInitPetsc(option)
   call LoggingCreate()
 
   do irealization = 1, stochastic%num_local_realizations
 
 #ifndef PROCESS_MODEL  
     call OptionInitRealization(option)
-    simulation => SimulationCreate(option)
-    realization => simulation%realization
 
+    ! Set group prefix based on id
     option%id = stochastic%realization_ids(irealization)
     write(string,'(i6)') option%id
     option%group_prefix = 'R' // trim(adjustl(string))
 
 #if 0
+    ! code for restarting stochastic runs; may no longer need this.
     string = 'restart' // trim(adjustl(option%group_prefix)) // '.chk.info'
     open(unit=86,file=string,status="old",iostat=status)
     ! if file found, cycle
@@ -200,40 +241,17 @@ subroutine StochasticRun(stochastic,option)
     endif
 #endif
 
-    call PetscTime(timex_wall(1), ierr)
-    option%start_time = timex_wall(1)
-
-    call Init(simulation)
-
 #ifdef SURFACE_FLOW
-    !call StepperRun(simulation%realization,simulation%flow_stepper, &
-    !                simulation%tran_stepper,simulation%surf_flow_stepper)
     option%io_buffer = 'Stochastic mode not tested for surface-flow'
     call printErrMsgByRank(option)
-#else
-    call TimestepperInitializeRun(simulation%realization, &
-                                  master_stepper, &
-                                  simulation%flow_stepper, &
-                                  simulation%tran_stepper, &
-                                  init_status)
-    select case(init_status)
-      case(TIMESTEPPER_INIT_PROCEED)
-        call  TimestepperExecuteRun(simulation%realization, &
-                                    master_stepper, &
-                                    simulation%flow_stepper, &
-                                    simulation%tran_stepper)
-        call  TimestepperFinalizeRun(simulation%realization, &
-                                     master_stepper, &
-                                     simulation%flow_stepper, &
-                                     simulation%tran_stepper)
-      case(TIMESTEPPER_INIT_FAIL)
-      case(TIMESTEPPER_INIT_DONE)
-    end select
 #endif
 
-    call RegressionOutput(simulation%regression,simulation%realization, &
-                          simulation%flow_stepper,simulation%tran_stepper)
+    call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
+                                     init_status)
+    call PFLOTRANRun(simulation,master_stepper,init_status)
+    call PFLOTRANFinalize(simulation,option)
 
+<<<<<<< local
     call SimulationDestroy(simulation)
 
 ! PROCESS_MODEL
@@ -259,6 +277,8 @@ subroutine StochasticRun(stochastic,option)
 
     if (option%myrank == option%io_rank .and. option%print_to_file) &
       close(option%fid_out)
+=======
+>>>>>>> other
     if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
       write(string,'(i6)') option%id
       print *, 'Finished with ' // trim(adjustl(string)), irealization, &
@@ -267,9 +287,7 @@ subroutine StochasticRun(stochastic,option)
 
   enddo
   
-  ! moved outside due to errors when allocating/deallocating  over and over
   call LoggingDestroy()
-    
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun
