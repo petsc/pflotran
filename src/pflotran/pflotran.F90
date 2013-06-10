@@ -43,6 +43,8 @@ program pflotran
   use Input_module
   use Stochastic_module
   use Stochastic_Aux_module
+  use Simulation_module
+  use Timestepper_module  
   use PFLOTRAN_Factory_module
   use Logging_module
   
@@ -52,10 +54,15 @@ program pflotran
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
+  type(simulation_type), pointer :: simulation
+  type(stepper_type), pointer :: master_stepper
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
+  PetscInt :: init_status
   
-  call PFLOTRANInitialize(option)
+  option => OptionCreate()
+  call OptionInitMPI(option)
+  call PFLOTRANInitializePrePETSc(option)
   
   select case(option%simulation_type)
     case(STOCHASTIC_SIM_TYPE)
@@ -72,8 +79,10 @@ program pflotran
       endif
       call OptionInitPetsc(option)
       call LoggingCreate()
-      call PFLOTRANRun(option)
-      call PFLOTRANFinalize(option)
+      call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
+                                       init_status)
+      call PFLOTRANRun(simulation,master_stepper,init_status)
+      call PFLOTRANFinalize(simulation,option)
       call LoggingDestroy()
   end select
 
