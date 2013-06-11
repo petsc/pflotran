@@ -664,9 +664,9 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
 
         ! Update model coupling time
-        if(option%surf_flow_explicit) then
+        !if(option%surf_flow_explicit) then
           call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-        endif
+        !endif
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag,surf_plot_flag)
         surf_plot_flag = plot_flag
@@ -696,8 +696,11 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           endif
           
           ! Solve surface flow
-          call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
-                                        surf_failure)
+          !call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
+          !                              surf_failure)
+          call StepperStepSurfaceFlowExplicitDT(surf_realization, &
+                                                surf_flow_stepper, &
+                                                surf_failure)
 
           if(surf_failure) return
           ! update time for surface flow model
@@ -711,9 +714,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           call StepperUpdateSurfaceFlowSolution(surf_realization)
 
           ! Set new target time for surface model
-          if(option%surf_flow_explicit) then
-            call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-          endif
+          call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
           call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                           option,plot_flag,transient_plot_flag)
         enddo
@@ -919,11 +920,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     call OutputSurface(surf_realization,realization,surf_plot_flag, &
                        transient_plot_flag)
     if(associated(surf_flow_stepper)) then
-      if(option%surf_flow_explicit) then
-        call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-      else
-        call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
-      endif
+      call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
     endif
 #endif
 
@@ -2852,209 +2849,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 end subroutine StepperStepFlowDT
 #endif
 
-! ************************************************************************** !
-!
-! ************************************************************************** !
 #ifdef SURFACE_FLOW
-subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
-  
-  use Surface_Realization_class
-  use Surface_Flow_module
-  use Discretization_module
-  use Option_module
-  use Solver_module
-  use Surface_Field_module
-  use Grid_module
-  use Output_module, only : Output
-  
-  implicit none
-  
-#include "finclude/petsclog.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
-
-  type(surface_realization_type) :: surf_realization
-  type(stepper_type)     :: stepper
-  PetscBool              :: failure
-  
-  PetscInt :: icut ! Tracks the number of time step reductions applied
-  PetscInt :: update_reason, tmp_int
-  PetscInt :: sum_newton_iterations, sum_linear_iterations
-  PetscInt :: num_newton_iterations, num_linear_iterations
-  PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
-  SNESConvergedReason :: snes_reason 
-  PetscErrorCode :: ierr
-  !PetscLogDouble :: start_time, end_time
-  PetscLogDouble :: log_start_time, log_end_time
-
-  PetscViewer :: viewer
-
-  type(option_type), pointer          :: option
-  type(surface_field_type), pointer   :: surf_field 
-  type(discretization_type), pointer  :: discretization 
-  type(solver_type), pointer          :: solver
-  character(len=MAXSTRINGLENGTH)      :: string
-
-  option         => surf_realization%option
-  discretization => surf_realization%discretization
-  surf_field     => surf_realization%surf_field
-  solver         => stepper%solver
-
-  icut = 0
-  sum_newton_iterations = 0
-  sum_linear_iterations = 0
-  prev_norm = 1.d20
-
-  if(option%surf_flow_explicit) then
-    call StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
-    return
-  endif
-
-  if (option%print_screen_flag) then
-    write(*,'(/,2("=")," SURFACE_FLOW ",52("="))')
-  endif
-
-  select case(option%iflowmode)
-    case (RICHARDS_MODE)
-      call SurfaceFlowInitializeTimestep(surf_realization)
-    case default
-      option%io_buffer = 'ERROR: Incorrect iflowmode in SurfaceFlow'
-      call printErrMsgByRank(option)
-  end select
-  option%io_buffer='stopping for debugging--- SurfaceFlowInitializeTimestep'
-  call printErrMsg(option)
-
-  do
-    call PetscTime(log_start_time,ierr)
-    
-    select case(option%iflowmode)
-      case (RICHARDS_MODE)
-        call SNESSolve(solver%snes,PETSC_NULL_OBJECT,surf_field%flow_xx,ierr)
-      case default
-        option%io_buffer = 'ERROR: Incorrect iflowmode in SurfaceFlow'
-        call printErrMsgByRank(option)
-    end select
-
-    call PetscTime(log_end_time,ierr)
-
-
-    stepper%cumulative_solver_time_surf_flow =  &
-                                  stepper%cumulative_solver_time_surf_flow + &
-                                  (log_end_time - log_start_time)
-    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-
-    sum_newton_iterations = sum_newton_iterations + num_newton_iterations
-    sum_linear_iterations = sum_linear_iterations + num_linear_iterations
-    update_reason = 1
-
-    if (snes_reason >= 0) then
-      select case(option%iflowmode)
-        case(RICHARDS_MODE)
-          update_reason=1
-      end select
-    !if (option%print_screen_flag) print *,'update_reason: ',update_reason
-    endif
-
-    if (snes_reason <= 0 .or. update_reason <= 0) then
-      ! The Newton solver diverged, so try reducing the time step.
-      icut=icut+1
-      stepper%time_step_cut_flag=PETSC_TRUE
-
-      if (icut > stepper%max_time_step_cuts .or. option%flow_dt<1.d-20) then
-        if (option%print_screen_flag) then
-          print *,"--> max_time_step_cuts exceeded: icut/icutmax= ",icut, &
-                  stepper%max_time_step_cuts, "t= ", &
-                  stepper%target_time/surf_realization%output_option%tconv, " dt= ", &
-                  option%flow_dt/surf_realization%output_option%tconv
-          print *,"Stopping execution!"
-        endif
-        surf_realization%output_option%plot_name = 'flow_cut_to_failure'
-        !call Output(surf_realization,PETSC_TRUE,PETSC_FALSE)
-        failure = PETSC_TRUE
-        return
-      endif
-
-      ! Revert back the target time and decrease the time step
-      stepper%target_time = stepper%target_time - option%flow_dt
-      option%surf_flow_dt = 0.5d0 * option%surf_flow_dt
-
-      if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
-        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
-        &   1pe12.5)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
-            option%surf_flow_time/surf_realization%output_option%tconv, &
-            option%surf_flow_dt/surf_realization%output_option%tconv
-
-      ! Set new target time
-      stepper%target_time = stepper%target_time + option%surf_flow_dt
-
-      select case(option%iflowmode)
-        case(RICHARDS_MODE)
-          call SurfaceFlowTimeCut(surf_realization)
-        case default
-          option%io_buffer = 'ERROR: TimeCut for this iflowmode in SurfaceFlow ' // &
-            ' not incorporated.'
-          call printErrMsg(option)
-      end select
-    else
-      ! The Newton solver converged, so we can exit.
-      exit
-    endif
-  enddo
-
-  stepper%steps_surf_flow = stepper%steps_surf_flow + 1
-  stepper%cumulative_newton_iterations_surf_flow = &
-    stepper%cumulative_newton_iterations_surf_flow + sum_newton_iterations
-  stepper%cumulative_linear_iterations_surf_flow = &
-    stepper%cumulative_linear_iterations_surf_flow + sum_linear_iterations
-  stepper%cumulative_time_step_cuts_surf_flow = &
-    stepper%cumulative_time_step_cuts_surf_flow + icut
-
-  stepper%num_newton_iterations_surf_flow = num_newton_iterations
-  stepper%num_linear_iterations_surf_flow = num_linear_iterations
-
-! print screen output
-  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
-  call VecNorm(surf_field%flow_r,NORM_INFINITY,inorm,ierr)
-  if (option%print_screen_flag) then
-    write(*, '(/," SURFACE FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
-      & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
-      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      stepper%steps_surf_flow, &
-      !stepper%target_time/surf_realization%output_option%tconv, &
-      option%surf_flow_time+option%surf_flow_dt, &
-      option%surf_flow_dt/surf_realization%output_option%tconv, &
-      surf_realization%output_option%tunit,snes_reason,sum_newton_iterations, &
-      stepper%cumulative_newton_iterations_surf_flow,sum_linear_iterations, &
-      stepper%cumulative_linear_iterations_surf_flow,icut, &
-      stepper%cumulative_time_step_cuts_surf_flow
-
-    if (associated(discretization%grid)) then
-       scaled_fnorm = fnorm/discretization%grid%nmax 
-    else
-       scaled_fnorm = fnorm
-    endif
-    print *,' --> SNES Linear/Non-Linear Iterations = ', &
-             num_linear_iterations,' / ',num_newton_iterations
-    write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
-  endif
-  
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-    call SurfaceFlowMaxChange(surf_realization)
-    if (option%print_screen_flag) then
-      write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-    endif
-  end select
-
-  if (option%print_screen_flag) print *, ""
-
-end subroutine StepperStepSurfaceFlowDT
-
 ! ************************************************************************** !
 !
 ! ************************************************************************** !

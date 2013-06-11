@@ -382,7 +382,6 @@ subroutine OptionInitRealization(option)
    option%surf_flow_time =0.d0
    option%surf_subsurf_coupling_time = 0.d0
    option%surf_subsurf_coupling_flow_dt = 0.d0
-   option%surf_flow_explicit = PETSC_TRUE
    option%surf_initialize_flow_filename =""
 #endif
 
