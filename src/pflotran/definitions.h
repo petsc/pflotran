@@ -1,5 +1,9 @@
 #include "finclude/petscsys.h"
 
+! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
+! COMPATIBILITY ISSUES - geh.
+PetscInt, parameter :: CHECKPOINT_REVISION_NUMBER = 5
+
 PetscInt, parameter :: MAXHEADERLENGTH = 4096
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
 PetscInt, parameter :: MAXWORDLENGTH = 32
