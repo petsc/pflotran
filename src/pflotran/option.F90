@@ -63,8 +63,10 @@ module Option_module
     PetscReal :: surf_flow_time, surf_flow_dt
     PetscReal :: surf_subsurf_coupling_time
     PetscReal :: surf_subsurf_coupling_flow_dt
-    PetscBool :: surf_flow_explicit
+    PetscReal :: surf_restart_time
+    PetscBool :: surf_restart_flag
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
+    character(len=MAXSTRINGLENGTH) :: surf_restart_filename
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -375,14 +377,17 @@ subroutine OptionInitRealization(option)
   option%nmechdof = 0
   option%nsec_cells = 0
 #ifdef SURFACE_FLOW
-   option%nsurfflowdof = 0
-   option%subsurf_surf_coupling = DECOUPLED
-   option%surface_flow_formulation = KINEMATIC_WAVE
-   option%surf_flow_dt = 0.d0
-   option%surf_flow_time =0.d0
-   option%surf_subsurf_coupling_time = 0.d0
-   option%surf_subsurf_coupling_flow_dt = 0.d0
-   option%surf_initialize_flow_filename =""
+  option%nsurfflowdof = 0
+  option%subsurf_surf_coupling = DECOUPLED
+  option%surface_flow_formulation = KINEMATIC_WAVE
+  option%surf_flow_dt = 0.d0
+  option%surf_flow_time =0.d0
+  option%surf_subsurf_coupling_time = 0.d0
+  option%surf_subsurf_coupling_flow_dt = 0.d0
+  option%surf_initialize_flow_filename = ""
+  option%surf_restart_filename = ""
+  option%surf_restart_flag = PETSC_FALSE
+  option%surf_restart_time = -999.0
 #endif
 
   option%tranmode = ""

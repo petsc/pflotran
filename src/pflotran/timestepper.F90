@@ -342,6 +342,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   type(stepper_type), pointer :: surf_flow_stepper
   type(surface_realization_type), pointer :: surf_realization
   PetscBool :: plot_flag_surf, transient_plot_flag_surf
+  PetscBool :: surf_flow_read
 #endif
 
   type(option_type), pointer :: option
@@ -387,6 +388,12 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   if (option%restart_flag) then
     call TimestepperRestart(realization,flow_stepper,tran_stepper, &
                             flow_read,transport_read,activity_coefs_read)
+#ifdef SURFACE_FLOW
+    surf_flow_read = PETSC_FALSE
+    call TimestepperRestartSurface(surf_realization,surf_flow_stepper, &
+                                   surf_flow_read)
+#endif
+
   else if (master_stepper%init_to_steady_state) then
     option%print_screen_flag = OptionPrintToScreen(option)
     option%print_file_flag = OptionPrintToFile(option)
@@ -664,9 +671,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
 
         ! Update model coupling time
-        !if(option%surf_flow_explicit) then
           call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-        !endif
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag,surf_plot_flag)
         surf_plot_flag = plot_flag
@@ -944,6 +949,11 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
         mod(master_stepper%steps,option%checkpoint_frequency) == 0) then
       call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
                              master_stepper%steps)  
+#ifdef SURFACE_FLOW
+      if(option%nsurfflowdof>0) &
+        call StepperCheckpointSurface(surf_realization,flow_stepper, &
+                                      master_stepper%steps)
+#endif
     endif
     
     ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
@@ -1021,6 +1031,11 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
   if (option%checkpoint_flag) then
     call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
                            NEG_ONE_INTEGER)  
+#ifdef SURFACE_FLOW
+      if(option%nsurfflowdof>0) &
+        call StepperCheckpointSurface(surf_realization,flow_stepper, &
+                                      NEG_ONE_INTEGER)
+#endif
   endif
 
   if (OptionPrintToScreen(option)) then
@@ -1599,6 +1614,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 
 #ifdef SURFACE_FLOW
   if(associated(surf_flow_stepper)) then
+    surf_flow_stepper%prev_dt = option%surf_flow_dt
     if (option%surf_subsurf_coupling_flow_dt>0.d0) then
 
       !if next waypoint is a very close, increase the timestep to match it
@@ -2851,7 +2867,12 @@ end subroutine StepperStepFlowDT
 
 #ifdef SURFACE_FLOW
 ! ************************************************************************** !
-!
+!> This subroutine steps forward surface-flow one step in time.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 02/02/13
 ! ************************************************************************** !
 subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   
@@ -2873,6 +2894,7 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
 #include "finclude/petscmat.h"
 #include "finclude/petscviewer.h"
 #include "finclude/petscts.h"
+#include "finclude/petscts.h90"
 
   type(surface_realization_type) :: surf_realization
   type(stepper_type)     :: stepper
@@ -2892,7 +2914,6 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
 
   call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
   call TSSolve(solver%ts,surf_field%flow_xx, ierr)
-
 
   ! First, update the solution vector
   call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
@@ -4363,6 +4384,87 @@ subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
   endif  
     
 end subroutine TimestepperRestart
+
+#ifdef SURFACE_FLOW
+! ************************************************************************** !
+!> This subroutine writes a checkpoint file for surface-flow.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 06/11/13
+! ************************************************************************** !
+subroutine StepperCheckpointSurface(surf_realization, flow_stepper, id)
+
+  use Surface_Realization_class
+  use Surface_Checkpoint_module
+  use Option_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  type(stepper_type), pointer :: flow_stepper
+  PetscInt :: id
+
+  type(option_type), pointer :: option
+
+  option => surf_realization%option
+
+  call SurfaceCheckpoint(surf_realization,flow_stepper%prev_dt,id)
+
+end subroutine StepperCheckpointSurface
+
+! ************************************************************************** !
+!> This subroutine reads a checkpoint file and restarts surface-flow
+!! simulation.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 06/11/13
+! ************************************************************************** !
+
+subroutine TimestepperRestartSurface(surf_realization,surf_flow_stepper, &
+                                     surf_flow_read)
+
+  use Surface_Realization_class
+  use Surface_Checkpoint_module
+  use Option_module
+
+  implicit none
+#include "finclude/petscts.h"
+#include "finclude/petscts.h90"
+
+  type(surface_realization_type) :: surf_realization
+  type(stepper_type), pointer :: surf_flow_stepper
+  PetscBool :: surf_flow_read
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  PetscReal :: surf_flow_prev_dt
+  
+  option => surf_realization%option
+
+  call SurfaceRestart(surf_realization,surf_flow_prev_dt,surf_flow_read)
+
+  if(option%time /= option%surf_flow_time) then
+    option%io_buffer = 'option%time does not match option%surf_flow_time' // &
+      ' while restarting simulation. Check the restart files.'
+    call printErrMsg(option)
+  endif
+
+  if (associated(surf_flow_stepper) .and. surf_flow_read) then
+    surf_flow_stepper%prev_dt = surf_flow_prev_dt
+  endif
+  
+  if (surf_flow_read) then
+    surf_flow_stepper%target_time = option%surf_flow_time
+    call TSSetTime(surf_flow_stepper%solver%ts,option%surf_flow_time,ierr)
+  endif
+
+end subroutine TimestepperRestartSurface
+
+#endif
 
 ! ************************************************************************** !
 !

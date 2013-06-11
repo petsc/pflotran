@@ -122,7 +122,7 @@ ifdef ugrid_debug
 endif
 
 ifdef surface_flow
-  MYFLAGS += -DSURFACE_FLOW -w
+  MYFLAGS += -DSURFACE_FLOW -w -g
 endif
 
 ifdef amanzi_bgd
@@ -325,6 +325,7 @@ misc_obj = \
 
 surface_obj = \
 	${common_src}surface_auxiliary.o \
+	${common_src}surface_checkpoint.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_flow_aux.o \
@@ -670,6 +671,8 @@ strata.o : input.o material.o option.o region.o string.o surface_material.o
 string.o :
 structured_grid.o : connection.o input.o option.o string.o
 surface_auxiliary.o : surface_global_aux.o surface_th_aux.o
+surface_checkpoint.o : discretization.o grid.o option.o output_aux.o \
+                       surface_field.o surface_realization.o
 surface_complexation.o : global_aux.o input.o matrix_block_aux.o option.o \
                          reaction_aux.o reactive_transport_aux.o string.o \
                          surface_complexation_aux.o utility.o
@@ -734,8 +737,9 @@ timestepper.o : checkpoint.o condition_control.o convergence.o \
                 output_surface.o patch.o reaction.o reaction_aux.o \
                 reactive_transport.o reactive_transport_aux.o realization.o \
                 richards.o secondary_continuum_aux.o solver.o string.o \
-                surface_field.o surface_flow.o surface_realization.o \
-                surface_th.o th.o thc.o thmc.o utility.o waypoint.o
+                surface_checkpoint.o surface_field.o surface_flow.o \
+                surface_realization.o surface_th.o th.o thc.o thmc.o utility.o \
+                waypoint.o
 transport.o : global_aux.o matrix_block_aux.o option.o \
               reactive_transport_aux.o
 uniform_velocity.o : input.o logging.o option.o string.o units.o utility.o
