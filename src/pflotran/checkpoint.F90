@@ -15,6 +15,8 @@ module Checkpoint_Header_module
   !  PetscReal: 8
   !  PetscInt:  19
   !  Total: 27 * 8 = 216
+! IMPORTANT: If you change the contents of the header, you MUST update 
+! 'bagsize' or risk corrupting memory.
 #ifdef PetscSizeT
   PetscSizeT, parameter :: bagsize = 216
 #else

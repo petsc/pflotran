@@ -4,6 +4,16 @@ module Surface_Checkpoint_Header_module
 
   implicit none
 
+! We must manually specify the number of bytes required for the 
+! checkpoint header ('surface_bagsize'), since sizeof() is not supported by 
+! some Fortran compilers.  To be on the safe side, we assume an integer is 8 
+! bytes.
+! Currently:
+!   PetscReal: 5 
+!   PetscInt: 5
+!   Total: 10 * 8 = 80
+! IMPORTANT: If you change the contents of the header, you MUST update 
+! 'surface_bagsize' or risk corrupting memory.
 #ifdef PetscSizeT
   PetscSizeT, parameter :: surface_bagsize = 80
 #else
