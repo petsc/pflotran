@@ -764,6 +764,16 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
       nullify(dataset)
       
       !.........................................................................
+      case ('SURF_RESTART')
+        option%surf_restart_flag = PETSC_TRUE
+        call InputReadNChars(input,option,option%surf_restart_filename,MAXSTRINGLENGTH, &
+                             PETSC_TRUE)
+        call InputErrorMsg(input,option,'SURF_RESTART','Surfae restart file name') 
+        call InputReadDouble(input,option,option%restart_time)
+        if (input%ierr == 0) then
+          call printErrMsg(option,'Setting time to value not supported in surface-flow')
+        endif
+
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -771,6 +781,11 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
     end select
   enddo
+
+  if(option%restart_flag .neqv. option%surf_restart_flag) then
+    option%io_buffer='option%restart_flag /= option%surf_restart_flag'
+    call printErrMsg(option)
+  endif
 
 end subroutine SurfaceInitReadInput
 
