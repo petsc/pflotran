@@ -27,11 +27,7 @@ contains
 ! ************************************************************************** !
 subroutine Init(simulation)
 
-#ifdef PROCESS_MODEL
-  use Subsurface_Simulation_module
-#else
   use Simulation_module
-#endif
   use Option_module
   use Grid_module
   use Solver_module
@@ -88,38 +84,16 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
 #endif
 
-#ifdef PROCESS_MODEL
-  use Synchronizer_module
-  use Process_Model_Coupler_module
-  use Process_Model_Richards_class
-  use Process_Model_RT_class
-  use Process_Model_TH_class
-  use Process_Model_THC_class
-  use Process_Model_Base_class
-  use Process_Model_module
-#ifdef SURFACE_FLOW
-  use Process_Model_Surface_Flow_class
-#endif
-#endif
-
   implicit none
   
-#ifdef PROCESS_MODEL
-  class(subsurface_simulation_type) :: simulation
-#else
   type(simulation_type) :: simulation
-#endif
   character(len=MAXSTRINGLENGTH) :: filename, filename_out
 
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-!geh: for some reason, changing type(realization) to class(realization) causes
-!     the code to crash with gfortran 4.7
-!geh  class(realization_type), pointer :: realization
   type(realization_type), pointer :: realization
-  class(realization_type), pointer :: realization_class_ptr
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -138,26 +112,11 @@ subroutine Init(simulation)
   PetscReal :: r1, r2, r3, r4, r5, r6
   PetscReal :: min_value
   SNESLineSearch :: linesearch
-
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer               :: surf_flow_stepper
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
-  class(surface_realization_type), pointer  :: surf_realization_class_ptr
-  PetscReal :: final_time
-  PetscReal :: time
-  PetscReal :: dt_max
-  type(waypoint_type), pointer :: waypoint
-#endif
-
-#ifdef PROCESS_MODEL
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
-  type(process_model_coupler_type), pointer :: surf_flow_process_model_coupler
-  type(process_model_coupler_type), pointer :: sub_flow_process_model_coupler
-  type(process_model_coupler_type), pointer :: sub_tran_process_model_coupler
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
-  class(process_model_base_type), pointer :: cur_process_model
 #endif
 
   ! popped in TimestepperInitializeRun()
@@ -165,32 +124,19 @@ subroutine Init(simulation)
   call PetscLogEventBegin(logging%event_init,ierr)
   
   ! set pointers to objects
-#ifdef PROCESS_MODEL
-  ! set pointers to objects
-  flow_stepper => TimestepperCreate()
-  tran_stepper => TimestepperCreate()
-  realization => RealizationCreate(simulation%option) 
-#ifdef SURFACE_FLOW
-  surf_realization  => SurfRealizCreate(simulation%option)
-  surf_flow_stepper => TimestepperCreate()
-  surf_field        => surf_realization%surf_field  
-#endif  
-#else
   flow_stepper => simulation%flow_stepper
   tran_stepper => simulation%tran_stepper
   realization => simulation%realization
-#ifdef SURFACE_FLOW
-  surf_realization  => simulation%surf_realization
-  surf_flow_stepper => simulation%surf_flow_stepper
-  surf_field        => surf_realization%surf_field  
-#endif
-#endif
-
   discretization => realization%discretization
   option => realization%option
   field => realization%field
   debug => realization%debug
   input => realization%input
+#ifdef SURFACE_FLOW
+  surf_realization  => simulation%surf_realization
+  surf_flow_stepper => simulation%surf_flow_stepper
+  surf_field        => surf_realization%surf_field  
+#endif
   
   option%init_stage = PETSC_TRUE
 
@@ -217,6 +163,11 @@ subroutine Init(simulation)
   
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
+#ifdef SURFACE_FLOW
+  surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
+  surf_realization%subsurf_filename = realization%discretization%filename
+  call SurfaceInitReadRequiredCards(simulation%surf_realization)
+#endif
 
   patch => realization%patch
 
@@ -241,9 +192,7 @@ subroutine Init(simulation)
     option%nphase = 1
     option%liquid_phase = 1
     option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
-#ifndef PROCESS_MODEL  
     call TimestepperDestroy(simulation%flow_stepper)
-#endif
     nullify(flow_stepper)
   endif
     
@@ -251,54 +200,35 @@ subroutine Init(simulation)
   if (option%ntrandof > 0) then
     tran_solver => tran_stepper%solver
   else
-#ifndef PROCESS_MODEL  
     call TimestepperDestroy(simulation%tran_stepper)
-#endif
     nullify(tran_stepper)
   endif
 
-  ! initialize plot variables
-  realization%output_option%output_variable_list => OutputVariableListCreate()
-  realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
-
-  ! read in the remainder of the input file
-#ifndef SURFACE_FLOW
-
-  call InitReadInput(realization,flow_stepper,tran_stepper, &
-                     simulation%regression) 
-
-#else
-
-  ! --------- SURFACE_FLOW enabled -------------------
-  ! GB: InitReadInput() has surface-flow related text that can't be skipped
-  !     for now.
-  surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
-  surf_realization%subsurf_filename = realization%discretization%filename
-  call SurfaceInitReadRequiredCards(surf_realization)
-
+#ifdef SURFACE_FLOW
   ! initialize surface-flow mode
   if (option%nsurfflowdof > 0) then
     surf_flow_solver => surf_flow_stepper%solver
     waypoint_list => WaypointListCreate()
     surf_realization%waypoints => waypoint_list
   else
-#ifndef PROCESS_MODEL  
     call TimestepperDestroy(simulation%surf_flow_stepper)
-#endif
     nullify(surf_flow_solver)
   endif
-
-  ! initialize plot variables
-  surf_realization%output_option%output_variable_list => &
-    OutputVariableListCreate()
-  surf_realization%output_option%aveg_output_variable_list => &
-    OutputVariableListCreate()
-
-  call InitReadInput(realization,flow_stepper,tran_stepper, &
-                     simulation%regression,surf_realization, &
-                     surf_flow_stepper)
 #endif
 
+  ! initialize plot variables
+  realization%output_option%output_variable_list => OutputVariableListCreate()
+  realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
+#ifdef SURFACE_FLOW
+  ! initialize plot variables
+  simulation%surf_realization%output_option%output_variable_list => &
+    OutputVariableListCreate()
+  simulation%surf_realization%output_option%aveg_output_variable_list => &
+    OutputVariableListCreate()
+#endif
+
+  ! read in the remainder of the input file
+  call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
   ! initialize reference density
@@ -338,7 +268,7 @@ subroutine Init(simulation)
   call RealizationCreateDiscretization(realization)
 #ifdef SURFACE_FLOW
   if (option%nsurfflowdof>0) then
-    call SurfRealizCreateDiscretization(surf_realization)
+    call SurfRealizCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
 
@@ -618,11 +548,8 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
 #ifdef SURFACE_FLOW
-    !
-    ! Setting up SNES or TS for surface-flow
-    !
-
     if(option%nsurfflowdof>0) then
+
 
       if(option%surf_flow_explicit) then
 
@@ -635,14 +562,15 @@ subroutine Init(simulation)
           case (RICHARDS_MODE)
             call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
                                   SurfaceFlowRHSFunction, &
-                                  surf_realization,ierr)
+                                  simulation%surf_realization,ierr)
           case (TH_MODE)
             call TSSetRHSFunction(surf_flow_solver%ts,PETSC_NULL_OBJECT, &
                                   SurfaceTHRHSFunction, &
-                                  surf_realization,ierr)
+                                  simulation%surf_realization,ierr)
         end select
         call TSSetDuration(surf_flow_solver%ts,ONE_INTEGER, &
-                           surf_realization%waypoints%last%time,ierr)
+                           simulation%surf_realization%waypoints%last%time,ierr)
+
       else
 
         ! Setup PETSc SNES for implicit surface flow solution
@@ -661,7 +589,7 @@ subroutine Init(simulation)
         endif
 
         call DiscretizationCreateJacobian( &
-                                  surf_realization%discretization, &
+                                  simulation%surf_realization%discretization, &
                                   NFLOWDOF, &
                                   surf_flow_solver%Jpre_mat_type, &
                                   surf_flow_solver%Jpre, &
@@ -678,11 +606,11 @@ subroutine Init(simulation)
 
         call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
                               SurfaceFlowResidual, &
-                              surf_realization,ierr)
+                              simulation%surf_realization,ierr)
 
         call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
                             surf_flow_solver%Jpre, &
-                            SurfaceFlowJacobian,surf_realization,ierr)
+                            SurfaceFlowJacobian,simulation%surf_realization,ierr)
         ! by default turn off line search
         call SNESGetLineSearch(surf_flow_solver%snes, linesearch, ierr)
         call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
@@ -826,7 +754,6 @@ subroutine Init(simulation)
                      &++++++++++++++++++++++++++++",/)')
 
   call PetscLogEventBegin(logging%event_setup,ierr)
-  
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
@@ -1022,7 +949,7 @@ subroutine Init(simulation)
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
 #ifdef SURFACE_FLOW
-   if (option%nsurfflowdof>0.and.(.not.option%surf_flow_explicit)) then
+   if (option%nsurfflowdof>0) then
     string = 'Surface Flow Stepper:'
     call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
   endif
@@ -1103,38 +1030,40 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
 
-    call SurfaceInitReadRegionFiles(surf_realization)
-    call SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
-    call SurfRealizLocalizeRegions(surf_realization)
-    call SurfRealizPassFieldPtrToPatches(surf_realization)
-    call SurfRealizProcessMatProp(surf_realization)
-    call SurfRealizProcessCouplers(surf_realization)
-    call SurfRealizProcessConditions(surf_realization)
-    call SurfaceInitMatPropToRegions(surf_realization)
-    call SurfRealizInitAllCouplerAuxVars(surf_realization)
+    call SurfaceInitReadRegionFiles(simulation%surf_realization)
+    call SurfRealizMapSurfSubsurfGrids(realization,simulation%surf_realization)
+    call SurfRealizLocalizeRegions(simulation%surf_realization)
+    call SurfRealizPassFieldPtrToPatches(simulation%surf_realization)
+    call SurfRealizProcessMatProp(simulation%surf_realization)
+    call SurfRealizProcessCouplers(simulation%surf_realization)
+    call SurfRealizProcessConditions(simulation%surf_realization)
+    !call RealProcessFluidProperties(simulation%surf_realization)
+    call SurfaceInitMatPropToRegions(simulation%surf_realization)
+    call SurfRealizInitAllCouplerAuxVars(simulation%surf_realization)
+    !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
 
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
-    call SurfRealizAddWaypointsToList(surf_realization)
-    call WaypointListFillIn(option,surf_realization%waypoints)
-    call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoints)
+    call SurfRealizAddWaypointsToList(simulation%surf_realization)
+    call WaypointListFillIn(option,simulation%surf_realization%waypoints)
+    call WaypointListRemoveExtraWaypnts(option,simulation%surf_realization%waypoints)
     if (associated(flow_stepper)) then
-       surf_flow_stepper%cur_waypoint => surf_realization%waypoints%first
+      simulation%surf_flow_stepper%cur_waypoint => simulation%surf_realization%waypoints%first
     endif
 
     select case(option%iflowmode)
       case(RICHARDS_MODE)
-        call SurfaceFlowSetup(surf_realization)
+        call SurfaceFlowSetup(simulation%surf_realization)
       case default
       case(TH_MODE)
-        call SurfaceTHSetup(surf_realization)
+        call SurfaceTHSetup(simulation%surf_realization)
     end select
 
-    call SurfaceGlobalSetup(surf_realization)
+    call SurfaceGlobalSetup(simulation%surf_realization)
     ! initialize FLOW
     ! set up auxillary variable arrays
 
     ! assign initial conditionsRealizAssignFlowInitCond
-    call CondControlAssignFlowInitCondSurface(surf_realization)
+    call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
 
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%surf_initialize_flow_filename) > 1) then
@@ -1144,16 +1073,16 @@ subroutine Init(simulation)
   
     select case(option%iflowmode)
       case(RICHARDS_MODE)
-        call SurfaceFlowUpdateAuxVars(surf_realization)
+        call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          !!GB call SurfaceFlowCreateSurfSubsurfVec( &
-          !!GB                 simulation%realization, surf_realization)
+          call SurfaceFlowCreateSurfSubsurfVec( &
+                          simulation%realization, simulation%surf_realization)
         endif
       case(TH_MODE)
         call SurfaceTHUpdateAuxVars(surf_realization)
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          !!GB call SurfaceTHCreateSurfSubsurfVec( &
-          !!GB                 simulation%realization, surf_realization)
+          call SurfaceTHCreateSurfSubsurfVec( &
+                          simulation%realization, simulation%surf_realization)
         endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
@@ -1165,19 +1094,19 @@ subroutine Init(simulation)
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr)
-!  option%io_buffer='stopping for debugging'
-!  call printErrMsg(option)
 
+#if 0
 #ifdef PROCESS_MODEL
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
   simulation%output_option => realization%output_option
-  simulation%synchronizer => SynchronizerCreate()
-  simulation%synchronizer%option => realization%option
-  simulation%synchronizer%output_option => realization%output_option
+  simulation%option => realization%option
+!  simulation%synchronizer => SynchronizerCreate()
+!  simulation%synchronizer%option => realization%option
+!  simulation%synchronizer%output_option => realization%output_option
 !  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
-  simulation%synchronizer%waypoints => realization%waypoints
+!  simulation%synchronizer%waypoints => realization%waypoints
   nullify(cur_process_model)
 
   nullify(surf_flow_process_model_coupler)
@@ -1260,9 +1189,6 @@ subroutine Init(simulation)
     simulation%process_model_coupler_list => sub_tran_process_model_coupler
   endif
 
-  simulation%synchronizer%process_model_coupler_list => &
-    simulation%process_model_coupler_list
-  
   ! For each ProcessModel, set:
   ! - realization (subsurface or surface),
   ! - stepper (flow/trans/surf_flow),
@@ -1278,20 +1204,20 @@ subroutine Init(simulation)
         if (.not.associated(cur_process_model)) exit
         realization_class_ptr => realization
         select type(cur_process_model)
-          class is (process_model_richards_type)
+          class is (pm_richards_type)
             call cur_process_model%PMRichardsSetRealization( &
                                                          realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
-          class is (process_model_rt_type)
+          class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(tran_stepper)
             tran_stepper%dt = option%tran_dt
-          class is (process_model_th_type)
+          class is (pm_th_type)
             call cur_process_model%PMTHSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
-          class is (process_model_thc_type)
+          class is (pm_thc_type)
             call cur_process_model%PMTHCSetRealization(realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
@@ -1337,6 +1263,7 @@ subroutine Init(simulation)
 
   ! If running with surface flow, add additional waypoints in waypoint-list
   ! of synchronizer.
+#if 0  
 #ifdef SURFACE_FLOW
   if (option%nsurfflowdof > 0) then
     waypoint => realization%waypoints%first
@@ -1357,10 +1284,9 @@ subroutine Init(simulation)
    enddo
   endif
 #endif
-  
-  !----------------------------------------------------------------------------!
-  !----------------------------------------------------------------------------!
-#endif  
+#endif
+#endif
+#endif
 
 end subroutine Init
 
@@ -1588,17 +1514,9 @@ end subroutine InitReadRequiredCardsFromInput
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
-subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
-                          subsurface_tran_stepper,subsurface_regression, &
-                          surface_realization,surface_flow_stepper)
-!subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
-!                         subsurface_tran_stepper,subsurface_regression)
-#else
-subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
-                         subsurface_tran_stepper,subsurface_regression)
-#endif
+subroutine InitReadInput(simulation)
 
+  use Simulation_module
   use Option_module
   use Field_module
   use Grid_module
@@ -1636,7 +1554,6 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   use Mass_Transfer_module
   
 #ifdef SURFACE_FLOW
-  use Surface_Realization_class
   use Surface_Flow_module
   use Surface_Init_module
 #endif
@@ -1646,15 +1563,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
  
   implicit none
   
-  type(realization_type), pointer :: subsurface_realization
-  type(stepper_type), pointer :: subsurface_flow_stepper
-  type(stepper_type), pointer :: subsurface_tran_stepper
-  type(regression_type), pointer :: subsurface_regression
-  
-#ifdef SURFACE_FLOW
-  type(surface_realization_type), pointer :: surface_realization
-  type(stepper_type), pointer :: surface_flow_stepper
-#endif
+  type(simulation_type) :: simulation
 
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: word
@@ -1713,7 +1622,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   nullify(flow_solver)
   nullify(tran_solver)
   
-  realization => subsurface_realization
+  realization => simulation%realization
   patch => realization%patch
 
   if (associated(patch)) grid => patch%grid
@@ -1724,12 +1633,12 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
   reaction => realization%reaction
   input => realization%input
 
-  tran_stepper => subsurface_tran_stepper
+  tran_stepper => simulation%tran_stepper
   if (associated(tran_stepper)) then
     tran_solver => tran_stepper%solver
     tran_solver%itype = TRANSPORT_CLASS
   endif
-  flow_stepper => subsurface_flow_stepper
+  flow_stepper => simulation%flow_stepper
   if (associated(flow_stepper)) then
     flow_solver => flow_stepper%solver
     flow_solver%itype = FLOW_CLASS
@@ -2646,7 +2555,7 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
 
 !.....................
       case ('REGRESSION')
-        call RegressionRead(subsurface_regression,input,option)
+        call RegressionRead(simulation%regression,input,option)
 
 !.....................
       case ('TIME')
@@ -2721,24 +2630,24 @@ subroutine InitReadInput(subsurface_realization,subsurface_flow_stepper, &
 #ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
-        call SurfaceInitReadInput(surface_realization, &
-                                  surface_flow_stepper%solver,input,option)
-        surface_flow_stepper%dt_min = surface_realization%dt_min
-        surface_flow_stepper%dt_max = surface_realization%dt_max
-        option%surf_subsurf_coupling_flow_dt = surface_realization%dt_coupling
-        option%surf_flow_dt=surface_flow_stepper%dt_min
- 
+        call SurfaceInitReadInput(simulation%surf_realization, &
+                              simulation%surf_flow_stepper%solver,input,option)
+        simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
+        simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
+        option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
+        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
+
         ! Add first waypoint
         waypoint => WaypointCreate()
         waypoint%time = 0.d0
-        call WaypointInsertInList(waypoint,surface_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 
         ! Add final_time waypoint to surface_realization
         waypoint => WaypointCreate()
         waypoint%final = PETSC_TRUE
         waypoint%time = realization%waypoints%last%time
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surface_realization%waypoints)
+        call WaypointInsertInList(waypoint,simulation%surf_realization%waypoints)
 #endif
 
 !......................

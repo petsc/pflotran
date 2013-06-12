@@ -143,43 +143,6 @@ end function TimestepperCreate
 
 ! ************************************************************************** !
 !
-! TimestepperReset: Resets time stepper back to initial settings
-! author: Glenn Hammond
-! date: 01/27/11
-!
-! ************************************************************************** !
-subroutine TimestepperReset(stepper,dt_min)
-
-  implicit none
-
-  type(stepper_type) :: stepper
-  PetscReal :: dt_min
-
-  stepper%steps = 0
-  stepper%num_newton_iterations = 0
-  stepper%num_linear_iterations = 0
-  stepper%num_constant_time_steps = 0
-
-  stepper%cumulative_newton_iterations = 0
-  stepper%cumulative_linear_iterations = 0
-  stepper%cumulative_time_step_cuts = 0
-  stepper%cumulative_solver_time = 0.d0
-
-  stepper%start_time_step = 0
-  stepper%target_time = 0.d0
-
-  stepper%dt_min = dt_min
-  stepper%prev_dt = 0.d0
-  stepper%cfl_limiter = -999.d0
-  stepper%cfl_limiter_ts = 1.d20
-
-  stepper%time_step_cut_flag = PETSC_FALSE
-  stepper%revert_dt = PETSC_FALSE
-
-end subroutine TimestepperReset
-
-! ************************************************************************** !
-!
 ! TimestepperRead: Reads parameters associated with time stepper
 ! author: Glenn Hammond
 ! date: 02/23/08
@@ -311,7 +274,7 @@ subroutine StepperUpdateDT(timestepper,process_model)
   implicit none
 
   type(stepper_type) :: timestepper
-  class(process_model_base_type) :: process_model
+  class(pm_base_type) :: process_model
   
   PetscBool :: update_time_step
   
@@ -518,7 +481,7 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
 #include "finclude/petscsnes.h"
 
   type(stepper_type) :: timestepper
-  class(process_model_base_type) :: process_model
+  class(pm_base_type) :: process_model
   PetscInt :: stop_flag
   
   SNESConvergedReason :: snes_reason
@@ -758,7 +721,7 @@ subroutine StepperStepSurfaceFlowDT(timestepper,process_model,stop_flag)
 #include "finclude/petscts.h"
 
   type(stepper_type) :: timestepper
-  class(process_model_base_type) :: process_model
+  class(pm_base_type) :: process_model
   PetscInt :: stop_flag
   
   PetscInt :: icut
@@ -803,7 +766,7 @@ subroutine StepperUpdateSurfaceFlowDTExplicit(timestepper,process_model)
 #include "finclude/petscts.h"
 
   type(stepper_type) :: timestepper
-  class(process_model_base_type) :: process_model
+  class(pm_base_type) :: process_model
   
   PetscReal :: dt_max,dt_max_glb
   PetscErrorCode :: ierr

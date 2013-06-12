@@ -1,9 +1,11 @@
-module Subsurface_Simulation_module
+module Subsurface_Simulation_class
   
-  use Simulation_Base_module
+  use Simulation_Base_class
   use Regression_module
   use Option_module
-  use Process_Model_Coupler_module
+  use PMC_Subsurface_class
+  use PMC_Base_class
+  use Realization_class
 
   implicit none
 
@@ -12,6 +14,13 @@ module Subsurface_Simulation_module
   private
 
   type, public, extends(simulation_base_type) :: subsurface_simulation_type
+    ! pointer to flow process model coupler
+    class(pmc_subsurface_type), pointer :: flow_process_model_coupler
+    ! pointer to reactive transport process model coupler
+    class(pmc_subsurface_type), pointer :: rt_process_model_coupler
+    ! pointer to realization object shared by flow and reactive transport
+    class(realization_type), pointer :: realization 
+    ! regression object
     type(regression_type), pointer :: regression
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
@@ -22,12 +31,7 @@ module Subsurface_Simulation_module
   end type subsurface_simulation_type
   
   public :: SubsurfaceSimulationCreate, &
-            SimulationDestroy
-  
-  interface SimulationDestroy
-    module procedure SimulationBaseDestroy
-    module procedure SubsurfaceSimulationDestroy
-  end interface
+            SubsurfaceSimulationDestroy
   
 contains
 
@@ -48,14 +52,10 @@ function SubsurfaceSimulationCreate(option)
 
   class(subsurface_simulation_type), pointer :: SubsurfaceSimulationCreate
   
-  class(subsurface_simulation_type), pointer :: simulation
-
   print *, 'SimulationCreate'
   
-  allocate(simulation)
-  call simulation%Init(option)
-  
-  SubsurfaceSimulationCreate => simulation
+  allocate(SubsurfaceSimulationCreate)
+  call SubsurfaceSimulationCreate%Init(option)
   
 end function SubsurfaceSimulationCreate
 
@@ -97,7 +97,7 @@ subroutine SubsurfaceInitializeRun(this)
   
   class(subsurface_simulation_type) :: this
 
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(pmc_base_type), pointer :: cur_process_model_coupler
   PetscErrorCode :: ierr
   
   call printMsg(this%option,'Simulation%InitializeRun()')
@@ -152,13 +152,7 @@ end subroutine SubsurfaceInitializeRun
 ! ************************************************************************** !
 subroutine SubsurfaceFinalizeRun(this)
 
-  use Realization_class
   use Timestepper_module
-  use Process_Model_Base_class
-  use Process_Model_Richards_class
-  use Process_Model_TH_class
-  use Process_Model_THC_class
-  use Process_Model_RT_class
 
   implicit none
   
@@ -166,10 +160,7 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler_top
-  class(process_model_base_type), pointer :: cur_process_model
-  class(realization_type), pointer :: realization
+  type(pmc_base_type), pointer :: cur_process_model_coupler
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
 
@@ -182,42 +173,17 @@ subroutine SubsurfaceFinalizeRun(this)
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
   
-  ! temporary pointers for regression
   nullify(flow_stepper)
   nullify(tran_stepper)
-  cur_process_model_coupler_top => this%process_model_coupler_list
-  do ! loop over next process model coupler
-    if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler => cur_process_model_coupler_top
-    do ! loop over process model couplers below
-      if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%process_model_list
-      do
-        if (.not.associated(cur_process_model)) exit
-        select type(cur_process_model)
-          class is (process_model_richards_type)
-            realization => cur_process_model%realization
-            flow_stepper => cur_process_model_coupler%timestepper
-          class is (process_model_th_type)
-            realization => cur_process_model%realization
-            flow_stepper => cur_process_model_coupler%timestepper
-          class is (process_model_thc_type)
-            realization => cur_process_model%realization
-            flow_stepper => cur_process_model_coupler%timestepper
-          class is (process_model_rt_type)
-            realization => cur_process_model%realization
-            tran_stepper => cur_process_model_coupler%timestepper
-        end select
-        cur_process_model => cur_process_model%next
-      enddo
-      cur_process_model_coupler => cur_process_model_coupler%below
-    enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
-  enddo
   
-  call RegressionOutput(this%regression,realization, &
+  if (associated(this%flow_process_model_coupler)) &
+    flow_stepper => this%flow_process_model_coupler%timestepper
+  if (associated(this%rt_process_model_coupler)) &
+    tran_stepper => this%rt_process_model_coupler%timestepper
+  
+  call RegressionOutput(this%regression,this%realization, &
                         flow_stepper,tran_stepper)  
-
+  
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr)
   
@@ -254,4 +220,4 @@ subroutine SubsurfaceSimulationDestroy(simulation)
   
 end subroutine SubsurfaceSimulationDestroy
   
-end module Subsurface_Simulation_module
+end module Subsurface_Simulation_class

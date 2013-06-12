@@ -1,4 +1,5 @@
-module Process_Model_Coupler_module
+! Process Model Coupler Base class
+module PMC_Base_class
 
   use Process_Model_Base_class
   use Timestepper_module
@@ -11,63 +12,104 @@ module Process_Model_Coupler_module
 #include "definitions.h"
   
   private
-
-  type, public :: process_model_coupler_type
+  
+  ! process model coupler type
+  type, public :: pmc_base_type
     type(option_type), pointer :: option
     type(stepper_type), pointer :: timestepper
-    class(process_model_base_type), pointer :: process_model_list
+    class(pm_base_type), pointer :: pm_list
     type(waypoint_list_type), pointer :: waypoints
-    type(process_model_coupler_type), pointer :: below
-    type(process_model_coupler_type), pointer :: next
-    type(process_model_pointer_type), pointer :: pm_ptr
+    type(pmc_base_type), pointer :: below
+    type(pmc_base_type), pointer :: next
+    type(pm_pointer_type), pointer :: pm_ptr
     PetscInt :: depth
   contains
+    procedure, public :: Init => PMCInit
     procedure, public :: InitializeRun
+    procedure, public :: CastToBase => PMCCastToBase
     procedure, public :: SetTimestepper => ProcModelCouplerSetTimestepper
     procedure, public :: RunTo => RunToTime
     procedure, public :: FinalizeRun
     procedure, public :: OutputLocal
     procedure, public :: UpdateSolution => PMCUpdateSolution
     procedure, public :: Destroy
-  end type process_model_coupler_type
+  end type pmc_base_type
   
-  public :: ProcessModelCouplerCreate
+  public :: PMCCreate, &
+            PMCInit
   
 contains
 
 ! ************************************************************************** !
 !
-! ProcessModelCouplerCreate: Allocates and initializes a new 
-!                            process_model_coupler object.
+! PMCCreate: Allocates and initializes a new process model coupler object.
 ! author: Glenn Hammond
-! date: 03/14/13
+! date: 06/10/13
 !
 ! ************************************************************************** !
-function ProcessModelCouplerCreate()
+function PMCCreate()
 
   implicit none
   
-  type(process_model_coupler_type), pointer :: ProcessModelCouplerCreate
+  type(pmc_base_type), pointer :: PMCCreate
   
-  type(process_model_coupler_type), pointer :: process_model_coupler
+  type(pmc_base_type), pointer :: pmc
 
-  print *, 'ProcessModelCoupler%Create()'
+  print *, 'PMC%Create()'
   
-  allocate(process_model_coupler)
-  nullify(process_model_coupler%option)
-  nullify(process_model_coupler%timestepper)
-  nullify(process_model_coupler%process_model_list)
-  nullify(process_model_coupler%waypoints)
-  nullify(process_model_coupler%below)
-  nullify(process_model_coupler%next)
-  process_model_coupler%depth = 0
+  allocate(pmc)
+  call pmc%Init()
+
+  PMCCreate => pmc  
   
-  allocate(process_model_coupler%pm_ptr)
-  nullify(process_model_coupler%pm_ptr%ptr)
+end function PMCCreate
+
+! ************************************************************************** !
+!
+! PMCInit: Initializes a new process model coupler object.
+! author: Glenn Hammond
+! date: 06/10/13
+!
+! ************************************************************************** !
+subroutine PMCInit(this)
+
+  implicit none
   
-  ProcessModelCouplerCreate => process_model_coupler  
+  class(pmc_base_type) :: this
   
-end function ProcessModelCouplerCreate
+  print *, 'PMC%Init()'
+  
+  nullify(this%option)
+  nullify(this%timestepper)
+  nullify(this%pm_list)
+  nullify(this%waypoints)
+  nullify(this%below)
+  nullify(this%next)
+  this%depth = 0
+  
+  allocate(this%pm_ptr)
+  nullify(this%pm_ptr%ptr)
+  
+end subroutine PMCInit
+
+! ************************************************************************** !
+!
+! PMCCastToBase: Initializes a new process model coupler object.
+! author: Glenn Hammond
+! date: 06/10/13
+!
+! ************************************************************************** !
+function PMCCastToBase(this)
+
+  implicit none
+  
+  class(pmc_base_type), target :: this
+  
+  class(pmc_base_type), pointer :: PMCCastToBase
+
+  PMCCastToBase => this
+  
+end function PMCCastToBase
 
 ! ************************************************************************** !
 !
@@ -82,10 +124,10 @@ subroutine ProcModelCouplerSetTimestepper(this,timestepper)
   
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   type(stepper_type), pointer :: timestepper
 
-  call printMsg(this%option,'ProcessModelCoupler%SetTimestepper()')
+  call printMsg(this%option,'PMC%SetTimestepper()')
   
   this%timestepper => timestepper
   
@@ -102,17 +144,17 @@ recursive subroutine InitializeRun(this)
 
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   
-  class(process_model_base_type), pointer :: cur_process_model
+  class(pm_base_type), pointer :: cur_pm
   
-  call printMsg(this%option,'ProcessModelCoupler%InitializeRun()')
+  call printMsg(this%option,'PMC%InitializeRun()')
   
-  cur_process_model => this%process_model_list
+  cur_pm => this%pm_list
   do
-    if (.not.associated(cur_process_model)) exit
-    call cur_process_model%InitializeRun()
-    cur_process_model => cur_process_model%next
+    if (.not.associated(cur_pm)) exit
+    call cur_pm%InitializeRun()
+    cur_pm => cur_pm%next
   enddo
   
   if (associated(this%below)) then
@@ -135,7 +177,7 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
   
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
@@ -143,10 +185,10 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
   PetscBool :: failure
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
-  class(process_model_base_type), pointer :: cur_process_model
+  class(pm_base_type), pointer :: cur_pm
   
   write(this%option%io_buffer,'(es12.5)') sync_time
-  this%option%io_buffer = 'ProcessModelCoupler%RunToTime(' // &
+  this%option%io_buffer = 'PMC%RunToTime(' // &
     trim(adjustl(this%option%io_buffer)) // ')'
   call printMsg(this%option)
   
@@ -161,21 +203,21 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
     
     call StepperSetTargetTime(this%timestepper,sync_time,this%option, &
                               local_stop_flag,plot_flag,transient_plot_flag)
-    call StepperStepDT(this%timestepper,this%process_model_list, &
+    call StepperStepDT(this%timestepper,this%pm_list, &
                        local_stop_flag)
 
     if (local_stop_flag > 1) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.
-    cur_process_model => this%process_model_list
+    cur_pm => this%pm_list
     do
-      if (.not.associated(cur_process_model)) exit
+      if (.not.associated(cur_pm)) exit
       ! have to update option%time for conditions
       this%option%time = this%timestepper%target_time
-      call cur_process_model%UpdateSolution()
-      call StepperUpdateDT(this%timestepper,cur_process_model)
-      cur_process_model => cur_process_model%next
+      call cur_pm%UpdateSolution()
+      call StepperUpdateDT(this%timestepper,cur_pm)
+      cur_pm => cur_pm%next
     enddo
     ! Run underlying process model couplers
     if (associated(this%below)) then
@@ -190,17 +232,17 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
       if (mod(this%timestepper%steps, &
-              this%process_model_list% &
+              this%pm_list% &
                 output_option%periodic_output_ts_imod) == 0) then
         plot_flag = PETSC_TRUE
       endif
       if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%process_model_list%output_option% &
+                             this%pm_list%output_option% &
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
     endif
-    call Output(this%process_model_list%realization_base, &
+    call Output(this%pm_list%realization_base, &
                 plot_flag,transient_plot_flag)
     
   enddo
@@ -220,9 +262,20 @@ recursive subroutine PMCUpdateSolution(this)
 
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
 
-  call printMsg(this%option,'ProcessModelCoupler%UpdateSolution()')
+  class(pm_base_type), pointer :: cur_pm
+  
+  call printMsg(this%option,'PMC%UpdateSolution()')
+  
+  cur_pm => this%pm_list
+  do
+    if (.not.associated(cur_pm)) exit
+    ! have to update option%time for conditions
+    this%option%time = this%timestepper%target_time
+    call cur_pm%UpdateSolution()
+    cur_pm => cur_pm%next
+  enddo  
   
 end subroutine PMCUpdateSolution
 
@@ -237,9 +290,9 @@ recursive subroutine FinalizeRun(this)
 
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   
-  call printMsg(this%option,'ProcessModelCoupler%FinalizeRun()')
+  call printMsg(this%option,'PMC%FinalizeRun()')
   
 end subroutine FinalizeRun
 
@@ -258,11 +311,11 @@ subroutine SetOutputFlags(this)
   
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   
   type(output_option_type), pointer :: output_option
   
-  output_option => this%process_model_list%output_option
+  output_option => this%pm_list%output_option
 
   if (OptionPrintToScreen(this%option) .and. &
       mod(this%timestepper%steps,output_option%screen_imod) == 0) then
@@ -292,24 +345,24 @@ recursive subroutine OutputLocal(this)
 
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   
-  class(process_model_base_type), pointer :: cur_process_model
+  class(pm_base_type), pointer :: cur_pm
   
-  call printMsg(this%option,'ProcessModelCoupler%Output()')
+  call printMsg(this%option,'PMC%Output()')
   
-  cur_process_model => this%process_model_list
+  cur_pm => this%pm_list
   do
-    if (.not.associated(cur_process_model)) exit
-!    call Output(cur_process_model%realization,plot_flag,transient_plot_flag)
-    cur_process_model => cur_process_model%next
+    if (.not.associated(cur_pm)) exit
+!    call Output(cur_pm%realization,plot_flag,transient_plot_flag)
+    cur_pm => cur_pm%next
   enddo
     
 end subroutine OutputLocal
 
 ! ************************************************************************** !
 !
-! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object
+! PMCDestroy: Deallocates a pmc object
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
@@ -320,21 +373,21 @@ recursive subroutine Destroy(this)
 
   implicit none
   
-  class(process_model_coupler_type) :: this
+  class(pmc_base_type) :: this
   
-  call printMsg(this%option,'ProcessModelCoupler%Destroy()')
+  call printMsg(this%option,'PMC%Destroy()')
   
   if (associated(this%next)) then
     call this%next%Destroy()
   endif 
   
-  if (associated(this%process_model_list)) then
-    call this%process_model_list%Destroy()
+  if (associated(this%pm_list)) then
+    call this%pm_list%Destroy()
   endif
 
-!  deallocate(process_model_coupler)
-!  nullify(process_model_coupler)
+!  deallocate(pmc)
+!  nullify(pmc)
   
 end subroutine Destroy
   
-end module Process_Model_Coupler_module
+end module PMC_Base_class

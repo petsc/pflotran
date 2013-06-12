@@ -18,16 +18,16 @@ module Process_Model_Base_class
 #include "finclude/petscts.h"
 
 #ifdef ABSTRACT
-  type, abstract, public :: process_model_base_type
+  type, abstract, public :: pm_base_type
 #else
-  type, public :: process_model_base_type
+  type, public :: pm_base_type
 #endif
     type(option_type), pointer :: option
     type(output_option_type), pointer :: output_option
     Vec :: solution_vec
     Vec :: residual_vec
     class(realization_base_type), pointer :: realization_base
-    class(process_model_base_type), pointer :: next
+    class(pm_base_type), pointer :: next
   contains
 #ifdef ABSTRACT  
     procedure(PMBaseInit), public, deferred :: Init
@@ -70,20 +70,20 @@ module Process_Model_Base_class
     procedure, public :: Destroy => PMBaseThisOnly
     procedure, public :: RHSFunction => PMBaseRHSFunction
 #endif
-  end type process_model_base_type
+  end type pm_base_type
   
 #ifdef ABSTRACT  
   abstract interface
     subroutine PMBaseInit(this)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
     end subroutine PMBaseInit
 
     subroutine PMBaseResidual(this,snes,xx,r,ierr)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       SNES :: snes
       Vec :: xx
       Vec :: r
@@ -91,9 +91,9 @@ module Process_Model_Base_class
     end subroutine PMBaseResidual
 
     subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       SNES :: snes
       Vec :: xx
       Mat :: A, B
@@ -103,9 +103,9 @@ module Process_Model_Base_class
 
     subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       PetscReal :: dt
       PetscReal :: dt_max
       PetscInt :: iacceleration
@@ -114,9 +114,9 @@ module Process_Model_Base_class
     end subroutine PMBaseUpdateTimestep
     
     subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       SNESLineSearch :: line_search
       Vec :: P
       Vec :: dP
@@ -126,9 +126,9 @@ module Process_Model_Base_class
     
     subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                       P1_changed,ierr)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       SNESLineSearch :: line_search
       Vec :: P0
       Vec :: dP
@@ -139,36 +139,36 @@ module Process_Model_Base_class
     end subroutine PMBaseCheckUpdatePost
   
     subroutine PMBasePostSolve(this)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       PetscBool :: solution_accepted
     end subroutine PMBasePostSolve
     
     subroutine PMBaseThisOnly(this)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
     end subroutine PMBaseThisOnly
     
     subroutine PMBaseThisTime(this,time)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       PetscReal :: time
     end subroutine PMBaseThisTime
     
     function PMBaseFunctionThisOnly(this)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       PetscBool ::  PMBaseFunctionThisOnly
     end function PMBaseFunctionThisOnly
     
     subroutine PMBaseComputeMassBalance(this,mass_balance_array)
-      import process_model_base_type
+      import pm_base_type
       implicit none
-      class(process_model_base_type) :: this
+      class(pm_base_type) :: this
       PetscReal :: mass_balance_array(:)
     end subroutine PMBaseComputeMassBalance
 
@@ -187,7 +187,7 @@ subroutine PMBaseCreate(this)
 
   implicit none
   
-  class(process_model_base_type) :: this  
+  class(pm_base_type) :: this  
 
   ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%option)
@@ -211,7 +211,7 @@ recursive subroutine PMBaseRunTo(this,time)
 
   implicit none
   
-  class(process_model_base_type) :: this  
+  class(pm_base_type) :: this  
   PetscReal :: time
   
   ! do something here
@@ -226,12 +226,12 @@ end subroutine PMBaseRunTo
 #ifndef ABSTRACT
 subroutine PMBaseInit(this)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
 end subroutine PMBaseInit
 
 subroutine PMBaseResidual(this,snes,xx,r,ierr)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -240,7 +240,7 @@ end subroutine PMBaseResidual
 
 subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -251,7 +251,7 @@ end subroutine PMBaseJacobian
 subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
                                 num_newton_iterations,tfac)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -261,7 +261,7 @@ end subroutine PMBaseUpdateTimestep
     
 subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
@@ -272,7 +272,7 @@ end subroutine PMBaseCheckUpdatePre
 subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -284,37 +284,37 @@ end subroutine PMBaseCheckUpdatePost
 
 subroutine PMBasePostSolve(this)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   PetscBool :: solution_accepted
 end subroutine PMBasePostSolve
     
 subroutine PMBaseThisOnly(this)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
 end subroutine PMBaseThisOnly
     
 subroutine PMBaseThisTime(this,time)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   PetscReal :: time
 end subroutine PMBaseThisTime
     
 function PMBaseFunctionThisOnly(this)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   PetscBool ::  PMBaseFunctionThisOnly
   PMBaseFunctionThisOnly = PETSC_TRUE
 end function PMBaseFunctionThisOnly
     
 subroutine PMBaseComputeMassBalance(this,mass_balance_array)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   PetscReal :: mass_balance_array(:)
 end subroutine PMBaseComputeMassBalance
 
 subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
   implicit none
-  class(process_model_base_type) :: this
+  class(pm_base_type) :: this
   TS :: ts
   PetscReal :: time
   Vec :: xx

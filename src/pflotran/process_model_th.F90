@@ -19,7 +19,7 @@ module Process_Model_TH_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(process_model_base_type) :: process_model_th_type
+  type, public, extends(pm_base_type) :: pm_th_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
@@ -43,7 +43,7 @@ module Process_Model_TH_class
     procedure, public :: MaxChange => PMTHMaxChange
     procedure, public :: ComputeMassBalance => PMTHComputeMassBalance
     procedure, public :: Destroy => PMTHDestroy
-  end type process_model_th_type
+  end type pm_th_type
   
   public :: PMTHCreate
   
@@ -62,9 +62,9 @@ function PMTHCreate()
 
   implicit none
   
-  class(process_model_th_type), pointer :: PMTHCreate
+  class(pm_th_type), pointer :: PMTHCreate
 
-  class(process_model_th_type), pointer :: th_pm
+  class(pm_th_type), pointer :: th_pm
   
 #ifdef PM_TH_DEBUG
   print *, 'PMTHCreate()'
@@ -102,7 +102,7 @@ subroutine PMTHInit(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
 
 #ifdef PM_TH_DEBUG
   call printMsg(this%option,'PMTH%Init()')
@@ -139,7 +139,7 @@ subroutine PMTHSetRealization(this,realization)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   class(realization_type), pointer :: realization
 
 #ifdef PM_TH_DEBUG
@@ -169,7 +169,7 @@ subroutine PMTHInitializeTimestep(this)
   
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
 
 #ifdef PM_TH_DEBUG
   call printMsg(this%option,'PMTHInitializeTimestep%InitializeTimestep()')
@@ -217,7 +217,7 @@ subroutine PMTHPreSolve(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
 
 #ifdef PM_TH_DEBUG
   call printMsg(this%option,'PMTHPreSolve%PreSolve()')
@@ -236,7 +236,7 @@ subroutine PMTHPostSolve(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
 #ifdef PM_TH_DEBUG  
   call printMsg(this%option,'PMTH%PostSolve()')
@@ -259,7 +259,7 @@ subroutine PMTHFinalizeTimestep(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
 #ifdef PM_TH_DEBUG
   call printMsg(this%option,'PMTH%FinalizeTimestep()')
@@ -292,7 +292,7 @@ function PMTHAcceptSolution(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
   PetscBool :: PMTHAcceptSolution
   
@@ -317,7 +317,7 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -373,7 +373,7 @@ recursive subroutine PMTHInitializeRun(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
  
 #ifdef PM_TH_DEBUG
@@ -404,7 +404,7 @@ recursive subroutine PMTHFinalizeRun(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
 #ifdef PM_TH_DEBUG
   call printMsg(this%option,'PMTH%FinalizeRun()')
@@ -432,7 +432,7 @@ subroutine PMTHResidual(this,snes,xx,r,ierr)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -460,7 +460,7 @@ subroutine PMTHJacobian(this,snes,xx,A,B,flag,ierr)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -489,7 +489,7 @@ subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
@@ -521,7 +521,7 @@ subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -555,7 +555,7 @@ subroutine PMTHTimeCut(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
 #ifdef PM_TH_DEBUG  
   call printMsg(this%option,'PMTH%TimeCut()')
@@ -582,7 +582,7 @@ subroutine PMTHUpdateSolution(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
@@ -618,7 +618,7 @@ subroutine PMTHMaxChange(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
 #ifdef PM_TH_DEBUG  
   call printMsg(this%option,'PMTH%MaxChange()')
@@ -642,7 +642,7 @@ subroutine PMTHComputeMassBalance(this,mass_balance_array)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   PetscReal :: mass_balance_array(:)
   
 #ifdef PM_TH_DEBUG  
@@ -669,7 +669,7 @@ subroutine PMTHDestroy(this)
 
   implicit none
   
-  class(process_model_th_type) :: this
+  class(pm_th_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()

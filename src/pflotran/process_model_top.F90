@@ -13,17 +13,17 @@ module Process_Model_module
   ! Since the context (ctx) for procedures passed to PETSc must be declared 
   ! as a "type" instead of a "class", object is a workaround for passing the 
   ! process model as context of a procedure where one can pass the
-  ! process_model_pointer_type to a procedure, declaring it as e.g.
+  ! pm_pointer_type to a procedure, declaring it as e.g.
   !
-  ! type(process_model_pointer_type) :: pm_ptr
+  ! type(pm_pointer_type) :: pm_ptr
   !
   ! and use the ptr:
   !
   ! pm_ptr%this%Residual
   !  
-  type, public :: process_model_pointer_type
-    class(process_model_base_type), pointer :: ptr
-  end type process_model_pointer_type
+  type, public :: pm_pointer_type
+    class(pm_base_type), pointer :: ptr
+  end type pm_pointer_type
 
   public :: PMResidual, &
             PMJacobian, &
@@ -54,7 +54,7 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(process_model_pointer_type) :: this
+  type(pm_pointer_type) :: this
   PetscErrorCode :: ierr
   
 #ifdef PM_TOP_DEBUG    
@@ -87,7 +87,7 @@ subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
   Vec :: xx
   Mat :: A, B
   MatStructure flag
-  type(process_model_pointer_type) :: this
+  type(pm_pointer_type) :: this
   PetscErrorCode :: ierr
   
 #ifdef PM_TOP_DEBUG    
@@ -117,7 +117,7 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
   PetscReal :: time
   Vec :: xx
   Vec :: ff
-  type(process_model_pointer_type) :: this
+  type(pm_pointer_type) :: this
   PetscErrorCode :: ierr
   
 #ifdef PM_TOP_DEBUG

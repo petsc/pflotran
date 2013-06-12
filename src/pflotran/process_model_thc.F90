@@ -19,7 +19,7 @@ module Process_Model_THC_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(process_model_base_type) :: process_model_thc_type
+  type, public, extends(pm_base_type) :: pm_thc_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
@@ -43,7 +43,7 @@ module Process_Model_THC_class
     procedure, public :: MaxChange => PMTHCMaxChange
     procedure, public :: ComputeMassBalance => PMTHCComputeMassBalance
     procedure, public :: Destroy => PMTHCDestroy
-  end type process_model_thc_type
+  end type pm_thc_type
   
   public :: PMTHCCreate
   
@@ -62,9 +62,9 @@ function PMTHCCreate()
 
   implicit none
   
-  class(process_model_thc_type), pointer :: PMTHCCreate
+  class(pm_thc_type), pointer :: PMTHCCreate
 
-  class(process_model_thc_type), pointer :: thc_pm
+  class(pm_thc_type), pointer :: thc_pm
   
 #ifdef PM_THC_DEBUG
   print *, 'PMTHCCreate()'
@@ -102,7 +102,7 @@ subroutine PMTHCInit(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
 
 #ifdef PM_THC_DEBUG
   call printMsg(this%option,'PMTHC%Init()')
@@ -139,7 +139,7 @@ subroutine PMTHCSetRealization(this,realization)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   class(realization_type), pointer :: realization
 
 #ifdef PM_THC_DEBUG
@@ -169,7 +169,7 @@ subroutine PMTHCInitializeTimestep(this)
   
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
 
 #ifdef PM_THC_DEBUG
   call printMsg(this%option,'PMTHCInitializeTimestep%InitializeTimestep()')
@@ -217,7 +217,7 @@ subroutine PMTHCPreSolve(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
 
 #ifdef PM_THC_DEBUG
   call printMsg(this%option,'PMTHCPreSolve%PreSolve()')
@@ -236,7 +236,7 @@ subroutine PMTHCPostSolve(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
 #ifdef PM_THC_DEBUG  
   call printMsg(this%option,'PMTHC%PostSolve()')
@@ -259,7 +259,7 @@ subroutine PMTHCFinalizeTimestep(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
 #ifdef PM_THC_DEBUG
   call printMsg(this%option,'PMTHC%FinalizeTimestep()')
@@ -292,7 +292,7 @@ function PMTHCAcceptSolution(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
   PetscBool :: PMTHCAcceptSolution
   
@@ -317,7 +317,7 @@ subroutine PMTHCUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -373,7 +373,7 @@ recursive subroutine PMTHCInitializeRun(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
  
 #ifdef PM_THC_DEBUG
@@ -404,7 +404,7 @@ recursive subroutine PMTHCFinalizeRun(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
 #ifdef PM_THC_DEBUG
   call printMsg(this%option,'PMTHC%FinalizeRun()')
@@ -432,7 +432,7 @@ subroutine PMTHCResidual(this,snes,xx,r,ierr)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -460,7 +460,7 @@ subroutine PMTHCJacobian(this,snes,xx,A,B,flag,ierr)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -489,7 +489,7 @@ subroutine PMTHCCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
@@ -521,7 +521,7 @@ subroutine PMTHCCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -555,7 +555,7 @@ subroutine PMTHCTimeCut(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
 #ifdef PM_THC_DEBUG  
   call printMsg(this%option,'PMTHC%TimeCut()')
@@ -582,7 +582,7 @@ subroutine PMTHCUpdateSolution(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
@@ -618,7 +618,7 @@ subroutine PMTHCMaxChange(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
 #ifdef PM_THC_DEBUG  
   call printMsg(this%option,'PMTHC%MaxChange()')
@@ -642,7 +642,7 @@ subroutine PMTHCComputeMassBalance(this,mass_balance_array)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   PetscReal :: mass_balance_array(:)
   
 #ifdef PM_THC_DEBUG  
@@ -669,7 +669,7 @@ subroutine PMTHCDestroy(this)
 
   implicit none
   
-  class(process_model_thc_type) :: this
+  class(pm_thc_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()

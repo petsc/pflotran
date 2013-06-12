@@ -19,7 +19,7 @@ module Process_Model_Richards_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(process_model_base_type) :: process_model_richards_type
+  type, public, extends(pm_base_type) :: pm_richards_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
   contains
@@ -42,7 +42,7 @@ module Process_Model_Richards_class
     procedure, public :: MaxChange => PMRichardsMaxChange
     procedure, public :: ComputeMassBalance => PMRichardsComputeMassBalance
     procedure, public :: Destroy => PMRichardsDestroy
-  end type process_model_richards_type
+  end type pm_richards_type
   
   public :: PMRichardsCreate
   
@@ -59,9 +59,9 @@ function PMRichardsCreate()
 
   implicit none
   
-  class(process_model_richards_type), pointer :: PMRichardsCreate
+  class(pm_richards_type), pointer :: PMRichardsCreate
 
-  class(process_model_richards_type), pointer :: richards_pm
+  class(pm_richards_type), pointer :: richards_pm
   
 #ifdef PM_RICHARDS_DEBUG  
   print *, 'PMRichardsCreate()'
@@ -97,7 +97,7 @@ subroutine PMRichardsInit(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
 
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%Init()')
@@ -130,7 +130,7 @@ subroutine PMRichardsSetRealization(this,realization)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   class(realization_type), pointer :: realization
 
 #ifdef PM_RICHARDS_DEBUG  
@@ -164,7 +164,7 @@ subroutine PMRichardsInitializeTimestep(this)
   
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
 
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%InitializeTimestep()')
@@ -203,7 +203,7 @@ subroutine PMRichardsPreSolve(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%PreSolve()')
@@ -224,7 +224,7 @@ subroutine PMRichardsPostSolve(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%PostSolve()')
@@ -246,7 +246,7 @@ subroutine PMRichardsFinalizeTimestep(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%FinalizeTimestep()')
@@ -278,7 +278,7 @@ function PMRichardsAcceptSolution(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
   PetscBool :: PMRichardsAcceptSolution
   
@@ -302,7 +302,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -364,7 +364,7 @@ recursive subroutine PMRichardsInitializeRun(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
  
 #ifdef PM_RICHARDS_DEBUG  
@@ -394,7 +394,7 @@ recursive subroutine PMRichardsFinalizeRun(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%FinalizeRun()')
@@ -422,7 +422,7 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -455,7 +455,7 @@ subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -488,7 +488,7 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
@@ -519,7 +519,7 @@ subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -552,7 +552,7 @@ subroutine PMRichardsTimeCut(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%TimeCut()')
@@ -578,7 +578,7 @@ subroutine PMRichardsUpdateSolution(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
@@ -613,7 +613,7 @@ subroutine PMRichardsMaxChange(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
 #ifdef PM_RICHARDS_DEBUG  
   call printMsg(this%option,'PMRichards%MaxChange()')
@@ -636,7 +636,7 @@ subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   PetscReal :: mass_balance_array(:)
   
 #ifdef PM_RICHARDS_DEBUG  
@@ -662,7 +662,7 @@ subroutine PMRichardsDestroy(this)
 
   implicit none
   
-  class(process_model_richards_type) :: this
+  class(pm_richards_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()

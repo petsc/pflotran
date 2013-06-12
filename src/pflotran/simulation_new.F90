@@ -1,11 +1,9 @@
-module Simulation_Base_module
+module Simulation_Base_class
 
-  use Process_Model_Coupler_module
+  use PMC_Base_class
   use Option_module
   use Output_Aux_module
   use Output_module
-  use Waypoint_module
-  use Process_Model_Coupler_module
   
   implicit none
 
@@ -16,15 +14,12 @@ module Simulation_Base_module
   type, public :: simulation_base_type
     type(option_type), pointer :: option
     type(output_option_type), pointer :: output_option
-    type(waypoint_list_type), pointer :: waypoints
     PetscInt :: stop_flag
-    type(process_model_coupler_type), pointer :: process_model_coupler_list
+    type(pmc_base_type), pointer :: process_model_coupler_list
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun
     procedure, public :: ExecuteRun
-    procedure, public :: RunToTime
-    procedure, public :: FinalizeRun
   end type simulation_base_type
   
   public :: SimulationBaseCreate, &
@@ -37,7 +32,7 @@ contains
 !
 ! SimulationBaseCreate: Allocates and initializes a new simulation object
 ! author: Glenn Hammond
-! date: 10/25/07
+! date: 06/11/13
 !
 ! ************************************************************************** !
 function SimulationBaseCreate(option)
@@ -46,27 +41,20 @@ function SimulationBaseCreate(option)
 
   implicit none
   
-  type(option_type), pointer :: option  
-  
-  type(simulation_base_type), pointer :: SimulationBaseCreate
-  
-  type(simulation_base_type), pointer :: simulation
+  class(simulation_base_type), pointer :: SimulationBaseCreate
 
-  print *, 'SimulationBaseCreate'
+  type(option_type), pointer :: option
   
-  allocate(simulation)
-  call simulation%Init(option)
-  
-  SimulationBaseCreate => simulation
-  
+  allocate(SimulationBaseCreate)
+  call SimulationBaseCreate%Init(option)
+
 end function SimulationBaseCreate
-
 
 ! ************************************************************************** !
 !
-! SimulationBaseInit: Initializes simulation values
+! SimulationBaseInit: Initializes a new simulation object
 ! author: Glenn Hammond
-! date: 04/22/13
+! date: 06/11/13
 !
 ! ************************************************************************** !
 subroutine SimulationBaseInit(this,option)
@@ -77,13 +65,11 @@ subroutine SimulationBaseInit(this,option)
   
   class(simulation_base_type) :: this
   type(option_type), pointer :: option
-  
+
   this%option => option
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
-  nullify(this%waypoints)
-  
-  this%stop_flag = 0  
+  this%stop_flag = 0 
 
 end subroutine SimulationBaseInit
 
@@ -91,7 +77,7 @@ end subroutine SimulationBaseInit
 !
 ! InitializeRun: Initializes simulation
 ! author: Glenn Hammond
-! date: 03/18/13
+! date: 06/11/13
 !
 ! ************************************************************************** !
 subroutine InitializeRun(this)
@@ -102,7 +88,7 @@ subroutine InitializeRun(this)
   
   class(simulation_base_type) :: this
 
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(pmc_base_type), pointer :: cur_process_model_coupler
   PetscErrorCode :: ierr
   
   call printMsg(this%option,'Simulation%InitializeRun()')
@@ -152,7 +138,7 @@ end subroutine InitializeRun
 !
 ! ExecuteRun: Initializes simulation
 ! author: Glenn Hammond
-! date: 03/18/13
+! date: 06/11/13
 !
 ! ************************************************************************** !
 subroutine ExecuteRun(this)
@@ -161,10 +147,11 @@ subroutine ExecuteRun(this)
   
   class(simulation_base_type) :: this
   
-  type(waypoint_type), pointer :: cur_waypoint
-  
   call printMsg(this%option,'Simulation%ExecuteRun()')
 
+#if 0  
+  type(waypoint_type), pointer :: cur_waypoint
+  
   cur_waypoint => this%waypoints%first
   do
     if (.not.associated(cur_waypoint)) exit
@@ -189,6 +176,7 @@ subroutine ExecuteRun(this)
     endif
     
   enddo
+#endif  
   
 end subroutine ExecuteRun
 
@@ -196,7 +184,7 @@ end subroutine ExecuteRun
 !
 ! RunToTime: Executes simulation
 ! author: Glenn Hammond
-! date: 03/18/13
+! date: 06/11/13
 !
 ! ************************************************************************** !
 subroutine RunToTime(this,target_time)
@@ -208,7 +196,7 @@ subroutine RunToTime(this,target_time)
   class(simulation_base_type) :: this
   PetscReal :: target_time
   
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(pmc_base_type), pointer :: cur_process_model_coupler
   
   call printMsg(this%option,'RunToTime()')
   
@@ -225,7 +213,7 @@ end subroutine RunToTime
 !
 ! FinalizeRun: Finalizes simulation
 ! author: Glenn Hammond
-! date: 03/18/13
+! date: 06/11/13
 !
 ! ************************************************************************** !
 subroutine FinalizeRun(this)
@@ -236,7 +224,7 @@ subroutine FinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  type(process_model_coupler_type), pointer :: cur_process_model_coupler
+  type(pmc_base_type), pointer :: cur_process_model_coupler
 
   call printMsg(this%option,'Simulation%FinalizeRun()')
   
@@ -254,9 +242,31 @@ end subroutine FinalizeRun
 
 ! ************************************************************************** !
 !
+! SimulationBaseStrip: Deallocates members of simulation base
+! author: Glenn Hammond
+! date: 06/11/13
+!
+! ************************************************************************** !
+subroutine SimulationBaseStrip(simulation)
+
+  implicit none
+  
+  class(simulation_base_type), pointer :: simulation
+  
+  call printMsg(simulation%option,'SimulationDestroy()')
+  
+  if (.not.associated(simulation)) return
+  
+  deallocate(simulation)
+  nullify(simulation)
+  
+end subroutine SimulationBaseStrip
+
+! ************************************************************************** !
+!
 ! SimulationBaseDestroy: Deallocates a simulation
 ! author: Glenn Hammond
-! date: 11/01/07
+! date: 06/11/13
 !
 ! ************************************************************************** !
 subroutine SimulationBaseDestroy(simulation)
@@ -274,4 +284,4 @@ subroutine SimulationBaseDestroy(simulation)
   
 end subroutine SimulationBaseDestroy
   
-end module Simulation_Base_module
+end module Simulation_Base_class

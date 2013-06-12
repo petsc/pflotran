@@ -20,7 +20,7 @@ module Process_Model_RT_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(process_model_base_type) :: process_model_rt_type
+  type, public, extends(pm_base_type) :: pm_rt_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
@@ -49,7 +49,7 @@ module Process_Model_RT_class
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: SetTranWeights => SetTranWeights
     procedure, public :: Destroy => PMRTDestroy
-  end type process_model_rt_type
+  end type pm_rt_type
   
   public :: PMRTCreate
 
@@ -66,9 +66,9 @@ function PMRTCreate()
 
   implicit none
   
-  class(process_model_rt_type), pointer :: PMRTCreate
+  class(pm_rt_type), pointer :: PMRTCreate
 
-  class(process_model_rt_type), pointer :: rt_pm
+  class(pm_rt_type), pointer :: rt_pm
   
 #ifdef PM_RT_DEBUG  
   print *, 'PMRTCreate()'
@@ -110,7 +110,7 @@ subroutine PMRTInit(this)
   
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
 
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%Init()')
@@ -145,7 +145,7 @@ subroutine PMRTSetRealization(this,realization)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   class(realization_type), pointer :: realization
 
 #ifdef PM_RT_DEBUG  
@@ -179,7 +179,7 @@ subroutine PMRTInitializeTimestep(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   PetscReal :: time
  
 #ifdef PM_RT_DEBUG  
@@ -240,7 +240,7 @@ subroutine PMRTPreSolve(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -283,7 +283,7 @@ subroutine PMRTPostSolve(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%PostSolve()')
@@ -305,7 +305,7 @@ subroutine PMRTFinalizeTimestep(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   PetscReal :: time  
   
 #ifdef PM_RICHARDS_DEBUG  
@@ -337,7 +337,7 @@ function PMRTAcceptSolution(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
   PetscBool :: PMRTAcceptSolution
   
@@ -361,7 +361,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -407,7 +407,7 @@ recursive subroutine PMRTInitializeRun(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%InitializeRun()')
@@ -449,7 +449,7 @@ recursive subroutine PMRTFinalizeRun(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%PMRTFinalizeRun()')
@@ -476,7 +476,7 @@ subroutine PMRTResidual(this,snes,xx,r,ierr)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -503,7 +503,7 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -531,7 +531,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
@@ -562,7 +562,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -593,7 +593,7 @@ subroutine PMRTTimeCut(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%TimeCut()')
@@ -618,10 +618,11 @@ subroutine PMRTUpdateSolution(this)
 
   use Reactive_Transport_module, only : RTUpdateSolution
   use Condition_module
+  use Mass_Transfer_module
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateSolution()')
@@ -639,6 +640,11 @@ subroutine PMRTUpdateSolution(this)
       this%realization%reaction%update_mineral_surface_area) then
     call RealizationUpdateProperties(this%realization)
   endif
+  
+  call MassTransferUpdate(this%realization%mass_transfer_list, &
+                          this%realization%discretization, &
+                          this%realization%patch%grid, &
+                          this%realization%option)
 
 end subroutine PMRTUpdateSolution     
 
@@ -655,7 +661,7 @@ subroutine PMRTMaxChange(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%MaxChange()')
@@ -678,7 +684,7 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
   PetscReal :: mass_balance_array(:)
 
 #ifdef PM_RT_DEBUG  
@@ -704,7 +710,7 @@ subroutine SetTranWeights(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
 
   PetscReal :: flow_dt
   PetscReal :: flow_t0
@@ -734,7 +740,7 @@ subroutine PMRTDestroy(this)
 
   implicit none
   
-  class(process_model_rt_type) :: this
+  class(pm_rt_type) :: this
 
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRTDestroy()')

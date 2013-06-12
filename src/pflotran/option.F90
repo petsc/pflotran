@@ -237,6 +237,11 @@ module Option_module
     module procedure printWrnMsg2
   end interface
 
+  interface OptionInitMPI
+    module procedure OptionInitMPI1
+    module procedure OptionInitMPI2
+  end interface
+
   public :: OptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
@@ -982,12 +987,12 @@ end subroutine OptionMeanVariance
 
 ! ************************************************************************** !
 !
-! OptionInitMPI: Initializes base MPI communicator
+! OptionInitMPI1: Initializes base MPI communicator
 ! author: Glenn Hammond
 ! date: 06/06/13
 !
 ! ************************************************************************** !
-subroutine OptionInitMPI(option)
+subroutine OptionInitMPI1(option)
 
   implicit none
   
@@ -996,16 +1001,36 @@ subroutine OptionInitMPI(option)
   PetscErrorCode :: ierr
   
   call MPI_Init(ierr)
-  option%global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
+  call OptionInitMPI2(option,MPI_COMM_WORLD)
+
+end subroutine OptionInitMPI1
+
+! ************************************************************************** !
+!
+! OptionInitMPI2: Initializes base MPI communicator
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine OptionInitMPI2(option,communicator)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscMPIInt :: communicator
+  PetscErrorCode :: ierr
+  
+  option%global_comm = communicator
+  call MPI_Comm_rank(communicator,option%global_rank, ierr)
+  call MPI_Comm_size(communicator,option%global_commsize,ierr)
+  call MPI_Comm_group(communicator,option%global_group,ierr)
   option%mycomm = option%global_comm
   option%myrank = option%global_rank
   option%mycommsize = option%global_commsize
   option%mygroup = option%global_group
 
-end subroutine OptionInitMPI
+end subroutine OptionInitMPI2
 
 ! ************************************************************************** !
 !
