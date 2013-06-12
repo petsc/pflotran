@@ -1236,6 +1236,15 @@ end subroutine DiscretizationLocalToGlobal
 ! author: Glenn Hammond
 ! date: 11/14/07
 !
+! Some clarification:
+! A "local to local" operation, in PETSc parlance, refers to communicating 
+! values from a local ghosted vector (in which the ghost points are 
+! irrelevant) and putting those values directly into another ghosted local 
+! vector (in which those ghost points are set correctly).
+! This uses the same communication pattern as a "global to local" operation, 
+! but a in a "global to local", the originating vector is a PETSc global 
+! vector, not a ghosted local vector.
+!
 ! ************************************************************************** !
 subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_index)
 

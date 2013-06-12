@@ -5,10 +5,6 @@
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
 
-! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
-! COMPATIBILITY ISSUES - geh.
-#define REVISION_NUMBER 5
-
 module Checkpoint_Header_module
   implicit none
   private
@@ -19,6 +15,8 @@ module Checkpoint_Header_module
   !  PetscReal: 8
   !  PetscInt:  19
   !  Total: 27 * 8 = 216
+! IMPORTANT: If you change the contents of the header, you MUST update 
+! 'bagsize' or risk corrupting memory.
 #ifdef PetscSizeT
   PetscSizeT, parameter :: bagsize = 216
 #else
@@ -215,7 +213,7 @@ subroutine Checkpoint(realization, &
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
 #if 0  
-  i = REVISION_NUMBER
+  i = CHECKPOINT_REVISION_NUMBER
   call PetscBagRegisterInt(bag,header%revision_number,i, &
                            "revision_number","revision_number",ierr)
   ! Register variables that are passed into timestepper().
@@ -615,14 +613,14 @@ subroutine Restart(realization, &
   call CheckpointRegisterBagHeader(bag,header)
   call PetscBagLoad(viewer, bag, ierr)
   
-  if (header%revision_number /= REVISION_NUMBER) then
+  if (header%revision_number /= CHECKPOINT_REVISION_NUMBER) then
     write(string,*) header%revision_number
     option%io_buffer = 'The revision number # of checkpoint file (' // &
                        trim(option%restart_filename) // ', rev=' // &
                        trim(adjustl(string)) // &
                        ') does not match the current revision number' // &
                        ' of PFLOTRAN checkpoint files ('
-    write(string,*) REVISION_NUMBER
+    write(string,*) CHECKPOINT_REVISION_NUMBER
     option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // ').'
     call printErrMsg(option)
   endif
@@ -839,7 +837,7 @@ subroutine CheckpointRegisterBagHeader(bag,header)
   PetscInt :: i
   PetscErrorCode :: ierr
   
-  i = REVISION_NUMBER
+  i = CHECKPOINT_REVISION_NUMBER
   call PetscBagRegisterInt(bag,header%revision_number,i, &
                            "revision_number", &
                            "revision_number", &

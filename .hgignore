@@ -68,3 +68,4 @@ regression_tests/default/anisothermal/thc_1d.h5
 *.vrb
 shortcourse/exercises/CLM-CN/doc/CLM-CN.pdf
 src/pflotran/pflotran_dependencies.txt
+src/pflotran/pflotran_source_files.txt
