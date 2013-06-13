@@ -4,14 +4,15 @@ module Geomechanics_Realization_module
 
   use Geomechanics_Discretization_module
   use Geomechanics_Patch_module
-  use Input_module
-  use Option_module
   use Geomechanics_Material_module
-  use Waypoint_module
   use Geomechanics_Field_module
   use Geomechanics_Debug_module
-  use Output_Aux_module
   use Geomechanics_Region_module
+  use Geomechanics_Condition_module
+  use Input_module
+  use Option_module
+  use Output_Aux_module
+  use Waypoint_module
 
  
   implicit none
@@ -24,19 +25,21 @@ private
   type, public :: geomech_realization_type
 
     PetscInt :: id
-    type(geomech_discretization_type), pointer :: discretization
-    type(input_type), pointer :: input
-    type(geomech_patch_type), pointer :: geomech_patch
-    type(option_type), pointer :: option
+    type(geomech_discretization_type), pointer        :: discretization
+    type(input_type), pointer                         :: input
+    type(geomech_patch_type), pointer                 :: geomech_patch
+    type(option_type), pointer                        :: option
     type(geomech_material_property_type), &
-                           pointer :: geomech_material_properties
+                           pointer       :: geomech_material_properties
     type(geomech_material_property_ptr_type), &
-                           pointer :: geomech_material_property_array(:)
-    type(waypoint_list_type), pointer  :: waypoints
-    type(geomech_field_type), pointer :: geomech_field
-    type(geomech_debug_type), pointer :: debug
-    type(output_option_type), pointer :: output_option
-    type(gm_region_list_type), pointer :: geomech_regions
+                           pointer       :: geomech_material_property_array(:)
+    type(waypoint_list_type), pointer                 :: waypoints
+    type(geomech_field_type), pointer                 :: geomech_field
+    type(geomech_debug_type), pointer                 :: debug
+    type(output_option_type), pointer                 :: output_option
+    type(gm_region_list_type), pointer                :: geomech_regions
+    type(geomech_condition_list_type),pointer         :: geomech_conditions
+
 
 
   end type geomech_realization_type
@@ -79,6 +82,9 @@ function GeomechRealizCreate(option)
   
   allocate(geomech_realization%geomech_regions)
   call GeomechRegionInitList(geomech_realization%geomech_regions)
+  
+  allocate(geomech_realization%geomech_conditions)
+  call GeomechConditionInitList(geomech_realization%geomech_conditions)
 
   nullify(geomech_realization%geomech_material_properties)
   nullify(geomech_realization%geomech_material_property_array)
@@ -233,6 +239,8 @@ subroutine GeomechRealizDestroy(geomech_realization)
   call GeomechFieldDestroy(geomech_realization%geomech_field)
   
   call GeomechRegionDestroyList(geomech_realization%geomech_regions)
+  
+  call GeomechConditionDestroyList(geomech_realization%geomech_conditions)
   
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)

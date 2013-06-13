@@ -126,6 +126,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Region_module
   use Geomechanics_Debug_module
   use Geomechanics_Strata_module
+  use Geomechanics_Condition_module
   use Solver_module
   use Waypoint_module
 
@@ -144,7 +145,8 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(geomech_grid_type), pointer             :: grid
   type(gm_region_type), pointer                :: region
   type(geomech_debug_type), pointer            :: debug
-  type(geomech_strata_type), pointer      :: strata
+  type(geomech_strata_type), pointer           :: strata
+  type(geomech_condition_type), pointer        :: geomech_condition
   
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXWORDLENGTH)                 :: card
@@ -201,6 +203,16 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         ! don't want to duplicate IO in reading the regions
         call GeomechRegionAddToList(region,geomech_realization%geomech_regions)
         nullify(region)
+ 
+      !.........................................................................
+      case ('GEOMECHANICS_CONDITION')
+        geomech_condition => GeomechConditionCreate(option)
+        call InputReadWord(input,option,geomech_condition%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'SURF_FLOW_CONDITION','name')
+        call printMsg(option,geomech_condition%name)
+        call GeomechConditionRead(geomech_condition,input,option)
+        call GeomechConditionAddToList(geomech_condition,geomech_realization%geomech_conditions)
+        nullify(geomech_condition)
         
       !.........................................................................
       case('NEWTON_SOLVER')
