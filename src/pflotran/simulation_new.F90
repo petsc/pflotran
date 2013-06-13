@@ -20,6 +20,7 @@ module Simulation_Base_class
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun
     procedure, public :: ExecuteRun
+    procedure, public :: RunToTime
   end type simulation_base_type
   
   public :: SimulationBaseCreate, &
@@ -147,8 +148,13 @@ subroutine ExecuteRun(this)
   
   class(simulation_base_type) :: this
   
+  PetscReal :: final_time
+  
   call printMsg(this%option,'Simulation%ExecuteRun()')
 
+  final_time = SimulationGetFinalWaypointTime(this)
+  call this%RunToTime(final_time)
+  
 #if 0  
   type(waypoint_type), pointer :: cur_waypoint
   
@@ -239,6 +245,44 @@ subroutine FinalizeRun(this)
   call PetscLogStagePop(ierr)
   
 end subroutine FinalizeRun
+
+
+! ************************************************************************** !
+!
+! SimulationGetFinalWaypointTime: Returns the earliest final waypoint time
+!                                 from the top layer of process model 
+!                                 couplers.
+! author: Glenn Hammond
+! date: 06/12/13
+!
+! ************************************************************************** !
+function SimulationGetFinalWaypointTime(this)
+
+  use Waypoint_module
+
+  implicit none
+  
+  class(simulation_base_type) :: this
+  
+  PetscReal :: SimulationGetFinalWaypointTime
+
+  type(pmc_base_type), pointer :: cur_process_model_coupler
+  PetscReal :: final_time
+  
+  SimulationGetFinalWaypointTime = 0.d0
+  
+  cur_process_model_coupler => this%process_model_coupler_list
+  do
+    if (.not.associated(cur_process_model_coupler)) exit
+    final_time = WaypointListGetFinalTime(cur_process_model_coupler%waypoints)
+    if (SimulationGetFinalWaypointTime < 1.d-40 .or. &
+        final_time < SimulationGetFinalWaypointTime) then
+      SimulationGetFinalWaypointTime = final_time
+    endif
+    cur_process_model_coupler => cur_process_model_coupler%next
+  enddo
+
+end function SimulationGetFinalWaypointTime
 
 ! ************************************************************************** !
 !

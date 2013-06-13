@@ -420,6 +420,8 @@ recursive subroutine PMRTInitializeRun(this)
   endif
 #endif  
   
+#if 0
+  ! currently performed in SubsurfaceJumpStart()
   call RTUpdateSolution(this%realization)
   
   if (this%option%jumpstart_kinetic_sorption .and. &
@@ -435,6 +437,7 @@ recursive subroutine PMRTInitializeRun(this)
     call RTJumpStartKineticSorption(this%realization)
   endif
   ! check on MAX_STEPS < 0 to quit after initialization.
+#endif  
     
 end subroutine PMRTInitializeRun
 
@@ -632,6 +635,9 @@ subroutine PMRTUpdateSolution(this)
   call TranConditionUpdate(this%realization%transport_conditions, &
                            this%realization%option, &
                            this%realization%option%time)
+  if (associated(this%realization%uniform_velocity_dataset)) then
+    call RealizUpdateUniformVelocity(this%realization)
+  endif  
   ! end from RealizationUpdate()
   call RTUpdateSolution(this%realization)
   if (this%realization%reaction%update_porosity .or. &

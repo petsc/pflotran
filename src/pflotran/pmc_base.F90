@@ -241,9 +241,9 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
+      call Output(this%pm_list%realization_base, &
+                  plot_flag,transient_plot_flag)
     endif
-    call Output(this%pm_list%realization_base, &
-                plot_flag,transient_plot_flag)
     
   enddo
   
@@ -292,7 +292,24 @@ recursive subroutine FinalizeRun(this)
   
   class(pmc_base_type) :: this
   
+  character(len=MAXSTRINGLENGTH) :: string
+  
   call printMsg(this%option,'PMC%FinalizeRun()')
+  
+  if (OptionPrintToScreen(this%option)) then
+    write(*,'(/," PMC steps = ",i6," newton = ",i8," linear = ",i10, &
+            & " cuts = ",i6)') &
+            this%timestepper%steps, &
+            this%timestepper%cumulative_newton_iterations, &
+            this%timestepper%cumulative_linear_iterations, &
+            this%timestepper%cumulative_time_step_cuts
+    write(string,'(f12.1)') this%timestepper%cumulative_solver_time
+    write(*,*) 'PMC SNES time = ' // trim(adjustl(string)) // ' seconds'
+  endif
+
+  if (associated(this%below)) then
+    call this%below%FinalizeRun()
+  endif
   
 end subroutine FinalizeRun
 

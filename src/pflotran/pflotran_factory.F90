@@ -332,6 +332,7 @@ subroutine HighjackSimulation(simulation_old,simulation)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
+    cur_process_model_coupler_top%waypoints => realization%waypoints
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit

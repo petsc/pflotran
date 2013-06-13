@@ -45,7 +45,8 @@ module Waypoint_module
             WaypointSkipToTime, &
             WaypointForceMatchToTime, &
             WaypointListCopy, &
-            WaypointListPrint
+            WaypointListPrint, &
+            WaypointListGetFinalTime
 
 contains
 
@@ -711,6 +712,40 @@ subroutine WaypointListDestroy(waypoint_list)
   nullify(waypoint_list)
   
 end subroutine WaypointListDestroy 
+
+! ************************************************************************** !
+!
+! WaypointListGetFinalTime: Returns the final time in the waypoint list
+! author: Glenn Hammond
+! date: 06/12/13
+!
+! ************************************************************************** !
+function WaypointListGetFinalTime(waypoint_list)
+
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  PetscReal :: WaypointListGetFinalTime
+  
+  type(waypoint_type), pointer :: cur_waypoint
+
+  WaypointListGetFinalTime = 0.d0
+  
+  if (.not.associated(waypoint_list)) return
+  
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%final .or. &
+        cur_waypoint%time > WaypointListGetFinalTime) then
+      WaypointListGetFinalTime = cur_waypoint%time
+      if (cur_waypoint%final) exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  
+end function WaypointListGetFinalTime 
 
 ! ************************************************************************** !
 !
