@@ -10,53 +10,52 @@ module Geomechanics_Condition_module
   
 #include "definitions.h"
 
-  PetscInt, parameter :: NULL = 0
-  PetscInt, parameter :: STEP = 1
-  PetscInt, parameter :: LINEAR = 2
+  PetscInt, parameter                              :: NULL = 0
+  PetscInt, parameter                              :: STEP = 1
+  PetscInt, parameter                              :: LINEAR = 2
 
   type, public :: geomech_condition_dataset_type
-    type(time_series_type), pointer :: time_series
-    class(dataset_base_type), pointer ::  dataset
+    type(time_series_type), pointer                :: time_series
+    class(dataset_base_type), pointer              ::  dataset
   end type geomech_condition_dataset_type
   
   type, public :: geomech_condition_type
-    PetscInt :: id                          ! id from which condition can be referenced
-    PetscBool :: sync_time_with_update
-    character(len=MAXWORDLENGTH) :: name    ! name of condition (e.g. boundary)
-    PetscInt :: num_sub_conditions
-    PetscInt, pointer :: itype(:)
-    character(len=MAXWORDLENGTH) :: time_units
-    character(len=MAXWORDLENGTH) :: length_units
-    type(geomech_sub_condition_type), pointer :: displacement_x
-    type(geomech_sub_condition_type), pointer :: displacement_y
-    type(geomech_sub_condition_type), pointer :: displacement_z
-    type(geomech_sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
-    type(geomech_condition_type), pointer :: next ! pointer to next condition_type for linked-lists
+    PetscInt                                       :: id    ! id from which condition can be referenced
+    PetscBool                                      :: sync_time_with_update
+    character(len=MAXWORDLENGTH)                   :: name    ! name of condition (e.g. boundary)
+    PetscInt                                       :: num_sub_conditions
+    PetscInt, pointer                              :: itype(:)
+    character(len=MAXWORDLENGTH)                   :: time_units
+    character(len=MAXWORDLENGTH)                   :: length_units
+    type(geomech_sub_condition_type), pointer      :: displacement_x
+    type(geomech_sub_condition_type), pointer      :: displacement_y
+    type(geomech_sub_condition_type), pointer      :: displacement_z
+    type(geomech_sub_condition_ptr_type), pointer  :: sub_condition_ptr(:)
+    type(geomech_condition_type), pointer          :: next ! pointer to next condition_type for linked-lists
   end type geomech_condition_type
     
   type, public :: geomech_sub_condition_type
-    PetscInt :: itype                  ! integer describing type of condition
-    PetscInt :: isubtype
-    character(len=MAXWORDLENGTH) :: ctype ! character string describing type of condition
-    character(len=MAXWORDLENGTH) :: units      ! units
-    character(len=MAXWORDLENGTH) :: name
-!    type(geomech_condition_dataset_type) :: gradient
-    type(geomech_condition_dataset_type) :: geomech_dataset
+    PetscInt                                       :: itype ! integer describing type of condition
+    PetscInt                                       :: isubtype
+    character(len=MAXWORDLENGTH)                   :: ctype ! character string describing type of condition
+    character(len=MAXWORDLENGTH)                   :: units      ! units
+    character(len=MAXWORDLENGTH)                   :: name
+    type(geomech_condition_dataset_type)           :: geomech_dataset
   end type geomech_sub_condition_type
   
   type, public :: geomech_sub_condition_ptr_type
-    type(geomech_sub_condition_type), pointer :: ptr
+    type(geomech_sub_condition_type), pointer      :: ptr
   end type geomech_sub_condition_ptr_type
     
   type, public :: geomech_condition_ptr_type
-    type(geomech_condition_type), pointer :: ptr
+    type(geomech_condition_type), pointer          :: ptr
   end type geomech_condition_ptr_type
   
   type, public :: geomech_condition_list_type
     PetscInt :: num_conditions
-    type(geomech_condition_type), pointer :: first
-    type(geomech_condition_type), pointer :: last
-    type(geomech_condition_type), pointer :: array(:)    
+    type(geomech_condition_type), pointer          :: first
+    type(geomech_condition_type), pointer          :: last
+    type(geomech_condition_type), pointer          :: array(:)    
   end type geomech_condition_list_type
 
   public :: GeomechConditionCreate, &
@@ -87,10 +86,10 @@ function GeomechConditionCreate(option)
   
   implicit none
   
-  type(option_type)                            :: option
-  type(geomech_condition_type), pointer        :: GeomechConditionCreate
+  type(option_type)                                :: option
+  type(geomech_condition_type), pointer            :: GeomechConditionCreate
   
-  type(geomech_condition_type), pointer        :: condition
+  type(geomech_condition_type), pointer            :: condition
   
   allocate(condition)
   nullify(condition%displacement_x)
@@ -691,21 +690,23 @@ subroutine GeomechConditionReadValuesFromFile(input,geomech_dataset,option)
 
   implicit none
   
-  type(input_type) :: input
-  type(geomech_condition_dataset_type) :: geomech_dataset
-  type(option_type) :: option
+  type(input_type)                                 :: input
+  type(geomech_condition_dataset_type)             :: geomech_dataset
+  type(option_type)                                :: option
 
-  character(len=MAXWORDLENGTH) :: time_units, data_units
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
-                        temp_array3(:)
-  PetscReal :: temp_time
-  PetscReal :: conversion
-  PetscInt :: max_size
-  PetscInt :: temp_max_size
-  PetscInt :: count, i, status
-  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH)                     :: time_units, data_units
+  character(len=MAXSTRINGLENGTH)                   :: string
+  character(len=MAXWORDLENGTH)                     :: word
+  PetscReal, pointer                               :: temp_times(:), &
+                                                      temp_array1(:), &
+                                                      temp_array2(:), &
+                                                      temp_array3(:)
+  PetscReal                                        :: temp_time
+  PetscReal                                        :: conversion
+  PetscInt                                         :: max_size
+  PetscInt                                         :: temp_max_size
+  PetscInt                                         :: count, i, status
+  PetscErrorCode                                   :: ierr
   
   time_units = ''
   data_units = ''
@@ -851,20 +852,21 @@ subroutine GeomechConditionReadValuesFromFile2(input,geomech_dataset,option)
 
   implicit none
   
-  type(input_type) :: input
-  type(geomech_condition_dataset_type) :: geomech_dataset
-  type(option_type) :: option
+  type(input_type)                                 :: input
+  type(geomech_condition_dataset_type)             :: geomech_dataset
+  type(option_type)                                :: option
 
-  character(len=MAXWORDLENGTH) :: time_units, data_units
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  PetscReal, pointer :: temp_times(:), temp_array(:,:)
-  PetscReal :: temp_time
-  PetscReal :: conversion
-  PetscInt :: max_size
-  PetscInt :: temp_max_size
-  PetscInt :: count, i, status
-  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH)                     :: time_units, data_units
+  character(len=MAXSTRINGLENGTH)                   :: string
+  character(len=MAXWORDLENGTH)                     :: word
+  PetscReal, pointer                               :: temp_times(:), &
+                                                      temp_array(:,:)
+  PetscReal                                        :: temp_time
+  PetscReal                                        :: conversion
+  PetscInt                                         :: max_size
+  PetscInt                                         :: temp_max_size
+  PetscInt                                         :: count, i, status
+  PetscErrorCode                                   :: ierr
   
   time_units = ''
   data_units = ''
@@ -979,12 +981,12 @@ subroutine GeomechConditionDatasetGetTimes(option, sub_condition, &
 
   implicit none
   
-  type(option_type) :: option
-  type(geomech_sub_condition_type), pointer :: sub_condition
-  PetscReal :: max_sim_time
-  PetscReal, pointer :: times(:)
+  type(option_type)                                :: option
+  type(geomech_sub_condition_type), pointer        :: sub_condition
+  PetscReal                                        :: max_sim_time
+  PetscReal, pointer                               :: times(:)
   
-  type(geomech_condition_dataset_type), pointer :: geomech_dataset
+  type(geomech_condition_dataset_type), pointer    :: geomech_dataset
   
   geomech_dataset => sub_condition%geomech_dataset
 
@@ -1018,10 +1020,10 @@ subroutine GeomechConditionPrint(condition,option)
 
   implicit none
   
-  type(geomech_condition_type) :: condition
-  type(option_type) :: option
+  type(geomech_condition_type)                     :: condition
+  type(option_type)                                :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH)                   :: string
   PetscInt :: i
 
 99 format(/,80('-'))
@@ -1058,10 +1060,10 @@ subroutine GeomechConditionPrintSubCondition(subcondition,option)
 
   implicit none
   
-  type(geomech_sub_condition_type) :: subcondition
-  type(option_type) :: option
+  type(geomech_sub_condition_type)                 :: subcondition
+  type(option_type)                                :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH)                   :: string
   
   write(option%fid_out,'(/,4x,''Sub Condition: '',a)') trim(subcondition%name)
   select case(subcondition%itype)
@@ -1102,8 +1104,8 @@ subroutine GeomechConditionDatasetPrint(geomech_dataset,option)
 
   implicit none
   
-  type(geomech_condition_dataset_type) :: geomech_dataset
-  type(option_type) :: option
+  type(geomech_condition_dataset_type)             :: geomech_dataset
+  type(option_type)                                :: option
   
   if(associated(geomech_dataset%time_series)) then
     call TimeSeriesPrint(geomech_dataset%time_series,option)
@@ -1126,13 +1128,13 @@ subroutine GeomechConditionUpdate(condition_list,option,time)
   
   implicit none
   
-  type(geomech_condition_list_type) :: condition_list
-  type(option_type) :: option
-  PetscReal :: time
+  type(geomech_condition_list_type)                :: condition_list
+  type(option_type)                                :: option
+  PetscReal                                        :: time
   
-  type(geomech_condition_type), pointer :: condition
-  type(geomech_sub_condition_type), pointer :: sub_condition
-  PetscInt :: isub_condition  
+  type(geomech_condition_type), pointer            :: condition
+  type(geomech_sub_condition_type), pointer        :: sub_condition
+  PetscInt                                         :: isub_condition   
   
   condition => condition_list%first
   do
@@ -1171,12 +1173,12 @@ subroutine GeomechSubConditionUpdateDataset(option,time,geomech_condition_datase
   
   implicit none
   
-  type(option_type) :: option
-  PetscReal :: time
-  type(geomech_condition_dataset_type) :: geomech_condition_dataset
+  type(option_type)                              :: option
+  PetscReal                                      :: time
+  type(geomech_condition_dataset_type)           :: geomech_condition_dataset
 
-  class(dataset_xyz_type), pointer :: dataset_xyz
-  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_xyz_type), pointer               :: dataset_xyz
+  class(dataset_map_type), pointer               :: dataset_map
 
   if (associated(geomech_condition_dataset%time_series)) then
     if (time < 1.d-40 .or. &
@@ -1216,7 +1218,7 @@ subroutine GeomechConditionInitList(list)
 
   implicit none
 
-  type(geomech_condition_list_type) :: list
+  type(geomech_condition_list_type)                :: list
   
   nullify(list%first)
   nullify(list%last)
@@ -1236,8 +1238,8 @@ subroutine GeomechConditionAddToList(new_condition,list)
 
   implicit none
   
-  type(geomech_condition_type), pointer :: new_condition
-  type(geomech_condition_list_type) :: list
+  type(geomech_condition_type), pointer             :: new_condition
+  type(geomech_condition_list_type)                 :: list
   
   list%num_conditions = list%num_conditions + 1
   new_condition%id = list%num_conditions
@@ -1261,12 +1263,12 @@ function GeomechConditionGetPtrFromList(condition_name,condition_list)
   
   implicit none
   
-  type(geomech_condition_type), pointer :: GeomechConditionGetPtrFromList
-  character(len=MAXWORDLENGTH) :: condition_name
-  type(geomech_condition_list_type) :: condition_list
+  type(geomech_condition_type), pointer     :: GeomechConditionGetPtrFromList
+  character(len=MAXWORDLENGTH)              :: condition_name
+  type(geomech_condition_list_type)         :: condition_list
  
-  PetscInt :: length
-  type(geomech_condition_type), pointer :: condition
+  PetscInt                                  :: length
+  type(geomech_condition_type), pointer     :: condition
     
   nullify(GeomechConditionGetPtrFromList)
   condition => condition_list%first
@@ -1296,9 +1298,9 @@ function GeomechConditionIsTransient(condition)
 
   implicit none
   
-  type(geomech_condition_type) :: condition
-  
-  PetscBool :: GeomechConditionIsTransient
+  type(geomech_condition_type)                 :: condition
+ 
+  PetscBool                                    :: GeomechConditionIsTransient
   
   GeomechConditionIsTransient = PETSC_FALSE
 
@@ -1323,7 +1325,7 @@ function GeomechSubConditionIsTransient(sub_condition)
   
   type(geomech_sub_condition_type), pointer :: sub_condition
   
-  PetscBool :: GeomechSubConditionIsTransient
+  PetscBool                                 :: GeomechSubConditionIsTransient
   
   GeomechSubConditionIsTransient = PETSC_FALSE
 
@@ -1348,9 +1350,9 @@ function GeomechDatasetIsTransient(geomech_dataset)
 
   implicit none
   
-  type(geomech_condition_dataset_type) :: geomech_dataset
+  type(geomech_condition_dataset_type)           :: geomech_dataset
   
-  PetscBool :: GeomechDatasetIsTransient
+  PetscBool                                      :: GeomechDatasetIsTransient
   
   GeomechDatasetIsTransient = PETSC_FALSE
 
@@ -1381,9 +1383,10 @@ subroutine GeomechConditionDestroyList(condition_list)
 
   implicit none
   
-  type(geomech_condition_list_type), pointer :: condition_list
+  type(geomech_condition_list_type), pointer        :: condition_list
   
-  type(geomech_condition_type), pointer :: condition, prev_condition
+  type(geomech_condition_type), pointer             :: condition, &
+                                                       prev_condition
   
   if (.not.associated(condition_list)) return
   
@@ -1417,9 +1420,9 @@ subroutine GeomechConditionDestroy(condition)
 
   implicit none
   
-  type(geomech_condition_type), pointer :: condition
+  type(geomech_condition_type), pointer            :: condition
   
-  PetscInt :: i
+  PetscInt                                         :: i
   
   if (.not.associated(condition)) return
   
@@ -1457,7 +1460,7 @@ subroutine GeomechSubConditionDestroy(sub_condition)
 
   implicit none
   
-  type(geomech_sub_condition_type), pointer :: sub_condition
+  type(geomech_sub_condition_type), pointer        :: sub_condition
   
   if (.not.associated(sub_condition)) return
   
@@ -1480,7 +1483,7 @@ subroutine GeomechConditionDatasetDestroy(geomech_condition_dataset)
 
   implicit none
   
-  type(geomech_condition_dataset_type) :: geomech_condition_dataset
+  type(geomech_condition_dataset_type)           :: geomech_condition_dataset
   
   if (associated(geomech_condition_dataset%time_series)) then
     call TimeSeriesDestroy(geomech_condition_dataset%time_series)
