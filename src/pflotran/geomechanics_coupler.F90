@@ -55,8 +55,8 @@ contains
 ! ************************************************************************** !
 !
 ! GeomechCouplerCreate: Creates a coupler
-! author: Glenn Hammond
-! date: 10/23/07
+! author: Satish Karra, LANL
+! date: 06/13/13
 !
 ! ************************************************************************** !
 function GeomechCouplerCreate1()
@@ -89,8 +89,8 @@ end function GeomechCouplerCreate1
 ! ************************************************************************** !
 !
 ! GeomechCouplerCreate2: Creates a coupler
-! author: Glenn Hammond
-! date: 10/23/07
+! author: Satish Karra, LANL
+! date: 06/13/13
 !
 ! ************************************************************************** !
 function GeomechCouplerCreate2(itype)
@@ -119,8 +119,8 @@ end function GeomechCouplerCreate2
 ! ************************************************************************** !
 !
 ! GeomechCouplerCreateFromGeomechCoupler: Creates a coupler
-! author: Glenn Hammond
-! date: 10/23/07
+! author: Satish Karra, LANL
+! date: 06/13/13
 !
 ! ************************************************************************** !
 function GeomechCouplerCreateFromGeomechCoupler(coupler)
@@ -153,6 +153,203 @@ function GeomechCouplerCreateFromGeomechCoupler(coupler)
   GeomechCouplerCreateFromGeomechCoupler => new_coupler
 
 end function GeomechCouplerCreateFromGeomechCoupler
+
+! ************************************************************************** !
+!
+! GeomechCouplerInitList: Initializes a coupler list
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechCouplerInitList(list)
+
+  implicit none
+
+  type(geomech_coupler_list_type)                  :: list
+  
+  nullify(list%first)
+  nullify(list%last)
+  nullify(list%array)
+  list%num_couplers = 0
+
+end subroutine GeomechCouplerInitList
+
+! ************************************************************************** !
+!
+! GeomechCouplerRead: Reads a coupler from the input file
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechCouplerRead(coupler,input,option)
+
+  use Input_module
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type)                                :: option
+  type(geomech_coupler_type)                       :: coupler
+  type(input_type)                                 :: input
+  
+  character(len=MAXWORDLENGTH)                     :: word
+
+  input%ierr = 0
+  do
+  
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','COUPLER')   
+    call StringToUpper(word)      
+    
+    select case(trim(word))
+    
+      case('GEOMECH_REGION')
+        call InputReadWord(input,option,coupler%region_name,PETSC_TRUE)
+      case('GEOMECH_CONDITION')
+        call InputReadWord(input,option,coupler%geomech_condition_name, &
+                           PETSC_TRUE)
+      case default
+        option%io_buffer = 'Geomech coupler card (' // trim(word) // &
+                           ') not recognized.'
+        call printErrMsg(option)        
+    end select 
+  
+  enddo  
+
+end subroutine GeomechCouplerRead
+
+! ************************************************************************** !
+!
+! GeomechCouplerAddToList: Adds a new coupler to a coupler list
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechCouplerAddToList(new_coupler,list)
+
+  implicit none
+  
+  type(geomech_coupler_type), pointer              :: new_coupler
+  type(geomech_coupler_list_type)                  :: list
+  
+  list%num_couplers = list%num_couplers + 1
+  new_coupler%id = list%num_couplers
+  if (.not.associated(list%first)) list%first => new_coupler
+  if (associated(list%last)) list%last%next => new_coupler
+  list%last => new_coupler
+  
+end subroutine GeomechCouplerAddToList
+
+! ************************************************************************** !
+!
+! GeomechCouplerGetPtrFromList: Returns a pointer to the geomech coupler 
+!                               matching coupler_name
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+function GeomechCouplerGetPtrFromList(coupler_name,coupler_list)
+
+  use String_module
+
+  implicit none
+  
+  type(geomech_coupler_type), pointer           :: GeomechCouplerGetPtrFromList
+  character(len=MAXWORDLENGTH)                  :: coupler_name
+  PetscInt                                      :: length
+  type(geomech_coupler_list_type)               :: coupler_list
+
+  type(geomech_coupler_type), pointer :: coupler
+    
+  nullify(GeomechCouplerGetPtrFromList)
+
+  coupler => coupler_list%first
+  do 
+    if (.not.associated(coupler)) exit
+    length = len_trim(coupler_name)
+    if (length == len_trim(coupler%name) .and. &
+        StringCompare(coupler%name,coupler_name,length)) then
+      GeomechCouplerGetPtrFromList => coupler
+      return
+    endif
+    coupler => coupler%next
+  enddo
+  
+end function GeomechCouplerGetPtrFromList
+
+! ************************************************************************** !
+!
+! GeomechCouplerDestroyList: Deallocates a list of geomech couplers
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechCouplerDestroyList(coupler_list)
+
+  implicit none
+  
+  type(geomech_coupler_list_type), pointer         :: coupler_list
+  
+  type(geomech_coupler_type), pointer              :: coupler, prev_coupler
+  
+  if (.not.associated(coupler_list)) return
+  
+  coupler => coupler_list%first
+  do 
+    if (.not.associated(coupler)) exit
+    prev_coupler => coupler
+    coupler => coupler%next
+    call GeomechCouplerDestroy(prev_coupler)
+  enddo
+  
+  coupler_list%num_couplers = 0
+  nullify(coupler_list%first)
+  nullify(coupler_list%last)
+  if (associated(coupler_list%array)) deallocate(coupler_list%array)
+  nullify(coupler_list%array)
+  
+  deallocate(coupler_list)
+  nullify(coupler_list)
+
+end subroutine GeomechCouplerDestroyList
+  
+! ************************************************************************** !
+!
+! GeomechCouplerDestroy: Destroys a coupler
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechCouplerDestroy(coupler)
+
+  implicit none
+  
+  type(geomech_coupler_type), pointer :: coupler
+  
+  if (.not.associated(coupler)) return
+  
+  ! since the below are simply pointers to objects in list that have already
+  ! or will be deallocated from the list, nullify instead of destroying
+  
+  nullify(coupler%geomech_condition)     ! since these are simply pointers to 
+  nullify(coupler%region)                ! conditions in list, nullify
+
+  if (associated(coupler%geomech_aux_int_var)) &
+    deallocate(coupler%geomech_aux_int_var)
+  nullify(coupler%geomech_aux_int_var)
+  if (associated(coupler%geomech_aux_real_var)) &
+    deallocate(coupler%geomech_aux_real_var)
+  nullify(coupler%geomech_aux_real_var)
+   
+  deallocate(coupler)
+  nullify(coupler)
+
+end subroutine GeomechCouplerDestroy
 
   
 end module Geomechanics_Coupler_module
