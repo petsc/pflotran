@@ -7,6 +7,7 @@ module Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Region_module
   use Geomechanics_Strata_module
+  use Geomechanics_Coupler_module
   
   implicit none
   
@@ -15,14 +16,17 @@ module Geomechanics_Patch_module
 #include "definitions.h"
 
   type, public :: geomech_patch_type
-    PetscInt :: id
-    PetscInt, pointer :: imat(:)
-    type(geomech_grid_type), pointer :: geomech_grid
+    PetscInt                                      :: id
+    PetscInt, pointer                             :: imat(:)
+    type(geomech_grid_type), pointer              :: geomech_grid
     type(geomech_material_property_type), pointer :: geomech_material_properties
     type(geomech_material_property_ptr_type),&
        pointer :: geomech_material_property_array(:)
-    type(geomech_strata_list_type), pointer :: geomech_strata
-    type(gm_region_list_type), pointer :: geomech_regions
+    type(geomech_strata_list_type), pointer       :: geomech_strata
+    type(gm_region_list_type), pointer            :: geomech_regions
+    
+    type(geomech_coupler_list_type), pointer      :: geomech_boundary_conditions
+    type(geomech_coupler_list_type), pointer      :: geomech_source_sinks
   end type geomech_patch_type
 
 
@@ -52,6 +56,11 @@ function GeomechanicsPatchCreate()
   patch%id = 0
   nullify(patch%imat)
   nullify(patch%geomech_grid)
+  
+  allocate(patch%geomech_boundary_conditions)
+  call GeomechCouplerInitList(patch%geomech_boundary_conditions)
+  allocate(patch%geomech_source_sinks)
+  call GeomechCouplerInitList(patch%geomech_source_sinks)  
   
   nullify(patch%geomech_material_properties)
   nullify(patch%geomech_material_property_array)
@@ -125,6 +134,9 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
 
   call GeomechStrataDestroyList(geomech_patch%geomech_strata)
   call GeomechRegionDestroyList(geomech_patch%geomech_regions)
+  
+  call GeomechCouplerDestroyList(geomech_patch%geomech_boundary_conditions)
+  call GeomechCouplerDestroyList(geomech_patch%geomech_source_sinks)
 
   deallocate(geomech_patch)
   nullify(geomech_patch)

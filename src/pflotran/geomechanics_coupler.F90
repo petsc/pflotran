@@ -42,7 +42,14 @@ module Geomechanics_Coupler_module
     type(geomech_coupler_type), pointer       :: last
     type(geomech_coupler_type), pointer       :: array(:)    
   end type geomech_coupler_list_type
-
+  
+  public :: GeomechCouplerCreate, &
+            GeomechCouplerDestroy, &
+            GeomechCouplerInitList, &
+            GeomechCouplerAddToList, &
+            GeomechCouplerRead, &
+            GeomechCouplerDestroyList, &
+            GeomechCouplerGetPtrFromList
 
   interface GeomechCouplerCreate
     module procedure GeomechCouplerCreate1
@@ -203,14 +210,14 @@ subroutine GeomechCouplerRead(coupler,input,option)
     if (InputCheckExit(input,option)) exit
     
     call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','COUPLER')   
+    call InputErrorMsg(input,option,'keyword','GEOMECHANICS COUPLER')   
     call StringToUpper(word)      
     
     select case(trim(word))
     
-      case('GEOMECH_REGION')
+      case('GEOMECHANICS_REGION')
         call InputReadWord(input,option,coupler%region_name,PETSC_TRUE)
-      case('GEOMECH_CONDITION')
+      case('GEOMECHANICS_CONDITION')
         call InputReadWord(input,option,coupler%geomech_condition_name, &
                            PETSC_TRUE)
       case default

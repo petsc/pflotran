@@ -127,6 +127,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Debug_module
   use Geomechanics_Strata_module
   use Geomechanics_Condition_module
+  use Geomechanics_Coupler_module
   use Solver_module
   use Waypoint_module
 
@@ -146,7 +147,9 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(gm_region_type), pointer                :: region
   type(geomech_debug_type), pointer            :: debug
   type(geomech_strata_type), pointer           :: strata
-  type(geomech_condition_type), pointer        :: geomech_condition
+  type(geomech_condition_type), pointer        :: condition
+  type(geomech_coupler_type), pointer          :: coupler
+
   
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXWORDLENGTH)                 :: card
@@ -206,14 +209,23 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
  
       !.........................................................................
       case ('GEOMECHANICS_CONDITION')
-        geomech_condition => GeomechConditionCreate(option)
-        call InputReadWord(input,option,geomech_condition%name,PETSC_TRUE)
+        condition => GeomechConditionCreate(option)
+        call InputReadWord(input,option,condition%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'SURF_FLOW_CONDITION','name')
-        call printMsg(option,geomech_condition%name)
-        call GeomechConditionRead(geomech_condition,input,option)
-        call GeomechConditionAddToList(geomech_condition,geomech_realization%geomech_conditions)
-        nullify(geomech_condition)
+        call printMsg(option,condition%name)
+        call GeomechConditionRead(condition,input,option)
+        call GeomechConditionAddToList(condition,geomech_realization%geomech_conditions)
+        nullify(condition)
         
+     !.........................................................................
+      case ('GEOMECHANICS_BOUNDARY_CONDITION')
+        coupler =>  GeomechCouplerCreate(GM_BOUNDARY_COUPLER_TYPE)
+        call InputReadWord(input,option,coupler%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Geomech Boundary Condition name')
+        call GeomechCouplerRead(coupler,input,option)
+        call GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
+        nullify(coupler)
+                
       !.........................................................................
       case('NEWTON_SOLVER')
         call InputReadWord(input,option,word,PETSC_FALSE)
