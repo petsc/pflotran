@@ -482,7 +482,8 @@ geomechanics_condition.o : dataset_base.o dataset_common_hdf5.o dataset_map.o \
                            dataset_xyz.o geomechanics_logging.o hdf5_aux.o \
                            input.o option.o string.o time_series.o \
                            time_storage.o units.o utility.o
-geomechanics_coupler.o : geomechanics_region.o
+geomechanics_coupler.o : geomechanics_condition.o geomechanics_region.o \
+                         input.o option.o string.o
 geomechanics_debug.o : input.o option.o
 geomechanics_discretization.o : geomech_grid.o geomech_grid_aux.o option.o
 geomechanics_field.o :

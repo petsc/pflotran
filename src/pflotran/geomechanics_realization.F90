@@ -47,6 +47,7 @@ private
 public :: GeomechRealizCreate, &
           GeomechRealizDestroy, &
           GeomechRealizAddStrata, &
+          GeomechRealizAddGeomechCoupler, &
           GeomechRealizLocalizeRegions, &
           GeomechRealizCreateDiscretization
 
@@ -220,6 +221,44 @@ subroutine GeomechRealizCreateDiscretization(realization)
 
   
 end subroutine GeomechRealizCreateDiscretization
+
+! ************************************************************************** !
+!
+! GeomechRealizAddGeomechCoupler: This subroutine addes a geomechanics 
+!                                 coupler to a geomechanics realization
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizAddGeomechCoupler(realization,coupler)
+
+  use Geomechanics_Coupler_module
+
+  implicit none
+  
+  type(geomech_realization_type)                   :: realization
+  type(geomech_coupler_type), pointer              :: coupler
+  
+  type(geomech_patch_type), pointer                :: patch
+  type(geomech_coupler_type), pointer              :: new_coupler
+  
+  patch => realization%geomech_patch
+  
+ ! only add to flow list for now, since they will be split out later
+  new_coupler => GeomechCouplerCreate(coupler)
+  select case(coupler%itype)
+    case(GM_BOUNDARY_COUPLER_TYPE)
+      call GeomechCouplerAddToList(new_coupler, &
+                                   patch%geomech_boundary_conditions)
+    case(GM_SRC_SINK_COUPLER_TYPE)
+      call GeomechCouplerAddToList(new_coupler,patch%geomech_source_sinks)
+  end select
+  nullify(new_coupler)
+  
+  call GeomechCouplerDestroy(coupler)
+ 
+end subroutine GeomechRealizAddGeomechCoupler
+
 
 ! ************************************************************************** !
 !
