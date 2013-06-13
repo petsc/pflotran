@@ -872,7 +872,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       ! if substepping occured and time step size was modified to 
       ! to match the stepper target time, need to set the transport
       ! step size back to the pre-modified value
-      if (tran_dt_save > -998.d0) option%tran_dt = tran_dt_save
+      !geh: moved below
+      !geh: if (tran_dt_save > -998.d0) option%tran_dt = tran_dt_save
       option%tran_time = tran_stepper%target_time
       call PetscLogStagePop(ierr)
     endif
@@ -889,6 +890,13 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 #else
     call StepperUpdateSolution(realization)
 #endif
+
+    if (associated(tran_stepper)) then
+      !geh: must revert tran_dt back after update of solution.  Otherwise,
+      !     explicit update of mineral vol fracs, etc. will be updated based
+      !     on incorrect dt
+      if (tran_dt_save > -998.d0) option%tran_dt = tran_dt_save
+    endif
 
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
