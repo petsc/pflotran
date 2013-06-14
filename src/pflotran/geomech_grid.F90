@@ -996,13 +996,13 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   count = 0
   do ghosted_id = 1, geomech_grid%ngmax_node
     local_id = geomech_grid%nG2L(ghosted_id)
-    if (local_id < 0) cycle
+    if (local_id < 1) cycle
     count = count + 1
     natural_id = geomech_grid%nG2A(ghosted_id)
     tmp_int_array(count) = natural_id
   enddo
 
-  tmp_int_array = tmp_int_array - 1 ! Change to zero-based numbering
+  tmp_int_array = tmp_int_array - 1
   call ISCreateBlock(option%mycomm,1,geomech_grid%nlmax_node, &
                      tmp_int_array,PETSC_COPY_VALUES,is_from,ierr)
 
