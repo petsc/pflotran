@@ -225,7 +225,16 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call GeomechCouplerRead(coupler,input,option)
         call GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
         nullify(coupler)
-                
+        
+      !.........................................................................
+      case ('GEOMECHANICS_SRC_SINK')
+        coupler => GeomechCouplerCreate(GM_SRC_SINK_COUPLER_TYPE)
+        call InputReadWord(input,option,coupler%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Source Sink name') 
+        call GeomechCouplerRead(coupler,input,option)
+        call GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
+        nullify(coupler)
+                 
       !.........................................................................
       case('NEWTON_SOLVER')
         call InputReadWord(input,option,word,PETSC_FALSE)

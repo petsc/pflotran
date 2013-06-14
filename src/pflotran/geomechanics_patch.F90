@@ -106,6 +106,9 @@ subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
   
  ! Need a call to a subroutine similar to GridlocalizeRegions 
  ! call GridLocalizeRegions(patch%grid,patch%regions,option)
+  call GeomechGridLocalizeRegions(geomech_patch%geomech_grid, &
+                                  geomech_patch%geomech_regions, &
+                                  option)
  
 end subroutine GeomechPatchLocalizeRegions
 

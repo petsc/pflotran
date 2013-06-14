@@ -26,7 +26,8 @@ module Geomechanics_Grid_module
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 
   public :: GeomechGridRead, &
-            CopySubsurfaceGridtoGeomechGrid 
+            CopySubsurfaceGridtoGeomechGrid, &
+            GeomechGridLocalizeRegions 
 
 contains
 
@@ -847,6 +848,196 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   deallocate(int_array2)
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
+
+
+! ************************************************************************** !
+!
+! GeomechGridLocalizeRegions: Resticts regions to vertices local 
+!                                    to processor for geomech grid when
+!                                    the region is defined by a list of 
+!                                    vertex ids
+! author: Satish Karra
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechGridLocalizeRegions(grid,region_list,option)
+
+  use Option_module
+  use Geomechanics_Region_module
+
+  implicit none
+  
+  type(gm_region_list_type), pointer      :: region_list
+  type(geomech_grid_type), pointer        :: grid
+  type(option_type)                       :: option
+  
+  type(gm_region_type), pointer           :: region
+  character(len=MAXSTRINGLENGTH)          :: string
+  
+  
+  
+  
+  region => region_list%first
+  do
+    if (.not.(associated(region))) exit
+    
+    if (.not.(associated(region%vertex_ids))) then
+      option%io_buffer = 'GeomechGridLocalizeRegions: define region only ' // &
+                         'by list of vertices is currently implemented: ' //  &
+                          trim(region%name)
+      call printErrMsg(option)     
+    else
+      call GeomechGridLocalizeRegFromVertIDs(grid,region,option)
+    endif
+    
+    if (region%num_verts == 0 .and. associated(region%vertex_ids)) then
+      deallocate(region%vertex_ids)
+      nullify(region%vertex_ids)
+    endif
+    
+    region => region%next
+  
+  enddo
+  
+
+end subroutine GeomechGridLocalizeRegions
+
+! ************************************************************************** !
+!
+! GeomechGridLocalizeRegFromVertIDs: Resticts regions to vertices local 
+!                                    to processor for geomech grid when
+!                                    the region is defined by a list of 
+!                                    vertex ids
+! author: Satish Karra
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
+                                             option)
+
+
+  use Option_module
+  use Geomechanics_Region_module
+  
+  implicit none
+  
+#include "finclude/petsclog.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscmat.h"
+
+
+  type(geomech_grid_type)                 :: geomech_grid
+  type(gm_region_type)                    :: geomech_region
+  type(option_type)                       :: option
+ 
+  Vec                                     :: vec_vertex_ids,vec_vertex_ids_loc
+  IS                                      :: is_from, is_to
+  VecScatter                              :: vec_scat
+  PetscErrorCode                          :: ierr
+  PetscViewer                             :: viewer
+  PetscInt                                :: ii,jj,kk,count
+  PetscInt                                :: istart,iend
+  PetscInt                                :: ghosted_id,local_id
+  PetscInt                                :: natural_id
+  PetscInt, pointer                       :: tmp_int_array(:), tmp_int_array2(:)
+  PetscScalar, pointer                    :: v_loc_p(:),v_loc2_p(:)
+  PetscScalar, pointer                    :: tmp_scl_array(:)
+
+
+  if (associated(geomech_region%vertex_ids)) then
+    call VecCreateMPI(option%mycomm,geomech_grid%nlmax_node,PETSC_DECIDE, &
+                      vec_vertex_ids,ierr)
+    call VecCreateMPI(option%mycomm,geomech_grid%nlmax_node,PETSC_DECIDE,&
+                      vec_vertex_ids_loc,ierr)
+    call VecZeroEntries(vec_vertex_ids,ierr)
+    
+    allocate(tmp_int_array(geomech_region%num_verts))
+    allocate(tmp_scl_array(geomech_region%num_verts))
+
+    count = 0
+    do ii = 1, geomech_region%num_verts
+      count = count + 1
+      tmp_int_array(count) = geomech_region%vertex_ids(ii) - 1 ! Change to zero-based numbering
+      tmp_scl_array(count) = 1.d0
+    enddo
+    
+#ifdef GEOMECH_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_vertex_ids_bef.out', &
+                              viewer, ierr)
+    call VecView(vec_vertex_ids, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)  
+#endif    
+
+    call VecSetValues(vec_vertex_ids,geomech_region%num_verts,tmp_int_array, &
+                      tmp_scl_array,ADD_VALUES,ierr)
+    
+    deallocate(tmp_int_array)
+    deallocate(tmp_scl_array)
+
+    call VecAssemblyBegin(vec_vertex_ids, ierr)
+    call VecAssemblyEnd(vec_vertex_ids, ierr)
+    
+#ifdef GEOMECH_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_vertex_ids_aft.out', &
+                              viewer, ierr)
+    call VecView(vec_vertex_ids, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)  
+#endif       
+    
+  endif
+  
+  allocate(tmp_int_array(geomech_grid%nlmax_node))
+  count = 0
+  do ghosted_id = 1, geomech_grid%ngmax_node
+    local_id = geomech_grid%nG2L(ghosted_id)
+    if (local_id < 0) cycle
+    count = count + 1
+    natural_id = geomech_grid%nG2A(ghosted_id)
+    tmp_int_array(count) = natural_id
+  enddo
+
+  tmp_int_array = tmp_int_array - 1 ! Change to zero-based numbering
+  call ISCreateBlock(option%mycomm,1,geomech_grid%nlmax_node, &
+                     tmp_int_array,PETSC_COPY_VALUES,is_from,ierr)
+
+  call VecGetOwnershipRange(vec_vertex_ids_loc,istart,iend,ierr)
+  do ii = 1,geomech_grid%nlmax_node
+    tmp_int_array(ii) = ii + istart
+  enddo
+ 
+  ! is_from is natural_numbering
+  ! is_to is PETSc_numbering
+ 
+  tmp_int_array = tmp_int_array - 1 
+  call ISCreateBlock(option%mycomm,1,geomech_grid%nlmax_node,&
+                     tmp_int_array,PETSC_COPY_VALUES,is_to,ierr)
+
+  deallocate(tmp_int_array)
+  
+  call VecScatterCreate(vec_vertex_ids,is_from,vec_vertex_ids_loc,is_to, &
+                        vec_scat,ierr)
+
+  call ISDestroy(is_from, ierr)
+  call ISDestroy(is_to, ierr)
+  
+  call VecScatterBegin(vec_scat,vec_vertex_ids,vec_vertex_ids_loc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scat,vec_vertex_ids,vec_vertex_ids_loc, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scat,ierr)
+  
+
+
+
+
+
+  
+                                             
+end subroutine GeomechGridLocalizeRegFromVertIDs
 
 end module Geomechanics_Grid_module
 #endif 
