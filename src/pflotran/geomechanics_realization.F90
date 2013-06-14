@@ -47,6 +47,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizLocalizeRegions, &
           GeomechRealizPassFieldPtrToPatch, &
           GeomechRealizProcessMatProp, &
+          GeomechRealizProcessGeomechCouplers, &
           GeomechRealizCreateDiscretization
 
 contains
@@ -282,6 +283,30 @@ end subroutine GeomechRealizPassFieldPtrToPatch
 
 ! ************************************************************************** !
 !
+! GeomechRealizProcessGeomechCouplers: This subroutine sets up couplers in 
+!                                      geomech realization
+! author: Satish Karra, LANL
+! date: 06/14/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
+
+  implicit none
+  
+  type(geomech_realization_type)           :: geomech_realization
+
+  type(geomech_patch_type), pointer        :: patch
+  
+  patch => geomech_realization%geomech_patch
+  
+  call GeomechPatchProcessGeomechCouplers(patch, &
+                                   geomech_realization%geomech_conditions, &
+                                   geomech_realization%option)
+ 
+end subroutine GeomechRealizProcessGeomechCouplers
+
+! ************************************************************************** !
+!
 ! GeomechRealizAddGeomechCoupler: This subroutine addes a geomechanics 
 !                                 coupler to a geomechanics realization
 ! author: Satish Karra, LANL
@@ -316,7 +341,6 @@ subroutine GeomechRealizAddGeomechCoupler(realization,coupler)
   call GeomechCouplerDestroy(coupler)
  
 end subroutine GeomechRealizAddGeomechCoupler
-
 
 ! ************************************************************************** !
 !

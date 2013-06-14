@@ -244,7 +244,6 @@ subroutine GeomechanicsMaterialPropConvertListToArray(list,array,option)
 
 end subroutine GeomechanicsMaterialPropConvertListToArray
 
-
 ! ************************************************************************** !
 !
 ! GeomechanicsMaterialPropGetPtrFromArray: Destroys a geomechanics material
