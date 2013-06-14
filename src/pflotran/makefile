@@ -359,7 +359,8 @@ geomech_obj = \
   ${common_src}geomechanics_strata.o \
   ${common_src}geomechanics_coupler.o \
   ${common_src}geomechanics_condition.o \
-  ${common_src}geomechanics_logging.o
+  ${common_src}geomechanics_logging.o \
+  ${common_src}geomechanics_global_aux.o
 
 # End Source Block
 
@@ -475,8 +476,8 @@ general_aux.o : gas_eos_mod.o global_aux.o option.o saturation_function.o \
                 water_eos.o
 general_grid.o : connection.o discretization.o field.o grid.o hdf5.o \
                  hdf5_aux.o logging.o option.o patch.o realization.o
-geomech_grid.o : geomech_grid_aux.o input.o option.o string.o \
-                 unstructured_cell.o unstructured_grid_aux.o
+geomech_grid.o : geomech_grid_aux.o geomechanics_region.o input.o option.o \
+                 string.o unstructured_cell.o unstructured_grid_aux.o
 geomech_grid_aux.o : option.o unstructured_cell.o utility.o
 geomechanics_condition.o : dataset_base.o dataset_common_hdf5.o dataset_map.o \
                            dataset_xyz.o geomechanics_logging.o hdf5_aux.o \
@@ -487,19 +488,22 @@ geomechanics_coupler.o : geomechanics_condition.o geomechanics_region.o \
 geomechanics_debug.o : input.o option.o
 geomechanics_discretization.o : geomech_grid.o geomech_grid_aux.o option.o
 geomechanics_field.o :
+geomechanics_global_aux.o : option.o utility.o
 geomechanics_init.o : geomech_grid.o geomech_grid_aux.o \
-                      geomechanics_condition.o geomechanics_debug.o \
-                      geomechanics_discretization.o geomechanics_material.o \
-                      geomechanics_patch.o geomechanics_realization.o \
-                      geomechanics_region.o geomechanics_strata.o input.o \
-                      option.o patch.o solver.o string.o waypoint.o
+                      geomechanics_condition.o geomechanics_coupler.o \
+                      geomechanics_debug.o geomechanics_discretization.o \
+                      geomechanics_material.o geomechanics_patch.o \
+                      geomechanics_realization.o geomechanics_region.o \
+                      geomechanics_strata.o input.o option.o patch.o solver.o \
+                      string.o waypoint.o
 geomechanics_logging.o :
 geomechanics_material.o : input.o option.o string.o
 geomechanics_patch.o : geomech_grid.o geomech_grid_aux.o \
-                       geomechanics_material.o geomechanics_region.o \
-                       geomechanics_strata.o option.o
+                       geomechanics_condition.o geomechanics_coupler.o \
+                       geomechanics_field.o geomechanics_material.o \
+                       geomechanics_region.o geomechanics_strata.o option.o
 geomechanics_realization.o : geomech_grid_aux.o geomechanics_condition.o \
-                             geomechanics_debug.o \
+                             geomechanics_coupler.o geomechanics_debug.o \
                              geomechanics_discretization.o \
                              geomechanics_field.o geomechanics_material.o \
                              geomechanics_patch.o geomechanics_region.o \
