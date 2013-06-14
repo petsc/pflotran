@@ -943,9 +943,11 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   PetscInt                                :: istart,iend
   PetscInt                                :: ghosted_id,local_id
   PetscInt                                :: natural_id
-  PetscInt, pointer                       :: tmp_int_array(:), tmp_int_array2(:)
-  PetscScalar, pointer                    :: v_loc_p(:),v_loc2_p(:)
+  PetscInt, pointer                       :: tmp_int_array(:)
+  PetscScalar, pointer                    :: v_loc_p(:)
   PetscScalar, pointer                    :: tmp_scl_array(:)
+  character(len=MAXSTRINGLENGTH)          :: string,string1
+
 
 
   if (associated(geomech_region%vertex_ids)) then
@@ -966,10 +968,10 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
     enddo
     
 #ifdef GEOMECH_DEBUG
-    call PetscViewerASCIIOpen(option%mycomm, 'vec_vertex_ids_bef.out', &
-                              viewer, ierr)
-    call VecView(vec_vertex_ids, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)  
+    call PetscViewerASCIIOpen(option%mycomm,'vec_vertex_ids_bef.out', &
+                              viewer,ierr)
+    call VecView(vec_vertex_ids,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)  
 #endif    
 
     call VecSetValues(vec_vertex_ids,geomech_region%num_verts,tmp_int_array, &
@@ -978,14 +980,14 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
     deallocate(tmp_int_array)
     deallocate(tmp_scl_array)
 
-    call VecAssemblyBegin(vec_vertex_ids, ierr)
-    call VecAssemblyEnd(vec_vertex_ids, ierr)
+    call VecAssemblyBegin(vec_vertex_ids,ierr)
+    call VecAssemblyEnd(vec_vertex_ids,ierr)
     
 #ifdef GEOMECH_DEBUG
-    call PetscViewerASCIIOpen(option%mycomm, 'vec_vertex_ids_aft.out', &
-                              viewer, ierr)
-    call VecView(vec_vertex_ids, viewer, ierr)
-    call PetscViewerDestroy(viewer, ierr)  
+    call PetscViewerASCIIOpen(option%mycomm,'vec_vertex_ids_aft.out', &
+                              viewer,ierr)
+    call VecView(vec_vertex_ids,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)  
 #endif       
     
   endif
@@ -1021,8 +1023,8 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   call VecScatterCreate(vec_vertex_ids,is_from,vec_vertex_ids_loc,is_to, &
                         vec_scat,ierr)
 
-  call ISDestroy(is_from, ierr)
-  call ISDestroy(is_to, ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
   
   call VecScatterBegin(vec_scat,vec_vertex_ids,vec_vertex_ids_loc, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -1030,13 +1032,53 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scat,ierr)
   
+#if GEOMECH_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm,'vec_vertex_ids_loc.out', &
+                              viewer,ierr)
+    call VecView(vec_vertex_ids_loc,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+#endif
 
-
-
-
-
+  call VecGetArrayF90(vec_vertex_ids_loc,v_loc_p,ierr)
+  count = 0
+  do ii = 1,geomech_grid%nlmax_node
+    if (v_loc_p(ii) == 1) count = count + 1
+  enddo
   
-                                             
+  geomech_region%num_verts = count
+  if (count > 0) then
+    allocate(tmp_int_array(count))
+    count = 0
+    do ii = 1,geomech_grid%nlmax_node
+      if (v_loc_p(ii) == 1) then
+        count = count + 1
+        tmp_int_array(count) = ii
+      endif
+    enddo
+    
+    deallocate(geomech_region%vertex_ids)
+    allocate(geomech_region%vertex_ids(geomech_region%num_verts))
+    geomech_region%vertex_ids = tmp_int_array
+    deallocate(tmp_int_array)
+  endif
+  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  write(string1,*) geomech_region%name
+  string = 'vec_region_' // trim(adjustl(string1)) //  &
+           '_mapped' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ii = 1,geomech_region%num_verts
+    write(86,'(i5)') geomech_region%vertex_ids(ii)
+  enddo  
+  close(86)
+#endif     
+  
+  call VecRestoreArrayF90(vec_vertex_ids_loc,v_loc_p,ierr)
+  
+  call VecDestroy(vec_vertex_ids,ierr)
+  call VecDestroy(vec_vertex_ids_loc,ierr)
+   
 end subroutine GeomechGridLocalizeRegFromVertIDs
 
 end module Geomechanics_Grid_module
