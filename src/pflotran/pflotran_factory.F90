@@ -688,6 +688,7 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   if (option%restart_time < -998.d0) then
     option%time = max(option%flow_time,option%tran_time)
     if (associated(flow_stepper) .and. flow_read) then
+      flow_stepper%dt = option%flow_dt
       flow_stepper%steps = flow_steps
       flow_stepper%cumulative_newton_iterations = flow_cumulative_newton_iterations
       flow_stepper%cumulative_time_step_cuts = flow_cumulative_time_step_cuts
@@ -700,6 +701,7 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
       endif
     endif
     if (associated(tran_stepper) .and. transport_read) then
+      tran_stepper%dt = option%tran_dt
       tran_stepper%steps = tran_steps
       tran_stepper%cumulative_newton_iterations = tran_cumulative_newton_iterations
       tran_stepper%cumulative_time_step_cuts = tran_cumulative_time_step_cuts
