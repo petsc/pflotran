@@ -1995,7 +1995,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   do
       
     call PetscTime(log_start_time, ierr)
-    print *, 'FLOW STEP SIZE: ', option%flow_dt/3600.d0/24.d0/365.d0, option%time/3600.d0/24.d0/365.d0
+
     select case(option%iflowmode)
       case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
@@ -3047,8 +3047,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 !       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE,* are passed
 !       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
     endif
-        print *, 'TRAN STEP SIZE: ', option%tran_dt/3600.d0/24.d0/365.d0
-
     if (realization%reaction%use_log_formulation) then
       call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
       call VecLog(field%tran_log_xx,ierr)
