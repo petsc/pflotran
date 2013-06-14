@@ -23,7 +23,6 @@ private
 #include "definitions.h"
 
   type, public :: geomech_realization_type
-
     PetscInt :: id
     type(geomech_discretization_type), pointer        :: discretization
     type(input_type), pointer                         :: input
@@ -39,9 +38,6 @@ private
     type(output_option_type), pointer                 :: output_option
     type(gm_region_list_type), pointer                :: geomech_regions
     type(geomech_condition_list_type),pointer         :: geomech_conditions
-
-
-
   end type geomech_realization_type
 
 public :: GeomechRealizCreate, &
@@ -49,6 +45,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizAddStrata, &
           GeomechRealizAddGeomechCoupler, &
           GeomechRealizLocalizeRegions, &
+          GeomechRealizPassFieldPtrToPatch, &
           GeomechRealizCreateDiscretization
 
 contains
@@ -221,6 +218,29 @@ subroutine GeomechRealizCreateDiscretization(realization)
 
   
 end subroutine GeomechRealizCreateDiscretization
+
+! ************************************************************************** !
+!
+! GeomechRealizPassFieldPtrToPatch: This subroutine passes field to patch
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizPassFieldPtrToPatch(geomech_realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(geomech_realization_type)           :: geomech_realization
+
+  type(geomech_patch_type), pointer        :: patch
+
+  patch => geomech_realization%geomech_patch
+   
+  patch%geomech_field => geomech_realization%geomech_field
+  
+end subroutine GeomechRealizPassFieldPtrToPatch
 
 ! ************************************************************************** !
 !

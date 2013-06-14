@@ -8,6 +8,7 @@ module Geomechanics_Patch_module
   use Geomechanics_Region_module
   use Geomechanics_Strata_module
   use Geomechanics_Coupler_module
+  use Geomechanics_Field_module
   
   implicit none
   
@@ -24,9 +25,9 @@ module Geomechanics_Patch_module
        pointer :: geomech_material_property_array(:)
     type(geomech_strata_list_type), pointer       :: geomech_strata
     type(gm_region_list_type), pointer            :: geomech_regions
-    
     type(geomech_coupler_list_type), pointer      :: geomech_boundary_conditions
     type(geomech_coupler_list_type), pointer      :: geomech_source_sinks
+    type(geomech_field_type), pointer             :: geomech_field
   end type geomech_patch_type
 
 
@@ -70,6 +71,8 @@ function GeomechanicsPatchCreate()
 
   allocate(patch%geomech_regions)
   call GeomechRegionInitList(patch%geomech_regions)
+  
+  nullify(patch%geomech_field)
   
   GeomechanicsPatchCreate => patch
   
@@ -140,6 +143,8 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
   
   call GeomechCouplerDestroyList(geomech_patch%geomech_boundary_conditions)
   call GeomechCouplerDestroyList(geomech_patch%geomech_source_sinks)
+  
+  nullify(geomech_patch%geomech_field)
 
   deallocate(geomech_patch)
   nullify(geomech_patch)
