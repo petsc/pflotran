@@ -15,7 +15,7 @@ module Simulation_Base_class
     type(option_type), pointer :: option
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
-    type(pmc_base_type), pointer :: process_model_coupler_list
+    class(pmc_base_type), pointer :: process_model_coupler_list
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun
@@ -89,7 +89,7 @@ subroutine InitializeRun(this)
   
   class(simulation_base_type) :: this
 
-  type(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscErrorCode :: ierr
   
   call printMsg(this%option,'Simulation%InitializeRun()')
@@ -202,7 +202,7 @@ subroutine RunToTime(this,target_time)
   class(simulation_base_type) :: this
   PetscReal :: target_time
   
-  type(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler
   
   call printMsg(this%option,'RunToTime()')
   
@@ -230,7 +230,7 @@ subroutine FinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  type(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler
 
   call printMsg(this%option,'Simulation%FinalizeRun()')
   
@@ -266,7 +266,7 @@ function SimulationGetFinalWaypointTime(this)
   
   PetscReal :: SimulationGetFinalWaypointTime
 
-  type(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscReal :: final_time
   
   SimulationGetFinalWaypointTime = 0.d0

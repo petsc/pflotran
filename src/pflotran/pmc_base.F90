@@ -19,8 +19,8 @@ module PMC_Base_class
     type(stepper_type), pointer :: timestepper
     class(pm_base_type), pointer :: pm_list
     type(waypoint_list_type), pointer :: waypoints
-    type(pmc_base_type), pointer :: below
-    type(pmc_base_type), pointer :: next
+    class(pmc_base_type), pointer :: below
+    class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
     PetscInt :: depth
   contains
@@ -51,9 +51,9 @@ function PMCCreate()
 
   implicit none
   
-  type(pmc_base_type), pointer :: PMCCreate
+  class(pmc_base_type), pointer :: PMCCreate
   
-  type(pmc_base_type), pointer :: pmc
+  class(pmc_base_type), pointer :: pmc
 
   print *, 'PMC%Create()'
   

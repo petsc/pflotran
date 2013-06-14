@@ -97,9 +97,9 @@ subroutine SubsurfaceInitializeRun(this)
   
   class(subsurface_simulation_type) :: this
 
-  type(pmc_base_type), pointer :: cur_process_model_coupler
-  type(pmc_base_type), pointer :: cur_process_model_coupler_top
-  type(pmc_base_type), pointer :: cur_process_model_coupler_below
+  class(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler_top
+  class(pmc_base_type), pointer :: cur_process_model_coupler_below
   PetscInt :: depth
   PetscErrorCode :: ierr
   
@@ -185,7 +185,7 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  type(pmc_base_type), pointer :: cur_process_model_coupler
+  class(pmc_base_type), pointer :: cur_process_model_coupler
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
 

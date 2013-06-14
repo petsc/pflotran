@@ -1,8 +1,8 @@
 module Stochastic_Aux_module
 
 #ifdef PROCESS_MODEL
-  use Simulation_Base_module
-  use Subsurface_Simulation_module
+  use Simulation_Base_class
+  use Subsurface_Simulation_class
 #else
   use Simulation_module
 #endif

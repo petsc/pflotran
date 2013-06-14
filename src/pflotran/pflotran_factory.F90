@@ -410,7 +410,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
   type(subsurface_simulation_type) :: simulation
   PetscInt :: init_status
   
-  type(realization_type), pointer :: realization
+  class(realization_type), pointer :: realization
   type(stepper_type), pointer :: master_stepper
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper

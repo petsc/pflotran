@@ -2,7 +2,7 @@ module Process_Model_Base_class
 
   use Option_module
   use Output_Aux_module
-  use Realization_Base_Class
+  use Realization_Base_class
 
   implicit none
 

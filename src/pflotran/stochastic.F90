@@ -23,7 +23,7 @@ contains
 subroutine StochasticInit(stochastic,option)
 
 #ifdef PROCESS_MODEL
-  use Simulation_Base_module
+  use Simulation_Base_class
 #else
   use Simulation_module
 #endif
@@ -185,7 +185,7 @@ end subroutine StochasticReadCardFromInput
 subroutine StochasticRun(stochastic,option)
 
 #ifdef PROCESS_MODEL
-  use Simulation_Base_module
+  use Simulation_Base_class
 #else
   use Simulation_module
 #endif
