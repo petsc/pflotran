@@ -38,6 +38,7 @@ module Timestepper_module
     PetscReal :: cfl_limiter
     PetscReal :: cfl_limiter_ts
     PetscBool :: revert_dt
+    PetscInt :: num_contig_revert_due_to_sync
     
     PetscBool :: init_to_steady_state
     PetscBool :: run_as_steady_state
@@ -134,6 +135,7 @@ function TimestepperCreate()
   nullify(stepper%cur_waypoint)
   nullify(stepper%prev_waypoint)
   stepper%revert_dt = PETSC_FALSE
+  stepper%num_contig_revert_due_to_sync = 0
   
   stepper%solver => SolverCreate()
   
@@ -350,6 +352,8 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   PetscBool :: force_to_match_waypoint
   PetscBool :: equal_to_or_exceeds_waypoint
   PetscBool :: equal_to_or_exceeds_sync_time
+  PetscBool :: revert_due_to_waypoint
+  PetscBool :: revert_due_to_sync_time
   type(waypoint_type), pointer :: cur_waypoint
 
   option%io_buffer = 'StepperSetTargetTime()'
@@ -357,16 +361,20 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   
   if (timestepper%time_step_cut_flag) then
     timestepper%time_step_cut_flag = PETSC_FALSE
-    timestepper%revert_dt = PETSC_FALSE ! reset back to false
     timestepper%cur_waypoint => timestepper%prev_waypoint
   else
-    ! if the maximum time step size decreased in the past step, need to set
-    ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-    if (timestepper%revert_dt) then
+    ! If the maximum time step size decreased in the past step, need to set
+    ! the time step size to the minimum of the stepper%prev_dt and 
+    ! stepper%dt_max.  However, if we have to revert twice in a row, throw 
+    ! away the old time step and move on.
+    if (timestepper%revert_dt .and. &
+        timestepper%num_contig_revert_due_to_sync < 2) then
       timestepper%dt = min(timestepper%prev_dt,timestepper%dt_max)
-      timestepper%revert_dt = PETSC_FALSE
     endif
   endif
+  timestepper%revert_dt = PETSC_FALSE ! reset back to false
+  revert_due_to_waypoint = PETSC_FALSE
+  revert_due_to_sync_time = PETSC_FALSE
   
   dt = timestepper%dt
   timestepper%prev_dt = dt
@@ -411,7 +419,7 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
           ! Since the time step was cut to match the waypoint, we want to set 
           ! the time step back to its prior value after the waypoint is met.
           ! %revert_dt is a flag that does so above.
-          if (force_to_match_waypoint) timestepper%revert_dt = PETSC_TRUE
+          if (force_to_match_waypoint) revert_due_to_waypoint = PETSC_TRUE
           if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
           if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
         endif
@@ -421,8 +429,12 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
           ! is close to its full previous value, this constraint is unnecessary
           ! and limits the ability of process model couplers "below" to catch up
           ! with those above.  Thus the conditional (dt < .99 prev_dt) below.
+          !-Also note that if this timestepper is at a depth in the process 
+          ! model coupler greater than 1 (not the top process model coupler)
+          ! the timestepper will constantly be reverting to sync due to the
+          ! tolerance applied above without the underlying conditional.
           if (dt < 0.99d0 * timestepper%prev_dt) then
-            timestepper%revert_dt = PETSC_TRUE
+            revert_due_to_sync_time = PETSC_TRUE
           endif
         endif        
         if (max_time >= cur_waypoint%time) then
@@ -439,6 +451,17 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   ! subtract 1 from max_time_steps since we still have to complete the current
   ! time step
 
+  if (revert_due_to_sync_time .or. revert_due_to_waypoint) then
+    timestepper%revert_dt = PETSC_TRUE
+    if (revert_due_to_sync_time) then
+      timestepper%num_contig_revert_due_to_sync = &
+        timestepper%num_contig_revert_due_to_sync + 1
+    endif
+  else
+    timestepper%num_contig_revert_due_to_sync = 0
+  endif
+
+  
   if (cumulative_time_steps >= max_time_step-1) then
     nullify(cur_waypoint)
   endif
