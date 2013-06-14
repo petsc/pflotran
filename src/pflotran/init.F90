@@ -1138,6 +1138,7 @@ subroutine Init(simulation)
   if (option%ngeomechdof > 0) then
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
+    call GeomechRealizProcessMatProp(simulation%geomech_realization)
   endif
 #endif
 

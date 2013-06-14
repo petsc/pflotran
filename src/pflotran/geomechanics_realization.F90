@@ -46,6 +46,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizAddGeomechCoupler, &
           GeomechRealizLocalizeRegions, &
           GeomechRealizPassFieldPtrToPatch, &
+          GeomechRealizProcessMatProp, &
           GeomechRealizCreateDiscretization
 
 contains
@@ -152,6 +153,43 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
                                    option)
                                    
 end subroutine GeomechRealizLocalizeRegions
+
+! ************************************************************************** !
+!
+! GeomechRealizProcessMatProp: Setup for material properties
+! author: Satish Karra, LANL
+! date: 06/13/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizProcessMatProp(geomech_realization)
+
+  use String_module
+  
+  implicit none
+  
+  type(geomech_realization_type)               :: geomech_realization
+  type(geomech_patch_type), pointer            :: patch  
+  type(option_type), pointer                   :: option
+
+  
+  option => geomech_realization%option
+  
+  ! organize lists
+  call GeomechanicsMaterialPropConvertListToArray( &
+                          geomech_realization%geomech_material_properties, &
+                          geomech_realization%geomech_material_property_array, &
+                          option)
+  ! set up mirrored pointer arrays within patches to saturation functions
+  ! and material properties
+  patch => geomech_realization%geomech_patch
+  patch%geomech_material_properties => geomech_realization% &
+                                       geomech_material_properties
+  call GeomechanicsMaterialPropConvertListToArray( &
+                                    patch%geomech_material_properties, &
+                                    patch%geomech_material_property_array, &
+                                    option)
+                                      
+end subroutine GeomechRealizProcessMatProp
 
 ! ************************************************************************** !
 !
@@ -304,9 +342,9 @@ subroutine GeomechRealizDestroy(geomech_realization)
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)
   nullify(geomech_realization%geomech_material_property_array)
+  call GeomechanicsPatchDestroy(geomech_realization%geomech_patch)                                       
   call GeomechanicsMaterialPropertyDestroy(geomech_realization% &
                                            geomech_material_properties)
-  call GeomechanicsPatchDestroy(geomech_realization%geomech_patch)                                       
   call GeomechDiscretizationDestroy(geomech_realization%discretization)
   
 end subroutine GeomechRealizDestroy

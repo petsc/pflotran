@@ -134,8 +134,6 @@ subroutine GeomechanicsPatchDestroy(geomech_patch)
   if (associated(geomech_patch%geomech_material_property_array)) &
     deallocate(geomech_patch%geomech_material_property_array)
   nullify(geomech_patch%geomech_material_property_array)
-  if (associated(geomech_patch%geomech_material_properties)) &
-    deallocate(geomech_patch%geomech_material_properties)
   nullify(geomech_patch%geomech_material_properties)
 
   call GeomechStrataDestroyList(geomech_patch%geomech_strata)
