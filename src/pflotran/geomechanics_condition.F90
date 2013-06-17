@@ -319,6 +319,12 @@ subroutine GeomechConditionRead(condition,input,option)
   displacement_x%name = 'displacement_x'
   displacement_y%name = 'displacement_y'
   displacement_z%name = 'displacement_z'
+  
+  condition%time_units = 'yr'
+  condition%length_units = 'm'
+  
+  default_ctype = 'dirichlet'
+  default_itype = DIRICHLET_BC
 
   displacement_x%units = 'm'
   displacement_y%units = 'm'
@@ -1011,7 +1017,7 @@ end subroutine GeomechConditionDatasetGetTimes
 
 ! ************************************************************************** !
 !
-! GeomechConditionPrint: Prints geomech condition info
+! GeomechConditionPrint: Prints Geomech condition info
 ! author: Satish Karra, LANL
 ! date: 06/12/13
 !
@@ -1022,10 +1028,10 @@ subroutine GeomechConditionPrint(condition,option)
 
   implicit none
   
-  type(geomech_condition_type)                     :: condition
-  type(option_type)                                :: option
+  type(geomech_condition_type) :: condition
+  type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH)                   :: string
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i
 
 99 format(/,80('-'))
@@ -1051,7 +1057,7 @@ end subroutine GeomechConditionPrint
 
 ! ************************************************************************** !
 !
-! GeomechConditionPrintSubCondition: Prints geomech subcondition info
+! GeomechConditionPrintSubCondition: Prints Geomech subcondition info
 ! author: Satish Karra, LANL
 ! date: 06/12/13
 !
@@ -1062,10 +1068,10 @@ subroutine GeomechConditionPrintSubCondition(subcondition,option)
 
   implicit none
   
-  type(geomech_sub_condition_type)                 :: subcondition
-  type(option_type)                                :: option
+  type(geomech_sub_condition_type) :: subcondition
+  type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH)                   :: string
+  character(len=MAXSTRINGLENGTH) :: string
   
   write(option%fid_out,'(/,4x,''Sub Condition: '',a)') trim(subcondition%name)
   select case(subcondition%itype)
@@ -1081,17 +1087,17 @@ subroutine GeomechConditionPrintSubCondition(subcondition,option)
   
   110 format(6x,a)  
 
-  write(option%fid_out,110) 'Dataset:'
+  write(option%fid_out,110) 'Geomech Dataset:'
   if (associated(subcondition%geomech_dataset%time_series)) then
     call TimeSeriesPrint(subcondition%geomech_dataset%time_series,option)
   endif
   if (associated(subcondition%geomech_dataset%dataset)) then
-!geh    call DatasetPrint(subcondition%geomech_dataset%dataset,option)
+!geh    call DatasetPrint(subcondition%Geomech_dataset%dataset,option)
     option%io_buffer = 'TODO(geh): add DatasetPrint()'
     call printMsg(option)
   endif
             
-end subroutine GeomechConditionPrintSubCondition
+end subroutine geomechConditionPrintSubCondition
  
 ! ************************************************************************** !
 !

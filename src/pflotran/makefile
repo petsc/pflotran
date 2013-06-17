@@ -503,8 +503,8 @@ geomechanics_material.o : input.o option.o string.o
 geomechanics_patch.o : dataset_base.o geomech_grid.o geomech_grid_aux.o \
                        geomechanics_auxiliary.o geomechanics_condition.o \
                        geomechanics_coupler.o geomechanics_field.o \
-                       geomechanics_material.o geomechanics_region.o \
-                       geomechanics_strata.o option.o
+                       geomechanics_global_aux.o geomechanics_material.o \
+                       geomechanics_region.o geomechanics_strata.o option.o
 geomechanics_realization.o : dataset.o dataset_base.o geomech_grid.o \
                              geomech_grid_aux.o geomechanics_condition.o \
                              geomechanics_coupler.o geomechanics_debug.o \

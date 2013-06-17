@@ -53,6 +53,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizCreateDiscretization, &
           GeomechRealizProcessGeomechConditions, &
           GeomechRealizInitAllCouplerAuxVars, &
+          GeomechRealizPrintCouplers, &
           GeomechRealizLocalToLocalWithArray
 
 contains
@@ -147,14 +148,14 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
   implicit none
   
   type(geomech_realization_type)               :: geomech_realization
-  type(geomech_patch_type), pointer            :: cur_patch
+  type(geomech_patch_type), pointer            :: patch
   type(option_type), pointer                   :: option
 
   option => geomech_realization%option
 
   ! localize the regions on each patch
-  cur_patch => geomech_realization%geomech_patch
-  call GeomechPatchLocalizeRegions(cur_patch, &
+  patch => geomech_realization%geomech_patch
+  call GeomechPatchLocalizeRegions(patch, &
                                    geomech_realization%geomech_regions, &
                                    option)
                                    
@@ -333,6 +334,101 @@ subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
   end select
   
 end subroutine GeomechRealizLocalToLocalWithArray
+
+! ************************************************************************** !
+!
+! GeomechRealizPrintCouplers: Print boundary data for geomechanics
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizPrintCouplers(realization)
+
+  use Geomechanics_Coupler_module
+  
+  implicit none
+  
+  type(geomech_realization_type) :: realization
+  
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_coupler_type), pointer :: cur_coupler
+  type(option_type), pointer :: option
+ 
+  option => realization%option
+ 
+  if (.not.OptionPrintToFile(option)) return
+  
+  patch => realization%geomech_patch
+   
+  cur_coupler => patch%geomech_boundary_conditions%first
+  do
+    if (.not.associated(cur_coupler)) exit
+    call GeomechRealizPrintCoupler(cur_coupler,option)    
+    cur_coupler => cur_coupler%next
+  enddo
+     
+  cur_coupler => patch%geomech_source_sinks%first
+  do
+    if (.not.associated(cur_coupler)) exit
+    call GeomechRealizPrintCoupler(cur_coupler,option)    
+    cur_coupler => cur_coupler%next
+  enddo
+ 
+end subroutine GeomechRealizPrintCouplers
+
+! ************************************************************************** !
+!
+! GeomechRealizPrintCoupler: Prints boundary condition coupler for geomechanics
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizPrintCoupler(coupler,option)
+
+  use Geomechanics_Coupler_module
+  
+  implicit none
+  
+  type(geomech_coupler_type) :: coupler
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  type(geomech_condition_type), pointer :: geomech_condition
+  type(gm_region_type), pointer :: region
+   
+98 format(40('=+'))
+99 format(80('-'))
+  
+  geomech_condition => coupler%geomech_condition
+  region => coupler%region
+
+  write(option%fid_out,*)
+  write(option%fid_out,98)
+
+
+  select case(coupler%itype)
+    case(GM_BOUNDARY_COUPLER_TYPE)
+      string = 'Geomech Boundary Condition'
+    case(GM_SRC_SINK_COUPLER_TYPE)
+      string = 'Geomech Source Sink'
+  end select
+  write(option%fid_out,'(/,2x,a,/)') trim(string)
+
+  write(option%fid_out,99)
+101 format(5x,'     Geomech Condition: ',2x,a)
+  if (associated(geomech_condition)) &
+    write(option%fid_out,101) trim(geomech_condition%name)
+102 format(5x,'             Region: ',2x,a)
+  if (associated(region)) &
+    write(option%fid_out,102) trim(region%name)
+  write(option%fid_out,99)
+  
+  if (associated(geomech_condition)) then
+    call GeomechConditionPrint(geomech_condition,option)
+  endif
+ 
+end subroutine GeomechRealizPrintCoupler
 
 ! ************************************************************************** !
 !

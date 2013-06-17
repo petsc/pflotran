@@ -438,8 +438,8 @@ end subroutine GeomechPatchUpdateAllCouplerAuxVars
 ! date: 06/17/13
 !
 ! ************************************************************************** !
-subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
-                                     option)
+subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
+                                            force_update_flag,option)
                                      
   use Option_module
   use Geomechanics_Condition_module
@@ -459,14 +459,13 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag
   character(len=MAXSTRINGLENGTH) :: string,string2
   PetscErrorCode :: ierr
   
-  PetscInt :: idof,num_verts,total_verts
+  PetscInt :: idof,num_verts
   PetscInt :: ivertex,local_id,ghosted_id
   
 
   if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
-  total_verts = 0
     
   do
     if (.not.associated(coupler)) exit    
@@ -484,7 +483,24 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag
                 time_series%cur_value(1)
           end select
         endif
-        total_verts = total_verts + num_verts
+        if (associated(geomech_condition%displacement_y)) then
+          select case(geomech_condition%displacement_y%itype)
+            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+              coupler%geomech_aux_real_var(GEOMECH_DISP_Y_DOF, &
+                                           1:num_verts) = &
+              geomech_condition%displacement_y%geomech_dataset% &
+                time_series%cur_value(1)
+          end select
+        endif
+        if (associated(geomech_condition%displacement_z)) then
+          select case(geomech_condition%displacement_z%itype)
+            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+              coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
+                                           1:num_verts) = &
+              geomech_condition%displacement_z%geomech_dataset% &
+                time_series%cur_value(1)
+          end select
+        endif        
       endif
     endif
 

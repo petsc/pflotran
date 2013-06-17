@@ -1142,7 +1142,8 @@ subroutine Init(simulation)
     call GeomechRealizProcessGeomechCouplers(simulation%geomech_realization)
     call GeomechRealizProcessGeomechConditions(simulation%geomech_realization)
     call GeomechInitMatPropToGeomechRegions(simulation%geomech_realization)
-    call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)    
+    call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
+    call GeomechRealizPrintCouplers(simulation%geomech_realization)  
   endif
 #endif
 
