@@ -31,7 +31,7 @@ module Geomechanics_Patch_module
     type(geomech_coupler_list_type), pointer      :: geomech_source_sinks
     type(geomech_field_type), pointer             :: geomech_field
     class(dataset_base_type), pointer             :: geomech_datasets
-    type(geomech_auxiliary_type), pointer         :: geomech_aux
+    type(geomech_auxiliary_type)                  :: geomech_aux
   end type geomech_patch_type
 
 
@@ -77,11 +77,10 @@ function GeomechanicsPatchCreate()
   allocate(patch%geomech_regions)
   call GeomechRegionInitList(patch%geomech_regions)
   
+  call GeomechAuxInit(patch%geomech_aux)
+  
   nullify(patch%geomech_field)
   nullify(patch%geomech_datasets)
-  
-  call GeomechAuxInit(patch%geomech_aux)
-
   
   GeomechanicsPatchCreate => patch
   

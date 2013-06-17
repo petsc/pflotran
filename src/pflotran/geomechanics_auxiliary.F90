@@ -21,7 +21,7 @@ contains
 
 ! ************************************************************************** !
 !
-! GeomechAuxInit: Initializes geomech auxiliary type
+! GeomechAuxInit: Nullifies pointers in geomech auxiliary type
 ! author: Satish Karra, LANL
 ! date: 06/14/13
 ! 
