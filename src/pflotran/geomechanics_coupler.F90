@@ -1,3 +1,5 @@
+#ifdef GEOMECH
+
 module Geomechanics_Coupler_module
  
   use Geomechanics_Condition_module
@@ -360,3 +362,4 @@ end subroutine GeomechCouplerDestroy
 
   
 end module Geomechanics_Coupler_module
+#endif

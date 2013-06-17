@@ -1,3 +1,5 @@
+#ifdef GEOMECH
+
 module Geomechanics_Debug_module
 
   implicit none
@@ -113,3 +115,4 @@ subroutine GeomechDebugRead(debug,input,option)
 end subroutine GeomechDebugRead
 
 end module Geomechanics_Debug_module
+#endif

@@ -1,3 +1,5 @@
+#ifdef GEOMECH
+
 module Geomechanics_Condition_module
  
 !  use Global_Aux_module
@@ -1497,3 +1499,4 @@ subroutine GeomechConditionDatasetDestroy(geomech_condition_dataset)
 end subroutine GeomechConditionDatasetDestroy
 
 end module Geomechanics_Condition_module
+#endif

@@ -1,3 +1,5 @@
+#ifdef GEOMECH
+
 module Geomechanics_Region_module
  
   use Geometry_module
@@ -499,3 +501,5 @@ subroutine GeomechRegionDestroy(region)
 end subroutine GeomechRegionDestroy
 
 end module Geomechanics_Region_module
+
+#endif

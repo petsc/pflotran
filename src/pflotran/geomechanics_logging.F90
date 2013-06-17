@@ -1,3 +1,5 @@
+#ifdef GEOMECH
+
 module Geomechanics_Logging_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
@@ -87,3 +89,5 @@ subroutine GeomechLoggingDestroy()
 end subroutine GeomechLoggingDestroy
 
 end module Geomechanics_Logging_module
+
+#endif

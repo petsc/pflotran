@@ -179,7 +179,6 @@ subroutine GeomechGlobalAuxDestroy(aux)
   implicit none
 
   type(geomech_global_type), pointer       :: aux
-  PetscInt                                 :: iaux
   
   if (.not.associated(aux)) return
   
