@@ -230,4 +230,9 @@ PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 6
 PetscInt, parameter :: THREE_DIM_GRID = 3
 PetscInt, parameter :: TWO_DIM_GRID = 2
 
+! Geomechanics
+PetscInt, parameter :: GEOMECH_DISP_X_DOF = 1
+PetscInt, parameter :: GEOMECH_DISP_Y_DOF = 2
+PetscInt, parameter :: GEOMECH_DISP_Z_DOF = 3
+
 #define HASH

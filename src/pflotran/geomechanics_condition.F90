@@ -1291,7 +1291,8 @@ end function GeomechConditionGetPtrFromList
 
 ! ************************************************************************** !
 !
-! GeomechConditionIsTransient: Returns PETSC_TRUE
+! GeomechConditionIsTransient: Returns PETSC_TRUE for geomech condition if
+!                              it is transient
 ! author: Satish Karra, LANL
 ! date: 06/12/13
 !
@@ -1316,7 +1317,8 @@ end function GeomechConditionIsTransient
 
 ! ************************************************************************** !
 !
-! GeomechSubConditionIsTransient: Returns PETSC_TRUE
+! GeomechSubConditionIsTransient: Returns PETSC_TRUE for geomech sub condition
+!                                 if it is transient
 ! author: Satish Karra, LANL
 ! date: 06/12/13
 !

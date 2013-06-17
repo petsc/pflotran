@@ -166,7 +166,7 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
       call printErrMsg(option)
     endif
 
-    ! pointer to flow condition
+    ! pointer to geomech condition
     if (option%ngeomechdof > 0) then
       if (len_trim(coupler%geomech_condition_name) > 0) then
         coupler%geomech_condition => &
@@ -340,12 +340,7 @@ subroutine GeomechPatchInitAllCouplerAuxVars(patch,option)
   call GeomechPatchInitCouplerAuxVars(patch%geomech_source_sinks,patch, &
                                       option)
 
-  !geh: This should not be included in PatchUpdateAllCouplerAuxVars
-  ! as it will result in excessive updates to initial conditions
-  ! that are not necessary after the simulation has started time stepping.
-!  call GeomechPatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
-!                                 force_update_flag,option)
-!  call GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
+  call GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
 end subroutine GeomechPatchInitAllCouplerAuxVars
 
@@ -406,6 +401,97 @@ subroutine GeomechPatchInitCouplerAuxVars(coupler_list,patch,option)
   enddo
   
 end subroutine GeomechPatchInitCouplerAuxVars
+
+! ************************************************************************** !
+!
+! GeomechPatchUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
+!                                      with couplers in list
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(geomech_patch_type) :: patch
+  PetscBool :: force_update_flag
+  type(option_type) :: option
+
+  !geh: no need to update initial conditions as they only need updating
+  !     once as performed in PatchInitCouplerAuxVars()
+  call GeomechPatchUpdateCouplerAuxVars(patch, &
+                                        patch%geomech_boundary_conditions, &
+                                        force_update_flag,option)
+  call GeomechPatchUpdateCouplerAuxVars(patch,patch%geomech_source_sinks, &
+                                        force_update_flag,option)
+
+end subroutine GeomechPatchUpdateAllCouplerAuxVars
+
+! ************************************************************************** !
+!
+! GeomechPatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
+!                                   with couplers in list
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
+                                     option)
+                                     
+  use Option_module
+  use Geomechanics_Condition_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+
+  implicit none
+  
+  type(geomech_patch_type) :: patch
+  type(geomech_coupler_list_type), pointer :: coupler_list
+  PetscBool :: force_update_flag
+  type(option_type) :: option
+  
+  type(geomech_coupler_type), pointer :: coupler
+  type(geomech_condition_type), pointer :: geomech_condition
+  PetscBool :: update
+  character(len=MAXSTRINGLENGTH) :: string,string2
+  PetscErrorCode :: ierr
+  
+  PetscInt :: idof,num_verts,total_verts
+  PetscInt :: ivertex,local_id,ghosted_id
+  
+
+  if (.not.associated(coupler_list)) return
+ 
+  coupler => coupler_list%first
+  total_verts = 0
+    
+  do
+    if (.not.associated(coupler)) exit    
+    if (associated(coupler%geomech_aux_real_var)) then
+      num_verts = coupler%region%num_verts
+      geomech_condition => coupler%geomech_condition
+      if (force_update_flag .or. &
+          GeomechConditionIsTransient(geomech_condition)) then
+        if (associated(geomech_condition%displacement_x)) then
+          select case(geomech_condition%displacement_x%itype)
+            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+              coupler%geomech_aux_real_var(GEOMECH_DISP_X_DOF, &
+                                           1:num_verts) = &
+              geomech_condition%displacement_x%geomech_dataset% &
+                time_series%cur_value(1)
+          end select
+        endif
+        total_verts = total_verts + num_verts
+      endif
+    endif
+
+    coupler => coupler%next
+  enddo
+
+end subroutine GeomechPatchUpdateCouplerAuxVars
 
 ! ************************************************************************** !
 !
