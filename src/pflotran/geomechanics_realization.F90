@@ -52,6 +52,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizProcessGeomechCouplers, &
           GeomechRealizCreateDiscretization, &
           GeomechRealizProcessGeomechConditions, &
+          GeomechRealizInitAllCouplerAuxVars, &
           GeomechRealizLocalToLocalWithArray
 
 contains
@@ -261,6 +262,30 @@ subroutine GeomechRealizCreateDiscretization(realization)
 
   
 end subroutine GeomechRealizCreateDiscretization
+
+! ************************************************************************** !
+!
+! GeomechRealizInitAllCouplerAuxVars: This routine initializez coupler 
+!                                     auxillary variables
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizInitAllCouplerAuxVars(geomech_realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(geomech_realization_type) :: geomech_realization
+  
+  type(geomech_patch_type), pointer :: patch
+  
+  patch => geomech_realization%geomech_patch
+
+  call GeomechPatchInitAllCouplerAuxVars(patch,geomech_realization%option)
+
+end subroutine GeomechRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !

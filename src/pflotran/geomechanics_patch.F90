@@ -38,6 +38,7 @@ module Geomechanics_Patch_module
   public :: GeomechanicsPatchCreate, &
             GeomechPatchLocalizeRegions, &
             GeomechPatchProcessGeomechCouplers, &
+            GeomechPatchInitAllCouplerAuxVars, &
             GeomechanicsPatchDestroy
 
 contains
@@ -45,7 +46,7 @@ contains
 ! ************************************************************************** !
 !
 ! GeomechanicsPatchCreate: Allocates and initializes a new geomechanics 
-! patch  object
+!                          patch object
 ! author: Satish Karra, LANL
 ! date: 05/23/13
 !
@@ -89,8 +90,8 @@ end function GeomechanicsPatchCreate
 ! ************************************************************************** !
 !
 ! GeomechPatchLocalizeRegions: Localizes regions within each patch
-! author: Glenn Hammond
-! date: 02/22/08
+! author: Satish Karra, LANL
+! date: 05/23/13
 !
 ! ************************************************************************** !
 subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
@@ -126,8 +127,8 @@ end subroutine GeomechPatchLocalizeRegions
 ! ************************************************************************** !
 !
 ! GeomechPatchProcessGeomechCouplers: Assigns conditions and regions to couplers
-! author: Glenn Hammond
-! date: 02/22/08
+! author: Satish Karra, LANL
+! date: 05/23/13
 !
 ! ************************************************************************** !
 subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
@@ -314,6 +315,97 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
 #endif
  
 end subroutine GeomechPatchProcessGeomechCouplers
+
+! ************************************************************************** !
+!
+! GeomechPatchInitAllCouplerAuxVars: Initializes coupler auxillary variables 
+!                                    within list
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechPatchInitAllCouplerAuxVars(patch,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(geomech_patch_type), pointer :: patch
+  type(option_type) :: option
+  
+  PetscBool :: force_update_flag = PETSC_TRUE
+  
+  call GeomechPatchInitCouplerAuxVars(patch%geomech_boundary_conditions,patch, &
+                                      option)
+  call GeomechPatchInitCouplerAuxVars(patch%geomech_source_sinks,patch, &
+                                      option)
+
+  !geh: This should not be included in PatchUpdateAllCouplerAuxVars
+  ! as it will result in excessive updates to initial conditions
+  ! that are not necessary after the simulation has started time stepping.
+!  call GeomechPatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
+!                                 force_update_flag,option)
+!  call GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
+
+end subroutine GeomechPatchInitAllCouplerAuxVars
+
+! ************************************************************************** !
+!
+! GeomechPatchInitCouplerAuxVars: Initializes coupler auxillary variables 
+!                                 within list
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechPatchInitCouplerAuxVars(coupler_list,patch,option)
+
+  use Option_module
+  use Geomechanics_Global_Aux_module
+  use Geomechanics_Condition_module
+  
+  implicit none
+  
+  type(geomech_coupler_list_type), pointer :: coupler_list
+  type(geomech_patch_type), pointer :: patch
+  type(option_type) :: option
+  
+  PetscInt :: num_verts
+  PetscBool :: force_update_flag
+  
+  type(geomech_coupler_type), pointer :: coupler
+  PetscInt :: idof
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (.not.associated(coupler_list)) return
+    
+  coupler => coupler_list%first
+  do
+    if (.not.associated(coupler)) exit
+    
+    if (associated(coupler%region)) then
+      num_verts = coupler%region%num_verts
+      if (associated(coupler%geomech_condition) .and. &
+          coupler%itype == GM_BOUNDARY_COUPLER_TYPE) then
+        if (associated(coupler%geomech_condition%displacement_x) .or. &
+            associated(coupler%geomech_condition%displacement_y) .or. &
+            associated(coupler%geomech_condition%displacement_z)) then
+          ! allocate arrays that match the number of boundary vertices
+          allocate(coupler%geomech_aux_real_var(option%ngeomechdof,num_verts))
+          allocate(coupler%geomech_aux_int_var(1,num_verts))
+          coupler%geomech_aux_real_var = 0.d0
+          coupler%geomech_aux_int_var = 0
+        endif ! associated(coupler%geomech_condition%displacement_x)
+      else if (coupler%itype == GM_SRC_SINK_COUPLER_TYPE) then
+        option%io_buffer='Source/Sink not implemented for geomechanics.'
+        call printErrMsg(option)
+      endif ! coupler%itype == GM_SRC_SINK_COUPLER_TYPE
+    endif ! associated(coupler%region)
+      
+    coupler => coupler%next
+    
+  enddo
+  
+end subroutine GeomechPatchInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
