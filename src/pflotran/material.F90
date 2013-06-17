@@ -101,7 +101,8 @@ function MaterialPropertyCreate()
   allocate(material_property)
   material_property%id = 0
   material_property%name = ''
-  material_property%permeability = 0.d0
+  ! initialize to -999.d0 to catch bugs
+  material_property%permeability = -999.d0
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_scaling_factor = 0.d0
@@ -110,7 +111,8 @@ function MaterialPropertyCreate()
   material_property%permeability_min_scale_fac = 1.d0
   material_property%permeability_dataset_name = ''
   nullify(material_property%permeability_dataset)
-  material_property%porosity = 0.d0
+  ! initialize to -999.d0 to catch bugs
+  material_property%porosity = -999.d0
   material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   material_property%tortuosity = 1.d0
