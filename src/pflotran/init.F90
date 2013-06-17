@@ -1140,6 +1140,8 @@ subroutine Init(simulation)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)
     call GeomechRealizProcessGeomechCouplers(simulation%geomech_realization)
+    call GeomechRealizProcessGeomechConditions(simulation%geomech_realization)
+    call GeomechInitMatPropToGeomechRegions(simulation%geomech_realization)
   endif
 #endif
 

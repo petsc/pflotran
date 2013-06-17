@@ -27,7 +27,11 @@ module Geomechanics_Grid_module
 
   public :: GeomechGridRead, &
             CopySubsurfaceGridtoGeomechGrid, &
-            GeomechGridLocalizeRegions 
+            GeomechGridLocalizeRegions, &
+            GeomechGridVecGetArrayF90, &
+            GeomechGridVecRestoreArrayF90, &
+            GeomechGridCopyIntegerArrayToVec, &
+            GeomechGridCopyVecToIntegerArray 
 
 contains
 
@@ -1080,6 +1084,118 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
   call VecDestroy(vec_vertex_ids_loc,ierr)
    
 end subroutine GeomechGridLocalizeRegFromVertIDs
+
+! ************************************************************************** !
+!
+! GeomechGridCopyIntegerArrayToVec: Copies values from an integer array into a 
+!                                 PETSc Vec
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechGridCopyIntegerArrayToVec(grid,array,vector,num_values)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(geomech_grid_type) :: grid
+  PetscInt :: array(:)
+  Vec :: vector
+  PetscInt :: num_values
+  
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call GeomechGridVecGetArrayF90(grid,vector,vec_ptr,ierr)
+  vec_ptr(1:num_values) = array(1:num_values)
+  call GeomechGridVecRestoreArrayF90(grid, vector,vec_ptr,ierr)
+  
+end subroutine GeomechGridCopyIntegerArrayToVec
+
+! ************************************************************************** !
+!
+! GeomechGridVecGetArrayF90: Returns pointer to geomech veretex-based vector 
+!                            values
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechGridVecGetArrayF90(grid,vec,f90ptr,ierr)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(geomech_grid_type) :: grid
+  Vec :: vec
+  PetscReal, pointer :: f90ptr(:)
+  PetscErrorCode :: ierr
+
+  call VecGetArrayF90(vec,f90ptr,ierr)
+
+end subroutine GeomechGridVecGetArrayF90
+
+! ************************************************************************** !
+!
+! GeomechGridVecRestoreArrayF90: Restores pointer to geomech vector values
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechGridVecRestoreArrayF90(grid,vec,f90ptr,ierr)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(geomech_grid_type) :: grid
+  Vec :: vec
+  PetscReal, pointer :: f90ptr(:)
+  PetscErrorCode :: ierr
+
+  call VecRestoreArrayF90(vec,f90ptr,ierr)
+  
+end subroutine GeomechGridVecRestoreArrayF90
+
+! ************************************************************************** !
+!
+! GeomechGridCopyVecToIntegerArray: Copies values from a PETSc Vec to an  
+!                                  integer array
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechGridCopyVecToIntegerArray(grid,array,vector,num_values)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(geomech_grid_type) :: grid
+  PetscInt :: array(:)
+  Vec :: vector
+  PetscInt :: num_values
+  
+  PetscInt :: i
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call GeomechGridVecGetArrayF90(grid,vector,vec_ptr,ierr)
+  do i = 1,num_values
+    if (vec_ptr(i) > 0.d0) then
+      array(i) = int(vec_ptr(i)+1.d-4)
+    else
+      array(i) = int(vec_ptr(i)-1.d-4)
+    endif
+  enddo
+  call GeomechGridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
+  
+end subroutine GeomechGridCopyVecToIntegerArray
 
 end module Geomechanics_Grid_module
 #endif 

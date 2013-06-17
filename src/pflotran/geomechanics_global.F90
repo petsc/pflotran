@@ -1,4 +1,3 @@
-#if 0
 #ifdef GEOMECH
 
 module Geomechanics_Global_module
@@ -32,7 +31,7 @@ subroutine GeomechGlobalSetup(geomech_realization)
   
   implicit none
 
-  type(geomech_realization_type) :: geomech_realization
+  type(geomech_realization_type)           :: geomech_realization
   
   ! There is only one patch in each realization
   call GeomechGlobalSetupPatch(geomech_realization)
@@ -56,18 +55,20 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
  
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  type(geomech_realization_type)            :: geomech_realization
 
-  type(option_type), pointer :: option
-  type(geomech_patch_type),pointer :: patch
-  type(geomech_grid_type), pointer :: grid
-  type(geomech_coupler_type), pointer :: boundary_condition
-  type(geomech_coupler_type), pointer :: source_sink
+  type(option_type), pointer                :: option
+  type(geomech_patch_type),pointer          :: patch
+  type(geomech_grid_type), pointer          :: grid
+  type(geomech_coupler_type), pointer       :: boundary_condition
+  type(geomech_coupler_type), pointer       :: source_sink
 
   PetscInt :: ghosted_id
   type(geomech_global_auxvar_type), pointer :: aux_vars(:)
   type(geomech_global_auxvar_type), pointer :: aux_vars_bc(:)
   type(geomech_global_auxvar_type), pointer :: aux_vars_ss(:)
+  PetscInt                                  :: num_verts_bc, num_verts_ss
+  PetscInt                                  :: ivertex
   
   option => geomech_realization%option
   patch => geomech_realization%geomech_patch
@@ -75,65 +76,56 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
 
   patch%geomech_aux%GeomechGlobal => GeomechGlobalAuxCreate()
   
-  ! allocate aux_var data structures for all grid cells  
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
-  option%iflag = 1 ! allocate mass_balance array
-#else  
-  option%iflag = 0 ! be sure not to allocate mass_balance array
-#endif
-  allocate(aux_vars(grid%ngmax))
-  do ghosted_id = 1, grid%ngmax
+  allocate(aux_vars(grid%ngmax_node))
+  do ghosted_id = 1, grid%ngmax_node
     call GeomechGlobalAuxVarInit(aux_vars(ghosted_id),option)
   enddo
   patch%geomech_aux%GeomechGlobal%aux_vars => aux_vars
-  patch%geomech_aux%GeomechGlobal%num_aux = grid%ngmax
+  patch%geomech_aux%GeomechGlobal%num_aux = grid%ngmax_node
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
+  num_verts_bc = 0    
   do 
     if (.not.associated(boundary_condition)) exit
-    sum_connection = sum_connection + &
-                     boundary_condition%connection_set%num_connections
+    num_verts_bc = num_verts_bc + &
+                     boundary_condition%region%num_verts
     boundary_condition => boundary_condition%next
   enddo
 
-  if (sum_connection > 0) then
-    option%iflag = 1 ! enable allocation of mass_balance array 
-    allocate(aux_vars_bc(sum_connection))
-    do iconn = 1, sum_connection
-      call GeomechGlobalAuxVarInit(aux_vars_bc(iconn),option)
+  if (num_verts_bc > 0) then
+    allocate(aux_vars_bc(num_verts_bc))
+    do ivertex = 1, num_verts_bc
+      call GeomechGlobalAuxVarInit(aux_vars_bc(ivertex),option)
     enddo
     patch%geomech_aux%GeomechGlobal%aux_vars_bc => aux_vars_bc
   endif
-  patch%geomech_aux%GeomechGlobal%num_aux_bc = sum_connection
+  patch%geomech_aux%GeomechGlobal%num_aux_bc = num_verts_bc
 
-  ! count the number of source/sink connections and allocate
+  ! count the number of source/sink vertices and allocate
   ! aux_var data structures for them  
   source_sink => patch%source_sinks%first
-  sum_connection = 0    
+  num_verts_ss = 0    
   do 
     if (.not.associated(source_sink)) exit
-    sum_connection = sum_connection + &
-                     source_sink%connection_set%num_connections
+    num_verts_ss = num_verts_ss + &
+                     source_sink%region%num_verts
     source_sink => source_sink%next
   enddo
 
-  if (sum_connection > 0) then
-    option%iflag = 1 ! enable allocation of mass_balance array 
-    allocate(aux_vars_ss(sum_connection))
-    do iconn = 1, sum_connection
-      call GeomechGlobalAuxVarInit(aux_vars_ss(iconn),option)
+  if (num_verts_ss > 0) then
+    allocate(aux_vars_ss(num_verts_ss))
+    do ivertex = 1, num_verts_ss
+      call GeomechGlobalAuxVarInit(aux_vars_ss(ivertex),option)
     enddo
     patch%geomech_aux%GeomechGlobal%aux_vars_ss => aux_vars_ss
   endif
-  patch%geomech_aux%GeomechGlobal%num_aux_ss = sum_connection
-
-  option%iflag = 0
+  patch%geomech_aux%GeomechGlobal%num_aux_ss = num_verts_ss
   
 end subroutine GeomechGlobalSetupPatch
 
+#if 0
 ! ************************************************************************** !
 !
 ! GeomechGlobalSetAuxVarScalar: Strips a geomech global auxvar

@@ -13,6 +13,7 @@ module Geomechanics_Realization_module
   use Option_module
   use Output_Aux_module
   use Waypoint_module
+  use Dataset_Base_class
 
  
   implicit none
@@ -38,6 +39,7 @@ private
     type(output_option_type), pointer                 :: output_option
     type(gm_region_list_type), pointer                :: geomech_regions
     type(geomech_condition_list_type),pointer         :: geomech_conditions
+    class(dataset_base_type), pointer                 :: geomech_datasets
   end type geomech_realization_type
 
 public :: GeomechRealizCreate, &
@@ -48,7 +50,9 @@ public :: GeomechRealizCreate, &
           GeomechRealizPassFieldPtrToPatch, &
           GeomechRealizProcessMatProp, &
           GeomechRealizProcessGeomechCouplers, &
-          GeomechRealizCreateDiscretization
+          GeomechRealizCreateDiscretization, &
+          GeomechRealizProcessGeomechConditions, &
+          GeomechRealizLocalToLocalWithArray
 
 contains
 
@@ -260,6 +264,53 @@ end subroutine GeomechRealizCreateDiscretization
 
 ! ************************************************************************** !
 !
+! GeomechRealizLocalToLocalWithArray: This routine takes an F90 array that is 
+!                                    ghosted and updates the ghosted values
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
+
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Field_module
+
+  implicit none
+
+  type(geomech_realization_type)            :: geomech_realization
+  PetscInt                                  :: array_id
+  
+  type(geomech_patch_type), pointer         :: patch
+  type(geomech_grid_type), pointer          :: grid
+  type(geomech_field_type), pointer         :: geomech_field
+
+  geomech_field => geomech_realization%geomech_field
+  patch => geomech_realization%geomech_patch
+  grid => patch%geomech_grid
+
+  select case(array_id)
+    case(MATERIAL_ID_ARRAY)
+      call GeomechGridCopyIntegerArrayToVec(grid,patch%imat, &
+                                            geomech_field%work_loc, &
+                                            grid%ngmax_node)
+  end select
+    
+  call GeomechDiscretizationLocalToLocal(geomech_realization%discretization, &
+                                         geomech_field%work_loc, &
+                                         geomech_field%work_loc,ONEDOF)
+                                  
+  select case(array_id)
+    case(MATERIAL_ID_ARRAY)
+      call GeomechGridCopyVecToIntegerArray(grid,patch%imat, &
+                                            geomech_field%work_loc, &
+                                            grid%ngmax_node)
+  end select
+  
+end subroutine GeomechRealizLocalToLocalWithArray
+
+! ************************************************************************** !
+!
 ! GeomechRealizPassFieldPtrToPatch: This subroutine passes field to patch
 ! author: Satish Karra, LANL
 ! date: 06/13/13
@@ -304,6 +355,62 @@ subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
                                    geomech_realization%option)
  
 end subroutine GeomechRealizProcessGeomechCouplers
+
+
+! ************************************************************************** !
+!
+! GeomechRealizProcessGeomechConditions: This subroutine sets up condition in 
+!                                      geomech realization
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
+
+  use Dataset_Base_class
+  use Dataset_module
+  
+
+  implicit none
+
+  type(geomech_realization_type), pointer   :: geomech_realization
+  
+  type(geomech_condition_type), pointer     :: cur_geomech_condition
+  type(geomech_sub_condition_type), pointer :: cur_geomech_sub_condition
+  type(option_type), pointer                :: option
+  character(len=MAXSTRINGLENGTH)            :: string
+  character(len=MAXWORDLENGTH)              :: dataset_name
+  class(dataset_base_type), pointer         :: dataset
+  PetscInt                                  :: i
+  
+  option => geomech_realization%option
+  
+  ! loop over flow conditions looking for linkage to datasets
+  cur_geomech_condition => geomech_realization%geomech_conditions%first
+  do
+    if (.not.associated(cur_geomech_condition)) exit
+      do i = 1, size(cur_geomech_condition%sub_condition_ptr)
+        ! check for dataset in dataset
+        if (associated(cur_geomech_condition%sub_condition_ptr(i)%ptr% &
+                        geomech_dataset%dataset)) then
+          dataset_name = cur_geomech_condition%sub_condition_ptr(i)%ptr% &
+                        geomech_dataset%dataset%name
+          ! delete the dataset since it is solely a placeholder
+          call DatasetDestroy(cur_geomech_condition%sub_condition_ptr(i)%ptr% &
+                              geomech_dataset%dataset)
+          ! get dataset from list
+          string = 'geomech_condition ' // trim(cur_geomech_condition%name)
+          dataset => &
+            DatasetBaseGetPointer(geomech_realization%geomech_datasets, &
+                                  dataset_name,string,option)
+          cur_geomech_condition%sub_condition_ptr(i)%ptr%geomech_dataset &
+            %dataset => dataset
+        endif
+      enddo
+     cur_geomech_condition => cur_geomech_condition%next
+  enddo
+
+end subroutine GeomechRealizProcessGeomechConditions
 
 ! ************************************************************************** !
 !

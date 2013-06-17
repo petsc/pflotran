@@ -211,7 +211,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
       case ('GEOMECHANICS_CONDITION')
         condition => GeomechConditionCreate(option)
         call InputReadWord(input,option,condition%name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'SURF_FLOW_CONDITION','name')
+        call InputErrorMsg(input,option,'GEOMECHANICS_CONDITION','name')
         call printMsg(option,condition%name)
         call GeomechConditionRead(condition,input,option)
         call GeomechConditionAddToList(condition,geomech_realization%geomech_conditions)
@@ -265,6 +265,152 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   enddo
   
 end subroutine GeomechanicsInitReadInput
+
+! ************************************************************************** !
+!
+! GeomechInitMatPropToGeomechRegions: This routine assigns geomech material 
+!                                     properties to associated regions 
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Strata_module
+  use Geomechanics_Region_module
+  use Geomechanics_Material_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Field_module
+  use Geomechanics_Patch_module
+  use Option_module
+
+  implicit none
+  
+  type(geomech_realization_type) :: geomech_realization
+  
+  PetscReal, pointer :: vec_p(:)
+  
+  PetscInt :: ivertex, local_id, ghosted_id, natural_id, geomech_material_id
+  PetscInt :: istart, iend
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(geomech_grid_type), pointer :: grid
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_field_type), pointer :: field
+  type(geomech_strata_type), pointer :: strata
+  type(geomech_patch_type), pointer :: patch  
+
+  type(geomech_material_property_type), pointer :: geomech_material_property
+  type(geomech_material_property_type), pointer :: null_geomech_material_property
+  type(gm_region_type), pointer :: region
+  PetscBool :: update_ghosted_material_ids
+  
+  option => geomech_realization%option
+  discretization => geomech_realization%discretization
+  field => geomech_realization%geomech_field
+  patch => geomech_realization%geomech_patch
+
+  ! loop over all patches and allocation material id arrays
+  if (.not.associated(patch%imat)) then
+    allocate(patch%imat(patch%geomech_grid%ngmax_node))
+    ! initialize to "unset"
+    patch%imat = -999
+  endif
+
+  ! if material ids are set based on region, as opposed to being read in
+  ! we must communicate the ghosted ids.  This flag toggles this operation.
+  update_ghosted_material_ids = PETSC_FALSE
+  grid => patch%geomech_grid
+  strata => patch%geomech_strata%first
+  do
+    if (.not.associated(strata)) exit
+    ! Read in cell by cell material ids if they exist
+    if (.not.associated(strata%region) .and. strata%active) then
+      option%io_buffer = 'Reading of material prop from file for' // &
+        ' geomech is not implemented.'
+      call printErrMsgByRank(option)
+    ! Otherwise, set based on region
+    else if (strata%active) then
+      update_ghosted_material_ids = PETSC_TRUE
+      region => strata%region
+      geomech_material_property => strata%material_property
+      if (associated(region)) then
+        istart = 1
+        iend = region%num_verts
+      else
+        istart = 1
+        iend = grid%nlmax_node
+      endif
+      do ivertex = istart, iend
+        if (associated(region)) then
+          local_id = region%vertex_ids(ivertex)
+        else
+          local_id = ivertex
+        endif
+        ghosted_id = grid%nL2G(local_id)
+        patch%imat(ghosted_id) = geomech_material_property%id
+      enddo
+    endif
+    strata => strata%next
+  enddo
+    
+  if (update_ghosted_material_ids) then
+    ! update ghosted material ids
+    call GeomechRealizLocalToLocalWithArray(geomech_realization, &
+                                            MATERIAL_ID_ARRAY)
+  endif
+
+  ! set cell by cell material properties
+  ! create null material property for inactive cells
+  null_geomech_material_property => GeomechanicsMaterialPropertyCreate()
+  do local_id = 1, grid%nlmax_node
+    ghosted_id = grid%nL2G(local_id)
+    geomech_material_id = patch%imat(ghosted_id)
+    if (geomech_material_id == 0) then ! accomodate inactive cells
+      geomech_material_property = null_geomech_material_property
+    else if ( geomech_material_id > 0 .and. &
+              geomech_material_id <= &
+              size(geomech_realization%geomech_material_property_array)) then
+      geomech_material_property => &
+         geomech_realization% &
+           geomech_material_property_array(geomech_material_id)%ptr
+      if (.not.associated(geomech_material_property)) then
+        write(dataset_name,*) geomech_material_id
+        option%io_buffer = 'No material property for geomech material id ' // &
+                            trim(adjustl(dataset_name)) &
+                            //  ' defined in input file.'
+        call printErrMsgByRank(option)
+      endif
+    else if (geomech_material_id < -998) then 
+      write(dataset_name,*) grid%nG2A(ghosted_id)
+      option%io_buffer = 'Uninitialized geomech material id in patch at cell ' // &
+                         trim(adjustl(dataset_name))
+      call printErrMsgByRank(option)
+    else if (geomech_material_id > size(geomech_realization% &
+      geomech_material_property_array)) then
+      write(option%io_buffer,*) geomech_material_id
+      option%io_buffer = 'Unmatched geomech material id in patch:' // &
+        adjustl(trim(option%io_buffer))
+      call printErrMsgByRank(option)
+    else
+      option%io_buffer = 'Something messed up with geomech material ids. ' // &
+        ' Possibly material ids not assigned to all grid cells. ' // &
+        ' Contact Glenn/Satish!'
+      call printErrMsgByRank(option)
+    endif
+  enddo ! local_id - loop
+
+  
+  call GeomechanicsMaterialPropertyDestroy(null_geomech_material_property)
+  nullify(null_geomech_material_property)
+
+end subroutine GeomechInitMatPropToGeomechRegions
  
 end module Geomechanics_Init_module
 #endif
