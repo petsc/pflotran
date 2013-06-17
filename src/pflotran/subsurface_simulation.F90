@@ -28,9 +28,13 @@ module Subsurface_Simulation_class
 !    procedure, public :: ExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
+    procedure, public :: Strip => SubsurfaceSimulationStrip
   end type subsurface_simulation_type
   
   public :: SubsurfaceSimulationCreate, &
+            SubsurfaceSimulationInit, &
+            SubsurfaceFinalizeRun, &
+            SubsurfaceSimulationStrip, &
             SubsurfaceSimulationDestroy
   
 contains
@@ -58,7 +62,6 @@ function SubsurfaceSimulationCreate(option)
   call SubsurfaceSimulationCreate%Init(option)
   
 end function SubsurfaceSimulationCreate
-
 
 ! ************************************************************************** !
 !
@@ -185,21 +188,12 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  class(pmc_base_type), pointer :: cur_process_model_coupler
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
 
-  call printMsg(this%option,'Simulation%FinalizeRun()')
+  call printMsg(this%option,'SubsurfaceFinalizeRun()')
   
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    call cur_process_model_coupler%FinalizeRun()
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
-  
-  nullify(flow_stepper)
-  nullify(tran_stepper)
+  call SimulationBaseFinalizeRun(this)
   
   if (associated(this%flow_process_model_coupler)) &
     flow_stepper => this%flow_process_model_coupler%timestepper
@@ -209,10 +203,27 @@ subroutine SubsurfaceFinalizeRun(this)
   call RegressionOutput(this%regression,this%realization, &
                         flow_stepper,tran_stepper)  
   
-  ! pushed in InitializeRun()
-  call PetscLogStagePop(ierr)
-  
 end subroutine SubsurfaceFinalizeRun
+
+! ************************************************************************** !
+!
+! SubsurfaceSimulationStrip: Deallocates members of subsurface simulation 
+! author: Glenn Hammond
+! date: 06/11/13
+!
+! ************************************************************************** !
+subroutine SubsurfaceSimulationStrip(this)
+
+  implicit none
+  
+  class(subsurface_simulation_type) :: this
+  
+  call printMsg(this%option,'SubsurfaceSimulationStrip()')
+  
+  call SimulationBaseStrip(this)
+  call RegressionDestroy(this%regression)
+  
+end subroutine SubsurfaceSimulationStrip
 
 ! ************************************************************************** !
 !
@@ -223,25 +234,17 @@ end subroutine SubsurfaceFinalizeRun
 ! ************************************************************************** !
 subroutine SubsurfaceSimulationDestroy(simulation)
 
-#ifndef SIMPLIFY
-  use Richards_module, only : RichardsDestroy
-  use Reactive_Transport_module, only : RTDestroy
-  use General_module, only : GeneralDestroy
-#endif
-
   implicit none
   
   class(subsurface_simulation_type), pointer :: simulation
-  class(simulation_base_type), pointer :: simulation_base
   
   call printMsg(simulation%option,'SimulationDestroy()')
   
   if (.not.associated(simulation)) return
   
-  call RegressionDestroy(simulation%regression)
-  
-  simulation_base => simulation
-  call SimulationBaseDestroy(simulation_base)
+  call simulation%Strip()
+  deallocate(simulation)
+  nullify(simulation)
   
 end subroutine SubsurfaceSimulationDestroy
   

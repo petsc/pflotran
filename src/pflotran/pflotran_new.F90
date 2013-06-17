@@ -40,24 +40,40 @@
 program pflotran
   
   use Option_module
-  use Subsurface_Simulation_class
+  use Simulation_Base_class
   use PFLOTRAN_Factory_module
-  use Logging_module
+  use Subsurface_Factory_module
+  use Hydrogeophysics_Factory_module
   
   implicit none
 
 #include "definitions.h"
 
-  class(subsurface_simulation_type), pointer :: simulation
+  class(simulation_base_type), pointer :: simulation
   type(option_type), pointer :: option
   
+  nullify(simulation)
   option => OptionCreate()
   call OptionInitMPI(option)
-  call PFLOTRANInitialize(simulation,option)
-  call simulation%InitializeRun()
-  call simulation%ExecuteRun()
-  call PFLOTRANFinalize(simulation,option)
-  call LoggingDestroy()
+  call PFLOTRANInitialize(option)
+  select case(option%simulation_mode)
+    case('SUBSURFACE')
+      call SubsurfaceInitialize(simulation,option)
+      call simulation%InitializeRun()
+      call simulation%ExecuteRun()
+      call SubsurfaceFinalize(simulation,option)
+    case('HYDROGEOPHYSICS')
+      call HydrogeophysicsInitialize(simulation,option)
+      call simulation%InitializeRun()
+      call simulation%ExecuteRun()
+      call HydrogeophysicsFinalize(simulation,option)
+    case default
+      option%io_buffer = 'Simulation Mode not recognized.'
+      call printErrMsg(option)
+  end select
+  deallocate(simulation)
+  nullify(simulation)
+  call PFLOTRANFinalize(option)
   call OptionFinalize(option)
 
 end program pflotran

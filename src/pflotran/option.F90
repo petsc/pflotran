@@ -41,6 +41,7 @@ module Option_module
   
     PetscInt :: fid_out
     
+    character(len=MAXWORDLENGTH) :: simulation_mode
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
@@ -201,7 +202,7 @@ module Option_module
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
     
-    PetscInt :: simulation_type
+    PetscInt :: subsurface_simulation_type
 
   end type option_type
   
@@ -259,7 +260,7 @@ module Option_module
             OptionMeanVariance, &
             OptionMaxMinMeanVariance, &
             OptionInitMPI, &
-            OptionInitPETSc, &
+            OptionInitPetsc, &
             OptionDivvyUpSimulations, &
             OptionCreateProcessorGroups, &
             OptionBeginTiming, &
@@ -349,8 +350,9 @@ subroutine OptionInitAll(option)
 
   option%out_of_table = PETSC_FALSE
   
+  option%simulation_mode = 'SUBSURFACE'
   option%use_process_model = PETSC_FALSE
-  option%simulation_type = SUBSURFACE_SIM_TYPE
+  option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)
 
@@ -1038,12 +1040,12 @@ end subroutine OptionInitMPI2
 
 ! ************************************************************************** !
 !
-! OptionInitPETSc: Initialization of PETSc.
+! OptionInitPetsc: Initialization of PETSc.
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine OptionInitPETSc(option)
+subroutine OptionInitPetsc(option)
 
   implicit none
   
@@ -1061,7 +1063,7 @@ subroutine OptionInitPETSc(option)
     call PetscOptionsInsertString(string, ierr)
   endif 
   
-end subroutine OptionInitPETSc
+end subroutine OptionInitPetsc
 
 ! ************************************************************************** !
 !

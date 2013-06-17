@@ -21,10 +21,14 @@ module Simulation_Base_class
     procedure, public :: InitializeRun
     procedure, public :: ExecuteRun
     procedure, public :: RunToTime
+    procedure, public :: FinalizeRun => SimulationBaseFinalizeRun
+    procedure, public :: Strip => SimulationBaseStrip
   end type simulation_base_type
   
   public :: SimulationBaseCreate, &
             SimulationBaseInit, &
+            SimulationBaseFinalizeRun, &
+            SimulationBaseStrip, &
             SimulationBaseDestroy
   
 contains
@@ -217,12 +221,12 @@ end subroutine RunToTime
 
 ! ************************************************************************** !
 !
-! FinalizeRun: Finalizes simulation
+! SimulationBaseFinalizeRun: Finalizes simulation
 ! author: Glenn Hammond
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine FinalizeRun(this)
+subroutine SimulationBaseFinalizeRun(this)
 
   implicit none
   
@@ -232,7 +236,7 @@ subroutine FinalizeRun(this)
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
 
-  call printMsg(this%option,'Simulation%FinalizeRun()')
+  call printMsg(this%option,'SimulationBaseFinalizeRun()')
   
   cur_process_model_coupler => this%process_model_coupler_list
   do
@@ -244,8 +248,7 @@ subroutine FinalizeRun(this)
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr)
   
-end subroutine FinalizeRun
-
+end subroutine SimulationBaseFinalizeRun
 
 ! ************************************************************************** !
 !
@@ -291,18 +294,13 @@ end function SimulationGetFinalWaypointTime
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine SimulationBaseStrip(simulation)
+subroutine SimulationBaseStrip(this)
 
   implicit none
   
-  class(simulation_base_type), pointer :: simulation
+  class(simulation_base_type) :: this
   
-  call printMsg(simulation%option,'SimulationDestroy()')
-  
-  if (.not.associated(simulation)) return
-  
-  deallocate(simulation)
-  nullify(simulation)
+  call printMsg(this%option,'SimulationBaseStrip()')
   
 end subroutine SimulationBaseStrip
 
@@ -323,6 +321,7 @@ subroutine SimulationBaseDestroy(simulation)
   
   if (.not.associated(simulation)) return
   
+  call simulation%Strip()
   deallocate(simulation)
   nullify(simulation)
   
