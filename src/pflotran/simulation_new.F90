@@ -27,6 +27,7 @@ module Simulation_Base_class
   
   public :: SimulationBaseCreate, &
             SimulationBaseInit, &
+            SimulationGetFinalWaypointTime, &
             SimulationBaseFinalizeRun, &
             SimulationBaseStrip, &
             SimulationBaseDestroy

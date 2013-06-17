@@ -1,10 +1,6 @@
 module PMC_Subsurface_class
 
   use PMC_Base_class
-  use Timestepper_module
-  use Option_module
-  use Waypoint_module
-  use Process_Model_module
   use Realization_class
 
   implicit none
@@ -77,6 +73,8 @@ end subroutine PMCSubsurfaceInit
 ! ************************************************************************** !
 recursive subroutine PMCSubsurfaceFinalizeRun(this)
 
+  use Option_module
+  
   implicit none
   
   class(pmc_subsurface_type) :: this
@@ -97,7 +95,8 @@ end subroutine PMCSubsurfaceFinalizeRun
 ! ************************************************************************** !
 recursive subroutine Destroy(this)
 
-  use Utility_module, only: DeallocateArray 
+  use Utility_module, only: DeallocateArray
+  use Option_module
 
   implicit none
   

@@ -59,20 +59,21 @@ program pflotran
   select case(option%simulation_mode)
     case('SUBSURFACE')
       call SubsurfaceInitialize(simulation,option)
-      call simulation%InitializeRun()
-      call simulation%ExecuteRun()
-      call SubsurfaceFinalize(simulation,option)
     case('HYDROGEOPHYSICS')
       call HydrogeophysicsInitialize(simulation,option)
-      call simulation%InitializeRun()
-      call simulation%ExecuteRun()
-      call HydrogeophysicsFinalize(simulation,option)
     case default
       option%io_buffer = 'Simulation Mode not recognized.'
       call printErrMsg(option)
   end select
+  call simulation%InitializeRun()
+
+  call simulation%ExecuteRun()
+
+  call simulation%FinalizeRun()
+  call simulation%Strip()
   deallocate(simulation)
   nullify(simulation)
+  
   call PFLOTRANFinalize(option)
   call OptionFinalize(option)
 

@@ -15,7 +15,7 @@ module Hydrogeophysics_Simulation_class
   contains
     procedure, public :: Init => HydrogeophysicsInit
     procedure, public :: InitializeRun => HydrogeophysicsInitializeRun
-!    procedure, public :: ExecuteRun
+    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
     procedure, public :: Strip => HydrogeophysicsStrip
@@ -121,6 +121,39 @@ subroutine HydrogeophysicsInitializeRun(this)
 
 end subroutine HydrogeophysicsInitializeRun
 
+! ************************************************************************** !
+!
+! HydrogeophysicsExecuteRun: 
+! author: Glenn Hammond
+! date: 06/11/13
+!
+! ************************************************************************** !
+subroutine HydrogeophysicsExecuteRun(this)
+
+  use Simulation_Base_class
+
+  implicit none
+  
+  class(hydrogeophysics_simulation_type) :: this
+  
+  PetscReal :: final_time
+  PetscReal :: dt
+  PetscReal :: current_time
+  
+  call printMsg(this%option,'HydrogeophysicsExecuteRun()')
+
+  final_time = SimulationGetFinalWaypointTime(this)
+  ! take hourly steps until final time
+  current_time = 0.d0
+  dt = 365.d0*24.d0*3600.d0
+  do
+    current_time = min(current_time + dt,final_time)
+    call this%RunToTime(current_time)
+    if (this%stop_flag) exit
+  enddo
+  
+end subroutine HydrogeophysicsExecuteRun
+  
 ! ************************************************************************** !
 !
 ! HydrogeophysicsFinalizeRun: Finalizes simulation

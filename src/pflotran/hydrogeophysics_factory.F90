@@ -1,7 +1,6 @@
 module Hydrogeophysics_Factory_module
 
   use Hydrogeophysics_Simulation_class
-!  use PMC_Hydrogeophysics_class
   
   implicit none
 
@@ -9,9 +8,7 @@ module Hydrogeophysics_Factory_module
 
 #include "definitions.h"
 
-  public :: HydrogeophysicsInitialize, &
-            HydrogeophysicsRun, &
-            HydrogeophysicsFinalize
+  public :: HydrogeophysicsInitialize
 
 contains
 
@@ -67,49 +64,6 @@ subroutine HydrogeophysicsInitPostPETSc(simulation, option)
   call SubsurfaceInitializePostPETSc(simulation, option)
   
 end subroutine HydrogeophysicsInitPostPETSc
-
-! ************************************************************************** !
-!
-! HydrogeophysicsRun: Runs the hydrogeophysics simulation
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
-subroutine HydrogeophysicsRun(simulation, master_stepper, init_status)
-
-  use Simulation_module
-  use Timestepper_module
-  
-  implicit none
-  
-  type(hydrogeophysics_simulation_type) :: simulation
-  type(stepper_type), pointer :: master_stepper
-  PetscInt :: init_status
-
-end subroutine HydrogeophysicsRun
-
-! ************************************************************************** !
-!
-! HydrogeophysicsFinalize: Destroys hydrogeophysics simulation framework
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
-subroutine HydrogeophysicsFinalize(simulation,option)
-
-  use Option_module
-  use Simulation_Base_class
-  
-  implicit none
-  
-  class(simulation_base_type) :: simulation
-  type(option_type) :: option
-  
-  call simulation%FinalizeRun()
-!  call HydrogeophysicsSimulationDestroy(simulation)
-  call simulation%Strip()
-
-end subroutine HydrogeophysicsFinalize
 
 ! ************************************************************************** !
 !
