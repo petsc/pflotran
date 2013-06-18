@@ -91,6 +91,7 @@ subroutine Init(simulation)
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
   use Geomechanics_Global_module
+  use Geomechanics_Force_module
 #endif
 
   implicit none
@@ -1153,22 +1154,13 @@ subroutine Init(simulation)
     call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
     call WaypointListRemoveExtraWaypnts(option, &
                                     simulation%geomech_realization%waypoints)
-    ! call GeomechForceSetup(simulation%geomech_realization)
+    call GeomechForceSetup(simulation%geomech_realization)
     call GeomechGlobalSetup(simulation%geomech_realization)
     
     ! SK: We are solving quasi-steady state solution for geomechanics.
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
-
-    ! write material ids
-    output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
-                                            MATERIAL_ID)
-    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-    output_variable%iformat = 1 ! integer
-    call OutputVariableAddToList( &
-        geomech_realization%output_option%output_variable_list,output_variable)
-
-
+    call GeomechForceUpdateAuxVars(simulation%geomech_realization)
   endif
 #endif
 

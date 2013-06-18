@@ -362,6 +362,7 @@ geomech_obj = \
   ${common_src}geomechanics_condition.o \
   ${common_src}geomechanics_logging.o \
   ${common_src}geomechanics_global.o \
+  ${common_src}geomechanics_force.o \
   ${common_src}geomechanics_global_aux.o
 
 # End Source Block
