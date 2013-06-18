@@ -323,9 +323,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   grid                    => patch%grid
   surf_global_aux_vars    => patch%surf_aux%SurfaceGlobal%aux_vars
   surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-
-  write(string,*),t
-  call printMsg(option,"In SurfaceFlowRHSFunction: " // string)
   
   surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%iter_count < 10) then
@@ -380,10 +377,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
         write(*,*),'In SurfaceFlowFlux: ', surf_global_aux_vars(ghosted_id_up)%head(1), &
           surf_global_aux_vars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
           option%io_buffer='stopping: -ve head values '
-          if(surf_global_aux_vars(ghosted_id_up)%head(1)<0.d0) &
-            surf_global_aux_vars(ghosted_id_up)%head(1)=0.d0
-          if(surf_global_aux_vars(ghosted_id_dn)%head(1)<0.d0) &
-            surf_global_aux_vars(ghosted_id_dn)%head(1)=0.d0
+          call printErrMsg(option)
       endif
 
       select case(option%surface_flow_formulation)
@@ -1495,7 +1489,8 @@ end subroutine SurfaceFlowUpdateSurfBC
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
+subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
+                                       max_allowable_dt,max_dt_check)
 
   use Grid_module
   use String_module
@@ -1573,9 +1568,12 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: v_darcy_max
   PetscReal :: gravity
   PetscReal :: press_up, press_dn
+  PetscReal :: max_allowable_dt
+  PetscReal :: max_allowable_dt_glb
     
   PetscBool :: coupler_found = PETSC_FALSE
   PetscBool :: v_darcy_limit
+  PetscBool :: max_dt_check
 
   patch      => realization%patch
   surf_patch => surf_realization%patch
@@ -1600,6 +1598,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   coupler => coupler_list%first
   v_darcy_max=0.d0
   v_darcy_limit=PETSC_FALSE
+  max_allowable_dt = 1.d10
   
   !
   !            SURFACE
@@ -1674,14 +1673,19 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
             v_darcy = -hw_p(local_id)/option%surf_flow_dt
             v_darcy_limit=PETSC_TRUE
           endif
+          if(abs(v_darcy)>eps) &
+            max_allowable_dt = &
+              min(max_allowable_dt,hw_p(local_id)/abs(v_darcy)/4.d0)
         else
           ! Exfiltration is occuring
           !v_darcy=0.d0
         endif
         
-        vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
-        coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
-        if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
+        if(.not.max_dt_check) then
+          vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
+          coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
+          if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
+        endif
       enddo
 
     endif
