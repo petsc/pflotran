@@ -169,30 +169,36 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-
-      select case(boundary_condition%geomech_condition%displacement_x%itype)
-        case(DIRICHLET_BC)
-          xxbc(1) = boundary_condition% &
-            geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(1) = xx_loc_p(ONE_INTEGER + (ghosted_id-1)*THREE_INTEGER) ! sk: check this
-      end select
       
-      select case(boundary_condition%geomech_condition%displacement_y%itype)
-        case(DIRICHLET_BC)
-          xxbc(2) = boundary_condition% &
-            geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(2) = xx_loc_p(ONE_INTEGER + (ghosted_id-1)*THREE_INTEGER) ! sk: check this
-      end select
+      if (associated(boundary_condition%geomech_condition%displacement_x)) then
+        select case(boundary_condition%geomech_condition%displacement_x%itype)
+          case(DIRICHLET_BC)
+            geomech_global_aux_vars_bc(total_verts)%disp_x = boundary_condition% &
+              geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            xxbc(1) = xx_loc_p(ONE_INTEGER + (ghosted_id-1)*THREE_INTEGER) ! sk: check this
+        end select
+      endif
+      
+      if (associated(boundary_condition%geomech_condition%displacement_y)) then
+        select case(boundary_condition%geomech_condition%displacement_y%itype)
+          case(DIRICHLET_BC)
+            xxbc(2) = boundary_condition% &
+              geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            xxbc(2) = xx_loc_p(ONE_INTEGER + (ghosted_id-1)*THREE_INTEGER) ! sk: check this
+        end select
+      endif
 
-      select case(boundary_condition%geomech_condition%displacement_z%itype)
-        case(DIRICHLET_BC)
-          xxbc(3) = boundary_condition% &
-            geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(3) = xx_loc_p(ONE_INTEGER + (ghosted_id-1)*THREE_INTEGER) ! sk: check this
-      end select
+      if (associated(boundary_condition%geomech_condition%displacement_z)) then
+        select case(boundary_condition%geomech_condition%displacement_z%itype)
+          case(DIRICHLET_BC)
+            xxbc(3) = boundary_condition% &
+              geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            xxbc(3) = xx_loc_p(ONE_INTEGER + (ghosted_id-1)*THREE_INTEGER) ! sk: check this
+        end select
+      endif
       
       geomech_global_aux_vars_bc(total_verts)%disp_vector(:) = xxbc(:)
     enddo

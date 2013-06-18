@@ -18,7 +18,7 @@ module Geomechanics_Condition_module
 
   type, public :: geomech_condition_dataset_type
     type(time_series_type), pointer                :: time_series
-    class(dataset_base_type), pointer              ::  dataset
+    class(dataset_base_type), pointer              :: dataset
   end type geomech_condition_dataset_type
   
   type, public :: geomech_condition_type
@@ -287,9 +287,7 @@ subroutine GeomechConditionRead(condition,input,option)
   
   character(len=MAXSTRINGLENGTH)                   :: string
   character(len=MAXWORDLENGTH)                     :: word
-  type(geomech_sub_condition_type), pointer :: pressure, flux, temperature, &
-                                       concentration, enthalpy, rate, well,&
-                                       sub_condition_ptr, saturation, &
+  type(geomech_sub_condition_type), pointer :: sub_condition_ptr,  &
                                        displacement_x, displacement_y, &
                                        displacement_z
   PetscReal                                        :: default_time
@@ -302,6 +300,8 @@ subroutine GeomechConditionRead(condition,input,option)
   PetscBool                                        :: found
   PetscBool                                        :: destroy_if_null
   PetscErrorCode                                   :: ierr
+  PetscInt                                         :: num_sub_conditions
+  PetscInt                                         :: count
 
   call PetscLogEventBegin(geomech_logging%event_geomech_condition_read,ierr)
 
@@ -449,44 +449,53 @@ subroutine GeomechConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_geomech_dataset,PETSC_TRUE)
 
-  if (.not.associated(displacement_x)) then
-    option%io_buffer = 'displacement_x condition null in condition: ' // &
-                        trim(condition%name)      
-    call printErrMsg(option)
+  num_sub_conditions = 0
+  if (associated(displacement_x)) then
+    condition%displacement_x => displacement_x
+    num_sub_conditions = num_sub_conditions + 1
+    condition%displacement_x%isubtype = ONE_INTEGER
   endif                         
-  condition%displacement_x => displacement_x
 
-  if (.not.associated(displacement_y)) then
-    option%io_buffer = 'displacement_y condition null in condition: ' // &
-                        trim(condition%name)      
-    call printErrMsg(option)
+  if (associated(displacement_y)) then
+    condition%displacement_y => displacement_y
+    num_sub_conditions = num_sub_conditions + 1
+    condition%displacement_y%isubtype = TWO_INTEGER    
   endif                         
-  condition%displacement_y => displacement_y
 
-  if (.not.associated(displacement_z)) then
-    option%io_buffer = 'displacement_z condition null in condition: ' // &
-                        trim(condition%name)      
-    call printErrMsg(option)
+  if (associated(displacement_z)) then
+    condition%displacement_z => displacement_z
+    num_sub_conditions = num_sub_conditions + 1
+    condition%displacement_z%isubtype = THREE_INTEGER
   endif                         
-  condition%displacement_z => displacement_z
 
-  condition%num_sub_conditions = 3
+  if (num_sub_conditions == 0) then
+    option%io_buffer = 'displacement condition null in condition: ' // &
+                        trim(condition%name)
+    call printErrMsg(option)   
+  endif
+
+  condition%num_sub_conditions = num_sub_conditions
   allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-  do idof = 1, 3
+  do idof = 1, num_sub_conditions
     nullify(condition%sub_condition_ptr(idof)%ptr)
   enddo
 
-  ! must be in this order, which matches the dofs i problem
-  condition%sub_condition_ptr(ONE_INTEGER)%ptr => displacement_x
-  condition%sub_condition_ptr(TWO_INTEGER)%ptr => displacement_y
-  condition%sub_condition_ptr(THREE_INTEGER)%ptr => displacement_z
-
-  allocate(condition%itype(THREE_INTEGER))
-  condition%itype = 0
-  condition%itype(ONE_INTEGER) = displacement_x%itype
-  condition%itype(TWO_INTEGER) = displacement_y%itype
-  condition%itype(THREE_INTEGER) = displacement_z%itype
-      
+  ! SK: I am using isubtype to differentiate between x, y, z in sub_condition_ptr
+  ! since all of the displacements need not be specified.
+  count = 0
+  if (associated(displacement_x)) then
+    count = count + 1
+    condition%sub_condition_ptr(count)%ptr => displacement_x
+  endif
+  if (associated(displacement_y)) then
+    count = count + 1
+    condition%sub_condition_ptr(count)%ptr => displacement_y
+  endif
+  if (associated(displacement_z)) then
+    count = count + 1
+    condition%sub_condition_ptr(count)%ptr => displacement_z
+  endif
+    
   call GeomechConditionDatasetDestroy(default_geomech_dataset)
     
   call PetscLogEventEnd(geomech_logging%event_geomech_condition_read,ierr)

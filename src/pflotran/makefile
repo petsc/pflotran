@@ -492,10 +492,16 @@ geomechanics_coupler.o : geomechanics_condition.o geomechanics_region.o \
 geomechanics_debug.o : input.o option.o
 geomechanics_discretization.o : geomech_grid.o geomech_grid_aux.o option.o
 geomechanics_field.o :
-geomechanics_global.o : discretization.o geomech_grid.o geomechanics_coupler.o \
-                        geomechanics_field.o geomechanics_global_aux.o \
-                        geomechanics_patch.o geomechanics_realization.o grid.o \
-                        level.o option.o patch.o variables.o
+geomechanics_force.o : geomech_grid.o geomech_grid_aux.o \
+                       geomechanics_coupler.o geomechanics_field.o \
+                       geomechanics_global_aux.o geomechanics_material.o \
+                       geomechanics_patch.o geomechanics_realization.o \
+                       geomechanics_region.o option.o output_aux.o variables.o
+geomechanics_global.o : discretization.o geomech_grid.o geomech_grid_aux.o \
+                        geomechanics_coupler.o geomechanics_field.o \
+                        geomechanics_global_aux.o geomechanics_patch.o \
+                        geomechanics_realization.o grid.o level.o option.o \
+                        patch.o variables.o
 geomechanics_global_aux.o : option.o utility.o
 geomechanics_init.o : geomech_grid.o geomech_grid_aux.o \
                       geomechanics_condition.o geomechanics_coupler.o \
@@ -552,18 +558,18 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          dataset_base.o dataset_common_hdf5.o debug.o discretization.o field.o \
          flash2.o fluid.o general.o general_grid.o geomech_grid.o \
          geomechanics_discretization.o geomechanics_field.o \
-         geomechanics_global.o geomechanics_init.o geomechanics_realization.o \
-         global.o grid.o hdf5.o immis.o input.o level.o logging.o \
-         mass_transfer.o material.o mineral.o miscible.o mphase.o \
-         observation.o option.o output.o output_aux.o output_tecplot.o patch.o \
-         reaction.o reaction_aux.o reactive_transport.o realization.o region.o \
-         regression.o richards.o richards_mfd.o saturation_function.o \
-         secondary_continuum.o simulation.o solid_solution.o solver.o strata.o \
-         string.o structured_grid.o surface_field.o surface_flow.o \
-         surface_global.o surface_init.o surface_realization.o surface_th.o \
-         th.o thc.o thmc.o timestepper.o uniform_velocity.o units.o \
-         unstructured_grid.o unstructured_grid_aux.o variables.o water_eos.o \
-         waypoint.o
+         geomechanics_force.o geomechanics_global.o geomechanics_init.o \
+         geomechanics_realization.o global.o grid.o hdf5.o immis.o input.o \
+         level.o logging.o mass_transfer.o material.o mineral.o miscible.o \
+         mphase.o observation.o option.o output.o output_aux.o \
+         output_tecplot.o patch.o reaction.o reaction_aux.o \
+         reactive_transport.o realization.o region.o regression.o richards.o \
+         richards_mfd.o saturation_function.o secondary_continuum.o \
+         simulation.o solid_solution.o solver.o strata.o string.o \
+         structured_grid.o surface_field.o surface_flow.o surface_global.o \
+         surface_init.o surface_realization.o surface_th.o th.o thc.o thmc.o \
+         timestepper.o uniform_velocity.o units.o unstructured_grid.o \
+         unstructured_grid_aux.o variables.o water_eos.o waypoint.o
 input.o : option.o string.o
 level.o : patch.o
 logging.o :

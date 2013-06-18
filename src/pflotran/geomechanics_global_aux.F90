@@ -9,7 +9,9 @@ module Geomechanics_Global_Aux_module
 #include "definitions.h"
 
   type, public :: geomech_global_auxvar_type
-    PetscReal, pointer :: disp_vector(:)   ! [m]
+    PetscReal, pointer :: disp_x(:)   ! [m]
+    PetscReal, pointer :: disp_y(:)   ! [m]
+    PetscReal, pointer :: disp_z(:)   ! [m]
   end type geomech_global_auxvar_type
   
   type, public :: geomech_global_type
@@ -76,8 +78,9 @@ subroutine GeomechGlobalAuxVarInit(aux_var,option)
   type(geomech_global_auxvar_type)       :: aux_var
   type(option_type)                      :: option
   
-  allocate(aux_var%disp_vector(THREE_INTEGER))
-  aux_var%disp_vector = 0.d0
+  nullify(aux_var%disp_x)
+  nullify(aux_var%disp_y)
+  nullify(aux_var%disp_z)  
 
 end subroutine GeomechGlobalAuxVarInit
 
@@ -97,8 +100,19 @@ subroutine GeomechGlobalAuxVarCopy(aux_var,aux_var2,option)
   type(geomech_global_auxvar_type)      :: aux_var, aux_var2
   type(option_type)                     :: option
 
-  aux_var2%disp_vector = aux_var%disp_vector
-
+  if (associated(aux_var%disp_x) .and. &
+      associated(aux_var2%disp_x)) then
+    aux_var2%disp_x = aux_var%disp_x
+  endif
+  if (associated(aux_var%disp_y) .and. &
+      associated(aux_var2%disp_y)) then
+    aux_var2%disp_y = aux_var%disp_y
+  endif
+  if (associated(aux_var%disp_z) .and. &
+      associated(aux_var2%disp_z)) then
+    aux_var2%disp_z = aux_var%disp_z
+  endif
+  
 end subroutine GeomechGlobalAuxVarCopy
 
 ! ************************************************************************** !
@@ -163,7 +177,9 @@ subroutine GeomechGlobalAuxVarStrip(aux_var)
 
   type(geomech_global_auxvar_type) :: aux_var
   
-  call DeallocateArray(aux_var%disp_vector)
+  call DeallocateArray(aux_var%disp_x)
+  call DeallocateArray(aux_var%disp_y)
+  call DeallocateArray(aux_var%disp_z)  
 
 end subroutine GeomechGlobalAuxVarStrip
 
