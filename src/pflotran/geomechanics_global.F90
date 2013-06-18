@@ -10,10 +10,10 @@ module Geomechanics_Global_module
   
 #include "definitions.h"
 
-  public GeomechGlobalSetup, &
-         GeomechGlobalSetAuxVarScalar, &
-         GeomechGlobalSetAuxVarVecLoc, &
-         GeomechGlobalUpdateAuxVars
+  public GeomechGlobalSetup
+!         GeomechGlobalSetAuxVarScalar, &
+!         GeomechGlobalSetAuxVarVecLoc, &
+!         GeomechGlobalUpdateAuxVars
 
 contains
 
@@ -51,7 +51,8 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
   use Geomechanics_Patch_module
   use Option_module
   use Geomechanics_Coupler_module
-  use Geomech_Grid_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
  
   implicit none
   
@@ -85,7 +86,7 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
-  boundary_condition => patch%boundary_conditions%first
+  boundary_condition => patch%geomech_boundary_conditions%first
   num_verts_bc = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -105,7 +106,7 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
 
   ! count the number of source/sink vertices and allocate
   ! aux_var data structures for them  
-  source_sink => patch%source_sinks%first
+  source_sink => patch%geomech_source_sinks%first
   num_verts_ss = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -135,7 +136,7 @@ end subroutine GeomechGlobalSetupPatch
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
 
-  use Geomech_Realization_class
+  use Geomechanics_Realization_module
   use Level_module
   use Patch_module
 
@@ -172,7 +173,7 @@ end subroutine GeomechGlobalSetAuxVarScalar
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
 
-  use Geomech_Realization_class
+  use Geomechanics_Realization_module
   use Option_module
   use Patch_module
   use Variables_module, only : SURFACE_LIQUID_HEAD, &
@@ -228,7 +229,7 @@ end subroutine GeomechGlobalSetAuxVarScalarPatch
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar)
 
-  use Geomech_Realization_class
+  use Geomechanics_Realization_module
   use Level_module
   use Patch_module
 
@@ -269,7 +270,7 @@ end subroutine GeomechGlobalSetAuxVarVecLoc
 ! ************************************************************************** !
 subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
 
-  use Geomech_Realization_class
+  use Geomechanics_Realization_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -341,8 +342,8 @@ end subroutine GeomechGlobalSetAuxVarVecLocPatch
 ! ************************************************************************** !
 subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
 
-  use Geomech_Realization_class
-  use Geomech_Field_module
+  use Geomechanics_Realization_module
+  use Geomechanics_Field_module
   use Option_module
   use Discretization_module
   use Variables_module, only : SURFACE_LIQUID_HEAD, &
@@ -388,8 +389,8 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   end select
 
 end subroutine GeomechGlobalUpdateAuxVars
+#endif
 
 end module Geomechanics_Global_module
 
-#endif
 #endif

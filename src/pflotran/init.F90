@@ -90,6 +90,7 @@ subroutine Init(simulation)
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
+  use Geomechanics_Global_module
 #endif
 
   implicit none
@@ -1144,6 +1145,11 @@ subroutine Init(simulation)
     call GeomechInitMatPropToGeomechRegions(simulation%geomech_realization)
     call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
+    call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
+    call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
+    call WaypointListRemoveExtraWaypnts(option, &
+                                    simulation%geomech_realization%waypoints)
+    call GeomechGlobalSetup(simulation%geomech_realization)
   endif
 #endif
 

@@ -54,6 +54,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizProcessGeomechConditions, &
           GeomechRealizInitAllCouplerAuxVars, &
           GeomechRealizPrintCouplers, &
+          GeomechRealizAddWaypointsToList, &
           GeomechRealizLocalToLocalWithArray
 
 contains
@@ -477,7 +478,6 @@ subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
  
 end subroutine GeomechRealizProcessGeomechCouplers
 
-
 ! ************************************************************************** !
 !
 ! GeomechRealizProcessGeomechConditions: This subroutine sets up condition in 
@@ -506,7 +506,7 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
   
   option => geomech_realization%option
   
-  ! loop over flow conditions looking for linkage to datasets
+  ! loop over geomech conditions looking for linkage to datasets
   cur_geomech_condition => geomech_realization%geomech_conditions%first
   do
     if (.not.associated(cur_geomech_condition)) exit
@@ -555,7 +555,7 @@ subroutine GeomechRealizAddGeomechCoupler(realization,coupler)
   
   patch => realization%geomech_patch
   
- ! only add to flow list for now, since they will be split out later
+ ! only add to geomech list for now, since they will be split out later
   new_coupler => GeomechCouplerCreate(coupler)
   select case(coupler%itype)
     case(GM_BOUNDARY_COUPLER_TYPE)
@@ -569,6 +569,120 @@ subroutine GeomechRealizAddGeomechCoupler(realization,coupler)
   call GeomechCouplerDestroy(coupler)
  
 end subroutine GeomechRealizAddGeomechCoupler
+
+! ************************************************************************** !
+!
+! GeomechRealizAddWaypointsToList: Adds waypoints from BCs and source/sink
+!                                  to waypoint list
+! author: Satish Karra, LANL
+! date: 06/17/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizAddWaypointsToList(geomech_realization)
+
+  use Option_module
+  use Waypoint_module
+
+  implicit none
+  
+  type(geomech_realization_type) :: geomech_realization
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  type(geomech_condition_type), pointer :: cur_geomech_condition
+  type(geomech_sub_condition_type), pointer :: sub_condition
+  type(waypoint_type), pointer :: waypoint, cur_waypoint
+  type(option_type), pointer :: option
+  PetscInt :: itime, isub_condition
+  PetscReal :: temp_real, final_time
+  PetscReal, pointer :: times(:)
+
+  option => geomech_realization%option
+  waypoint_list => geomech_realization%waypoints
+  nullify(times)
+  
+  ! set flag for final output
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%final) then
+      cur_waypoint%print_output = geomech_realization%output_option%print_final
+      exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  ! use final time in conditional below
+  if (associated(cur_waypoint)) then
+    final_time = cur_waypoint%time
+  else
+    option%io_buffer = 'Final time not found in GeomechRealizAddWaypointsToList'
+    call printErrMsg(option)
+  endif
+
+  ! add update of geomech conditions
+  cur_geomech_condition => geomech_realization%geomech_conditions%first
+  do
+    if (.not.associated(cur_geomech_condition)) exit
+    if (cur_geomech_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_geomech_condition%num_sub_conditions
+        sub_condition => cur_geomech_condition% &
+                         sub_condition_ptr(isub_condition)%ptr
+        call GeomechConditionDatasetGetTimes(option,sub_condition,final_time, &
+                                          times)
+        if (size(times) > 1000) then
+          option%io_buffer = 'For geomech condition "' // &
+            trim(cur_geomech_condition%name) // &
+            '" dataset "' // trim(sub_condition%name) // &
+            '", the number of times is excessive for synchronization ' // &
+            'with waypoints.'
+          call printErrMsg(option)
+        endif
+        do itime = 1, size(times)
+          waypoint => WaypointCreate()
+          waypoint%time = times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        deallocate(times)
+        nullify(times)
+      enddo
+    endif
+    cur_geomech_condition => cur_geomech_condition%next
+  enddo
+      
+  ! add waypoints for periodic output
+  if (geomech_realization%output_option%periodic_output_time_incr > 0.d0 .or. &
+      geomech_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
+
+    if (geomech_realization%output_option%periodic_output_time_incr > 0.d0) then
+      ! standard output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + geomech_realization% &
+                      output_option%periodic_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+      enddo
+    endif
+    
+    if (geomech_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
+      ! transient observation output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + geomech_realization%output_option%periodic_tr_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_tr_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+      enddo
+    endif
+
+  endif
+
+end subroutine GeomechRealizAddWaypointsToList
 
 ! ************************************************************************** !
 !
