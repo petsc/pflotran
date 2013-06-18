@@ -9,16 +9,12 @@ module Geomechanics_Global_Aux_module
 #include "definitions.h"
 
   type, public :: geomech_global_auxvar_type
-    PetscReal, pointer :: disp_x(:)   ! [m]
-    PetscReal, pointer :: disp_y(:)   ! [m]
-    PetscReal, pointer :: disp_z(:)   ! [m]
+    PetscReal, pointer :: disp_vector(:)   ! [m]
   end type geomech_global_auxvar_type
   
   type, public :: geomech_global_type
-    PetscInt :: num_aux, num_aux_bc, num_aux_ss
+    PetscInt :: num_aux
     type(geomech_global_auxvar_type), pointer :: aux_vars(:)
-    type(geomech_global_auxvar_type), pointer :: aux_vars_bc(:)
-    type(geomech_global_auxvar_type), pointer :: aux_vars_ss(:)
   end type geomech_global_type
   
   interface GeomechGlobalAuxVarDestroy
@@ -52,11 +48,7 @@ function GeomechGlobalAuxCreate()
 
   allocate(aux) 
   aux%num_aux = 0
-  aux%num_aux_bc = 0
-  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
-  nullify(aux%aux_vars_ss)
 
   GeomechGlobalAuxCreate => aux
   
@@ -78,10 +70,9 @@ subroutine GeomechGlobalAuxVarInit(aux_var,option)
   type(geomech_global_auxvar_type)       :: aux_var
   type(option_type)                      :: option
   
-  nullify(aux_var%disp_x)
-  nullify(aux_var%disp_y)
-  nullify(aux_var%disp_z)  
-
+  allocate(aux_var%disp_vector(option%ngeomechdof))
+  aux_var%disp_vector = 0.d0
+  
 end subroutine GeomechGlobalAuxVarInit
 
 ! ************************************************************************** !
@@ -100,18 +91,7 @@ subroutine GeomechGlobalAuxVarCopy(aux_var,aux_var2,option)
   type(geomech_global_auxvar_type)      :: aux_var, aux_var2
   type(option_type)                     :: option
 
-  if (associated(aux_var%disp_x) .and. &
-      associated(aux_var2%disp_x)) then
-    aux_var2%disp_x = aux_var%disp_x
-  endif
-  if (associated(aux_var%disp_y) .and. &
-      associated(aux_var2%disp_y)) then
-    aux_var2%disp_y = aux_var%disp_y
-  endif
-  if (associated(aux_var%disp_z) .and. &
-      associated(aux_var2%disp_z)) then
-    aux_var2%disp_z = aux_var%disp_z
-  endif
+  aux_var%disp_vector = aux_var2%disp_vector
   
 end subroutine GeomechGlobalAuxVarCopy
 
@@ -177,9 +157,7 @@ subroutine GeomechGlobalAuxVarStrip(aux_var)
 
   type(geomech_global_auxvar_type) :: aux_var
   
-  call DeallocateArray(aux_var%disp_x)
-  call DeallocateArray(aux_var%disp_y)
-  call DeallocateArray(aux_var%disp_z)  
+  call DeallocateArray(aux_var%disp_vector)
 
 end subroutine GeomechGlobalAuxVarStrip
 
@@ -199,8 +177,6 @@ subroutine GeomechGlobalAuxDestroy(aux)
   if (.not.associated(aux)) return
   
   call GeomechGlobalAuxVarDestroy(aux%aux_vars)
-  call GeomechGlobalAuxVarDestroy(aux%aux_vars_bc)
-  call GeomechGlobalAuxVarDestroy(aux%aux_vars_ss)
   
   deallocate(aux)
   nullify(aux)

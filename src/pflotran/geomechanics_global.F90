@@ -66,9 +66,6 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
 
   PetscInt :: ghosted_id
   type(geomech_global_auxvar_type), pointer :: aux_vars(:)
-  type(geomech_global_auxvar_type), pointer :: aux_vars_bc(:)
-  type(geomech_global_auxvar_type), pointer :: aux_vars_ss(:)
-  PetscInt                                  :: num_verts_bc, num_verts_ss
   PetscInt                                  :: ivertex
   
   option => geomech_realization%option
@@ -83,47 +80,7 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
   enddo
   patch%geomech_aux%GeomechGlobal%aux_vars => aux_vars
   patch%geomech_aux%GeomechGlobal%num_aux = grid%ngmax_node
-  
-  ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
-  boundary_condition => patch%geomech_boundary_conditions%first
-  num_verts_bc = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    num_verts_bc = num_verts_bc + &
-                     boundary_condition%region%num_verts
-    boundary_condition => boundary_condition%next
-  enddo
-
-  if (num_verts_bc > 0) then
-    allocate(aux_vars_bc(num_verts_bc))
-    do ivertex = 1, num_verts_bc
-      call GeomechGlobalAuxVarInit(aux_vars_bc(ivertex),option)
-    enddo
-    patch%geomech_aux%GeomechGlobal%aux_vars_bc => aux_vars_bc
-  endif
-  patch%geomech_aux%GeomechGlobal%num_aux_bc = num_verts_bc
-
-  ! count the number of source/sink vertices and allocate
-  ! aux_var data structures for them  
-  source_sink => patch%geomech_source_sinks%first
-  num_verts_ss = 0    
-  do 
-    if (.not.associated(source_sink)) exit
-    num_verts_ss = num_verts_ss + &
-                     source_sink%region%num_verts
-    source_sink => source_sink%next
-  enddo
-
-  if (num_verts_ss > 0) then
-    allocate(aux_vars_ss(num_verts_ss))
-    do ivertex = 1, num_verts_ss
-      call GeomechGlobalAuxVarInit(aux_vars_ss(ivertex),option)
-    enddo
-    patch%geomech_aux%GeomechGlobal%aux_vars_ss => aux_vars_ss
-  endif
-  patch%geomech_aux%GeomechGlobal%num_aux_ss = num_verts_ss
-  
+   
 end subroutine GeomechGlobalSetupPatch
 
 #if 0
