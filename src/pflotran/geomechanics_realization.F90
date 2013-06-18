@@ -87,6 +87,8 @@ function GeomechRealizCreate(option)
   
   geomech_realization%geomech_field => GeomechFieldCreate()
   
+  geomech_realization%output_option => OutputOptionCreate()
+  
   allocate(geomech_realization%geomech_regions)
   call GeomechRegionInitList(geomech_realization%geomech_regions)
   
@@ -700,6 +702,9 @@ subroutine GeomechRealizDestroy(geomech_realization)
   if(.not.associated(geomech_realization)) return
   
   call GeomechFieldDestroy(geomech_realization%geomech_field)
+  
+! sk: need to put this back. Crashes for now.  
+!  call OutputOptionDestroy(geomech_realization%output_option)
   
   call GeomechRegionDestroyList(geomech_realization%geomech_regions)
   

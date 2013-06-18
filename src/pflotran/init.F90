@@ -263,6 +263,10 @@ subroutine Init(simulation)
   simulation%surf_realization%output_option%aveg_output_variable_list => &
     OutputVariableListCreate()
 #endif
+#ifdef GEOMECH
+  geomech_realization%output_option%output_variable_list => &
+    OutputVariableListCreate()
+#endif
 
   ! read in the remainder of the input file
   call InitReadInput(simulation)
@@ -1149,7 +1153,22 @@ subroutine Init(simulation)
     call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
     call WaypointListRemoveExtraWaypnts(option, &
                                     simulation%geomech_realization%waypoints)
+    ! call GeomechForceSetup(simulation%geomech_realization)
     call GeomechGlobalSetup(simulation%geomech_realization)
+    
+    ! SK: We are solving quasi-steady state solution for geomechanics.
+    ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
+    ! is not needed, at this point.
+
+    ! write material ids
+    output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
+                                            MATERIAL_ID)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 1 ! integer
+    call OutputVariableAddToList( &
+        geomech_realization%output_option%output_variable_list,output_variable)
+
+
   endif
 #endif
 
