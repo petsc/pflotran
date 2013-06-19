@@ -363,6 +363,7 @@ geomech_obj = \
   ${common_src}geomechanics_logging.o \
   ${common_src}geomechanics_global.o \
   ${common_src}geomechanics_force.o \
+  ${common_src}geomechanics_timestepper.o \
   ${common_src}geomechanics_global_aux.o
 
 # End Source Block
@@ -529,6 +530,11 @@ geomechanics_region.o : geometry.o input.o logging.o option.o string.o \
                         unstructured_cell.o utility.o
 geomechanics_strata.o : geomechanics_material.o geomechanics_region.o input.o \
                         option.o string.o
+geomechanics_timestepper.o : condition_control.o convergence.o \
+                             discretization.o geomechanics_discretization.o \
+                             geomechanics_field.o geomechanics_realization.o \
+                             logging.o option.o output.o output_aux.o \
+                             realization.o solver.o timestepper.o waypoint.o
 geometry.o : input.o option.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
            level.o option.o patch.o realization.o realization_base.o \
@@ -652,8 +658,8 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
 pflotran.o : input.o logging.o option.o pflotran_factory.o simulation.o \
              stochastic.o stochastic_aux.o timestepper.o
-pflotran_factory.o : init.o input.o option.o regression.o simulation.o \
-                     timestepper.o
+pflotran_factory.o : geomechanics_timestepper.o init.o input.o option.o \
+                     regression.o simulation.o timestepper.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : constraint.o global_aux.o immobile.o immobile_aux.o input.o \
              microbial.o microbial_aux.o mineral.o mineral_aux.o option.o \

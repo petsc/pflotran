@@ -74,7 +74,25 @@ module Timestepper_module
   public :: TimestepperCreate, TimestepperDestroy, &
             TimestepperExecuteRun, &
             TimestepperInitializeRun, TimestepperFinalizeRun, &
+#ifdef GEOMECH
+            FlowStepperStepToSteadyState, &
+            StepperCheckpoint, &
+            StepperJumpStart, &
+            StepperRunSteadyState, &
+            StepperSetTargetTimes, &
+            StepperStepFlowDT, &
+            StepperStepTransportDT_GI, &
+            StepperStepTransportDT_OS, &
+            StepperUpdateDT, &
+            StepperUpdateDTMax, &
+            StepperUpdateSolution, &
+            StepperUpdateTransportSolution, &
+            TimestepperCheckCFLLimit, &
+            TimestepperEnforceCFLLimit, &
+            TimestepperRestart, &
+#endif
             TimestepperRead, TimestepperPrintInfo, TimestepperReset
+        
 
 contains
 
@@ -798,7 +816,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       option%flow_time = flow_stepper%target_time
     endif
 #endif
-    
+
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)

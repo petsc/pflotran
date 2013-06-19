@@ -91,6 +91,33 @@ end subroutine GeomechForceSetPlotVariables
 
 ! ************************************************************************** !
 !
+! GeomechanicsForceInitialGuess: Sets up the inital guess for the solution
+!                                The boudnary conditions are set here
+! author: Satish Karra, LANL
+! date: 06/19/13
+!
+! ************************************************************************** !
+subroutine GeomechanicsForceInitialGuess(realization)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Field_module
+  use Option_module
+  
+  implicit none
+  
+  type(geomech_realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(geomech_field_type), pointer :: field
+  
+  option => realization%option
+  field => realization%geomech_field
+
+
+end subroutine GeomechanicsForceInitialGuess
+
+! ************************************************************************** !
+!
 ! GeomechForceUpdateAuxVars: Updates the geomechanics variables
 ! author: Satish Karra, LANL
 ! date: 06/18/13
