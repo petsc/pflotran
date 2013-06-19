@@ -142,7 +142,9 @@ subroutine GeomechanicsForceInitialGuess(realization)
       ghosted_id = grid%nL2G(local_id)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
-      endif     
+      endif    
+      
+      ! X displacement 
       if (associated(boundary_condition%geomech_condition%displacement_x)) then
         select case(boundary_condition%geomech_condition%displacement_x%itype)
           case(DIRICHLET_BC)
@@ -153,6 +155,7 @@ subroutine GeomechanicsForceInitialGuess(realization)
         end select
       endif
       
+      ! Y displacement 
       if (associated(boundary_condition%geomech_condition%displacement_y)) then
         select case(boundary_condition%geomech_condition%displacement_y%itype)
           case(DIRICHLET_BC)
@@ -162,7 +165,8 @@ subroutine GeomechanicsForceInitialGuess(realization)
            ! do nothing
         end select
       endif
-
+      
+      ! Z displacement      
       if (associated(boundary_condition%geomech_condition%displacement_z)) then
         select case(boundary_condition%geomech_condition%displacement_z%itype)
           case(DIRICHLET_BC)
@@ -176,12 +180,8 @@ subroutine GeomechanicsForceInitialGuess(realization)
     enddo
     boundary_condition => boundary_condition%next      
   enddo
-        
-  
-  
   
   call GeomechGridVecRestoreArrayF90(grid,field%disp_xx,xx_p,ierr)
-
 
 end subroutine GeomechanicsForceInitialGuess
 
