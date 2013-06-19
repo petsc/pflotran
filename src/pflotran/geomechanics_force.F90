@@ -24,7 +24,8 @@ module Geomechanics_Force_module
   PetscReal, parameter :: perturbation_tolerance = 1.d-6
 
   public :: GeomechForceSetup, &
-            GeomechForceUpdateAuxVars
+            GeomechForceUpdateAuxVars, &
+            GeomechanicsForceInitialGuess
   
 contains
 
@@ -102,6 +103,11 @@ subroutine GeomechanicsForceInitialGuess(realization)
   use Geomechanics_Realization_module
   use Geomechanics_Field_module
   use Option_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Patch_module
+  use Geomechanics_Coupler_module
+  use Geomechanics_Region_module
   
   implicit none
   
@@ -109,9 +115,72 @@ subroutine GeomechanicsForceInitialGuess(realization)
   
   type(option_type), pointer :: option
   type(geomech_field_type), pointer :: field
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_coupler_type), pointer :: boundary_condition
+  type(geomech_grid_type), pointer :: grid
+  type(gm_region_type), pointer :: region
+  
+  PetscInt :: ghosted_id,local_id,total_verts,ivertex
+  PetscReal, pointer :: xx_p(:)
+  PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%geomech_field
+  patch => realization%geomech_patch
+  grid => patch%geomech_grid
+  
+  call GeomechGridVecGetArrayF90(grid,field%disp_xx,xx_p,ierr)
+  
+  boundary_condition => patch%geomech_boundary_conditions%first
+  total_verts = 0
+  do 
+    if (.not.associated(boundary_condition)) exit
+    region => boundary_condition%region
+    do ivertex = 1, region%num_verts
+      total_verts = total_verts + 1
+      local_id = region%vertex_ids(ivertex)
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif     
+      if (associated(boundary_condition%geomech_condition%displacement_x)) then
+        select case(boundary_condition%geomech_condition%displacement_x%itype)
+          case(DIRICHLET_BC)
+            xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_X_DOF) = &
+            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+      
+      if (associated(boundary_condition%geomech_condition%displacement_y)) then
+        select case(boundary_condition%geomech_condition%displacement_y%itype)
+          case(DIRICHLET_BC)
+            xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_Y_DOF) = &
+            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+
+      if (associated(boundary_condition%geomech_condition%displacement_z)) then
+        select case(boundary_condition%geomech_condition%displacement_z%itype)
+          case(DIRICHLET_BC)
+            xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_Z_DOF) = &
+            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+      
+    enddo
+    boundary_condition => boundary_condition%next      
+  enddo
+        
+  
+  
+  
+  call GeomechGridVecRestoreArrayF90(grid,field%disp_xx,xx_p,ierr)
 
 
 end subroutine GeomechanicsForceInitialGuess

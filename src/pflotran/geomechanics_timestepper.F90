@@ -614,7 +614,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   use Option_module
   use Solver_module
   use Geomechanics_Field_module
-!  use Geomechanics_Force_module, only : GeomechanicsInitialGuess
+  use Geomechanics_Force_module, only : GeomechanicsForceInitialGuess
 
   implicit none
 
@@ -652,7 +652,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
     
   if (option%print_screen_flag) write(*,'(/,2("=")," DEFORMATION ",65("="))')
 
-! call GeomechanicsForceInitialGuess(realization)
+  call GeomechanicsForceInitialGuess(realization)
 
 
 #if 0
