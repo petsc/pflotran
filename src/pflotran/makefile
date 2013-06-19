@@ -364,7 +364,11 @@ geomech_obj = \
   ${common_src}geomechanics_global.o \
   ${common_src}geomechanics_force.o \
   ${common_src}geomechanics_timestepper.o \
+  ${common_src}gauss.o \
+  ${common_src}shape_function.o \
   ${common_src}geomechanics_global_aux.o
+
+
 
 # End Source Block
 
@@ -472,6 +476,7 @@ flash2_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                saturation_function.o water_eos.o
 fluid.o : input.o option.o string.o
 gas_eos_mod.o :
+gauss.o : unstructured_cell.o
 general.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
             general_aux.o global_aux.o grid.o level.o material.o \
             material_aux.o option.o output_aux.o patch.o realization.o \
@@ -532,9 +537,10 @@ geomechanics_strata.o : geomechanics_material.o geomechanics_region.o input.o \
                         option.o string.o
 geomechanics_timestepper.o : condition_control.o convergence.o \
                              discretization.o geomechanics_discretization.o \
-                             geomechanics_field.o geomechanics_realization.o \
-                             logging.o option.o output.o output_aux.o \
-                             realization.o solver.o timestepper.o waypoint.o
+                             geomechanics_field.o geomechanics_force.o \
+                             geomechanics_realization.o logging.o option.o \
+                             output.o output_aux.o realization.o solver.o \
+                             timestepper.o waypoint.o
 geometry.o : input.o option.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
            level.o option.o patch.o realization.o realization_base.o \
@@ -744,6 +750,7 @@ secondary_continuum.o : block_solve.o block_tridiag.o condition.o constraint.o \
                         secondary_continuum_aux.o string.o utility.o \
                         water_eos.o
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
+shape_function.o : gauss.o unstructured_cell.o
 simulation.o : general.o geomechanics_realization.o option.o \
                reactive_transport.o realization.o regression.o richards.o \
                solver.o surface_realization.o timestepper.o

@@ -1,0 +1,179 @@
+module Shape_Function_module
+
+  use Gauss_module
+  use Unstructured_Cell_module
+
+  implicit none
+
+#include "definitions.h"
+
+  private
+  
+  type, public :: shapefunction_type
+    PetscInt :: EleType               ! element type
+    PetscReal, pointer :: zeta(:)     ! coordinates of point in reference element
+    PetscReal, pointer :: N(:)        ! shape function for all nodes evaluated at zeta (N is a row vector)
+    PetscReal, pointer :: DN(:,:)     ! derivatives of shape function with respect to zeta
+  end type shapefunction_type
+    
+  public :: ShapeFunctionInitialize, ShapeFunctionCalculate, &
+            ShapeFunctionDestroy
+  
+  contains
+ 
+! ************************************************************************** !
+!
+! ShapeFunctionInitialize: Allocate memory for shapefunction type
+! author: Satish Karra, LANL
+! date: 5/17/2013  
+!
+! ************************************************************************** !
+subroutine ShapeFunctionInitialize(shapefunction)
+ 
+  type(shapefunction_type) :: shapefunction
+       
+  select case(shapefunction%EleType)
+    case(LINE_TYPE)
+      allocate(shapefunction%N(TWO_INTEGER))
+      allocate(shapefunction%DN(TWO_INTEGER,ONE_INTEGER)) 
+      allocate(shapefunction%zeta(ONE_INTEGER))   
+    case(QUAD_TYPE)
+      allocate(shapefunction%N(FOUR_INTEGER))
+      allocate(shapefunction%DN(FOUR_INTEGER,TWO_INTEGER))
+      allocate(shapefunction%zeta(TWO_INTEGER))
+    case(HEX_TYPE)
+      allocate(shapefunction%N(EIGHT_INTEGER))
+      allocate(shapefunction%DN(EIGHT_INTEGER,THREE_INTEGER))
+      allocate(shapefunction%zeta(THREE_INTEGER))
+    case default
+      print *, 'Error: Invalid EleType. Enter an EleType from L2,' // &
+               ' T3, Q4, B8 only.'       
+  end select   
+  
+  shapefunction%zeta = 0.d0
+  shapefunction%N  = 0.d0
+  shapefunction%DN = 0.d0
+   
+end subroutine ShapeFunctionInitialize
+ 
+! ************************************************************************** !
+!
+! ShapeFunctionCalculate: Subroutine provides shape functions and its derivatives
+! at a given spatial point (in the reference element) 'zeta' for various finite
+! elements.
+! author: Satish Karra, LANL
+! date: 5/17/2013 
+! Input variables
+!   EleType: element type
+!       L2: one-dimensional element -1 <= x <= +1
+!       Q4: four node quadrilateral element -1 <= x, y <= +1
+!       Q9: nine node quadrilateral element 
+!       T3: three node right-angled triangle with h = b = 1
+!       T6: six node right-angled triangle
+!       B8: eight node right-angled tetrahedron element
+!   zeta: coordinates of a point in the reference element
+!
+! Output variables
+!   N: shape functions for all nodes evaluated at zeta (N is a row
+!   vector!)
+!   DN: derivatives of shape functions with respect to zeta
+! ************************************************************************** !
+subroutine ShapeFunctionCalculate(shapefunction)
+
+  type(shapefunction_type) :: shapefunction
+  PetscReal, pointer :: zeta(:)
+  PetscReal, pointer :: N(:)
+  PetscReal, pointer :: DN(:,:)
+  PetscInt :: i
+    
+  N => shapefunction%N
+  DN => shapefunction%DN
+  zeta => shapefunction%zeta
+  
+  do i = 1, size(zeta)
+    if (zeta(i) < -1.d0 .or. zeta(i) > 1.d0) then
+      print *, 'Error: Enter values between -1 and 1 for zeta'
+      stop
+    endif
+  enddo
+  
+  select case(shapefunction%EleType)
+    case(LINE_TYPE)
+      N(1) = 0.5d0*(1.d0 - zeta(1))
+      N(2) = 0.5d0*(1.d0 + zeta(1))
+      DN(1,1) = -0.5d0
+      DN(2,1) = 0.5d0
+    case(QUAD_TYPE)
+      N(1) = 1.d0/4.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))
+      N(2) = 1.d0/4.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))
+      N(3) = 1.d0/4.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))
+      N(4) = 1.d0/4.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))
+      DN(1,1) = -1.d0/4.d0*(1.d0 - zeta(2))
+      DN(1,2) = -1.d0/4.d0*(1.d0 - zeta(1))
+      DN(2,1) = 1.d0/4.d0*(1.d0 - zeta(2)) 
+      DN(2,2) = -1.d0/4.d0*(1.d0 + zeta(1))
+      DN(3,1) = 1.d0/4.d0*(1.d0 + zeta(2))  
+      DN(3,2) = 1.d0/4.d0*(1.d0 + zeta(1))
+      DN(4,1) = -1.d0/4.d0*(1.d0 + zeta(2))  
+      DN(4,2) = 1.d0/4.d0*(1.d0 - zeta(1))
+    case(HEX_TYPE)
+      N(1) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
+      N(2) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
+      N(3) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(1.d0 - zeta(3))
+      N(4) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(1.d0 - zeta(3))
+      N(5) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(1.d0 + zeta(3))
+      N(6) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(1.d0 + zeta(3))
+      N(7) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(1.d0 + zeta(3))
+      N(8) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(1.d0 + zeta(3))
+         
+      DN(1,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 - zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(-1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(-1.d0)/) 
+      DN(2,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 - zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(-1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(-1.d0)/)
+      DN(3,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 + zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(+1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(-1.d0)/)
+      DN(4,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(-1.d0)/)
+      DN(5,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 - zeta(2))*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(-1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(+1.d0)/)
+      DN(6,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 - zeta(2))*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(-1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(+1.d0)/)
+      DN(7,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 + zeta(2))*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(+1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(+1.d0)/)
+      DN(8,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(+1.d0)/)
+    case default
+      print *, 'Error: Invalid EleType. Enter an EleType from L2,' // &
+               ' T3, Q4, B8 only.'
+  end select
+   
+end subroutine ShapeFunctionCalculate
+
+! ************************************************************************** !
+!
+! ShapeFunctionDestroy: Dellocate memory for shapefunction type
+! author: Satish Karra, LANL
+! date: 5/17/2013  
+!
+! ************************************************************************** !
+subroutine ShapeFunctionDestroy(shapefunction)
+
+  type(shapefunction_type) :: shapefunction
+  
+  deallocate(shapefunction%N)
+  nullify(shapefunction%N)
+  deallocate(shapefunction%DN)
+  nullify(shapefunction%DN)
+  
+end subroutine ShapeFunctionDestroy
+     
+end module Shape_Function_module
+

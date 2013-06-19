@@ -229,6 +229,7 @@ PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 3
 PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 6
 PetscInt, parameter :: THREE_DIM_GRID = 3
 PetscInt, parameter :: TWO_DIM_GRID = 2
+PetscInt, parameter :: ONE_DIM_GRID = 1
 
 ! Geomechanics
 PetscInt, parameter :: GEOMECH_DISP_X_DOF = 1
