@@ -405,27 +405,5 @@ subroutine GaussDestroy(gauss)
   nullify(gauss%w)
 
 end subroutine GaussDestroy
-
-#if 0
-subroutine ConvertMatrixToVector(A,vecA)
-
-  PetscReal :: A(:,:)
-  PetscReal, pointer :: vecA(:)
-  PetscInt :: m, n, i, j
-  
-  m = size(A,1)
-  n = size(A,2)
-  
-  allocate(vecA(m*n))
-  
-  do i = 1, m
-    do j = 1, n
-      vecA(j+(i-1)*n) = A(i,j)
-    enddo
-  enddo
-
-end subroutine ConvertMatrixToVector
-#endif
      
 end module Gauss_module
-

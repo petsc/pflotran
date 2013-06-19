@@ -1495,4 +1495,76 @@ subroutine DeallocateArray2DString(array)
 
 end subroutine DeallocateArray2DString
 
+! ************************************************************************** !
+!
+! ConvertMatrixToVector: Converts a given matrix A to a vec
+! This vec is different from PETSc Vec
+! A = [a1 a2 a3 .... am], where ai, i = 1, m are the columns
+! then vec(A) = [a1
+!                a2
+!                 .
+!                 .
+!                 .
+!                am]
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine ConvertMatrixToVector(A,vecA)
+
+  PetscReal :: A(:,:)
+  PetscReal, pointer :: vecA(:)
+  PetscInt :: m, n, i, j
+  
+  m = size(A,1)
+  n = size(A,2)
+  
+  allocate(vecA(m*n))
+  
+  do i = 1, m
+    do j = 1, n
+      vecA(j+(i-1)*n) = A(i,j)
+    enddo
+  enddo
+
+end subroutine ConvertMatrixToVector
+
+! ************************************************************************** !
+!
+! Kron: Returns the Kronecker product of two matrices A, B
+! Reference: The ubiquitous Kronecker product, by Charles F.Van Loan
+! for basics of Kronecker product
+! Also see wikipedia page: http://en.wikipedia.org/wiki/Kronecker_product
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine Kron(A,B,K)
+
+  PetscReal :: A(:,:),B(:,:)
+  PetscReal, pointer :: K(:,:)
+  PetscInt :: mA,nA,mB,nB
+  PetscInt :: iA,jA,iB,jB,iK,jK
+  
+  mA = size(A,1)
+  nA = size(A,2)
+  mB = size(B,1)
+  nB = size(B,2)
+  
+  allocate(K(mA*mB,nA*nB))
+  
+  do iB = 1, mB
+    do jB = 1, nB
+      do iA = 1, mA
+        do jA = 1, nA
+          iK = iB + (iA-1)*mB
+          jK = jB + (jA-1)*nB
+          K(iK,jK) = A(iA,jA)*B(iB,jB)
+        enddo
+      enddo
+    enddo
+  enddo
+  
+end subroutine Kron
+
 end module Utility_module
