@@ -1567,4 +1567,33 @@ subroutine Kron(A,B,K)
   
 end subroutine Kron
 
+! ************************************************************************** !
+!
+! Transposer: Transposer Converts vec of a matrix to vec of its transpose
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine Transposer(m,n,T)
+
+  PetscReal, pointer :: T(:,:)
+  PetscInt :: m,n
+  PetscInt :: i,j
+  PetscReal :: A(m,n)
+  PetscReal, pointer :: vecA(:)
+  
+  allocate(T(m*n,m*n))
+  T = 0.d0
+  
+  do i = 1,m
+    do j = 1,n
+      A = 0.d0
+      A(i,j) = 1.d0
+      call ConvertMatrixToVector(transpose(A),vecA)
+      T(:,i+m*(j-1)) = vecA
+    enddo
+  enddo
+  
+end subroutine Transposer
+
 end module Utility_module
