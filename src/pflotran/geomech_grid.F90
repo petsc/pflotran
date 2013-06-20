@@ -275,6 +275,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   use Unstructured_Grid_Aux_module
   use Geomechanics_Grid_Aux_module
   use Option_module
+  use Gauss_module
   
   implicit none
   
@@ -850,6 +851,15 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   
   deallocate(int_array)
   deallocate(int_array2)
+  
+  allocate(geomech_grid%gauss_node(geomech_grid%nlmax_elem))
+  do local_id = 1, geomech_grid%nlmax_elem
+    call GaussInitialize(geomech_grid%gauss_node(local_id))  
+    geomech_grid%gauss_node(local_id)%Eletype = geomech_grid%Elem_type(local_id)
+    geomech_grid%gauss_node(local_id)%dim = THREE_DIM_GRID
+    geomech_grid%gauss_node(local_id)%NGPTS = FOUR_INTEGER
+    call GaussCalculatePoints(geomech_grid%gauss_node(local_id))
+  enddo
   
 end subroutine CopySubsurfaceGridtoGeomechGrid
 

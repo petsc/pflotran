@@ -18,9 +18,28 @@ use Unstructured_Cell_module
     PetscReal, pointer :: w(:)      ! weights
   end type gauss_type
     
-  public :: GaussCalculatePoints, GaussDestroy
+  public :: GaussCalculatePoints, GaussDestroy, GaussInitialize
   
   contains
+  
+! ************************************************************************** !
+!
+! GaussInitialize: Initializes Gauss type 
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine GaussInitialize(gauss)
+
+  type(gauss_type) :: gauss
+  
+  gauss%dim = 0 
+  gauss%EleType = 0
+  gauss%NGPTS = 0
+ ! nullify(gauss%r)
+ ! nullify(gauss%w)
+
+end subroutine GaussInitialize   
 
 ! ************************************************************************** !
 !

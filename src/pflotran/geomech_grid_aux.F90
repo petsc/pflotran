@@ -2,6 +2,7 @@
 module Geomechanics_Grid_Aux_module
 
   use Unstructured_Cell_module
+  use Gauss_module
  
   implicit none
 
@@ -42,6 +43,7 @@ module Geomechanics_Grid_Aux_module
     PetscInt, pointer :: ghosted_node_ids_natural(:) ! Natural ids of the ghost nodes only
     PetscInt, pointer :: ghosted_node_ids_petsc(:)   ! Petsc ids of the ghost nodes only
     PetscInt, pointer :: nL2G(:),nG2L(:),nG2A(:)
+    type(gauss_type), pointer  :: gauss_node(:)
   end type geomech_grid_type
   
 
@@ -163,6 +165,7 @@ function GMGridCreate()
   nullify(geomech_grid%node_ids_ghosted_natural)
   nullify(geomech_grid%ghosted_node_ids_natural)
   nullify(geomech_grid%ghosted_node_ids_petsc)
+  nullify(geomech_grid%gauss_node)
 
   GMGridCreate => geomech_grid
   
@@ -726,6 +729,7 @@ subroutine GMGridDestroy(geomech_grid)
   
   type(geomech_grid_type), pointer :: geomech_grid
   
+  PetscInt :: i
   PetscErrorCode :: ierr
   
   if (.not.associated(geomech_grid)) return
@@ -746,6 +750,15 @@ subroutine GMGridDestroy(geomech_grid)
   if (associated(geomech_grid%nodes)) &
     deallocate(geomech_grid%nodes)
   nullify(geomech_grid%nodes)
+  
+  if (associated(geomech_grid%gauss_node)) then
+!    do i = 1, size(geomech_grid%gauss_node)
+!      call GaussDestroy(geomech_grid%gauss_node(i))
+!    enddo
+    deallocate(geomech_grid%gauss_node)
+  endif
+  
+  nullify(geomech_grid%gauss_node)
   
   deallocate(geomech_grid)
   nullify(geomech_grid)
