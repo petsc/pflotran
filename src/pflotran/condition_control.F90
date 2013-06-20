@@ -39,6 +39,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Coupler_module
   use Condition_module
   use Dataset_Base_class
+  use Dataset_Common_HDF5_class
   use Grid_module
   use Level_module
   use Patch_module
@@ -276,14 +277,17 @@ subroutine CondControlAssignFlowInitCond(realization)
                                  sub_condition_ptr(idof)%ptr% &
                                  flow_dataset%dataset
                 if (associated(dataset)) then
-                  if (dataset%is_cell_indexed) then
-                    use_dataset = PETSC_TRUE
-                    dataset_flag(idof) = PETSC_TRUE
-                    call ConditionControlMapDatasetToVec(realization, &
-                           initial_condition%flow_condition% &
-                             sub_condition_ptr(idof)%ptr% &
-                             flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
-                  endif
+                  select type(dataset)
+                    class is(dataset_common_hdf5_type)
+                      if (dataset%is_cell_indexed) then
+                        use_dataset = PETSC_TRUE
+                        dataset_flag(idof) = PETSC_TRUE
+                        call ConditionControlMapDatasetToVec(realization, &
+                              initial_condition%flow_condition% &
+                              sub_condition_ptr(idof)%ptr% &
+                              flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                    endif
+                  end select
                 endif
               enddo
               if (.not.associated(initial_condition%flow_aux_real_var)) then
