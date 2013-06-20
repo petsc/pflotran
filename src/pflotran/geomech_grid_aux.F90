@@ -752,9 +752,9 @@ subroutine GMGridDestroy(geomech_grid)
   nullify(geomech_grid%nodes)
   
   if (associated(geomech_grid%gauss_node)) then
-!    do i = 1, size(geomech_grid%gauss_node)
-!      call GaussDestroy(geomech_grid%gauss_node(i))
-!    enddo
+    do i = 1, size(geomech_grid%gauss_node)
+      call GaussDestroy(geomech_grid%gauss_node(i))
+    enddo
     deallocate(geomech_grid%gauss_node)
   endif
   

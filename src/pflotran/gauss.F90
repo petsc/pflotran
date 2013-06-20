@@ -36,8 +36,8 @@ subroutine GaussInitialize(gauss)
   gauss%dim = 0 
   gauss%EleType = 0
   gauss%NGPTS = 0
- ! nullify(gauss%r)
- ! nullify(gauss%w)
+  nullify(gauss%r)
+  nullify(gauss%w)
 
 end subroutine GaussInitialize   
 
@@ -50,20 +50,33 @@ end subroutine GaussInitialize
 ! ************************************************************************** !  
 subroutine GaussCalculatePoints(gauss)
 
+  use Utility_module, only: DeallocateArray
+
   type(gauss_type) :: gauss
+  PetscReal, pointer :: r(:,:)
+  PetscReal, pointer :: w(:)
   
   select case(gauss%dim)
     case(ONE_DIM_GRID)
-      call Gauss1D(gauss%EleType,gauss%NGPTS,gauss%r,gauss%w)
+      call Gauss1D(gauss%EleType,gauss%NGPTS,r,w)
     case(TWO_DIM_GRID)
-      call Gauss2D(gauss%EleType,gauss%NGPTS,gauss%r,gauss%w)
+      call Gauss2D(gauss%EleType,gauss%NGPTS,r,w)
     case(THREE_DIM_GRID)
-      call Gauss3D(gauss%EleType,gauss%NGPTS,gauss%r,gauss%w)
+      call Gauss3D(gauss%EleType,gauss%NGPTS,r,w)
     case default
       print *, 'Error: Invalid dimension for Gauss point calculation'
       stop
-    end select  
-
+  end select  
+  
+  allocate(gauss%r(size(r,1),size(r,2)))
+  allocate(gauss%w(size(w)))
+  
+  gauss%r = r
+  gauss%w = w
+  
+  deallocate(r)
+  deallocate(w)
+    
 end subroutine GaussCalculatePoints  
 
 
@@ -301,8 +314,8 @@ subroutine GaussSquare(NGPTS,r,w)
   PetscReal, pointer :: m(:)
   PetscInt :: counter,i,j 
   
-  allocate(r(NGPTS,2))
-  allocate(w(NGPTS))
+  allocate(r(NGPTS*NGPTS,2))
+  allocate(w(NGPTS*NGPTS))
   allocate(l(NGPTS,1))
   allocate(m(NGPTS))
 
@@ -382,8 +395,8 @@ subroutine GaussBrick(NGPTS,r,w)
   PetscReal, pointer :: m(:)
   PetscInt :: counter, i, j, k
   
-  allocate(r(NGPTS,3))
-  allocate(w(NGPTS))
+  allocate(r(NGPTS*NGPTS*NGPTS,3))
+  allocate(w(NGPTS*NGPTS*NGPTS))
   allocate(l(NGPTS,1))
   allocate(m(NGPTS))
   
@@ -403,6 +416,9 @@ subroutine GaussBrick(NGPTS,r,w)
       enddo
     enddo
   enddo
+  
+  deallocate(l)
+  deallocate(m)
   
 end subroutine GaussBrick
 
