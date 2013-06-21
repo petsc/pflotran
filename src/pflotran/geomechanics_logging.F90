@@ -24,6 +24,8 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 4
  
     PetscLogEvent :: event_geomech_condition_read
     PetscLogEvent :: event_geomech_condition_read_values
+    PetscLogEvent :: event_geomech_residual
+    PetscLogEvent :: event_geomech_jacobian
 
   end type geomech_logging_type
   
@@ -67,6 +69,14 @@ subroutine GeomechLoggingCreate()
   call PetscLogEventRegister('FlowCondReadVals', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_condition_read_values,ierr)
+
+  call PetscLogEventRegister('GeomechResidual', &
+                             geomech_logging%class_pflotran, &
+                             geomech_logging%event_geomech_residual,ierr)
+                            
+  call PetscLogEventRegister('GeomechJacobian', &
+                             geomech_logging%class_pflotran, &
+                             geomech_logging%event_geomech_jacobian,ierr)
   
 end subroutine GeomechLoggingCreate
 

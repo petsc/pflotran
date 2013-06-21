@@ -647,14 +647,13 @@ subroutine Init(simulation)
     geomech_solver%J = geomech_solver%Jpre
     call MatSetOptionsPrefix(geomech_solver%Jpre,"geomech_",ierr)
     
-#if 0
-    ! SK, Need to modify the following for geomechanics
+
     call SNESSetFunction(geomech_solver%snes,geomech_field%disp_r, &
-                         GeomechanicsResidual, &
+                         GeomechForceResidual, &
                          simulation%geomech_realization,ierr)
 
     call SNESSetJacobian(geomech_solver%snes,geomech_solver%J, &
-                         geomech_solver%Jpre,GeomechanicsJacobian, &
+                         geomech_solver%Jpre,GeomechForceJacobian, &
                          simulation%geomech_realization,ierr)
     ! by default turn off line search
     call SNESGetLineSearch(geomech_solver%snes,linesearch, ierr)
@@ -680,7 +679,7 @@ subroutine Init(simulation)
     call SNESSetConvergenceTest(geomech_solver%snes,ConvergenceTest, &
                                 geomech_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr)
-#endif    
+
     call printMsg(option,"  Finished setting up GEOMECH SNES ")
   
   endif

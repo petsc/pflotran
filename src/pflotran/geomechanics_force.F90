@@ -25,7 +25,9 @@ module Geomechanics_Force_module
 
   public :: GeomechForceSetup, &
             GeomechForceUpdateAuxVars, &
-            GeomechanicsForceInitialGuess
+            GeomechanicsForceInitialGuess, &
+            GeomechForceResidual, &
+            GeomechForceJacobian
   
 contains
 
@@ -248,6 +250,241 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
                                      xx_loc_p,ierr)
 
 end subroutine GeomechForceUpdateAuxVars
+
+! ************************************************************************** !
+!
+! GeomechForceResidual: Computes the residual equation 
+! author: Satish Karra
+! date: 06/21/13
+!
+! ************************************************************************** !
+subroutine GeomechForceResidual(snes,xx,r,realization,ierr)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Field_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Logging_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  type(geomech_realization_type) :: realization
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_field_type), pointer :: field
+  type(option_type), pointer :: option
+  
+  call PetscLogEventBegin(geomech_logging%event_geomech_residual,ierr)
+  
+  field => realization%geomech_field
+  discretization => realization%discretization
+  option => realization%option
+
+  ! Communication -----------------------------------------
+  ! These 3 must be called before RichardsUpdateAuxVars()
+  call GeomechDiscretizationGlobalToLocal(discretization,xx, &
+                                          field%disp_xx_loc,NGEODOF)
+  
+  call GeomechForceResidualPatch(snes,xx,r,realization,ierr)
+
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(realization%option%mycomm, &
+                              'Geomech_residual.out',viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomechxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
+  call PetscLogEventEnd(geomech_logging%event_geomech_residual,ierr)
+
+end subroutine GeomechForceResidual
+
+! ************************************************************************** !
+!
+! GeomechForceResidualPatch: Computes the residual equation on a patch 
+! author: Satish Karra
+! date: 06/21/13
+!
+! ************************************************************************** !
+subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Field_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Logging_module
+  use Geomechanics_Patch_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  type(geomech_realization_type) :: realization
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_field_type), pointer :: field
+  type(geomech_grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  
+  PetscReal, pointer :: r_p(:)
+    
+  field => realization%geomech_field
+  discretization => realization%discretization
+  patch => realization%geomech_patch
+  grid => patch%geomech_grid
+  option => realization%option
+
+  call GeomechForceUpdateAuxVars(realization)
+  
+  call GeomechGridVecGetArrayF90(grid,r,r_p,ierr)
+  r_p = 0.d0
+
+  call GeomechGridVecGetArrayF90(grid,r,r_p,ierr)
+
+end subroutine GeomechForceResidualPatch
+
+! ************************************************************************** !
+!
+! GeomechForceJacobian: Computes the Jacobian
+! author: Satish Karra
+! date: 06/21/13
+!
+! ************************************************************************** !
+subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Patch_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Logging_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(geomech_realization_type) :: realization
+  MatStructure flag
+  PetscErrorCode :: ierr
+  
+  Mat :: J
+  MatType :: mat_type
+  PetscViewer :: viewer
+  type(geomech_grid_type),  pointer :: grid
+  type(option_type), pointer :: option
+  PetscReal :: norm
+  
+  call PetscLogEventBegin(geomech_logging%event_geomech_jacobian,ierr)
+
+  option => realization%option
+
+  flag = SAME_NONZERO_PATTERN
+  J = A
+
+  call MatZeroEntries(J,ierr)
+
+  call GeomechForceJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+
+  if (realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomechjacobian.out', &
+                              viewer,ierr)
+   
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%norm_Jacobian) then
+    option => realization%option
+    call MatNorm(J,NORM_1,norm,ierr)
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option) 
+  endif
+
+#if 0
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out', &
+                              viewer,ierr)   
+    call VecView(realization%field%flow_dxx,viewer,ierr) 
+
+    call PetscViewerDestroy(viewer,ierr)
+ 
+
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy.out', &
+                              viewer,ierr)   
+    call VecView(realization%field%flow_yy,viewer,ierr) 
+    call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  call PetscLogEventEnd(geomech_logging%event_geomech_jacobian,ierr)
+!  call printErrMsg(option)
+
+end subroutine GeomechForceJacobian
+
+! ************************************************************************** !
+!
+! GeomechForceJacobianPatch: Computes the Jacobian on a patch
+! author: Satish Karra
+! date: 06/21/13
+!
+! ************************************************************************** !
+subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+       
+  use Geomechanics_Realization_module
+  use Geomechanics_Patch_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Coupler_module
+  use Geomechanics_Field_module
+  use Geomechanics_Debug_module
+  use Geomechanics_Discretization_module
+  use Option_module
+      
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: xx
+  Mat, intent(out) :: A, B
+  type(geomech_realization_type) :: realization
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_field_type), pointer :: field
+  type(geomech_grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  MatStructure flag
+
+  PetscErrorCode :: ierr
+  
+  field => realization%geomech_field
+  discretization => realization%discretization
+  patch => realization%geomech_patch
+  grid => patch%geomech_grid
+  option => realization%option  
+  
+  
+  
+end subroutine GeomechForceJacobianPatch  
 
 end module Geomechanics_Force_module
 
