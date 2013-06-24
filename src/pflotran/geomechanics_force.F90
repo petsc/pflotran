@@ -300,7 +300,7 @@ subroutine GeomechForceResidual(snes,xx,r,realization,ierr)
   endif
   
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomechxx.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_xx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -314,7 +314,7 @@ end subroutine GeomechForceResidual
 !
 ! GeomechForceResidualPatch: Computes the residual equation on a patch 
 ! author: Satish Karra
-! date: 06/21/13
+! date: 06/24/13
 !
 ! ************************************************************************** !
 subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
@@ -355,6 +355,22 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   
   call GeomechGridVecGetArrayF90(grid,r,r_p,ierr)
   r_p = 0.d0
+  
+  ! Flux terms
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   call GeomechGridVecGetArrayF90(grid,r,r_p,ierr)
 
@@ -404,7 +420,7 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
   call GeomechForceJacobianPatch(snes,xx,J,J,flag,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomechjacobian.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_jacobian.out', &
                               viewer,ierr)
    
     call MatView(J,viewer,ierr)

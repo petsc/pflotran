@@ -655,7 +655,6 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   call GeomechanicsForceInitialGuess(realization)
 
 
-#if 0
   call SNESSolve(solver%snes,PETSC_NULL_OBJECT,field%disp_xx,ierr)
      
   call SNESGetIterationNumber(solver%snes,num_newton_iterations,ierr)
@@ -689,7 +688,6 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   endif
   
   if (option%print_screen_flag) print *, ""
-#endif
 
 end subroutine StepperSolveGeomechSteadyState
 
