@@ -3322,8 +3322,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1* &
-                                        volume_p(local_id)   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1
       endif
 
       select case (source_sink%flow_condition%rate%itype)
