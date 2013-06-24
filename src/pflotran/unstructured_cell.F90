@@ -173,34 +173,19 @@ function UCellComputeVolume(cell_type,vertices,option)
         UCellComputeVolume + &
         UCellComputeVolumeOfTetrahedron(vertices(1),vertices(3), &
                                         vertices(4),vertices(8))
-#if 0
-     ! assume orthogonal grid
-      v(1) = vertices(2)%x-vertices(1)%x
-      v(2) = vertices(2)%y-vertices(1)%y
-      v(3) = vertices(2)%z-vertices(1)%z
-      l1 = sqrt(DotProduct(v,v))
-      v(1) = vertices(4)%x-vertices(1)%x
-      v(2) = vertices(4)%y-vertices(1)%y
-      v(3) = vertices(4)%z-vertices(1)%z
-      l2 = sqrt(DotProduct(v,v))
-      v(1) = vertices(5)%x-vertices(1)%x
-      v(2) = vertices(5)%y-vertices(1)%y
-      v(3) = vertices(5)%z-vertices(1)%z
-      l3 = sqrt(DotProduct(v,v))
-      UCellComputeVolume = l1*l2*l3
-#endif
     case(WEDGE_TYPE)
-      v1(1) = vertices(3)%x-vertices(2)%x
-      v1(2) = vertices(3)%y-vertices(2)%y
-      v1(3) = vertices(3)%z-vertices(2)%z
-      v2(1) = vertices(1)%x-vertices(2)%x
-      v2(2) = vertices(1)%y-vertices(2)%y
-      v2(3) = vertices(1)%z-vertices(2)%z
-      n1 = CrossProduct(v1,v2)
-      area1 = 0.5d0*sqrt(DotProduct(n1,n1))
-      dz = (vertices(1)%z+vertices(2)%z+vertices(3)%z)/3.d0 - &
-           (vertices(4)%z+vertices(5)%z+vertices(6)%z)/3.d0
-      UCellComputeVolume = dabs(dz)*area1
+      ! split into 3 tetrahedrons: v1v2v3v4, v3v4v5v6, v2v3v4v5
+      UCellComputeVolume = &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2),vertices(3), &
+                                        vertices(4))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(3),vertices(4),vertices(5), &
+                                        vertices(6))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(2),vertices(3),vertices(4), &
+                                        vertices(5))
     case(PYR_TYPE)
       ! split pyramid into two tets and compute
       UCellComputeVolume = &

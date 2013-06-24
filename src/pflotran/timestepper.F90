@@ -640,6 +640,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   PetscBool :: failure, surf_failure
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: flow_to_tran_ts_ratio
+  PetscReal :: tmp
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -689,7 +690,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
 
         ! Update model coupling time
-          call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+        call StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                             option,plot_flag,transient_plot_flag,surf_plot_flag)
         surf_plot_flag = plot_flag
@@ -712,7 +713,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
             select case(option%iflowmode)
               case (RICHARDS_MODE)
-                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
+                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
+                                                 tmp,PETSC_FALSE)
               case (TH_MODE)
                call SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
             end select
@@ -737,7 +739,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           call StepperUpdateSurfaceFlowSolution(surf_realization)
 
           ! Set new target time for surface model
-          call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+          call StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
           call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                           option,plot_flag,transient_plot_flag)
         enddo
@@ -951,7 +953,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     call OutputSurface(surf_realization,realization,surf_plot_flag, &
                        transient_plot_flag)
     if(associated(surf_flow_stepper)) then
-      call StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+      call StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
     endif
 #endif
 
@@ -1461,24 +1463,32 @@ end subroutine StepperUpdateSurfaceFlowDT
 !!
 !! date:
 ! ************************************************************************** !
-subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
+subroutine StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
 
   use Surface_Realization_class
   use Surface_Flow_module
   use Surface_TH_module
   use Option_module
+  use Realization_class
   
   implicit none
 
+  type(realization_type) :: realization
   type(surface_realization_type), pointer :: surf_realization
   type(option_type) :: option
 
-  PetscReal :: dt_max,dt_max_glb
+  PetscReal :: dt_max,dt_max_ss,dt_max_glb
   PetscErrorCode :: ierr
 
+  dt_max_ss=1d10
   select case (option%iflowmode)
     case (RICHARDS_MODE)
+      if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+        call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
+                                       dt_max_ss,PETSC_TRUE)
+      endif
       call SurfaceFlowComputeMaxDt(surf_realization,dt_max)
+      dt_max = min(dt_max,dt_max_ss)
     case (TH_MODE)
       call SurfaceTHComputeMaxDt(surf_realization,dt_max)
   end select
@@ -1777,10 +1787,9 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
 
   ! Cut timestep to avoid going pass the surface-subsurface coupling time
   if(option%subsurf_surf_coupling==SEQ_COUPLED) then
-    if((surf_flow_stepper%target_time-option%surf_subsurf_coupling_time) &
-        /option%surf_flow_dt>1.d-10) then
-      option%surf_flow_dt=option%surf_subsurf_coupling_time-option%surf_flow_time
-      surf_flow_stepper%target_time=option%surf_subsurf_coupling_time
+    if(target_time>option%surf_subsurf_coupling_time) then
+      dt=option%surf_subsurf_coupling_time-option%surf_flow_time
+      target_time=option%surf_subsurf_coupling_time
     endif
   endif
 
@@ -2929,6 +2938,10 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   type(discretization_type), pointer  :: discretization 
   type(solver_type), pointer          :: solver
   character(len=MAXSTRINGLENGTH)      :: string
+  PetscReal, pointer :: xx_p(:)
+  PetscInt :: local_id
+  PetscReal :: time
+  PetscReal :: dtime
 
   option         => surf_realization%option
   discretization => surf_realization%discretization
@@ -2937,6 +2950,27 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
 
   call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
   call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+  call TSGetTime(solver%ts,time,ierr)
+  call TSGetTimeStep(solver%ts,dtime,ierr)
+
+  stepper%steps = stepper%steps + 1
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," SURFACE FLOW ",66("="))')
+  endif
+  if (option%print_screen_flag) then
+    write(*, '(" SURFACE FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]")') &
+      stepper%steps, &
+      time/surf_realization%output_option%tconv, &
+      dtime/surf_realization%output_option%tconv, &
+      surf_realization%output_option%tunit
+  endif
+
+  ! Ensure evolved solution is +ve
+  call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
+  do local_id=1,surf_realization%discretization%grid%nlmax
+    if(xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
+  enddo
+  call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
   ! First, update the solution vector
   call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
