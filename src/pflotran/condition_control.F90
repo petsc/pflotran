@@ -1164,7 +1164,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                           initial_condition%flow_condition% &
                           sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
                     !TODO(GB): Correct the initialization of surface flow condition
-                    if (idof == 1) xx_p(ibegin+idof-1) = 0.d0
+                    !if (idof == 1) xx_p(ibegin+idof-1) = 0.d0
                     !if (idof == 1.and.option%iflowmode==TH_MODE) then
                     !  xx_p(ibegin+idof-1) = 0.d0+option%reference_pressure
                     !endif

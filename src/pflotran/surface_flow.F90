@@ -1490,7 +1490,7 @@ end subroutine SurfaceFlowUpdateSurfBC
 !! date: 06/06/12
 ! ************************************************************************** !
 subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
-                                       max_allowable_dt,max_dt_check)
+                                       max_allowable_dt)
 
   use Grid_module
   use String_module
@@ -1573,7 +1573,6 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
     
   PetscBool :: coupler_found = PETSC_FALSE
   PetscBool :: v_darcy_limit
-  PetscBool :: max_dt_check
 
   patch      => realization%patch
   surf_patch => surf_realization%patch
@@ -1681,11 +1680,11 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
           !v_darcy=0.d0
         endif
         
-        if(.not.max_dt_check) then
-          vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
-          coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
-          if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
-        endif
+        vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
+        !coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
+        coupler%flow_aux_real_var(ONE_INTEGER,local_id)=0.d0
+        hw_p(local_id) = hw_p(local_id) + v_darcy*option%surf_flow_dt
+        if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
       enddo
 
     endif
