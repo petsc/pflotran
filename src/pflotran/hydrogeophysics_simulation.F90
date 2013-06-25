@@ -149,7 +149,7 @@ subroutine HydrogeophysicsExecuteRun(this)
   do
     current_time = min(current_time + dt,final_time)
     call this%RunToTime(current_time)
-    if (this%stop_flag) exit
+    if (this%stop_flag > 0) exit
   enddo
   
 end subroutine HydrogeophysicsExecuteRun
