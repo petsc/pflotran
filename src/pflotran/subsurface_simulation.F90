@@ -195,6 +195,8 @@ subroutine SubsurfaceFinalizeRun(this)
   
   call SimulationBaseFinalizeRun(this)
   
+  nullify(flow_stepper)
+  nullify(tran_stepper)
   if (associated(this%flow_process_model_coupler)) &
     flow_stepper => this%flow_process_model_coupler%timestepper
   if (associated(this%rt_process_model_coupler)) &
