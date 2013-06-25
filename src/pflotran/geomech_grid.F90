@@ -861,6 +861,27 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     call GaussCalculatePoints(geomech_grid%gauss_node(local_id))
   enddo
   
+  allocate(int_array(geomech_grid%ngmax_node))
+  do local_id = 1, geomech_grid%nlmax_node
+    int_array(local_id) = local_id + geomech_grid%global_offset
+  enddo  
+  do ghosted_id = geomech_grid%nlmax_node+1, geomech_grid%ngmax_node
+    int_array(ghosted_id) = geomech_grid%ghosted_node_ids_petsc(ghosted_id - geomech_grid%nlmax_node)
+  enddo  
+  allocate(geomech_grid%node_ids_ghosted_petsc(geomech_grid%ngmax_node))
+  geomech_grid%node_ids_ghosted_petsc = int_array
+  deallocate(int_array)
+
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_node_ids_ghosted_petsc' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ghosted_id = 1, geomech_grid%ngmax_node
+    write(86,'(i5)') geomech_grid%node_ids_ghosted_petsc(ghosted_id)
+  enddo  
+  close(86)
+#endif    
+  
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
 
