@@ -719,6 +719,10 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
+  call FlowConditionUpdate(surf_realization%surf_flow_conditions, &
+                           surf_realization%option, &
+                           surf_realization%option%time)
+
   cur_level => surf_realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit

@@ -747,13 +747,14 @@ surface_global.o : connection.o coupler.o discretization.o grid.o level.o \
                    option.o patch.o surface_field.o surface_global_aux.o \
                    surface_realization.o variables.o
 surface_global_aux.o : option.o utility.o
-surface_init.o : condition.o coupler.o dataset_base.o dataset_common_hdf5.o \
-                 debug.o discretization.o field.o grid.o hdf5.o input.o \
-                 level.o material.o option.o output_aux.o output_surface.o \
-                 output_tecplot.o patch.o region.o solver.o strata.o string.o \
-                 structured_grid.o surface_auxiliary.o surface_field.o \
-                 surface_material.o surface_realization.o units.o \
-                 unstructured_grid.o unstructured_grid_aux.o waypoint.o
+surface_init.o : condition.o coupler.o dataset.o dataset_base.o \
+                 dataset_common_hdf5.o debug.o discretization.o field.o grid.o \
+                 hdf5.o input.o level.o material.o option.o output_aux.o \
+                 output_surface.o output_tecplot.o patch.o region.o solver.o \
+                 strata.o string.o structured_grid.o surface_auxiliary.o \
+                 surface_field.o surface_material.o surface_realization.o \
+                 units.o unstructured_grid.o unstructured_grid_aux.o \
+                 waypoint.o
 surface_material.o : input.o option.o string.o
 surface_realization.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
                         discretization.o dm_kludge.o field.o grid.o input.o \
