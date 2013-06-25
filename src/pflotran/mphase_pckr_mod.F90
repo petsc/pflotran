@@ -548,7 +548,9 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
 
 
       pc(1)=upc;  pc(2)=0.d0
-        
+
+!     print *,'sat-fnc: ',ipckrtype,sw,se,kr,sgir,swir,sw0,pcmax
+
        !       if(sw<pckr_sat_water_cut) print *, sg,pc,kr
        !      print *,'Ven ::',pc,kr
        
