@@ -2359,7 +2359,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTxx.out', &
                               viewer,ierr)
-    call VecView(xx,viewer,ierr)
+    call VecView(field%tran_xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
