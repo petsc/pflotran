@@ -481,6 +481,10 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
                             'Geomech_residual_debug_afterBC.out',viewer,ierr)
   call VecView(r,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerBinaryOpen(realization%option%mycomm,'Geomech_residual_debug_afterBC.bin', &
+                             FILE_MODE_WRITE,viewer,ierr)
+  call VecView(r,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)  
 #endif   
 
 end subroutine GeomechForceResidualPatch
@@ -878,6 +882,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   MatStructure flag
+  PetscViewer :: viewer
 
   PetscErrorCode :: ierr
    
@@ -949,11 +954,77 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     deallocate(Jac)
   enddo
   
-!  call MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY,ierr)
-!  call MatAssemblyEnd(A,MAT_FLUSH_ASSEMBLY,ierr)  
+  call MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FLUSH_ASSEMBLY,ierr)  
+  
+  ! Find the boundary nodes with dirichlet and set the residual at those nodes
+  ! to zero, later set the Jacobian to 1
+
+  boundary_condition => patch%geomech_boundary_conditions%first
+  do 
+    if (.not.associated(boundary_condition)) exit
+    region => boundary_condition%region
+    do ivertex = 1, region%num_verts
+      local_id = region%vertex_ids(ivertex)
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif    
+      
+      ! X displacement 
+      if (associated(boundary_condition%geomech_condition%displacement_x)) then
+        select case(boundary_condition%geomech_condition%displacement_x%itype)
+          case(DIRICHLET_BC)
+            call MatSetValuesLocal(A,1,(ghosted_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_X_DOF-1,1,(ghosted_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_X_DOF-1,1.d0,INSERT_VALUES,ierr)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+      
+      ! Y displacement 
+      if (associated(boundary_condition%geomech_condition%displacement_y)) then
+        select case(boundary_condition%geomech_condition%displacement_y%itype)
+          case(DIRICHLET_BC)
+            call MatSetValuesLocal(A,1,(ghosted_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_Y_DOF-1,1,(ghosted_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_Y_DOF-1,1.d0,INSERT_VALUES,ierr)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+      
+      ! Z displacement      
+      if (associated(boundary_condition%geomech_condition%displacement_z)) then
+        select case(boundary_condition%geomech_condition%displacement_z%itype)
+          case(DIRICHLET_BC)
+            call MatSetValuesLocal(A,1,(ghosted_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_Z_DOF-1,1,(ghosted_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_Z_DOF-1,1.d0,INSERT_VALUES,ierr)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+      
+    enddo
+    boundary_condition => boundary_condition%next      
+  enddo
   
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  
+#ifdef GEOMECH_DEBUG  
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_jacobian_afterBC.out', &
+                              viewer,ierr)
+   
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)  
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Geomech_jacobian_afterBC.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)  
+#endif    
     
 end subroutine GeomechForceJacobianPatch  
 

@@ -1521,11 +1521,7 @@ subroutine ConvertMatrixToVector(A,vecA)
   
   allocate(vecA(m*n,1))
   
-  do i = 1, m
-    do j = 1, n
-      vecA(j+(i-1)*n,1) = A(i,j)
-    enddo
-  enddo
+  vecA = reshape(A,(/m*n,1/))
 
 end subroutine ConvertMatrixToVector
 
