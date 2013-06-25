@@ -994,11 +994,27 @@ subroutine THUpdateAuxVarsPatch(realization)
       istart = iend-option%nflowdof+1
       iphase = int(iphase_loc_p(ghosted_id))
 
-      if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
-        tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+      if (associated(source_sink%flow_condition%temperature)) then
+        if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
+          tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+        else
+          tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+        endif
       else
-        tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+          tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+1)
       endif
+      select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
+        case (HET_DIRICHLET)
+          tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+        case (DIRICHLET_BC)
+          tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+        case (ENERGY_RATE_SS,HET_ENERGY_RATE_SS)
+          tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+2)
+        case default
+          option%io_buffer='Unsupported temperature flow condtion for ' // &
+            'a source-sink in TH mode: ' // trim(source_sink%name)
+          call printErrMsg(option)
+      end select
       xx = xx_loc_p(istart:iend)
       xx(2) = tsrc1
 
@@ -1029,7 +1045,7 @@ subroutine THUpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   
   patch%aux%TH%aux_vars_up_to_date = PETSC_TRUE
-    
+
 !  deallocate(gradient)
 
 end subroutine THUpdateAuxVarsPatch
@@ -3147,7 +3163,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: alpha_fr_up, alpha_fr_dn
   PetscReal :: Diff_up, Diff_dn  ! "Diffusion" constants at upstream, downstream faces.
   PetscReal :: dw_kg, dw_mol
-  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
+  PetscReal :: qsrc1, csrc1, enth_src_h2o, enth_src_co2 , esrc1
+
   PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof), v_darcy
   PetscViewer :: viewer
@@ -3167,7 +3184,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
   character(len=MAXSTRINGLENGTH) :: string
 
-  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
@@ -3294,23 +3310,11 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
-      enthalpy_flag = PETSC_TRUE
-    else
-      enthalpy_flag = PETSC_FALSE
-    endif
-
     if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
       qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
-    if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) &
-      tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
 
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
-
-      
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
@@ -3321,10 +3325,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1
-      endif
-
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           r_p((local_id-1)*option%nflowdof + jh2o) = &
@@ -3341,15 +3341,14 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           trim(adjustl(string)) // ', not implemented.'
       end select
 
-      select case (source_sink%flow_condition%temperature%itype)
-        case(HET_DIRICHLET)
-          tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
-        case (DIRICHLET_BC)
-        case default
-          write(string,*),source_sink%flow_condition%temperature%itype
-          option%io_buffer='TH mode source_sink%flow_condition%temperature%itype = ' // &
-          trim(adjustl(string)) // ', not implemented.'
+      esrc1 = 0.d0
+      select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
+        case (ENERGY_RATE_SS)
+          esrc1 = source_sink%flow_condition%energy_rate%flow_dataset%time_series%cur_value(1)
+        case (HET_ENERGY_RATE_SS)
+          esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
+      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
@@ -3714,7 +3713,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: icap,iphas,icap_up,icap_dn
   PetscInt :: ii, jj
   PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
-  PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
+  PetscReal :: qsrc1,csrc1
   PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
@@ -3739,7 +3738,6 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind
@@ -3850,20 +3848,10 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   do
     if (.not.associated(source_sink)) exit
     
-    ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > TH_TEMPERATURE_DOF) then
-      enthalpy_flag = PETSC_TRUE
-    else
-      enthalpy_flag = PETSC_FALSE
-    endif
-
     if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
       qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
-    if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) &
-      tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
     cur_connection_set => source_sink%connection_set
     

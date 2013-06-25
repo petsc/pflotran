@@ -1158,39 +1158,43 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     trim(adjustl(string)) // ', not implemented.'
                   call printErrMsg(option)
               end select
-              select case(flow_condition%temperature%itype)
-                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
-                     (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
-                     flow_condition%temperature%itype /= DIRICHLET_BC)) then
-                    coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-                  endif
-                case (HET_DIRICHLET)
-                  call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                          flow_condition%temperature%flow_dataset, &
-                          num_connections,TH_TEMPERATURE_DOF,option)
-                case default
-                  write(string,*),flow_condition%temperature%itype
-                  option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
-                    trim(adjustl(string)) // ', not implemented.'
-                  call printErrMsg(option)
-              end select
+              if(associated(flow_condition%temperature)) then
+                select case(flow_condition%temperature%itype)
+                  case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                    if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                       (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                       flow_condition%temperature%itype /= DIRICHLET_BC)) then
+                      coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+                              flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                    endif
+                  case (HET_DIRICHLET)
+                    call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                            flow_condition%temperature%flow_dataset, &
+                            num_connections,TH_TEMPERATURE_DOF,option)
+                  case default
+                    write(string,*),flow_condition%temperature%itype
+                    option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
+                      trim(adjustl(string)) // ', not implemented.'
+                    call printErrMsg(option)
+                end select
+              endif
             else
-              select case(flow_condition%temperature%itype)
-                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-                case (HET_DIRICHLET)
-                  call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                          flow_condition%temperature%flow_dataset, &
-                          num_connections,TH_TEMPERATURE_DOF,option)
-                case default
-                  write(string,*),flow_condition%temperature%itype
-                  option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
-                    trim(adjustl(string)) // ', not implemented.'
-                  call printErrMsg(option)
-              end select
+              if(associated(flow_condition%temperature)) then
+                select case(flow_condition%temperature%itype)
+                  case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                    coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+                              flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                  case (HET_DIRICHLET)
+                    call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                            flow_condition%temperature%flow_dataset, &
+                            num_connections,TH_TEMPERATURE_DOF,option)
+                  case default
+                    write(string,*),flow_condition%temperature%itype
+                    option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
+                      trim(adjustl(string)) // ', not implemented.'
+                    call printErrMsg(option)
+                end select
+              endif
             endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
@@ -1206,6 +1210,17 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   option%io_buffer='For TH mode: flow_condition%rate%itype = ' // &
                     trim(adjustl(string)) // ', not implemented.'
                   call printErrMsg(option)
+              end select
+            endif
+            if(associated(flow_condition%energy_rate)) then
+              select case (flow_condition%energy_rate%itype)
+                case (ENERGY_RATE_SS)
+                  coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                case (HET_ENERGY_RATE_SS)
+                  call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                          flow_condition%energy_rate%flow_dataset, &
+                          num_connections,TH_TEMPERATURE_DOF,option)
               end select
             endif
             if (associated(flow_condition%saturation)) then
