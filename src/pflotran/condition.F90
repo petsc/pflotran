@@ -1172,8 +1172,8 @@ subroutine FlowConditionRead(condition,input,option)
       if (associated(temperature)) condition%temperature => temperature
       if (associated(energy_rate)) condition%energy_rate => energy_rate
 
-      if (.not.associated(enthalpy)) then
-        option%io_buffer = 'enthalpy condition null in condition: ' // &
+      if (associated(enthalpy)) then
+        option%io_buffer = 'enthalpy condition not supported in TH mode: ' // &
                             trim(condition%name)
         call printErrMsg(option)
       endif
