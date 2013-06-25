@@ -1513,17 +1513,17 @@ end subroutine DeallocateArray2DString
 subroutine ConvertMatrixToVector(A,vecA)
 
   PetscReal :: A(:,:)
-  PetscReal, pointer :: vecA(:)
+  PetscReal, pointer :: vecA(:,:)
   PetscInt :: m, n, i, j
   
   m = size(A,1)
   n = size(A,2)
   
-  allocate(vecA(m*n))
+  allocate(vecA(m*n,1))
   
   do i = 1, m
     do j = 1, n
-      vecA(j+(i-1)*n) = A(i,j)
+      vecA(j+(i-1)*n,1) = A(i,j)
     enddo
   enddo
 
@@ -1580,7 +1580,7 @@ subroutine Transposer(m,n,T)
   PetscInt :: m,n
   PetscInt :: i,j
   PetscReal :: A(m,n)
-  PetscReal, pointer :: vecA(:)
+  PetscReal, pointer :: vecA(:,:)
   
   allocate(T(m*n,m*n))
   T = 0.d0
@@ -1590,10 +1590,29 @@ subroutine Transposer(m,n,T)
       A = 0.d0
       A(i,j) = 1.d0
       call ConvertMatrixToVector(transpose(A),vecA)
-      T(:,i+m*(j-1)) = vecA
+      T(:,i+m*(j-1)) = vecA(:,1)
     enddo
   enddo
   
 end subroutine Transposer
+
+! ************************************************************************** !
+!
+! Determinant: Determinant of a 3x3 matrix
+! author: Satish Karra, LANL
+! date: 6/24/2013
+!
+! ************************************************************************** !
+subroutine Determinant(A,detA)
+
+  PetscReal :: A(3,3)
+  PetscReal :: detA  
+ 
+  detA = A(1,1)*(A(2,2)*A(3,3) - A(3,2)*A(2,3)) &
+       + A(1,2)*(A(3,1)*A(2,3) - A(2,1)*A(3,3))  &
+       + A(1,3)*(A(2,1)*A(3,2) - A(3,1)*A(2,2))
+  
+
+end subroutine Determinant
 
 end module Utility_module
