@@ -1525,6 +1525,9 @@ subroutine OutputMassBalance(realization_base)
   PetscReal :: sum_kg_global(realization_base%option%nflowspec,realization_base%option%nphase)
   PetscReal :: sum_mol(realization_base%option%ntrandof,realization_base%option%nphase)
   PetscReal :: sum_mol_global(realization_base%option%ntrandof,realization_base%option%nphase)
+  PetscReal :: sum_trapped(realization_base%option%nphase)
+  PetscReal :: sum_trapped_global(realization_base%option%nphase)
+
   PetscMPIInt :: int_mpi
   PetscBool :: bcs_done
   PetscErrorCode :: ierr
@@ -1598,9 +1601,13 @@ subroutine OutputMassBalance(realization_base)
                                     'kmol','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Water Phase', &
                                     'kmol','',icol)
+          call OutputAppendToHeader(header,'Trapped CO2 Mass in Water Phase', &
+                                    'kmol','',icol)
           call OutputAppendToHeader(header,'Global Water Mass in Gas Phase', &
                                     'kmol','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
+                                    'kmol','',icol)
+          call OutputAppendToHeader(header,'Trapped CO2 Mass in Gas Phase', &
                                     'kmol','',icol)
         case(IMS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
@@ -1792,6 +1799,7 @@ subroutine OutputMassBalance(realization_base)
 
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
+    sum_trapped = 0.d0
     select type(realization_base)
       class is(realization_type)
         select case(option%iflowmode)
@@ -1806,7 +1814,7 @@ subroutine OutputMassBalance(realization_base)
           case(MIS_MODE)
             call MiscibleComputeMassBalance(realization_base,sum_kg(:,1))
           case(MPH_MODE)
-            call MphaseComputeMassBalance(realization_base,sum_kg(:,:))
+            call MphaseComputeMassBalance(realization_base,sum_kg(:,:),sum_trapped(:))
           case(IMS_MODE)
             call ImmisComputeMassBalance(realization_base,sum_kg(:,1))
           case(G_MODE)
@@ -1818,19 +1826,35 @@ subroutine OutputMassBalance(realization_base)
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
         call printErrMsg(option)
     end select
+
     int_mpi = option%nflowspec*option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
                     int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
-                        
+
+    if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
+!     call MPI_Barrier(option%mycomm,ierr)
+      int_mpi = option%nphase
+      call MPI_Reduce(sum_trapped,sum_trapped_global, &
+                    int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%mycomm,ierr)
+    endif
+
     if (option%myrank == option%io_rank) then
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,IMS_MODE,MIS_MODE,G_MODE, &
+        case(RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE, &
              TH_MODE,THC_MODE,THMC_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
             enddo
+          enddo
+        case(MPH_MODE,FLASH2_MODE)
+          do iphase = 1, option%nphase
+            do ispec = 1, option%nflowspec
+              write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+            enddo
+            write(fid,110,advance="no") sum_trapped_global(iphase)
           enddo
       end select
     endif
