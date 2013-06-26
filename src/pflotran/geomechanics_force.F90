@@ -371,6 +371,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   call GeomechForceUpdateAuxVars(realization)
   ! Add flag for the update
   
+  call VecSet(r,0.d0,ierr)
  
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
@@ -555,7 +556,6 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   enddo
   
   call Transposer(option%ngeomechdof,size(elenodes),Trans)
-
  
   do igpt = 1, len_w
     zeta = r(igpt,:)
@@ -726,8 +726,8 @@ subroutine GeomechGetLambdaMu(lambda,mu,coord)
   PetscReal :: E, nu
   PetscReal :: coord(THREE_INTEGER)
  
-  E = 1.d0
-  nu = 0.4
+  E = 1.d4
+  nu = 0.1
   
   
   ! This subroutine needs major changes. For given position, it needs to give 
@@ -956,7 +956,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   call MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FLUSH_ASSEMBLY,ierr)  
-  
+
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
