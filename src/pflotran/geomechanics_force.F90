@@ -351,7 +351,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
 
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
-  PetscReal, allocatable :: local_disp(:)
+  PetscReal, allocatable :: local_disp(:,:)
   PetscInt, allocatable :: petsc_ids(:)
   PetscInt, allocatable :: ids(:)
   PetscReal, allocatable :: res_vec(:)
@@ -377,7 +377,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   do ielem = 1, grid%nlmax_elem
     allocate(elenodes(grid%elem_nodes(0,ielem)))
     allocate(local_coordinates(size(elenodes),THREE_INTEGER))
-    allocate(local_disp(size(elenodes)*option%ngeomechdof))
+    allocate(local_disp(size(elenodes),option%ngeomechdof))
     allocate(petsc_ids(size(elenodes)))
     allocate(ids(size(elenodes)*option%ngeomechdof))
     allocate(res_vec(size(elenodes)*option%ngeomechdof))
@@ -393,7 +393,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex)
       do idof = 1, option%ngeomechdof
-        local_disp(idof + (ivertex-1)*option%ngeomechdof) = &
+        local_disp(ivertex,idof) = &
           geomech_global_aux_vars(ghosted_id)%disp_vector(idof)
         ids(idof + (ivertex-1)*option%ngeomechdof) = &
           (petsc_ids(ivertex)-1)*option%ngeomechdof + (idof-1)
@@ -514,7 +514,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: zeta(:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: res_vec(:)
-  PetscReal, allocatable :: local_disp(:)
+  PetscReal, allocatable :: local_disp(:,:)
   PetscReal, pointer :: r(:,:), w(:)
   PetscInt :: igpt
   PetscInt :: len_w
@@ -538,14 +538,20 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal, pointer :: Trans(:,:)
   PetscReal, pointer :: kron_eye_B_transpose(:,:)
   PetscReal, pointer :: kron_N_eye(:,:)
+  PetscReal, pointer :: vec_local_disp(:,:)
+  PetscReal, allocatable :: force(:), res_vec_mat(:,:)
   
   allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
   allocate(Kmat(size(elenodes)*option%ngeomechdof, &
                 size(elenodes)*option%ngeomechdof))  
+  allocate(force(size(elenodes)*option%ngeomechdof))
+  allocate(res_vec_mat(size(elenodes)*option%ngeomechdof,1))
   
   res_vec = 0.d0
+  res_vec_mat = 0.d0
   Kmat = 0.d0
+  force = 0.d0
   len_w = size(w)
   
   identity = 0.d0
@@ -558,9 +564,9 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   call Transposer(option%ngeomechdof,size(elenodes),Trans)
  
   do igpt = 1, len_w
-    zeta = r(igpt,:)
     shapefunction%EleType = eletype
     call ShapeFunctionInitialize(shapefunction)
+    shapefunction%zeta = r(igpt,:)
     call ShapeFunctionCalculate(shapefunction)
     x = matmul(transpose(local_coordinates),shapefunction%N)
     J_map = matmul(transpose(local_coordinates),shapefunction%DN)
@@ -593,14 +599,20 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     call Kron(N,identity,kron_N_eye)
     Kmat = Kmat + w(igpt)*mu*matmul(kron_B_eye,kron_B_transpose_eye)*detJ_map
     Kmat = Kmat + w(igpt)*mu*matmul(matmul(kron_B_eye,kron_eye_B_transpose),Trans)*detJ_map
-    res_vec = res_vec - matmul(Kmat,local_disp)
-    res_vec = res_vec - w(igpt)*matmul(kron_N_eye,bf)*detJ_map
+    force = force + w(igpt)*matmul(kron_N_eye,bf)*detJ_map
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
   enddo
+  
+  call ConvertMatrixToVector(transpose(local_disp),vec_local_disp)
+  res_vec_mat = matmul(Kmat,vec_local_disp)
+  res_vec = res_vec + res_vec_mat(:,1)
+  res_vec = res_vec - force
 
   deallocate(zeta)
   deallocate(B)
+  deallocate(force)
+  deallocate(res_vec_mat)
 
 end subroutine GeomechForceLocalElemResidual
 
@@ -668,9 +680,9 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   call Transposer(option%ngeomechdof,size(elenodes),Trans)
 
   do igpt = 1, len_w
-    zeta = r(igpt,:)
     shapefunction%EleType = eletype
     call ShapeFunctionInitialize(shapefunction)
+    shapefunction%zeta = r(igpt,:)
     call ShapeFunctionCalculate(shapefunction)
     x = matmul(transpose(local_coordinates),shapefunction%N)
     J_map = matmul(transpose(local_coordinates),shapefunction%DN)
@@ -706,7 +718,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
   enddo
-
+  
   deallocate(zeta)
   deallocate(B)
 
@@ -727,7 +739,7 @@ subroutine GeomechGetLambdaMu(lambda,mu,coord)
   PetscReal :: coord(THREE_INTEGER)
  
   E = 1.d4
-  nu = 0.1
+  nu = 0.0
   
   
   ! This subroutine needs major changes. For given position, it needs to give 
@@ -754,14 +766,13 @@ subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf)
   PetscReal :: coord(THREE_INTEGER)
   PetscReal :: bf(THREE_INTEGER)
  
-  bf = 0.d0
     
   ! This subroutine needs major changes. For given position, it needs to give 
   ! out lambda, mu, also need to add density of rock
   
   select case(load_type)
     case default
-      bf(GEOMECH_DISP_Z_DOF) = 0.d0 !-9.81
+      bf(GEOMECH_DISP_Z_DOF) = -9.81
   end select
 
 end subroutine GeomechGetBodyForce
@@ -905,7 +916,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ielem,ivertex 
   PetscInt :: ghosted_id
   PetscInt :: eletype, idof
-  PetscInt :: local_id
+  PetscInt :: local_id, petsc_id
         
   field => realization%geomech_field
   discretization => realization%discretization
@@ -954,9 +965,9 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     deallocate(Jac)
   enddo
   
-  call MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FLUSH_ASSEMBLY,ierr)  
-
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)  
+  
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
@@ -967,6 +978,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     do ivertex = 1, region%num_verts
       local_id = region%vertex_ids(ivertex)
       ghosted_id = grid%nL2G(local_id)
+      petsc_id = grid%node_ids_ghosted_petsc(ghosted_id)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif    
@@ -975,9 +987,9 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (associated(boundary_condition%geomech_condition%displacement_x)) then
         select case(boundary_condition%geomech_condition%displacement_x%itype)
           case(DIRICHLET_BC)
-            call MatSetValuesLocal(A,1,(ghosted_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_X_DOF-1,1,(ghosted_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_X_DOF-1,1.d0,INSERT_VALUES,ierr)
+            call MatZeroRows(A,1, &
+              (petsc_id-1)*option%ngeomechdof + GEOMECH_DISP_X_DOF-1, &
+              1.d0,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -987,9 +999,9 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (associated(boundary_condition%geomech_condition%displacement_y)) then
         select case(boundary_condition%geomech_condition%displacement_y%itype)
           case(DIRICHLET_BC)
-            call MatSetValuesLocal(A,1,(ghosted_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_Y_DOF-1,1,(ghosted_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_Y_DOF-1,1.d0,INSERT_VALUES,ierr)
+            call MatZeroRows(A,1, &
+              (petsc_id-1)*option%ngeomechdof + GEOMECH_DISP_Y_DOF-1, &
+              1.d0,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -999,9 +1011,9 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (associated(boundary_condition%geomech_condition%displacement_z)) then
         select case(boundary_condition%geomech_condition%displacement_z%itype)
           case(DIRICHLET_BC)
-            call MatSetValuesLocal(A,1,(ghosted_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_Z_DOF-1,1,(ghosted_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_Z_DOF-1,1.d0,INSERT_VALUES,ierr)
+            call MatZeroRows(A,1, &
+              (petsc_id-1)*option%ngeomechdof + GEOMECH_DISP_Z_DOF-1, &
+              1.d0,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -1010,10 +1022,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next      
   enddo
-  
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  
+   
 #ifdef GEOMECH_DEBUG  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_jacobian_afterBC.out', &
                               viewer,ierr)
