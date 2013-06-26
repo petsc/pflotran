@@ -696,15 +696,13 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
             select case(option%iflowmode)
               case (RICHARDS_MODE)
                 call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
-                                                 tmp,PETSC_FALSE)
+                                                 tmp)
               case (TH_MODE)
                call SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
             end select
           endif
           
           ! Solve surface flow
-          !call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
-          !                              surf_failure)
           call StepperStepSurfaceFlowExplicitDT(surf_realization, &
                                                 surf_flow_stepper, &
                                                 surf_failure)
@@ -1459,18 +1457,14 @@ subroutine StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,optio
   type(surface_realization_type), pointer :: surf_realization
   type(option_type) :: option
 
-  PetscReal :: dt_max,dt_max_ss,dt_max_glb
+  PetscReal :: dt_max,dt_max_glb
   PetscErrorCode :: ierr
 
-  dt_max_ss=1d10
   select case (option%iflowmode)
     case (RICHARDS_MODE)
       if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-        call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
-                                       dt_max_ss,PETSC_TRUE)
       endif
       call SurfaceFlowComputeMaxDt(surf_realization,dt_max)
-      dt_max = min(dt_max,dt_max_ss)
     case (TH_MODE)
       call SurfaceTHComputeMaxDt(surf_realization,dt_max)
   end select
@@ -2927,6 +2921,7 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   character(len=MAXSTRINGLENGTH)      :: string
   PetscReal, pointer :: xx_p(:)
   PetscInt :: local_id
+  PetscInt :: istart, iend
   PetscReal :: time
   PetscReal :: dtime
 
@@ -2955,7 +2950,12 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
   do local_id=1,surf_realization%discretization%grid%nlmax
-    if(xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    if(xx_p(istart)<1.d-15) then
+      xx_p(istart) = 0.d0
+      xx_p(iend) = 0.d0
+    endif
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
@@ -2968,6 +2968,7 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       call SurfaceFlowUpdateAuxVars(surf_realization)
     case(TH_MODE)
       ! Then, update the aux vars
+      call SurfaceTHUpdateTemperature(surf_realization)
       call SurfaceTHUpdateAuxVars(surf_realization)
       ! override flags since they will soon be out of date
       surf_realization%patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE

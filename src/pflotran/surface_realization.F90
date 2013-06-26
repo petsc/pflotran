@@ -405,7 +405,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
                                      surf_field%work)
 
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
-                                     surf_field%vol_subsurf_2_surf)
+                                     surf_field%flux_subsurf_2_surf)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%press_subsurf)
 
@@ -427,7 +427,9 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%por)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%sat_func_id)
+                                     surf_field%icap_loc)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%ithrm_loc)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%subsurf_xx)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &

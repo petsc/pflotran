@@ -168,22 +168,18 @@ FLOW_CONDITION initial
   TYPE
     PRESSURE dirichlet
     TEMPERATURE dirichlet
-    ENTHALPY dirichlet
   /
   PRESSURE 1.5D5
   TEMPERATURE 100.D0
-  ENTHALPY 0.D0
 END
 
 FLOW_CONDITION west
   TYPE 
     PRESSURE dirichlet
     TEMPERATURE dirichlet
-    ENTHALPY dirichlet
   /
   PRESSURE 10.0D5
   TEMPERATURE 25.D0
-  ENTHALPY 0.D0 
 END
 
 :=========================== transport conditions =============================

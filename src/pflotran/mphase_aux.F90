@@ -439,6 +439,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
     aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1.D-3)
+
 !***************  Liquid phase properties **************************
  
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
@@ -461,7 +462,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !  den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 !  m_nacl=option%m_nacl
-!  if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+!  if (reaction%species_idx%na_ion_id /= 0 .and. &
+!     reaction%species_idx%cl_ion_id /= 0) then
 !    m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
 !    m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
 !    m_nacl = m_na
@@ -493,7 +495,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  
  !  den(1) = dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
  !  den(1) = den(1)/avgmw(1)
-!****************************** 2 phase S-Pc-kr relation *********************************
+
+!****************************** 2 phase S-Pc-kr relation ************************
     if (option%nphase >= 2) then
       if (saturation_function%hysteresis_id <= 0.1D0) then 
         call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &

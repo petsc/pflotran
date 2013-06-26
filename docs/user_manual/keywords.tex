@@ -2625,8 +2625,8 @@ Examples:}
 \begin{mdframed}
 
 \begin{verbatim}
-: restart the simulation from the end of the previous simulation, /
-  but set the time back to 0.
+: restart the simulation from the end of the previous /
+  simulation, but set the time back to 0.
 
 RESTART restart.chk 0.d0 y
 
@@ -2658,8 +2658,11 @@ RESTART pflotran.chk3000
 \item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf BROOKS\_COREY}, 
 
 {\bf THOMEER\_COREY}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}]
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf MUALEM}, \ {\bf BURDINE}]
-\item[RESIDUAL\_SATURATION] \ {\tt <Value>}
+
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, \ {\bf MUALEM}, \ {\bf BURDINE}, \ {\bf NMT\_EXP}, \ {\bf PRUESS\_1}]
+\item[RESIDUAL\_SATURATION] \ {\tt <Value>} \ \ MODES: RICHARDS, TH, THC
+\item[RESIDUAL\_SATURATION\_LIQUID] \ {\tt <Value>} \ \ MODES: MPHASE
+\item[RESIDUAL\_SATURATION\_GAS] \ {\tt <Value>} \ \ MODES: MPHASE
 \item[LAMBDA] \ {\tt <Value>} [---]
 \item[ALPHA] \ {\tt <Value>} [Pa$^{-1}$]
 \item[MAX\_CAPILLARY\_PRESSURE] \ {\tt <Value>} [Pa]
