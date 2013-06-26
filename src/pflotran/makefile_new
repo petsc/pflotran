@@ -327,7 +327,7 @@ misc_obj = \
 	${common_src}secondary_continuum_aux.o\
 	${common_src}secondary_continuum.o \
 	${common_src}simulation.o \
-	${common_src}simulation_new.o \
+	${common_src}simulation_base.o \
 	${common_src}subsurface_factory.o \
 	${common_src}subsurface_simulation.o \
 	${common_src}solver.o \
@@ -479,9 +479,9 @@ hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          utility.o
 hdf5_aux.o : logging.o option.o
 hydrogeophysics_factory.o : hydrogeophysics_simulation.o init.o input.o \
-                            option.o simulation.o simulation_new.o \
+                            option.o simulation.o simulation_base.o \
                             subsurface_factory.o timestepper_new.o
-hydrogeophysics_simulation.o : option.o output.o pmc_base.o simulation_new.o \
+hydrogeophysics_simulation.o : option.o output.o pmc_base.o simulation_base.o \
                                subsurface_simulation.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \
@@ -591,7 +591,7 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
 pflotran_factory.o : input.o logging.o option.o string.o timestepper_new.o
 pflotran_new.o : hydrogeophysics_factory.o option.o pflotran_factory.o \
-                 simulation_new.o subsurface_factory.o
+                 simulation_base.o subsurface_factory.o
 pmc_base.o : option.o output.o output_aux.o process_model_base.o \
              process_model_top.o timestepper_new.o utility.o waypoint.o
 pmc_hydrogeophysics.o : option.o output.o pmc_base.o timestepper_new.o \
@@ -709,8 +709,8 @@ secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : general.o option.o reactive_transport.o realization.o \
                regression.o richards.o solver.o surface_realization.o \
                timestepper_new.o
-simulation_new.o : logging.o option.o output.o output_aux.o pmc_base.o \
-                   waypoint.o
+simulation_base.o : logging.o option.o output.o output_aux.o pmc_base.o \
+                    waypoint.o
 solid_solution.o : input.o mineral.o mineral_aux.o option.o reaction_aux.o \
                    solid_solution_aux.o string.o utility.o
 solid_solution_aux.o : mineral_aux.o
@@ -727,12 +727,12 @@ subsurface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
                        process_model_richards.o process_model_rt.o \
                        process_model_th.o process_model_thc.o \
                        process_model_top.o reactive_transport.o realization.o \
-                       richards.o simulation.o simulation_new.o \
+                       richards.o simulation.o simulation_base.o \
                        subsurface_simulation.o th.o thc.o thmc.o \
                        timestepper_new.o waypoint.o
 subsurface_simulation.o : logging.o option.o output.o pmc_base.o \
                           pmc_subsurface.o realization.o regression.o \
-                          simulation_new.o timestepper_new.o
+                          simulation_base.o timestepper_new.o
 surface_auxiliary.o : surface_global_aux.o surface_th_aux.o
 surface_checkpoint.o : discretization.o grid.o option.o output_aux.o \
                        surface_field.o surface_realization.o

@@ -247,6 +247,11 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
     
   enddo
   
+  ! Run neighboring process model couplers
+  if (associated(this%next)) then
+    call this%below%RunTo(sync_time,local_stop_flag)
+  endif
+
   stop_flag = max(stop_flag,local_stop_flag)
   
 end subroutine RunToTime
