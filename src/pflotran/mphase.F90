@@ -442,7 +442,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(mphase_auxvar_type), pointer :: mphase_aux_vars(:)
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:), icap_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -460,9 +460,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-
-  pckr_sir(1) = 0.2
-  pckr_sir(2) = 0.4
+  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p, ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -481,6 +479,9 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
           mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
           porosity_loc_p(ghosted_id)*volume_p(local_id)
       enddo
+
+      pckr_sir(iphase) = &
+        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
 
       if (iphase == 1 .and. &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
@@ -504,6 +505,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p, ierr)
   
 end subroutine MphaseComputeMassBalancePatch
 
