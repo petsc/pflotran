@@ -20,12 +20,13 @@ module Surface_Field_module
 
     Vec :: area
     
-    Vec :: vol_subsurf_2_surf    ! MPI +ve value => Flow from subsurface to surface
+    Vec :: flux_subsurf_2_surf    ! MPI +ve value => Flow from subsurface to surface
     Vec :: press_subsurf         ! MPI
 
     Vec :: Dq                    ! MPI
     Vec :: por                   ! MPI
-    Vec :: sat_func_id           ! MPI
+    Vec :: icap_loc              ! MPI
+    Vec :: ithrm_loc             ! MPI
     Vec :: perm_xx               ! MPI
     Vec :: perm_yy               ! MPI
     Vec :: perm_zz               ! MPI
@@ -91,12 +92,13 @@ function SurfaceFieldCreate()
   surface_field%flow_yy = 0
   surface_field%flow_accum = 0
   
-  surface_field%vol_subsurf_2_surf = 0
+  surface_field%flux_subsurf_2_surf = 0
   surface_field%press_subsurf = 0
 
   surface_field%Dq = 0
   surface_field%por = 0
-  surface_field%sat_func_id = 0
+  surface_field%icap_loc = 0
+  surface_field%ithrm_loc = 0
   surface_field%perm_xx = 0
   surface_field%perm_yy = 0
   surface_field%perm_zz = 0
@@ -143,9 +145,9 @@ subroutine SurfaceFieldDestroy(surface_field)
 
   if (surface_field%area  /= 0) call VecDestroy(surface_field%area,ierr)
   
-  if (surface_field%vol_subsurf_2_surf /= 0) &
-    call VecDestroy(surface_field%vol_subsurf_2_surf,ierr)
-  if (surface_field%vol_subsurf_2_surf /= 0) &
+  if (surface_field%flux_subsurf_2_surf /= 0) &
+    call VecDestroy(surface_field%flux_subsurf_2_surf,ierr)
+  if (surface_field%flux_subsurf_2_surf /= 0) &
     call VecDestroy(surface_field%press_subsurf,ierr)
   if (surface_field%press_subsurf /= 0) &
     call VecDestroy(surface_field%press_subsurf,ierr)
@@ -157,7 +159,8 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%perm_zz/=0) call VecDestroy(surface_field%perm_zz,ierr)
 
   if (surface_field%por/=0) call VecDestroy(surface_field%por,ierr)
-  if (surface_field%sat_func_id/=0) call VecDestroy(surface_field%sat_func_id,ierr)
+  if (surface_field%icap_loc/=0) call VecDestroy(surface_field%icap_loc,ierr)
+  if (surface_field%ithrm_loc/=0) call VecDestroy(surface_field%ithrm_loc,ierr)
 
   if (surface_field%subsurf_xx/=0) call VecDestroy(surface_field%subsurf_xx,ierr)
   if (surface_field%subsurf_yy/=0) call VecDestroy(surface_field%subsurf_yy,ierr)

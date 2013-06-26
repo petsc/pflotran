@@ -12,7 +12,8 @@ module Surface_TH_Aux_module
     PetscReal :: h
     PetscReal :: u
     PetscReal :: pc
-    PetscReal :: vis
+    PetscReal :: Cw
+    PetscReal :: k_therm
   end type Surface_TH_auxvar_type
 
   type, public :: Surface_TH_type
@@ -90,7 +91,8 @@ subroutine SurfaceTHAuxVarInit(aux_var,option)
   aux_var%h = 0.d0
   aux_var%u = 0.d0
   aux_var%pc = 0.d0
-  aux_var%vis = 0.d0
+  aux_var%Cw = 4.188d3     ! [J/kg/K]
+  aux_var%k_therm = 0.57d0 ! [J/s/m/K]
 
 end subroutine SurfaceTHAuxVarInit
 
@@ -114,7 +116,8 @@ subroutine SurfaceTHAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%h = aux_var%h
   aux_var2%u = aux_var%u
   aux_var2%pc = aux_var%pc
-  aux_var2%vis = aux_var%vis
+  aux_var2%Cw = aux_var%Cw
+  aux_var2%k_therm = aux_var%k_therm
 
 end subroutine SurfaceTHAuxVarCopy
 
@@ -127,7 +130,6 @@ end subroutine SurfaceTHAuxVarCopy
 !! date: 03/07/13
 ! ************************************************************************** !
 subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
-                                  !saturation_function,por,perm,&
                                   option)
 
   use Option_module
@@ -159,8 +161,7 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   kr = 0.d0
  
   global_aux_var%head(1) = xx(1)
-  global_aux_var%temp(1) = xx(2)
-!  global_aux_var%temp(1) = option%reference_temperature
+  !global_aux_var%temp(1) = xx(2)
  
 
 !***************  Liquid phase properties **************************
