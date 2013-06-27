@@ -115,7 +115,9 @@ subroutine StochasticDestroy(stochastic)
   if (.not.associated(stochastic)) return
   
   if (associated(stochastic%simulation)) then
+#ifndef PROCESS_MODEL    
     call SimulationDestroy(stochastic%simulation)
+#endif    
     nullify(stochastic%simulation)
   endif
   
