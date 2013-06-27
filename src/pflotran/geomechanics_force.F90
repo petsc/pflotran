@@ -766,6 +766,7 @@ subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf)
   PetscReal :: coord(THREE_INTEGER)
   PetscReal :: bf(THREE_INTEGER)
  
+  bf = 0.d0
     
   ! This subroutine needs major changes. For given position, it needs to give 
   ! out lambda, mu, also need to add density of rock
@@ -967,6 +968,13 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)  
+  
+#ifdef GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(realization%option%mycomm, &
+                            'Geomech_jacobian_debug_beforeBC.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif 
   
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1

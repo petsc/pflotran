@@ -476,7 +476,7 @@ flash2_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                saturation_function.o water_eos.o
 fluid.o : input.o option.o string.o
 gas_eos_mod.o :
-gauss.o : unstructured_cell.o
+gauss.o : unstructured_cell.o utility.o
 general.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
             general_aux.o global_aux.o grid.o level.o material.o \
             material_aux.o option.o output_aux.o patch.o realization.o \
@@ -485,9 +485,9 @@ general_aux.o : gas_eos_mod.o global_aux.o option.o saturation_function.o \
                 water_eos.o
 general_grid.o : connection.o discretization.o field.o grid.o hdf5.o \
                  hdf5_aux.o logging.o option.o patch.o realization.o
-geomech_grid.o : geomech_grid_aux.o geomechanics_region.o input.o option.o \
-                 string.o unstructured_cell.o unstructured_grid_aux.o
-geomech_grid_aux.o : option.o unstructured_cell.o utility.o
+geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o input.o \
+                 option.o string.o unstructured_cell.o unstructured_grid_aux.o
+geomech_grid_aux.o : gauss.o option.o unstructured_cell.o utility.o
 geomechanics_auxiliary.o : geomechanics_global_aux.o
 geomechanics_condition.o : dataset_base.o dataset_common_hdf5.o dataset_map.o \
                            dataset_xyz.o geomechanics_logging.o hdf5_aux.o \
@@ -499,10 +499,13 @@ geomechanics_debug.o : input.o option.o
 geomechanics_discretization.o : geomech_grid.o geomech_grid_aux.o option.o
 geomechanics_field.o :
 geomechanics_force.o : geomech_grid.o geomech_grid_aux.o \
-                       geomechanics_coupler.o geomechanics_field.o \
-                       geomechanics_global_aux.o geomechanics_material.o \
-                       geomechanics_patch.o geomechanics_realization.o \
-                       geomechanics_region.o option.o output_aux.o variables.o
+                       geomechanics_coupler.o geomechanics_debug.o \
+                       geomechanics_discretization.o geomechanics_field.o \
+                       geomechanics_global_aux.o geomechanics_logging.o \
+                       geomechanics_material.o geomechanics_patch.o \
+                       geomechanics_realization.o geomechanics_region.o \
+                       option.o output_aux.o shape_function.o \
+                       unstructured_cell.o utility.o variables.o
 geomechanics_global.o : discretization.o geomech_grid.o geomech_grid_aux.o \
                         geomechanics_coupler.o geomechanics_field.o \
                         geomechanics_global_aux.o geomechanics_patch.o \

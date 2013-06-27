@@ -275,7 +275,7 @@ subroutine GeomechDiscretizationCreateJacobian(discretization,dm_index, &
                               mat_type,Jacobian,option)
   call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
   call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
-#if 1   
+#if 0   
   call MatSetOption(Jacobian, MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE,ierr)
 #endif
 ! SK: There is a bug in the preallocation of the jacobian. Need to fix this.

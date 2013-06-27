@@ -567,6 +567,7 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
     if (o_nnz(local_id1) > geomech_grid%num_ghost_nodes) &
       o_nnz(local_id1) = geomech_grid%num_ghost_nodes
   enddo
+
    
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
