@@ -10,7 +10,7 @@ include ${PETSC_DIR}/conf/variables
 include ${PETSC_DIR}/conf/rules
 
 
-TEST_MANAGER = regression-tests.py
+TEST_MANAGER = regression_tests.py
 PFLOTRAN = ../src/pflotran/pflotran
 
 TEST_OPTIONS =
