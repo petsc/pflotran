@@ -201,7 +201,6 @@ subroutine PFLOTRANFinalize(simulation,option)
   use Simulation_module
   use Regression_module
   use Option_module
-
   implicit none
 
   type(simulation_type), pointer :: simulation

@@ -249,12 +249,9 @@ subroutine StochasticRun(stochastic,option)
     call PFLOTRANRun(simulation,master_stepper,init_status)
     call PFLOTRANFinalize(simulation,option)
 
-    if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
-      write(string,'(i6)') option%id
-      print *, 'Finished with ' // trim(adjustl(string)), irealization, &
-               ' of ', stochastic%num_local_realizations
-    endif
-#endif
+    call SimulationDestroy(simulation)
+
+#endif    
 
   enddo
   
