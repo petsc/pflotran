@@ -8,6 +8,10 @@ module PFLOTRAN_Factory_module
 
   public :: PFLOTRANInitialize, &
             PFLOTRANInitializePrePETSc, &
+#ifndef PROCESS_MODEL
+            PFLOTRANInitializePostPETSc, &
+            PFLOTRANRun, &
+#endif
             PFLOTRANFinalize
 
 contains
@@ -31,7 +35,9 @@ subroutine PFLOTRANInitialize(option)
 
   call PFLOTRANInitializePrePETSc(option)
   call OptionInitPetsc(option)
+#ifdef PROCESS_MODEL
   call PFLOTRANInitializePostPETSc(option)
+#endif
 
 end subroutine PFLOTRANInitialize
 
@@ -66,6 +72,7 @@ end subroutine PFLOTRANInitializePrePETSc
 ! date: 06/17/13
 !
 ! ************************************************************************** !
+#ifdef PROCESS_MODEL
 subroutine PFLOTRANInitializePostPETSc(option)
 
   use Option_module
@@ -78,7 +85,93 @@ subroutine PFLOTRANInitializePostPETSc(option)
   call LoggingCreate()
   call OptionBeginTiming(option)
   
+#else
+subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
+                                       init_status)
+
+  use Simulation_module
+  use Timestepper_module
+  use Option_module
+  use Init_module
+
+  implicit none
+
+  type(simulation_type), pointer :: simulation
+  type(stepper_type), pointer :: master_stepper
+  type(option_type), pointer :: option
+  PetscInt :: init_status
+
+  call OptionBeginTiming(option)
+  simulation => SimulationCreate(option)
+  call Init(simulation)
+#ifdef SURFACE_FLOW
+  call TimestepperInitializeRun(simulation%realization, &
+                                simulation%surf_realization, &
+                                master_stepper, &
+                                simulation%flow_stepper, &
+                                simulation%tran_stepper, &
+                                simulation%surf_flow_stepper, &
+                                init_status)
+#else
+  call TimestepperInitializeRun(simulation%realization, &
+                                master_stepper, &
+                                simulation%flow_stepper, &
+                                simulation%tran_stepper, &
+                                init_status)
+#endif 
+#endif 
 end subroutine PFLOTRANInitializePostPETSc
+
+#ifndef PROCESS_MODEL
+! ************************************************************************** !
+!
+! PFLOTRANRun: Runs the PFLOTRAN simulation
+! author: Glenn Hammond
+! date: 06/07/13
+!
+! ************************************************************************** !
+subroutine PFLOTRANRun(simulation, master_stepper, init_status)
+
+  use Simulation_module
+  use Timestepper_module
+
+  implicit none
+
+  type(simulation_type) :: simulation
+  type(stepper_type), pointer :: master_stepper
+  PetscInt :: init_status
+
+  select case(init_status)
+    case(TIMESTEPPER_INIT_PROCEED)
+#ifdef SURFACE_FLOW
+      call  TimestepperExecuteRun(simulation%realization, &
+                                  simulation%surf_realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper, &
+                                  simulation%surf_flow_stepper)
+      call  TimestepperFinalizeRun(simulation%realization, &
+                                    simulation%surf_realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper, &
+                                    simulation%surf_flow_stepper)
+#else
+      call  TimestepperExecuteRun(simulation%realization, &
+                                  master_stepper, &
+                                  simulation%flow_stepper, &
+                                  simulation%tran_stepper)
+      call  TimestepperFinalizeRun(simulation%realization, &
+                                    master_stepper, &
+                                    simulation%flow_stepper, &
+                                    simulation%tran_stepper)
+#endif 
+    case(TIMESTEPPER_INIT_FAIL)
+    case(TIMESTEPPER_INIT_DONE)
+  end select
+
+end subroutine PFLOTRANRun
+#endif
 
 ! ************************************************************************** !
 !
@@ -87,6 +180,7 @@ end subroutine PFLOTRANInitializePostPETSc
 ! date: 06/07/13
 !
 ! ************************************************************************** !
+#ifdef PROCESS_MODEL
 subroutine PFLOTRANFinalize(option)
 
   use Option_module
@@ -101,6 +195,28 @@ subroutine PFLOTRANFinalize(option)
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif
+#else
+subroutine PFLOTRANFinalize(simulation,option)
+
+  use Simulation_module
+  use Regression_module
+  use Option_module
+
+  implicit none
+
+  type(simulation_type), pointer :: simulation
+  type(option_type) :: option
+
+  call RegressionOutput(simulation%regression,simulation%realization, &
+                        simulation%flow_stepper,simulation%tran_stepper)
+
+! Clean things up.
+  call SimulationDestroy(simulation)
+  call OptionEndTiming(option)
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    close(option%fid_out)
+  endif
+#endif
 
 end subroutine PFLOTRANFinalize
 

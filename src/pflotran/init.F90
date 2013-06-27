@@ -1016,7 +1016,6 @@ subroutine Init(simulation)
   call PetscLogEventEnd(logging%event_init,ierr)
 
 #if 0
-#ifdef PROCESS_MODEL
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
@@ -1203,7 +1202,6 @@ subroutine Init(simulation)
       call WaypointInsertInList(waypoint,simulation%synchronizer%waypoints)
    enddo
   endif
-#endif
 #endif
 #endif
 #endif

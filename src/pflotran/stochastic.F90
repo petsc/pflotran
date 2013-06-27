@@ -24,12 +24,12 @@ subroutine StochasticInit(stochastic,option)
 
 #ifdef PROCESS_MODEL
   use Simulation_Base_class
+  use Communicator_Base_module  
 #else
   use Simulation_module
 #endif
   use Option_module
   use Input_module
-  use Communicator_Base_module  
   
   implicit none
 
@@ -101,11 +101,11 @@ subroutine StochasticInit(stochastic,option)
     stochastic%num_realizations = 1
   endif
   
-<<<<<<< local
+#if PROCESS_MODEL
   call CommCreateProcessorGroups(option,stochastic%num_groups)
-=======
+#else
   call OptionCreateProcessorGroups(option,stochastic%num_groups)
->>>>>>> other
+#endif
   
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -203,7 +203,6 @@ subroutine StochasticRun(stochastic,option)
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
 
-  type(simulation_type), pointer :: simulation
   type(stepper_type), pointer :: master_stepper
   PetscInt :: irealization
 #ifdef PROCESS_MODEL  
@@ -211,7 +210,6 @@ subroutine StochasticRun(stochastic,option)
 #else
   type(simulation_type), pointer :: simulation
 #endif
-  type(stepper_type), pointer :: master_stepper
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: init_status
   PetscErrorCode :: ierr
@@ -251,39 +249,12 @@ subroutine StochasticRun(stochastic,option)
     call PFLOTRANRun(simulation,master_stepper,init_status)
     call PFLOTRANFinalize(simulation,option)
 
-<<<<<<< local
-    call SimulationDestroy(simulation)
-
-! PROCESS_MODEL
-#endif    
-  ! Final Time
-    call PetscTime(timex_wall(2), ierr)
-    
-    if (option%myrank == option%io_rank) then
-
-      if (option%print_to_screen) then
-        write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-          (timex_wall(2)-timex_wall(1))/3600.d0
-      endif
-      if (option%print_to_file) then
-        write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-          (timex_wall(2)-timex_wall(1))/3600.d0
-      endif
-    endif
-
-    if (option%myrank == option%io_rank .and. option%print_to_file) &
-      close(option%fid_out)
-=======
->>>>>>> other
     if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
       write(string,'(i6)') option%id
       print *, 'Finished with ' // trim(adjustl(string)), irealization, &
                ' of ', stochastic%num_local_realizations
     endif
+#endif
 
   enddo
   

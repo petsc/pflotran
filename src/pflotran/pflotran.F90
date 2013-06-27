@@ -47,7 +47,6 @@ program pflotran
   use Timestepper_module  
   use PFLOTRAN_Factory_module
   use Logging_module
-  use Communicator_Base_module
   
   implicit none
 
@@ -59,20 +58,37 @@ program pflotran
   type(stepper_type), pointer :: master_stepper
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: option_found
+  PetscBool :: bool_flag
   PetscInt :: init_status
   
   option => OptionCreate()
   call OptionInitMPI(option)
   call PFLOTRANInitializePrePETSc(option)
+
+  !geh: in the refactored code, this portion has been relocated to
+  !     subsurface_factory.F90.
+  string = '-multisimulation'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) then
+    option%subsurface_simulation_type = MULTISIMULATION_SIM_TYPE
+  endif
+
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) then
+    option%subsurface_simulation_type = STOCHASTIC_SIM_TYPE
+  endif
   
-  select case(option%simulation_type)
+  select case(option%subsurface_simulation_type)
     case(STOCHASTIC_SIM_TYPE)
       stochastic => StochasticCreate()
       ! PETSc initialized within StochasticInit()
       call StochasticInit(stochastic,option)
       call StochasticRun(stochastic,option)
     case(SUBSURFACE_SIM_TYPE,MULTISIMULATION_SIM_TYPE)
-      if (option%simulation_type == MULTISIMULATION_SIM_TYPE) then
+      if (option%subsurface_simulation_type == MULTISIMULATION_SIM_TYPE) then
         call InputReadFilenames(option,filenames)
         call OptionDivvyUpSimulations(option,filenames)
         deallocate(filenames)

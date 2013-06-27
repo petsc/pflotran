@@ -6,6 +6,7 @@ pflotran_test_dir = ../../regression_tests
 
 
 MYFLAGS = -I.
+MYFLAGS += -DPROCESS_MODEL
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
