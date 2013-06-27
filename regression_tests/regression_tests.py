@@ -100,9 +100,9 @@ class RegressionTest(object):
         message = "  {0} :\n".format(self.name())
         message += "    timeout = {0}\n".format(self._timeout)
         message += "    np = {0}\n".format(self._np)
-        message += "    executable args :\n"
-        message += "        input arg : {0}\n".format(self._input_arg)
-        message += "        input suffix : {0}\n".format(self._input_suffix)
+        message += "    pflotran args :\n"
+        message += "        input : {0}\n".format(self._input_arg)
+        message += "        optional : {0}\n".format(self._pflotran_args)
         message += "    test criteria :\n"
         for k in self._tolerance:
             message += "        {0} : {1} [{2}]\n".format(
@@ -112,12 +112,9 @@ class RegressionTest(object):
 
         return message
 
-    def setup(self, executable_args, default_criteria, test_data,
+    def setup(self, default_criteria, test_data,
               timeout, check_performance, testlog):
         self._test_name = test_data["name"]
-
-        if executable_args is not None:
-            self._set_executable_args(executable_args)
 
         self._set_test_data(default_criteria, test_data,
                             timeout, check_performance, testlog)
@@ -598,13 +595,6 @@ class RegressionTest(object):
 
         return previous, current, tolerance_type, tolerance
 
-    def _set_executable_args(self, executable_args):
-        if "input arg" in executable_args:
-            self._input_arg = executable_args["input arg"]
-
-        if "input suffix" in executable_args:
-            self._input_suffix = executable_args["input suffix"]
-
     def _set_test_data(self, default_criteria, test_data, timeout,
                        check_performance, testlog):
         """
@@ -708,7 +698,6 @@ class RegressionTestManager(object):
         self._debug = False
         self._file_status = TestStatus()
         self._config_filename = None
-        self._executable_args = None
         self._default_test_criteria = None
         self._available_tests = {}
         self._available_suites = {}
@@ -719,8 +708,6 @@ class RegressionTestManager(object):
     def __str__(self):
         data = "Regression Test Manager :\n"
         data += "    configuration file : {0}\n".format(self._config_filename)
-        data += "    executable_args :\n"
-        data += self._dict_to_string(self._executable_args)
         data += "    default test criteria :\n"
         data += self._dict_to_string(self._default_test_criteria)
         data += "    suites :\n"
@@ -940,8 +927,8 @@ class RegressionTestManager(object):
         """
         Read the configuration file.
 
-        Sections : The config file will have know sections:
-        "executable", "suites", "default-test-criteria".
+        Sections : The config file will have known sections:
+        "suites", "default-test-criteria".
 
         All other sections are assumed to be test names.
         """
@@ -950,10 +937,6 @@ class RegressionTestManager(object):
         self._config_filename = config_file
         config = config_parser.SafeConfigParser()
         config.read(self._config_filename)
-
-        if config.has_section("executable"):
-            self._executable_args = \
-                self._list_to_dict(config.items("executable"))
 
         if config.has_section("default-test-criteria"):
             self._default_test_criteria = \
@@ -970,8 +953,6 @@ class RegressionTestManager(object):
         test_names = config.sections()
 
         # remove the fixed section names
-        if config.has_section("executable"):
-            test_names.remove("executable")
         if config.has_section("default-test-criteria"):
             test_names.remove("default-test-criteria")
         if config.has_section("suites"):
@@ -1072,9 +1053,9 @@ class RegressionTestManager(object):
         for t in all_tests:
             try:
                 test = RegressionTest()
-                test.setup(self._executable_args, self._default_test_criteria,
-                           self._available_tests[t], timeout, check_performance,
-                           testlog)
+                test.setup(self._default_test_criteria,
+                           self._available_tests[t], timeout,
+                           check_performance, testlog)
                 self._tests.append(test)
             except Exception as e:
                 raise Exception("ERROR : could not create test '{0}' from "
