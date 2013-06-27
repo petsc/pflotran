@@ -19,9 +19,9 @@ import time
 import traceback
 
 if sys.version_info[0] == 2:
-    import ConfigParser as config_parser
+    from ConfigParser import SafeConfigParser as config_parser
 else:
-    import configparser as config_parser
+    from configparser import ConfigParser as config_parser
 
 
 class TestStatus(object):
@@ -113,6 +113,14 @@ class RegressionTest(object):
 
     def setup(self, default_criteria, test_data,
               timeout, check_performance, testlog):
+        """
+        Setup the test object
+
+        default_criteria - dict from cfg file
+        test_data - dict from cfg file
+        timeout - list(?) from command line option
+        check_performance - bool from command line option
+        """
         self._test_name = test_data["name"]
 
         self._set_test_data(default_criteria, test_data,
@@ -210,9 +218,11 @@ class RegressionTest(object):
                     name=self.name(), status=pflotran_status))
             print("".join(['\n', message, '\n']), file=testlog)
             print("~~~~~ {0}.stdout ~~~~~".format(self.name()), file=testlog)
-            shutil.copyfileobj(open("{0}.stdout".format(self.name()), 'r'), testlog)
+            with open("{0}.stdout".format(self.name()), 'r') as tempfile:
+                shutil.copyfileobj(tempfile, testlog)
             print("~~~~~ {0}.out ~~~~~".format(self.name()), file=testlog)
-            shutil.copyfileobj(open("{0}.out".format(self.name()), 'r'), testlog)
+            with open("{0}.out".format(self.name()), 'r') as tempfile:
+                shutil.copyfileobj(tempfile, testlog)
             print("~~~~~~~~~~", file=testlog)
 
     def check(self, status, testlog):
@@ -294,8 +304,13 @@ class RegressionTest(object):
         # compare common sections
         for section in gold_sections:
             if section in current_sections:
-                self._num_failed += self._compare_sections(gold_sections[section],
-                                                           current_sections[section], testlog)
+                try:
+                    self._num_failed += self._compare_sections(
+                        gold_sections[section], current_sections[section],
+                        testlog)
+                except Exception as error:
+                    self._num_failed += 1
+                    print(error, file=testlog)
 
         if self._num_failed > 0:
             status.fail = 1
@@ -414,6 +429,11 @@ class RegressionTest(object):
         """
         Compare the fields of the current section.
         """
+        if gold_section["name"] != current_section["name"]:
+            raise Exception("ERROR: an internal error occured. "
+                            "compare_sections receive different sections. "
+                            "gold = '{0}' current = '{1}'".format(
+                                gold_section["name"], current_section["name"]))
         name = gold_section['name']
         data_type = gold_section['type']
         section_status = 0
@@ -500,10 +520,9 @@ class RegressionTest(object):
             previous, current, tolerance_type, tolerance = \
                 self._compare_discrete(name, previous, current)
         else:
-            # should be an error? We'll fail anyway in the checks
-            # because nothing is set.
-            print("WARNING: the data caterogy '{0}' for '{1}' is not a known "
-                  "data category.".format(key, name), file=testlog)
+            raise Exception(
+                "WARNING: the data caterogy '{0}' for '{1}' is not a known "
+                  "data category.".format(key, name))
 
         if tolerance_type == self._ABSOLUTE:
             delta = abs(previous - current)
@@ -519,6 +538,7 @@ class RegressionTest(object):
             if tolerance_type == self._PERCENT:
                 delta *= 100.0
         else:
+            # should never get here....
             raise Exception("ERROR: unknown test tolerance_type '{0}' for "
                             "variable '{1}, {2}.'".format(tolerance_type,
                                                           name, key))
@@ -595,8 +615,20 @@ class RegressionTest(object):
         mean_re = re.compile("Mean")
         have_mean = mean_re.search(name)
         if not have_mean:
-            previous = int(previous)
-            current = int(current)
+            # previous and current must both be ints...
+            try:
+                previous = int(previous)
+            except ValueError:
+                raise Exception(
+                    "ERROR: discrete gold value must be an int: '{0}' = {1}.".format(
+                        name, previous))
+            try:
+                current = int(current)
+            except ValueError:
+                raise Exception(
+                    "ERROR: discrete current value must be an int: '{0}' = {1}.".format(
+                        name, current))
+
             tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
             tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
         else:
@@ -622,11 +654,16 @@ class RegressionTest(object):
             if "-stochastic" in self._pflotran_args:
                 if "-num_realizations" in self._pflotran_args:
                     index = self._pflotran_args.index("-num_realizations")
-                    self._stochastic_realizations = int(self._pflotran_args[index + 1])
+                    if len(self._pflotran_args) > index + 1:
+                        self._stochastic_realizations = int(self._pflotran_args[index + 1])
+                    else:
+                        raise Exception(
+                            "ERROR: num_realizations requires an integer parameter N")
                 else:
-                    raise Exception("ERROR : stochastic simulations require a "
-                                    "num_realizations flag as well. "
-                                    "test : {0}".format(self.name()))
+                    raise Exception(
+                        "ERROR : stochastic simulations require a "
+                        "num_realizations flag as well. "
+                        "test : {0}".format(self.name()))
 
         self._check_performance = check_performance
 
@@ -978,7 +1015,7 @@ class RegressionTestManager(object):
         if config_file is None:
             raise Exception("Error, must provide a config filename")
         self._config_filename = config_file
-        config = config_parser.SafeConfigParser()
+        config = config_parser()
         config.read(self._config_filename)
 
         if config.has_section("default-test-criteria"):
@@ -1439,8 +1476,11 @@ def append_command_to_log(command, testlog, tempfile):
         subprocess.call(command, shell=False,
                         stdout=tempinfo,
                         stderr=subprocess.STDOUT)
-        time.sleep(0.5)
-    shutil.copyfileobj(open(tempfile, 'r'), testlog)
+        # NOTE(bja) 2013-06 : need a short sleep to ensure the
+        # contents get written...?
+        time.sleep(0.01)
+    with open(tempfile, 'r') as tempinfo:
+        shutil.copyfileobj(tempinfo, testlog)
 
 
 def setup_testlog(txtwrap):
@@ -1515,6 +1555,8 @@ def main(options):
     txtwrap = textwrap.TextWrapper(width=78, subsequent_indent=4*" ")
     testlog = setup_testlog(txtwrap)
 
+    root_dir = os.getcwd()
+
     check_options(options)
     executable = check_for_executable(options)
     mpiexec = check_for_mpiexec(options, testlog)
@@ -1576,6 +1618,7 @@ def main(options):
                                    testlog)
 
             report[filename] = test_manager.run_status()
+            os.chdir(root_dir)
         except Exception as error:
             message = txtwrap.fill(
                 "ERROR: a problem occured in file '{0}'.  This is "
