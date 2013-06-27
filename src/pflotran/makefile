@@ -194,13 +194,6 @@ mode_aux_obj = \
 	${common_src}immis_aux.o \
 	${common_src}miscible_aux.o \
 	${common_src}mphase_aux.o \
-        ${common_src}process_model_base.o \
-        ${common_src}process_model_richards.o \
-        ${common_src}process_model_rt.o \
-        ${common_src}process_model_surface_flow.o \
-        ${common_src}process_model_top.o \
-        ${common_src}process_model_th.o \
-        ${common_src}process_model_thc.o \
 	${common_src}richards_aux.o \
 	${common_src}th_aux.o \
 	${common_src}thc_aux.o \
@@ -250,7 +243,6 @@ chem_obj = \
 
 grid_obj = \
 	${common_src}connection.o \
-	${common_src}communicator_base.o \
 	${common_src}discretization.o \
 	${common_src}dm_kludge.o \
 	${common_src}general_grid.o \
@@ -258,11 +250,9 @@ grid_obj = \
 	${common_src}mfd.o \
 	${common_src}mfd_aux.o \
 	${common_src}unstructured_cell.o \
-	${common_src}unstructured_communicator.o \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
-	${common_src}structured_communicator.o \
 	${common_src}structured_grid.o 
 
 relations_obj = \
@@ -315,8 +305,6 @@ misc_obj = \
 	${common_src}observation.o \
 	${common_src}patch.o \
 	${common_src}pflotran_factory.o \
-	${common_src}pmc_base.o \
-	${common_src}pmc_subsurface.o \
 	${common_src}realization.o \
 	${common_src}realization_base.o \
 	${common_src}region.o \
@@ -324,12 +312,12 @@ misc_obj = \
 	${common_src}secondary_continuum_aux.o\
 	${common_src}secondary_continuum.o \
 	${common_src}simulation.o \
-	${common_src}simulation_new.o \
-	${common_src}subsurface_simulation.o \
 	${common_src}solver.o \
 	${common_src}spline.o \
+	${common_src}stochastic.o \
+	${common_src}stochastic_aux.o \
 	${common_src}strata.o \
-	${common_src}timestepper_new.o \
+	${common_src}timestepper.o \
 	${common_src}transport.o \
 	${common_src}uniform_velocity.o \
 	${common_src}waypoint.o 
@@ -354,7 +342,7 @@ surface_obj = \
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
 	$(relations_obj) $(properties_obj) $(dataset_obj) \
-	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran_new.o
+	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
 
 pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
@@ -396,7 +384,6 @@ co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
 co2_sw_rtsafe.o :
 co2eos.o :
-communicator_base.o : discretization.o dm_kludge.o option.o
 condition.o : constraint.o dataset_base.o dataset_common_hdf5.o dataset_map.o \
               dataset_xyz.o general_aux.o global_aux.o hdf5_aux.o input.o \
               logging.o option.o reaction_aux.o string.o time_series.o \
@@ -499,7 +486,7 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          simulation.o solid_solution.o solver.o strata.o string.o \
          structured_grid.o surface_field.o surface_flow.o surface_global.o \
          surface_init.o surface_realization.o surface_th.o th.o thc.o thmc.o \
-         timestepper_new.o uniform_velocity.o units.o unstructured_grid.o \
+         timestepper.o uniform_velocity.o units.o unstructured_grid.o \
          unstructured_grid_aux.o variables.o water_eos.o waypoint.o
 input.o : option.o string.o
 level.o : patch.o
@@ -642,8 +629,7 @@ realization_base.o : debug.o discretization.o field.o input.o level.o \
 region.o : geometry.o input.o logging.o option.o string.o structured_grid.o \
            unstructured_cell.o utility.o
 regression.o : discretization.o grid.o input.o option.o output.o output_aux.o \
-               output_common.o realization.o string.o timestepper_new.o \
-               utility.o
+               output_common.o realization.o string.o timestepper.o utility.o
 richards.o : connection.o coupler.o debug.o discretization.o field.o \
              global_aux.o grid.o logging.o material.o matrix_buffer.o option.o \
              output_aux.o patch.o realization.o realization_base.o \
@@ -672,9 +658,7 @@ secondary_continuum.o : block_solve.o block_tridiag.o condition.o constraint.o \
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : general.o option.o reactive_transport.o realization.o \
                regression.o richards.o solver.o surface_realization.o \
-               timestepper_new.o
-simulation_new.o : logging.o option.o output.o output_aux.o pmc_base.o \
-                   waypoint.o
+               timestepper.o
 solid_solution.o : input.o mineral.o mineral_aux.o option.o reaction_aux.o \
                    solid_solution_aux.o string.o utility.o
 solid_solution_aux.o : mineral_aux.o
@@ -685,12 +669,7 @@ stochastic.o : init.o input.o logging.o option.o pflotran_factory.o \
 stochastic_aux.o : input.o option.o simulation.o
 strata.o : input.o material.o option.o region.o string.o surface_material.o
 string.o :
-structured_communicator.o : communicator_base.o dm_kludge.o structured_grid.o
 structured_grid.o : connection.o input.o option.o string.o
-subsurface_simulation.o : general.o logging.o option.o output.o pmc_base.o \
-                          pmc_subsurface.o reactive_transport.o realization.o \
-                          regression.o richards.o simulation_new.o \
-                          timestepper_new.o
 surface_auxiliary.o : surface_global_aux.o surface_th_aux.o
 surface_checkpoint.o : discretization.o grid.o option.o output_aux.o \
                        surface_field.o surface_realization.o
@@ -752,17 +731,21 @@ thmc.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
 thmc_aux.o : global_aux.o option.o saturation_function.o water_eos.o
 time_series.o : option.o
 time_storage.o : option.o
-timestepper_new.o : convergence.o input.o option.o output.o \
-                    process_model_base.o process_model_surface_flow.o solver.o \
-                    string.o utility.o waypoint.o
+timestepper.o : checkpoint.o condition_control.o convergence.o \
+                discretization.o field.o flash2.o general.o global.o \
+                global_aux.o grid.o immis.o input.o level.o logging.o \
+                miscible.o mphase.o option.o output.o output_aux.o \
+                output_surface.o patch.o reaction.o reaction_aux.o \
+                reactive_transport.o reactive_transport_aux.o realization.o \
+                richards.o secondary_continuum_aux.o solver.o string.o \
+                surface_checkpoint.o surface_field.o surface_flow.o \
+                surface_realization.o surface_th.o th.o thc.o thmc.o utility.o \
+                waypoint.o
 transport.o : global_aux.o matrix_block_aux.o option.o \
               reactive_transport_aux.o
 uniform_velocity.o : input.o logging.o option.o string.o units.o utility.o
 units.o : option.o
 unstructured_cell.o : option.o utility.o
-unstructured_communicator.o : communicator_base.o dm_kludge.o \
-                              unstructured_explicit.o unstructured_grid.o \
-                              unstructured_grid_aux.o
 unstructured_explicit.o : connection.o geometry.o input.o option.o string.o \
                           unstructured_grid_aux.o utility.o
 unstructured_grid.o : connection.o geometry.o hdf5_aux.o input.o option.o \

@@ -47,7 +47,6 @@ program pflotran
   use Timestepper_module  
   use PFLOTRAN_Factory_module
   use Logging_module
-  use Communicator_Base_module
   
   implicit none
 

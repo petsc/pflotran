@@ -89,6 +89,8 @@ subroutine PFLOTRANInitializePostPETSc(option)
 subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
                                        init_status)
 
+  use Simulation_module
+  use Timestepper_module
   use Option_module
   use Init_module
 
@@ -196,6 +198,8 @@ subroutine PFLOTRANFinalize(option)
 #else
 subroutine PFLOTRANFinalize(simulation,option)
 
+  use Simulation_module
+  use Regression_module
   use Option_module
   implicit none
 
@@ -208,7 +212,6 @@ subroutine PFLOTRANFinalize(simulation,option)
 ! Clean things up.
   call SimulationDestroy(simulation)
   call OptionEndTiming(option)
-  call LoggingDestroy()
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif
