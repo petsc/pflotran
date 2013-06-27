@@ -1589,7 +1589,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
   call density(option%reference_temperature,option%reference_pressure,den)
 
   call GridVecGetArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%flow_xx_loc,hw_p,ierr)
+  call GridVecGetArrayF90(surf_grid,surf_field%flow_xx,hw_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%flux_subsurf_2_surf,vol_p,ierr)
@@ -1701,7 +1701,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
   call GridVecRestoreArrayF90(surf_grid,surf_field%flux_subsurf_2_surf,vol_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)  
   call GridVecRestoreArrayF90(surf_grid,surf_field%icap_loc,icap_loc_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx_loc,hw_p,ierr)
+  call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx,hw_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
 
 end subroutine SurfaceFlowSurf2SubsurfFlux
