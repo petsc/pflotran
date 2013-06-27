@@ -1,0 +1,173 @@
+:Description: 1D microbial degradation problem without biomass
+
+:=========================== regression =======================================
+REGRESSION
+:  CELLS_PER_PROCESS 5
+  CELLS
+    1
+    20 
+    25 
+    30 
+    35 
+    40 
+    45 
+    50 
+    55 
+    60 
+    65 
+    70 
+    75 
+    80 
+    100
+  /
+END
+
+:=========================== flow mode ========================================
+: Uniform velocity (see below). No flow mode specified.
+
+:=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+    B(aq)
+    C(aq)
+  /
+  MICROBIAL_REACTION
+    REACTION A(aq) + 2 B(aq) <-> 1.5 C(aq)
+    RATE_CONSTANT 1.d-12
+    MONOD A(aq) 1.d-5        ! A is the donor
+    MONOD B(aq) 1.d-4        ! B is the acceptor
+    INHIBITION C(aq) 6.d-4   ! C is the product and inhibits when too high
+  /
+  DATABASE ../../../database/hanford.dat
+  OPERATOR_SPLIT
+:  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS OFF
+  OUTPUT
+    all
+  /
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+:=========================== output options ===================================
+OUTPUT
+:  TIMES y 5. 10. 15. 20.
+  FORMAT TECPLOT POINT
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 25.d0 y            ! A(aq) at 50m midpoint
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE east
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION inlet
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 inlet
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    A(aq) 1.d-7  T
+    B(aq) 1.d-7  T
+    C(aq) 1.d-7  T
+  /
+END
+
+CONSTRAINT inlet
+  CONCENTRATIONS
+    A(aq) 1.d-4  T
+    B(aq) 1.d-3  T
+    C(aq) 1.d-7  T
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION outlet
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+BOUNDARY_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION west
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+
