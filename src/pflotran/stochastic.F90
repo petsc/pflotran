@@ -22,12 +22,7 @@ contains
 ! ************************************************************************** !
 subroutine StochasticInit(stochastic,option)
 
-#ifdef PROCESS_MODEL
-  use Simulation_Base_class
-  use Communicator_Base_module  
-#else
   use Simulation_module
-#endif
   use Option_module
   use Input_module
   
@@ -101,11 +96,7 @@ subroutine StochasticInit(stochastic,option)
     stochastic%num_realizations = 1
   endif
   
-#if PROCESS_MODEL
-  call CommCreateProcessorGroups(option,stochastic%num_groups)
-#else
   call OptionCreateProcessorGroups(option,stochastic%num_groups)
-#endif
   
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -184,11 +175,7 @@ end subroutine StochasticReadCardFromInput
 ! ************************************************************************** !
 subroutine StochasticRun(stochastic,option)
 
-#ifdef PROCESS_MODEL
-  use Simulation_Base_class
-#else
   use Simulation_module
-#endif
   use Realization_class
   use Timestepper_module
   use Option_module
@@ -205,11 +192,7 @@ subroutine StochasticRun(stochastic,option)
 
   type(stepper_type), pointer :: master_stepper
   PetscInt :: irealization
-#ifdef PROCESS_MODEL  
-  class(simulation_base_type), pointer :: simulation
-#else
   type(simulation_type), pointer :: simulation
-#endif
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: init_status
   PetscErrorCode :: ierr
@@ -220,7 +203,6 @@ subroutine StochasticRun(stochastic,option)
 
   do irealization = 1, stochastic%num_local_realizations
 
-#ifndef PROCESS_MODEL  
     call OptionInitRealization(option)
 
     ! Set group prefix based on id
@@ -250,8 +232,6 @@ subroutine StochasticRun(stochastic,option)
     call PFLOTRANFinalize(simulation,option)
 
     call SimulationDestroy(simulation)
-
-#endif    
 
   enddo
   

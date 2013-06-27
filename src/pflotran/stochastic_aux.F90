@@ -1,11 +1,6 @@
 module Stochastic_Aux_module
 
-#ifdef PROCESS_MODEL
-  use Simulation_Base_class
-  use Subsurface_Simulation_class
-#else
   use Simulation_module
-#endif
 
   implicit none
   
@@ -18,11 +13,7 @@ module Stochastic_Aux_module
     PetscInt :: num_realizations
     PetscInt :: num_local_realizations
     PetscInt, pointer :: realization_ids(:)
-#ifdef PROCESS_MODEL    
-    class(simulation_base_type), pointer :: simulation
-#else
     type(simulation_type), pointer :: simulation
-#endif
   end type stochastic_type
   
   public :: StochasticCreate, &
@@ -115,9 +106,7 @@ subroutine StochasticDestroy(stochastic)
   if (.not.associated(stochastic)) return
   
   if (associated(stochastic%simulation)) then
-#ifndef PROCESS_MODEL    
     call SimulationDestroy(stochastic%simulation)
-#endif    
     nullify(stochastic%simulation)
   endif
   
