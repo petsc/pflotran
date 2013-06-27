@@ -211,12 +211,7 @@ subroutine RunToTime(this,target_time)
   
   call printMsg(this%option,'RunToTime()')
   
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    call cur_process_model_coupler%RunTo(target_time,this%stop_flag)
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
+  call this%process_model_coupler_list%RunTo(target_time,this%stop_flag)
 
 end subroutine RunToTime
 

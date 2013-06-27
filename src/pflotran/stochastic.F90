@@ -30,6 +30,7 @@ subroutine StochasticInit(stochastic,option)
 #endif
   use Option_module
   use Input_module
+  use Communicator_Base_module  
   
   implicit none
 
@@ -249,6 +250,31 @@ subroutine StochasticRun(stochastic,option)
     call PFLOTRANRun(simulation,master_stepper,init_status)
     call PFLOTRANFinalize(simulation,option)
 
+    call SimulationDestroy(simulation)
+
+! PROCESS_MODEL
+#endif    
+  ! Final Time
+    call PetscTime(timex_wall(2), ierr)
+    
+    if (option%myrank == option%io_rank) then
+
+      if (option%print_to_screen) then
+        write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
+          (timex_wall(2)-timex_wall(1))/3600.d0
+      endif
+      if (option%print_to_file) then
+        write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
+          (timex_wall(2)-timex_wall(1))/3600.d0
+      endif
+    endif
+
+    if (option%myrank == option%io_rank .and. option%print_to_file) &
+      close(option%fid_out)
     if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
       write(string,'(i6)') option%id
       print *, 'Finished with ' // trim(adjustl(string)), irealization, &
