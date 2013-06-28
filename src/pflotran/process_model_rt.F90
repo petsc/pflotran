@@ -44,7 +44,7 @@ module Process_Model_RT_class
     procedure, public :: CheckUpdatePre => PMRTCheckUpdatePre
     procedure, public :: CheckUpdatePost => PMRTCheckUpdatePost
     procedure, public :: TimeCut => PMRTTimeCut
-    procedure, public :: UpdateSolution => PMRTUpdateSolution
+    procedure, public :: UpdateSolution => PMRTUpdateSolution1
     procedure, public :: MaxChange => PMRTMaxChange
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: SetTranWeights => SetTranWeights
@@ -420,7 +420,8 @@ recursive subroutine PMRTInitializeRun(this)
   endif
 #endif  
   
-  call RTUpdateEquilibriumState(this%realization)
+  ! pass PETSC_FALSE to turn off update of kinetic state variables
+  call PMRTUpdateSolution2(this,PETSC_FALSE)
   
 #if 0
   if (this%option%jumpstart_kinetic_sorption .and. &
@@ -608,15 +609,15 @@ subroutine PMRTTimeCut(this)
   call RTTimeCut(this%realization)
 
 end subroutine PMRTTimeCut
-    
+
 ! ************************************************************************** !
 !
-! PMRTUpdateSolution: 
+! PMRTUpdateSolution1: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMRTUpdateSolution(this)
+subroutine PMRTUpdateSolution1(this)
 
   use Reactive_Transport_module
   use Condition_module
@@ -625,6 +626,28 @@ subroutine PMRTUpdateSolution(this)
   implicit none
   
   class(pm_rt_type) :: this
+                                ! update kinetics
+  call PMRTUpdateSolution2(this,PETSC_TRUE)
+  
+end subroutine PMRTUpdateSolution1
+
+! ************************************************************************** !
+!
+! PMRTUpdateSolution2: 
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+subroutine PMRTUpdateSolution2(this, update_kinetics)
+
+  use Reactive_Transport_module
+  use Condition_module
+  use Mass_Transfer_module
+
+  implicit none
+  
+  class(pm_rt_type) :: this
+  PetscBool :: update_kinetics
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateSolution()')
@@ -640,7 +663,8 @@ subroutine PMRTUpdateSolution(this)
   ! end from RealizationUpdate()
   ! The update of status must be in this order!
   call RTUpdateEquilibriumState(this%realization)
-  call RTUpdateKineticState(this%realization)
+  if (update_kinetics) &
+    call RTUpdateKineticState(this%realization)
   if (this%realization%reaction%update_porosity .or. &
       this%realization%reaction%update_tortuosity .or. &
       this%realization%reaction%update_permeability .or. &
@@ -657,7 +681,7 @@ subroutine PMRTUpdateSolution(this)
     call RTUpdateMassBalance(this%realization)
   endif  
 
-end subroutine PMRTUpdateSolution     
+end subroutine PMRTUpdateSolution2     
 
 ! ************************************************************************** !
 !
