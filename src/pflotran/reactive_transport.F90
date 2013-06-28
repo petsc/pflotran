@@ -595,9 +595,6 @@ subroutine RTUpdateEquilibriumState(realization)
   
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  if (option%use_mc) then
-    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
-  endif
 
   ! update:                             cells      bcs         act. coefs.
   call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
@@ -626,6 +623,7 @@ subroutine RTUpdateEquilibriumState(realization)
 
   ! update secondary continuum variables
   if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -679,6 +677,9 @@ subroutine RTUpdateKineticState(realization)
   reaction => realization%reaction
   grid => patch%grid
 
+  rt_aux_vars => patch%aux%RT%aux_vars
+  global_aux_vars => patch%aux%Global%aux_vars
+
   ! update mineral volume fractions, multirate sorption concentrations, 
   ! kinetic sorption concentration etc.  These updates must take place
   ! within reaction so that auxiliary variables are updated when only
@@ -698,6 +699,7 @@ subroutine RTUpdateKineticState(realization)
   
   ! update secondary continuum variables
   if (option%use_mc) then
+    rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
