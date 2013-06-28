@@ -67,7 +67,9 @@ program pflotran
   end select
   call simulation%InitializeRun()
 
-  call simulation%ExecuteRun()
+  if (option%status == PROCEED) then
+    call simulation%ExecuteRun()
+  endif
 
   call simulation%FinalizeRun()
   call simulation%Strip()

@@ -29,7 +29,8 @@ module Secondary_Continuum_module
             THSecHeatAuxVarCompute, &
             MphaseSecHeatAuxVarCompute, &
             SecondaryRTUpdateIterate, &
-            SecondaryRTUpdateTimestep, &
+            SecondaryRTUpdateEquilState, &
+            SecondaryRTUpdateKineticState, &
             SecondaryRTTimeCut
 
 contains
@@ -1333,20 +1334,19 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
       
 end subroutine SecondaryRTUpdateIterate
 
-
 ! ************************************************************************** !
 !
-! SecondaryRTUpdateTimestep: Updates the secondary continuum variables 
+! SecondaryRTUpdateEquilState: Updates the equilibrium secondary continuum 
+!                              variables 
 ! at the end of time step
-! author: Satish Karra, LANL
-! date: 02/22/13
+! author: Satish Karra, LANL; Glenn Hammond (modification)
+! date: 02/22/13; 06/27/13
 !
 ! ************************************************************************** !
-subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
-                                     reaction,porosity,option) 
+subroutine SecondaryRTUpdateEquilState(sec_transport_vars,global_aux_vars, &
+                                       reaction,option) 
                                      
 
-  use Realization_class
   use Option_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
@@ -1356,21 +1356,15 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
   implicit none
   
 
-  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(sec_transport_type) :: sec_transport_vars
   type(global_auxvar_type) :: global_aux_vars
   type(reaction_type), pointer :: reaction
-  PetscReal :: porosity
   PetscInt :: ngcells,ncomp
-  PetscReal :: vol(sec_transport_vars%ncells)
-  PetscReal :: res_react(reaction%naqcomp)
-  PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: i,j
   
   ngcells = sec_transport_vars%ncells
   ncomp = reaction%naqcomp
-  vol = sec_transport_vars%vol     
                    
   do j = 1, ncomp
     do i = 1, ngcells
@@ -1379,11 +1373,51 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
     enddo
   enddo
     
-  res_react = 0.d0
-  jac_react = 0.d0 ! These are not used anyway
   do i = 1, ngcells
     call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_aux_vars, &
                 reaction,option)
+  enddo
+  
+end subroutine SecondaryRTUpdateEquilState
+
+! ************************************************************************** !
+!
+! SecondaryRTUpdateKineticState: Updates the kinetic secondary continuum 
+!                                variables at the end of time step
+! author: Satish Karra, LANL; Glenn Hammond (modification)
+! date: 02/22/13; 06/27/13
+!
+! ************************************************************************** !
+subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
+                                         reaction,porosity,option) 
+                                     
+
+  use Option_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Reaction_module
+  use Global_Aux_module
+ 
+  implicit none
+  
+
+  type(option_type), pointer :: option
+  type(sec_transport_type) :: sec_transport_vars
+  type(global_auxvar_type) :: global_aux_vars
+  type(reaction_type), pointer :: reaction
+  PetscReal :: porosity
+  PetscInt :: ngcells
+  PetscReal :: vol(sec_transport_vars%ncells)
+  PetscReal :: res_react(reaction%naqcomp)
+  PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
+  PetscInt :: i,j
+  
+  ngcells = sec_transport_vars%ncells
+  vol = sec_transport_vars%vol     
+                   
+  res_react = 0.d0
+  jac_react = 0.d0 ! These are not used anyway
+  do i = 1, ngcells
     call RReaction(res_react,jac_react,PETSC_FALSE, &
                    sec_transport_vars%sec_rt_auxvar(i), &
                    global_aux_vars,porosity,vol(i),reaction,option)
@@ -1404,7 +1438,7 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
   endif
 
   
-end subroutine SecondaryRTUpdateTimestep
+end subroutine SecondaryRTUpdateKineticState
 
 ! ************************************************************************** !
 !

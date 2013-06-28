@@ -4017,21 +4017,27 @@ end subroutine StepperUpdateSurfaceFlowSolution
 subroutine StepperUpdateTransportSolution(realization)
 
   use Realization_class
-  use Reactive_Transport_module, only : RTUpdateSolution
-
+  use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
+                                        RTUpdateKineticState, &
+                                        RTUpdateMassBalance
   implicit none
 
   type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   
-  call RTUpdateSolution(realization)
+  call RTUpdateEquilibriumState(realization)
+  call RTUpdateKineticState(realization)
   if (realization%reaction%update_porosity .or. &
       realization%reaction%update_tortuosity .or. &
       realization%reaction%update_permeability .or. &
       realization%reaction%update_mineral_surface_area) then
     call RealizationUpdateProperties(realization)
   endif
+  
+  if (realization%option%compute_mass_balance_new) then
+    call RTUpdateMassBalance(realization)
+  endif  
 
 end subroutine StepperUpdateTransportSolution
 

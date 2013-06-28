@@ -62,7 +62,6 @@ subroutine SubsurfaceInitializePostPETSc(simulation, option)
   type(option_type), pointer :: option
   
   type(simulation_type), pointer :: simulation_old
-  PetscInt :: init_status
   
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
@@ -72,7 +71,7 @@ subroutine SubsurfaceInitializePostPETSc(simulation, option)
   call HighjackSimulation(simulation_old,simulation)
   ! no longer need simulation
   deallocate(simulation_old)
-  call SubsurfaceJumpStart(simulation,init_status)
+  call SubsurfaceJumpStart(simulation)
   
 end subroutine SubsurfaceInitializePostPETSc
 
@@ -279,7 +278,7 @@ end subroutine HighjackSimulation
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine SubsurfaceJumpStart(simulation, init_status)
+subroutine SubsurfaceJumpStart(simulation)
 
   use Realization_class
   use Option_module
@@ -293,7 +292,6 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
   implicit none
 
   type(subsurface_simulation_type) :: simulation
-  PetscInt :: init_status
   
   class(realization_type), pointer :: realization
   type(stepper_type), pointer :: master_stepper
@@ -327,8 +325,6 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
   option => realization%option
   output_option => realization%output_option
 
-  init_status = TIMESTEPPER_INIT_PROCEED
-
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr)
                              
@@ -339,7 +335,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
 #endif    
     ! do not want to run through time stepper
-    init_status = TIMESTEPPER_INIT_DONE
+    option%status = DONE
     return 
   endif
   
@@ -374,7 +370,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
           if (OptionPrintToFile(option)) then
             write(option%fid_out,*) ' ERROR: steady state solve failed!!!'
           endif
-          init_status = TIMESTEPPER_INIT_FAIL
+          option%status = FAIL
           return 
         endif
         option%flow_dt = master_stepper%dt_min
@@ -412,9 +408,11 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
   if (associated(simulation%flow_process_model_coupler)) then
     call simulation%flow_process_model_coupler%UpdateSolution()
   endif
-  if (associated(simulation%rt_process_model_coupler)) then
-    call simulation%rt_process_model_coupler%UpdateSolution()
-  endif
+ 
+!geh: now performed in PMRTInitializeRun()
+!  if (associated(simulation%rt_process_model_coupler)) then
+!    call simulation%rt_process_model_coupler%UpdateSolution()
+!  endif
 
   if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
@@ -430,7 +428,6 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
   
   ! pushed in Init()
   call PetscLogStagePop(ierr)
-  option%init_stage = PETSC_FALSE
 
   ! popped in TimeStepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
@@ -445,7 +442,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
                        'has been met.  Stopping....'  
     call printMsg(option)
     call printMsg(option,'')
-    init_status = TIMESTEPPER_INIT_DONE
+    option%status = DONE
     return
   endif
 
@@ -469,7 +466,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
                        'has been met.  Stopping....'  
     call printMsg(option)
     call printMsg(option,'') 
-    init_status = TIMESTEPPER_INIT_DONE
+    option%status = DONE
     return
   endif
 
@@ -481,7 +478,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
       option%io_buffer = &
         'Null flow waypoint list; final time likely equal to start time.'
       call printMsg(option)
-      init_status = TIMESTEPPER_INIT_FAIL
+      option%status = FAIL
       return
     else
       flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
@@ -493,7 +490,7 @@ subroutine SubsurfaceJumpStart(simulation, init_status)
         'Null transport waypoint list; final time likely equal to start ' // &
         'time or simulation time needs to be extended on a restart.'
       call printMsg(option)
-      init_status = TIMESTEPPER_INIT_FAIL
+      option%status = FAIL
       return
     else
       tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max

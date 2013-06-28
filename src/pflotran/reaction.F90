@@ -60,7 +60,7 @@ module Reaction_module
             RTPrintAuxVar, &
             ReactionInterpolateLogK_hpt, &
             ReactionInitializeLogK_hpt, &
-            RUpdateSolution, &
+            RUpdateKineticState, &
             RUpdateTempDependentCoefs
 
 contains
@@ -4886,12 +4886,13 @@ end subroutine RCalculateCompression
 
 ! ************************************************************************** !
 !
-! RUpdateSolution: Updates secondary variables such as mineral vol frac, etc.
+! RUpdateKineticState: Updates state variables such as mineral vol frac, 
+!                      etc.
 ! author: Glenn Hammond
 ! date: 01/24/13
 !
 ! ************************************************************************** !
-subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
+subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
 
@@ -4980,7 +4981,7 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
     enddo
   endif  
 
-end subroutine RUpdateSolution
+end subroutine RUpdateKineticState
 
 ! ************************************************************************** !
 !

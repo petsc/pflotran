@@ -9,10 +9,6 @@ module Timestepper_module
   private
   
 #include "definitions.h"
-
-  PetscInt, parameter, public :: TIMESTEPPER_INIT_PROCEED = 0
-  PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1
-  PetscInt, parameter, public :: TIMESTEPPER_INIT_FAIL = 2
  
   type, public :: stepper_type
   

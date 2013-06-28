@@ -219,4 +219,10 @@ PetscInt, parameter :: LSM_FLUX       = 1
 PetscInt, parameter :: PRINT_SEC_TEMP =           0
 PetscInt, parameter :: PRINT_SEC_CONC =           1
 PetscInt, parameter :: PRINT_SEC_MIN_VOLFRAC =    2
+
+
+PetscInt, parameter :: PROCEED = 0
+PetscInt, parameter :: DONE = 1
+PetscInt, parameter :: FAIL = 2
+
 #define HASH

@@ -133,7 +133,6 @@ subroutine InitializeRun(this)
   
   ! pushed in Init()
   call PetscLogStagePop(ierr)
-  this%option%init_stage = PETSC_FALSE
 
   ! popped in FinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)

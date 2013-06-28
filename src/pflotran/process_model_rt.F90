@@ -402,7 +402,7 @@ end subroutine PMRTUpdateTimestep
 ! ************************************************************************** !
 recursive subroutine PMRTInitializeRun(this)
 
-  use Reactive_Transport_module, only : RTUpdateSolution, &
+  use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
                                         RTJumpStartKineticSorption
 
   implicit none
@@ -420,10 +420,9 @@ recursive subroutine PMRTInitializeRun(this)
   endif
 #endif  
   
-#if 0
-  ! currently performed in SubsurfaceJumpStart()
-  call RTUpdateSolution(this%realization)
+  call RTUpdateEquilibriumState(this%realization)
   
+#if 0
   if (this%option%jumpstart_kinetic_sorption .and. &
       this%option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
@@ -619,7 +618,7 @@ end subroutine PMRTTimeCut
 ! ************************************************************************** !
 subroutine PMRTUpdateSolution(this)
 
-  use Reactive_Transport_module, only : RTUpdateSolution
+  use Reactive_Transport_module
   use Condition_module
   use Mass_Transfer_module
 
@@ -639,7 +638,9 @@ subroutine PMRTUpdateSolution(this)
     call RealizUpdateUniformVelocity(this%realization)
   endif  
   ! end from RealizationUpdate()
-  call RTUpdateSolution(this%realization)
+  ! The update of status must be in this order!
+  call RTUpdateEquilibriumState(this%realization)
+  call RTUpdateKineticState(this%realization)
   if (this%realization%reaction%update_porosity .or. &
       this%realization%reaction%update_tortuosity .or. &
       this%realization%reaction%update_permeability .or. &
@@ -651,6 +652,10 @@ subroutine PMRTUpdateSolution(this)
                           this%realization%discretization, &
                           this%realization%patch%grid, &
                           this%realization%option)
+  
+  if (this%realization%option%compute_mass_balance_new) then
+    call RTUpdateMassBalance(this%realization)
+  endif  
 
 end subroutine PMRTUpdateSolution     
 

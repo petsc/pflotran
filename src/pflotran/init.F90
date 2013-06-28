@@ -138,8 +138,6 @@ subroutine Init(simulation)
   surf_field        => surf_realization%surf_field  
 #endif
   
-  option%init_stage = PETSC_TRUE
-
   nullify(flow_solver)
   nullify(tran_solver)
   

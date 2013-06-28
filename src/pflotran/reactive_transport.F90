@@ -26,7 +26,9 @@ module Reactive_Transport_module
   public :: RTTimeCut, &
             RTSetup, &
             RTMaxChange, &
-            RTUpdateSolution, &
+            RTUpdateEquilibriumState, &
+            RTUpdateKineticState, &
+            RTUpdateMassBalance, &
             RTResidual, &
             RTJacobian, &
             RTInitializeTimestep, &
@@ -547,12 +549,13 @@ end subroutine RTInitializeTimestep
 
 ! ************************************************************************** !
 !
-! RTUpdateSolution:  Updates data in module after a successful time step
+! RTUpdateEquilibriumState:  Updates equilibrium state variables after a 
+!                            successful time step
 ! author: Glenn Hammond
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateSolution(realization)
+subroutine RTUpdateEquilibriumState(realization)
 
   use Realization_class
   use Discretization_module
@@ -563,7 +566,7 @@ subroutine RTUpdateSolution(realization)
   !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
   !      resolves a bug in the Intel Visual Fortran compiler.
   use Secondary_Continuum_Aux_module, only : sec_transport_type
-  use Secondary_Continuum_module, only : SecondaryRTUpdateTimestep
+  use Secondary_Continuum_module, only : SecondaryRTUpdateEquilState
  
   implicit none
 
@@ -579,7 +582,6 @@ subroutine RTUpdateSolution(realization)
   PetscInt :: ghosted_id, local_id
   PetscReal :: conc, max_conc, min_conc
   PetscErrorCode :: ierr
-  PetscReal :: sec_porosity
   
   option => realization%option
   patch => realization%patch
@@ -622,45 +624,93 @@ subroutine RTUpdateSolution(realization)
   endif
 #endif
 
-  if (.not.option%init_stage) then
-
-    ! update mineral volume fractions, multirate sorption concentrations, 
-    ! kinetic sorption concentration etc.  These updates must take place
-    ! within reaction so that auxiliary variables are updated when only
-    ! run in reaction mode.
+  ! update secondary continuum variables
+  if (option%use_mc) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
-
-      if (.not.option%use_isothermal) then
-        call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
-                                     PETSC_FALSE,option)
-      endif
-
-      call RUpdateSolution(rt_aux_vars(ghosted_id), &
-                           global_aux_vars(ghosted_id),reaction,option)
+        call SecondaryRTUpdateEquilState(rt_sec_transport_vars(local_id), &
+                                          global_aux_vars(local_id), &
+                                          reaction,option)                     
     enddo
+  endif
   
-    ! update secondary continuum variables
-    if (option%use_mc) then
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        if (patch%imat(ghosted_id) <= 0) cycle
-          sec_porosity = realization%material_property_array(1)%ptr% &
-                         secondary_continuum_porosity
+end subroutine RTUpdateEquilibriumState
 
-          call SecondaryRTUpdateTimestep(rt_sec_transport_vars(local_id), &
-                                         global_aux_vars(local_id), &
-                                         reaction,sec_porosity,option)                     
-      enddo
+! ************************************************************************** !
+!
+! RTUpdateKineticState:  Updates kinetic state variables for reactive 
+!                        transport
+! author: Glenn Hammond
+! date: 06/27/13
+!
+! ************************************************************************** !
+subroutine RTUpdateKineticState(realization)
+
+  use Realization_class
+  use Discretization_module
+  use Patch_module
+  use Option_module
+  use Grid_module
+  use Reaction_module
+  !geh: please leave the "only" clauses for Secondary_Continuum_XXX as this
+  !      resolves a bug in the Intel Visual Fortran compiler.
+  use Secondary_Continuum_Aux_module, only : sec_transport_type
+  use Secondary_Continuum_module, only : SecondaryRTUpdateKineticState
+ 
+  implicit none
+
+  type(realization_type) :: realization
+
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscInt :: ghosted_id, local_id
+  PetscReal :: conc, max_conc, min_conc
+  PetscErrorCode :: ierr
+  PetscReal :: sec_porosity
+  
+  option => realization%option
+  patch => realization%patch
+  reaction => realization%reaction
+  grid => patch%grid
+
+  ! update mineral volume fractions, multirate sorption concentrations, 
+  ! kinetic sorption concentration etc.  These updates must take place
+  ! within reaction so that auxiliary variables are updated when only
+  ! run in reaction mode.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+
+    if (.not.option%use_isothermal) then
+      call RUpdateTempDependentCoefs(global_aux_vars(ghosted_id),reaction, &
+                                    PETSC_FALSE,option)
     endif
-  endif
 
-  if (option%compute_mass_balance_new) then
-    call RTUpdateMassBalance(realization)
+    call RUpdateKineticState(rt_aux_vars(ghosted_id), &
+                             global_aux_vars(ghosted_id),reaction,option)
+  enddo
+  
+  ! update secondary continuum variables
+  if (option%use_mc) then
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+        sec_porosity = realization%material_property_array(1)%ptr% &
+                        secondary_continuum_porosity
+
+        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(local_id), &
+                                           global_aux_vars(local_id), &
+                                           reaction,sec_porosity,option)                     
+    enddo
   endif
   
-end subroutine RTUpdateSolution
+end subroutine RTUpdateKineticState
 
 ! ************************************************************************** !
 !
