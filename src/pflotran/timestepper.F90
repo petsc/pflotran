@@ -444,7 +444,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
 #ifdef SURFACE_FLOW
   call StepperUpdateSolution(realization,surf_realization)
 #else
-  call StepperUpdateSolution(realization)
+  call StepperUpdateSolution(realization,PETSC_FALSE)
 #endif
 
   if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
@@ -849,7 +849,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
         if ((tran_stepper%target_time-option%tran_time) / &
             option%tran_time < 1.d-10) exit
 
-        call StepperUpdateTransportSolution(realization)
+        call StepperUpdateTransportSolution(realization,PETSC_TRUE)
         
         ! if still stepping, update the time step size based on convergence
         ! criteria
@@ -888,7 +888,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 #ifdef SURFACE_FLOW
     call StepperUpdateSolution(realization,surf_realization)
 #else
-    call StepperUpdateSolution(realization)
+    call StepperUpdateSolution(realization,PETSC_TRUE)
 #endif
 
     if (associated(tran_stepper)) then
@@ -3880,9 +3880,9 @@ end subroutine StepperSolveTranSteadyState
 !
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
-subroutine StepperUpdateSolution(realization,surf_realization)
+subroutine StepperUpdateSolution(realization,surf_realization,update_kinetics)
 #else
-subroutine StepperUpdateSolution(realization)
+subroutine StepperUpdateSolution(realization,update_kinetics)
 #endif
 
   use Realization_class
@@ -3894,6 +3894,7 @@ subroutine StepperUpdateSolution(realization)
   implicit none
   
   type(realization_type) :: realization
+  PetscBool :: update_kinetics
 #ifdef SURFACE_FLOW
   type(surface_realization_type) :: surf_realization
 #endif
@@ -3903,7 +3904,7 @@ subroutine StepperUpdateSolution(realization)
   if (realization%option%nflowdof > 0) &
     call StepperUpdateFlowSolution(realization)
   if (realization%option%ntrandof > 0) &
-    call StepperUpdateTransportSolution(realization)
+    call StepperUpdateTransportSolution(realization,update_kinetics)
 
 #ifdef SURFACE_FLOW
   if(surf_realization%option%nsurfflowdof > 0) then
@@ -4014,7 +4015,7 @@ end subroutine StepperUpdateSurfaceFlowSolution
 ! date: 02/19/08 
 !
 ! ************************************************************************** !
-subroutine StepperUpdateTransportSolution(realization)
+subroutine StepperUpdateTransportSolution(realization,update_kinetics)
 
   use Realization_class
   use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
@@ -4023,11 +4024,13 @@ subroutine StepperUpdateTransportSolution(realization)
   implicit none
 
   type(realization_type) :: realization
+  PetscBool :: update_kinetics
 
   PetscErrorCode :: ierr
   
   call RTUpdateEquilibriumState(realization)
-  call RTUpdateKineticState(realization)
+  if (update_kinetics) &
+    call RTUpdateKineticState(realization)
   if (realization%reaction%update_porosity .or. &
       realization%reaction%update_tortuosity .or. &
       realization%reaction%update_permeability .or. &
