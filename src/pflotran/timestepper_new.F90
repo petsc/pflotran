@@ -424,12 +424,13 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
           ! the time step back to its prior value.  However, if the time step
           ! is close to its full previous value, this constraint is unnecessary
           ! and limits the ability of process model couplers "below" to catch up
-          ! with those above.  Thus the conditional (dt < .99 prev_dt) below.
+          ! with those above.  Thus the conditional (dt <= .5 prev_dt) below.
           !-Also note that if this timestepper is at a depth in the process 
           ! model coupler greater than 1 (not the top process model coupler)
           ! the timestepper will constantly be reverting to sync due to the
           ! tolerance applied above without the underlying conditional.
-          if (dt < 0.99d0 * timestepper%prev_dt) then
+!          if (dt < 0.99d0 * timestepper%prev_dt) then
+          if (dt <= 0.5d0 * timestepper%prev_dt) then
             revert_due_to_sync_time = PETSC_TRUE
           endif
         endif        
