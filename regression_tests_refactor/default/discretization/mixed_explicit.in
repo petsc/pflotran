@@ -1,0 +1,217 @@
+:Description: 3D test problem for unstructured richards equation with mixed 
+:             elements in explicit format
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    8
+    11
+  /
+END
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer
+    Tracer2
+    Tracer3
+  /
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE unstructured_explicit ./mixed.uge
+END
+
+:=========================== solver options ===================================
+TIMESTEPPER
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 5.d-13
+  /
+END
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE BROOKS_COREY
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.3d0
+  ALPHA 1.d-4
+END
+
+:=========================== output options ===================================
+OUTPUT
+  FORMAT TECPLOT BLOCK
+  VELOCITIES
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 40.d0 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+REFERENCE_PRESSURE 101325.
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
+  /
+END 
+
+REGION top
+  FILE top_of_1.ex
+END 
+
+REGION west
+  file west_of_12.ex
+END 
+
+REGION center_of_13
+  FILE 13.txt
+END 
+
+REGION middle
+  COORDINATE 2.50001d0 2.50001d0 2.50001d0
+END 
+
+:=========================== observation points ===============================
+OBSERVATION
+  REGION middle
+/
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 2.5d0
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION west
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM list
+    TIME_UNITS d
+    0.d0 0.d0 0.d0 2.5d0
+    10.d0 0.d0 0.d0 4.d0
+    20.d0 0.d0 0.d0 -2.d0
+    40.d0 0.d0 0.d0 3.d0
+  /
+  PRESSURE 101325.d0
+  INTERPOLATION LINEAR
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    PRESSURE neumann
+  /
+  FLUX 15 cm/y
+END
+
+FLOW_CONDITION well
+  TYPE
+    RATE volumetric_rate
+  /
+  RATE 0.1 l/min
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT initial
+    CONCENTRATIONS
+      Tracer  1.d-10  T
+      Tracer2 1.d-10 T
+      Tracer3 1.d-10 T
+    /
+  /
+END
+
+TRANSPORT_CONDITION tracer1
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT tracer1
+    CONCENTRATIONS
+      Tracer  1.d-3  T
+      Tracer2 1.d-10 T
+      Tracer3 1.d-10 T
+    /
+  /
+END
+
+TRANSPORT_CONDITION tracer2
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT tracer2
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+      Tracer2 1.d-3  T
+      Tracer3 1.d-10 T
+    /
+  /
+END
+
+TRANSPORT_CONDITION tracer3
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT tracer3
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+      Tracer2 1.d-10 T
+      Tracer3 1.d-3  T
+    /
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION west
+  TRANSPORT_CONDITION tracer1
+  REGION west
+END
+
+BOUNDARY_CONDITION
+  FLOW_CONDITION recharge
+  TRANSPORT_CONDITION tracer2
+  REGION top
+END
+
+SOURCE_SINK
+  FLOW_CONDITION well
+  TRANSPORT_CONDITION tracer3
+  REGION center_of_13
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all 
+  MATERIAL soil1
+END
