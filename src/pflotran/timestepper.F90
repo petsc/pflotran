@@ -442,7 +442,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
 #ifdef SURFACE_FLOW
-  call StepperUpdateSolution(realization,surf_realization)
+  call StepperUpdateSolution(realization,surf_realization,PETSC_FALSE)
 #else
   call StepperUpdateSolution(realization,PETSC_FALSE)
 #endif
@@ -886,7 +886,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
     
     option%time = master_stepper%target_time
 #ifdef SURFACE_FLOW
-    call StepperUpdateSolution(realization,surf_realization)
+    call StepperUpdateSolution(realization,surf_realization,PETSC_TRUE)
 #else
     call StepperUpdateSolution(realization,PETSC_TRUE)
 #endif
