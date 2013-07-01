@@ -82,6 +82,8 @@ module Option_module
     PetscBool :: variables_swapped
     
     PetscInt :: iflag
+    PetscInt :: status
+    !geh: remove once legacy code is gone.
     PetscBool :: init_stage
     ! these flags are for printing outside of time step loop
     PetscBool :: print_to_screen
@@ -542,6 +544,7 @@ subroutine OptionInitRealization(option)
   option%idt_switch = -1
 
   option%use_matrix_buffer = PETSC_FALSE
+  option%status = PROCEED 
   option%init_stage = PETSC_FALSE 
   option%force_newton_iteration = PETSC_FALSE
   option%mimetic = PETSC_FALSE

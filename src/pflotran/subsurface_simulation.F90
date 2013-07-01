@@ -108,13 +108,7 @@ subroutine SubsurfaceInitializeRun(this)
   
   call printMsg(this%option,'Simulation%InitializeRun()')
 
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    depth = 0
-    call cur_process_model_coupler%InitializeRun()
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
+  call this%process_model_coupler_list%InitializeRun()
 
   ! set depth in tree
   cur_process_model_coupler_top => this%process_model_coupler_list
@@ -163,7 +157,6 @@ subroutine SubsurfaceInitializeRun(this)
   ! currently performed in SubsurfaceJumpStart()
   ! pushed in Init()
   call PetscLogStagePop(ierr)
-  this%option%init_stage = PETSC_FALSE
 
   ! popped in FinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)

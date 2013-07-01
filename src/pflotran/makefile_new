@@ -2,7 +2,7 @@
 
 pflotran_src = ./
 common_src   = ./
-pflotran_test_dir = ../../regression_tests
+pflotran_test_dir = ../../regression_tests_refactor
 
 
 MYFLAGS = -I.

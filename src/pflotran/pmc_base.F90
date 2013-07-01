@@ -161,6 +161,10 @@ recursive subroutine InitializeRun(this)
     call this%below%InitializeRun()
   endif
   
+  if (associated(this%next)) then
+    call this%next%InitializeRun()
+  endif
+
 end subroutine InitializeRun
 
 ! ************************************************************************** !
