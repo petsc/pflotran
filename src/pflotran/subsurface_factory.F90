@@ -121,6 +121,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Simulation_module
   use Realization_class
   use Option_module
+  use Output_module, only : Output
   
   use PMC_Base_class
   use PMC_Subsurface_class  
@@ -275,6 +276,9 @@ subroutine HijackSimulation(simulation_old,simulation)
   simulation%flow_process_model_coupler => flow_process_model_coupler
   simulation%rt_process_model_coupler => tran_process_model_coupler
   simulation%regression => simulation_old%regression
+  
+  ! point the top process model coupler to Output
+  simulation%process_model_coupler_list%Output => Output
 
 end subroutine HijackSimulation
 

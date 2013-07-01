@@ -74,6 +74,7 @@ function PMRichardsCreate()
   nullify(richards_pm%comm1)
 
   call PMBaseCreate(richards_pm)
+  richards_pm%name = 'PMRichards'
 
   PMRichardsCreate => richards_pm
   

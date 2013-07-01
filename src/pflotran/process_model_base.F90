@@ -22,6 +22,7 @@ module Process_Model_Base_class
 #else
   type, public :: pm_base_type
 #endif
+    character(len=MAXWORDLENGTH) :: name
     type(option_type), pointer :: option
     type(output_option_type), pointer :: output_option
     Vec :: solution_vec
@@ -190,6 +191,7 @@ subroutine PMBaseCreate(this)
   class(pm_base_type) :: this  
 
   ! Cannot allocate here.  Allocation takes place in daughter class
+  this%name = ''
   nullify(this%option)
   nullify(this%output_option)
   nullify(this%realization_base)

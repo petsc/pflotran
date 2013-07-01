@@ -34,8 +34,6 @@ function PMCHydrogeophysicsCreate()
   
   class(pmc_hydrogeophysics_type), pointer :: pmc
 
-  print *, 'PMCHydrogeophysics%Create()'
-  
   allocate(pmc)
   call pmc%Init()
   
@@ -56,9 +54,8 @@ subroutine PMCHydrogeophysicsInit(this)
   
   class(pmc_hydrogeophysics_type) :: this
   
-  print *, 'PMCHydrogeophysics%Init()'
-  
   call PMCBaseInit(this)
+  this%name = 'PMCHydrogeophysics'
 
 end subroutine PMCHydrogeophysicsInit
 

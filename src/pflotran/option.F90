@@ -255,6 +255,7 @@ module Option_module
             printMsg, &
             printMsgAnyRank, &
             printMsgByRank, &
+            printVerboseMsg, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
@@ -842,6 +843,25 @@ subroutine printMsgByRank2(option,string)
   
 end subroutine printMsgByRank2
  
+! ************************************************************************** !
+!
+! printVerboseMsg: Prints the message from p0
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine printVerboseMsg(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  if (option%verbosity > 0) then
+    call printMsg(option,option%io_buffer)
+  endif
+  
+end subroutine printVerboseMsg
+
 ! ************************************************************************** !
 !
 ! OptionCheckTouch: Users can steer the code by touching files.

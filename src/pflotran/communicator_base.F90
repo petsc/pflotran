@@ -28,7 +28,6 @@ module Communicator_Base_module
 #else
     subroutine SetDM(this,dm_ptr)
       use DM_Kludge_module
-      use Discretization_module
       import communicator_type
       implicit none
       class(communicator_type) :: this

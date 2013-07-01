@@ -78,6 +78,7 @@ function PMTHCreate()
   nullify(th_pm%commN)
 
   call PMBaseCreate(th_pm)
+  th_pm%name = 'PMTH'
 
   PMTHCreate => th_pm
   

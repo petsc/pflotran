@@ -6,7 +6,8 @@ module PMC_Base_class
   use Option_module
   use Waypoint_module
   use Process_Model_module
-
+  use Output_module, only : Output
+  
   implicit none
 
 #include "definitions.h"
@@ -15,6 +16,7 @@ module PMC_Base_class
   
   ! process model coupler type
   type, public :: pmc_base_type
+    character(len=MAXWORDLENGTH) :: name
     type(option_type), pointer :: option
     class(stepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pm_list
@@ -23,6 +25,7 @@ module PMC_Base_class
     class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
     PetscInt :: depth
+    procedure(Output), nopass, pointer :: Output => Null()
   contains
     procedure, public :: Init => PMCBaseInit
     procedure, public :: InitializeRun
@@ -79,12 +82,14 @@ subroutine PMCBaseInit(this)
   
   print *, 'PMCBase%Init()'
   
+  this%name = 'PMCBase'
   nullify(this%option)
   nullify(this%timestepper)
   nullify(this%pm_list)
   nullify(this%waypoints)
   nullify(this%below)
   nullify(this%next)
+  this%Output => Null()
   this%depth = 0
   
   allocate(this%pm_ptr)
@@ -192,10 +197,8 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   PetscBool :: transient_plot_flag
   class(pm_base_type), pointer :: cur_pm
   
-  write(this%option%io_buffer,'(es12.5)') sync_time
-  this%option%io_buffer = 'PMCBase%RunToTime(' // &
-    trim(adjustl(this%option%io_buffer)) // ')'
-  call printMsg(this%option)
+  this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
+  call printVerboseMsg(this%option)
   
   local_stop_flag = 0
   do
@@ -230,7 +233,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     endif
     
     ! only print output for process models of depth 0
-    if (this%depth == 0) then
+    if (associated(this%Output)) then
       if (this%timestepper%time_step_cut_flag) then
         plot_flag = PETSC_FALSE
       endif
@@ -246,16 +249,8 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
-      select type(realization => this%pm_list%realization_base)
-        class is(realization_type)
-          call Output(realization,plot_flag,transient_plot_flag)
-!        class is(surface_realization_type)
-!          call OutputSurface(realization,plot_flag,transient_plot_flag)
-        class default
-          this%option%io_buffer = &
-            'Unrecognized realization class for output in pmc_base.F90'
-          call printErrMsg(this%option)
-      end select
+      call this%Output(this%pm_list%realization_base,plot_flag, &
+                       transient_plot_flag)
     endif
     
   enddo

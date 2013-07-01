@@ -78,6 +78,7 @@ function PMTHCCreate()
   nullify(thc_pm%commN)
 
   call PMBaseCreate(thc_pm)
+  thc_pm%name = 'PMTHC'
 
   PMTHCCreate => thc_pm
   

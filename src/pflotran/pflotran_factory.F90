@@ -282,8 +282,8 @@ subroutine PFLOTRANInitCommandLineSettings(option)
   call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
 
   string = '-v'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) option%verbosity = 1
+  call InputGetCommandLineInt(string,i,option_found,option)
+  if (option_found) option%verbosity = i
  
   ! this will get overwritten later if stochastic
   string = '-realization_id'

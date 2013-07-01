@@ -447,7 +447,7 @@ subroutine Init(simulation)
     call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-    if (option%verbosity >= 1) then
+    if (option%verbosity >= 2) then
       string = '-flow_snes_view'
       call PetscOptionsInsertString(string, ierr)
     endif
@@ -640,7 +640,7 @@ subroutine Init(simulation)
       endif
       
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-      if (option%verbosity >= 1) then
+      if (option%verbosity >= 2) then
         string = '-tran_snes_view'
         call PetscOptionsInsertString(string, ierr)
       endif

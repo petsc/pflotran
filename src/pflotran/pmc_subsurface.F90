@@ -60,6 +60,7 @@ subroutine PMCSubsurfaceInit(this)
   print *, 'PMCSubsurface%Init()'
   
   call PMCBaseInit(this)
+  this%name = 'PMCSubsurface'
   nullify(this%realization)
 
 end subroutine PMCSubsurfaceInit

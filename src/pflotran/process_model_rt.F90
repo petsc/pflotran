@@ -87,6 +87,7 @@ function PMRTCreate()
   rt_pm%tran_weight_t1 = 0.d0
 
   call PMBaseCreate(rt_pm)
+  rt_pm%name = 'PMRT'
   
   PMRTCreate => rt_pm
   
