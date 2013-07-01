@@ -24,7 +24,6 @@ subroutine SubsurfaceInitialize(simulation_base,option)
 
   use Option_module
   use Input_module
-  use Timestepper_module
   use Simulation_Base_class
   
   implicit none
@@ -68,7 +67,7 @@ subroutine SubsurfaceInitializePostPETSc(simulation, option)
   
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
-  call HighjackSimulation(simulation_old,simulation)
+  call HijackSimulation(simulation_old,simulation)
   ! no longer need simulation
   deallocate(simulation_old)
   call SubsurfaceJumpStart(simulation)
@@ -112,12 +111,12 @@ end subroutine SubsurfInitCommandLineSettings
 
 ! ************************************************************************** !
 !
-! HighjackSimulation: 
+! HijackSimulation: 
 ! author: Glenn Hammond
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine HighjackSimulation(simulation_old,simulation)
+subroutine HijackSimulation(simulation_old,simulation)
 
   use Simulation_module
   use Realization_class
@@ -178,7 +177,9 @@ subroutine HighjackSimulation(simulation_old,simulation)
     flow_process_model_coupler%option => option
     flow_process_model_coupler%pm_list => cur_process_model
     flow_process_model_coupler%pm_ptr%ptr => cur_process_model
-    flow_process_model_coupler%timestepper => simulation_old%flow_stepper
+!    flow_process_model_coupler%timestepper => simulation_old%flow_stepper
+    call HijackTimestepper(simulation_old%flow_stepper, &
+                           flow_process_model_coupler%timestepper)
     nullify(cur_process_model)
   endif
 
@@ -192,7 +193,9 @@ subroutine HighjackSimulation(simulation_old,simulation)
     tran_process_model_coupler%option => option
     tran_process_model_coupler%pm_list => cur_process_model
     tran_process_model_coupler%pm_ptr%ptr => cur_process_model
-    tran_process_model_coupler%timestepper => simulation_old%tran_stepper
+!    tran_process_model_coupler%timestepper => simulation_old%tran_stepper
+    call HijackTimestepper(simulation_old%tran_stepper, &
+                           tran_process_model_coupler%timestepper)
     nullify(cur_process_model)
   endif
 
@@ -226,20 +229,24 @@ subroutine HighjackSimulation(simulation_old,simulation)
         select type(cur_process_model)
           class is (pm_richards_type)
             call cur_process_model%PMRichardsSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
-            simulation_old%flow_stepper%dt = option%flow_dt
+!            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
+            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(simulation_old%tran_stepper)
-            simulation_old%tran_stepper%dt = option%tran_dt
+!            call cur_process_model_coupler%SetTimestepper(simulation_old%tran_stepper)
+            call cur_process_model_coupler%SetTimestepper(tran_process_model_coupler%timestepper)
+            tran_process_model_coupler%timestepper%dt = option%tran_dt
           class is (pm_th_type)
             call cur_process_model%PMTHSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
-            simulation_old%flow_stepper%dt = option%flow_dt
+!            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
+            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_thc_type)
             call cur_process_model%PMTHCSetRealization(realization)
-            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
-            simulation_old%flow_stepper%dt = option%flow_dt
+!            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
+            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
         end select
 
         call cur_process_model%Init()
@@ -269,7 +276,7 @@ subroutine HighjackSimulation(simulation_old,simulation)
   simulation%rt_process_model_coupler => tran_process_model_coupler
   simulation%regression => simulation_old%regression
 
-end subroutine HighjackSimulation
+end subroutine HijackSimulation
 
 ! ************************************************************************** !
 !
@@ -282,7 +289,7 @@ subroutine SubsurfaceJumpStart(simulation)
 
   use Realization_class
   use Option_module
-  use Timestepper_module
+  use Timestepper_Base_class
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
@@ -294,9 +301,9 @@ subroutine SubsurfaceJumpStart(simulation)
   type(subsurface_simulation_type) :: simulation
   
   class(realization_type), pointer :: realization
-  type(stepper_type), pointer :: master_stepper
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(stepper_base_type), pointer :: master_stepper
+  type(stepper_base_type), pointer :: flow_stepper
+  type(stepper_base_type), pointer :: tran_stepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -523,7 +530,7 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   use Reactive_Transport_module, only : RTUpdateAuxVars
   use Checkpoint_module
   use Option_module
-  use Timestepper_module
+  use Timestepper_Base_class
   use Waypoint_module
   
   use Flash2_module, only: Flash2UpdateAuxVars
@@ -539,8 +546,8 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   implicit none
 
   type(realization_type) :: realization
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(stepper_base_type), pointer :: flow_stepper
+  type(stepper_base_type), pointer :: tran_stepper
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
@@ -663,5 +670,76 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   endif  
     
 end subroutine SubsurfaceRestart
+
+! ************************************************************************** !
+!
+! HijackTimestepper: 
+! author: Glenn Hammond
+! date: 06/11/13
+!
+! ************************************************************************** !
+subroutine HijackTimestepper(stepper_old,stepper)
+
+  use Timestepper_Base_class
+  use Timestepper_module
+
+  implicit none
+  
+  type(stepper_type), pointer :: stepper_old
+  type(stepper_base_type), pointer :: stepper
+  
+  stepper => TimeStepperBaseCreate()
+  
+  stepper%steps = stepper_old%steps
+  stepper%num_newton_iterations = stepper_old%num_newton_iterations
+  stepper%num_linear_iterations = stepper_old%num_linear_iterations
+  stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
+
+  stepper%max_time_step = stepper_old%max_time_step
+  stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
+  stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
+  stepper%iaccel = stepper_old%iaccel
+
+  stepper%cumulative_newton_iterations = stepper_old%cumulative_newton_iterations
+  stepper%cumulative_linear_iterations = stepper_old%cumulative_linear_iterations
+  stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
+  stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
+
+  stepper%start_time = stepper_old%start_time
+  stepper%start_time_step = stepper_old%start_time_step
+  stepper%time_step_tolerance = stepper_old%time_step_tolerance
+  stepper%target_time = stepper_old%target_time
+  
+  stepper%prev_dt = stepper_old%prev_dt
+!  stepper%dt = stepper_old%dt
+  stepper%dt_min = stepper_old%dt_min
+  stepper%dt_max = stepper_old%dt_max
+  stepper%cfl_limiter = stepper_old%cfl_limiter
+  stepper%cfl_limiter_ts = stepper_old%cfl_limiter_ts
+  
+  stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
+
+  stepper%ntfac = stepper_old%ntfac
+  stepper%tfac => stepper_old%tfac
+  nullify(stepper_old%tfac)
+  
+  stepper%init_to_steady_state = stepper_old%init_to_steady_state
+  stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
+  stepper%run_as_steady_state = stepper_old%run_as_steady_state
+
+  stepper%solver => stepper_old%solver
+  nullify(stepper_old%solver)
+  stepper%convergence_context => stepper_old%convergence_context
+  nullify(stepper_old%convergence_context)
+  stepper%cur_waypoint => stepper_old%cur_waypoint
+  nullify(stepper_old%cur_waypoint)
+!  stepper%prev_waypoint => stepper_old%prev_waypoint
+!  nullify(stepper_old%prev_waypoint)
+  
+!  stepper%revert_dt = stepper_old%revert_dt
+!  stepper%num_contig_revert_due_to_sync = &
+!  stepper_old%num_contig_revert_due_to_sync
+  
+end subroutine HijackTimestepper
 
 end module Subsurface_Factory_module

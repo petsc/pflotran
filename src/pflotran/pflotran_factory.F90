@@ -27,7 +27,6 @@ subroutine PFLOTRANInitialize(option)
 
   use Option_module
   use Input_module
-  use Timestepper_module
   
   implicit none
   

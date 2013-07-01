@@ -173,7 +173,7 @@ end subroutine SubsurfaceInitializeRun
 ! ************************************************************************** !
 subroutine SubsurfaceFinalizeRun(this)
 
-  use Timestepper_module
+  use Timestepper_Base_class
 
   implicit none
   
@@ -181,8 +181,8 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper
+  type(stepper_base_type), pointer :: flow_stepper
+  type(stepper_base_type), pointer :: tran_stepper
 
   call printMsg(this%option,'SubsurfaceFinalizeRun()')
   

@@ -2,7 +2,7 @@
 module PMC_Base_class
 
   use Process_Model_Base_class
-  use Timestepper_module
+  use Timestepper_Base_class
   use Option_module
   use Waypoint_module
   use Process_Model_module
@@ -16,7 +16,7 @@ module PMC_Base_class
   ! process model coupler type
   type, public :: pmc_base_type
     type(option_type), pointer :: option
-    type(stepper_type), pointer :: timestepper
+    type(stepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pm_list
     type(waypoint_list_type), pointer :: waypoints
     class(pmc_base_type), pointer :: below
@@ -120,12 +120,12 @@ end function PMCCastToBase
 ! ************************************************************************** !
 subroutine ProcModelCouplerSetTimestepper(this,timestepper)
 
-  use Timestepper_module 
+  use Timestepper_Base_class
   
   implicit none
   
   class(pmc_base_type) :: this
-  type(stepper_type), pointer :: timestepper
+  type(stepper_base_type), pointer :: timestepper
 
   call printMsg(this%option,'PMC%SetTimestepper()')
   
@@ -176,7 +176,7 @@ end subroutine InitializeRun
 ! ************************************************************************** !
 recursive subroutine RunToTime(this,sync_time,stop_flag)
 
-  use Timestepper_module
+  use Timestepper_Base_class
   use Output_module, only : Output
   
   implicit none
@@ -205,10 +205,10 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
     
-    call StepperSetTargetTime(this%timestepper,sync_time,this%option, &
-                              local_stop_flag,plot_flag,transient_plot_flag)
-    call StepperStepDT(this%timestepper,this%pm_list, &
-                       local_stop_flag)
+    call this%timestepper%SetTargetTime(sync_time,this%option, &
+                                        local_stop_flag,plot_flag, &
+                                        transient_plot_flag)
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
     if (local_stop_flag > 1) exit ! failure
     ! Have to loop over all process models coupled in this object and update
@@ -220,7 +220,7 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
       ! have to update option%time for conditions
       this%option%time = this%timestepper%target_time
       call cur_pm%UpdateSolution()
-      call StepperUpdateDT(this%timestepper,cur_pm)
+      call this%timestepper%UpdateDT(cur_pm)
       cur_pm => cur_pm%next
     enddo
     ! Run underlying process model couplers

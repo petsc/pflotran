@@ -71,7 +71,6 @@ end subroutine PMCHydrogeophysicsInit
 ! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
 
-  use Timestepper_module
   use Output_module, only : Output
   
   implicit none

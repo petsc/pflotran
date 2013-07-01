@@ -1,4 +1,4 @@
-module Timestepper_module
+module Timestepper_Base_class
  
   use Solver_module
   use Waypoint_module 
@@ -10,7 +10,7 @@ module Timestepper_module
   
 #include "definitions.h"
  
-  type, public :: stepper_type
+  type, public :: stepper_base_type
   
     PetscInt :: steps         ! The number of time steps taken by the code.
     PetscInt :: num_constant_time_steps   ! number of contiguous time_steps of constant size
@@ -57,32 +57,59 @@ module Timestepper_module
     type(waypoint_type), pointer :: prev_waypoint
 
     type(convergence_context_type), pointer :: convergence_context
-
-  end type stepper_type
   
-  public :: TimestepperCreate, TimestepperDestroy, &
-            StepperSetTargetTime, StepperStepDT, &
-            StepperUpdateDT, &
-            TimestepperRead, TimestepperPrintInfo
+  contains
+    
+    procedure, public :: ReadInput => TimestepperBaseRead
+    procedure, public :: Init => TimestepperBaseInit
+    procedure, public :: SetTargetTime => TimeStepperBaseSetTargetTime
+    procedure, public :: StepDT => TimeStepperBaseStepDT
+    procedure, public :: UpdateDT => TimeStepperBaseUpdateDT
+    procedure, public :: Destroy => TimeStepperBaseDestroy
+    
+  end type stepper_base_type
+  
+  public :: TimeStepperBaseCreate, TimeStepperBasePrintInfo
 
 contains
 
 ! ************************************************************************** !
 !
-! TimestepperCreate: Allocates and initializes a new Timestepper object
+! TimeStepperBaseCreate: Allocates and initializes a new Timestepper object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function TimestepperCreate()
+function TimeStepperBaseCreate()
 
   implicit none
   
-  type(stepper_type), pointer :: TimestepperCreate
+  class(stepper_base_type), pointer :: TimeStepperBaseCreate
   
-  type(stepper_type), pointer :: stepper
+  class(stepper_base_type), pointer :: stepper
   
   allocate(stepper)
+  call stepper%Init()
+  
+  stepper%solver => SolverCreate()
+  
+  TimeStepperBaseCreate => stepper
+  
+end function TimeStepperBaseCreate
+
+! ************************************************************************** !
+!
+! TimeStepperBaseInit: Allocates and initializes a new Timestepper object
+! author: Glenn Hammond
+! date: 07/01/13
+!
+! ************************************************************************** !
+subroutine TimeStepperBaseInit(stepper)
+
+  implicit none
+  
+  class(stepper_base_type) :: stepper
+  
   stepper%steps = 0
   stepper%num_newton_iterations = 0
   stepper%num_linear_iterations = 0
@@ -133,20 +160,16 @@ function TimestepperCreate()
   stepper%revert_dt = PETSC_FALSE
   stepper%num_contig_revert_due_to_sync = 0
   
-  stepper%solver => SolverCreate()
-  
-  TimeStepperCreate => stepper
-  
-end function TimestepperCreate 
+end subroutine TimestepperBaseInit
 
 ! ************************************************************************** !
 !
-! TimestepperRead: Reads parameters associated with time stepper
+! TimeStepperBaseRead: Reads parameters associated with time stepper
 ! author: Glenn Hammond
 ! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine TimestepperRead(stepper,input,option)
+subroutine TimeStepperBaseRead(stepper,input,option)
 
   use Option_module
   use String_module
@@ -155,7 +178,7 @@ subroutine TimestepperRead(stepper,input,option)
   
   implicit none
 
-  type(stepper_type) :: stepper
+  class(stepper_base_type) :: stepper
   type(input_type) :: input
   type(option_type) :: option
   
@@ -253,37 +276,27 @@ subroutine TimestepperRead(stepper,input,option)
   
   enddo  
 
-end subroutine TimestepperRead
+end subroutine TimeStepperBaseRead
 
 ! ************************************************************************** !
 !
-! StepperUpdateDT: Updates time step
+! TimeStepperBaseUpdateDT: Updates time step
 ! author: Glenn Hammond
 ! date: 03/20/13
 !
 ! ************************************************************************** !
-subroutine StepperUpdateDT(timestepper,process_model)
+subroutine TimeStepperBaseUpdateDT(timestepper,process_model)
 
   use Process_Model_Base_class
-#ifdef SURFACE_FLOW
-  use Process_Model_Surface_Flow_class
-#endif
   
   implicit none
 
-  type(stepper_type) :: timestepper
+  class(stepper_base_type) :: timestepper
   class(pm_base_type) :: process_model
   
   PetscBool :: update_time_step
   
   update_time_step = PETSC_TRUE
-#ifdef SURFACE_FLOW
-  select type(process_model)
-    class is(process_model_surface_flow_type)
-      call StepperUpdateSurfaceFlowDTExplicit(timestepper,process_model)
-      return
-  end select
-#endif
 
   if (timestepper%time_step_cut_flag) then
     timestepper%num_constant_time_steps = 1
@@ -315,23 +328,24 @@ subroutine StepperUpdateDT(timestepper,process_model)
     
   endif
 
-end subroutine StepperUpdateDT
+end subroutine TimeStepperBaseUpdateDT
 
 ! ************************************************************************** !
 !
-! StepperSetTargetTime: Sets target time for timestepper
+! TimeStepperBaseSetTargetTime: Sets target time for timestepper
 ! author: Glenn Hammond
 ! date: 03/20/13
 !
 ! ************************************************************************** !
-subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
-                                plot_flag,transient_plot_flag)
+subroutine TimeStepperBaseSetTargetTime(timestepper,sync_time,option, &
+                                        stop_flag,plot_flag, &
+                                        transient_plot_flag)
 
   use Option_module
   
   implicit none
 
-  type(stepper_type), pointer :: timestepper
+  class(stepper_base_type) :: timestepper
   PetscReal :: sync_time
   type(option_type) :: option
   PetscInt :: stop_flag
@@ -476,23 +490,20 @@ subroutine StepperSetTargetTime(timestepper,sync_time,option,stop_flag, &
   timestepper%target_time = target_time
   timestepper%cur_waypoint => cur_waypoint
 
- end subroutine StepperSetTargetTime
+ end subroutine TimeStepperBaseSetTargetTime
 
 ! ************************************************************************** !
 !
-! StepperStepDT: Steps forward one step in time
+! TimeStepperBaseStepDT: Steps forward one step in time
 ! author: Glenn Hammond
 ! date: 03/20/13
 !
 ! ************************************************************************** !
-subroutine StepperStepDT(timestepper,process_model,stop_flag)
+subroutine TimeStepperBaseStepDT(timestepper,process_model,stop_flag)
 
   use Process_Model_Base_class
   use Option_module
   use Output_module, only : Output
-#ifdef SURFACE_FLOW
-  use Process_Model_Surface_Flow_class
-#endif
   
   implicit none
 
@@ -500,7 +511,7 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
 #include "finclude/petscvec.h90"
 #include "finclude/petscsnes.h"
 
-  type(stepper_type) :: timestepper
+  class(stepper_base_type) :: timestepper
   class(pm_base_type) :: process_model
   PetscInt :: stop_flag
   
@@ -525,14 +536,6 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   solver => timestepper%solver
   option => process_model%option
   
-#ifdef SURFACE_FLOW
-  select type(process_model)
-    class is(process_model_surface_flow_type)
-      call StepperStepSurfaceFlowDT(timestepper,process_model,stop_flag)
-      return
-  end select
-#endif
-
   write(process_model%option%io_buffer,'(es12.5)') timestepper%dt
   process_model%option%io_buffer = 'StepperStepDT(' // &
     trim(adjustl(process_model%option%io_buffer)) // ')'
@@ -672,22 +675,22 @@ subroutine StepperStepDT(timestepper,process_model,stop_flag)
   
   if (option%print_screen_flag) print *, ""  
   
-end subroutine StepperStepDT
+end subroutine TimeStepperBaseStepDT
 
 ! ************************************************************************** !
 !
-! TimestepperPrintInfo: Prints information about time stepper
+! TimeStepperBasePrintInfo: Prints information about time stepper
 ! author: Glenn Hammond
 ! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine TimestepperPrintInfo(stepper,fid,header,option)
+subroutine TimeStepperBasePrintInfo(stepper,fid,header,option)
 
   use Option_module
   
   implicit none
   
-  type(stepper_type) :: stepper
+  class(stepper_base_type) :: stepper
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
@@ -716,113 +719,32 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
     write(fid,'("max cuts:",x,a)') trim(adjustl(string))
   endif    
 
-end subroutine TimestepperPrintInfo
-
-#ifdef SURFACE_FLOW
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/14/13
-! ************************************************************************** !
-subroutine StepperStepSurfaceFlowDT(timestepper,process_model,stop_flag)
-
-  use Process_Model_Base_class
-  use Option_module
-  use Output_module, only : Output
-  use Process_Model_Surface_Flow_class
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscts.h"
-
-  type(stepper_type) :: timestepper
-  class(pm_base_type) :: process_model
-  PetscInt :: stop_flag
-  
-  PetscInt :: icut
-  
-  type(solver_type), pointer :: solver
-  type(option_type), pointer :: option
-  
-  PetscLogDouble :: log_start_time
-  PetscLogDouble :: log_end_time
-  character(len=2) :: tunit
-  PetscBool :: plot_flag, transient_plot_flag
-  PetscErrorCode :: ierr
-  
-  solver => timestepper%solver
-  option => process_model%option
-
-  call process_model%PreSolve()
-
-  call TSSetTimeStep(solver%ts,timestepper%dt,ierr)
-  call TSSolve(solver%ts,process_model%solution_vec,ierr)
-
-end subroutine StepperStepSurfaceFlowDT
-
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/14/13
-! ************************************************************************** !
-!subroutine StepperUpdateSurfaceFlowDTExplicit(surf_realization,option)
-subroutine StepperUpdateSurfaceFlowDTExplicit(timestepper,process_model)
-
-  use Process_Model_Base_class
-  use Process_Model_Surface_Flow_class
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscts.h"
-
-  type(stepper_type) :: timestepper
-  class(pm_base_type) :: process_model
-  
-  PetscReal :: dt_max,dt_max_glb
-  PetscErrorCode :: ierr
-
-  call process_model%UpdateTimestep(timestepper%dt, &
-                                    timestepper%dt_max, &
-                                    timestepper%iaccel, &
-                                    timestepper%num_newton_iterations, &
-                                    timestepper%tfac)
-
-end subroutine StepperUpdateSurfaceFlowDTExplicit
-#endif
+end subroutine TimeStepperBasePrintInfo
 
 ! ************************************************************************** !
 !
-! TimestepperDestroy: Deallocates a time stepper
+! TimeStepperBaseDestroy: Deallocates a time stepper
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine TimestepperDestroy(stepper)
+subroutine TimeStepperBaseDestroy(stepper)
 
   implicit none
   
-  type(stepper_type), pointer :: stepper
+  class(stepper_base_type) :: stepper
   
-  if (.not.associated(stepper)) return
+!  if (.not.associated(stepper)) return
     
   call SolverDestroy(stepper%solver)
   call ConvergenceContextDestroy(stepper%convergence_context)
 
   if (associated(stepper%tfac)) deallocate(stepper%tfac)
   nullify(stepper%tfac)
-  deallocate(stepper)
-  nullify(stepper)
   
-end subroutine TimestepperDestroy
+!  deallocate(stepper)
+!  nullify(stepper)
+  
+end subroutine TimeStepperBaseDestroy
 
-end module Timestepper_module
+end module Timestepper_Base_class

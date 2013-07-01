@@ -444,7 +444,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
                             tran_stepper)
 
   use Realization_class
-  use Timestepper_module
+  use Timestepper_Base_class
   use Option_module
   use Discretization_module
   use Output_module
@@ -457,8 +457,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   type(regression_type), pointer :: regression
   type(realization_type) :: realization
   ! these must be pointers as they can be null
-  type(stepper_type), pointer :: flow_stepper
-  type(stepper_type), pointer :: tran_stepper  
+  type(stepper_base_type), pointer :: flow_stepper
+  type(stepper_base_type), pointer :: tran_stepper  
   
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
