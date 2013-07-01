@@ -58,7 +58,7 @@ subroutine PMCHydrogeophysicsInit(this)
   
   print *, 'PMCHydrogeophysics%Init()'
   
-  call PMCInit(this)
+  call PMCBaseInit(this)
 
 end subroutine PMCHydrogeophysicsInit
 

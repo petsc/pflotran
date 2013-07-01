@@ -210,7 +210,7 @@ subroutine RunToTime(this,target_time)
   
   call printMsg(this%option,'RunToTime()')
   
-  call this%process_model_coupler_list%RunTo(target_time,this%stop_flag)
+  call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
 
 end subroutine RunToTime
 

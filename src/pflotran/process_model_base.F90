@@ -207,7 +207,7 @@ end subroutine PMBaseCreate
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMBaseRunTo(this,time)
+recursive subroutine RunToTime(this,time)
 
   implicit none
   
@@ -217,7 +217,7 @@ recursive subroutine PMBaseRunTo(this,time)
   ! do something here
   
   if (associated(this%next)) then
-    call this%next%RunTo(time)
+    call this%next%RunToTime(time)
   endif
   
 end subroutine PMBaseRunTo

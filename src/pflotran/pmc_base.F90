@@ -24,60 +24,60 @@ module PMC_Base_class
     type(pm_pointer_type), pointer :: pm_ptr
     PetscInt :: depth
   contains
-    procedure, public :: Init => PMCInit
+    procedure, public :: Init => PMCBaseInit
     procedure, public :: InitializeRun
     procedure, public :: CastToBase => PMCCastToBase
-    procedure, public :: SetTimestepper => ProcModelCouplerSetTimestepper
-    procedure, public :: RunTo => RunToTime
+    procedure, public :: SetTimestepper => PMCBaseSetTimestepper
+    procedure, public :: RunToTime => PMCBaseRunToTime
     procedure, public :: FinalizeRun
     procedure, public :: OutputLocal
-    procedure, public :: UpdateSolution => PMCUpdateSolution
-    procedure, public :: Destroy
+    procedure, public :: UpdateSolution => PMCBaseUpdateSolution
+    procedure, public :: Destroy => PMCBaseDestroy
   end type pmc_base_type
   
-  public :: PMCCreate, &
-            PMCInit
+  public :: PMCBaseCreate, &
+            PMCBaseInit
   
 contains
 
 ! ************************************************************************** !
 !
-! PMCCreate: Allocates and initializes a new process model coupler object.
+! PMCBaseCreate: Allocates and initializes a new process model coupler object.
 ! author: Glenn Hammond
 ! date: 06/10/13
 !
 ! ************************************************************************** !
-function PMCCreate()
+function PMCBaseCreate()
 
   implicit none
   
-  class(pmc_base_type), pointer :: PMCCreate
+  class(pmc_base_type), pointer :: PMCBaseCreate
   
   class(pmc_base_type), pointer :: pmc
 
-  print *, 'PMC%Create()'
+  print *, 'PMCBase%Create()'
   
   allocate(pmc)
   call pmc%Init()
 
-  PMCCreate => pmc  
+  PMCBaseCreate => pmc  
   
-end function PMCCreate
+end function PMCBaseCreate
 
 ! ************************************************************************** !
 !
-! PMCInit: Initializes a new process model coupler object.
+! PMCBaseInit: Initializes a new process model coupler object.
 ! author: Glenn Hammond
 ! date: 06/10/13
 !
 ! ************************************************************************** !
-subroutine PMCInit(this)
+subroutine PMCBaseInit(this)
 
   implicit none
   
   class(pmc_base_type) :: this
   
-  print *, 'PMC%Init()'
+  print *, 'PMCBase%Init()'
   
   nullify(this%option)
   nullify(this%timestepper)
@@ -90,11 +90,11 @@ subroutine PMCInit(this)
   allocate(this%pm_ptr)
   nullify(this%pm_ptr%ptr)
   
-end subroutine PMCInit
+end subroutine PMCBaseInit
 
 ! ************************************************************************** !
 !
-! PMCCastToBase: Initializes a new process model coupler object.
+! PMCBaseCastToBase: Initializes a new process model coupler object.
 ! author: Glenn Hammond
 ! date: 06/10/13
 !
@@ -113,12 +113,12 @@ end function PMCCastToBase
 
 ! ************************************************************************** !
 !
-! ProcModelCouplerSetTimestepper: 
+! PMCBaseSetTimestepper: 
 ! author: Glenn Hammond
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-subroutine ProcModelCouplerSetTimestepper(this,timestepper)
+subroutine PMCBaseSetTimestepper(this,timestepper)
 
   use Timestepper_Base_class
   
@@ -127,11 +127,11 @@ subroutine ProcModelCouplerSetTimestepper(this,timestepper)
   class(pmc_base_type) :: this
   class(stepper_base_type), pointer :: timestepper
 
-  call printMsg(this%option,'PMC%SetTimestepper()')
+  call printMsg(this%option,'PMCBase%SetTimestepper()')
   
   this%timestepper => timestepper
   
-end subroutine ProcModelCouplerSetTimestepper
+end subroutine PMCBaseSetTimestepper
 
 ! ************************************************************************** !
 !
@@ -148,7 +148,7 @@ recursive subroutine InitializeRun(this)
   
   class(pm_base_type), pointer :: cur_pm
   
-  call printMsg(this%option,'PMC%InitializeRun()')
+  call printMsg(this%option,'PMCBase%InitializeRun()')
   
   cur_pm => this%pm_list
   do
@@ -169,15 +169,16 @@ end subroutine InitializeRun
 
 ! ************************************************************************** !
 !
-! RunToTime: Runs the actual simulation.
+! PMCBaseRunToTime: Runs the actual simulation.
 ! author: Glenn Hammond
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine RunToTime(this,sync_time,stop_flag)
+recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 
   use Timestepper_Base_class
   use Output_module, only : Output
+  use Realization_class, only : realization_type
   
   implicit none
   
@@ -192,7 +193,7 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
   class(pm_base_type), pointer :: cur_pm
   
   write(this%option%io_buffer,'(es12.5)') sync_time
-  this%option%io_buffer = 'PMC%RunToTime(' // &
+  this%option%io_buffer = 'PMCBase%RunToTime(' // &
     trim(adjustl(this%option%io_buffer)) // ')'
   call printMsg(this%option)
   
@@ -225,7 +226,7 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
     enddo
     ! Run underlying process model couplers
     if (associated(this%below)) then
-      call this%below%RunTo(this%timestepper%target_time,local_stop_flag)
+      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
     endif
     
     ! only print output for process models of depth 0
@@ -245,29 +246,37 @@ recursive subroutine RunToTime(this,sync_time,stop_flag)
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
-      call Output(this%pm_list%realization_base, &
-                  plot_flag,transient_plot_flag)
+      select type(realization => this%pm_list%realization_base)
+        class is(realization_type)
+          call Output(realization,plot_flag,transient_plot_flag)
+!        class is(surface_realization_type)
+!          call OutputSurface(realization,plot_flag,transient_plot_flag)
+        class default
+          this%option%io_buffer = &
+            'Unrecognized realization class for output in pmc_base.F90'
+          call printErrMsg(this%option)
+      end select
     endif
     
   enddo
   
   ! Run neighboring process model couplers
   if (associated(this%next)) then
-    call this%next%RunTo(sync_time,local_stop_flag)
+    call this%next%RunToTime(sync_time,local_stop_flag)
   endif
 
   stop_flag = max(stop_flag,local_stop_flag)
   
-end subroutine RunToTime
+end subroutine PMCBaseRunToTime
 
 ! ************************************************************************** !
 !
-! PMCUpdateSolution: 
+! PMCBaseUpdateSolution: 
 ! author: Glenn Hammond
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMCUpdateSolution(this)
+recursive subroutine PMCBaseUpdateSolution(this)
 
   implicit none
   
@@ -275,7 +284,7 @@ recursive subroutine PMCUpdateSolution(this)
 
   class(pm_base_type), pointer :: cur_pm
   
-  call printMsg(this%option,'PMC%UpdateSolution()')
+  call printMsg(this%option,'PMCBase%UpdateSolution()')
   
   cur_pm => this%pm_list
   do
@@ -286,7 +295,7 @@ recursive subroutine PMCUpdateSolution(this)
     cur_pm => cur_pm%next
   enddo  
   
-end subroutine PMCUpdateSolution
+end subroutine PMCBaseUpdateSolution
 
 ! ************************************************************************** !
 !
@@ -303,7 +312,7 @@ recursive subroutine FinalizeRun(this)
   
   character(len=MAXSTRINGLENGTH) :: string
   
-  call printMsg(this%option,'PMC%FinalizeRun()')
+  call printMsg(this%option,'PMCBase%FinalizeRun()')
   
   if (OptionPrintToScreen(this%option)) then
     write(*,'(/," PMC steps = ",i6," newton = ",i8," linear = ",i10, &
@@ -388,12 +397,12 @@ end subroutine OutputLocal
 
 ! ************************************************************************** !
 !
-! PMCDestroy: Deallocates a pmc object
+! PMCBaseDestroy: Deallocates a pmc object
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-recursive subroutine Destroy(this)
+recursive subroutine PMCBaseDestroy(this)
 
   use Utility_module, only: DeallocateArray 
 
@@ -414,6 +423,6 @@ recursive subroutine Destroy(this)
 !  deallocate(pmc)
 !  nullify(pmc)
   
-end subroutine Destroy
+end subroutine PMCBaseDestroy
   
 end module PMC_Base_class
