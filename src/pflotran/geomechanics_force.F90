@@ -911,7 +911,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
   PetscReal, allocatable :: local_disp(:)
-  PetscInt, allocatable :: ids(:)
   PetscInt, allocatable :: ghosted_ids(:)
   PetscReal, allocatable :: Jac_full(:,:)
   PetscReal, allocatable :: Jac_sub_mat(:,:)
@@ -936,7 +935,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     allocate(local_coordinates(size(elenodes),THREE_INTEGER))
     allocate(local_disp(size(elenodes)*option%ngeomechdof))
     allocate(ghosted_ids(size(elenodes)))
-    allocate(ids(size(elenodes)*option%ngeomechdof))
     allocate(Jac_full(size(elenodes)*option%ngeomechdof, &
                       size(elenodes)*option%ngeomechdof))
     allocate(Jac_sub_mat(option%ngeomechdof,option%ngeomechdof))
@@ -954,8 +952,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       do idof = 1, option%ngeomechdof
         local_disp(idof + (ivertex-1)*option%ngeomechdof) = &
           geomech_global_aux_vars(ghosted_id)%disp_vector(idof)
-        ids(idof + (ivertex-1)*option%ngeomechdof) = &
-          (ghosted_ids(ivertex)-1)*option%ngeomechdof + (idof-1)
       enddo
     enddo
     call GeomechForceLocalElemJacobian(elenodes,local_coordinates, &
@@ -982,7 +978,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     deallocate(local_coordinates)
     deallocate(local_disp)
     deallocate(ghosted_ids)
-    deallocate(ids)
     deallocate(Jac_full)
     deallocate(Jac_sub_mat)
   enddo
