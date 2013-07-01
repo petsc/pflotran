@@ -913,11 +913,14 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal, allocatable :: local_disp(:)
   PetscInt, allocatable :: ids(:)
   PetscInt, allocatable :: ghosted_ids(:)
-  PetscReal, allocatable :: Jac(:,:)
+  PetscReal, allocatable :: Jac_full(:,:)
+  PetscReal, allocatable :: Jac_sub_mat(:,:)
   PetscInt :: ielem,ivertex 
   PetscInt :: ghosted_id
   PetscInt :: eletype, idof
   PetscInt :: local_id, petsc_id
+  PetscInt :: ghosted_id1, ghosted_id2
+  PetscInt :: id1, id2, i, j
         
   field => realization%geomech_field
   discretization => realization%discretization
@@ -934,7 +937,9 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     allocate(local_disp(size(elenodes)*option%ngeomechdof))
     allocate(ghosted_ids(size(elenodes)))
     allocate(ids(size(elenodes)*option%ngeomechdof))
-    allocate(Jac(size(elenodes)*option%ngeomechdof,size(elenodes)*option%ngeomechdof))
+    allocate(Jac_full(size(elenodes)*option%ngeomechdof, &
+                      size(elenodes)*option%ngeomechdof))
+    allocate(Jac_sub_mat(option%ngeomechdof,option%ngeomechdof))
     elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     eletype = grid%gauss_node(ielem)%EleType
     do ivertex = 1, grid%elem_nodes(0,ielem)
@@ -956,24 +961,45 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     call GeomechForceLocalElemJacobian(elenodes,local_coordinates, &
        local_disp,eletype, &
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
-       grid%gauss_node(ielem)%w,Jac,option)
-    call MatSetValuesLocal(A,size(ids),ids,size(ids),ids,Jac,ADD_VALUES,ierr) 
+       grid%gauss_node(ielem)%w,Jac_full,option)
+    do id1 = 1, size(ghosted_ids)
+      ghosted_id1 = ghosted_ids(id1)
+        do id2 = 1, size(ghosted_ids)
+          ghosted_id2 = ghosted_ids(id2)
+          Jac_sub_mat = 0.d0
+          Jac_sub_mat =  &
+            Jac_full(option%ngeomechdof*(id1-1)+GEOMECH_DISP_X_DOF: &
+                      option%ngeomechdof*(id1-1)+GEOMECH_DISP_Z_DOF, &
+                      option%ngeomechdof*(id2-1)+GEOMECH_DISP_X_DOF: &
+                      option%ngeomechdof*(id2-1)+GEOMECH_DISP_Z_DOF) 
+
+            call MatSetValuesBlockedLocal(A,1,ghosted_id1-1,1,ghosted_id2-1, &
+                                          Jac_sub_mat,ADD_VALUES,ierr) 
+        enddo
+    enddo
+   
     deallocate(elenodes)
     deallocate(local_coordinates)
     deallocate(local_disp)
     deallocate(ghosted_ids)
     deallocate(ids)
-    deallocate(Jac)
+    deallocate(Jac_full)
+    deallocate(Jac_sub_mat)
   enddo
   
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)  
   
 #ifdef GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(realization%option%mycomm, &
-                            'Geomech_jacobian_debug_beforeBC.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerASCIIOpen(realization%option%mycomm, &
+                              'Geomech_jacobian_debug_beforeBC.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(realization%option%mycomm,&
+                               'Geomech_jacobian_debug_beforeBC.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr) 
 #endif 
   
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
