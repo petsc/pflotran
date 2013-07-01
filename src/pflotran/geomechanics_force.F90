@@ -960,18 +960,18 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        grid%gauss_node(ielem)%w,Jac_full,option)
     do id1 = 1, size(ghosted_ids)
       ghosted_id1 = ghosted_ids(id1)
-        do id2 = 1, size(ghosted_ids)
-          ghosted_id2 = ghosted_ids(id2)
-          Jac_sub_mat = 0.d0
-          Jac_sub_mat =  &
-            Jac_full(option%ngeomechdof*(id1-1)+GEOMECH_DISP_X_DOF: &
-                      option%ngeomechdof*(id1-1)+GEOMECH_DISP_Z_DOF, &
-                      option%ngeomechdof*(id2-1)+GEOMECH_DISP_X_DOF: &
-                      option%ngeomechdof*(id2-1)+GEOMECH_DISP_Z_DOF) 
+      do id2 = 1, size(ghosted_ids)
+        ghosted_id2 = ghosted_ids(id2)
+        Jac_sub_mat = 0.d0
+        Jac_sub_mat =  &
+          Jac_full(option%ngeomechdof*(id1-1)+GEOMECH_DISP_X_DOF: &
+                    option%ngeomechdof*(id1-1)+GEOMECH_DISP_Z_DOF, &
+                    option%ngeomechdof*(id2-1)+GEOMECH_DISP_X_DOF: &
+                    option%ngeomechdof*(id2-1)+GEOMECH_DISP_Z_DOF) 
 
-            call MatSetValuesBlockedLocal(A,1,ghosted_id1-1,1,ghosted_id2-1, &
-                                          Jac_sub_mat,ADD_VALUES,ierr) 
-        enddo
+          call MatSetValuesBlockedLocal(A,1,ghosted_id1-1,1,ghosted_id2-1, &
+                                        Jac_sub_mat,ADD_VALUES,ierr) 
+      enddo
     enddo
    
     deallocate(elenodes)
