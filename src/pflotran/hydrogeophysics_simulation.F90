@@ -103,22 +103,6 @@ subroutine HydrogeophysicsInitializeRun(this)
     cur_process_model_coupler => cur_process_model_coupler%next
   enddo
 
-  ! set depth in tree
-  cur_process_model_coupler_top => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler_top)) exit
-    depth = 0
-    cur_process_model_coupler_top%depth = depth
-    cur_process_model_coupler_below => cur_process_model_coupler_top%below
-    do
-      if (.not.associated(cur_process_model_coupler_below)) exit
-      depth = depth + 1
-      cur_process_model_coupler_below%depth = depth
-      cur_process_model_coupler_below => cur_process_model_coupler_below%below
-    enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
-  enddo
-
 end subroutine HydrogeophysicsInitializeRun
 
 ! ************************************************************************** !

@@ -24,7 +24,6 @@ module PMC_Base_class
     class(pmc_base_type), pointer :: below
     class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
-    PetscInt :: depth
     procedure(Output), nopass, pointer :: Output => Null()
   contains
     procedure, public :: Init => PMCBaseInit
@@ -90,7 +89,6 @@ subroutine PMCBaseInit(this)
   nullify(this%below)
   nullify(this%next)
   this%Output => Null()
-  this%depth = 0
   
   allocate(this%pm_ptr)
   nullify(this%pm_ptr%ptr)
