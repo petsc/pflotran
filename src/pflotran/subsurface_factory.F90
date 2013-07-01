@@ -301,9 +301,9 @@ subroutine SubsurfaceJumpStart(simulation)
   type(subsurface_simulation_type) :: simulation
   
   class(realization_type), pointer :: realization
-  type(stepper_base_type), pointer :: master_stepper
-  type(stepper_base_type), pointer :: flow_stepper
-  type(stepper_base_type), pointer :: tran_stepper
+  class(stepper_base_type), pointer :: master_stepper
+  class(stepper_base_type), pointer :: flow_stepper
+  class(stepper_base_type), pointer :: tran_stepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -546,8 +546,8 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   implicit none
 
   type(realization_type) :: realization
-  type(stepper_base_type), pointer :: flow_stepper
-  type(stepper_base_type), pointer :: tran_stepper
+  class(stepper_base_type), pointer :: flow_stepper
+  class(stepper_base_type), pointer :: tran_stepper
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
@@ -686,7 +686,7 @@ subroutine HijackTimestepper(stepper_old,stepper)
   implicit none
   
   type(stepper_type), pointer :: stepper_old
-  type(stepper_base_type), pointer :: stepper
+  class(stepper_base_type), pointer :: stepper
   
   stepper => TimeStepperBaseCreate()
   

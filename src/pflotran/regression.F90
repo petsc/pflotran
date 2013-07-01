@@ -457,8 +457,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   type(regression_type), pointer :: regression
   type(realization_type) :: realization
   ! these must be pointers as they can be null
-  type(stepper_base_type), pointer :: flow_stepper
-  type(stepper_base_type), pointer :: tran_stepper  
+  class(stepper_base_type), pointer :: flow_stepper
+  class(stepper_base_type), pointer :: tran_stepper  
   
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec

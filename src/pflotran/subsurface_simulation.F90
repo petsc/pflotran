@@ -181,8 +181,8 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  type(stepper_base_type), pointer :: flow_stepper
-  type(stepper_base_type), pointer :: tran_stepper
+  class(stepper_base_type), pointer :: flow_stepper
+  class(stepper_base_type), pointer :: tran_stepper
 
   call printMsg(this%option,'SubsurfaceFinalizeRun()')
   

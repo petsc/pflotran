@@ -16,7 +16,7 @@ module PMC_Base_class
   ! process model coupler type
   type, public :: pmc_base_type
     type(option_type), pointer :: option
-    type(stepper_base_type), pointer :: timestepper
+    class(stepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pm_list
     type(waypoint_list_type), pointer :: waypoints
     class(pmc_base_type), pointer :: below
@@ -125,7 +125,7 @@ subroutine ProcModelCouplerSetTimestepper(this,timestepper)
   implicit none
   
   class(pmc_base_type) :: this
-  type(stepper_base_type), pointer :: timestepper
+  class(stepper_base_type), pointer :: timestepper
 
   call printMsg(this%option,'PMC%SetTimestepper()')
   
