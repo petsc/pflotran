@@ -2,20 +2,25 @@ module Hydrogeophysics_Simulation_class
   
   use Option_module
   use Subsurface_Simulation_class
-!  use PMC_Hydrogeophysics_class
+  use PMC_Hydrogeophysics_class
 
   implicit none
 
-#include "definitions.h"
-  
   private
 
+#include "definitions.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
   type, public, extends(subsurface_simulation_type) :: &
     hydrogeophysics_simulation_type
+    ! pointer to hydrogeophysics coupler
+    class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
+    Vec :: sigma
   contains
     procedure, public :: Init => HydrogeophysicsInit
     procedure, public :: InitializeRun => HydrogeophysicsInitializeRun
-    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
+!    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
     procedure, public :: Strip => HydrogeophysicsStrip
@@ -43,7 +48,7 @@ function HydrogeophysicsCreate(option)
 
   class(hydrogeophysics_simulation_type), pointer :: HydrogeophysicsCreate
   
-  print *, 'SimulationCreate'
+  call printMsg(option,'HydrogeophysicsCreate()')
   
   allocate(HydrogeophysicsCreate)
   call HydrogeophysicsCreate%Init(option)
@@ -68,6 +73,8 @@ subroutine HydrogeophysicsInit(this,option)
   type(option_type), pointer :: option
   
   call SubsurfaceSimulationInit(this,option)
+  nullify(this%hydrogeophysics_coupler)
+  this%sigma = 0
   
 end subroutine HydrogeophysicsInit
 
@@ -93,15 +100,9 @@ subroutine HydrogeophysicsInitializeRun(this)
   PetscInt :: depth
   PetscErrorCode :: ierr
   
-  call printMsg(this%option,'Simulation%InitializeRun()')
+  call printMsg(this%option,'Hydrogeophysics%InitializeRun()')
 
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    depth = 0
-    call cur_process_model_coupler%InitializeRun()
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
+  call this%process_model_coupler_list%InitializeRun()
 
 end subroutine HydrogeophysicsInitializeRun
 
@@ -124,7 +125,7 @@ subroutine HydrogeophysicsExecuteRun(this)
   PetscReal :: dt
   PetscReal :: current_time
   
-  call printMsg(this%option,'HydrogeophysicsExecuteRun()')
+  call printMsg(this%option,'Hydrogeophysics%ExecuteRun()')
 
   final_time = SimulationGetFinalWaypointTime(this)
   ! take hourly steps until final time
@@ -153,7 +154,7 @@ subroutine HydrogeophysicsFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  call printMsg(this%option,'HydrogeophysicsFinalizeRun()')
+  call printMsg(this%option,'Hydrogeophysics%FinalizeRun()')
   
   call SubsurfaceFinalizeRun(this)
   
@@ -168,13 +169,20 @@ end subroutine HydrogeophysicsFinalizeRun
 ! ************************************************************************** !
 subroutine HydrogeophysicsStrip(this)
 
+  use Hydrogeophysics_Wrapper_module
+
   implicit none
   
   class(hydrogeophysics_simulation_type) :: this
   
-  call printMsg(this%option,'HydrogeophysicsStrip()')
+  PetscErrorCode :: ierr
+  
+  call printMsg(this%option,'Hydrogeophysics%Strip()')
   
   call SubsurfaceSimulationStrip(this)
+  call HydrogeophysicsWrapperDestroy(this%option)
+  if (this%sigma /= 0) &
+    call VecDestroy(this%sigma ,ierr)
   
 end subroutine HydrogeophysicsStrip
 
@@ -191,7 +199,7 @@ subroutine HydrogeophysicsDestroy(simulation)
   
   class(hydrogeophysics_simulation_type), pointer :: simulation
   
-  call printMsg(simulation%option,'SimulationDestroy()')
+  call printMsg(simulation%option,'Hydrogeophysics%Destroy()')
   
   if (.not.associated(simulation)) return
   

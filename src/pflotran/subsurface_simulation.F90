@@ -110,42 +110,6 @@ subroutine SubsurfaceInitializeRun(this)
 
   call this%process_model_coupler_list%InitializeRun()
 
-#if 0  
-  !TODO(geh): place logic here to stop if only initial state desired (e.g.
-  !           solution composition, etc.).
-  
-  !TODO(geh): replace integer arguments with logical
-#ifndef SIMPLIFY  
-  if (this%option%restart_flag) then
-    call OutputInit(1) ! number greater than 0
-  else
-    call OutputInit(0)
-  endif
-#endif
-  
-  if (this%output_option%print_initial) then
-    cur_process_model_coupler => this%process_model_coupler_list
-    do
-      if (.not.associated(cur_process_model_coupler)) exit
-      ! arg1 = plot_flag
-      ! arg2 = transient_plot_flag
-!      call cur_process_model_coupler%Output(PETSC_TRUE,PETSC_TRUE)
-      cur_process_model_coupler => cur_process_model_coupler%next
-    enddo
-  endif
-  
-  !TODO(geh): place logic here to stop if only initial condition desired
-#endif
-
-#if 0
-  ! currently performed in SubsurfaceJumpStart()
-  ! pushed in Init()
-  call PetscLogStagePop(ierr)
-
-  ! popped in FinalizeRun()
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-#endif  
-  
 end subroutine SubsurfaceInitializeRun
 
 ! ************************************************************************** !
