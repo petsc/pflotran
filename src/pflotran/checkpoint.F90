@@ -119,10 +119,6 @@ subroutine Checkpoint(realization, &
   use Logging_module
   use Grid_module
   
-  use Flash2_module
-  use Mphase_module
-  use Immis_module
-  use Miscible_module
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
                                MINERAL_VOLUME_FRACTION
@@ -131,7 +127,7 @@ subroutine Checkpoint(realization, &
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscInt :: grid_discretization_type
   PetscInt :: flow_num_constant_time_steps
   PetscInt :: flow_num_newton_iterations
@@ -421,10 +417,6 @@ subroutine Restart(realization, &
   use Logging_module
   use Grid_module
 
-  use Flash2_module
-  use Mphase_module
-  use Immis_module
-  use Miscible_module
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
                                MINERAL_VOLUME_FRACTION

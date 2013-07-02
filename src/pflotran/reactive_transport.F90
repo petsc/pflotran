@@ -339,7 +339,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   use Field_module
   use Grid_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
   

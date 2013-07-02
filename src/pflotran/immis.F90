@@ -278,7 +278,7 @@ subroutine ImmisComputeMassBalance(realization,mass_balance)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 ! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_balance(realization%option%nflowspec,1)
   
@@ -319,7 +319,7 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 ! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_balance(realization%option%nflowspec,1)
 

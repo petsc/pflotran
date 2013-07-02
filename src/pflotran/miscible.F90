@@ -228,7 +228,7 @@ subroutine MiscibleComputeMassBalance(realization,mass_balance)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,1)
    
   type(level_type), pointer :: cur_level
@@ -269,7 +269,7 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,1)
 
   type(option_type), pointer :: option

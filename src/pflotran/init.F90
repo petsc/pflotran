@@ -50,18 +50,32 @@ subroutine Init(simulation)
   use Input_module
   use Condition_Control_module
   
-  use Flash2_module
-  use Mphase_module
-  use Immis_module
-  use Miscible_module
-  use Richards_module
+  use Flash2_module, only : Flash2Setup, Flash2Residual, &
+                            Flash2Jacobian, Flash2UpdateAuxVars
+  use Mphase_module, only : MphaseSetup, MphaseResidual, &
+                            MphaseJacobian, MphaseUpdateAuxVars, &
+                            init_span_wanger
+  use Immis_module, only : ImmisSetup, ImmisResidual, ImmisJacobian, &
+                           ImmisUpdateAuxVars
+  use Miscible_module, only : MiscibleSetup, MiscibleResidual, &
+                              MiscibleJacobian, MiscibleUpdateAuxVars
+  use Richards_module, only : RichardsSetup, RichardsResidual, &
+                              RichardsJacobian, RichardsUpdateAuxVars, &
+                              RichardsCheckUpdatePre, RichardsCheckUpdatePost
   use Richards_MFD_module
-  use TH_module
-  use THC_module
-  use THMC_module
-  use General_module
+  use TH_module, only : THSetup, THResidual, THJacobian, THUpdateAuxVars, &
+                        THCheckUpdatePost, THCheckUpdatePre
+  use THC_module, only : THCSetup, THCResidual, THCJacobian, THCUpdateAuxVars, &
+                         THCCheckUpdatePost, THCCheckUpdatePre
+  use THMC_module, only : THMCSetup, THMCResidual, THMCJacobian, &
+                          THMCUpdateAuxVars
+  use General_module, only : GeneralSetup, GeneralResidual, GeneralJacobian, &
+                             GeneralUpdateAuxVars, GeneralCheckUpdatePost, &
+                             GeneralCheckUpdatePre
   
-  use Reactive_Transport_module
+  use Reactive_Transport_module, only : RTSetup, RTResidual, & 
+                                        RTJacobian, RTUpdateAuxVars, &
+                                        RTCheckUpdate
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
   use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
@@ -3698,7 +3712,7 @@ subroutine readTransportInitialCondition(realization,filename)
   use Grid_module
   use Patch_module
   use Level_module
-  use Reactive_Transport_module
+!  use Reactive_Transport_module
   use Reaction_Aux_module
   use Discretization_module
   use HDF5_module
