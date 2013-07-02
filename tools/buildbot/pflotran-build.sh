@@ -98,14 +98,14 @@ function stage-petsc() {
 function petsc-build() {
     git checkout $1
 
-    _master_config_file="${PFLOTRAN_DIR}/tools/buildbot/petsc/configure-${PETSC_ARCH}.py"
-    if [ ! -f ${_master_config_file} ]; then
-        echo "ERROR: pflotran repository does not contain a petsc configure script for this builder. Expected: ${_master_config_file}"
+    _petsc_config_file="${PFLOTRAN_DIR}/tools/buildbot/petsc/configure-${PETSC_ARCH}.py"
+    if [ ! -f ${_petsc_config_file} ]; then
+        echo "ERROR: pflotran repository does not contain a petsc configure script for this builder. Expected: '${_petsc_config_file}'"
         exit 1
     else
-        echo "Linking PETSc config file from pflotran repo: ${_master_config_file}"
+        echo "Linking PETSc config file from pflotran repo: ${_petsc_config_file}"
     fi
-    ln -s  ${_master_config_file} ${PETSC_DIR}/configure-${PETSC_ARCH}.py
+    ln -s  ${_petsc_config_file} ${PETSC_DIR}/configure-${PETSC_ARCH}.py
     echo "Configuring PETSc..."
     python configure-${PETSC_ARCH}.py
     echo "Building PETSc..."
@@ -124,6 +124,7 @@ function stage-pflotran-build() {
     _info_file=${PFLOTRAN_DIR}/tools/buildbot/builder-info/${BUILDER_ID}.txt
     if [ -f ${_info_file} ]; then
         _pflotran_flags=`cat ${_info_file}`
+        echo "  pflotran build flags=${_pflotran_flags}"
     else
         echo "Could not find builder info file: ${_info_file}. Building vanilla pflotran."
     fi
@@ -139,7 +140,23 @@ function stage-pflotran-test() {
     echo "  PETSC_DIR=${PETSC_DIR}"
     echo "  PETSC_ARCH=${PETSC_ARCH}"
     export PETSC_DIR PETSC_ARCH
-    cd ${PFLOTRAN_DIR}/regression_tests
+    _test_dir=${PFLOTRAN_DIR}/regression_tests
+    _pflotran_flags=
+    _info_file=${PFLOTRAN_DIR}/tools/buildbot/builder-info/${BUILDER_ID}.txt
+    if [ -f ${_info_file} ]; then
+        _pflotran_flags=`cat ${_info_file}`
+        echo "  pflotran build flags=${_pflotran_flags}"
+
+        grep -e "makefile_new" ${_info_file} &> /dev/null
+        if [ "$?" -eq "0" ]; then
+            _test_dir=${PFLOTRAN_DIR}/regression_tests_refactor
+        fi
+    else
+        echo "Could not find builder info file: ${_info_file}. Testing vanilla pflotran."
+    fi
+
+    echo "  test directory : ${_test_dir}"
+    cd ${_test_dir}
     make clean-tests &> /dev/null
     make test
     BUILD_STATUS=$?
