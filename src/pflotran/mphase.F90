@@ -387,7 +387,7 @@ subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_trapped(realization%option%nphase)
 
@@ -431,7 +431,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 ! type(saturation_function_type) :: saturation_function_type
 
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
