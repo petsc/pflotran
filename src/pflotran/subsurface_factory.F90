@@ -549,7 +549,7 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   class(stepper_base_type), pointer :: flow_stepper
   class(stepper_base_type), pointer :: tran_stepper
   PetscBool :: activity_coefs_read

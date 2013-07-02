@@ -52,7 +52,7 @@ subroutine THTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -80,7 +80,7 @@ subroutine THSetup(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -124,7 +124,7 @@ subroutine THSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -359,7 +359,7 @@ subroutine THCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
   Vec :: dP
   ! ignore changed flag for now.
   PetscBool :: changed
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)
@@ -511,7 +511,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dP_changed
   PetscBool :: P1_changed
@@ -709,7 +709,7 @@ subroutine THZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -756,7 +756,7 @@ subroutine THUpdateMassBalancePatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -805,7 +805,7 @@ subroutine THUpdateAuxVars(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -846,7 +846,7 @@ subroutine THUpdateAuxVarsPatch(realization)
    
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1063,7 +1063,7 @@ subroutine THInitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   call THUpdateFixedAccumulation(realization)
 
@@ -1085,7 +1085,7 @@ subroutine THUpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -1126,7 +1126,7 @@ subroutine THUpdateSolutionPatch(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
     call THUpdateMassBalancePatch(realization)
@@ -1148,7 +1148,7 @@ subroutine THUpdateFixedAccumulation(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1188,7 +1188,7 @@ subroutine THUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1307,7 +1307,7 @@ subroutine THNumericalJacobianTest(xx,realization)
   implicit none
 
   Vec :: xx
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -3050,7 +3050,7 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -3134,7 +3134,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3615,7 +3615,7 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -3698,7 +3698,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -4257,7 +4257,7 @@ subroutine THMaxChange(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -4297,7 +4297,7 @@ subroutine THResidualToMass(realization)
   implicit none
 
   Vec :: ts_mass_balance
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -4363,7 +4363,7 @@ function THGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: THGetTecplotHeader
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4487,7 +4487,7 @@ subroutine THSetPlotVariables(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units

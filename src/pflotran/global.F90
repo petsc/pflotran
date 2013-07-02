@@ -31,7 +31,7 @@ subroutine GlobalSetup(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -128,7 +128,7 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: value
   PetscInt :: ivar
 
@@ -198,7 +198,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -397,7 +397,7 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: weight
   
   type(option_type), pointer :: option
@@ -479,7 +479,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                GAS_DENSITY, GAS_SATURATION, &
                                TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: time
   PetscInt :: time_level
   

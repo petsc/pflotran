@@ -51,7 +51,7 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch

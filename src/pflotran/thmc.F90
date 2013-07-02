@@ -54,7 +54,7 @@ subroutine THMCTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -82,7 +82,7 @@ subroutine THMCSetup(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -122,7 +122,7 @@ subroutine THMCSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -354,7 +354,7 @@ subroutine THMCZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -401,7 +401,7 @@ subroutine THMCUpdateMassBalancePatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -450,7 +450,7 @@ subroutine THMCUpdateAuxVars(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -491,7 +491,7 @@ subroutine THMCUpdateAuxVarsPatch(realization)
    
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -660,7 +660,7 @@ subroutine THMCInitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   call THMCUpdateFixedAccumulation(realization)
 
@@ -682,7 +682,7 @@ subroutine THMCUpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -723,7 +723,7 @@ subroutine THMCUpdateSolutionPatch(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
     call THMCUpdateMassBalancePatch(realization)
@@ -745,7 +745,7 @@ subroutine THMCUpdateFixedAccumulation(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -783,7 +783,7 @@ subroutine THMCUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -891,7 +891,7 @@ subroutine THMCNumericalJacobianTest(xx,realization)
   implicit none
 
   Vec :: xx
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -2959,7 +2959,7 @@ subroutine THMCResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -3026,7 +3026,7 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3465,7 +3465,7 @@ subroutine THMCJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -3548,7 +3548,7 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -4158,7 +4158,7 @@ subroutine THMCMaxChange(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -4198,7 +4198,7 @@ subroutine THMCResidualToMass(realization)
   implicit none
 
   Vec :: ts_mass_balance
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -4542,7 +4542,7 @@ function THMCGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: THMCGetTecplotHeader
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
