@@ -403,7 +403,7 @@ subroutine RichardsComputeMassBalance(realization,mass_balance)
 
   use Realization_class
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
   mass_balance = 0.d0
@@ -429,7 +429,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option
