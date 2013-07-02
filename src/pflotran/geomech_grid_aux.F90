@@ -537,37 +537,11 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
   allocate(d_nnz(geomech_grid%nlmax_node))
   allocate(o_nnz(geomech_grid%nlmax_node))
 
-  ! The following is an approximate estimate only. 
-  ! Some of the connections might be repeated.
-  d_nnz = 1 ! vertex connected to itself
-  o_nnz = 0
-  do ielem = 1, geomech_grid%nlmax_elem
-    do ivertex1 = 1, geomech_grid%elem_nodes(0,ielem)
-      local_id1 = geomech_grid%elem_nodes(ivertex1,ielem)
-      if (local_id1 <= geomech_grid%nlmax_node) then
-        do ivertex2 = 1, geomech_grid%elem_nodes(0,ielem)
-          local_id2 = geomech_grid%elem_nodes(ivertex2,ielem)
-          if (local_id2 /= local_id1) then ! Already took care of vertex to itself
-            if (local_id2 <= geomech_grid%nlmax_node) then ! local
-              d_nnz(local_id1) = d_nnz(local_id1) + 1
-            else
-              o_nnz(local_id1) = o_nnz(local_id1) + 1
-            endif
-          endif
-        enddo
-      endif
-    enddo      
-  enddo
-  
-  ! Check to see that d_nnz and o_nnz do not exceed maximum number of 
-  ! local nodes and ghost nodes, respectively
-  do local_id1 = 1, geomech_grid%nlmax_node
-    if (d_nnz(local_id1) > geomech_grid%nlmax_node) &
-      d_nnz(local_id1) = geomech_grid%nlmax_node
-    if (o_nnz(local_id1) > geomech_grid%num_ghost_nodes) &
-      o_nnz(local_id1) = geomech_grid%num_ghost_nodes
-  enddo
-
+  ! The following is an approximate estimate only.
+  ! Need to come up with a more accurate way of calculating d_nnz, o_nnz
+  ! Assuming max vertices based on hex. 
+  d_nnz = min(27,geomech_grid%nlmax_node)
+  o_nnz = min(27,geomech_grid%nmax_node - geomech_grid%nlmax_node)
    
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank

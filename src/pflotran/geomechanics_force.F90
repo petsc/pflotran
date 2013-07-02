@@ -920,6 +920,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: eletype, idof
   PetscInt :: local_id, petsc_id
   PetscInt :: ghosted_id1, ghosted_id2
+  PetscInt :: petsc_id1, petsc_id2
   PetscInt :: id1, id2, i, j, vertex_count, count
         
   field => realization%geomech_field
@@ -961,19 +962,19 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        grid%gauss_node(ielem)%w,Jac_full,option)
     do id1 = 1, size(ghosted_ids)
       ghosted_id1 = ghosted_ids(id1)
+      petsc_id1 = grid%node_ids_ghosted_petsc(ghosted_id1)
       do id2 = 1, size(ghosted_ids)
         ghosted_id2 = ghosted_ids(id2)
+        petsc_id2 = grid%node_ids_ghosted_petsc(ghosted_id2)
         Jac_sub_mat = 0.d0
         Jac_sub_mat =  &
           Jac_full(option%ngeomechdof*(id1-1)+GEOMECH_DISP_X_DOF: &
-                    option%ngeomechdof*(id1-1)+GEOMECH_DISP_Z_DOF, &
-                    option%ngeomechdof*(id2-1)+GEOMECH_DISP_X_DOF: &
-                    option%ngeomechdof*(id2-1)+GEOMECH_DISP_Z_DOF) 
+                   option%ngeomechdof*(id1-1)+GEOMECH_DISP_Z_DOF, &
+                   option%ngeomechdof*(id2-1)+GEOMECH_DISP_X_DOF: &
+                   option%ngeomechdof*(id2-1)+GEOMECH_DISP_Z_DOF) 
           
-        if (grid%nG2L(ghosted_id1) > 0) then
-          call MatSetValuesBlockedLocal(A,1,ghosted_id1-1,1,ghosted_id2-1, &
-                                        Jac_sub_mat,ADD_VALUES,ierr) 
-        endif
+        call MatSetValuesBlocked(A,1,petsc_id1-1,1,petsc_id2-1, &
+                                 Jac_sub_mat,ADD_VALUES,ierr) 
       enddo
     enddo
    
@@ -1003,7 +1004,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
   
-  
   ! Find the number of boundary vertices
   vertex_count = 0
   boundary_condition => patch%geomech_boundary_conditions%first
@@ -1016,7 +1016,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   allocate(rows(vertex_count*option%ngeomechdof))
   count = 0
-  
+ 
   boundary_condition => patch%geomech_boundary_conditions%first
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1034,7 +1034,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         select case(boundary_condition%geomech_condition%displacement_x%itype)
           case(DIRICHLET_BC)
             count = count + 1
-            rows(count) = (petsc_id-1)*option%ngeomechdof + GEOMECH_DISP_X_DOF-1
+            rows(count) = (ghosted_id-1)*option%ngeomechdof + GEOMECH_DISP_X_DOF-1
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -1045,7 +1045,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         select case(boundary_condition%geomech_condition%displacement_y%itype)
           case(DIRICHLET_BC)
             count = count + 1
-            rows(count) = (petsc_id-1)*option%ngeomechdof + GEOMECH_DISP_Y_DOF-1
+            rows(count) = (ghosted_id-1)*option%ngeomechdof + GEOMECH_DISP_Y_DOF-1
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -1056,7 +1056,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         select case(boundary_condition%geomech_condition%displacement_z%itype)
           case(DIRICHLET_BC)
             count = count + 1
-            rows(count) = (petsc_id-1)*option%ngeomechdof + GEOMECH_DISP_Z_DOF-1
+            rows(count) = (ghosted_id-1)*option%ngeomechdof + GEOMECH_DISP_Z_DOF-1
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -1069,15 +1069,17 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatZeroRowsLocal(A,count,rows,1.d0, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE,ierr)  
-     
+
 
 #ifdef GEOMECH_DEBUG  
-  call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_jacobian_afterBC.out', &
+  call PetscViewerASCIIOpen(realization%option%mycomm, &
+                           'Geomech_jacobian_afterBC.out', &
                             viewer,ierr)
   
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)  
-  call PetscViewerBinaryOpen(realization%option%mycomm,'Geomech_jacobian_afterBC.bin', &
+  call PetscViewerBinaryOpen(realization%option%mycomm, &
+                             'Geomech_jacobian_afterBC.bin', &
                              FILE_MODE_WRITE,viewer,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)  
