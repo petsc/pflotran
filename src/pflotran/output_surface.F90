@@ -40,16 +40,20 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputSurfaceInit(realization_base,num_steps)
+!subroutine OutputSurfaceInit(realization_base,num_steps)
+subroutine OutputSurfaceInit(num_steps)
 
-  use Realization_Base_class, only : realization_base_type
+  !use Realization_Base_class, only : realization_base_type
   use Option_module
 
   implicit none
   
-  class(realization_base_type) :: realization_base
+  !class(realization_base_type) :: realization_base
   PetscInt :: num_steps
 
+  call OutputCommonInit()
+  !call OutputObservationInit(num_steps)
+  !call OutputHDF5Init(num_steps)
   if (num_steps == 0) then
     hydrograph_first = PETSC_TRUE
     surf_hdf5_first = PETSC_TRUE

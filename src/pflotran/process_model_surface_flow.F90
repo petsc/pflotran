@@ -22,7 +22,7 @@ module Process_Model_Surface_Flow_class
 #include "finclude/petscsnes.h"
 #include "finclude/petscts.h"
 
-  type, public, extends(process_model_base_type) :: process_model_surface_flow_type
+  type, public, extends(pm_base_type) :: pm_surface_flow_type
     class(surface_realization_type), pointer :: surf_realization
     class(communicator_type), pointer :: comm1
   contains
@@ -46,9 +46,10 @@ module Process_Model_Surface_Flow_class
 !    procedure, public :: ComputeMassBalance => PMSurfaceFlowComputeMassBalance
     procedure, public :: Destroy => PMSurfaceFlowDestroy
     procedure, public :: RHSFunction => PMSurfaceFlowRHSFunction
-  end type process_model_surface_flow_type
+  end type pm_surface_flow_type
 
-  public :: PMSurfaceFlowCreate
+  public :: PMSurfaceFlowCreate, &
+            PMSurfaceFlowDTExplicit
 
 contains
 
@@ -64,9 +65,9 @@ function PMSurfaceFlowCreate()
 
   implicit none
 
-  class(process_model_surface_flow_type), pointer :: PMSurfaceFlowCreate
+  class(pm_surface_flow_type), pointer :: PMSurfaceFlowCreate
 
-  class(process_model_surface_flow_type), pointer :: surface_flow_pm
+  class(pm_surface_flow_type), pointer :: surface_flow_pm
 
   allocate(surface_flow_pm)
   nullify(surface_flow_pm%option)
@@ -96,7 +97,7 @@ subroutine PMSurfaceFlowInit(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   ! set up communicator
   select case(this%surf_realization%discretization%itype)
@@ -123,7 +124,7 @@ subroutine PMSurfaceFlowPreSolve(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
@@ -146,7 +147,7 @@ subroutine PMSurfaceFlowSetRealization(this, surf_realization)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
   class(surface_realization_type), pointer :: surf_realization
 
   this%surf_realization => surf_realization
@@ -171,7 +172,7 @@ recursive subroutine PMSurfaceFlowInitializeRun(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
 end subroutine PMSurfaceFlowInitializeRun
 
@@ -187,7 +188,7 @@ recursive subroutine PMSurfaceFlowFinalizeRun(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
 #ifdef PM_SURFACE_FLOW_DEBUG
   call printMsg(this%option,'PMSurfaceFlow%FinalizeRun()')
@@ -216,7 +217,7 @@ subroutine PMSurfaceFlowUpdateSolution(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   PetscBool :: force_update_flag = PETSC_FALSE
 
@@ -247,7 +248,7 @@ subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
   TS                                     :: ts
   PetscReal                              :: time
   Vec                                    :: xx
@@ -274,7 +275,7 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -292,6 +293,35 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
 end subroutine PMSurfaceFlowUpdateTimestep
 
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/11/13
+! ************************************************************************** !
+subroutine PMSurfaceFlowDTExplicit(this,dt_max)
+
+  use Surface_Flow_module, only : SurfaceFlowComputeMaxDt
+
+  implicit none
+
+  class(pm_surface_flow_type) :: this
+  PetscReal :: dt_max
+
+  PetscReal :: dt_max_glb
+  PetscErrorCode :: ierr
+  PetscReal :: dt_max_loc
+
+  call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max_loc)
+  call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MIN,this%option%mycomm,ierr)
+  dt_max = min(0.9d0*dt_max_glb,this%surf_realization%dt_max)
+
+end subroutine PMSurfaceFlowDTExplicit
+
 ! ************************************************************************** !
 !> This routine
 !!
@@ -306,7 +336,7 @@ subroutine PMSurfaceFlowDestroy(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   if (associated(this%next)) then
     call this%next%Destroy()

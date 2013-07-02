@@ -483,7 +483,8 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   ! print initial condition output if not a restarted sim
   call OutputInit(master_stepper%steps)
 #ifdef SURFACE_FLOW
-  call OutputSurfaceInit(realization,master_stepper%steps)
+!  call OutputSurfaceInit(realization,master_stepper%steps)
+  call OutputSurfaceInit(master_stepper%steps)
 #endif
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
@@ -2930,11 +2931,6 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   surf_field     => surf_realization%surf_field
   solver         => stepper%solver
 
-  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
-  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
-  call TSGetTime(solver%ts,time,ierr)
-  call TSGetTimeStep(solver%ts,dtime,ierr)
-
   stepper%steps = stepper%steps + 1
   if (option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE FLOW ",66("="))')
@@ -2946,6 +2942,12 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       dtime/surf_realization%output_option%tconv, &
       surf_realization%output_option%tunit
   endif
+
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
+  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+  call TSGetTime(solver%ts,time,ierr)
+  call TSGetTimeStep(solver%ts,dtime,ierr)
+  write(*,*),'Here -1'
 
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
@@ -2960,11 +2962,13 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
   ! First, update the solution vector
+  write(*,*),'Here -2'
   call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
           surf_field%flow_xx_loc,NFLOWDOF)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE)
+      write(*,*),'Here -3'
       call SurfaceFlowUpdateAuxVars(surf_realization)
     case(TH_MODE)
       ! Then, update the aux vars
@@ -2974,6 +2978,7 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       surf_realization%patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
     case default
   end select
+  write(*,*),'Here -4'
 
 end subroutine StepperStepSurfaceFlowExplicitDT
 #endif

@@ -342,8 +342,12 @@ misc_obj = \
 #	${common_src}reaction_chunk.o\
 
 surface_obj = \
+	${common_src}pmc_surface.o \
+	${common_src}timestepper_surface.o \
 	${common_src}surface_auxiliary.o \
 	${common_src}surface_checkpoint.o \
+	${common_src}surface_factory.o \
+	${common_src}surfsubsurface_factory.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_flow_aux.o \
@@ -352,6 +356,8 @@ surface_obj = \
 	${common_src}surface_global.o \
 	${common_src}surface_material.o \
 	${common_src}surface_realization.o \
+	${common_src}surface_simulation.o \
+	${common_src}surfsubsurface_simulation.o \
 	${common_src}surface_th_aux.o \
 	${common_src}surface_th.o
 
@@ -600,6 +606,8 @@ pmc_base.o : option.o output.o output_aux.o process_model_base.o \
              process_model_top.o timestepper_base.o utility.o waypoint.o
 pmc_hydrogeophysics.o : option.o output.o pmc_base.o utility.o
 pmc_subsurface.o : option.o pmc_base.o realization.o utility.o
+pmc_surface.o : option.o pmc_base.o surface_realization.o utility.o \
+                timestepper_surface.o
 process_model_base.o : option.o output_aux.o realization_base.o
 process_model_richards.o : communicator_base.o condition.o discretization.o \
                            global.o grid.o option.o process_model_base.o \
@@ -732,7 +740,8 @@ subsurface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
                        process_model_top.o reactive_transport.o realization.o \
                        richards.o simulation.o simulation_base.o \
                        subsurface_simulation.o th.o thc.o thmc.o timestepper.o \
-                       timestepper_base.o waypoint.o
+                       timestepper_base.o waypoint.o surface_checkpoint.o \
+                       output_surface.o
 subsurface_simulation.o : logging.o option.o output.o pmc_base.o \
                           pmc_subsurface.o realization.o regression.o \
                           simulation_base.o timestepper_base.o
@@ -743,6 +752,15 @@ surface_complexation.o : global_aux.o input.o matrix_block_aux.o option.o \
                          reaction_aux.o reactive_transport_aux.o string.o \
                          surface_complexation_aux.o utility.o
 surface_complexation_aux.o : database_aux.o option.o utility.o
+surface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
+                       immis.o init.o input.o logging.o miscible.o mphase.o \
+                       option.o output.o output_aux.o pmc_base.o \
+                       process_model_base.o process_model_surface_flow.o \
+                       process_model_top.o  surface_realization.o \
+                       surface_flow.o simulation_base.o \
+                       surface_simulation.o \
+                       timestepper_base.o waypoint.o
+
 surface_field.o :
 surface_flow.o : condition.o connection.o coupler.o debug.o discretization.o \
                  dm_kludge.o field.o global_aux.o grid.o level.o logging.o \
@@ -772,6 +790,25 @@ surface_realization.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
                         string.o surface_field.o surface_material.o \
                         unstructured_cell.o unstructured_grid.o \
                         unstructured_grid_aux.o waypoint.o
+surface_simulation.o : logging.o option.o output.o pmc_base.o \
+                          pmc_surface.o realization.o regression.o \
+                          simulation_base.o timestepper_base.o
+surfsubsurface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
+                       immis.o init.o input.o logging.o miscible.o mphase.o \
+                       option.o output.o output_aux.o pmc_base.o \
+                       pmc_subsurface.o process_model_base.o \
+                       process_model_richards.o process_model_rt.o \
+                       process_model_th.o process_model_thc.o \
+                       process_model_top.o reactive_transport.o realization.o \
+                       richards.o simulation.o simulation_base.o \
+                       subsurface_simulation.o th.o thc.o thmc.o \
+                       timestepper_base.o waypoint.o surface_checkpoint.o \
+                       output_surface.o surface_realization.o surface_flow.o \
+                       surfsubsurface_simulation.o
+surfsubsurface_simulation.o : logging.o option.o output.o pmc_base.o \
+                          pmc_subsurface.o pmc_surface.o realization.o regression.o \
+                          simulation_base.o timestepper_base.o
+timestepper_surface.o : timestepper_base.o option.o
 surface_th.o : condition.o connection.o coupler.o debug.o discretization.o \
                dm_kludge.o field.o fluid.o grid.o level.o option.o \
                output_aux.o patch.o realization.o realization_base.o region.o \
