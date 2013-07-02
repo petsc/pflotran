@@ -65,7 +65,7 @@ subroutine RTTimeCut(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   
@@ -127,7 +127,7 @@ subroutine RTSetup(realization)
  
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -267,7 +267,7 @@ subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
   SNESLineSearch :: line_search
   Vec :: C
   Vec :: dC
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscBool :: changed
   
   PetscReal, pointer :: C_p(:)
@@ -444,7 +444,7 @@ subroutine RTZeroMassBalanceDelta(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -491,7 +491,7 @@ subroutine RTUpdateMassBalance(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -539,7 +539,7 @@ subroutine RTInitializeTimestep(realization)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   call RTUpdateFixedAccumulation(realization)
   ! geh: never use transport coefs evaluated at time k
@@ -570,7 +570,7 @@ subroutine RTUpdateEquilibriumState(realization)
  
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -658,7 +658,7 @@ subroutine RTUpdateKineticState(realization)
  
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -734,7 +734,7 @@ subroutine RTUpdateFixedAccumulation(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
@@ -861,7 +861,7 @@ subroutine RTUpdateTransportCoefs(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
@@ -1005,7 +1005,7 @@ subroutine RTUpdateRHSCoefs(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(option_type), pointer :: option
@@ -1067,7 +1067,7 @@ subroutine RTCalculateRHS_t0(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(option_type), pointer :: option
@@ -1131,7 +1131,7 @@ subroutine RTCalculateRHS_t1(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
@@ -1363,7 +1363,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
   implicit none
       
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   Mat :: T
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
@@ -1596,7 +1596,7 @@ subroutine RTReact(realization)
      
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
@@ -1811,7 +1811,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
   
   implicit none
 
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
 
   PetscInt :: local_id, ghosted_id
   PetscInt, parameter :: iphase = 1
@@ -1967,7 +1967,7 @@ subroutine RTNumericalJacobianTest(realization)
   implicit none
 
   Vec :: xx
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -2061,7 +2061,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal, pointer :: xx_p(:), log_xx_p(:)
   PetscErrorCode :: ierr
   
@@ -2145,7 +2145,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
@@ -2455,7 +2455,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:), accum_p(:)
@@ -2786,7 +2786,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
 
@@ -2889,7 +2889,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   MatStructure flag  
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
@@ -3144,7 +3144,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B
   MatStructure flag  
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
@@ -3417,7 +3417,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscBool :: update_bcs
   PetscBool :: update_cells
   PetscBool :: update_activity_coefs
@@ -3901,7 +3901,7 @@ subroutine RTMaxChange(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field 
@@ -3936,7 +3936,7 @@ subroutine RTSetPlotVariables(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name,  units
   type(output_variable_list_type), pointer :: list
@@ -4233,7 +4233,7 @@ subroutine RTJumpStartKineticSorption(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -4281,7 +4281,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   use Option_module
   use Field_module
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscBool :: checkpoint
   
@@ -4376,7 +4376,7 @@ subroutine RTExplicitAdvection(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
@@ -4774,7 +4774,7 @@ subroutine RTDestroy(realization)
   use Patch_module
   use Option_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
 #ifdef OS_STATISTICS
   type(option_type), pointer :: option

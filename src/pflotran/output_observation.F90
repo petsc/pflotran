@@ -1468,7 +1468,7 @@ end subroutine WriteObservationSecondaryDataAtCell
 ! ************************************************************************** !  
 subroutine OutputMassBalance(realization_base)
 
-  use Realization_class, only : realization_type
+  use Realization_class
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module
@@ -1476,15 +1476,15 @@ subroutine OutputMassBalance(realization_base)
   use Coupler_module
   use Utility_module
   
-  use Richards_module, only : RichardsComputeMassBalance
-  use Mphase_module, only : MphaseComputeMassBalance
-  use Immis_module, only : ImmisComputeMassBalance
-  use Miscible_module, only : MiscibleComputeMassBalance
-  use TH_module, only : THComputeMassBalance
-  use THC_module, only : THCComputeMassBalance
-  use THMC_module, only : THMCComputeMassBalance
-  use Reactive_Transport_module, only : RTComputeMassBalance
-  use General_module, only : GeneralComputeMassBalance
+  use Richards_module
+  use Mphase_module
+  use Immis_module
+  use Miscible_module
+  use TH_module
+  use THC_module
+  use THMC_module
+  use Reactive_Transport_module
+  use General_module
   
   use Global_Aux_module
   use Reactive_Transport_Aux_module
@@ -1798,27 +1798,27 @@ subroutine OutputMassBalance(realization_base)
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
     sum_trapped = 0.d0
-    select type(realization => realization_base)
+    select type(realization_base)
       class is(realization_type)
         select case(option%iflowmode)
           case(RICHARDS_MODE)
-            call RichardsComputeMassBalance(realization,sum_kg(1,:))
+            call RichardsComputeMassBalance(realization_base,sum_kg(1,:))
           case(TH_MODE)
-            call THComputeMassBalance(realization,sum_kg(1,:))
+            call THComputeMassBalance(realization_base,sum_kg(1,:))
           case(THC_MODE)
-            call THCComputeMassBalance(realization,sum_kg(1,:))
+            call THCComputeMassBalance(realization_base,sum_kg(1,:))
           case(THMC_MODE)
-            call THMCComputeMassBalance(realization,sum_kg(1,:))
+            call THMCComputeMassBalance(realization_base,sum_kg(1,:))
           case(MIS_MODE)
-            call MiscibleComputeMassBalance(realization,sum_kg(:,1))
+            call MiscibleComputeMassBalance(realization_base,sum_kg(:,1))
           case(MPH_MODE)
-            call MphaseComputeMassBalance(realization,sum_kg(:,:),sum_trapped(:))
+            call MphaseComputeMassBalance(realization_base,sum_kg(:,:),sum_trapped(:))
           case(IMS_MODE)
-            call ImmisComputeMassBalance(realization,sum_kg(:,1))
+            call ImmisComputeMassBalance(realization_base,sum_kg(:,1))
           case(G_MODE)
             option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
             call printErrMsg(option)
-            call GeneralComputeMassBalance(realization,sum_kg(1,:))
+            call GeneralComputeMassBalance(realization_base,sum_kg(1,:))
         end select
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
@@ -1860,9 +1860,9 @@ subroutine OutputMassBalance(realization_base)
   
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
-    select type(realization => realization_base)
+    select type(realization_base)
       class is(realization_type)
-        call RTComputeMassBalance(realization,sum_mol)
+        call RTComputeMassBalance(realization_base,sum_mol)
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
         call printErrMsg(option)

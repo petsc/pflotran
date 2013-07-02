@@ -58,7 +58,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
                         volume_p(:), &
                         accum_p(:), xx_faces_loc_p(:)
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
 
   type(grid_type), pointer :: grid
@@ -153,7 +153,7 @@ subroutine RichardsUpdateCellPressure(realization)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   if (.not.realization%patch%aux%Richards% &
       aux_vars_cell_pressures_up_to_date) then
@@ -186,7 +186,7 @@ end subroutine RichardsUpdateCellPressure
 !   
 !   implicit none
 ! 
-!   class(realization_type) :: realization
+!   type(realization_type) :: realization
 !   type(discretization_type), pointer :: discretization
 ! 
 !   
@@ -323,7 +323,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -441,7 +441,7 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
 #ifdef DASVYAT
   
@@ -574,7 +574,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
@@ -679,7 +679,7 @@ use Logging_module
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
@@ -792,7 +792,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -975,7 +975,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -1234,7 +1234,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -1469,7 +1469,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -1743,7 +1743,7 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -1816,7 +1816,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -1917,7 +1917,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -2113,7 +2113,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr

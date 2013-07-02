@@ -50,32 +50,18 @@ subroutine Init(simulation)
   use Input_module
   use Condition_Control_module
   
-  use Flash2_module, only : Flash2Setup, Flash2Residual, &
-                            Flash2Jacobian, Flash2UpdateAuxVars
-  use Mphase_module, only : MphaseSetup, MphaseResidual, &
-                            MphaseJacobian, MphaseUpdateAuxVars, &
-                            init_span_wanger
-  use Immis_module, only : ImmisSetup, ImmisResidual, ImmisJacobian, &
-                           ImmisUpdateAuxVars
-  use Miscible_module, only : MiscibleSetup, MiscibleResidual, &
-                              MiscibleJacobian, MiscibleUpdateAuxVars
-  use Richards_module, only : RichardsSetup, RichardsResidual, &
-                              RichardsJacobian, RichardsUpdateAuxVars, &
-                              RichardsCheckUpdatePre, RichardsCheckUpdatePost
+  use Flash2_module
+  use Mphase_module
+  use Immis_module
+  use Miscible_module
+  use Richards_module
   use Richards_MFD_module
-  use TH_module, only : THSetup, THResidual, THJacobian, THUpdateAuxVars, &
-                        THCheckUpdatePost, THCheckUpdatePre
-  use THC_module, only : THCSetup, THCResidual, THCJacobian, THCUpdateAuxVars, &
-                         THCCheckUpdatePost, THCCheckUpdatePre
-  use THMC_module, only : THMCSetup, THMCResidual, THMCJacobian, &
-                          THMCUpdateAuxVars
-  use General_module, only : GeneralSetup, GeneralResidual, GeneralJacobian, &
-                             GeneralUpdateAuxVars, GeneralCheckUpdatePost, &
-                             GeneralCheckUpdatePre
+  use TH_module
+  use THC_module
+  use THMC_module
+  use General_module
   
-  use Reactive_Transport_module, only : RTSetup, RTResidual, & 
-                                        RTJacobian, RTUpdateAuxVars, &
-                                        RTCheckUpdate
+  use Reactive_Transport_module
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   
   use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
@@ -107,7 +93,7 @@ subroutine Init(simulation)
   type(stepper_type), pointer :: tran_stepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1310,7 +1296,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -1529,7 +1515,7 @@ subroutine InitReadInput(simulation)
   type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
 
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2735,7 +2721,7 @@ subroutine assignMaterialPropToRegions(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
@@ -3028,7 +3014,7 @@ subroutine verifyAllCouplers(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -3072,7 +3058,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(coupler_list_type), pointer :: coupler_list
 
   type(option_type), pointer :: option
@@ -3155,7 +3141,7 @@ subroutine readRegionFiles(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(region_type), pointer :: region
  
@@ -3216,7 +3202,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscBool :: realization_dependent
   character(len=MAXSTRINGLENGTH) :: filename
   
@@ -3304,7 +3290,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(material_property_type) :: material_property
 
   type(field_type), pointer :: field
@@ -3502,7 +3488,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   Vec :: vector
   character(len=MAXWORDLENGTH) :: filename
   PetscInt :: vector_type
@@ -3619,7 +3605,7 @@ subroutine readFlowInitialCondition(realization,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset
@@ -3712,7 +3698,7 @@ subroutine readTransportInitialCondition(realization,filename)
   use Grid_module
   use Patch_module
   use Level_module
-!  use Reactive_Transport_module
+  use Reactive_Transport_module
   use Reaction_Aux_module
   use Discretization_module
   use HDF5_module
@@ -3722,7 +3708,7 @@ subroutine readTransportInitialCondition(realization,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset, idof
@@ -3917,7 +3903,7 @@ subroutine InitReadVelocityField(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
