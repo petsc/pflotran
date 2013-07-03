@@ -484,9 +484,11 @@ hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
 hdf5_aux.o : logging.o option.o
 hydrogeophysics_factory.o : hydrogeophysics_simulation.o init.o input.o \
                             option.o simulation.o simulation_base.o \
-                            subsurface_factory.o hydrogeophysics_wrapper.o
+                            subsurface_factory.o pmc_hydrogeophysics.o \
+                            hydrogeophysics_wrapper.o
 hydrogeophysics_simulation.o : option.o output.o pmc_base.o simulation_base.o \
-                               subsurface_simulation.o hydrogeophysics_wrapper.o
+                               subsurface_simulation.o pmc_hydrogeophysics.o \
+                               hydrogeophysics_wrapper.o
 hydrogeophysics_wrapper.o : option.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \

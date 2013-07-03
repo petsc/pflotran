@@ -162,7 +162,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(pmc_base_type), target :: this
+  class(pmc_base_type), pointer :: this
 
   PetscErrorCode :: ierr
 
