@@ -27,6 +27,7 @@ PetscInt, parameter, public :: GEOMECH_OUTPUT_STAGE = 4
     PetscLogEvent :: event_geomech_residual
     PetscLogEvent :: event_geomech_jacobian
     PetscLogEvent :: event_output_tecplot
+    PetscLogEvent :: event_output_write_tecplot
 
   end type geomech_logging_type
   
@@ -82,6 +83,10 @@ subroutine GeomechLoggingCreate()
   call PetscLogEventRegister('GeomechOutputTecplot', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_output_tecplot,ierr)
+                             
+  call PetscLogEventRegister('GeomechOutputWriteTecplot', &
+                             geomech_logging%class_pflotran, &
+                             geomech_logging%event_output_write_tecplot,ierr)
   
 end subroutine GeomechLoggingCreate
 

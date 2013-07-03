@@ -518,7 +518,8 @@ geomechanics_init.o : geomech_grid.o geomech_grid_aux.o \
                       geomechanics_field.o geomechanics_material.o \
                       geomechanics_patch.o geomechanics_realization.o \
                       geomechanics_region.o geomechanics_strata.o input.o \
-                      option.o patch.o solver.o string.o waypoint.o
+                      option.o output_aux.o output_tecplot.o patch.o solver.o \
+                      string.o units.o waypoint.o
 geomechanics_logging.o :
 geomechanics_material.o : input.o option.o string.o
 geomechanics_patch.o : dataset_base.o geomech_grid.o geomech_grid_aux.o \
@@ -541,8 +542,9 @@ geomechanics_strata.o : geomechanics_material.o geomechanics_region.o input.o \
 geomechanics_timestepper.o : condition_control.o convergence.o \
                              discretization.o geomechanics_discretization.o \
                              geomechanics_field.o geomechanics_force.o \
-                             geomechanics_realization.o logging.o option.o \
-                             output.o output_aux.o realization.o solver.o \
+                             geomechanics_logging.o geomechanics_realization.o \
+                             logging.o option.o output.o output_aux.o \
+                             output_geomechanics.o realization.o solver.o \
                              timestepper.o waypoint.o
 geometry.o : input.o option.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
@@ -629,6 +631,11 @@ output_aux.o : input.o option.o string.o variables.o
 output_common.o : connection.o coupler.o field.o grid.o hdf5.o hdf5_aux.o \
                   logging.o option.o output_aux.o patch.o realization_base.o \
                   unstructured_cell.o unstructured_grid_aux.o variables.o
+output_geomechanics.o : geomech_grid.o geomech_grid_aux.o \
+                        geomechanics_discretization.o geomechanics_field.o \
+                        geomechanics_logging.o geomechanics_patch.o \
+                        geomechanics_realization.o option.o output_aux.o \
+                        output_common.o output_tecplot.o
 output_hdf5.o : connection.o coupler.o discretization.o field.o grid.o hdf5.o \
                 hdf5_aux.o logging.o option.o output_aux.o output_common.o \
                 patch.o reaction_aux.o realization_base.o string.o \
@@ -754,9 +761,9 @@ secondary_continuum.o : block_solve.o block_tridiag.o condition.o constraint.o \
                         water_eos.o
 secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 shape_function.o : gauss.o unstructured_cell.o
-simulation.o : general.o geomechanics_realization.o option.o \
-               reactive_transport.o realization.o regression.o richards.o \
-               solver.o surface_realization.o timestepper.o
+simulation.o : general.o geomechanics_logging.o geomechanics_realization.o \
+               option.o reactive_transport.o realization.o regression.o \
+               richards.o solver.o surface_realization.o timestepper.o
 solid_solution.o : input.o mineral.o mineral_aux.o option.o reaction_aux.o \
                    solid_solution_aux.o string.o utility.o
 solid_solution_aux.o : mineral_aux.o
@@ -853,6 +860,7 @@ utility.o : input.o option.o string.o
 variables.o :
 water_eos.o :
 waypoint.o : option.o output_aux.o utility.o
+
 
 # developer level regression testing
 test : FORCE
