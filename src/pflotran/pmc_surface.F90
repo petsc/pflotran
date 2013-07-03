@@ -17,9 +17,11 @@ module PMC_Surface_class
   contains
     procedure, public :: Init => PMCSurfaceInit
     procedure, public :: RunToTime => PMCSurfaceRunToTime
+    procedure, public :: SetSurfaceTimestepper => PMCSurfaceSetTimestepper
   end type pmc_surface_type
 
-  public :: PMCSurfaceCreate
+  public :: PMCSurfaceCreate, &
+            PMCSurfaceSetTimestepper
 
 contains
 
@@ -86,6 +88,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Process_Model_Base_class
   use Process_Model_Surface_Flow_class
   use Option_module
+  use Surface_Flow_module
   
   implicit none
   
@@ -114,7 +117,9 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     
     cur_pm => this%pm_list
 
-    call this%surf_timestepper%SetTargetTime(sync_time,this%option, &
+    call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max)
+    write(*,*),'assocatied: ',associated(this%surf_timestepper)
+    call this%surf_timestepper%TimeStepperSurfaceSetTargetTime(sync_time,dt_max,this%option, &
                                         local_stop_flag,plot_flag, &
                                         transient_plot_flag)
 #if 0
@@ -171,6 +176,30 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   stop_flag = max(stop_flag,local_stop_flag)
   
 end subroutine PMCSurfaceRunToTime
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 07/03/13
+! ************************************************************************** !
+subroutine PMCSurfaceSetTimestepper(this,surf_timestepper)
+
+  use Timestepper_Surface_class
+  
+  implicit none
+  
+  class(pmc_surface_type) :: this
+  class(timestepper_surface_type), pointer :: surf_timestepper
+
+  !call printMsg(this%option,'PMCBase%SetTimestepper() ?????????????????????')
+  
+  this%surf_timestepper => surf_timestepper
+  write(*,*),'associated(timestepper%cur_waypoint) = ',associated(surf_timestepper%cur_waypoint)
+  
+end subroutine PMCSurfaceSetTimestepper
 
 ! ************************************************************************** !
 !> This routine

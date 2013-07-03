@@ -66,10 +66,12 @@ module Timestepper_Base_class
     procedure, public :: StepDT => TimeStepperBaseStepDT
     procedure, public :: UpdateDT => TimeStepperBaseUpdateDT
     procedure, public :: Destroy => TimeStepperBaseDestroy
+    generic :: GenericBinding => SetTargetTime
     
   end type stepper_base_type
   
-  public :: TimeStepperBaseCreate, TimeStepperBasePrintInfo
+  public :: TimeStepperBaseCreate, TimeStepperBasePrintInfo, &
+            TimeStepperBaseInit
 
 contains
 

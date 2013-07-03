@@ -142,7 +142,7 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
     surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
     !surf_flow_process_model_coupler%timestepper => simulation_old%surf_flow_stepper
     call HijackTimestepper(simulation_old%surf_flow_stepper, &
-                           surf_flow_process_model_coupler%timestepper)
+                           surf_flow_process_model_coupler%surf_timestepper)
     nullify(cur_process_model)
   endif
 
@@ -168,20 +168,20 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
         select type(cur_process_model)
           class is (pm_surface_flow_type)
             call cur_process_model%PMSurfaceFlowSetRealization(surf_realization)
-            call cur_process_model_coupler%SetTimestepper( &
-                    surf_flow_process_model_coupler%timestepper)
-            !surf_flow_process_model_coupler%timestepper%dt = option%surf_flow_dt
+            !call cur_process_model_coupler%SetTimestepper( &
+            !        surf_flow_process_model_coupler%surf_timestepper)
+            surf_flow_process_model_coupler%surf_timestepper%dt = option%surf_flow_dt
         end select
 
         call cur_process_model%Init()
         select type(cur_process_model)
           class is (pm_surface_flow_type)
-            call TSSetRHSFunction( &
-                            cur_process_model_coupler%timestepper%solver%ts, &
-                            cur_process_model%residual_vec, &
-                            PMRHSFunction, &
-                            cur_process_model_coupler%pm_ptr, &
-                            ierr)
+            !call TSSetRHSFunction( &
+            !              cur_process_model_coupler%surf_timestepper%solver%ts, &
+            !              cur_process_model%residual_vec, &
+            !              PMRHSFunction, &
+            !              cur_process_model_coupler%pm_ptr, &
+            !              ierr)
         end select
         cur_process_model => cur_process_model%next
       enddo
@@ -193,6 +193,13 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
   simulation%surf_realization => surf_realization
   simulation%surf_flow_process_model_coupler => surf_flow_process_model_coupler
   simulation%regression => simulation_old%regression
+  surf_flow_process_model_coupler%surf_realization => surf_realization
+
+  write(*,*),'In HighjackSurfaceSimulation: ', &
+    associated(surf_flow_process_model_coupler%surf_timestepper%cur_waypoint)
+
+  ! point the top process model coupler to Output
+  !simulation%process_model_coupler_list%Output => Output
 
 end subroutine HighjackSurfaceSimulation
 
@@ -351,61 +358,65 @@ end subroutine SurfaceJumpStart
 !!
 !! date: 06/28/13
 ! ************************************************************************** !
-subroutine HijackTimestepper(stepper_old,stepper)
+subroutine HijackTimestepper(stepper_old,surf_stepper)
 
   use Timestepper_Base_class
+  use Timestepper_Surface_class
   use Timestepper_module
 
   implicit none
   
   type(stepper_type), pointer :: stepper_old
-  class(stepper_base_type), pointer :: stepper
+  class(timestepper_surface_type), pointer :: surf_stepper
   
-  stepper => TimeStepperBaseCreate()
+  surf_stepper => TimeStepperSurfaceCreate()
   
-  stepper%steps = stepper_old%steps
-  stepper%num_newton_iterations = stepper_old%num_newton_iterations
-  stepper%num_linear_iterations = stepper_old%num_linear_iterations
-  stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
+  surf_stepper%steps = stepper_old%steps
+  surf_stepper%num_newton_iterations = stepper_old%num_newton_iterations
+  surf_stepper%num_linear_iterations = stepper_old%num_linear_iterations
+  surf_stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
 
-  stepper%max_time_step = stepper_old%max_time_step
-  stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
-  stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
-  stepper%iaccel = stepper_old%iaccel
+  surf_stepper%max_time_step = stepper_old%max_time_step
+  surf_stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
+  surf_stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
+  surf_stepper%iaccel = stepper_old%iaccel
 
-  stepper%cumulative_newton_iterations = stepper_old%cumulative_newton_iterations
-  stepper%cumulative_linear_iterations = stepper_old%cumulative_linear_iterations
-  stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
-  stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
+  surf_stepper%cumulative_newton_iterations = stepper_old%cumulative_newton_iterations
+  surf_stepper%cumulative_linear_iterations = stepper_old%cumulative_linear_iterations
+  surf_stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
+  surf_stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
 
-  stepper%start_time = stepper_old%start_time
-  stepper%start_time_step = stepper_old%start_time_step
-  stepper%time_step_tolerance = stepper_old%time_step_tolerance
-  stepper%target_time = stepper_old%target_time
+  surf_stepper%start_time = stepper_old%start_time
+  surf_stepper%start_time_step = stepper_old%start_time_step
+  surf_stepper%time_step_tolerance = stepper_old%time_step_tolerance
+  surf_stepper%target_time = stepper_old%target_time
   
-  stepper%prev_dt = stepper_old%prev_dt
-!  stepper%dt = stepper_old%dt
-  stepper%dt_min = stepper_old%dt_min
-  stepper%dt_max = stepper_old%dt_max
-  stepper%cfl_limiter = stepper_old%cfl_limiter
-  stepper%cfl_limiter_ts = stepper_old%cfl_limiter_ts
+  surf_stepper%prev_dt = stepper_old%prev_dt
+!  surf_stepper%dt = stepper_old%dt
+  surf_stepper%dt_min = stepper_old%dt_min
+  surf_stepper%dt_max = stepper_old%dt_max
+  surf_stepper%cfl_limiter = stepper_old%cfl_limiter
+  surf_stepper%cfl_limiter_ts = stepper_old%cfl_limiter_ts
   
-  stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
+  surf_stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
 
-  stepper%ntfac = stepper_old%ntfac
-  stepper%tfac => stepper_old%tfac
+  surf_stepper%ntfac = stepper_old%ntfac
+  surf_stepper%tfac => stepper_old%tfac
   nullify(stepper_old%tfac)
   
-  stepper%init_to_steady_state = stepper_old%init_to_steady_state
-  stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
-  stepper%run_as_steady_state = stepper_old%run_as_steady_state
+  surf_stepper%init_to_steady_state = stepper_old%init_to_steady_state
+  surf_stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
+  surf_stepper%run_as_steady_state = stepper_old%run_as_steady_state
 
-  stepper%solver => stepper_old%solver
+  surf_stepper%solver => stepper_old%solver
   nullify(stepper_old%solver)
-  stepper%convergence_context => stepper_old%convergence_context
+  surf_stepper%convergence_context => stepper_old%convergence_context
   nullify(stepper_old%convergence_context)
-  stepper%cur_waypoint => stepper_old%cur_waypoint
+  surf_stepper%cur_waypoint => stepper_old%cur_waypoint
   nullify(stepper_old%cur_waypoint)
+  write(*,*),'HijackTimestepper>>>>>>>>>>> ', associated(surf_stepper%cur_waypoint)
+  
+  
 !  stepper%prev_waypoint => stepper_old%prev_waypoint
 !  nullify(stepper_old%prev_waypoint)
   
