@@ -11,10 +11,10 @@ module Geomechanics_Logging_module
 #include "definitions.h"
 
 ! stages
-PetscInt, parameter, public :: INIT_STAGE = 1
-PetscInt, parameter, public :: TS_STAGE = 2
-PetscInt, parameter, public :: GEOMECH_STAGE = 3
-PetscInt, parameter, public :: OUTPUT_STAGE = 4
+PetscInt, parameter, public :: GEOMECH_INIT_STAGE = 1
+PetscInt, parameter, public :: GEOMECH_TS_STAGE = 2
+PetscInt, parameter, public :: GEOMECH_SOLVE_STAGE = 3
+PetscInt, parameter, public :: GEOMECH_OUTPUT_STAGE = 4
 
   type, public :: geomech_logging_type 
   
@@ -26,6 +26,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 4
     PetscLogEvent :: event_geomech_condition_read_values
     PetscLogEvent :: event_geomech_residual
     PetscLogEvent :: event_geomech_jacobian
+    PetscLogEvent :: event_output_tecplot
 
   end type geomech_logging_type
   
@@ -51,22 +52,22 @@ subroutine GeomechLoggingCreate()
   
   allocate(geomech_logging)
 
-  call PetscLogStageRegister('Init Stage',  & 
-                             geomech_logging%stage(INIT_STAGE),ierr)
-  call PetscLogStageRegister('Time Step Stage', &
-                             geomech_logging%stage(TS_STAGE),ierr)
-  call PetscLogStageRegister('Flow Stage', &
-                             geomech_logging%stage(GEOMECH_STAGE),ierr)
-  call PetscLogStageRegister('Output Stage', &
-                             geomech_logging%stage(OUTPUT_STAGE),ierr)
+  call PetscLogStageRegister('Geomech Init Stage',  & 
+                             geomech_logging%stage(GEOMECH_INIT_STAGE),ierr)
+  call PetscLogStageRegister('Geomech Time Step Stage', &
+                             geomech_logging%stage(GEOMECH_TS_STAGE),ierr)
+  call PetscLogStageRegister('Geomech Flow Stage', &
+                             geomech_logging%stage(GEOMECH_SOLVE_STAGE),ierr)
+  call PetscLogStageRegister('Geomech Output Stage', &
+                             geomech_logging%stage(GEOMECH_OUTPUT_STAGE),ierr)
                              
-  call PetscClassIdRegister('PFLOTRAN',geomech_logging%class_pflotran,ierr)
+  call PetscClassIdRegister('Geomech PFLOTRAN',geomech_logging%class_pflotran,ierr)
 
   call PetscLogEventRegister('GeomechCondRead', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_condition_read,ierr)
  
-  call PetscLogEventRegister('FlowCondReadVals', &
+  call PetscLogEventRegister('GeomechCondReadVals', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_condition_read_values,ierr)
 
@@ -77,6 +78,10 @@ subroutine GeomechLoggingCreate()
   call PetscLogEventRegister('GeomechJacobian', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_geomech_jacobian,ierr)
+                             
+  call PetscLogEventRegister('GeomechOutputTecplot', &
+                             geomech_logging%class_pflotran, &
+                             geomech_logging%event_output_tecplot,ierr)
   
 end subroutine GeomechLoggingCreate
 

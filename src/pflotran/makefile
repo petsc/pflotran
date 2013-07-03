@@ -366,8 +366,8 @@ geomech_obj = \
   ${common_src}geomechanics_timestepper.o \
   ${common_src}gauss.o \
   ${common_src}shape_function.o \
-  ${common_src}geomechanics_global_aux.o
-
+  ${common_src}geomechanics_global_aux.o\
+  ${common_src}output_geomechanics.o  
 
 
 # End Source Block

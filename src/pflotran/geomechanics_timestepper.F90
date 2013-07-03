@@ -37,10 +37,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   use Option_module
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
-  use Logging_module  
   use Condition_Control_module
+#ifdef GEOMECH  
   use Geomechanics_Realization_module
-
+  use Geomechanics_Logging_module  
+  use Output_Geomechanics_module
+#endif
 
   implicit none
 
@@ -62,6 +64,9 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   PetscBool :: transport_read
   PetscBool :: failure
   PetscErrorCode :: ierr
+#ifdef GEOMECH  
+  PetscBool :: geomech_plot_flag, geomech_transient_plot_flag
+#endif
 
   option => realization%option
   output_option => realization%output_option
@@ -163,7 +168,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   option%init_stage = PETSC_FALSE
 
   ! popped in TimeStepperFinalizeRun()
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
+  call PetscLogStagePush(geomech_logging%stage(GEOMECH_TS_STAGE),ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then
@@ -188,6 +193,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
+#ifdef GEOMECH
+    geomech_plot_flag = PETSC_TRUE
+    geomech_transient_plot_flag = PETSC_TRUE
+    call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
+                            geomech_transient_plot_flag)
+#endif    
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
@@ -261,7 +272,10 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
+#ifdef GEOMECH
   use Geomechanics_Realization_module
+  use Output_Geomechanics_module, only : OutputGeomechanics
+#endif  
 
   implicit none
   
@@ -280,6 +294,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
   type(waypoint_type), pointer :: prev_waypoint  
+     
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscBool :: plot_flag, stop_flag, transient_plot_flag
@@ -288,6 +303,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   PetscBool :: failure, surf_failure
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: flow_to_tran_ts_ratio
+  PetscBool :: geomech_plot_flag
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -333,6 +349,10 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                option,plot_flag, &
                                transient_plot_flag)
 
+#ifdef GEOMECH
+    geomech_plot_flag = plot_flag
+#endif
+
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
 
@@ -343,9 +363,12 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
-    
+ 
+#ifdef GEOMECH       
     call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                         failure)
+#endif
+
 
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
@@ -468,6 +491,11 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
+    
+#ifdef GEOMECH
+    call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
+                            transient_plot_flag)
+#endif    
 
     ! if a simulation wallclock duration time is set, check to see that the
     ! next time step will not exceed that value.  If it does, print the

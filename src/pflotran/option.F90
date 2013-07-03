@@ -71,6 +71,7 @@ module Option_module
 
 #ifdef GEOMECH
     PetscInt :: ngeomechdof
+    PetscReal :: geomech_time
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -392,6 +393,10 @@ subroutine OptionInitRealization(option)
   option%surf_restart_filename = ""
   option%surf_restart_flag = PETSC_FALSE
   option%surf_restart_time = -999.0
+#endif
+
+#ifdef GEOMECH
+  option%geomech_time = 0.d0
 #endif
 
   option%tranmode = ""

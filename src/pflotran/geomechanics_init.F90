@@ -128,7 +128,10 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Geomechanics_Strata_module
   use Geomechanics_Condition_module
   use Geomechanics_Coupler_module
+  use Output_Aux_module
+  use Output_Tecplot_module
   use Solver_module
+  use Units_module
   use Waypoint_module
 
   ! Still need to add other geomech modules for output, etc once created
@@ -149,13 +152,15 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(geomech_strata_type), pointer           :: strata
   type(geomech_condition_type), pointer        :: condition
   type(geomech_coupler_type), pointer          :: coupler
+  type(output_option_type), pointer            :: output_option
+  PetscReal                                    :: units_conversion
 
-  
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXWORDLENGTH)                 :: card
-  character(len=1) :: backslash
-
-  PetscReal :: temp_real, temp_real2
+  character(len=1)                             :: backslash
+  
+  PetscBool                                    :: continuation_flag
+  PetscReal                                    :: temp_real, temp_real2
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   input%ierr = 0
@@ -163,6 +168,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   word = ''
   
   discretization => geomech_realization%discretization
+  output_option => geomech_realization%output_option
   
   call GeomechanicsInit(geomech_realization,input,option)  
   
@@ -248,7 +254,227 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
       case ('GEOMECHANICS_DEBUG')
         call GeomechDebugRead(geomech_realization%debug,input,option)       
         
-       !.........................................................................
+      !.........................................................................
+      case ('GEOMECHANICS_OUTPUT')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','GEOMECHANICS_OUTPUT')
+          call StringToUpper(word)
+          select case(trim(word))
+            case('NO_FINAL','NO_PRINT_FINAL')
+              output_option%print_final = PETSC_FALSE
+            case('NO_INITIAL','NO_PRINT_INITIAL')
+              output_option%print_initial = PETSC_FALSE
+            case('PERMEABILITY')
+              output_option%print_permeability = PETSC_TRUE
+            case('POROSITY')
+              output_option%print_porosity = PETSC_TRUE
+            case('PRINT_COLUMN_IDS')
+              output_option%print_column_ids = PETSC_TRUE
+            case('TIMES')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'units','GEOMECHANICS_OUTPUT')
+              units_conversion = UnitsConvertToInternal(word,option)
+              continuation_flag = PETSC_TRUE
+              do
+                continuation_flag = PETSC_FALSE
+                if (index(input%buf,backslash) > 0) &
+                  continuation_flag = PETSC_TRUE
+                input%ierr = 0
+                do
+                  if (InputError(input)) exit
+                  call InputReadDouble(input,option,temp_real)
+                  if (.not.InputError(input)) then
+                    waypoint => WaypointCreate()
+                    waypoint%time = temp_real*units_conversion
+                    waypoint%print_output = PETSC_TRUE
+                    write(*,*),'Inserting waypoint in geomech_realization: ',waypoint%time
+                    call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+                  endif
+                enddo
+                if (.not.continuation_flag) exit
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+              enddo
+            case('OUTPUT_FILE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                                 'GEOMECHANICS_OUTPUT,OUTPUT_FILE')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('OFF')
+                  option%print_to_file = PETSC_FALSE
+                case('PERIODIC')
+                  call InputReadInt(input,option,output_option%output_file_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC,OUTPUT_FILE')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,OUTPUT_FILE.'
+                  call printErrMsg(option)
+              end select
+            case('SCREEN')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment','OUTPUT,SCREEN')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('OFF')
+                  option%print_to_screen = PETSC_FALSE
+                case('PERIODIC')
+                  call InputReadInt(input,option,output_option%screen_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC,SCREEN')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,SCREEN.'
+                  call printErrMsg(option)
+              end select
+            case('PERIODIC')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                                 'GEOMECHANICS_OUTPUT,PERIODIC')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('TIME')
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'time increment', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'time increment units', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                  units_conversion = UnitsConvertToInternal(word,option)
+                  output_option%periodic_output_time_incr = temp_real* &
+                                                            units_conversion
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  if (input%ierr == 0) then
+                    if (StringCompareIgnoreCase(word,'between')) then
+
+                      call InputReadDouble(input,option,temp_real)
+                      call InputErrorMsg(input,option,'start time', &
+                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'start time units', &
+                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                      units_conversion = UnitsConvertToInternal(word,option)
+                      temp_real = temp_real * units_conversion
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (.not.StringCompareIgnoreCase(word,'and')) then
+                        input%ierr = 1
+                      endif
+                      call InputErrorMsg(input,option,'and', &
+                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME"')
+                      call InputReadDouble(input,option,temp_real2)
+                      call InputErrorMsg(input,option,'end time', &
+                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'end time units', &
+                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                      temp_real2 = temp_real2 * units_conversion
+                      do
+                        waypoint => WaypointCreate()
+                        waypoint%time = temp_real
+                        waypoint%print_output = PETSC_TRUE
+                        write(*,*),'Inserting waypoint in geomech_realization: >>>>>>>> ',waypoint%time
+                        call WaypointInsertInList(waypoint,geomech_realization%waypoints)
+                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        if (temp_real > temp_real2) exit
+                      enddo
+                      output_option%periodic_output_time_incr = 0.d0
+                    else
+                      input%ierr = 1
+                      call InputErrorMsg(input,option,'between', &
+                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
+                    endif
+                  endif
+                case('TIMESTEP')
+                  call InputReadInt(input,option, &
+                                    output_option%periodic_output_ts_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC,TIMESTEP')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in GEOMECHANICS_OUTPUT,PERIODIC,'// &
+                                     'TIMESTEP.'
+                  call printErrMsg(option)
+              end select
+            case('PERIODIC_OBSERVATION')
+              output_option%print_observation = PETSC_TRUE
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                'OUTPUT, PERIODIC_OBSERVATION')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('TIME')
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'time increment', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIME')
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'time increment units', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIME')
+                  units_conversion = UnitsConvertToInternal(word,option) 
+                  output_option%periodic_tr_output_time_incr = temp_real* &
+                                                               units_conversion
+                case('TIMESTEP')
+                  call InputReadInt(input,option, &
+                                    output_option%periodic_tr_output_ts_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,'// &
+                                     'PERIODIC_OBSERVATION,TIMESTEP.'
+                  call printErrMsg(option)
+              end select
+            case('FORMAT')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'keyword','GEOMECHANICS_OUTPUT,FORMAT') 
+              call StringToUpper(word)
+              select case(trim(word))
+                case ('HDF5')
+                  output_option%print_hdf5 = PETSC_TRUE
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputDefaultMsg(input,option, &
+                                       'GEOMECHANICS_OUTPUT,FORMAT,HDF5,# FILES')
+                  if (len_trim(word) > 1) then 
+                    call StringToUpper(word)
+                    select case(trim(word))
+                      case('SINGLE_FILE')
+                        output_option%print_single_h5_file = PETSC_TRUE
+                      case('MULTIPLE_FILES')
+                        output_option%print_single_h5_file = PETSC_FALSE
+                      case default
+                        option%io_buffer = 'HDF5 keyword (' // trim(word) // &
+                          ') not recongnized.  Use "SINGLE_FILE" or ' // &
+                          '"MULTIPLE_FILES".'
+                        call printErrMsg(option)
+                    end select
+                  endif
+                case ('MAD')
+                  output_option%print_mad = PETSC_TRUE
+                case ('TECPLOT')
+                  output_option%print_tecplot = PETSC_TRUE
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'TECPLOT','GEOMECHANICS_OUTPUT,FORMAT') 
+                  call StringToUpper(word)
+                  output_option%tecplot_format = TECPLOT_FEQUADRILATERAL_FORMAT ! By default it is unstructured
+                case ('VTK')
+                  output_option%print_vtk = PETSC_TRUE
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,FORMAT.'
+                  call printErrMsg(option)
+              end select
+            case default
+              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in GEOMECHANICS_OUTPUT.'
+              call printErrMsg(option)
+          end select
+        enddo
+                        
+      !.........................................................................
       case ('GEOMECHANICS_STRATIGRAPHY','GEOMECHANICS_STRATA')
         strata => GeomechStrataCreate()
         call GeomechStrataRead(strata,input,option)
