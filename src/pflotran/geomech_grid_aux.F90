@@ -21,7 +21,8 @@ module Geomechanics_Grid_Aux_module
     ! variables for geomechanics grid (unstructured) for finite element formulation
     ! The dofs (displacements, here) are solved at the nodes 
     ! Notation corresponding to finite volume: node implies cell vertex and element means cell
-    PetscInt :: global_offset                ! offset in petsc ordering for the first cell on a processor
+    PetscInt :: global_offset                ! offset in petsc ordering for the first vertex on a processor
+    PetscInt :: global_offset_elem           ! offset in petsc ordering for the first element on a processor
     PetscInt :: nmax_elem                    ! Total number of elements in the global domain
     PetscInt :: nlmax_elem                   ! Total number of non-ghosted elements on a processor
     PetscInt :: nmax_node                    ! Total number of nodes in the global domain 
@@ -66,11 +67,15 @@ module Geomechanics_Grid_Aux_module
     VecScatter :: scatter_gtol               ! scatter context for global to local updates
     VecScatter :: scatter_ltol               ! scatter context for local to local updates
     VecScatter :: scatter_gton               ! scatter context for global to natural updates
+    VecScatter :: scatter_gton_elem          ! scatter context for global to natural updates for elements(cells)
     VecScatter :: scatter_ntog               ! scatter context for natural to global updates
     ISLocalToGlobalMapping :: mapping_ltog   ! petsc vec local to global mapping
     ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
+    ISLocalToGlobalMapping :: mapping_ltog_elem   ! For elements
+    ISLocalToGlobalMapping :: mapping_ltogb_elem  ! For elements
     Vec :: global_vec                        ! global vec (no ghost nodes), petsc-ordering
     Vec :: local_vec                         ! local vec (includes local and ghosted nodes), local ordering
+    Vec :: global_vec_elem
   end type gmdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -87,6 +92,7 @@ module Geomechanics_Grid_Aux_module
             GMDMDestroy, &
             GMCreateGMDM, &
             GMGridDMCreateVector, &
+            GMGridDMCreateVectorElem, &
             GMGridDMCreateJacobian, &
             GMGridMapIndices
             
@@ -119,11 +125,15 @@ function GMDMCreate()
   gmdm%scatter_gtol = 0
   gmdm%scatter_ltol  = 0
   gmdm%scatter_gton = 0
+  gmdm%scatter_gton_elem = 0
   gmdm%scatter_ntog = 0
   gmdm%mapping_ltog = 0
   gmdm%mapping_ltogb = 0
+  gmdm%mapping_ltog_elem = 0
+  gmdm%mapping_ltogb_elem = 0
   gmdm%global_vec = 0
   gmdm%local_vec = 0
+  gmdm%global_vec_elem = 0
 
   GMDMCreate => gmdm
 
@@ -148,6 +158,7 @@ function GMGridCreate()
   ! variables for all unstructured grids
   
   geomech_grid%global_offset = 0
+  geomech_grid%global_offset_elem = 0
   geomech_grid%nmax_elem = 0
   geomech_grid%nlmax_elem = 0
   geomech_grid%nmax_node = 0
@@ -204,13 +215,13 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   PetscInt, pointer                   :: int_ptr(:)
   PetscInt                            :: local_id, ghosted_id
   PetscInt                            :: idof
-  IS                                  :: is_tmp
+  IS                                  :: is_tmp, is_tmp_petsc, is_tmp_natural
   Vec                                 :: vec_tmp
   PetscErrorCode                      :: ierr
   character(len=MAXWORDLENGTH)        :: ndof_word
   character(len=MAXSTRINGLENGTH)      :: string
   PetscViewer                         :: viewer
-  PetscInt, allocatable               :: int_array(:)
+  PetscInt, allocatable               :: int_array(:), int_array2(:)
   
   gmdm => GMDMCreate()
   gmdm%ndof = ndof
@@ -503,6 +514,61 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+  ! Now for elements. Need this for writing tecplot output
+
+  allocate(int_array(geomech_grid%nlmax_elem))
+  do local_id = 1, geomech_grid%nlmax_elem
+    int_array(local_id) = (local_id-1) + geomech_grid%global_offset_elem
+  enddo
+  
+  call ISCreateGeneral(option%mycomm,geomech_grid%nlmax_elem, &
+                       int_array,PETSC_COPY_VALUES,is_tmp_petsc,ierr)
+  
+  call AOPetscToApplicationIS(geomech_grid%ao_natural_to_petsc, &
+                              is_tmp_petsc,ierr)
+  allocate(int_array2(geomech_grid%nlmax_elem))
+  call ISGetIndicesF90(is_tmp_petsc,int_ptr,ierr)
+  do local_id = 1, geomech_grid%nlmax_elem
+    int_array2(local_id) = int_ptr(local_id)
+  enddo
+  call ISRestoreIndicesF90(is_tmp_petsc,int_ptr,ierr)
+  call ISDestroy(is_tmp_petsc,ierr)
+  
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_elem, &
+                     int_array,PETSC_COPY_VALUES,is_tmp_petsc,ierr)
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_elem, &
+                     int_array2,PETSC_COPY_VALUES,is_tmp_natural,ierr)
+
+  ! create global vec
+  call VecCreate(option%mycomm,gmdm%global_vec_elem,ierr)
+  call VecSetSizes(gmdm%global_vec_elem,geomech_grid%nlmax_elem*ndof,PETSC_DECIDE,&
+                    ierr)  
+  call VecSetBlockSize(gmdm%global_vec_elem,ndof,ierr)
+  call VecSetFromOptions(gmdm%global_vec_elem,ierr)
+
+  call VecCreate(option%mycomm,vec_tmp,ierr)
+  call VecSetSizes(vec_tmp,geomech_grid%nlmax_elem*ndof,PETSC_DECIDE,ierr)
+  call VecSetBlockSize(vec_tmp,ndof,ierr)
+  call VecSetFromOptions(vec_tmp,ierr)
+  call VecScatterCreate(gmdm%global_vec_elem,is_tmp_petsc,vec_tmp, &
+                        is_tmp_natural,gmdm%scatter_gton_elem,ierr)
+  call VecDestroy(vec_tmp,ierr)
+  call ISDestroy(is_tmp_petsc,ierr)
+  call ISDestroy(is_tmp_natural,ierr)
+  
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_elem, &
+                     int_array,PETSC_COPY_VALUES,is_tmp_petsc,ierr)
+  deallocate(int_array) 
+
+  ! create a local to global mapping
+  call ISLocalToGlobalMappingCreateIS(is_tmp_petsc, &
+                                      gmdm%mapping_ltog_elem,ierr)
+              
+  ! create a block local to global mapping 
+  call ISLocalToGlobalMappingBlock(gmdm%mapping_ltog_elem,ndof, &
+                                   gmdm%mapping_ltogb_elem,ierr)
+                   
+  
 end subroutine GMCreateGMDM
 
 ! ************************************************************************** !
@@ -640,6 +706,52 @@ end subroutine GMGridDMCreateVector
 
 ! ************************************************************************** !
 !
+! GMGridDMCreateVectorElem: Creates a global vector with PETSc ordering
+!                           with size of elements and not vertices
+! author: Satish Karra, LANL
+! date: 06/04/13
+!
+! ************************************************************************** !
+subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(geomech_grid_type)              :: geomech_grid
+  type(gmdm_type)                      :: gmdm
+  type(option_type)                    :: option 
+  Vec                                  :: vec
+  PetscInt                             :: vec_type
+  PetscErrorCode                       :: ierr
+  
+  select case(vec_type)
+    case(GLOBAL)
+      call VecCreate(option%mycomm,vec,ierr)
+      call VecSetSizes(vec,geomech_grid%nlmax_elem*gmdm%ndof, &
+                       PETSC_DECIDE,ierr)  
+      call VecSetLocalToGlobalMapping(vec,gmdm%mapping_ltog_elem,ierr)
+      call VecSetLocalToGlobalMappingBlock(vec,gmdm%mapping_ltogb_elem,ierr)
+      call VecSetBlockSize(vec,gmdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
+    case(LOCAL)
+      call VecCreate(PETSC_COMM_SELF,vec,ierr)
+      call VecSetSizes(vec,geomech_grid%nlmax_elem*gmdm%ndof, &
+                       PETSC_DECIDE,ierr)  
+      call VecSetBlockSize(vec,gmdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
+    case(NATURAL)
+      call VecCreate(option%mycomm,vec,ierr)
+      call VecSetSizes(vec,geomech_grid%nlmax_elem*gmdm%ndof, &
+                       PETSC_DECIDE,ierr)  
+      call VecSetBlockSize(vec,gmdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
+  end select
+    
+end subroutine GMGridDMCreateVectorElem
+
+! ************************************************************************** !
+!
 ! GMGridMapIndices: Maps global, local and natural indices of nodes to
 ! each other for geomech grid.
 ! author: Satish Karra, LANL
@@ -772,11 +884,16 @@ subroutine GMDMDestroy(gmdm)
   call VecScatterDestroy(gmdm%scatter_ltol,ierr)
   call VecScatterDestroy(gmdm%scatter_gton,ierr)
   call VecScatterDestroy(gmdm%scatter_ntog,ierr)
+  call VecScatterDestroy(gmdm%scatter_gton_elem,ierr)
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog,ierr)
   if (gmdm%mapping_ltogb /= 0) &
     call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltogb,ierr)
+  call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog_elem,ierr)
+  if (gmdm%mapping_ltogb_elem /= 0) &
+    call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltogb_elem,ierr)
   call VecDestroy(gmdm%global_vec,ierr)
   call VecDestroy(gmdm%local_vec,ierr)
+  call VecDestroy(gmdm%global_vec_elem,ierr)
   
   deallocate(gmdm)
   nullify(gmdm)

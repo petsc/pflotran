@@ -17,6 +17,8 @@ module Output_Geomechanics_module
 #include "finclude/petscdm.h90"
 #include "finclude/petsclog.h"
 
+  PetscInt, save, public :: max_local_node_size_saved = -1
+
   public :: OutputGeomechanics
       
 contains
@@ -225,14 +227,14 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   option => geomech_realization%option
   
   call GMCreateGMDM(grid,gmdm_element,EIGHT_INTEGER,option)
-  call GMGridDMCreateVector(grid,gmdm_element,global_vec, &
+  call GMGridDMCreateVectorElem(grid,gmdm_element,global_vec, &
                             GLOBAL,option) 
-  call GMGridDMCreateVector(grid,gmdm_element,natural_vec, &
+  call GMGridDMCreateVectorElem(grid,gmdm_element,natural_vec, &
                             NATURAL,option) 
   call GetCellConnectionsGeomech(grid,global_vec)
-  call VecScatterBegin(gmdm_element%scatter_gton,global_vec,natural_vec, &
+  call VecScatterBegin(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(gmdm_element%scatter_gton,global_vec,natural_vec, &
+  call VecScatterEnd(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
   call WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization,vec_ptr, &
@@ -282,37 +284,37 @@ subroutine GetCellConnectionsGeomech(grid,vec)
         offset = (local_id-1)*8
         do ivertex = 1, 8
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(ivertex,local_id))
         enddo
       case(WEDGE_TYPE)
         offset = (local_id-1)*8
         vec_ptr(offset + 1) = &
-          grid%node_ids_local_natural(grid%elem_nodes(1,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(1,local_id))
         vec_ptr(offset + 2) = &
-          grid%node_ids_local_natural(grid%elem_nodes(1,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(1,local_id))
         vec_ptr(offset + 3) = &
-          grid%node_ids_local_natural(grid%elem_nodes(4,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(4,local_id))
         vec_ptr(offset + 4) = &
-          grid%node_ids_local_natural(grid%elem_nodes(4,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(4,local_id))
         vec_ptr(offset + 5) = &
-          grid%node_ids_local_natural(grid%elem_nodes(3,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(3,local_id))
         vec_ptr(offset + 6) = &
-          grid%node_ids_local_natural(grid%elem_nodes(2,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(2,local_id))
         vec_ptr(offset + 7) = &
-          grid%node_ids_local_natural(grid%elem_nodes(5,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(5,local_id))
         vec_ptr(offset + 8) = &
-          grid%node_ids_local_natural(grid%elem_nodes(6,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(6,local_id))
       case (PYR_TYPE)
         offset = (local_id-1)*8
         ! from Tecplot 360 Data Format Guide
         ! n1=vert1,n2=vert2,n3=vert3,n4=vert4,n5=n6=n7=n8=vert5
         do ivertex = 1, 4
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(ivertex,local_id))
         enddo
         do ivertex = 5, 8
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(5,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(5,local_id))
         enddo
       case (TET_TYPE)
         offset = (local_id-1)*8
@@ -320,29 +322,29 @@ subroutine GetCellConnectionsGeomech(grid,vec)
         ! n1=vert1,n2=vert2,n3=n4=vert3,n5=vert5=n6=n7=n8=vert4
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(ivertex,local_id))
         enddo
         vec_ptr(offset + 4) = &
-            grid%node_ids_local_natural(grid%elem_nodes(3,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(3,local_id))
         do ivertex = 5, 8
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(4,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(4,local_id))
         enddo
       case (QUAD_TYPE)
         offset = (local_id-1)*4
         do ivertex = 1, 4
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(ivertex,local_id))
         enddo
       case (TRI_TYPE)
         offset = (local_id-1)*4
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
-            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+            grid%node_ids_ghosted_natural(grid%elem_nodes(ivertex,local_id))
         enddo
         ivertex = 4
         vec_ptr(offset + ivertex) = &
-          grid%node_ids_local_natural(grid%elem_nodes(3,local_id))
+          grid%node_ids_ghosted_natural(grid%elem_nodes(3,local_id))
     end select
   enddo
 
@@ -794,14 +796,14 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
-    if (max_local_size_saved < 0) then
+    if (max_local_node_size_saved < 0) then
       call MPI_Allreduce(grid%nlmax_node,max_local_size,ONE_INTEGER_MPI, &
                          MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
-      max_local_size_saved = max_local_size
-      write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
+      max_local_node_size_saved = max_local_size
+      write(option%io_buffer,'("max_local_node_size_saved: ",i9)') max_local_size
       call printMsg(option)
     endif
-    max_local_size = max_local_size_saved
+    max_local_size = max_local_node_size_saved
     local_size_mpi = grid%nlmax_node
   endif
   

@@ -335,7 +335,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call printMsg(option,'Copying unstructured grid to geomechanics grid')
 #endif
   
-  geomech_grid%global_offset = ugrid%global_offset
+  geomech_grid%global_offset_elem = ugrid%global_offset
   geomech_grid%nmax_elem = ugrid%nmax
   geomech_grid%nlmax_elem = ugrid%nlmax
   geomech_grid%nmax_node = ugrid%num_vertices_global
