@@ -73,15 +73,15 @@ module Variables_module
   PetscInt, parameter, public :: SURFACE_LIQUID_HEAD        = 62
   PetscInt, parameter, public :: SURFACE_LIQUID_TEMPERATURE = 63
   PetscInt, parameter, public :: SURFACE_LIQUID_DENSITY     = 64
-  
-  PetscInt, parameter, public :: GEOMECH_DISP_X          = 65
-  PetscInt, parameter, public :: GEOMECH_DISP_Y          = 65
-  PetscInt, parameter, public :: GEOMECH_DISP_Z          = 65
-  
 
   PetscInt, parameter, public :: EH = 65
   PetscInt, parameter, public :: PE = 66
   PetscInt, parameter, public :: O2 = 67
+  
+  PetscInt, parameter, public :: GEOMECH_DISP_X          = 68
+  PetscInt, parameter, public :: GEOMECH_DISP_Y          = 69
+  PetscInt, parameter, public :: GEOMECH_DISP_Z          = 70
+    
 
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58

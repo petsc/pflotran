@@ -39,6 +39,7 @@ module Geomechanics_Patch_module
             GeomechPatchLocalizeRegions, &
             GeomechPatchProcessGeomechCouplers, &
             GeomechPatchInitAllCouplerAuxVars, &
+            GeomechPatchGetDataset, &
             GeomechanicsPatchDestroy
 
 contains
@@ -508,6 +509,76 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
   enddo
 
 end subroutine GeomechPatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! GeomechPatchGetDataset: Extracts variables indexed by ivar and isubvar 
+!                         from a geomechanics patch
+! author: Satish Karra, LANL
+! date: 07/02/13
+!
+! ************************************************************************** !
+subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
+                                  vec,ivar,isubvar,isubvar1)
+
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Option_module
+  use Output_Aux_module
+  use Geomechanics_Field_module
+  use Variables_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(option_type), pointer :: option
+  !type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
+  type(geomech_field_type), pointer :: geomech_field
+  type(geomech_patch_type), pointer :: patch  
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+  PetscInt :: iphase
+
+  PetscInt :: local_id
+  type(geomech_grid_type), pointer :: grid
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  grid => patch%geomech_grid
+
+  call GeomechGridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+  
+  iphase = 1
+  
+  select case(ivar)
+    case(GEOMECH_DISP_X)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(1)
+      enddo
+    case(GEOMECH_DISP_Y)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(2)
+      enddo
+    case(GEOMECH_DISP_Z)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(3)
+      enddo
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+      enddo
+    case default
+      write(option%io_buffer, &
+            '(''IVAR ('',i3,'') not found in GeomechPatchGetDataset'')') ivar
+      call printErrMsg(option)
+  end select
+
+end subroutine GeomechPatchGetDataset
 
 ! ************************************************************************** !
 !

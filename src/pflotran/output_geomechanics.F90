@@ -157,35 +157,198 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   ! write out coordinates
   call WriteTecplotGeomechGridVertices(OUTPUT_UNIT,geomech_realization)
 
-#if 0
   ! loop over variables and write to file
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputSurfaceGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
-                                cur_variable%isubvar)
-    call DiscretizationGlobalToNatural(discretization,global_vec, &
-                                        natural_vec,ONEDOF)
+    call OutputGeomechGetVarFromArray(geomech_realization,global_vec, &
+                                      cur_variable%ivar, &
+                                      cur_variable%isubvar)
+    call GeomechDiscretizationGlobalToNatural(discretization,global_vec, &
+                                              natural_vec,ONEDOF)
     if (cur_variable%iformat == 0) then
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
-                                      TECPLOT_REAL)
+      call WriteTecplotDataSetGeomechFromVec(OUTPUT_UNIT,geomech_realization, &
+                                             natural_vec, &
+                                             TECPLOT_REAL)
     else
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
-                                      TECPLOT_INTEGER)
+      call WriteTecplotDataSetGeomechFromVec(OUTPUT_UNIT,geomech_realization, &
+                                             natural_vec, &
+                                             TECPLOT_INTEGER)
     endif
     cur_variable => cur_variable%next
   enddo
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
-  
+
   ! write vertices
-  call WriteTecplotUGridElements(OUTPUT_UNIT,surf_realization)
-#endif  
+  call WriteTecplotGeomechGridElements(OUTPUT_UNIT,geomech_realization)
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
 end subroutine OutputTecplotGeomechanics
+
+! ************************************************************************** !
+!
+! WriteTecplotGeomechGridElements: This subroutine writes unstructured grid elements 
+!                            for geomechanics grid
+! author: Satish Karra
+! date: 07/03/2013
+!
+! ************************************************************************** !
+subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Option_module
+  use Geomechanics_Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(geomech_realization_type) :: geomech_realization
+
+  type(geomech_grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(geomech_patch_type), pointer :: patch 
+  Vec :: global_cconn_vec
+  type(gmdm_type), pointer :: gmdm_element
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  Vec :: global_vec
+  Vec :: natural_vec
+
+  patch => geomech_realization%geomech_patch
+  grid => patch%geomech_grid
+  option => geomech_realization%option
+  
+  call GMCreateGMDM(grid,gmdm_element,EIGHT_INTEGER,option)
+  call GMGridDMCreateVector(grid,gmdm_element,global_vec, &
+                            GLOBAL,option) 
+  call GMGridDMCreateVector(grid,gmdm_element,natural_vec, &
+                            NATURAL,option) 
+  call GetCellConnectionsGeomech(grid,global_vec)
+  call VecScatterBegin(gmdm_element%scatter_gton,global_vec,natural_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(gmdm_element%scatter_gton,global_vec,natural_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr) 
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  call WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization,vec_ptr, &
+                                            TECPLOT_INTEGER, &
+                                            grid%nlmax_elem*8, &
+                                            EIGHT_INTEGER)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call GMDMDestroy(gmdm_element)
+
+end subroutine WriteTecplotGeomechGridElements
+
+! ************************************************************************** !
+!
+! GetCellConnectionsGeomech: This routine returns a vector containing vertex ids
+!                            in natural order of local cells for geomech grid
+! author: Satish Karra
+! date: 07/03/2013
+!
+! ************************************************************************** !
+subroutine GetCellConnectionsGeomech(grid,vec)
+
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Unstructured_Cell_module
+  
+  implicit none
+  
+  type(geomech_grid_type) :: grid
+  Vec :: vec
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: offset
+  PetscInt :: ivertex
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr  
+    
+  call GeomechGridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+
+  ! initialize
+  vec_ptr = -999.d0
+  do local_id = 1, grid%nlmax_elem
+    ghosted_id = local_id
+    select case(grid%elem_type(ghosted_id))
+      case(HEX_TYPE)
+        offset = (local_id-1)*8
+        do ivertex = 1, 8
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+        enddo
+      case(WEDGE_TYPE)
+        offset = (local_id-1)*8
+        vec_ptr(offset + 1) = &
+          grid%node_ids_local_natural(grid%elem_nodes(1,local_id))
+        vec_ptr(offset + 2) = &
+          grid%node_ids_local_natural(grid%elem_nodes(1,local_id))
+        vec_ptr(offset + 3) = &
+          grid%node_ids_local_natural(grid%elem_nodes(4,local_id))
+        vec_ptr(offset + 4) = &
+          grid%node_ids_local_natural(grid%elem_nodes(4,local_id))
+        vec_ptr(offset + 5) = &
+          grid%node_ids_local_natural(grid%elem_nodes(3,local_id))
+        vec_ptr(offset + 6) = &
+          grid%node_ids_local_natural(grid%elem_nodes(2,local_id))
+        vec_ptr(offset + 7) = &
+          grid%node_ids_local_natural(grid%elem_nodes(5,local_id))
+        vec_ptr(offset + 8) = &
+          grid%node_ids_local_natural(grid%elem_nodes(6,local_id))
+      case (PYR_TYPE)
+        offset = (local_id-1)*8
+        ! from Tecplot 360 Data Format Guide
+        ! n1=vert1,n2=vert2,n3=vert3,n4=vert4,n5=n6=n7=n8=vert5
+        do ivertex = 1, 4
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+        enddo
+        do ivertex = 5, 8
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(5,local_id))
+        enddo
+      case (TET_TYPE)
+        offset = (local_id-1)*8
+        ! from Tecplot 360 Data Format Guide
+        ! n1=vert1,n2=vert2,n3=n4=vert3,n5=vert5=n6=n7=n8=vert4
+        do ivertex = 1, 3
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+        enddo
+        vec_ptr(offset + 4) = &
+            grid%node_ids_local_natural(grid%elem_nodes(3,local_id))
+        do ivertex = 5, 8
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(4,local_id))
+        enddo
+      case (QUAD_TYPE)
+        offset = (local_id-1)*4
+        do ivertex = 1, 4
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+        enddo
+      case (TRI_TYPE)
+        offset = (local_id-1)*4
+        do ivertex = 1, 3
+          vec_ptr(offset + ivertex) = &
+            grid%node_ids_local_natural(grid%elem_nodes(ivertex,local_id))
+        enddo
+        ivertex = 4
+        vec_ptr(offset + ivertex) = &
+          grid%node_ids_local_natural(grid%elem_nodes(3,local_id))
+    end select
+  enddo
+
+  call GeomechGridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
+
+end subroutine GetCellConnectionsGeomech
 
 ! ************************************************************************** !
 !
@@ -461,8 +624,74 @@ end subroutine GetVertexCoordinatesGeomech
 
 ! ************************************************************************** !
 !
+! OutputGeomechGetVarFromArray: Gets variables from an array
+! author: Satish Karra, LANL
+! date: 07/3/13
+!
+! ************************************************************************** !
+subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
+                                        isubvar1)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_Aux_module
+  use Option_module
+  use Geomechanics_Field_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+
+  class(geomech_realization_type) :: geomech_realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+  
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(geomech_logging%event_output_get_var_from_array,ierr) 
+                        
+  call GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1)
+
+  call PetscLogEventEnd(geomech_logging%event_output_get_var_from_array,ierr) 
+  
+end subroutine OutputGeomechGetVarFromArray
+
+! ************************************************************************** !
+!
+! WriteTecplotDataSetGeomechFromVec: Writes data from a Petsc Vec within a block
+!                                   of a Tecplot file
+! author: Satish Karra
+! date: 07/03//13
+!
+! ************************************************************************** !
+subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatype)
+
+  use Geomechanics_Realization_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(geomech_realization_type) :: geomech_realization
+  Vec :: vec
+  PetscInt :: datatype
+  PetscErrorCode :: ierr  
+  
+  PetscReal, pointer :: vec_ptr(:)
+  
+  call VecGetArrayF90(vec,vec_ptr,ierr)                ! 0 implies grid%nlmax
+  call WriteTecplotDataSetGeomech(fid,geomech_realization,vec_ptr, &
+                                  datatype,ZERO_INTEGER) 
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+end subroutine WriteTecplotDataSetGeomechFromVec
+
+! ************************************************************************** !
+!
 ! WriteTecplotDataSetGeomech: Writes data from an array within a block
-!                      of a Tecplot file
+!                             of a Tecplot file
 ! author: Satish Karra
 ! date: 07/02//13
 !
@@ -500,8 +729,8 @@ end subroutine WriteTecplotDataSetGeomech
 !
 ! ************************************************************************** !
 subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
-                                            array,datatype, &
-                                            size_flag,num_per_line)
+                                                array,datatype, &
+                                                size_flag,num_per_line)
 
   use Geomechanics_Realization_module
   use Geomechanics_Grid_module

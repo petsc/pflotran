@@ -10,10 +10,10 @@ module Geomechanics_Global_module
   
 #include "definitions.h"
 
-  public GeomechGlobalSetup
-!         GeomechGlobalSetAuxVarScalar, &
-!         GeomechGlobalSetAuxVarVecLoc, &
-!         GeomechGlobalUpdateAuxVars
+  public :: GeomechGlobalSetup, &
+            GeomechGlobalSetAuxVarScalar, &
+            GeomechGlobalSetAuxVarVecLoc, &
+            GeomechGlobalUpdateAuxVars
 
 contains
 
@@ -83,7 +83,6 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
    
 end subroutine GeomechGlobalSetupPatch
 
-#if 0
 ! ************************************************************************** !
 !
 ! GeomechGlobalSetAuxVarScalar: Strips a geomech global auxvar
@@ -94,8 +93,7 @@ end subroutine GeomechGlobalSetupPatch
 subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
 
   use Geomechanics_Realization_module
-  use Level_module
-  use Patch_module
+  use Geomechanics_Patch_module
 
   implicit none
 
@@ -103,22 +101,11 @@ subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
   PetscReal :: value
   PetscInt :: ivar
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(geomech_patch_type), pointer :: cur_patch
   
-  cur_level => geomech_realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      geomech_realization%patch => cur_patch
-      call GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
+  cur_patch => geomech_realization%geomech_patch
+  call GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
+ 
 end subroutine GeomechGlobalSetAuxVarScalar
 
 ! ************************************************************************** !
@@ -132,10 +119,10 @@ subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
 
   use Geomechanics_Realization_module
   use Option_module
-  use Patch_module
-  use Variables_module, only : SURFACE_LIQUID_HEAD, &
-                               SURFACE_LIQUID_TEMPERATURE, &
-                               SURFACE_LIQUID_DENSITY
+  use Geomechanics_Patch_module
+  use Variables_module, only : GEOMECH_DISP_X, &
+                               GEOMECH_DISP_Y, &
+                               GEOMECH_DISP_Z
   
   implicit none
 
@@ -144,34 +131,25 @@ subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
   PetscInt :: ivar
 
   type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
+  type(geomech_patch_type), pointer :: patch
     
   PetscInt :: i
   
-  patch => geomech_realization%patch
+  patch => geomech_realization%geomech_patch
   option => geomech_realization%option  
   
   select case(ivar)
-    case(SURFACE_LIQUID_HEAD)
+    case(GEOMECH_DISP_X)
       do i=1, patch%geomech_aux%GeomechGlobal%num_aux
-        patch%geomech_aux%GeomechGlobal%aux_vars(i)%head = value
+        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(GEOMECH_DISP_X_DOF) = value
       enddo
-      do i=1, patch%geomech_aux%GeomechGlobal%num_aux_bc
-        patch%geomech_aux%GeomechGlobal%aux_vars_bc(i)%head = value
-      enddo
-    case(SURFACE_LIQUID_TEMPERATURE)
+    case(GEOMECH_DISP_Y)
       do i=1, patch%geomech_aux%GeomechGlobal%num_aux
-        patch%geomech_aux%GeomechGlobal%aux_vars(i)%temp = value
+        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(GEOMECH_DISP_Y_DOF) = value
       enddo
-      do i=1, patch%geomech_aux%GeomechGlobal%num_aux_bc
-        patch%geomech_aux%GeomechGlobal%aux_vars_bc(i)%temp = value
-      enddo
-    case(SURFACE_LIQUID_DENSITY)
+    case(GEOMECH_DISP_Z)
       do i=1, patch%geomech_aux%GeomechGlobal%num_aux
-        patch%geomech_aux%GeomechGlobal%aux_vars(i)%den_kg(option%liquid_phase) = value
-      enddo
-      do i=1, geomech_realization%patch%geomech_aux%GeomechGlobal%num_aux_bc
-        patch%geomech_aux%GeomechGlobal%aux_vars_bc(i)%den_kg(option%liquid_phase) = value
+        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(GEOMECH_DISP_Z_DOF) = value
       enddo
   end select
   
@@ -187,8 +165,7 @@ end subroutine GeomechGlobalSetAuxVarScalarPatch
 subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar)
 
   use Geomechanics_Realization_module
-  use Level_module
-  use Patch_module
+  use Geomechanics_Patch_module
 
   implicit none
   
@@ -200,21 +177,10 @@ subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar
   PetscInt :: ivar
   PetscInt :: isubvar
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => geomech_realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      geomech_realization%patch => cur_patch
-      call GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  type(geomech_patch_type), pointer :: cur_patch
+
+  cur_patch => geomech_realization%geomech_patch
+  call GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
 
 end subroutine GeomechGlobalSetAuxVarVecLoc
 
@@ -228,12 +194,13 @@ end subroutine GeomechGlobalSetAuxVarVecLoc
 subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
 
   use Geomechanics_Realization_module
-  use Patch_module
-  use Grid_module
+  use Geomechanics_Patch_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
   use Option_module
-  use Variables_module, only : SURFACE_LIQUID_HEAD, &
-                               SURFACE_LIQUID_TEMPERATURE, &
-                               SURFACE_LIQUID_DENSITY
+  use Variables_module, only : GEOMECH_DISP_X, &
+                               GEOMECH_DISP_Y, &
+                               GEOMECH_DISP_Z
   
   implicit none
 
@@ -246,49 +213,49 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
   PetscInt :: isubvar  
   
   type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_grid_type), pointer :: grid
   
   PetscInt :: ghosted_id
   PetscReal, pointer :: vec_loc_p(:)
   PetscErrorCode :: ierr
   
-  patch => geomech_realization%patch
-  grid => patch%grid
+  patch => geomech_realization%geomech_patch
+  grid => patch%geomech_grid
   option => geomech_realization%option
   
-  call GridVecGetArrayF90(grid,vec_loc,vec_loc_p,ierr)
+  call GeomechGridVecGetArrayF90(grid,vec_loc,vec_loc_p,ierr)
   
   select case(ivar)
-    case(SURFACE_LIQUID_HEAD)
+    case(GEOMECH_DISP_X)
       select case(isubvar)
         case default
-          do ghosted_id=1, grid%ngmax
-            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%head(option%liquid_phase) &
+          do ghosted_id=1, grid%ngmax_node
+            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_X_DOF) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
-    case(SURFACE_LIQUID_TEMPERATURE)
+    case(GEOMECH_DISP_Y)
       select case(isubvar)
         case default
-          do ghosted_id=1, grid%ngmax
-            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+          do ghosted_id=1, grid%ngmax_node
+            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Y_DOF) &
+              = vec_loc_p(ghosted_id)
           enddo
       end select
-    case(SURFACE_LIQUID_DENSITY)
+    case(GEOMECH_DISP_Z)
       select case(isubvar)
         case default
-          do ghosted_id=1, grid%ngmax
-            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%den_kg(option%liquid_phase) &
+          do ghosted_id=1, grid%ngmax_node
+            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Z_DOF) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
   end select
 
-  call GridVecRestoreArrayF90(grid,vec_loc,vec_loc_p,ierr)
+  call GeomechGridVecRestoreArrayF90(grid,vec_loc,vec_loc_p,ierr)
 
 end subroutine GeomechGlobalSetAuxVarVecLocPatch
-
 
 ! ************************************************************************** !
 !
@@ -302,10 +269,10 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   use Geomechanics_Realization_module
   use Geomechanics_Field_module
   use Option_module
-  use Discretization_module
-  use Variables_module, only : SURFACE_LIQUID_HEAD, &
-                               SURFACE_LIQUID_TEMPERATURE, &
-                               LIQUID_DENSITY
+  use Geomechanics_Discretization_module
+  use Variables_module, only : GEOMECH_DISP_X, &
+                               GEOMECH_DISP_Y, &
+                               GEOMECH_DISP_Z
   
   type(geomech_realization_type) :: geomech_realization
   PetscInt :: time_level
@@ -316,37 +283,32 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   option => geomech_realization%option
   geomech_field => geomech_realization%geomech_field
   
-  ! liquid density
-  call geomechRealizGetDataset(geomech_realization,geomech_field%work,LIQUID_DENSITY, &
-                             ZERO_INTEGER)
-  call DiscretizationGlobalToLocal(geomech_realization%discretization, &
-                                   geomech_field%work,geomech_field%work_loc,ONEDOF)
+  ! x displacement
+  call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
+                               GEOMECH_DISP_X,ZERO_INTEGER)
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+                              geomech_field%work,geomech_field%work_loc,ONEDOF)
   call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
-                                    LIQUID_DENSITY,time_level)
+                                    GEOMECH_DISP_X,time_level)
+                                  
+  ! y displacement
+  call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
+                               GEOMECH_DISP_Y,ZERO_INTEGER)
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+                              geomech_field%work,geomech_field%work_loc,ONEDOF)
+  call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
+                                    GEOMECH_DISP_Y,time_level)
 
-  select case(option%iflowmode)
-    case(TH_MODE)
-      ! head
-      call geomechRealizGetDataset(geomech_realization,geomech_field%work, &
-              SURFACE_LIQUID_HEAD,ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(geomech_realization%discretization, &
-                                  geomech_field%work,geomech_field%work_loc,ONEDOF)
-      call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
-              SURFACE_LIQUID_HEAD,time_level)
- 
-      ! temperature
-      call geomechRealizGetDataset(geomech_realization,geomech_field%work, &
-              SURFACE_LIQUID_TEMPERATURE, ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(geomech_realization%discretization, &
-                                   geomech_field%work,geomech_field%work_loc,ONEDOF)
-      call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
-              SURFACE_LIQUID_TEMPERATURE,time_level)
-      
+  ! z displacement
+  call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
+                               GEOMECH_DISP_Z,ZERO_INTEGER)
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+                              geomech_field%work,geomech_field%work_loc,ONEDOF)
+  call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
+                                    GEOMECH_DISP_Z,time_level)
 
-  end select
 
 end subroutine GeomechGlobalUpdateAuxVars
-#endif
 
 end module Geomechanics_Global_module
 

@@ -55,6 +55,7 @@ public :: GeomechRealizCreate, &
           GeomechRealizInitAllCouplerAuxVars, &
           GeomechRealizPrintCouplers, &
           GeomechRealizAddWaypointsToList, &
+          GeomechRealizGetDataset, &
           GeomechRealizLocalToLocalWithArray
 
 contains
@@ -534,6 +535,34 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
   enddo
 
 end subroutine GeomechRealizProcessGeomechConditions
+
+
+
+! ************************************************************************** !
+!
+! GeomechRealizGetDataset: This routine extracts variables indexed by 
+!                          ivar and isubvar from geomechanics realization
+! author: Satish Karra, LANL
+! date: 07/03/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1)
+
+  implicit none
+
+  type(geomech_realization_type) :: geomech_realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+
+  call GeomechPatchGetDataset(geomech_realization%geomech_patch, &
+                              geomech_realization%geomech_field, &
+                              geomech_realization%option, &
+                              geomech_realization%output_option, &
+                              vec,ivar,isubvar,isubvar1)
+
+end subroutine GeomechRealizGetDataset
 
 ! ************************************************************************** !
 !
