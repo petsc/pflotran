@@ -1257,11 +1257,11 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
     case (INSTANTANEOUS_VARS)
       string2=''
       write(string3,'(i4)') output_option%plot_number
-      xmf_filename = OutputFilename(output_option,option,'xmf','')
+      xmf_filename = OutputFilename(output_option,option,'xmf','geomech')
     case (AVERAGED_VARS)
       string2='-aveg'
       write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
-      xmf_filename = OutputFilename(output_option,option,'xmf','aveg')
+      xmf_filename = OutputFilename(output_option,option,'xmf','geomech_aveg')
   end select
   if (output_option%print_single_h5_file) then
     first = geomech_hdf5_first
