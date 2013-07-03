@@ -197,7 +197,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   implicit none
   
-  class(pmc_base_type) :: this
+  class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
