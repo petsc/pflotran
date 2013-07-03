@@ -20,7 +20,8 @@ module Output_HDF5_module
   
   public :: OutputHDF5Init, &
             OutputHDF5, &
-            OutputHDF5UGridXDMF
+            OutputHDF5UGridXDMF, &
+            OutputHDF5FilenameID
 
 contains
 

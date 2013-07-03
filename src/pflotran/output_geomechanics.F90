@@ -5,6 +5,7 @@ module Output_Geomechanics_module
   use Output_Aux_module  
   use Output_Tecplot_module
   use Output_Common_module
+  use Output_HDF5_module
   
   implicit none
   
@@ -18,6 +19,7 @@ module Output_Geomechanics_module
 #include "finclude/petsclog.h"
 
   PetscInt, save, public :: max_local_node_size_saved = -1
+  PetscBool :: geomech_hdf5_first
 
   public :: OutputGeomechanics
       
@@ -65,6 +67,11 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   endif
 
   if (plot_flag) then
+  
+    if (geomech_realization%output_option%print_hdf5) then
+       call OutputHDF5UGridXDMFGeomech(geomech_realization, &
+                                       INSTANTANEOUS_VARS)
+    endif
    
     if (geomech_realization%output_option%print_tecplot) then
       call PetscTime(tstart,ierr)
@@ -990,6 +997,762 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
 
 end subroutine WriteTecplotDataSetNumPerLineGeomech
 
+! ************************************************************************** !
+!
+! OutputXMFHeaderGeomech: This subroutine writes header to a .xmf file
+! author: Satish Karra, LANL
+! date: 07/3/13
+!
+! ************************************************************************** !
+subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
+
+  implicit none
+
+  PetscInt :: fid, vert_count
+  PetscReal :: time
+  PetscInt :: nmax,xmf_vert_len,ngvert
+  character(len=MAXSTRINGLENGTH) :: filename
+
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+  string="<?xml version=""1.0"" ?>"
+  write(fid,'(a)') trim(string)
+  
+  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
+  write(fid,'(a)') trim(string)
+
+  string="<Xdmf>"
+  write(fid,'(a)') trim(string)
+
+  string="  <Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="    <Grid Name=""Mesh"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,'(es13.5)') time
+  string="      <Time Value = """ // trim(adjustl(string2)) // """ />"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) nmax
+  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
+    trim(adjustl(string2)) // """ >"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) xmf_vert_len
+  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
+    trim(adjustl(string2)) // """>"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Cells"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Topology>"
+  write(fid,'(a)') trim(string)
+
+  string="      <Geometry GeometryType=""XYZ"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) ngvert
+  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Vertices"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Geometry>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFHeaderGeomech
+
+! ************************************************************************** !
+!
+! OutputXMFFooterGeomech: This subroutine writes footer to a .xmf file
+! author: Satish Karra, LANL
+! date: 07/3/13
+!
+! ************************************************************************** !
+subroutine OutputXMFFooterGeomech(fid)
+
+  implicit none
+
+  PetscInt :: fid
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  string="    </Grid>"
+  write(fid,'(a)') trim(string)
+
+  string="  </Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="</Xdmf>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFFooterGeomech
+
+! ************************************************************************** !
+!
+! OutputXMFAttributeGeomech: This subroutine writes an attribute to a .xmf file
+! author: Satish Karra, LANL
+! date: 07/3/13
+!
+! ************************************************************************** !
+subroutine OutputXMFAttributeGeomech(fid,nmax,attname,att_datasetname)
+
+  implicit none
+
+  PetscInt :: fid,nmax
+  
+  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
+  character(len=MAXSTRINGLENGTH) :: string,string2
+  string="      <Attribute Name=""" // trim(attname) // &
+    """ AttributeType=""Scalar""  Center=""Node"">"
+  write(fid,'(a)') trim(string)
+
+!  write(string2,*) grid%nmax
+  write(string2,*) nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(att_datasetname)
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFAttributeGeomech
+
+! ************************************************************************** !
+!
+! OutputHDF5UGridXDMFGeomech: This routine writes unstructured grid data 
+!                            in HDF5 XDMF format
+! author: Satish Karra, LANL
+! date: 07/3/13
+!
+! ************************************************************************** !
+subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Discretization_module
+  use Option_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Field_module
+  use Geomechanics_Patch_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+
+  implicit none
+  
+  type(geomech_realization_type) :: geomech_realization
+  PetscInt :: var_list_type
+
+  call printMsg(geomech_realization%option,'')
+  write(geomech_realization%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(geomech_realization%option)
+
+#else
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use hdf5
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_Aux_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+
+  type(geomech_realization_type) :: geomech_realization
+  PetscInt :: var_list_type
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  PetscMPIInt :: rank
+  integer :: rank_mpi,file_space_rank_mpi
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+#endif
+
+  type(geomech_grid_type), pointer :: grid
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_field_type), pointer :: field
+  type(geomech_patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
+  type(option_type), pointer :: option
+  type(output_variable_type), pointer :: cur_variable
+
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscReal, pointer :: v_ptr
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
+  character(len=MAXSTRINGLENGTH) :: string, string2,string3
+  character(len=MAXWORDLENGTH) :: word
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
+  PetscInt :: nviz_flow, nviz_tran, nviz_dof
+  PetscInt :: current_component
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscFortranAddr :: app_ptr
+  PetscMPIInt :: hdf5_err  
+  PetscBool :: first
+  PetscInt :: ivar, isubvar, var_type
+  PetscInt :: vert_count
+  PetscErrorCode :: ierr
+
+  discretization => geomech_realization%discretization
+  patch => geomech_realization%geomech_patch
+  option => geomech_realization%option
+  field => geomech_realization%geomech_field
+  output_option => geomech_realization%output_option
+
+  select case (var_list_type)
+    case (INSTANTANEOUS_VARS)
+      string2=''
+      write(string3,'(i4)') output_option%plot_number
+      xmf_filename = OutputFilename(output_option,option,'xmf','')
+    case (AVERAGED_VARS)
+      string2='-aveg'
+      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      xmf_filename = OutputFilename(output_option,option,'xmf','aveg')
+  end select
+  if (output_option%print_single_h5_file) then
+    first = geomech_hdf5_first
+    filename = trim(option%global_prefix) // trim(string2) // &
+               trim(option%group_prefix) // '-geomech.h5'
+  else
+    string = OutputHDF5FilenameID(output_option,option,var_list_type)
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        if (mod(output_option%plot_number,output_option%times_per_h5_file)==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+      case (AVERAGED_VARS)
+        if (mod((option%time-output_option%periodic_output_time_incr)/ &
+                output_option%periodic_output_time_incr, &
+                real(output_option%times_per_h5_file))==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+    end select
+
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               trim(string2) // '-' // trim(string) // '-geomech.h5'
+  endif
+
+  grid => patch%geomech_grid
+
+#ifdef SCORPIO_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with SCORPIO_WRITE'
+   call printErrMsg(option)
+#endif
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                     H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 geomech output file: ' // trim(filename)
+  else
+    option%io_buffer = '--> appending to hdf5 geomech output file: ' // trim(filename)
+  endif
+  call printMsg(option)
+
+  if (first) then
+    ! create a group for the coordinates data set
+    string = "Domain"
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+    call WriteHDF5CoordinatesXDMFGeomech(geomech_realization,option,grp_id)
+    call h5gclose_f(grp_id,hdf5_err)
+  endif
+
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write geomech xmf output file: ' // trim(filename)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
+    call OutputXMFHeaderGeomech(OUTPUT_UNIT, &
+                         option%time/output_option%tconv, &
+                         grid%nmax_elem, &
+                         geomech_realization%output_option%xmf_vert_len, &
+                         grid%nmax_node,filename)
+  endif
+
+  ! create a group for the data set
+  write(string,'(''Time'',es13.5,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
+  string = trim(string3) // ' ' // trim(string)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  group_name=string
+  if (hdf5_err /= 0) then
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+  endif
+  call h5eset_auto_f(ON,hdf5_err)
+
+  ! write out data sets 
+  call GeomechDiscretizationCreateVector(discretization,ONEDOF,global_vec, &
+                                         GLOBAL,option)
+  call GeomechDiscretizationCreateVector(discretization,ONEDOF,natural_vec, &
+                                         NATURAL,option)
+
+  select case (var_list_type)
+
+    case (INSTANTANEOUS_VARS)
+      ! loop over variables and write to file
+      cur_variable => output_option%output_variable_list%first
+      do
+        if (.not.associated(cur_variable)) exit
+        call OutputGeomechGetVarFromArray(geomech_realization,global_vec, &
+                                          cur_variable%ivar, &
+                                          cur_variable%isubvar)
+        call GeomechDiscretizationGlobalToNatural(discretization,global_vec, &
+                                                  natural_vec,ONEDOF)
+        string = cur_variable%name
+        if (len_trim(cur_variable%units) > 0) then
+          word = cur_variable%units
+          call HDF5MakeStringCompatible(word)
+          string = trim(string) // ' [' // trim(word) // ']'
+        endif
+        if (cur_variable%iformat == 0) then
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+        else
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_INTEGER)
+        endif
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttributeGeomech(OUTPUT_UNIT,grid%nlmax_node,string, &
+                                         att_datasetname)
+        endif
+        cur_variable => cur_variable%next
+      enddo
+
+#if 0
+    case (AVERAGED_VARS)
+      if(associated(output_option%aveg_output_variable_list%first)) then
+        cur_variable => output_option%aveg_output_variable_list%first
+        do ivar = 1,output_option%aveg_output_variable_list%nvars
+          string = 'Aveg. ' // cur_variable%name
+          if (len_trim(cur_variable%units) > 0) then
+            word = cur_variable%units
+            call HDF5MakeStringCompatible(word)
+            string = trim(string) // ' [' // trim(word) // ']'
+          endif
+
+          call GeomechDiscretizationGlobalToNatural(discretization, &
+                                            field%avg_vars_vec(ivar), &
+                                            natural_vec,ONEDOF)
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+          att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+          if (option%myrank == option%io_rank) then
+            call OutputXMFAttributeGeomech(OUTPUT_UNIT,grid%nlmax_node,string, &
+                                           att_datasetname)
+          endif
+          cur_variable => cur_variable%next
+        enddo
+      endif
+#endif
+! 0
+
+  end select
+
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call h5gclose_f(grp_id,hdf5_err)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+  if (option%myrank == option%io_rank) then
+    call OutputXMFFooterGeomech(OUTPUT_UNIT)
+    close(OUTPUT_UNIT)
+  endif
+
+  geomech_hdf5_first = PETSC_FALSE
+  
+#endif
+! !defined(PETSC_HAVE_HDF5)
+
+end subroutine OutputHDF5UGridXDMFGeomech
+
+! ************************************************************************** !
+!
+! WriteHDF5CoordinatesXDMFGeomech: Writes the geomech coordinates in HDF5 file
+! author: Satish Karra, LANL
+! date: 07/3/13
+!
+! ************************************************************************** !
+subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
+                                                option,file_id)
+
+  use hdf5
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Option_module
+  use Variables_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+
+  type(geomech_realization_type) :: geomech_realization
+  type(option_type), pointer :: option
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(geomech_grid_type), pointer :: grid
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscMPIInt :: hdf5_err  
+
+  PetscInt :: local_size,vert_count,nverts
+  PetscInt :: i,j
+  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
+  PetscReal, pointer :: double_array(:)
+  Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
+  Vec :: global_x_cell_vec,global_y_cell_vec,global_z_cell_vec
+  Vec :: natural_x_cell_vec,natural_y_cell_vec,natural_z_cell_vec
+
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec, natural_vec
+  PetscInt, pointer :: int_array(:)
+  type(gmdm_type),pointer :: gmdm_element
+  PetscErrorCode :: ierr
+
+  PetscInt :: TET_ID_XDMF = 6
+  PetscInt :: PYR_ID_XDMF = 7
+  PetscInt :: WED_ID_XDMF = 8
+  PetscInt :: HEX_ID_XDMF = 9
+
+  grid => geomech_realization%geomech_patch%geomech_grid
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%nmax_node, &
+                    global_x_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%nmax_node, &
+                    global_y_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%nmax_node, &
+                    global_z_vertex_vec,ierr)
+
+  call VecGetLocalSize(global_x_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_y_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_z_vertex_vec,local_size,ierr)
+
+  call GetVertexCoordinatesGeomech(grid,global_x_vertex_vec,X_COORDINATE,option)
+  call GetVertexCoordinatesGeomech(grid,global_y_vertex_vec,Y_COORDINATE,option)
+  call GetVertexCoordinatesGeomech(grid,global_z_vertex_vec,Z_COORDINATE,option)
+
+  call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
+  call printErrMsg(option)
+#else
+
+  !
+  !        not(SCORPIO_WRITE)
+  !
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size * 3
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 2
+  dims = 0
+  dims(2) = grid%nmax_node
+  dims(1) = 3
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Vertices" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(2) = istart
+  start(1) = 0
+  
+  length(2) = local_size
+  length(1) = 3
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(double_array(local_size*3))
+  do i=1,local_size
+    double_array((i-1)*3+1) = vec_x_ptr(i)
+    double_array((i-1)*3+2) = vec_y_ptr(i)
+    double_array((i-1)*3+3) = vec_z_ptr(i)
+  enddo
+
+  call PetscLogEventBegin(geomech_logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(geomech_logging%event_h5dwrite_f,ierr)
+
+  deallocate(double_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+
+  call VecDestroy(global_x_vertex_vec,ierr)
+  call VecDestroy(global_y_vertex_vec,ierr)
+  call VecDestroy(global_z_vertex_vec,ierr)
+
+  !
+  !  Write elements
+  !
+  
+  call GMCreateGMDM(grid,gmdm_element,EIGHT_INTEGER,option)
+  call GMGridDMCreateVectorElem(grid,gmdm_element,global_vec, &
+                            GLOBAL,option) 
+  call GMGridDMCreateVectorElem(grid,gmdm_element,natural_vec, &
+                            NATURAL,option) 
+  call GetCellConnectionsGeomech(grid,global_vec)
+  call VecScatterBegin(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr) 
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  
+  local_size = grid%nlmax_elem
+
+  vert_count=0
+  do i=1,local_size*EIGHT_INTEGER
+    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+  enddo
+  vert_count=vert_count+grid%nlmax_elem
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims(1) = vert_count
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  geomech_realization%output_option%xmf_vert_len=int(dims(1))
+
+  ! file space which is a 2D block
+  rank_mpi = 1
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Cells" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_INTEGER,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(vert_count, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(1) = istart
+  length(1) = vert_count
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(int_array(vert_count))
+
+  vert_count=0
+  do i=1,local_size
+    nverts=0
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+    enddo
+    vert_count=vert_count+1
+    select case (nverts)
+      case (4) ! Tetrahedron
+        int_array(vert_count) = TET_ID_XDMF
+      case (5) ! Pyramid
+        int_array(vert_count) = PYR_ID_XDMF
+      case (6) ! Wedge
+        int_array(vert_count) = WED_ID_XDMF
+      case (8) ! Hexahedron
+        int_array(vert_count) = HEX_ID_XDMF
+    end select
+
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) then
+        vert_count=vert_count+1
+        int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
+      endif
+    enddo
+  enddo
+
+  call PetscLogEventBegin(geomech_logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(geomech_logging%event_h5dwrite_f,ierr)
+
+  deallocate(int_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call GMDMDestroy(gmdm_element)
+
+#endif
+!if defined(SCORPIO_WRITE)
+
+end subroutine WriteHDF5CoordinatesXDMFGeomech
 
 end module Output_Geomechanics_module
 

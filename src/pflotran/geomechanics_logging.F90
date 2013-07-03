@@ -29,6 +29,7 @@ PetscInt, parameter, public :: GEOMECH_OUTPUT_STAGE = 4
     PetscLogEvent :: event_output_tecplot
     PetscLogEvent :: event_output_write_tecplot
     PetscLogEvent :: event_output_get_var_from_array
+    PetscLogEvent :: event_h5dwrite_f
 
   end type geomech_logging_type
   
@@ -92,6 +93,10 @@ subroutine GeomechLoggingCreate()
   call PetscLogEventRegister('GeomechOutputGetVarFromArray', &
                              geomech_logging%class_pflotran, &
                              geomech_logging%event_output_get_var_from_array,ierr)
+                             
+  call PetscLogEventRegister('GeomechH5DWrite_F', &
+                             geomech_logging%class_pflotran, &
+                             geomech_logging%event_h5dwrite_f,ierr)                             
                              
 end subroutine GeomechLoggingCreate
 
