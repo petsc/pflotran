@@ -15,13 +15,13 @@ module Reaction_Sandbox_module
   class(reaction_sandbox_base_type), pointer, public :: sandbox_list
 
   interface RSandboxRead
-    module procedure :: RSandboxRead1
-    module procedure :: RSandboxRead2
+    module procedure RSandboxRead1
+    module procedure RSandboxRead2
   end interface
   
   interface RSandboxDestroy
-    module procedure :: RSandboxDestroy1
-    module procedure :: RSandboxDestroy2
+    module procedure RSandboxDestroy1
+    module procedure RSandboxDestroy2
   end interface
   
   public :: RSandboxInit, &

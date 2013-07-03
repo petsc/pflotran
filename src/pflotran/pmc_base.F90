@@ -24,7 +24,10 @@ module PMC_Base_class
     class(pmc_base_type), pointer :: below
     class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
-    procedure(Output), nopass, pointer :: Output => Null()
+    procedure(Output), nopass, pointer :: Output
+    procedure(Synchronize), pointer :: Synchronize1
+    procedure(Synchronize), pointer :: Synchronize2
+    procedure(Synchronize), pointer :: Synchronize3
   contains
     procedure, public :: Init => PMCBaseInit
     procedure, public :: InitializeRun
@@ -36,6 +39,14 @@ module PMC_Base_class
     procedure, public :: UpdateSolution => PMCBaseUpdateSolution
     procedure, public :: Destroy => PMCBaseDestroy
   end type pmc_base_type
+  
+  abstract interface
+    subroutine Synchronize(pmc)
+      import pmc_base_type
+      implicit none
+        class(pmc_base_type) :: pmc
+    end subroutine Synchronize
+  end interface
   
   public :: PMCBaseCreate, &
             PMCBaseInit, &
@@ -90,6 +101,9 @@ subroutine PMCBaseInit(this)
   nullify(this%below)
   nullify(this%next)
   this%Output => Null()
+  this%Synchronize1 => Null()
+  this%Synchronize2 => Null()
+  this%Synchronize3 => Null()
   
   allocate(this%pm_ptr)
   nullify(this%pm_ptr%ptr)
@@ -181,12 +195,10 @@ end subroutine InitializeRun
 recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 
   use Timestepper_Base_class
-  use Output_module, only : Output
-  use Realization_class, only : realization_type
   
   implicit none
   
-  class(pmc_base_type) :: this
+  class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
@@ -198,6 +210,10 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
+  
+  if (associated(this%Synchronize1)) then
+    call this%Synchronize1()
+  endif
   
   local_stop_flag = 0
   do
@@ -254,11 +270,19 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     
   enddo
   
+  if (associated(this%Synchronize2)) then
+    call this%Synchronize2()
+  endif
+  
   ! Run neighboring process model couplers
   if (associated(this%next)) then
     call this%next%RunToTime(sync_time,local_stop_flag)
   endif
 
+  if (associated(this%Synchronize3)) then
+    call this%Synchronize3()
+  endif
+  
   stop_flag = max(stop_flag,local_stop_flag)
   
 end subroutine PMCBaseRunToTime

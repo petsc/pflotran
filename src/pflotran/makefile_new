@@ -310,6 +310,7 @@ misc_obj = \
 	${common_src}geometry.o \
 	${common_src}hydrogeophysics_factory.o \
 	${common_src}hydrogeophysics_simulation.o \
+	${common_src}hydrogeophysics_wrapper.o \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}level.o \
@@ -489,9 +490,12 @@ hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
 hdf5_aux.o : logging.o option.o
 hydrogeophysics_factory.o : hydrogeophysics_simulation.o init.o input.o \
                             option.o simulation.o simulation_base.o \
-                            subsurface_factory.o
+                            subsurface_factory.o pmc_hydrogeophysics.o \
+                            hydrogeophysics_wrapper.o
 hydrogeophysics_simulation.o : option.o output.o pmc_base.o simulation_base.o \
-                               subsurface_simulation.o
+                               subsurface_simulation.o pmc_hydrogeophysics.o \
+                               hydrogeophysics_wrapper.o
+hydrogeophysics_wrapper.o : option.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \
                 water_eos.o
@@ -604,7 +608,8 @@ pflotran_new.o : hydrogeophysics_factory.o option.o pflotran_factory.o \
                  simulation_base.o subsurface_factory.o
 pmc_base.o : option.o output.o output_aux.o process_model_base.o \
              process_model_top.o timestepper_base.o utility.o waypoint.o
-pmc_hydrogeophysics.o : option.o output.o pmc_base.o utility.o
+pmc_hydrogeophysics.o : option.o output.o pmc_base.o utility.o \
+                        hydrogeophysics_wrapper.o
 pmc_subsurface.o : option.o pmc_base.o realization.o utility.o
 pmc_surface.o : option.o pmc_base.o surface_realization.o utility.o \
                 timestepper_surface.o

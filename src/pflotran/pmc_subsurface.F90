@@ -86,7 +86,6 @@ recursive subroutine PMCSubsurfaceFinalizeRun(this)
   
 end subroutine PMCSubsurfaceFinalizeRun
 
-
 ! ************************************************************************** !
 !
 ! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object

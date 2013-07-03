@@ -52,15 +52,35 @@ subroutine HydrogeophysicsInitPostPETSc(simulation, option)
 
   use Simulation_module
   use Subsurface_Factory_module
+  use Hydrogeophysics_Wrapper_module
+  use PMC_Hydrogeophysics_class
   use Option_module
-  use Init_module
   
   implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   class(hydrogeophysics_simulation_type) :: simulation
   type(option_type), pointer :: option
   
+  class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
+  PetscErrorCode :: ierr
+  
+  ! Init() is called in SubsurfaceInitializePostPETSc
   call SubsurfaceInitializePostPETSc(simulation, option)
+  call VecDuplicate(simulation%realization%field%work,simulation%sigma,ierr)
+  
+  ! add hydrogeophysics coupler to list
+  hydrogeophysics_coupler => PMCHydrogeophysicsCreate()
+  hydrogeophysics_coupler%option => simulation%option
+  hydrogeophysics_coupler%realization => simulation%realization
+  ! Petsc vectors are integer quantities, not pointers
+  hydrogeophysics_coupler%sigma = simulation%sigma
+  simulation%hydrogeophysics_coupler => hydrogeophysics_coupler
+  simulation%process_model_coupler_list%below%below => hydrogeophysics_coupler
+  
+  call HydrogeophysicsWrapperInit(option)
   
 end subroutine HydrogeophysicsInitPostPETSc
 
