@@ -9,7 +9,9 @@ module Subsurface_Factory_module
 #include "definitions.h"
 
   public :: SubsurfaceInitialize, &
-            SubsurfaceInitializePostPETSc
+            SubsurfaceInitializePostPETSc, &
+            HijackSimulation, &
+            SubsurfaceJumpStart
 
 contains
 

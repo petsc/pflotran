@@ -13,15 +13,12 @@ module PMC_Surface_class
 
   type, public, extends(pmc_base_type) :: pmc_surface_type
     class(surface_realization_type), pointer :: surf_realization
-    class(timestepper_surface_type), pointer :: surf_timestepper
   contains
     procedure, public :: Init => PMCSurfaceInit
     procedure, public :: RunToTime => PMCSurfaceRunToTime
-    procedure, public :: SetSurfaceTimestepper => PMCSurfaceSetTimestepper
   end type pmc_surface_type
 
-  public :: PMCSurfaceCreate, &
-            PMCSurfaceSetTimestepper
+  public :: PMCSurfaceCreate
 
 contains
 
@@ -68,7 +65,7 @@ subroutine PMCSurfaceInit(this)
   
   call PMCBaseInit(this)
   nullify(this%surf_realization)
-  nullify(this%surf_timestepper)
+!  nullify(this%surf_timestepper)
 
 end subroutine PMCSurfaceInit
 
@@ -111,20 +108,20 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     if (local_stop_flag > 0) exit ! end simulation
     if (this%timestepper%target_time >= sync_time) exit
     
-    !call SetOutputFlags(this)
+    call SetOutputFlags(this)
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
     
     cur_pm => this%pm_list
 
     call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max)
-    write(*,*),'assocatied: ',associated(this%surf_timestepper)
-    call this%surf_timestepper%TimeStepperSurfaceSetTargetTime(sync_time,dt_max,this%option, &
+    call this%timestepper%SetTargetTime2(sync_time,dt_max,this%option, &
                                         local_stop_flag,plot_flag, &
                                         transient_plot_flag)
-#if 0
-    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
+    call this%timestepper%StepDT2(this%pm_list,local_stop_flag)
+
+#if 0
     if (local_stop_flag > 1) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
@@ -183,30 +180,6 @@ end subroutine PMCSurfaceRunToTime
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/03/13
-! ************************************************************************** !
-subroutine PMCSurfaceSetTimestepper(this,surf_timestepper)
-
-  use Timestepper_Surface_class
-  
-  implicit none
-  
-  class(pmc_surface_type) :: this
-  class(timestepper_surface_type), pointer :: surf_timestepper
-
-  !call printMsg(this%option,'PMCBase%SetTimestepper() ?????????????????????')
-  
-  this%surf_timestepper => surf_timestepper
-  write(*,*),'associated(timestepper%cur_waypoint) = ',associated(surf_timestepper%cur_waypoint)
-  
-end subroutine PMCSurfaceSetTimestepper
-
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
 !! date: 06/27/13
 ! ************************************************************************** !
 recursive subroutine PMCSurfaceFinalizeRun(this)
@@ -220,7 +193,7 @@ recursive subroutine PMCSurfaceFinalizeRun(this)
   call printMsg(this%option,'PMCSurface%FinalizeRun()')
   
   nullify(this%surf_realization)
-  nullify(this%surf_timestepper)
+!  nullify(this%surf_timestepper)
   
 end subroutine PMCSurfaceFinalizeRun
 

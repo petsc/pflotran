@@ -46,7 +46,7 @@ program pflotran
   use Hydrogeophysics_Factory_module
 #ifdef SURFACE_FLOW
   use Surface_Factory_module
-  use SurfSubsurface_Factory_module
+  use Surf_Subsurf_Factory_module
 #endif
   
   implicit none

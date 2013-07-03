@@ -2947,7 +2947,6 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   call TSSolve(solver%ts,surf_field%flow_xx, ierr)
   call TSGetTime(solver%ts,time,ierr)
   call TSGetTimeStep(solver%ts,dtime,ierr)
-  write(*,*),'Here -1'
 
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
@@ -2962,13 +2961,11 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
   ! First, update the solution vector
-  write(*,*),'Here -2'
   call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
           surf_field%flow_xx_loc,NFLOWDOF)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE)
-      write(*,*),'Here -3'
       call SurfaceFlowUpdateAuxVars(surf_realization)
     case(TH_MODE)
       ! Then, update the aux vars
@@ -2978,7 +2975,6 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       surf_realization%patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
     case default
   end select
-  write(*,*),'Here -4'
 
 end subroutine StepperStepSurfaceFlowExplicitDT
 #endif

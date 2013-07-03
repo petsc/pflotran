@@ -15,8 +15,8 @@ module Timestepper_Surface_class
   type, public, extends(stepper_base_type) :: timestepper_surface_type
   contains
     procedure, public :: Init => TimeStepperSurfaceInit
-    !procedure, public :: SetTargetTime => TimeStepperSurfaceSetTargetTime
-    procedure, public :: TimeStepperSurfaceSetTargetTime
+    procedure, public :: SetTargetTime2 => TimeStepperSurfaceSetTargetTime
+    procedure, public :: StepDT2 => TimeStepperSurfaceStepDT
   end type timestepper_surface_type
 
   public TimeStepperSurfaceSetTargetTime, &
@@ -75,7 +75,8 @@ end subroutine TimeStepperSurfaceInit
 !!
 !! date: 07/02/13
 ! ************************************************************************** !
-subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max,option, &
+subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max_allowable, &
+                                        option, &
                                         stop_flag,plot_flag, &
                                         transient_plot_flag)
 
@@ -85,7 +86,7 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max,option, 
 
   class(timestepper_surface_type) :: timestepper
   PetscReal :: sync_time
-  PetscReal :: dt_max
+  PetscReal :: dt_max_allowable
   type(option_type) :: option
   PetscInt :: stop_flag
   PetscBool :: plot_flag
@@ -100,21 +101,16 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max,option, 
   PetscBool :: force_to_match_waypoint
   type(waypoint_type), pointer :: cur_waypoint
   
-  write(*,*),'HERE-1: ',timestepper%dt
   cur_waypoint => timestepper%cur_waypoint
-  if (.not.associated(cur_waypoint)) write(*,*),'NOT'
-  write(*,*),'HERE-2'
 
-  dt = dt_max
+  dt = min(dt_max_allowable,timestepper%dt_max)
   target_time = timestepper%target_time + dt
   tolerance = timestepper%time_step_tolerance
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   
-  write(*,*),'WaypointForceMatchToTime: '
   force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
-  write(*,*),'WaypointForceMatchToTime: -- done'
   equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
   equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
 
@@ -126,6 +122,7 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max,option, 
       target_time = target_time - dt
       ! set new time step size based on max time
       dt = max_time - target_time
+      target_time = target_time + dt
 
       if(max_time == cur_waypoint%time) then
         if(cur_waypoint%print_output) plot_flag = PETSC_TRUE
@@ -139,6 +136,8 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max,option, 
       target_time = target_time - dt
       ! set new time step size based on max time
       dt = max_time - target_time
+      target_time = target_time + dt
+
     endif
 
     if (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint) then
@@ -147,23 +146,82 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max,option, 
       target_time = target_time - dt
       ! set new time step size based on max time
       dt = max_time - target_time
+
+      target_time = target_time + dt
+
       if(cur_waypoint%print_output) plot_flag = PETSC_TRUE
     endif
   
   endif
-  
+
   timestepper%dt = dt
   timestepper%target_time = target_time
   timestepper%cur_waypoint => cur_waypoint
-  write(*,*),'timestepper: ',dt,target_time
-
-
-  option%io_buffer = 'TimeStepperSurfaceSetTargetTime()'
-  call printMsg(option)
-
-  call printErrMsg(option,'debugging in TimeStepperSurfaceSetTargetTime')
 
 end subroutine TimeStepperSurfaceSetTargetTime
+
+! ************************************************************************** !
+!> This is a dummy routine added to be extended in timestepper_surface_type
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 07/03/13
+! ************************************************************************** !
+subroutine TimeStepperSurfaceStepDT(timestepper,process_model,stop_flag)
+
+  use Process_Model_Base_class
+  use Process_Model_Surface_Flow_class
+  use Option_module
+  use Output_module, only : Output
+  use Surface_Flow_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsnes.h"
+
+  class(timestepper_surface_type) :: timestepper
+  class(pm_surface_flow_type) :: process_model
+  PetscInt :: stop_flag
+
+  PetscReal :: time
+  PetscReal :: dtime
+  PetscReal :: tmp
+  type(solver_type), pointer :: solver
+  type(option_type), pointer :: option
+  PetscErrorCode :: ierr
+
+  solver => timestepper%solver
+  option => process_model%option
+
+  call process_model%PreSolve()
+  
+  if(option%subsurf_surf_coupling==SEQ_COUPLED .and. &
+     associated(process_model%subsurf_realization)) then
+    call SurfaceFlowSurf2SubsurfFlux(process_model%subsurf_realization, &
+                                     process_model%surf_realization,tmp)
+   endif
+  
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
+  call TSSolve(solver%ts,process_model%solution_vec,ierr)
+  call TSGetTime(solver%ts,time,ierr)
+  call TSGetTimeStep(solver%ts,dtime,ierr)
+
+  call process_model%PostSolve()
+
+  timestepper%steps = timestepper%steps + 1
+
+  if (option%print_screen_flag) then
+    write(*, '(" SURFACE FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]")') &
+      timestepper%steps, &
+      time/process_model%surf_realization%output_option%tconv, &
+      dtime/process_model%surf_realization%output_option%tconv, &
+      process_model%surf_realization%output_option%tunit
+  endif
+
+end subroutine TimeStepperSurfaceStepDT
 
 end module Timestepper_Surface_class
 
