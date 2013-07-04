@@ -176,7 +176,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   option%global_prefix = tmp_global_prefix
     
   if (option%myrank == option%io_rank) then
-    option%io_buffer = '--> write tecplot output file: ' // trim(filename)
+    option%io_buffer = '--> write tecplot geomech output file: ' // trim(filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=filename,action="write")
     call OutputTecplotHeader(OUTPUT_UNIT,geomech_realization,icolumn)
@@ -1344,9 +1344,11 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   call h5pclose_f(prop_id,hdf5_err)
 
   if (first) then
-    option%io_buffer = '--> creating hdf5 geomech output file: ' // trim(filename)
+    option%io_buffer = '--> creating hdf5 geomech output file: ' // &
+                       trim(filename)
   else
-    option%io_buffer = '--> appending to hdf5 geomech output file: ' // trim(filename)
+    option%io_buffer = '--> appending to hdf5 geomech output file: ' // &
+                       trim(filename)
   endif
   call printMsg(option)
 
@@ -1359,8 +1361,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   endif
 
   if (option%myrank == option%io_rank) then
-    print *, geomech_realization%output_option%xmf_vert_len
-    option%io_buffer = '--> write geomech xmf output file: ' // trim(filename)
+    option%io_buffer = '--> write xmf geomech output file: ' // &
+                       trim(xmf_filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
     call OutputXMFHeaderGeomech(OUTPUT_UNIT, &
