@@ -89,7 +89,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   
   implicit none
   
-  class(pmc_surface_type) :: this
+  class(pmc_surface_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
