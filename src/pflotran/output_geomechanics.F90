@@ -21,9 +21,35 @@ module Output_Geomechanics_module
   PetscInt, save, public :: max_local_node_size_saved = -1
   PetscBool :: geomech_hdf5_first
 
-  public :: OutputGeomechanics
+  public :: OutputGeomechanics, &
+            OutputGeomechInit
       
 contains
+
+! ************************************************************************** !
+!
+! OutputGeomechInit: Initializes module variables for geomechanics variables
+! author: Satish Karra, LANL
+! date: 07/2/13
+!
+! ************************************************************************** !
+subroutine OutputGeomechInit(geomech_realization,num_steps)
+
+  use Geomechanics_Realization_module
+  use Option_module
+
+  implicit none
+  
+  type(geomech_realization_type) :: geomech_realization
+  PetscInt :: num_steps
+
+  if (num_steps == 0) then
+    geomech_hdf5_first = PETSC_TRUE
+  else
+    geomech_hdf5_first = PETSC_FALSE
+  endif
+  
+end subroutine OutputGeomechInit
 
 ! ************************************************************************** !
 !
@@ -41,7 +67,7 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
 
   implicit none
 
-  class(geomech_realization_type) :: geomech_realization
+  type(geomech_realization_type) :: geomech_realization
   PetscBool                       :: plot_flag
   PetscBool                       :: transient_plot_flag
 
@@ -1333,6 +1359,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   endif
 
   if (option%myrank == option%io_rank) then
+    print *, geomech_realization%output_option%xmf_vert_len
     option%io_buffer = '--> write geomech xmf output file: ' // trim(filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
@@ -1392,7 +1419,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
         endif
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
         if (option%myrank == option%io_rank) then
-          call OutputXMFAttributeGeomech(OUTPUT_UNIT,grid%nlmax_node,string, &
+          call OutputXMFAttributeGeomech(OUTPUT_UNIT,grid%nmax_node,string, &
                                          att_datasetname)
         endif
         cur_variable => cur_variable%next

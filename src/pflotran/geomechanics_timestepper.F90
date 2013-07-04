@@ -186,6 +186,9 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
 
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
+#ifdef GEOMECH
+  call OutputGeomechInit(geomech_realization,master_stepper%steps)
+#endif
 
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
