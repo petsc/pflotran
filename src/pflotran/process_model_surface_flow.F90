@@ -6,6 +6,7 @@ module Process_Model_Surface_Flow_class
 !geh: using Richards_module here fails with gfortran (internal compiler error)
 !  use Richards_module
   use Surface_Realization_class
+  use Realization_class
   use Communicator_Base_module
   use Option_module
 
@@ -22,8 +23,9 @@ module Process_Model_Surface_Flow_class
 #include "finclude/petscsnes.h"
 #include "finclude/petscts.h"
 
-  type, public, extends(process_model_base_type) :: process_model_surface_flow_type
+  type, public, extends(pm_base_type) :: pm_surface_flow_type
     class(surface_realization_type), pointer :: surf_realization
+    class(realization_type), pointer :: subsurf_realization
     class(communicator_type), pointer :: comm1
   contains
     procedure, public :: Init => PMSurfaceFlowInit
@@ -36,7 +38,7 @@ module Process_Model_Surface_Flow_class
 !    procedure, public :: Jacobian => PMSurfaceFlowJacobian
     procedure, public :: UpdateTimestep => PMSurfaceFlowUpdateTimestep
     procedure, public :: PreSolve => PMSurfaceFlowPreSolve
-!    procedure, public :: PostSolve => PMSurfaceFlowPostSolve
+    procedure, public :: PostSolve => PMSurfaceFlowPostSolve
 !    procedure, public :: AcceptSolution => PMSurfaceFlowAcceptSolution
 !    procedure, public :: CheckUpdatePre => PMSurfaceFlowCheckUpdatePre
 !    procedure, public :: CheckUpdatePost => PMSurfaceFlowCheckUpdatePost
@@ -46,9 +48,10 @@ module Process_Model_Surface_Flow_class
 !    procedure, public :: ComputeMassBalance => PMSurfaceFlowComputeMassBalance
     procedure, public :: Destroy => PMSurfaceFlowDestroy
     procedure, public :: RHSFunction => PMSurfaceFlowRHSFunction
-  end type process_model_surface_flow_type
+  end type pm_surface_flow_type
 
-  public :: PMSurfaceFlowCreate
+  public :: PMSurfaceFlowCreate, &
+            PMSurfaceFlowDTExplicit
 
 contains
 
@@ -64,14 +67,15 @@ function PMSurfaceFlowCreate()
 
   implicit none
 
-  class(process_model_surface_flow_type), pointer :: PMSurfaceFlowCreate
+  class(pm_surface_flow_type), pointer :: PMSurfaceFlowCreate
 
-  class(process_model_surface_flow_type), pointer :: surface_flow_pm
+  class(pm_surface_flow_type), pointer :: surface_flow_pm
 
   allocate(surface_flow_pm)
   nullify(surface_flow_pm%option)
   nullify(surface_flow_pm%output_option)
   nullify(surface_flow_pm%surf_realization)
+  nullify(surface_flow_pm%subsurf_realization)
   nullify(surface_flow_pm%comm1)
 
   call PMBaseCreate(surface_flow_pm)
@@ -96,7 +100,7 @@ subroutine PMSurfaceFlowInit(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   ! set up communicator
   select case(this%surf_realization%discretization%itype)
@@ -123,7 +127,7 @@ subroutine PMSurfaceFlowPreSolve(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
@@ -146,7 +150,7 @@ subroutine PMSurfaceFlowSetRealization(this, surf_realization)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
   class(surface_realization_type), pointer :: surf_realization
 
   this%surf_realization => surf_realization
@@ -171,7 +175,7 @@ recursive subroutine PMSurfaceFlowInitializeRun(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
 end subroutine PMSurfaceFlowInitializeRun
 
@@ -187,7 +191,7 @@ recursive subroutine PMSurfaceFlowFinalizeRun(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
 #ifdef PM_SURFACE_FLOW_DEBUG
   call printMsg(this%option,'PMSurfaceFlow%FinalizeRun()')
@@ -216,7 +220,7 @@ subroutine PMSurfaceFlowUpdateSolution(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   PetscBool :: force_update_flag = PETSC_FALSE
 
@@ -247,7 +251,7 @@ subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
   TS                                     :: ts
   PetscReal                              :: time
   Vec                                    :: xx
@@ -274,7 +278,7 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -292,6 +296,80 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
 end subroutine PMSurfaceFlowUpdateTimestep
 
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/11/13
+! ************************************************************************** !
+subroutine PMSurfaceFlowDTExplicit(this,dt_max)
+
+  use Surface_Flow_module, only : SurfaceFlowComputeMaxDt
+
+  implicit none
+
+  class(pm_surface_flow_type) :: this
+  PetscReal :: dt_max
+
+  PetscReal :: dt_max_glb
+  PetscErrorCode :: ierr
+  PetscReal :: dt_max_loc
+
+  call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max_loc)
+  call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MIN,this%option%mycomm,ierr)
+  dt_max = min(0.9d0*dt_max_glb,this%surf_realization%dt_max)
+
+end subroutine PMSurfaceFlowDTExplicit
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 04/11/13
+! ************************************************************************** !
+subroutine PMSurfaceFlowPostSolve(this)
+
+  use Discretization_module
+  use Surface_Field_module
+  use Surface_Flow_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pm_surface_flow_type) :: this
+
+  PetscReal, pointer :: xx_p(:)
+  PetscInt :: local_id
+  type(surface_field_type), pointer   :: surf_field 
+  PetscErrorCode :: ierr
+
+  surf_field => this%surf_realization%surf_field
+
+  ! Ensure evolved solution is +ve
+  call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
+  do local_id = 1,this%surf_realization%discretization%grid%nlmax
+    if(xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
+  enddo
+  call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
+
+  ! First, update the solution vector
+  call DiscretizationGlobalToLocal(this%surf_realization%discretization, &
+          surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
+
+  ! Update aux vars
+  call SurfaceFlowUpdateAuxVars(this%surf_realization)
+
+end subroutine PMSurfaceFlowPostSolve
+
+
 ! ************************************************************************** !
 !> This routine
 !!
@@ -306,7 +384,7 @@ subroutine PMSurfaceFlowDestroy(this)
 
   implicit none
 
-  class(process_model_surface_flow_type) :: this
+  class(pm_surface_flow_type) :: this
 
   if (associated(this%next)) then
     call this%next%Destroy()

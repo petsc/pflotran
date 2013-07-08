@@ -49,7 +49,8 @@ module PMC_Base_class
   end interface
   
   public :: PMCBaseCreate, &
-            PMCBaseInit
+            PMCBaseInit, &
+            SetOutputFlags
   
 contains
 

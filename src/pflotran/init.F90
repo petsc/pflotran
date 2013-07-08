@@ -1139,7 +1139,7 @@ subroutine Init(simulation)
             call cur_process_model_coupler%SetTimestepper(flow_stepper)
             flow_stepper%dt = option%flow_dt
 #ifdef SURFACE_FLOW
-          class is (process_model_surface_flow_type)
+          class is (pm_surface_flow_type)
             surf_realization_class_ptr => surf_realization
             call cur_process_model%PMSurfaceFlowSetRealization(surf_realization_class_ptr)
             call cur_process_model_coupler%SetTimestepper(surf_flow_stepper)
@@ -1150,7 +1150,7 @@ subroutine Init(simulation)
         call cur_process_model%Init()
         select type(cur_process_model)
 #ifdef SURFACE_FLOW
-          class is (process_model_surface_flow_type)
+          class is (pm_surface_flow_type)
             call TSSetRHSFunction( &
                             cur_process_model_coupler%timestepper%solver%ts, &
                             cur_process_model%residual_vec, &
