@@ -115,11 +115,15 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     cur_pm => this%pm_list
 
     call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max)
-    call this%timestepper%SetTargetTime2(sync_time,dt_max,this%option, &
+    select type(timestepper => this%timestepper)
+      class is(timestepper_surface_type)
+        timestepper%dt_max_allowable = dt_max
+    end select
+    call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
                                         transient_plot_flag)
 
-    call this%timestepper%StepDT2(this%pm_list,local_stop_flag)
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
 #if 0
     if (local_stop_flag > 1) exit ! failure

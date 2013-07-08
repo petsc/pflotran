@@ -63,9 +63,9 @@ module Timestepper_Base_class
     procedure, public :: ReadInput => TimestepperBaseRead
     procedure, public :: Init => TimestepperBaseInit
     procedure, public :: SetTargetTime => TimeStepperBaseSetTargetTime
-    procedure, public :: SetTargetTime2 => TimeStepperBaseSetTargetTime2
+!    procedure, public :: SetTargetTime2 => TimeStepperBaseSetTargetTime2
     procedure, public :: StepDT => TimeStepperBaseStepDT
-    procedure, public :: StepDT2 => TimeStepperBaseStepDT2
+!    procedure, public :: StepDT2 => TimeStepperBaseStepDT2
     procedure, public :: UpdateDT => TimeStepperBaseUpdateDT
     procedure, public :: Destroy => TimeStepperBaseDestroy
     
