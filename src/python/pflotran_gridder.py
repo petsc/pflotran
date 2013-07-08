@@ -60,7 +60,6 @@ for k in range(1,z_verts):
             Vertices[count,7] = id+x_verts*y_verts+x_verts
             count = count + 1
             
-print Vertices
 # Writing list of all vertices
 print('--> Writing vertices')
 fid = open('all.vset','w')
