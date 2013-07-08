@@ -16,6 +16,11 @@ module Hydrogeophysics_Simulation_class
     hydrogeophysics_simulation_type
     ! pointer to hydrogeophysics coupler
     class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
+    PetscMPIInt :: pf_e4d_comm
+    PetscMPIInt :: pf_e4d_grp
+    PetscMPIInt :: pf_e4d_size
+    PetscMPIInt :: pf_e4d_rank
+    PetscBool :: subsurface_process
     Vec :: sigma
   contains
     procedure, public :: Init => HydrogeophysicsInit
@@ -75,7 +80,13 @@ subroutine HydrogeophysicsInit(this,option)
   call SubsurfaceSimulationInit(this,option)
   nullify(this%hydrogeophysics_coupler)
   this%sigma = 0
-  
+  ! -999 denotes uninitialized
+  this%pf_e4d_comm = -999
+  this%pf_e4d_grp = -999
+  this%pf_e4d_size = -999
+  this%pf_e4d_rank = -999
+  this%subsurface_process = PETSC_FALSE
+   
 end subroutine HydrogeophysicsInit
 
 ! ************************************************************************** !
@@ -116,6 +127,8 @@ end subroutine HydrogeophysicsInitializeRun
 subroutine HydrogeophysicsExecuteRun(this)
 
   use Simulation_Base_class
+  use e4d_setup, only : setup_e4d
+  use e4d_run, only: run_e4D
 
   implicit none
   
@@ -127,15 +140,20 @@ subroutine HydrogeophysicsExecuteRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%ExecuteRun()')
 
-  final_time = SimulationGetFinalWaypointTime(this)
-  ! take hourly steps until final time
-  current_time = 0.d0
-  dt = 365.d0*24.d0*3600.d0
-  do
-    current_time = min(current_time + dt,final_time)
-    call this%RunToTime(current_time)
-    if (this%stop_flag > 0) exit
-  enddo
+  if (this%subsurface_process) then
+    final_time = SimulationGetFinalWaypointTime(this)
+    ! take hourly steps until final time
+    current_time = 0.d0
+    dt = 365.d0*24.d0*3600.d0
+    do
+      current_time = min(current_time + dt,final_time)
+      call this%RunToTime(current_time)
+      if (this%stop_flag > 0) exit
+    enddo
+  else
+    call setup_e4d
+    call run_e4d    
+  endif
   
 end subroutine HydrogeophysicsExecuteRun
   
@@ -156,7 +174,9 @@ subroutine HydrogeophysicsFinalizeRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%FinalizeRun()')
   
-  call SubsurfaceFinalizeRun(this)
+  if (this%subsurface_process) then
+    call SubsurfaceFinalizeRun(this)
+  endif
   
 end subroutine HydrogeophysicsFinalizeRun
 
@@ -179,8 +199,11 @@ subroutine HydrogeophysicsStrip(this)
   
   call printMsg(this%option,'Hydrogeophysics%Strip()')
   
-  call SubsurfaceSimulationStrip(this)
-  call HydrogeophysicsWrapperDestroy(this%option)
+  if (this%subsurface_process) then
+    call SubsurfaceSimulationStrip(this)
+  else
+    call HydrogeophysicsWrapperDestroy(this%option)
+  endif
   if (this%sigma /= 0) &
     call VecDestroy(this%sigma ,ierr)
   
