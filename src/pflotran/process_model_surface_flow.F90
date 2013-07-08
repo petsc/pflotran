@@ -25,7 +25,6 @@ module Process_Model_Surface_Flow_class
 
   type, public, extends(pm_base_type) :: pm_surface_flow_type
     class(surface_realization_type), pointer :: surf_realization
-    class(realization_type), pointer :: subsurf_realization
     class(communicator_type), pointer :: comm1
   contains
     procedure, public :: Init => PMSurfaceFlowInit
@@ -75,7 +74,6 @@ function PMSurfaceFlowCreate()
   nullify(surface_flow_pm%option)
   nullify(surface_flow_pm%output_option)
   nullify(surface_flow_pm%surf_realization)
-  nullify(surface_flow_pm%subsurf_realization)
   nullify(surface_flow_pm%comm1)
 
   call PMBaseCreate(surface_flow_pm)
