@@ -16,8 +16,8 @@ module Timestepper_Surface_class
     PetscReal :: dt_max_allowable
   contains
     procedure, public :: Init => TimeStepperSurfaceInit
-    procedure, public :: SetTargetTime2 => TimeStepperSurfaceSetTargetTime
-    procedure, public :: StepDT2 => TimeStepperSurfaceStepDT
+    procedure, public :: SetTargetTime => TimeStepperSurfaceSetTargetTime
+    procedure, public :: StepDT => TimeStepperSurfaceStepDT
   end type timestepper_surface_type
 
   public TimeStepperSurfaceSetTargetTime, &
@@ -184,7 +184,7 @@ subroutine TimeStepperSurfaceStepDT(timestepper,process_model,stop_flag)
 #include "finclude/petscsnes.h"
 
   class(timestepper_surface_type) :: timestepper
-  class(pm_surface_flow_type) :: process_model
+  class(pm_base_type) :: process_model
   PetscInt :: stop_flag
 
   PetscReal :: time
