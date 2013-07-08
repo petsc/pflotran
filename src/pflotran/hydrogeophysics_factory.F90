@@ -34,7 +34,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 
   ! NOTE: PETSc must already have been initialized here!
   simulation => HydrogeophysicsCreate(option)
-  call HydrogeophysicsInitPostPETSc(simulation,option)
+  call HydrogeophysicsInitPostPetsc(simulation,option)
   
   simulation_base => simulation
 
@@ -42,13 +42,13 @@ end subroutine HydrogeophysicsInitialize
 
 ! ************************************************************************** !
 !
-! HydrogeophysicsInitializePostPETSc: Sets up hydrogeophysics simulation 
+! HydrogeophysicsInitializePostPetsc: Sets up hydrogeophysics simulation 
 !                                     framework after to PETSc initialization
 ! author: Glenn Hammond
 ! date: 06/17/13
 !
 ! ************************************************************************** !
-subroutine HydrogeophysicsInitPostPETSc(simulation, option)
+subroutine HydrogeophysicsInitPostPetsc(simulation, option)
 
   use Simulation_module
   use Subsurface_Factory_module
@@ -67,8 +67,8 @@ subroutine HydrogeophysicsInitPostPETSc(simulation, option)
   class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
   PetscErrorCode :: ierr
   
-  ! Init() is called in SubsurfaceInitializePostPETSc
-  call SubsurfaceInitializePostPETSc(simulation, option)
+  ! Init() is called in SubsurfaceInitializePostPetsc
+  call SubsurfaceInitializePostPetsc(simulation, option)
   call VecDuplicate(simulation%realization%field%work,simulation%sigma,ierr)
   
   ! add hydrogeophysics coupler to list
@@ -82,7 +82,7 @@ subroutine HydrogeophysicsInitPostPETSc(simulation, option)
   
   call HydrogeophysicsWrapperInit(option)
   
-end subroutine HydrogeophysicsInitPostPETSc
+end subroutine HydrogeophysicsInitPostPetsc
 
 ! ************************************************************************** !
 !
