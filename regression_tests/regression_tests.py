@@ -141,6 +141,8 @@ class RegressionTest(object):
           to catch hanging jobs, but for python < 3.3 we have to
           manually manage the timeout...?
         """
+        self._cleanup_generated_files()
+
         # TODO(bja) : need to think more about the desired behavior if
         # mpiexec is passed for a serial test or not passed for a
         # parallel test.
@@ -173,18 +175,6 @@ class RegressionTest(object):
             # pflotran_args string. That will always return a list (it
             # may be empty)
             command = command + self._pflotran_args
-
-        if os.path.isfile(self.name() + ".regression"):
-            os.rename(self.name() + ".regression",
-                      self.name() + ".regression.old")
-
-        if os.path.isfile(self.name() + ".out"):
-            os.rename(self.name() + ".out",
-                      self.name() + ".out.old")
-
-        if os.path.isfile(self.name() + ".stdout"):
-            os.rename(self.name() + ".stdout",
-                      self.name() + ".stdout.old")
 
         if not dry_run:
             print("    cd {0}".format(os.getcwd()), file=testlog)
@@ -224,6 +214,39 @@ class RegressionTest(object):
             with open("{0}.out".format(self.name()), 'r') as tempfile:
                 shutil.copyfileobj(tempfile, testlog)
             print("~~~~~~~~~~", file=testlog)
+
+    def _cleanup_generated_files(self):
+        """Cleanup old generated files that may be hanging around from a
+        previous run by renaming them with .old appended to the name.
+
+        NOTE:
+
+          - Do NOT match files with something like "if self.name() in
+            filename" or "if filenamename.startswith(self.name())"
+            because this will capture files from another test with a
+            similar name, e.g.  "test_flow" and "test_flow_np4" would
+            both be captured.
+
+          - This assumes that all files with the listed suffixes are
+            old. That means checkpoint files must be generated, not
+            saved.
+
+        """
+        # files from a normal run
+        suffixes = ["regression", "out", "stdout"]
+        for suffix in suffixes:
+            name = "{0}.{1}".format(self.name(), suffix)
+            if os.path.isfile(name):
+                os.rename(name, name + ".old")
+
+        # files from a stochastic run
+        if self._stochastic_realizations is not None:
+            for i in range(1, self._stochastic_realizations + 1):
+                run_id = "R{0}".format(i)
+                for suffix in suffixes:
+                    name = "{0}{1}.{2}".format(self.name(), run_id, suffix)
+                    if os.path.isfile(name):
+                        os.rename(name, name + ".old")
 
     def check(self, status, testlog):
         """
