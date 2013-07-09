@@ -16,16 +16,20 @@ module Hydrogeophysics_Simulation_class
     hydrogeophysics_simulation_type
     ! pointer to hydrogeophysics coupler
     class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
-    PetscMPIInt :: pf_e4d_comm
-    PetscMPIInt :: pf_e4d_grp
-    PetscMPIInt :: pf_e4d_size
-    PetscMPIInt :: pf_e4d_rank
+    PetscMPIInt :: pf_e4d_scatter_comm
+    PetscMPIInt :: pf_e4d_scatter_grp
+    PetscMPIInt :: pf_e4d_scatter_size
+    PetscMPIInt :: pf_e4d_scatter_rank
+    PetscMPIInt :: pf_e4d_master_comm
+    PetscMPIInt :: pf_e4d_master_grp
+    PetscMPIInt :: pf_e4d_master_size
+    PetscMPIInt :: pf_e4d_master_rank
     PetscBool :: subsurface_process
-    Vec :: sigma
+    Vec :: solution_mpi
   contains
     procedure, public :: Init => HydrogeophysicsInit
     procedure, public :: InitializeRun => HydrogeophysicsInitializeRun
-!    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
+    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
     procedure, public :: Strip => HydrogeophysicsStrip
@@ -79,12 +83,16 @@ subroutine HydrogeophysicsInit(this,option)
   
   call SubsurfaceSimulationInit(this,option)
   nullify(this%hydrogeophysics_coupler)
-  this%sigma = 0
+  this%solution_mpi = 0
   ! -999 denotes uninitialized
-  this%pf_e4d_comm = -999
-  this%pf_e4d_grp = -999
-  this%pf_e4d_size = -999
-  this%pf_e4d_rank = -999
+  this%pf_e4d_scatter_comm = -999
+  this%pf_e4d_scatter_grp = -999
+  this%pf_e4d_scatter_size = -999
+  this%pf_e4d_scatter_rank = -999
+  this%pf_e4d_master_comm = -999
+  this%pf_e4d_master_grp = -999
+  this%pf_e4d_master_size = -999
+  this%pf_e4d_master_rank = -999
   this%subsurface_process = PETSC_FALSE
    
 end subroutine HydrogeophysicsInit
@@ -113,7 +121,9 @@ subroutine HydrogeophysicsInitializeRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%InitializeRun()')
 
-  call this%process_model_coupler_list%InitializeRun()
+  if (this%subsurface_process) then
+    call this%process_model_coupler_list%InitializeRun()
+  endif
 
 end subroutine HydrogeophysicsInitializeRun
 
@@ -127,8 +137,6 @@ end subroutine HydrogeophysicsInitializeRun
 subroutine HydrogeophysicsExecuteRun(this)
 
   use Simulation_Base_class
-  use e4d_setup, only : setup_e4d
-  use e4d_run, only: run_e4D
 
   implicit none
   
@@ -151,8 +159,7 @@ subroutine HydrogeophysicsExecuteRun(this)
       if (this%stop_flag > 0) exit
     enddo
   else
-    call setup_e4d
-    call run_e4d    
+    ! do nothing for E4D as it is waiting to receive instructions
   endif
   
 end subroutine HydrogeophysicsExecuteRun
@@ -189,7 +196,7 @@ end subroutine HydrogeophysicsFinalizeRun
 ! ************************************************************************** !
 subroutine HydrogeophysicsStrip(this)
 
-  use Hydrogeophysics_Wrapper_module
+  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperDestroy
 
   implicit none
   
@@ -199,13 +206,12 @@ subroutine HydrogeophysicsStrip(this)
   
   call printMsg(this%option,'Hydrogeophysics%Strip()')
   
-  if (this%subsurface_process) then
-    call SubsurfaceSimulationStrip(this)
-  else
+  call SubsurfaceSimulationStrip(this)
+  if (.not.this%subsurface_process) then
     call HydrogeophysicsWrapperDestroy(this%option)
   endif
-  if (this%sigma /= 0) &
-    call VecDestroy(this%sigma ,ierr)
+  if (this%solution_mpi /= 0) &
+    call VecDestroy(this%solution_mpi ,ierr)
   
 end subroutine HydrogeophysicsStrip
 

@@ -7,6 +7,7 @@ pflotran_test_dir = ../../regression_tests_refactor
 
 MYFLAGS = -I.
 MYFLAGS += -DPROCESS_MODEL
+MYFLAGS += -DSURFACE_FLOW
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
