@@ -52,6 +52,12 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     call printErrMsg(option)
   endif
 
+#ifndef E4D
+  option%io_buffer = 'Must compile with E4D defined during preprocessing ' // &
+    'step in order to use HYDROGEOPHYSICS.'
+  call printErrMsg(option)
+#endif
+
   simulation => HydrogeophysicsCreate(option)
   
   num_subsurface_processes = 1

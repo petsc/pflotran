@@ -86,15 +86,11 @@ end subroutine PMCHydrogeophysicsInit
 ! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsInitializeRun(this)
 
-  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStart
-
   implicit none
   
   class(pmc_hydrogeophysics_type) :: this
   
   call printMsg(this%option,'PMCHydrogeophysics%InitializeRun()')
-  
-  call HydrogeophysicsWrapperStart(this%option)
   
   if (associated(this%below)) then
     call this%below%InitializeRun()

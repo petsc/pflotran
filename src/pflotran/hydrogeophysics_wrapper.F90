@@ -34,6 +34,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
                    pflotran_solution_vec_mpi, pflotran_solution_vec_seq, &
                    pflotran_scatter
   use e4d_setup, only : setup_e4d
+  use e4d_run, only: run_e4D
 #endif
   
   implicit none
@@ -47,7 +48,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
   VecScatter :: pflotran_scatter_
   PetscMPIInt :: pf_e4d_master_comm
   
-  call printMsg(option,'HydrogeophysicsWrapperInit()')
+!  call printMsg(option,'HydrogeophysicsWrapperInit()')
   
   ! from e4d_vars.F90
 #ifdef E4D
@@ -60,6 +61,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
   pflotran_scatter = pflotran_scatter_
 
   call setup_e4d
+  call run_e4d
 #endif
   
 end subroutine HydrogeophysicsWrapperInit
@@ -75,20 +77,13 @@ end subroutine HydrogeophysicsWrapperInit
 subroutine HydrogeophysicsWrapperStart(option)
   
   use Option_module
-#ifdef E4D
-  use e4d_run, only: run_e4D
-#endif
 
   implicit none
 
   type(option_type) :: option
   
-  call printMsg(option,'HydrogeophysicsWrapperStart()')
+!  call printMsg(option,'HydrogeophysicsWrapperStart()')
 
-#ifdef E4D
-  call run_e4d
-#endif
-  
 end subroutine HydrogeophysicsWrapperStart
 
 ! ************************************************************************** !
@@ -98,8 +93,8 @@ end subroutine HydrogeophysicsWrapperStart
 ! date: 07/02/13
 !
 ! ************************************************************************** !
-subroutine HydrogeophysicsWrapperStep(sigma_mpi,sigma_seq,scatter,comm,option)
-  
+subroutine HydrogeophysicsWrapperStep(solution_mpi,solution_seq,scatter, &
+                                      comm,option)
   use Option_module
 
   implicit none
@@ -107,27 +102,22 @@ subroutine HydrogeophysicsWrapperStep(sigma_mpi,sigma_seq,scatter,comm,option)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  Vec :: sigma_mpi
-  Vec :: sigma_seq
+  Vec :: solution_mpi
+  Vec :: solution_seq
   VecScatter :: scatter
   PetscMPIInt :: comm
   type(option_type) :: option
   
-  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call printMsg(option,'HydrogeophysicsWrapperStep()')
+!  call printMsg(option,'HydrogeophysicsWrapperStep()')
   
-!  call VecGetArrayF90(sigma,vec_ptr,ierr)
-!  write(option%io_buffer,'(es13.6)') vec_ptr(365)
-!  call printMsg(option)
-!  call VecRestoreArrayF90(sigma,vec_ptr,ierr)
-  
+  ! Bcasting a 1 to E4D tells it to run a forward simulation 
   call MPI_Bcast(ONE_INTEGER_MPI,ONE_INTEGER_MPI,MPI_INTEGER, &
                  ZERO_INTEGER_MPI,comm,ierr)
-  call VecScatterBegin(scatter,sigma_mpi,sigma_seq, &
+  call VecScatterBegin(scatter,solution_mpi,solution_seq, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(scatter,sigma_mpi,sigma_seq, &
+  call VecScatterEnd(scatter,solution_mpi,solution_seq, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   
 end subroutine HydrogeophysicsWrapperStep
@@ -150,8 +140,9 @@ subroutine HydrogeophysicsWrapperStop(option,comm)
   PetscMPIInt :: comm
   PetscErrorCode :: ierr
   
-  call printMsg(option,'HydrogeophysicsWrapperStop()')
+!  call printMsg(option,'HydrogeophysicsWrapperStop()')
   
+  ! Bcasting a 0 to E4D tells it to stop
   call MPI_Bcast(ZERO_INTEGER_MPI,ONE_INTEGER_MPI,MPI_INTEGER, &
                  ZERO_INTEGER_MPI,comm,ierr)
 
@@ -174,7 +165,7 @@ recursive subroutine HydrogeophysicsWrapperDestroy(option)
   
   type(option_type) :: option
   
-  call printMsg(option,'HydrogeophysicsWrapperDestroy()')
+!  call printMsg(option,'HydrogeophysicsWrapperDestroy()')
 
 end subroutine HydrogeophysicsWrapperDestroy
 
