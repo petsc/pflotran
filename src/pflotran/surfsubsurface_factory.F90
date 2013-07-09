@@ -59,6 +59,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use Subsurface_Factory_module
   use Option_module
   use Init_module
+  use Surface_Flow_module
+  use Surface_TH_module
   
   implicit none
   
@@ -89,6 +91,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       surf_simulation%process_model_coupler_list
     surf_simulation%process_model_coupler_list%next => &
       subsurf_simulation%process_model_coupler_list
+    surf_simulation%surf_flow_process_model_coupler%subsurf_realization => &
+      simulation_old%realization
 
     simulation%surf_realization => simulation_old%surf_realization
   else
@@ -114,6 +118,21 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
   deallocate(simulation_old)
   
+  if (option%nsurfflowdof>0.and. &
+    option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select case(option%iflowmode)
+      case (RICHARDS_MODE)
+        call SurfaceFlowGetSubsurfProp(simulation%realization, &
+                                       simulation%surf_realization)
+      case (TH_MODE)
+        call SurfaceTHGetSubsurfProp(simulation%realization, &
+                                     simulation%surf_realization)
+    end select
+  else
+    ! Decoupled surface-subsurface simulation
+    simulation%surf_flow_process_model_coupler%Synchronize1 => Null()
+  endif
+
 end subroutine SurfSubsurfaceInitializePostPETSc
 
 
