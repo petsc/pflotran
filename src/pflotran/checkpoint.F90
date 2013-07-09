@@ -107,7 +107,7 @@ subroutine Checkpoint(realization, &
                       tran_num_newton_iterations, &
                       tran_cumulative_solver_time, &
                       tran_prev_dt, &
-                      id)
+                      id_string)
 
   use Realization_class
   use Realization_Base_class, only : RealizationGetDataset
@@ -128,6 +128,7 @@ subroutine Checkpoint(realization, &
                                MINERAL_VOLUME_FRACTION
 
   use Reactive_Transport_module, only : RTCheckpointKineticSorption
+  use String_module, only : StringNull
 
   implicit none
 
@@ -149,13 +150,12 @@ subroutine Checkpoint(realization, &
   PetscInt :: tran_cumulative_linear_iterations
   PetscReal :: tran_cumulative_solver_time
   PetscReal :: tran_prev_dt
-  PetscInt, intent(in) :: id  ! id should not be altered within this subroutine
+  character(len=MAXWORDLENGTH), intent(in) :: id_string ! should not be altered
   
 !  PetscInt :: checkpoint_activity_coefs
 !  PetscInt :: match_waypoint_flag
 
   character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXWORDLENGTH) :: id_string
   PetscViewer :: viewer
   PetscBag :: bag
   type(checkpoint_header_type), pointer :: header
@@ -184,13 +184,12 @@ subroutine Checkpoint(realization, &
   global_vec = 0
   ! Open the checkpoint file.
   call PetscTime(tstart,ierr)   
-  if (id < 0) then
+  if (StringNull(id_string)) then
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-restart.chk'
   else 
-    write(id_string,'(i8)') id
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '.chk' // trim(adjustl(id_string))
+               '-' // trim(adjustl(id_string)) // '.chk'
   endif
   !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
   !     into the routines it calls so that PetscViewerBinarySkipInfo()
