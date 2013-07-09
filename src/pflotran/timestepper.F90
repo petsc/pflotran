@@ -2931,10 +2931,16 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   surf_field     => surf_realization%surf_field
   solver         => stepper%solver
 
-  stepper%steps = stepper%steps + 1
   if (option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE FLOW ",66("="))')
   endif
+
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
+  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+  call TSGetTime(solver%ts,time,ierr)
+  call TSGetTimeStep(solver%ts,dtime,ierr)
+
+  stepper%steps = stepper%steps + 1
   if (option%print_screen_flag) then
     write(*, '(" SURFACE FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]")') &
       stepper%steps, &
@@ -2942,11 +2948,6 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       dtime/surf_realization%output_option%tconv, &
       surf_realization%output_option%tunit
   endif
-
-  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
-  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
-  call TSGetTime(solver%ts,time,ierr)
-  call TSGetTimeStep(solver%ts,dtime,ierr)
 
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
