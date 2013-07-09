@@ -240,7 +240,10 @@ subroutine Checkpoint(realization, &
   header%flow_cumulative_newton_iterations = flow_cumulative_newton_iterations
   header%flow_cumulative_time_step_cuts = flow_cumulative_time_step_cuts
   header%flow_cumulative_linear_iterations = flow_cumulative_linear_iterations
-  header%flow_cumulative_solver_time = flow_cumulative_solver_time
+!!$  header%flow_cumulative_solver_time = flow_cumulative_solver_time
+  ! NOTE(bja, 2013-06) : zero out wall clock time so restart files
+  ! will be bit for bit identical
+  header%flow_cumulative_solver_time = 0.d0
                                                         
   ! TRANSPORT
   header%ntrandof = option%ntrandof
@@ -252,7 +255,10 @@ subroutine Checkpoint(realization, &
   header%tran_cumulative_newton_iterations = tran_cumulative_newton_iterations
   header%tran_cumulative_time_step_cuts = tran_cumulative_time_step_cuts
   header%tran_cumulative_linear_iterations = tran_cumulative_linear_iterations
-  header%tran_cumulative_solver_time = tran_cumulative_solver_time
+!!$ header%tran_cumulative_solver_time = tran_cumulative_solver_time
+  ! NOTE(bja, 2013-06) : zero out wall clock time so restart files
+  ! will be bit for bit identical
+  header%tran_cumulative_solver_time = 0.d0
 
   if (associated(realization%reaction)) then
     if (realization%reaction%checkpoint_activity_coefs .and. &

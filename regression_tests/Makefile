@@ -166,11 +166,11 @@ clean-tests :
 	-find . -type f -name '*.stdout' -print0 | xargs -0 rm
 	-find . -type f -name '*.old' -print0 | xargs -0 rm
 	-find . -type f -name '*~' -print0 | xargs -0 rm
+	-find . -type f -name 'tmp-restart-*' -print0 | xargs -0 rm
+	-find . -type f -name '*.chk' -print0 | xargs -0 rm
 	-rm -f default/anisothermal/thc_1d.h5
 	-rm -f default/anisothermal/th_1d.h5
 	-rm -f mfd/mfd-mas.dat
 	-rm -f mfd/mfd.h5
 	-rm -f scco2/scco2.h5
 	-rm -f scco2/scco2-mas.dat
-	-rm -f default/543/543_flow_and_tracer_restart-np8-restart.chk
-	-rm -f default/543/543_flow_and_tracer_restart-restart.chk

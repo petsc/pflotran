@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import os
 import re
+import struct
 import subprocess
 import unittest
 
@@ -139,6 +140,27 @@ class RegressionTest_SetTestData(unittest.TestCase):
         self.rt.setup(self.criteria, self.test_data, self.timeout,
                       self.check_performance, self.testlog)
         self.assertEqual(self.rt._stochastic_realizations, 3)
+
+    #--- restart timestep -----------------------------------------------------
+    def test_restart_timestep_default(self):
+        self.assertEqual(self.rt._pflotran_args, None)
+
+    def test_restart_timestep_default2(self):
+        self.rt.setup(self.criteria, self.test_data, self.timeout,
+                      self.check_performance, self.testlog)
+        self.assertEqual(self.rt._pflotran_args, None)
+
+    def test_restart_timestep_int(self):
+        self.test_data['restart_timestep'] = 10
+        self.rt.setup(self.criteria, self.test_data, self.timeout,
+                      self.check_performance, self.testlog)
+        self.assertEqual(self.rt._restart_timestep, 10)
+
+    def test_restart_timestep_junk(self):
+        self.test_data['restart_timestep'] = "foo bar baz"
+        self.assertRaises(ValueError, self.rt.setup,
+                          self.criteria, self.test_data, self.timeout,
+                          self.check_performance, self.testlog)
 
     #--- set_criteria ---------------------------------------------------------
     # verify that RegressionTest._set_criteria() is assigning test
@@ -434,7 +456,7 @@ class RegressionTest_CompareSections(unittest.TestCase):
         self.assertEqual(num_failures, 1)
 
     def test_compare_values_error(self):
-        """Failure when compare_values throws an exception. 
+        """Failure when compare_values throws an exception.
 
         type: pets will cause compare_values to throw an exception.
 
@@ -779,6 +801,9 @@ class RegressionTest_CleanupGeneratedFiles(unittest.TestCase):
             name = "{0}{1}".format(self.rt.name(), suffix)
             with open(name, "w") as tmpfile:
                 tmpfile.write(data)
+            name = "{0}-{1}{2}".format(self.rt._RESTART_PREFIX, self.rt.name(), suffix)
+            with open(name, "w") as tmpfile:
+                tmpfile.write(data)
 
     def _remove_files(self, suffixes):
         """Remove any remaining files
@@ -788,6 +813,12 @@ class RegressionTest_CleanupGeneratedFiles(unittest.TestCase):
             if os.path.isfile(name):
                 os.remove(name)
             name = "{0}{1}.old".format(self.rt.name(), suffix)
+            if os.path.isfile(name):
+                os.remove(name)
+            name = "{0}-{1}{2}".format(self.rt._RESTART_PREFIX, self.rt.name(), suffix)
+            if os.path.isfile(name):
+                os.remove(name)
+            name = "{0}-{1}{2}.old".format(self.rt._RESTART_PREFIX, self.rt.name(), suffix)
             if os.path.isfile(name):
                 os.remove(name)
 
@@ -831,6 +862,116 @@ class RegressionTest_CleanupGeneratedFiles(unittest.TestCase):
             self.assertTrue(os.path.isfile(name + ".old"), name)
             
         self._remove_files(self._rename_suffixes)
+
+    def test_cleanup_generated_files_restart(self):
+        """test file cleanup for a restart run
+        """
+        self.rt._restart_timestep = 10
+        self._rename_suffixes.extend(["-restart.chk", "-5.chk", "-10.chk"])
+        self._generate_files(self._rename_suffixes)
+        self.rt._cleanup_generated_files()
+
+        for suffix in self._save_suffixes:
+            # verify the "save" files have been preserved
+            name = "{0}{1}".format(self.rt.name(), suffix)
+            self.assertTrue(os.path.isfile(name), name)
+
+        # temp input file has been moved
+        name = "{0}-{1}.in".format(self.rt._RESTART_PREFIX, self.rt.name())
+        self.assertFalse(os.path.isfile(name), name)
+        self.assertTrue(os.path.isfile(name + ".old"), name)
+        for suffix in self._rename_suffixes:
+            # verify the generated files (orig run) have been moved to ".old"
+            name = "{0}{1}".format(self.rt.name(), suffix)
+            self.assertFalse(os.path.isfile(name), name)
+            self.assertTrue(os.path.isfile(name + ".old"), name)
+            # verify the generated files (restart run) have been moved to ".old"
+            name = "{0}-{1}{2}".format(self.rt._RESTART_PREFIX, self.rt.name(), suffix)
+            self.assertFalse(os.path.isfile(name), name)
+            self.assertTrue(os.path.isfile(name + ".old"), name)
+
+        self._remove_files(self._rename_suffixes)
+
+
+class RegressionTest_CompareRestart(unittest.TestCase):
+    """Tests to verify comparison of restart files.
+
+    """
+
+    def setUp(self):
+        self.testlog = open("dummy.testlog", 'w')
+        self.status = TestStatus()
+        self.rt = RegressionTest()
+        # test_data is the test section from a config file
+        test_data = {"name": "dummy_test_name", }
+        # timeout as specified by the command line arg
+        timeout = None
+        # check performance as specified by the command line arg
+        check_performance = False
+        # criteria is the default-test-criteria section from the config file
+        criteria = {}
+        self.rt.setup(criteria, test_data, timeout,
+                      check_performance, self.testlog)
+
+    def tearDown(self):
+        self.testlog.close()
+
+    def test_get_hash_missing_file(self):
+        """Mark a test fail if restart file is missing.
+        """
+        tmp_filename = "tmp.file"
+        file_hash = self.rt._get_binary_restart_hash(tmp_filename, self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+
+    def test_get_hash(self):
+        """Get the hash of a file.
+        """
+        tmp_filename = "tmp.file"
+        with open(tmp_filename, 'w') as tmpfile:
+            tmpfile.write(str("This is a file."))
+        file_hash = self.rt._get_binary_restart_hash(tmp_filename, self.status, self.testlog)
+        self.assertEqual(file_hash, "679a60d9c581d48aa428a323879edc40a01e2a9d")
+        os.remove(tmp_filename)
+
+    def test_compare_hashes_same(self):
+        """status.fail not set when hashing indentical files.
+        """
+        data = struct.pack('<HHHH',
+                           0x0000, 0xFFFF, 0x0000, 0xFFFF)
+        tmp_filename_1 = "{0}-restart.chk".format(self.rt.name())
+        with open(tmp_filename_1, 'wb') as tmpfile_1:
+            tmpfile_1.write(data)
+
+        tmp_filename_2 = "tmp-restart-{0}-restart.chk".format(self.rt.name())
+        with open(tmp_filename_2, 'wb') as tmpfile_2:
+            tmpfile_2.write(data)
+
+        self.rt._check_restart(self.status, self.testlog)
+        self.assertEqual(self.status.fail, 0)
+
+        os.remove(tmp_filename_1)
+        os.remove(tmp_filename_2)
+
+    def test_compare_hashes_different(self):
+        """Fail when hashing files that differ by a single bit.
+        """
+        data = struct.pack('<HHHH',
+                            0x0000, 0xFFFF, 0x0000, 0xFFFF)
+        tmp_filename_1 = "{0}-restart.chk".format(self.rt.name())
+        with open(tmp_filename_1, 'wb') as tmpfile_1:
+            tmpfile_1.write(data)
+
+        data = struct.pack('<HHHH',
+                            0x0000, 0xFFFF, 0x0010, 0xFFFF)
+        tmp_filename_2 = "tmp-restart-{0}-restart.chk".format(self.rt.name())
+        with open(tmp_filename_2, 'wb') as tmpfile_2:
+            tmpfile_2.write(data)
+
+        self.rt._check_restart(self.status, self.testlog)
+        self.assertEqual(self.status.fail, 1)
+
+        os.remove(tmp_filename_1)
+        os.remove(tmp_filename_2)
 
 
 if __name__ == '__main__':
