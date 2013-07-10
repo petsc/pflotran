@@ -606,7 +606,7 @@ subroutine GaussWedge(NGPTS,r,w)
   allocate(r(NGPTS*NGPTS,3))
   allocate(w(NGPTS*NGPTS))
   allocate(rL2(NGPTS,1))
-  allocate(w(NGPTS))
+  allocate(wL2(NGPTS))
   allocate(rT3(NGPTS,2))
   allocate(wT3(NGPTS))
   
