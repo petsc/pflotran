@@ -637,3 +637,6 @@ STRATA
   MATERIAL ./543.h5
 END
 
+:=========================== checkpoint / restart =============================
+CHECKPOINT 10
+
