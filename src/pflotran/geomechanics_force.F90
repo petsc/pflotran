@@ -126,6 +126,10 @@ subroutine GeomechanicsForceInitialGuess(realization)
   PetscReal, pointer :: xx_p(:)
   PetscErrorCode :: ierr
   
+  PetscReal :: pi
+  
+  pi = 3.14159265359
+  
   option => realization%option
   field => realization%geomech_field
   patch => realization%geomech_patch
@@ -151,7 +155,9 @@ subroutine GeomechanicsForceInitialGuess(realization)
         select case(boundary_condition%geomech_condition%displacement_x%itype)
           case(DIRICHLET_BC)
             xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_X_DOF) = &
-            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
+            2*grid%nodes(local_id)%y*(grid%nodes(local_id)%x + &
+            grid%nodes(local_id)%y + grid%nodes(local_id)%z)
+           ! boundary_condition%geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -162,7 +168,9 @@ subroutine GeomechanicsForceInitialGuess(realization)
         select case(boundary_condition%geomech_condition%displacement_y%itype)
           case(DIRICHLET_BC)
             xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_Y_DOF) = &
-            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
+            4*grid%nodes(local_id)%x - (grid%nodes(local_id)%y)**2 - &
+            (grid%nodes(local_id)%z)**2
+           ! boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -173,7 +181,9 @@ subroutine GeomechanicsForceInitialGuess(realization)
         select case(boundary_condition%geomech_condition%displacement_z%itype)
           case(DIRICHLET_BC)
             xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_Z_DOF) = &
-            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
+            sin(PI*grid%nodes(local_id)%x)*sin(PI*grid%nodes(local_id)%y)* &
+            sin(PI*grid%nodes(local_id)%z)
+           ! boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -359,6 +369,8 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: ghosted_id
   PetscInt :: eletype, idof
   PetscInt :: petsc_id, local_id
+  PetscReal :: error_H1_global, error_L2_global
+  PetscReal :: error_L2, error_H1
         
                     
   field => realization%geomech_field
@@ -372,6 +384,9 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   ! Add flag for the update
   
   call VecSet(r,0.d0,ierr)
+  
+  error_H1_global = 0.d0
+  error_L2_global = 0.d0
  
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
@@ -404,6 +419,13 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,res_vec,option)
     call VecSetValues(r,size(ids),ids,res_vec,ADD_VALUES,ierr) 
+    call GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
+                                    eletype,grid%gauss_node(ielem)%dim, &
+                                    grid%gauss_node(ielem)%r, &
+                                    grid%gauss_node(ielem)%w,error_L2, &
+                                    error_H1,option)
+    error_H1_global = error_H1_global + error_H1
+    error_L2_global = error_L2_global + error_L2
     deallocate(elenodes)
     deallocate(local_coordinates)
     deallocate(local_disp)
@@ -411,6 +433,18 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     deallocate(ids)
     deallocate(res_vec)
   enddo
+      
+  call MPI_Allreduce(error_H1_global,error_H1_global,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,option%mycomm,ierr)      
+  call MPI_Allreduce(error_L2_global,error_L2_global,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,option%mycomm,ierr)   
+                     
+  if (option%myrank == option%io_rank) then                   
+    print *, 'L2 error:', sqrt(error_L2_global)
+    print *, 'H1 error:', sqrt(error_H1_global)
+  endif
       
   call VecAssemblyBegin(r,ierr)
   call VecAssemblyEnd(r,ierr)  
@@ -588,6 +622,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
     call GeomechGetLambdaMu(lambda,mu,x)
+    load_type = 2 ! Need to change
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
@@ -615,6 +650,158 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   deallocate(res_vec_mat)
 
 end subroutine GeomechForceLocalElemResidual
+
+! ************************************************************************** !
+!
+! GeomechForceLocalElemError: Computes the error for a local element
+! author: Satish Karra
+! date: 07/08/13
+!
+! ************************************************************************** !
+subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
+                                      eletype,dim,r,w,error_L2,error_H1,option)
+                                         
+  use Unstructured_Cell_module
+  use Shape_Function_module
+  use Option_module
+  use Utility_module
+  
+  type(shapefunction_type) :: shapefunction
+  type(option_type) :: option
+
+  
+  PetscInt, allocatable :: elenodes(:)
+  PetscReal, allocatable :: local_coordinates(:,:)
+  PetscReal, allocatable :: zeta(:)
+  PetscReal, allocatable :: B(:,:), Kmat(:,:)
+  PetscReal, allocatable :: res_vec(:)
+  PetscReal, allocatable :: local_disp(:,:)
+  PetscReal, pointer :: r(:,:), w(:)
+  PetscInt :: igpt
+  PetscInt :: len_w
+  PetscInt :: eletype
+  PetscReal :: x(THREE_INTEGER), J_map(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: u(THREE_INTEGER)
+  PetscReal :: inv_J_map(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: detJ_map
+  PetscInt :: i,j,d
+  PetscReal :: eye_three(THREE_INTEGER)
+  PetscInt :: indx(THREE_INTEGER)
+  PetscInt :: dim
+  PetscReal :: lambda, mu
+  PetscInt :: load_type
+  PetscReal :: bf(THREE_INTEGER)
+  PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: den_rock
+  PetscReal :: grad_u(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: grad_u_exact(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: u_exact(THREE_INTEGER)
+  PetscReal :: error_H1, error_L2
+  PetscReal :: trace_disp, trace_disp_grad
+  
+  allocate(zeta(size(r,2)))
+  allocate(B(size(elenodes),dim))
+  
+  error_H1 = 0.d0
+  error_L2 = 0.d0
+
+  len_w = size(w)
+  
+  identity = 0.d0
+  do i = 1, THREE_INTEGER
+    do j = 1, THREE_INTEGER
+      if (i == j) identity(i,j) = 1.d0
+    enddo
+  enddo
+    
+  do igpt = 1, len_w
+    shapefunction%EleType = eletype
+    call ShapeFunctionInitialize(shapefunction)
+    shapefunction%zeta = r(igpt,:)
+    call ShapeFunctionCalculate(shapefunction)
+    x = matmul(transpose(local_coordinates),shapefunction%N)
+    J_map = matmul(transpose(local_coordinates),shapefunction%DN)
+    u = matmul(transpose(local_disp),shapefunction%N)
+    call Determinant(J_map,detJ_map)
+    if (detJ_map <= 0.d0) then
+      option%io_buffer = 'GEOMECHANICS: Determinant of J_map has' // &
+                         ' to be positive!' 
+      call printErrMsg(option)        
+    endif
+    ! Find the inverse of J_map
+    ! Set identity matrix
+    call ludcmp(J_map,THREE_INTEGER,indx,d)
+    do i = 1, THREE_INTEGER
+      eye_three = 0.d0
+      eye_three(i) = 1.d0
+      call lubksb(J_map,THREE_INTEGER,indx,eye_three)
+      inv_J_map(:,i) = eye_three
+    enddo
+    B = matmul(shapefunction%DN,inv_J_map)
+    grad_u = matmul(transpose(local_disp),B)
+    call GeomechGetLambdaMu(lambda,mu,x)
+    load_type = 2 ! Need to change
+    call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
+    call GetAnalytical(load_type,lambda,mu,x,u_exact,grad_u_exact)
+    trace_disp = 0.d0
+    do i = 1,3
+        trace_disp = trace_disp + (u_exact(i) - u(i))**2
+    enddo
+    error_L2 = error_L2 + w(igpt)*trace_disp*detJ_map
+    trace_disp_grad = 0.d0
+    do i = 1,3
+      do j = 1,3
+        trace_disp_grad = trace_disp_grad + (grad_u_exact(i,j) - grad_u(i,j))**2
+      enddo
+    enddo
+    error_H1 = error_H1 + w(igpt)*trace_disp_grad*detJ_map
+    call ShapeFunctionDestroy(shapefunction)
+  enddo
+
+  deallocate(zeta)
+  deallocate(B)
+
+end subroutine GeomechForceLocalElemError
+
+! ************************************************************************** !
+!
+! GeomechGetBodyForce: Gets the body force at a given position
+! of the point
+! author: Satish Karra
+! date: 06/24/13
+!
+! ************************************************************************** !
+subroutine GetAnalytical(load_type,lambda,mu,coord,u,grad_u)
+
+  PetscReal :: lambda, mu
+  PetscReal :: coord(THREE_INTEGER)
+  PetscReal :: u(THREE_INTEGER)
+  PetscReal :: grad_u(THREE_INTEGER,THREE_INTEGER)
+  PetscInt :: load_type
+  PetscReal :: x, y, z
+  
+  x = coord(1)
+  y = coord(2)
+  z = coord(3)
+  
+  select case(load_type)
+    case(2)
+      u(1) = 2*y*(x+y+z)
+      u(2) = 4*x-y**2-z**2
+      u(3) = sin(PI*x)*sin(PI*y)*sin(PI*z)
+      grad_u(1,1) = 2*y
+      grad_u(1,2) = 2*x + 4*y + 2*z
+      grad_u(1,3) = 2*y
+      grad_u(2,1) = 4
+      grad_u(2,2) = (-2)*y
+      grad_u(2,3) = (-2)*z
+      grad_u(3,1) = PI*cos(PI*x)*sin(PI*y)*sin(PI*z)
+      grad_u(3,2) = PI*cos(PI*y)*sin(PI*x)*sin(PI*z)
+      grad_u(3,3) = PI*cos(PI*z)*sin(PI*x)*sin(PI*y)
+    case default
+  end select
+  
+end subroutine GetAnalytical
 
 ! ************************************************************************** !
 !
@@ -704,6 +891,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
     call GeomechGetLambdaMu(lambda,mu,x)
+    load_type = 2 ! Need to change
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
@@ -748,6 +936,8 @@ subroutine GeomechGetLambdaMu(lambda,mu,coord)
   lambda = E*nu/(1.d0+nu)/(1.d0-2.d0*nu)
   mu = E/2.d0/(1.d0+nu)
 
+  lambda = 1.d0 ! Need to remove this
+  mu = 1.d0
 
 end subroutine GeomechGetLambdaMu
 
@@ -765,17 +955,33 @@ subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf)
   PetscReal :: lambda, mu, den_rock
   PetscReal :: coord(THREE_INTEGER)
   PetscReal :: bf(THREE_INTEGER)
+  PetscReal :: x, y, z
  
   bf = 0.d0
+  
+  x = coord(1)
+  y = coord(2)
+  z = coord(3)
     
   ! This subroutine needs major changes. For given position, it needs to give 
   ! out lambda, mu, also need to add density of rock
   
+  
   select case(load_type)
+    case(1)
+      bf(GEOMECH_DISP_X_DOF) = (lambda/3.d0 + 2.d0*mu)*(PI/60.d0)**2* &
+                                sin(pi*coord(1)/60.d0)
+    case(2)
+      bf(1) = - 4*mu - PI**2*lambda*cos(PI*x)*cos(PI*z)*sin(PI*y) &
+              - PI**2*mu*cos(PI*x)*cos(PI*z)*sin(PI*y)
+      bf(2) = 2*mu - 2*mu*((PI**2*cos(PI*y)*cos(PI*z)*sin(PI*x))/2 - 1) &
+              - PI**2*lambda*cos(PI*y)*cos(PI*z)*sin(PI*x)
+      bf(3) = PI**2*lambda*sin(PI*x)*sin(PI*y)*sin(PI*z) & 
+              + 4*PI**2*mu*sin(PI*x)*sin(PI*y)*sin(PI*z)
     case default
       bf(GEOMECH_DISP_Z_DOF) = -9.81
   end select
-
+  
 end subroutine GeomechGetBodyForce
 
 ! ************************************************************************** !

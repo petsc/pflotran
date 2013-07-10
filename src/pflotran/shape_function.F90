@@ -41,6 +41,10 @@ subroutine ShapeFunctionInitialize(shapefunction)
       allocate(shapefunction%N(FOUR_INTEGER))
       allocate(shapefunction%DN(FOUR_INTEGER,TWO_INTEGER))
       allocate(shapefunction%zeta(TWO_INTEGER))
+    case(WEDGE_TYPE)
+      allocate(shapefunction%N(SIX_INTEGER))
+      allocate(shapefunction%DN(SIX_INTEGER,THREE_INTEGER))
+      allocate(shapefunction%zeta(THREE_INTEGER))    
     case(HEX_TYPE)
       allocate(shapefunction%N(EIGHT_INTEGER))
       allocate(shapefunction%DN(EIGHT_INTEGER,THREE_INTEGER))
@@ -116,6 +120,50 @@ subroutine ShapeFunctionCalculate(shapefunction)
       DN(3,2) = 1.d0/4.d0*(1.d0 + zeta(1))
       DN(4,1) = -1.d0/4.d0*(1.d0 + zeta(2))  
       DN(4,2) = 1.d0/4.d0*(1.d0 - zeta(1))
+    case(WEDGE_TYPE)
+      N(1) = 1.d0/4.d0*(1.d0 - zeta(2))*(1.d0 - zeta(3))
+      N(2) = 1.d0/4.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(1.d0 - zeta(3))
+      N(3) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(1.d0 - zeta(3))
+      N(4) = 1.d0/4.d0*(1.d0 - zeta(2))*(1.d0 + zeta(3))
+      N(5) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(1.d0 + zeta(3))
+      N(6) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(1.d0 + zeta(3))
+         
+      DN(1,:) = (/0.d0, &
+                  1.d0/4.d0*(-1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/4.d0*(1.d0 - zeta(2))*(-1.d0)/) 
+      DN(2,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 + zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(+1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(-1.d0)/)
+      DN(3,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(-1.d0)/)
+      DN(4,:) = (/0.d0, &
+                  1.d0/4.d0*(-1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/4.d0*(1.d0 - zeta(2))*(+1.d0)/)
+      DN(5,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 + zeta(2))*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(+1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(+1.d0)/)
+      DN(6,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 + zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(+1.d0)/)    
+    
+    
+    
+#if 0   
+      N(1) = 0.5d0*(1-zeta(3))*(1-zeta(1)-zeta(2))
+      N(2) = 0.5d0*(1-zeta(3))*zeta(1)
+      N(3) = 0.5d0*(1-zeta(3))*zeta(2)
+      N(4) = 0.5d0*(1+zeta(3))*(1-zeta(1)-zeta(2))
+      N(5) = 0.5d0*(1+zeta(3))*zeta(1)
+      N(6) = 0.5d0*(1+zeta(3))*zeta(2)
+      DN(1,:) = (/zeta(3)/2-1/2,zeta(3)/2-1/2,zeta(1)/2 + zeta(2)/2-1/2/)
+      DN(2,:) = (/1/2-zeta(3)/2,0.d0,-zeta(1)/2/)
+      DN(3,:) = (/0.d0,1/2-zeta(3)/2,-zeta(2)/2/)
+      DN(4,:) = (/-zeta(3)/2-1/2,-zeta(3)/2-1/2,1/2-zeta(2)/2-zeta(1)/2/)
+      DN(5,:) = (/zeta(3)/2+1/2,0.d0,zeta(1)/2/)
+      DN(6,:) = (/0.d0,zeta(3)/2 + 1/2,zeta(2)/2/) 
+#endif
+
     case(HEX_TYPE)
       N(1) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
       N(2) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))

@@ -1098,6 +1098,22 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
+  
+  string="      <Attribute Name=""X"" AttributeType=""Scalar""  Center=""Node"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) ngvert
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(filename) //":/Domain/X"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)  
 
 end subroutine OutputXMFHeaderGeomech
 
@@ -1146,7 +1162,6 @@ subroutine OutputXMFAttributeGeomech(fid,nmax,attname,att_datasetname)
     """ AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
-!  write(string2,*) grid%nmax
   write(string2,*) nmax
   string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
   write(fid,'(a)') trim(string)
@@ -1487,6 +1502,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
                                                 option,file_id)
 
   use hdf5
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
   use Geomechanics_Realization_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -1541,8 +1557,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, pointer :: double_array(:)
   Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
-  Vec :: global_x_cell_vec,global_y_cell_vec,global_z_cell_vec
-  Vec :: natural_x_cell_vec,natural_y_cell_vec,natural_z_cell_vec
+  Vec :: natural_x_vertex_vec,natural_y_vertex_vec,natural_z_vertex_vec
 
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, natural_vec
@@ -1659,6 +1674,28 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
   call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
   call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+  ! Vertex X/Y/Z
+  ! X coord
+  string = "X" // CHAR(0)
+  
+  call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                           global_x_vertex_vec, &
+                                           file_id,H5T_NATIVE_DOUBLE)
+
+  ! Y coord
+  string = "Y" // CHAR(0)
+  
+  call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                           global_y_vertex_vec, &
+                                           file_id,H5T_NATIVE_DOUBLE)
+                                           
+  ! Z coord
+  string = "Z" // CHAR(0)
+  
+  call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                           global_z_vertex_vec, &
+                                           file_id,H5T_NATIVE_DOUBLE) 
 
 
   call VecDestroy(global_x_vertex_vec,ierr)
@@ -1777,7 +1814,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
   call GMDMDestroy(gmdm_element)
-
+                                  
 #endif
 !if defined(SCORPIO_WRITE)
 
