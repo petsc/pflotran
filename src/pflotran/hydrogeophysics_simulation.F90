@@ -16,11 +16,20 @@ module Hydrogeophysics_Simulation_class
     hydrogeophysics_simulation_type
     ! pointer to hydrogeophysics coupler
     class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
-    Vec :: sigma
+    PetscMPIInt :: pf_e4d_scatter_comm
+    PetscMPIInt :: pf_e4d_scatter_grp
+    PetscMPIInt :: pf_e4d_scatter_size
+    PetscMPIInt :: pf_e4d_scatter_rank
+    PetscMPIInt :: pf_e4d_master_comm
+    PetscMPIInt :: pf_e4d_master_grp
+    PetscMPIInt :: pf_e4d_master_size
+    PetscMPIInt :: pf_e4d_master_rank
+    PetscBool :: subsurface_process
+    Vec :: solution_mpi
   contains
     procedure, public :: Init => HydrogeophysicsInit
     procedure, public :: InitializeRun => HydrogeophysicsInitializeRun
-!    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
+    procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
     procedure, public :: Strip => HydrogeophysicsStrip
@@ -74,8 +83,18 @@ subroutine HydrogeophysicsInit(this,option)
   
   call SubsurfaceSimulationInit(this,option)
   nullify(this%hydrogeophysics_coupler)
-  this%sigma = 0
-  
+  this%solution_mpi = 0
+  ! -999 denotes uninitialized
+  this%pf_e4d_scatter_comm = -999
+  this%pf_e4d_scatter_grp = -999
+  this%pf_e4d_scatter_size = -999
+  this%pf_e4d_scatter_rank = -999
+  this%pf_e4d_master_comm = -999
+  this%pf_e4d_master_grp = -999
+  this%pf_e4d_master_size = -999
+  this%pf_e4d_master_rank = -999
+  this%subsurface_process = PETSC_FALSE
+   
 end subroutine HydrogeophysicsInit
 
 ! ************************************************************************** !
@@ -102,7 +121,9 @@ subroutine HydrogeophysicsInitializeRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%InitializeRun()')
 
-  call this%process_model_coupler_list%InitializeRun()
+  if (this%subsurface_process) then
+    call this%process_model_coupler_list%InitializeRun()
+  endif
 
 end subroutine HydrogeophysicsInitializeRun
 
@@ -127,15 +148,19 @@ subroutine HydrogeophysicsExecuteRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%ExecuteRun()')
 
-  final_time = SimulationGetFinalWaypointTime(this)
-  ! take hourly steps until final time
-  current_time = 0.d0
-  dt = 365.d0*24.d0*3600.d0
-  do
-    current_time = min(current_time + dt,final_time)
-    call this%RunToTime(current_time)
-    if (this%stop_flag > 0) exit
-  enddo
+  if (this%subsurface_process) then
+    final_time = SimulationGetFinalWaypointTime(this)
+    ! take hourly steps until final time
+    current_time = 0.d0
+    dt = 365.d0*24.d0*3600.d0
+    do
+      current_time = min(current_time + dt,final_time)
+      call this%RunToTime(current_time)
+      if (this%stop_flag > 0) exit
+    enddo
+  else
+    ! do nothing for E4D as it is waiting to receive instructions
+  endif
   
 end subroutine HydrogeophysicsExecuteRun
   
@@ -156,7 +181,9 @@ subroutine HydrogeophysicsFinalizeRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%FinalizeRun()')
   
-  call SubsurfaceFinalizeRun(this)
+  if (this%subsurface_process) then
+    call SubsurfaceFinalizeRun(this)
+  endif
   
 end subroutine HydrogeophysicsFinalizeRun
 
@@ -169,7 +196,7 @@ end subroutine HydrogeophysicsFinalizeRun
 ! ************************************************************************** !
 subroutine HydrogeophysicsStrip(this)
 
-  use Hydrogeophysics_Wrapper_module
+  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperDestroy
 
   implicit none
   
@@ -180,9 +207,11 @@ subroutine HydrogeophysicsStrip(this)
   call printMsg(this%option,'Hydrogeophysics%Strip()')
   
   call SubsurfaceSimulationStrip(this)
-  call HydrogeophysicsWrapperDestroy(this%option)
-  if (this%sigma /= 0) &
-    call VecDestroy(this%sigma ,ierr)
+  if (.not.this%subsurface_process) then
+    call HydrogeophysicsWrapperDestroy(this%option)
+  endif
+  if (this%solution_mpi /= 0) &
+    call VecDestroy(this%solution_mpi ,ierr)
   
 end subroutine HydrogeophysicsStrip
 

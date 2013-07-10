@@ -37,7 +37,7 @@ subroutine SubsurfaceInitialize(simulation_base,option)
 
   ! NOTE: PETSc must already have been initialized here!
   simulation => SubsurfaceSimulationCreate(option)
-  call SubsurfaceInitializePostPETSc(simulation,option)
+  call SubsurfaceInitializePostPetsc(simulation,option)
   
   simulation_base => simulation
 
@@ -45,13 +45,13 @@ end subroutine SubsurfaceInitialize
 
 ! ************************************************************************** !
 !
-! SubsurfaceInitializePostPETSc: Sets up PFLOTRAN subsurface simulation 
+! SubsurfaceInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
 !                                framework after to PETSc initialization
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine SubsurfaceInitializePostPETSc(simulation, option)
+subroutine SubsurfaceInitializePostPetsc(simulation, option)
 
   use Simulation_module
   use Option_module
@@ -74,7 +74,7 @@ subroutine SubsurfaceInitializePostPETSc(simulation, option)
   deallocate(simulation_old)
   call SubsurfaceJumpStart(simulation)
   
-end subroutine SubsurfaceInitializePostPETSc
+end subroutine SubsurfaceInitializePostPetsc
 
 ! ************************************************************************** !
 !

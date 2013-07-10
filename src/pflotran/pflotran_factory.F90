@@ -7,9 +7,9 @@ module PFLOTRAN_Factory_module
 #include "definitions.h"
 
   public :: PFLOTRANInitialize, &
-            PFLOTRANInitializePrePETSc, &
+            PFLOTRANInitializePrePetsc, &
 #ifndef PROCESS_MODEL
-            PFLOTRANInitializePostPETSc, &
+            PFLOTRANInitializePostPetsc, &
             PFLOTRANRun, &
 #endif
             PFLOTRANFinalize
@@ -32,23 +32,23 @@ subroutine PFLOTRANInitialize(option)
   
   type(option_type), pointer :: option
 
-  call PFLOTRANInitializePrePETSc(option)
+  call PFLOTRANInitializePrePetsc(option)
   call OptionInitPetsc(option)
 #ifdef PROCESS_MODEL
-  call PFLOTRANInitializePostPETSc(option)
+  call PFLOTRANInitializePostPetsc(option)
 #endif
 
 end subroutine PFLOTRANInitialize
 
 ! ************************************************************************** !
 !
-! PFLOTRANInitializePrePETSc: Sets up PFLOTRAN subsurface simulation 
+! PFLOTRANInitializePrePetsc: Sets up PFLOTRAN subsurface simulation 
 !                             framework prior to PETSc initialization
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine PFLOTRANInitializePrePETSc(option)
+subroutine PFLOTRANInitializePrePetsc(option)
 
   use Option_module
   
@@ -61,18 +61,18 @@ subroutine PFLOTRANInitializePrePETSc(option)
   
   call PFLOTRANInitCommandLineSettings(option)
   
-end subroutine PFLOTRANInitializePrePETSc
+end subroutine PFLOTRANInitializePrePetsc
 
 ! ************************************************************************** !
 !
-! PFLOTRANInitializePostPETSc: Sets up PFLOTRAN subsurface simulation 
+! PFLOTRANInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
 !                              framework after PETSc initialization
 ! author: Glenn Hammond
 ! date: 06/17/13
 !
 ! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANInitializePostPETSc(option)
+subroutine PFLOTRANInitializePostPetsc(option)
 
   use Option_module
   use Logging_module
@@ -85,7 +85,7 @@ subroutine PFLOTRANInitializePostPETSc(option)
   call OptionBeginTiming(option)
   
 #else
-subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
+subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
                                        init_status)
 
   use Simulation_module
@@ -119,7 +119,7 @@ subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
                                 init_status)
 #endif 
 #endif 
-end subroutine PFLOTRANInitializePostPETSc
+end subroutine PFLOTRANInitializePostPetsc
 
 #ifndef PROCESS_MODEL
 ! ************************************************************************** !

@@ -2,6 +2,7 @@
 module PMC_Surface_class
 
   use PMC_Base_class
+  use Realization_class
   use Surface_Realization_class
   use Timestepper_Surface_class
 
@@ -12,6 +13,7 @@ module PMC_Surface_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_surface_type
+    class(realization_type), pointer :: subsurf_realization
     class(surface_realization_type), pointer :: surf_realization
   contains
     procedure, public :: Init => PMCSurfaceInit
@@ -65,6 +67,9 @@ subroutine PMCSurfaceInit(this)
   
   call PMCBaseInit(this)
   nullify(this%surf_realization)
+  nullify(this%subsurf_realization)
+  this%Synchronize1 => PMCSurfaceSynchronize1
+  this%Synchronize2 => PMCSurfaceSynchronize2
 !  nullify(this%surf_timestepper)
 
 end subroutine PMCSurfaceInit
@@ -115,11 +120,19 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     cur_pm => this%pm_list
 
     call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max)
-    call this%timestepper%SetTargetTime2(sync_time,dt_max,this%option, &
+    select type(timestepper => this%timestepper)
+      class is(timestepper_surface_type)
+        timestepper%dt_max_allowable = dt_max
+    end select
+    call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
                                         transient_plot_flag)
 
-    call this%timestepper%StepDT2(this%pm_list,local_stop_flag)
+    if (associated(this%Synchronize1)) then
+      call this%Synchronize1()
+    endif
+
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
 #if 0
     if (local_stop_flag > 1) exit ! failure
@@ -165,6 +178,12 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     
   enddo
   
+  this%option%surf_flow_time = this%timestepper%target_time
+
+  if (associated(this%Synchronize2)) then
+    call this%Synchronize2()
+  endif
+
   ! Run neighboring process model couplers
   if (associated(this%next)) then
     call this%next%RunToTime(sync_time,local_stop_flag)
@@ -173,6 +192,77 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   stop_flag = max(stop_flag,local_stop_flag)
   
 end subroutine PMCSurfaceRunToTime
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 07/08/13
+! ************************************************************************** !
+subroutine PMCSurfaceSynchronize1(this)
+
+  use Surface_Flow_module
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pmc_base_type), pointer :: this
+  PetscErrorCode :: ierr
+  PetscReal :: tmp
+
+  select type(pmc => this)
+    class is(pmc_surface_type)
+      call SurfaceFlowSurf2SubsurfFlux(pmc%subsurf_realization, &
+                                      pmc%surf_realization,tmp)
+  end select
+  
+end subroutine PMCSurfaceSynchronize1
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 07/08/13
+! ************************************************************************** !
+subroutine PMCSurfaceSynchronize2(this)
+
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pmc_base_type), pointer :: this
+  PetscReal :: dt
+  PetscErrorCode :: ierr
+
+  dt = this%option%surf_flow_time - this%option%flow_time
+
+  select type(pmc => this)
+    class is(pmc_surface_type)
+      select case(this%option%iflowmode)
+        case (RICHARDS_MODE)
+          call SurfaceFlowUpdateSubsurfSS(pmc%subsurf_realization, &
+                                          pmc%surf_realization, &
+                                          dt)
+        case (TH_MODE)
+          !call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
+          !                                pmc%surf_realization, &
+          !                                dt)
+        end select
+  end select
+  
+end subroutine PMCSurfaceSynchronize2
 
 ! ************************************************************************** !
 !> This routine

@@ -204,3 +204,6 @@ STRATA
 END
 
 
+:=========================== checkpoint / restart =============================
+CHECKPOINT 10
+

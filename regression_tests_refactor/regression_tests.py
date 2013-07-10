@@ -1,6 +1,7 @@
 #!/bin/env python
 """
-Program to manage and run PFloTran regression tests
+Program to manage and run PFloTran regression tests.
+
 """
 
 from __future__ import print_function
@@ -8,6 +9,7 @@ from __future__ import division
 
 import argparse
 import datetime
+import hashlib
 import os
 import pprint
 import re
@@ -69,6 +71,7 @@ class RegressionTest(object):
         self._TOL_VALUE = 0
         self._TOL_TYPE = 1
         self._PFLOTRAN_SUCCESS = 86
+        self._RESTART_PREFIX = "tmp-restart"
         # misc test parameters
         self._pprint = pprint.PrettyPrinter(indent=2)
         self._txtwrap = textwrap.TextWrapper(width=78, subsequent_indent=4*" ")
@@ -79,6 +82,7 @@ class RegressionTest(object):
         self._np = None
         self._pflotran_args = None
         self._stochastic_realizations = None
+        self._restart_timestep = None
         self._timeout = 60.0
         self._check_performance = False
         self._num_failed = 0
@@ -130,6 +134,40 @@ class RegressionTest(object):
         return self._test_name
 
     def run(self, mpiexec, executable, dry_run, status, testlog):
+        """Run the test.
+
+        If this is a restart test, then we will copy the input file,
+        append the restart flag and run the test a second time.
+
+        """
+        self._cleanup_generated_files()
+
+        self._run_test(mpiexec, executable, self.name(), dry_run, status,
+                       testlog)
+
+        if self._restart_timestep is not None:
+            restart_file = "{0}-{1}.chk".format(self.name(),
+                                                self._restart_timestep)
+            if os.path.isfile(restart_file):
+                restart_name = "{0}-{1}".format(self._RESTART_PREFIX,
+                                                self.name())
+                shutil.copy("{0}.in".format(self.name()),
+                            "{0}.in".format(restart_name))
+                with open("{0}.in".format(restart_name), 'a') as tempfile:
+                    tempfile.write("RESTART {0}\n".format(restart_file))
+                self._run_test(mpiexec, executable, restart_name, dry_run,
+                               status, testlog)
+            elif not status.skipped:
+                status.fail = 1
+                message = self._txtwrap.fill(
+                    "ERROR: restart test '{0}' did not generate a checkpoint "
+                    "file at the specified step: '{1}' ('{2}'). This can "
+                    "occur if the checkpoint interval and restart step are "
+                    "not consistent or the run failed.".format(
+                        self.name(), self._restart_timestep, restart_file))
+                print("".join(['\n', message, '\n']), file=testlog)
+
+    def _run_test(self, mpiexec, executable, test_name, dry_run, status, testlog):
         """
         Build up the run command, including mpiexec, np, pflotran,
         input file, output file. Then run the job as a subprocess.
@@ -166,7 +204,7 @@ class RegressionTest(object):
         command.append("0")
         if self._input_arg is not None:
             command.append(self._input_arg)
-            command.append(self.name())
+            command.append(test_name)
 
         if self._pflotran_args is not None:
             # assume that we already called split() on the
@@ -174,22 +212,10 @@ class RegressionTest(object):
             # may be empty)
             command = command + self._pflotran_args
 
-        if os.path.isfile(self.name() + ".regression"):
-            os.rename(self.name() + ".regression",
-                      self.name() + ".regression.old")
-
-        if os.path.isfile(self.name() + ".out"):
-            os.rename(self.name() + ".out",
-                      self.name() + ".out.old")
-
-        if os.path.isfile(self.name() + ".stdout"):
-            os.rename(self.name() + ".stdout",
-                      self.name() + ".stdout.old")
-
         if not dry_run:
             print("    cd {0}".format(os.getcwd()), file=testlog)
             print("    {0}".format(" ".join(command)), file=testlog)
-            run_stdout = open(self.name() + ".stdout", 'w')
+            run_stdout = open(test_name + ".stdout", 'w')
             start = time.time()
             proc = subprocess.Popen(command,
                                     shell=False,
@@ -202,7 +228,7 @@ class RegressionTest(object):
                     time.sleep(0.1)
                     message = self._txtwrap.fill(
                         "ERROR: job '{0}' has exceeded timeout limit of "
-                        "{1} seconds.".format(self.name(), self._timeout))
+                        "{1} seconds.".format(test_name, self._timeout))
                     print(''.join(['\n', message, '\n']), file=testlog)
             pflotran_status = abs(proc.returncode)
             run_stdout.close()
@@ -215,15 +241,65 @@ class RegressionTest(object):
                 "code ({status}) indicating the simulation may have "
                 "failed. Please check '{name}.out' and '{name}.stdout' "
                 "for error messages (included below).".format(
-                    name=self.name(), status=pflotran_status))
+                    name=test_name, status=pflotran_status))
             print("".join(['\n', message, '\n']), file=testlog)
-            print("~~~~~ {0}.stdout ~~~~~".format(self.name()), file=testlog)
-            with open("{0}.stdout".format(self.name()), 'r') as tempfile:
+            print("~~~~~ {0}.stdout ~~~~~".format(test_name), file=testlog)
+            with open("{0}.stdout".format(test_name), 'r') as tempfile:
                 shutil.copyfileobj(tempfile, testlog)
-            print("~~~~~ {0}.out ~~~~~".format(self.name()), file=testlog)
-            with open("{0}.out".format(self.name()), 'r') as tempfile:
+            print("~~~~~ {0}.out ~~~~~".format(test_name), file=testlog)
+            with open("{0}.out".format(test_name), 'r') as tempfile:
                 shutil.copyfileobj(tempfile, testlog)
             print("~~~~~~~~~~", file=testlog)
+
+    def _cleanup_generated_files(self):
+        """Cleanup old generated files that may be hanging around from a
+        previous run by renaming them with .old appended to the name.
+
+        NOTE:
+
+          - Do NOT match files with something like "if self.name() in
+            filename" or "if filenamename.startswith(self.name())"
+            because this will capture files from another test with a
+            similar name, e.g.  "test_flow" and "test_flow_np4" would
+            both be captured.
+
+          - This assumes that all files with the listed suffixes are
+            old. That means checkpoint files must be generated, not
+            saved.
+
+        """
+        # files from a normal run
+        suffixes = ["regression", "out", "stdout"]
+        for suffix in suffixes:
+            name = "{0}.{1}".format(self.name(), suffix)
+            if os.path.isfile(name):
+                os.rename(name, name + ".old")
+
+        # files from a stochastic run
+        if self._stochastic_realizations is not None:
+            for i in range(1, self._stochastic_realizations + 1):
+                run_id = "R{0}".format(i)
+                for suffix in suffixes:
+                    name = "{0}{1}.{2}".format(self.name(), run_id, suffix)
+                    if os.path.isfile(name):
+                        os.rename(name, name + ".old")
+
+        # temp files from a restart run
+        if self._restart_timestep is not None:
+            suffixes.append("in")
+            for suffix in suffixes:
+                name = "{0}-{1}.{2}".format(self._RESTART_PREFIX, self.name(), suffix)
+                if os.path.isfile(name):
+                    os.rename(name, name + ".old")
+
+            # checkpoint/restart files, both from the original and restart run
+            cwd = os.getcwd()
+            for entry in os.listdir(cwd):
+                if os.path.isfile(entry):
+                    search_checkpoint = "^({0}-)?{1}-([\d]+|restart).chk$".format(
+                        self._RESTART_PREFIX, self.name())
+                    if re.search(search_checkpoint, entry):
+                        os.rename(entry, entry + ".old")
 
     def check(self, status, testlog):
         """
@@ -242,6 +318,9 @@ class RegressionTest(object):
                 self._check_gold(status, run_id, testlog)
         else:
             self._check_gold(status, run_id, testlog)
+
+        if self._restart_timestep is not None:
+            self._check_restart(status, testlog)
 
     def _check_gold(self, status, run_id, testlog):
         """
@@ -314,6 +393,54 @@ class RegressionTest(object):
 
         if self._num_failed > 0:
             status.fail = 1
+
+    def _check_restart(self, status, testlog):
+        """Check that binary restart files are bit for bit after a restart.
+
+        The entire restart file should be bit for bit, both the "big"
+        data and the metadata. This means we can take a hash of the
+        file and report even a single bit difference between the files
+        as a failure. If the meta data is allowd to be different, we
+        will need a more sophisticated way of diffing the files.
+
+        """
+
+        orig_filename="{0}-restart.chk".format(self.name())
+        restart_filename="{0}-{1}".format(self._RESTART_PREFIX, orig_filename)
+
+        print("\n    comparing restart files:\n        {0}\n        {1}".format(
+            orig_filename, restart_filename), file=testlog)
+
+        orig_hash = self._get_binary_restart_hash(orig_filename,
+                                                  status, testlog)
+        restart_hash = self._get_binary_restart_hash(restart_filename,
+                                                     status, testlog)
+
+        if orig_hash is not False and restart_hash is not False: 
+            if orig_hash != restart_hash:
+                print("    FAIL: final restart files are not bit for bit "
+                      "identical.", file=testlog)
+                status.fail = 1
+            else:
+                print("    bit for bit restart test passed.\n", file=testlog)
+
+    def _get_binary_restart_hash(self, filename, status, testlog):
+        """Get the sha1 hash of a restart file. The hash should be different
+        if even one bit is different in the file.
+
+        """
+        hash_digest = False
+        if os.path.isfile(filename):
+            restart_hash = hashlib.sha1()
+            with open(filename, mode='rb') as restart_file:
+                restart_hash.update(restart_file.read())
+            hash_digest = restart_hash.hexdigest()
+        else:
+            message = self._txtwrap.fill(
+                "FAIL: could not find restart file '{0}'".format(filename))
+            print("".join(['\n', message, '\n']), file=testlog)
+            status.fail = 1
+        return hash_digest
 
     def update(self, status, testlog):
         """
@@ -664,6 +791,14 @@ class RegressionTest(object):
                         "ERROR : stochastic simulations require a "
                         "num_realizations flag as well. "
                         "test : {0}".format(self.name()))
+
+        self._restart_timestep = test_data.pop('restart_timestep', None)
+        if self._restart_timestep is not None:
+            try:
+                self._restart_timestep = int(self._restart_timestep)
+            except ValueError as error:
+                raise ValueError("ERROR: restart_timestep must be an integer value. "
+                                "test : {0}".format(self.name()))
 
         self._check_performance = check_performance
 

@@ -2931,10 +2931,16 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
   surf_field     => surf_realization%surf_field
   solver         => stepper%solver
 
-  stepper%steps = stepper%steps + 1
   if (option%print_screen_flag) then
     write(*,'(/,2("=")," SURFACE FLOW ",66("="))')
   endif
+
+  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
+  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
+  call TSGetTime(solver%ts,time,ierr)
+  call TSGetTimeStep(solver%ts,dtime,ierr)
+
+  stepper%steps = stepper%steps + 1
   if (option%print_screen_flag) then
     write(*, '(" SURFACE FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]")') &
       stepper%steps, &
@@ -2942,11 +2948,6 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       dtime/surf_realization%output_option%tconv, &
       surf_realization%output_option%tunit
   endif
-
-  call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
-  call TSSolve(solver%ts,surf_field%flow_xx, ierr)
-  call TSGetTime(solver%ts,time,ierr)
-  call TSGetTimeStep(solver%ts,dtime,ierr)
 
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
@@ -4259,11 +4260,12 @@ end subroutine StepperSandbox
 ! date: 03/07/08 
 !
 ! ************************************************************************** !
-subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
+subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id, id_stamp)
 
   use Realization_class
   use Checkpoint_module
   use Option_module
+  use String_module, only : StringNull
 
   implicit none
 
@@ -4272,6 +4274,7 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
   type(stepper_type), pointer :: tran_stepper
   PetscInt :: num_const_timesteps, num_newton_iterations  
   PetscInt :: id
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
 
   type(option_type), pointer :: option
   PetscInt :: flow_steps, flow_cumulative_newton_iterations, &
@@ -4282,6 +4285,7 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
               tran_num_const_time_steps, tran_num_newton_iterations
   PetscReal :: flow_cumulative_solver_time, flow_prev_dt
   PetscReal :: tran_cumulative_solver_time,tran_prev_dt
+  character(len=MAXWORDLENGTH) :: id_string
   
   option => realization%option
 
@@ -4306,6 +4310,14 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
     tran_prev_dt = tran_stepper%prev_dt
   endif
   
+  ! default null id_string --> global_prefix-restart.chk
+  id_string = ''
+  if (present(id_stamp)) then
+     id_string = id_stamp
+  else if (id >= 0) then
+     write(id_string,'(i8)') id
+  end if
+
   call Checkpoint(realization, &
                   flow_steps,flow_cumulative_newton_iterations, &
                   flow_cumulative_time_step_cuts,flow_cumulative_linear_iterations, &
@@ -4315,7 +4327,7 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
                   tran_cumulative_time_step_cuts,tran_cumulative_linear_iterations, &
                   tran_num_const_time_steps,tran_num_newton_iterations, &
                   tran_cumulative_solver_time,tran_prev_dt, &
-                  id)
+                  id_string)
                       
 end subroutine StepperCheckpoint
 
