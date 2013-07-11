@@ -71,11 +71,14 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   if (num_slaves < -998) then
     num_subsurface_processes = option%global_commsize / 2
     num_slaves = option%global_commsize - num_subsurface_processes - 1
+  else if (num_slaves <= 0) then
+    option%io_buffer = 'Number of slaves must be greater than zero. ' // &
+      'Currently set to ' // StringFormatInt(num_slaves) // '.'
+    call printErrMsg(option)
   else
     if (num_slaves > option%global_commsize - 2) then
-      write(string,*) num_slaves
       option%io_buffer = 'Too many slave processes allocated to ' // &
-        'simulation(' // trim(adjustl(string)) // ').'
+        'simulation: ' // StringFormatInt(num_slaves)
       call printErrMsg(option)
     endif
     num_subsurface_processes = option%global_commsize - num_slaves - 1

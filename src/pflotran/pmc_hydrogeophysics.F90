@@ -163,11 +163,13 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 
   use Realization_Base_class, only : RealizationGetDataset
   use Variables_module, only : PRIMARY_MOLALITY
+  use String_module
 
   implicit none
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
+#include "finclude/petscviewer.h"
 
   class(pmc_base_type), pointer :: this
   class(pmc_hydrogeophysics_type), pointer :: pmc_hg
@@ -175,6 +177,8 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   PetscReal, pointer :: vec1_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
   PetscInt, save :: num_calls = 0
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscViewer :: viewer
 
   select type(pmc => this)
     class is(pmc_hydrogeophysics_type)
@@ -183,10 +187,19 @@ subroutine PMCHydrogeophysicsSynchronize(this)
                                  PRIMARY_MOLALITY,ONE_INTEGER,0)
       call VecGetArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
       call VecGetArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
-      vec2_ptr(:) = vec1_ptr(:) + num_calls
+      vec1_ptr(:) = vec1_ptr(:) + num_calls
+      vec2_ptr(:) = vec1_ptr(:)
       print *, 'PMC update to solution', vec2_ptr(16)
       call VecRestoreArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
       call VecRestoreArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
+
+#if 0
+filename = 'pf_solution' // trim(StringFormatInt(num_calls)) // '.txt'
+call PetscViewerASCIIOpen(this%option%mycomm,filename,viewer,ierr)
+call VecView(pmc%realization%field%work,viewer,ierr)
+call PetscViewerDestroy(viewer,ierr)
+#endif
+
   end select
   num_calls = num_calls + 1
   
