@@ -1468,7 +1468,7 @@ end subroutine WriteObservationSecondaryDataAtCell
 ! ************************************************************************** !  
 subroutine OutputMassBalance(realization_base)
 
-  use Realization_class
+  use Realization_class, only : realization_type
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module
@@ -1476,15 +1476,15 @@ subroutine OutputMassBalance(realization_base)
   use Coupler_module
   use Utility_module
   
-  use Richards_module
-  use Mphase_module
-  use Immis_module
-  use Miscible_module
-  use TH_module
-  use THC_module
-  use THMC_module
-  use Reactive_Transport_module
-  use General_module
+  use Richards_module, only : RichardsComputeMassBalance
+  use Mphase_module, only : MphaseComputeMassBalance
+  use Immis_module, only : ImmisComputeMassBalance
+  use Miscible_module, only : MiscibleComputeMassBalance
+  use TH_module, only : THComputeMassBalance
+  use THC_module, only : THCComputeMassBalance
+  use THMC_module, only : THMCComputeMassBalance
+  use Reactive_Transport_module, only : RTComputeMassBalance
+  use General_module, only : GeneralComputeMassBalance
   
   use Global_Aux_module
   use Reactive_Transport_Aux_module
