@@ -45,6 +45,10 @@ subroutine ShapeFunctionInitialize(shapefunction)
       allocate(shapefunction%N(SIX_INTEGER))
       allocate(shapefunction%DN(SIX_INTEGER,THREE_INTEGER))
       allocate(shapefunction%zeta(THREE_INTEGER))    
+    case(TET_TYPE)
+      allocate(shapefunction%N(FOUR_INTEGER))
+      allocate(shapefunction%DN(FOUR_INTEGER,THREE_INTEGER))
+      allocate(shapefunction%zeta(THREE_INTEGER))  
     case(HEX_TYPE)
       allocate(shapefunction%N(EIGHT_INTEGER))
       allocate(shapefunction%DN(EIGHT_INTEGER,THREE_INTEGER))
@@ -146,6 +150,22 @@ subroutine ShapeFunctionCalculate(shapefunction)
       DN(6,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 + zeta(3)), &
                   1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 + zeta(3)), &
                   1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(+1.d0)/)    
+    case(TET_TYPE)
+      N(1) = 1.d0/4.d0*(1.d0 - zeta(2))*(1.d0 - zeta(3))
+      N(2) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(1.d0 - zeta(3))
+      N(3) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(1.d0 - zeta(3))
+      N(4) = 1.d0/2.d0*(1.d0 + zeta(3))
+         
+      DN(1,:) = (/0.d0, &
+                  1.d0/4.d0*(-1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/4.d0*(1.d0 - zeta(2))*(-1.d0)/) 
+      DN(2,:) = (/1.d0/8.d0*(+1.d0)*(1.d0 + zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(+1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 + zeta(2))*(-1.d0)/)
+      DN(3,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 - zeta(3)), &
+                  1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(-1.d0)/)
+      DN(4,:) = (/0.d0,0.d0,1.d0/2.d0/)
     case(HEX_TYPE)
       N(1) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
       N(2) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
