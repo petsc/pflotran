@@ -15,7 +15,7 @@ zone_file = sys.argv[1]
 vset_file = sys.argv[2]
 
 # Opening zone file
-print ('--> Raading zone file')
+print ('--> Reading zone file')
 
 f = open(zone_file,'r')
 f.readline()
