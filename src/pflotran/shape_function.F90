@@ -146,24 +146,6 @@ subroutine ShapeFunctionCalculate(shapefunction)
       DN(6,:) = (/1.d0/8.d0*(-1.d0)*(1.d0 + zeta(2))*(1.d0 + zeta(3)), &
                   1.d0/8.d0*(1.d0 - zeta(1))*(+1.d0)*(1.d0 + zeta(3)), &
                   1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 + zeta(2))*(+1.d0)/)    
-    
-    
-    
-#if 0   
-      N(1) = 0.5d0*(1-zeta(3))*(1-zeta(1)-zeta(2))
-      N(2) = 0.5d0*(1-zeta(3))*zeta(1)
-      N(3) = 0.5d0*(1-zeta(3))*zeta(2)
-      N(4) = 0.5d0*(1+zeta(3))*(1-zeta(1)-zeta(2))
-      N(5) = 0.5d0*(1+zeta(3))*zeta(1)
-      N(6) = 0.5d0*(1+zeta(3))*zeta(2)
-      DN(1,:) = (/zeta(3)/2-1/2,zeta(3)/2-1/2,zeta(1)/2 + zeta(2)/2-1/2/)
-      DN(2,:) = (/1/2-zeta(3)/2,0.d0,-zeta(1)/2/)
-      DN(3,:) = (/0.d0,1/2-zeta(3)/2,-zeta(2)/2/)
-      DN(4,:) = (/-zeta(3)/2-1/2,-zeta(3)/2-1/2,1/2-zeta(2)/2-zeta(1)/2/)
-      DN(5,:) = (/zeta(3)/2+1/2,0.d0,zeta(1)/2/)
-      DN(6,:) = (/0.d0,zeta(3)/2 + 1/2,zeta(2)/2/) 
-#endif
-
     case(HEX_TYPE)
       N(1) = 1.d0/8.d0*(1.d0 - zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
       N(2) = 1.d0/8.d0*(1.d0 + zeta(1))*(1.d0 - zeta(2))*(1.d0 - zeta(3))
