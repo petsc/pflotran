@@ -526,7 +526,7 @@ where {\tt simn.in} is the usual PFLOTRAN input file. The names may be arbitrari
 \verb|mpirun -n XXX pflotran -pflotranin filename.in -multisimulation| 
 
 \noindent  
-Note that all simulations must run at once. The same logic used to allow a processor group to run multiple simulations with {\tt multirealization} is not implemented. Chose the number of cores to be a multiple of the number of input files. All output files have {\tt Gn} appended to the file name, e.g. {\tt sim10G10-001.tec}.
+Note that all simulations must run at once. The same logic used to allow a processor group to run multiple simulations with {\tt multirealization} is not implemented. {\bf Choose the number of cores to be a multiple of the number of input filenames listed in the input file (i.e. filenames.in).} All output files have {\tt Gn} appended to the file name, e.g. {\tt sim10G10-001.tec}.
 
 \begin{comment}
 \subsection{Building SAMRAI Version 2.4.4}
