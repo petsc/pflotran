@@ -49,12 +49,15 @@ for i in range(Num_Elem):
 print('--> Done with avs file')
 
 # Writing to pflotran implicit grid format
+# Note that vertex 4 is written first and vertex 1 is written last
+# This is to ensure the right hand rule for tetrahedron is preserved
+# Check with Carl why lagrit prints tets in clockwise direction
 print('--> Writing pflotran usg file')
 fid = open('usg.mesh','w')
 fid.write('%i %i\n' %(Num_Elem,Num_Nodes))
 for i in range(Num_Elem):
     if (Elements[i,0] == 4):
-        fid.write('T %i %i %i %i\n' %(Elements[i,1],Elements[i,2],Elements[i,3],Elements[i,4]))
+        fid.write('T %i %i %i %i\n' %(Elements[i,4],Elements[i,2],Elements[i,3],Elements[i,1]))
     else:
         sys.exit('Error: Invalid element type')
 
