@@ -518,6 +518,140 @@ end subroutine GaussTriangle
 
 ! ************************************************************************** !
 !
+! GaussTetrahedra: Calculates Gauss points for tetrahedra elements 
+! author: Satish Karra, LANL
+! date: 7/11/2013
+!
+! ************************************************************************** !  
+subroutine GaussTetrahedra(NGPTS,r,w)
+
+  PetscInt :: EleType
+  PetscInt :: NGPTS
+  PetscReal, pointer :: r(:,:)
+  PetscReal, pointer :: w(:)
+  PetscReal :: p1,p2,p3,p4,p5,p6,p7
+  PetscReal :: q1,q2,q3,q4
+  
+  allocate(r(NGPTS,3))
+  allocate(w(NGPTS))
+    
+  select case(NGPTS)
+    case(1)
+
+    !------------------------------
+    ! No of Gauss Points = 1
+    !------------------------------
+      r(1,:) = 1.0/4.0*(/1.0,1.0,1.0/)
+      !
+      w(1) = 1.0/6.0
+
+    !--------------------------------
+    ! No of Gauss Points = 4
+    !--------------------------------
+
+    case(4)
+    
+      p1 = 0.5854101966249638
+      p2 = 0.1381966011250105
+      r(1,:) = (/p1,p2,p2/)
+      r(2,:) = (/p2,p1,p2/)
+      r(3,:) = (/p2,p2,p1/)
+      r(4,:) = (/p1,p1,p1/)
+      ! 
+      w = 1.0/(6.0*4.0)*(/1.0,1.0,1.0,1.0/)
+      
+    !------------------------------------
+    ! No of Gauss Points = 5
+    !------------------------------------     
+    
+    case(5)
+    
+      r(1,:) = 1.0/4.0*(/1.0,1.0,1.0/)
+      r(2,:) = (/1.0/2.0,1.0/6.0,1.0/6.0/)
+      r(3,:) = (/1.0/6.0,1.0/2.0,1.0/6.0/)
+      r(4,:) = (/1.0/6.0,1.0/6.0,1.0/2.0/)
+      r(5,:) = (/1.0/6.0,1.0/6.0,1.0/6.0/)
+      !
+      w = 1.0/6.0*(/-4.0/5.0,9.0/20.0,9.0/20.0,9.0/20.0,9.0/20.0/)
+
+    !------------------------------------
+    ! No of Gauss Points = 11
+    !------------------------------------
+
+    case(11)
+    
+      p1 = 0.250000000000000  
+      p2 = 0.785714285714286
+      p3 = 0.071428571428571
+      p4 = 0.399403576166799
+      p5 = 0.100596423833201
+
+      r(1,:) = (/p1,p1,p1/)
+      r(2,:) = (/p2,p3,p3/)
+      r(3,:) = (/p3,p2,p3/)
+      r(4,:) = (/p3,p3,p2/)
+      r(5,:) = (/p3,p3,p3/)
+      r(6,:)  = (/p4,p5,p5/)
+      r(7,:)  = (/p5,p4,p5/)
+      r(8,:)  = (/p5,p5,p4/)
+      r(9,:)  = (/p5,p4,p4/)
+      r(10,:) = (/p4,p5,p4/)
+      r(11,:) = (/p4,p4,p5/)
+      !
+      q1 = -0.013155555555556
+      q2 =  0.007622222222222
+      q3 =  0.024888888888889
+
+      w = (/q1,q2,q2,q2,q2,q3,q3,q3,q3,q3,q3/)
+      
+
+    !------------------------------------
+    ! No of Gauss Points = 15
+    !------------------------------------
+ 
+    case(15)
+ 
+      p1 = 0.250000000000000
+      p2 = 0.000000000000000
+      p3 = 0.333333333333333
+      p4 = 0.727272727272727
+      p5 = 0.090909090909091
+      p6 = 0.066550153573664
+      p7 = 0.433449846426336
+
+      r(1,:) = (/p1,p1,p1/)
+      r(2,:) = (/p2,p3,p3/)
+      r(3,:) = (/p3,p2,p3/)
+      r(4,:) = (/p3,p3,p2/)
+      r(5,:) = (/p3,p3,p3/)
+      r(6,:) = (/p4,p5,p5/)
+      r(7,:) = (/p5,p4,p5/)
+      r(8,:) = (/p5,p5,p4/)
+      r(9,:) = (/p5,p5,p5/)
+      r(10,:) = (/p6,p7,p7/)
+      r(11,:) = (/p7,p6,p7/)
+      r(12,:) = (/p7,p7,p6/)
+      r(13,:) = (/p7,p6,p6/)
+      r(14,:) = (/p6,p7,p6/)
+      r(15,:) = (/p6,p6,p7/)
+      !
+      q1 = 0.030283678097089
+      q2 = 0.006026785714286
+      q3 = 0.011645249086029
+      q4 = 0.010949141561386
+
+      w = (/q1,q2,q2,q2, q2,q3,q3,q3,q3,q4,q4,q4,q4,q4,q4/)
+
+    case default
+     print *, 'Invalid NGPTS for Tetrahedra Gauss quadrature'
+     stop
+   end select
+  
+  
+end subroutine GaussTetrahedra
+
+! ************************************************************************** !
+!
 ! Gauss3D: Calculates Gauss points for 3D element 
 ! author: Satish Karra, LANL
 ! date: 5/17/2013
@@ -535,8 +669,8 @@ subroutine Gauss3D(EleType,NGPTS,r,w)
       call GaussBrick(NGPTS,r,w)
     case(WEDGE_TYPE)
       call GaussWedge(NGPTS,r,w)
-!    case(TET4)
-!      call GaussTetrahedra(NGPTS,r,w)
+    case(TET_TYPE)
+      call GaussTetrahedra(NGPTS,r,w)
     case default
       print *, 'Error: Only B8 and TET4 elements available for 3D.'
       stop
