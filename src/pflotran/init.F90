@@ -850,6 +850,12 @@ subroutine Init(simulation)
     call OutputVariableAddToList( &
            realization%output_option%output_variable_list, &
            'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list, &
+           'Permeability Y',OUTPUT_GENERIC,'m^2',PERMEABILITY_Y)
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list, &
+           'Permeability Z',OUTPUT_GENERIC,'m^2',PERMEABILITY_Z)
   endif
   if (realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
