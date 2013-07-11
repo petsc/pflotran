@@ -25,6 +25,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   use Hydrogeophysics_Wrapper_module
   use Input_module
   use Simulation_Base_class 
+  use String_module
   
   implicit none
 
@@ -37,30 +38,55 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 
   class(hydrogeophysics_simulation_type), pointer :: simulation
   PetscMPIInt :: mycolor_mpi, mykey_mpi
-  PetscInt :: i, num_subsurface_processes, offset
+  PetscInt :: i, num_subsurface_processes, offset, num_slaves
   PetscInt :: local_size
+  PetscBool :: option_found
   PetscMPIInt :: mpi_int, process_range(3)
+  character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   IS :: is
   Vec :: pflotran_solution_vec_mpi, pflotran_solution_vec_seq
   VecScatter :: pflotran_scatter
-
-  ! NOTE: PETSc must already have been initialized here!
-  if (option%global_commsize < 3) then
-    option%io_buffer = 'Must of at least processes allocates to ' // &
-      'simulation in order to run hydrogeophysics.'
-    call printErrMsg(option)
-  endif
-
+  
 #ifndef E4D
   option%io_buffer = 'Must compile with E4D defined during preprocessing ' // &
     'step in order to use HYDROGEOPHYSICS.'
   call printErrMsg(option)
 #endif
 
+  string = '-num_slaves'
+  num_slaves = -999
+  call InputGetCommandLineInt(string,i,option_found,option)
+  if (option_found) num_slaves = i
+
+  ! NOTE: PETSc must already have been initialized here!
+  if (option%global_commsize < 3) then
+    option%io_buffer = 'At least 3 processes must be allocated to ' // &
+      'simulation in order to run hydrogeophysics.'
+    call printErrMsg(option)
+  endif
+
   simulation => HydrogeophysicsCreate(option)
   
-  num_subsurface_processes = 1
+  if (num_slaves < -998) then
+    num_subsurface_processes = option%global_commsize / 2
+    num_slaves = option%global_commsize - num_subsurface_processes - 1
+  else
+    if (num_slaves > option%global_commsize - 2) then
+      write(string,*) num_slaves
+      option%io_buffer = 'Too many slave processes allocated to ' // &
+        'simulation(' // trim(adjustl(string)) // ').'
+      call printErrMsg(option)
+    endif
+    num_subsurface_processes = option%global_commsize - num_slaves - 1
+  endif
+  
+  write(option%io_buffer,*) 'Number of E4D processes: ', &
+    StringFormatInt(num_slaves+1)
+  call printMsg(option)
+  write(option%io_buffer,*) 'Number of PFLOTRAN processes: ', &
+    StringFormatInt(num_subsurface_processes)
+  call printMsg(option)
   
   ! split the communicator
   option%mygroup_id = 0
