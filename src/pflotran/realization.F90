@@ -807,8 +807,12 @@ subroutine RealizationProcessConditions(realization)
     call MassTransferInit(realization%mass_transfer_list, &
                           realization%discretization, &
                           realization%option)
+    call MassTransferUpdate(realization%mass_transfer_list, &
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
   endif
- 
+
 end subroutine RealizationProcessConditions
 
 ! ************************************************************************** !

@@ -1161,6 +1161,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Option_module
   use Logging_module
+  use Mass_Transfer_module, only : mass_transfer_type
 
   implicit none
 
@@ -1174,6 +1175,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
+  type(mass_transfer_type), pointer :: cur_mass_transfer
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)
   
@@ -1210,6 +1212,17 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   endif
 
   call PetscLogEventEnd(logging%event_r_residual,ierr)
+
+  ! Mass Transfer
+  if (associated(realization%mass_transfer_list)) then
+    cur_mass_transfer => realization%mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
+                            r,ADD_VALUES,ierr)
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif
 
 end subroutine RichardsResidual
 
