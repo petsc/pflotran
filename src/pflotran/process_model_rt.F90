@@ -673,7 +673,7 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
     call RealizationUpdateProperties(this%realization)
   endif
   
-  call MassTransferUpdate(this%realization%mass_transfer_list, &
+  call MassTransferUpdate(this%realization%rt_mass_transfer_list, &
                           this%realization%discretization, &
                           this%realization%patch%grid, &
                           this%realization%option)

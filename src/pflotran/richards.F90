@@ -1214,8 +1214,8 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   call PetscLogEventEnd(logging%event_r_residual,ierr)
 
   ! Mass Transfer
-  if (associated(realization%mass_transfer_list)) then
-    cur_mass_transfer => realization%mass_transfer_list
+  if (associated(realization%flow_mass_transfer_list)) then
+    cur_mass_transfer => realization%flow_mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
       call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &

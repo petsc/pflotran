@@ -1351,7 +1351,8 @@ subroutine InitReadInput(simulation)
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
   class(dataset_base_type), pointer :: dataset
-  type(mass_transfer_type), pointer :: mass_transfer
+  type(mass_transfer_type), pointer :: flow_mass_transfer
+  type(mass_transfer_type), pointer :: rt_mass_transfer
   type(input_type), pointer :: input
 
   nullify(flow_stepper)
@@ -1571,14 +1572,24 @@ subroutine InitReadInput(simulation)
         nullify(coupler)        
       
 !....................
-      case ('MASS_TRANSFER')
-        mass_transfer => MassTransferCreate()
-        call InputReadWord(input,option,mass_transfer%name,PETSC_TRUE)
-        call InputDefaultMsg(input,option,'Mass Transfer name') 
-        call MassTransferRead(mass_transfer,input,option)
-        call MassTransferAddToList(mass_transfer, &
-                                   realization%mass_transfer_list)
-        nullify(mass_transfer)        
+      case ('FLOW_MASS_TRANSFER')
+        flow_mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,flow_mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Flow Mass Transfer name') 
+        call MassTransferRead(flow_mass_transfer,input,option)
+        call MassTransferAddToList(flow_mass_transfer, &
+                                   realization%flow_mass_transfer_list)
+        nullify(flow_mass_transfer)
+      
+!....................
+      case ('RT_MASS_TRANSFER')
+        rt_mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,rt_mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'RT Mass Transfer name')
+        call MassTransferRead(rt_mass_transfer,input,option)
+        call MassTransferAddToList(rt_mass_transfer, &
+                                   realization%rt_mass_transfer_list)
+        nullify(rt_mass_transfer)
       
 !....................
       case ('STRATIGRAPHY','STRATA')
