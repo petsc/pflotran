@@ -847,15 +847,21 @@ subroutine Init(simulation)
   endif
   if (realization%output_option%print_permeability) then
     ! add permeability to header
-    call OutputVariableAddToList( &
-           realization%output_option%output_variable_list, &
-           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
-    call OutputVariableAddToList( &
-           realization%output_option%output_variable_list, &
-           'Permeability Y',OUTPUT_GENERIC,'m^2',PERMEABILITY_Y)
-    call OutputVariableAddToList( &
-           realization%output_option%output_variable_list, &
-           'Permeability Z',OUTPUT_GENERIC,'m^2',PERMEABILITY_Z)
+    if (MaterialAnisotropyExists(realization%material_properties)) then
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability Y',OUTPUT_GENERIC,'m^2',PERMEABILITY_Y)
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability Z',OUTPUT_GENERIC,'m^2',PERMEABILITY_Z)
+    else
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+    endif
   endif
   if (realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
