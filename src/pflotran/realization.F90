@@ -803,12 +803,26 @@ subroutine RealizationProcessConditions(realization)
   if (realization%option%ntrandof > 0) then
     call RealProcessTranConditions(realization)
   endif
-  if (associated(realization%mass_transfer_list)) then
-    call MassTransferInit(realization%mass_transfer_list, &
+  if (associated(realization%flow_mass_transfer_list)) then
+    call MassTransferInit(realization%flow_mass_transfer_list, &
                           realization%discretization, &
                           realization%option)
+    call MassTransferUpdate(realization%flow_mass_transfer_list, &
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
   endif
- 
+  if (associated(realization%rt_mass_transfer_list)) then
+    call MassTransferInit(realization%rt_mass_transfer_list, &
+                          realization%discretization, &
+                          realization%option)
+    call MassTransferUpdate(realization%rt_mass_transfer_list, &
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
+  endif
+
+
 end subroutine RealizationProcessConditions
 
 ! ************************************************************************** !
@@ -1420,7 +1434,12 @@ subroutine RealizationUpdate(realization)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
-  call MassTransferUpdate(realization%mass_transfer_list, &
+  call MassTransferUpdate(realization%flow_mass_transfer_list, &
+                          realization%discretization, &
+                          realization%patch%grid, &
+                          realization%option)
+
+  call MassTransferUpdate(realization%rt_mass_transfer_list, &
                           realization%discretization, &
                           realization%patch%grid, &
                           realization%option)
@@ -1607,9 +1626,26 @@ subroutine RealizationAddWaypointsToList(realization)
     endif
   endif
   
-  ! add waypoints for mass transfer
-  if (associated(realization%mass_transfer_list)) then
-    cur_mass_transfer => realization%mass_transfer_list
+  ! add waypoints for flow mass transfer
+  if (associated(realization%flow_mass_transfer_list)) then
+    cur_mass_transfer => realization%flow_mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      if (associated(cur_mass_transfer%dataset%time_storage)) then
+        do itime = 1, cur_mass_transfer%dataset%time_storage%max_time_index
+          waypoint => WaypointCreate()
+          waypoint%time = cur_mass_transfer%dataset%time_storage%times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,realization%waypoints)
+        enddo
+      endif
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif  
+
+  ! add waypoints for rt mass transfer
+  if (associated(realization%rt_mass_transfer_list)) then
+    cur_mass_transfer => realization%rt_mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
       if (associated(cur_mass_transfer%dataset%time_storage)) then
@@ -2580,7 +2616,8 @@ subroutine RealizationDestroy(realization)
   call ReactionDestroy(realization%reaction)
   
   call TranConstraintDestroy(realization%sec_transport_constraint)
-  call MassTransferDestroy(realization%mass_transfer_list)
+  call MassTransferDestroy(realization%flow_mass_transfer_list)
+  call MassTransferDestroy(realization%rt_mass_transfer_list)
   
   call WaypointListDestroy(realization%waypoints)
   

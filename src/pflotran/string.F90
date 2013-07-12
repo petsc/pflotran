@@ -19,7 +19,9 @@ module String_module
             StringNull, &
             StringFindEntryInList, &
             StringSplit, &
-            StringSwapChar
+            StringSwapChar, &
+            StringFormatInt, &
+            StringFormatDouble
   
   interface StringCompare
     module procedure StringCompare1
@@ -530,5 +532,47 @@ function StringSplit(string,chars)
   StringSplit => strings
   
 end function StringSplit
+
+! ************************************************************************** !
+!
+! StringFormatInt: Writes a integer to a string
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function StringFormatInt(int_value)
+
+  implicit none
+  
+  PetscInt :: int_value
+  
+  character(len=MAXWORDLENGTH) :: StringFormatInt
+
+  write(StringFormatInt,'(1i12)') int_value
+  
+  StringFormatInt = adjustl(StringFormatInt)
+  
+end function StringFormatInt
+
+! ************************************************************************** !
+!
+! StringFormatDouble: Writes a double or real to a string
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function StringFormatDouble(real_value)
+
+  implicit none
+  
+  PetscReal :: real_value
+  
+  character(len=MAXWORDLENGTH) :: StringFormatDouble
+
+  write(StringFormatDouble,'(1es13.5)') real_value
+  
+  StringFormatDouble = adjustl(StringFormatDouble)
+  
+end function StringFormatDouble
 
 end module String_module

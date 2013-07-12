@@ -3029,6 +3029,24 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_XY)
+      call GridVecGetArrayF90(grid,field%perm_xy_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_XZ)
+      call GridVecGetArrayF90(grid,field%perm_xz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xz_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_YZ)
+      call GridVecGetArrayF90(grid,field%perm_yz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_yz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax

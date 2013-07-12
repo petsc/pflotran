@@ -113,8 +113,10 @@ subroutine HydrogeophysicsWrapperStep(solution_mpi,solution_seq,scatter, &
 !  call printMsg(option,'HydrogeophysicsWrapperStep()')
   
   ! Bcasting a 1 to E4D tells it to run a forward simulation 
-  call MPI_Bcast(ONE_INTEGER_MPI,ONE_INTEGER_MPI,MPI_INTEGER, &
-                 ZERO_INTEGER_MPI,comm,ierr)
+  if (comm /= MPI_COMM_NULL) then
+    call MPI_Bcast(ONE_INTEGER_MPI,ONE_INTEGER_MPI,MPI_INTEGER, &
+                   ZERO_INTEGER_MPI,comm,ierr)
+  endif
   call VecScatterBegin(scatter,solution_mpi,solution_seq, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(scatter,solution_mpi,solution_seq, &
