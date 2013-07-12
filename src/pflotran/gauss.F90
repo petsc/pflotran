@@ -750,7 +750,7 @@ subroutine Gauss3D(EleType,NGPTS,r,w)
     case(PYR_TYPE)
       call GaussPyramid(NGPTS,r,w)
     case default
-      print *, 'Error: Only B8 and TET4 elements available for 3D.'
+      print *, 'Error: Only B8, W6, P5 and TET4 elements available for 3D.'
       stop
   end select
   
