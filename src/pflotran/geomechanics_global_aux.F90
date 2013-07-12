@@ -10,6 +10,8 @@ module Geomechanics_Global_Aux_module
 
   type, public :: geomech_global_auxvar_type
     PetscReal, pointer :: disp_vector(:)   ! [m]
+    PetscReal, pointer :: strain(:,:)      ! dimensionless
+    PetscReal, pointer :: stress(:,:)      ! [N]
   end type geomech_global_auxvar_type
   
   type, public :: geomech_global_type
@@ -71,7 +73,11 @@ subroutine GeomechGlobalAuxVarInit(aux_var,option)
   type(option_type)                      :: option
   
   allocate(aux_var%disp_vector(option%ngeomechdof))
+  allocate(aux_var%strain(option%ngeomechdof,option%ngeomechdof))
+  allocate(aux_var%stress(option%ngeomechdof,option%ngeomechdof))
   aux_var%disp_vector = 0.d0
+  aux_var%strain = 0.d0
+  aux_var%stress = 0.d0
   
 end subroutine GeomechGlobalAuxVarInit
 
@@ -92,6 +98,8 @@ subroutine GeomechGlobalAuxVarCopy(aux_var,aux_var2,option)
   type(option_type)                     :: option
 
   aux_var%disp_vector = aux_var2%disp_vector
+  aux_var%strain = aux_var2%strain
+  aux_var%stress = aux_var2%stress
   
 end subroutine GeomechGlobalAuxVarCopy
 
@@ -158,6 +166,8 @@ subroutine GeomechGlobalAuxVarStrip(aux_var)
   type(geomech_global_auxvar_type) :: aux_var
   
   call DeallocateArray(aux_var%disp_vector)
+  call DeallocateArray(aux_var%strain)
+  call DeallocateArray(aux_var%stress)
 
 end subroutine GeomechGlobalAuxVarStrip
 
