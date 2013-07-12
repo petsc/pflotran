@@ -739,8 +739,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
             call SurfaceFlowUpdateSubsurfSS(realization,surf_realization, &
                   option%surf_subsurf_coupling_time-option%flow_time)
           case (TH_MODE)
-!            call SurfaceTHUpdateSubsurfSS(realization,surf_realization, &
-!                  option%surf_subsurf_coupling_time-option%flow_time)
+            call SurfaceTHUpdateSubsurfSS(realization,surf_realization, &
+                  option%surf_subsurf_coupling_time-option%flow_time)
         end select
 
         do

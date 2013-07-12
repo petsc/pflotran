@@ -1325,11 +1325,11 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
         coupler_found = PETSC_TRUE
         
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                             surf_field%flux_subsurf_2_surf, &
+                             surf_field%exchange_subsurf_2_surf, &
                              surf_field%subsurf_temp_vec_1dof, &
                              INSERT_VALUES,SCATTER_FORWARD,ierr)
         call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
-                           surf_field%flux_subsurf_2_surf, &
+                           surf_field%exchange_subsurf_2_surf, &
                            surf_field%subsurf_temp_vec_1dof, &
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
 
@@ -1339,7 +1339,7 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
 
-        call VecSet(surf_field%flux_subsurf_2_surf,0.d0,ierr)
+        call VecSet(surf_field%exchange_subsurf_2_surf,0.d0,ierr)
       endif
 
     endif
@@ -1549,7 +1549,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
   PetscReal, pointer :: press_sub_p(:) ! Pressure [Pa]
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: Dq_p(:)
-  PetscReal, pointer :: vol_p(:)
+  PetscReal, pointer :: mass_p(:)
   PetscReal, pointer :: area_p(:)
   PetscReal, pointer :: dist_p(:)
   
@@ -1592,7 +1592,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
   call GridVecGetArrayF90(surf_grid,surf_field%flow_xx,hw_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%flux_subsurf_2_surf,vol_p,ierr)
+  call GridVecGetArrayF90(surf_grid,surf_field%exchange_subsurf_2_surf,mass_p,ierr)
   call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
 
@@ -1684,7 +1684,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
           !v_darcy=0.d0
         endif
         
-        vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
+        mass_p(local_id)=mass_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
         !coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=0.d0
         hw_p(local_id) = hw_p(local_id) + v_darcy*option%surf_flow_dt
@@ -1698,7 +1698,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
   
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%flux_subsurf_2_surf,vol_p,ierr)
+  call GridVecRestoreArrayF90(surf_grid,surf_field%exchange_subsurf_2_surf,mass_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)  
   call GridVecRestoreArrayF90(surf_grid,surf_field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx,hw_p,ierr)

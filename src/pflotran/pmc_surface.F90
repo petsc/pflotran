@@ -256,9 +256,8 @@ subroutine PMCSurfaceSynchronize2(this)
                                           pmc%surf_realization, &
                                           dt)
         case (TH_MODE)
-          !call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
-          !                                pmc%surf_realization, &
-          !                                dt)
+          call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
+                                          pmc%surf_realization)
         end select
   end select
   

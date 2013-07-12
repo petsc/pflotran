@@ -20,7 +20,7 @@ module Surface_Field_module
 
     Vec :: area
     
-    Vec :: flux_subsurf_2_surf    ! MPI +ve value => Flow from subsurface to surface
+    Vec :: exchange_subsurf_2_surf   ! MPI +ve value => Flow from subsurface to surface
     Vec :: press_subsurf         ! MPI
 
     Vec :: Dq                    ! MPI
@@ -34,6 +34,16 @@ module Surface_Field_module
     Vec :: subsurf_yy            ! MPI
     Vec :: subsurf_zz            ! MPI
     Vec :: surf2subsurf_dist_gravity ! MPI
+    Vec :: surf2subsurf_dist ! MPI
+
+    ! For TH coupling
+    Vec :: temp_subsurf          ! MPI
+    Vec :: sat_ice               ! MPI
+    Vec :: ckwet                 ! MPI
+    Vec :: ckdry                 ! MPI
+    Vec :: ckice                 ! MPI
+    Vec :: th_alpha              ! MPI
+    Vec :: th_alpha_fr           ! MPI
 
     Vec :: subsurf_temp_vec_1dof ! MPI
     Vec :: subsurf_temp_vec_ndof ! MPI
@@ -92,7 +102,7 @@ function SurfaceFieldCreate()
   surface_field%flow_yy = 0
   surface_field%flow_accum = 0
   
-  surface_field%flux_subsurf_2_surf = 0
+  surface_field%exchange_subsurf_2_surf = 0
   surface_field%press_subsurf = 0
 
   surface_field%Dq = 0
@@ -106,6 +116,7 @@ function SurfaceFieldCreate()
   surface_field%subsurf_yy = 0
   surface_field%subsurf_zz = 0
   surface_field%surf2subsurf_dist_gravity = 0
+  surface_field%surf2subsurf_dist = 0
   
   surface_field%subsurf_temp_vec_1dof = 0
   surface_field%subsurf_temp_vec_ndof = 0
@@ -115,6 +126,14 @@ function SurfaceFieldCreate()
 
   surface_field%flowrate_inst = 0
   surface_field%flowrate_aveg = 0
+
+  surface_field%temp_subsurf = 0
+  surface_field%ckwet = 0
+  surface_field%ckdry = 0
+  surface_field%ckice = 0
+  surface_field%th_alpha = 0
+  surface_field%th_alpha_fr = 0
+  surface_field%sat_ice = 0
 
   SurfaceFieldCreate => surface_field
 
@@ -145,9 +164,9 @@ subroutine SurfaceFieldDestroy(surface_field)
 
   if (surface_field%area  /= 0) call VecDestroy(surface_field%area,ierr)
   
-  if (surface_field%flux_subsurf_2_surf /= 0) &
-    call VecDestroy(surface_field%flux_subsurf_2_surf,ierr)
-  if (surface_field%flux_subsurf_2_surf /= 0) &
+  if (surface_field%exchange_subsurf_2_surf /= 0) &
+    call VecDestroy(surface_field%exchange_subsurf_2_surf,ierr)
+  if (surface_field%exchange_subsurf_2_surf /= 0) &
     call VecDestroy(surface_field%press_subsurf,ierr)
   if (surface_field%press_subsurf /= 0) &
     call VecDestroy(surface_field%press_subsurf,ierr)
@@ -167,6 +186,8 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%subsurf_zz/=0) call VecDestroy(surface_field%subsurf_zz,ierr)
   if (surface_field%surf2subsurf_dist_gravity/=0) &
     call VecDestroy(surface_field%surf2subsurf_dist_gravity,ierr)
+  if (surface_field%surf2subsurf_dist/=0) &
+    call VecDestroy(surface_field%surf2subsurf_dist,ierr)
 
   if (surface_field%flow_r /= 0) call VecDestroy(surface_field%flow_r,ierr)
   if (surface_field%flow_xx /= 0) call VecDestroy(surface_field%flow_xx,ierr)
@@ -184,6 +205,14 @@ subroutine SurfaceFieldDestroy(surface_field)
 
   if (surface_field%flowrate_inst/=0) call VecDestroy(surface_field%flowrate_inst,ierr)
   if (surface_field%flowrate_aveg/=0) call VecDestroy(surface_field%flowrate_aveg,ierr)
+
+  if (surface_field%temp_subsurf /=0 ) call VecDestroy(surface_field%temp_subsurf,ierr)
+  if (surface_field%ckwet /=0 ) call VecDestroy(surface_field%ckwet,ierr)
+  if (surface_field%ckdry /=0 ) call VecDestroy(surface_field%ckdry,ierr)
+  if (surface_field%ckice /=0 ) call VecDestroy(surface_field%ckice,ierr)
+  if (surface_field%th_alpha /=0 ) call VecDestroy(surface_field%th_alpha,ierr)
+  if (surface_field%th_alpha_fr /=0 ) call VecDestroy(surface_field%th_alpha_fr,ierr)
+  if (surface_field%sat_ice /=0 ) call VecDestroy(surface_field%sat_ice,ierr)
 
 end subroutine SurfaceFieldDestroy
 
