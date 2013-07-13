@@ -25,6 +25,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   use Hydrogeophysics_Wrapper_module
   use Input_module
   use Simulation_Base_class 
+  use Discretization_module
   use String_module
   
   implicit none
@@ -32,6 +33,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
+#include "finclude/petscviewer.h"
   
   class(simulation_base_type), pointer :: simulation_base
   type(option_type), pointer :: option
@@ -44,7 +46,11 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   PetscMPIInt :: mpi_int, process_range(3)
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
-  IS :: is
+  PetscInt, allocatable :: int_array(:)
+  IS :: is_natural
+  IS :: is_petsc
+  PetscInt :: istart
+  PetscViewer :: viewer
   Vec :: pflotran_solution_vec_mpi, pflotran_solution_vec_seq
   VecScatter :: pflotran_scatter
   
@@ -160,7 +166,11 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   
   if (simulation%subsurface_process) then
     call HydrogeophysicsInitPostPetsc(simulation,option)
+  else
+    option%io_rank = -1 ! turn off I/O from E4D processes.
   endif
+
+!#define DEBUG
 
   !   PFLOTRAN subsurface processes      E4D master process
   if (simulation%subsurface_process .or. option%myrank == 0) then 
@@ -180,34 +190,75 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     call VecSetSizes(pflotran_solution_vec_mpi,local_size,PETSC_DECIDE,ierr)
     call VecSetFromOptions(pflotran_solution_vec_mpi,ierr)
 
+    allocate(int_array(local_size))
+    if (simulation%subsurface_process) then
+      int_array = 0
+      do i = 1, local_size
+        int_array(i) =  simulation%realization%patch%grid%nG2A( &
+                          simulation%realization%patch%grid%nL2G(i))
+
+      enddo
+print *, option%myrank, int_array
+      int_array = int_array - 1
+    endif
+    call ISCreateGeneral(simulation%pf_e4d_scatter_comm,local_size,int_array, &
+!    call ISCreateGeneral(PETSC_COMM_SELF,local_size,int_array, &
+                         PETSC_COPY_VALUES,is_natural,ierr)
+    deallocate(int_array)
+    if (simulation%subsurface_process) then
+      call VecGetOwnershipRange(simulation%realization%field%work,istart, &
+                                PETSC_NULL_INTEGER,ierr)
+    endif
+!    istart = 0
+    call ISCreateStride(simulation%pf_e4d_scatter_comm,local_size,istart,1, &
+                        is_petsc,ierr)
+
+#ifdef DEBUG
+  string = 'is_petsc.txt'
+  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer,ierr)
+  call ISView(is_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  string = 'is_natural.txt'
+  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer,ierr)
+!  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+  call ISView(is_natural,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+
     ! create seq Vec on each (all PFLOTRAN processes and the E4D master)
     call VecGetSize(pflotran_solution_vec_mpi,local_size,ierr)
     if (simulation%subsurface_process) local_size = 0
-    call VecCreateSeq(PETSC_COMM_SELF,local_size, &
-                      pflotran_solution_vec_seq,ierr)
+    ! make global size the local size of pflotran_solution_vec_seq on E4D master
+!    call VecCreate(PETSC_COMM_SELF,pflotran_solution_vec_seq,ierr)
+    call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_solution_vec_seq,ierr)
+    call VecSetSizes(pflotran_solution_vec_seq,local_size,PETSC_DECIDE,ierr)
     call VecSetFromOptions(pflotran_solution_vec_seq,ierr)
 
+#ifdef DEBUG
+  string = 'pflotran_solution_vec_mpi.txt'
+  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer,ierr)
+  call VecView(pflotran_solution_vec_mpi,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  string = 'pflotran_solution_vec_seq' // trim(StringFormatInt(option%global_rank)) // '.txt'
+!  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer,ierr)
+  call VecView(pflotran_solution_vec_seq,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
     ! create scatter between mpi Vec and local seq Vecs (only E4D master is 
     ! relevant)
-    call ISCreateStride(PETSC_COMM_SELF,local_size,0,1,is,ierr)
-    call VecScatterCreate(pflotran_solution_vec_mpi,is, &
-                          pflotran_solution_vec_seq,is, &
+    call VecScatterCreate(pflotran_solution_vec_mpi,is_petsc, &
+                          pflotran_solution_vec_seq,is_natural, &
                           pflotran_scatter,ierr)
-    call ISDestroy(is,ierr)
-
-    ! make global size the local size of pflotran_solution_vec_seq
-    call VecGetSize(pflotran_solution_vec_mpi,local_size,ierr)
-    call VecCreateSeq(PETSC_COMM_SELF,local_size, &
-                      pflotran_solution_vec_seq,ierr)
-!print *, 'seq:', pflotran_solution_vec_seq, ierr
-    call VecSetFromOptions(pflotran_solution_vec_seq,ierr)
-
-    call ISCreateStride(PETSC_COMM_SELF,local_size,0,1,is,ierr)
-    call VecScatterCreate(pflotran_solution_vec_mpi,is, &
-                          pflotran_solution_vec_seq,is, &
-                          pflotran_scatter,ierr)
-!print *, 'scatter:', pflotran_scatter, ierr
-    call ISDestroy(is,ierr)
+#ifdef DEBUG
+  string = 'scatter.txt'
+  call PetscViewerASCIIOpen(simulation%pf_e4d_scatter_comm,trim(string),viewer,ierr)
+  call VecScatterView(pflotran_scatter,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+    call ISDestroy(is_natural,ierr)
+    call ISDestroy(is_petsc,ierr)
   endif
 !print *, 'End  -----------'
 
@@ -227,6 +278,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
                                     pflotran_scatter, &
                                     simulation%pf_e4d_master_comm)
   endif
+#undef DEBUG
 
 end subroutine HydrogeophysicsInitialize
 
