@@ -763,6 +763,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
                                      surf_flow_stepper, &
                                      option,plot_flag, &
                                      transient_plot_flag)
+          if(plot_flag) surf_plot_flag = plot_flag
         enddo
         call PetscLogStagePop(ierr)
       
@@ -921,9 +922,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 !                             tran_stepper%solver)
 !    endif
 #ifdef SURFACE_FLOW
-    !plot_flag_surf = plot_flag
-    surf_plot_flag = plot_flag
-    !transient_plot_flag_surf = transient_plot_flag
+    if(.not.(plot_flag)) plot_flag = surf_plot_flag
 #endif
     call Output(realization,plot_flag,transient_plot_flag)
     
