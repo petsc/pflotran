@@ -646,6 +646,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
+            case('PROCESSOR_ID')
+              output_option%print_iproc = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
               mass_flowrate = PETSC_TRUE
               energy_flowrate = PETSC_TRUE
