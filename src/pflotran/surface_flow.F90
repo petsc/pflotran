@@ -442,9 +442,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-#ifdef STORE_FLOWRATES
       patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
-#endif
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
       
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)
