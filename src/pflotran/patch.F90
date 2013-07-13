@@ -5007,6 +5007,10 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
+    case(PROCESSOR_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = option%myrank
+      enddo
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar

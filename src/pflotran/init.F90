@@ -1033,6 +1033,16 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
   endif ! option%nsurfflowdof > 0
+
+  if (simulation%surf_realization%output_option%print_iproc) then
+    output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
+                                            PROCESSOR_ID)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 1 ! integer
+    call OutputVariableAddToList( &
+           simulation%surf_realization%output_option%output_variable_list,output_variable)
+  endif
+
 #endif
 
   call printMsg(option," ")
