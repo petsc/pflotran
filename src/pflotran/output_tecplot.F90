@@ -2009,7 +2009,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
-  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename,string
 
   PetscErrorCode :: ierr  
   PetscInt :: iconn
@@ -2017,7 +2017,6 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   PetscReal, pointer :: flowrates(:,:)
   PetscInt, pointer :: ids_up(:),ids_dn(:)
   Vec :: vec_flowrates
-  PetscReal, pointer :: vec_ptr(:)
   PetscInt :: i, idof
   
   patch => realization_base%patch
@@ -2025,8 +2024,11 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   option => realization_base%option
   field => realization_base%field
   output_option => realization_base%output_option
-
-  filename = OutputFilename(output_option,option,'dat','rates')
+  
+  filename = trim(option%global_prefix) // &
+             trim(option%group_prefix) // &
+             '-' // 'rates' // '-' // &
+             trim(OutputFilenameID(output_option,option)) 
   
   call OutputGetExplicitFlowrates(realization_base,count, &
                                   ids_up,ids_dn,flowrates)
@@ -2036,34 +2038,29 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
     option%io_buffer = '--> write rate output file: ' // &
                        trim(filename)
     call printMsg(option)                       
-    open(unit=OUTPUT_UNIT,file=filename,action="write")
   endif
   
+  
 1000 format(es13.6,1x)
+1001 format(i4,1x)
 1009 format('')
 
-  allocate(vec_ptr(size(flowrates,ONE_INTEGER)*(size(flowrates,TWO_INTEGER)+TWO_INTEGER)))
-  
-  
+  write(string,*) option%myrank
+  string = trim(filename) // '-rank' // trim(adjustl(string)) // '.dat'
+  open(unit=OUTPUT_UNIT,file=trim(string),action="write")
   do i = 1, count
-    vec_ptr(ONE_INTEGER+THREE_INTEGER*(i-1)) = ids_up(i)
-    vec_ptr(TWO_INTEGER+THREE_INTEGER*(i-1)) = ids_dn(i)
+    write(OUTPUT_UNIT,1001,advance='no') ids_up(i)
+    write(OUTPUT_UNIT,1001,advance='no') ids_dn(i)
     do idof = 1, option%nflowdof
-      vec_ptr(THREE_INTEGER+(idof-1)+THREE_INTEGER*(i-1)) = flowrates(i,idof)
+      write(OUTPUT_UNIT,1000,advance='no') flowrates(i,idof)
+      write(OUTPUT_UNIT,1009)
     enddo
-  enddo
-
-  call WriteTecplotDataSetNumPerLine(OUTPUT_UNIT,realization_base,vec_ptr, &
-                                     TECPLOT_REAL, &
-                                     count, &
-                                     size(flowrates,TWO_INTEGER)+TWO_INTEGER)
-    
-  if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
-  
+  enddo                     
+  close(OUTPUT_UNIT)
+                                                                                                           
   deallocate(flowrates)
   deallocate(ids_up)
   deallocate(ids_dn)
-  deallocate(vec_ptr)
 
 end subroutine OutputPrintExplicitFlowrates
 
