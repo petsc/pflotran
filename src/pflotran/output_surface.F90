@@ -344,6 +344,7 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
   use Surface_Realization_class
   use Grid_module
   use Option_module
+  use String_module
   
   implicit none
 
@@ -364,7 +365,7 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
   
   
   string = 'ZONE T="' // &
-           trim(OutputFormatDouble(option%time/output_option%tconv)) // &
+           trim(StringFormatDouble(option%time/output_option%tconv)) // &
            '"'
   string2 = ''
   select case(tecplot_format)
@@ -372,11 +373,11 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
       if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
           (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
         string2 = ', I=' // &
-                  trim(OutputFormatInt(grid%structured_grid%nx)) // &
+                  trim(StringFormatInt(grid%structured_grid%nx)) // &
                   ', J=' // &
-                  trim(OutputFormatInt(grid%structured_grid%ny)) // &
+                  trim(StringFormatInt(grid%structured_grid%ny)) // &
                   ', K=' // &
-                  trim(OutputFormatInt(grid%structured_grid%nz))
+                  trim(StringFormatInt(grid%structured_grid%nz))
       else
         string2 = 'POINT format currently not supported for unstructured'
       endif
@@ -386,22 +387,22 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
       if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
           (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
         string2 = ', I=' // &
-                  trim(OutputFormatInt(grid%structured_grid%nx+1)) // &
+                  trim(StringFormatInt(grid%structured_grid%nx+1)) // &
                   ', J=' // &
-                  trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
+                  trim(StringFormatInt(grid%structured_grid%ny+1)) // &
                   ', K=' // &
-                  trim(OutputFormatInt(grid%structured_grid%nz+1))
+                  trim(StringFormatInt(grid%structured_grid%nz+1))
       else
         string2 = ', N=' // &
-                  trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                  trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
                   ', ELEMENTS=' // &
-                  trim(OutputFormatInt(grid%unstructured_grid%nmax))
+                  trim(StringFormatInt(grid%unstructured_grid%nmax))
         string2 = trim(string2) // ', ZONETYPE=FEQUADRILATERAL'
       endif
   
       if (variable_count > 4) then
         string3 = ', VARLOCATION=([4-' // &
-                  trim(OutputFormatInt(variable_count)) // &
+                  trim(StringFormatInt(variable_count)) // &
                   ']=CELLCENTERED)'
       else
         string3 = ', VARLOCATION=([4]=CELLCENTERED)'

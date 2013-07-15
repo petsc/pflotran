@@ -78,6 +78,9 @@ module Variables_module
   PetscInt, parameter, public :: PE = 66
   PetscInt, parameter, public :: O2 = 67
 
+  PetscInt, parameter, public :: PERMEABILITY_XY =         68
+  PetscInt, parameter, public :: PERMEABILITY_YZ =         69
+  PetscInt, parameter, public :: PERMEABILITY_XZ =         70
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59

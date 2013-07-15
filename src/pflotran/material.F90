@@ -79,6 +79,7 @@ module Material_module
             MaterialPropGetPtrFromList, &
             MaterialPropGetPtrFromArray, &
             MaterialPropConvertListToArray, &
+            MaterialAnisotropyExists, &
             MaterialPropertyRead
   
 contains
@@ -780,6 +781,38 @@ function MaterialPropGetPtrFromArray(material_property_name, &
   enddo
   
 end function MaterialPropGetPtrFromArray
+
+! ************************************************************************** !
+!
+! MaterialAnisotropyExists: Determines whether any of the material 
+!                           properties are anisotropic
+! author: Glenn Hammond
+! date: 07/11/13
+!
+! ************************************************************************** !
+function MaterialAnisotropyExists(material_property_list)
+
+  implicit none
+  
+  type(material_property_type), pointer :: material_property_list
+
+  PetscBool :: MaterialAnisotropyExists
+  
+  type(material_property_type), pointer :: cur_material_property
+    
+  MaterialAnisotropyExists = PETSC_FALSE
+  
+  cur_material_property => material_property_list
+  do 
+    if (.not.associated(cur_material_property)) exit
+    if (.not. cur_material_property%isotropic_permeability) then
+      MaterialAnisotropyExists = PETSC_TRUE
+      return
+    endif
+    cur_material_property => cur_material_property%next
+  enddo
+  
+end function MaterialAnisotropyExists
 
 ! ************************************************************************** !
 !

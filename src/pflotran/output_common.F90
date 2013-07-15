@@ -24,8 +24,6 @@ module Output_Common_module
             OutputGetVarFromArrayAtCoord, &
             OutputGetCellCenteredVelocities, &
             ConvertArrayToNatural, &
-            OutputFormatInt, &
-            OutputFormatDouble, &
             GetCellCoordinates, &
             GetVertexCoordinates, &
             OutputFilenameID, &
@@ -405,48 +403,6 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction
   call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
 end subroutine OutputGetCellCenteredVelocities
-
-! ************************************************************************** !
-!
-! OutputFormatInt: Writes a integer to a string
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
-function OutputFormatInt(int_value)
-
-  implicit none
-  
-  PetscInt :: int_value
-  
-  character(len=MAXWORDLENGTH) :: OutputFormatInt
-
-  write(OutputFormatInt,'(1i12)') int_value
-  
-  OutputFormatInt = adjustl(OutputFormatInt)
-  
-end function OutputFormatInt
-
-! ************************************************************************** !
-!
-! OutputFormatDouble: Writes a double or real to a string
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
-function OutputFormatDouble(real_value)
-
-  implicit none
-  
-  PetscReal :: real_value
-  
-  character(len=MAXWORDLENGTH) :: OutputFormatDouble
-
-  write(OutputFormatDouble,'(1es13.5)') real_value
-  
-  OutputFormatDouble = adjustl(OutputFormatDouble)
-  
-end function OutputFormatDouble
 
 ! ************************************************************************** !
 !

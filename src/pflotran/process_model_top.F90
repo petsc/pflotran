@@ -1,8 +1,6 @@
 module Process_Model_module
 
   use Process_Model_Base_class
-  use Process_Model_Richards_class
-  use Process_Model_RT_class
   
   implicit none
 
@@ -43,8 +41,6 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   use Option_module
   use Realization_class
   
-  use Richards_module
-
   implicit none
   
 #include "finclude/petscvec.h"
