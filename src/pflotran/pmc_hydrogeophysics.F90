@@ -14,7 +14,10 @@ module PMC_Hydrogeophysics_class
   
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
     class(realization_type), pointer :: realization
-    Vec :: sigma
+    Vec :: solution_seq
+    Vec :: solution_mpi
+    VecScatter :: pf_to_e4d_scatter
+    PetscMPIInt :: pf_to_e4d_master_comm
   contains
     procedure, public :: Init => PMCHydrogeophysicsInit
     procedure, public :: InitializeRun => PMCHydrogeophysicsInitializeRun
@@ -66,7 +69,9 @@ subroutine PMCHydrogeophysicsInit(this)
   call PMCBaseInit(this)
   this%name = 'PMCHydrogeophysics'
   nullify(this%realization) 
-  this%sigma = 0
+  this%solution_mpi = 0
+  this%solution_seq = 0
+  this%pf_to_e4d_scatter = 0
   this%Synchronize1 => PMCHydrogeophysicsSynchronize
 
 end subroutine PMCHydrogeophysicsInit
@@ -81,15 +86,11 @@ end subroutine PMCHydrogeophysicsInit
 ! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsInitializeRun(this)
 
-  use Hydrogeophysics_Wrapper_module
-
   implicit none
   
   class(pmc_hydrogeophysics_type) :: this
   
   call printMsg(this%option,'PMCHydrogeophysics%InitializeRun()')
-  
-  call HydrogeophysicsWrapperStart(this%option)
   
   if (associated(this%below)) then
     call this%below%InitializeRun()
@@ -110,7 +111,7 @@ end subroutine PMCHydrogeophysicsInitializeRun
 ! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
 
-  use Hydrogeophysics_Wrapper_module
+  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStep
 
   implicit none
   
@@ -133,17 +134,19 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = 0
   
-  call HydrogeophysicsWrapperStep(this%sigma,this%option)
+  call HydrogeophysicsWrapperStep(this%solution_mpi,this%solution_seq, &
+                                  this%pf_to_e4d_scatter, &
+                                  this%pf_to_e4d_master_comm,this%option)
 
   ! Run neighboring process model couplers
-  if (associated(this%below)) then
-    call this%below%RunToTime(sync_time,local_stop_flag)
-  endif
+!  if (associated(this%below)) then
+!    call this%below%RunToTime(sync_time,local_stop_flag)
+!  endif
 
   ! Run neighboring process model couplers
-  if (associated(this%next)) then
-    call this%next%RunToTime(sync_time,local_stop_flag)
-  endif
+!  if (associated(this%next)) then
+!    call this%next%RunToTime(sync_time,local_stop_flag)
+!  endif
 
   stop_flag = max(stop_flag,local_stop_flag)  
   
@@ -160,22 +163,45 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 
   use Realization_Base_class, only : RealizationGetDataset
   use Variables_module, only : PRIMARY_MOLALITY
+  use String_module
 
   implicit none
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
+#include "finclude/petscviewer.h"
 
   class(pmc_base_type), pointer :: this
+  class(pmc_hydrogeophysics_type), pointer :: pmc_hg
 
+  PetscReal, pointer :: vec1_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
+  PetscInt, save :: num_calls = 0
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscViewer :: viewer
 
   select type(pmc => this)
     class is(pmc_hydrogeophysics_type)
+      pmc_hg => pmc
       call RealizationGetDataset(pmc%realization,pmc%realization%field%work, &
                                  PRIMARY_MOLALITY,ONE_INTEGER,0)
-      call VecCopy(pmc%realization%field%work,pmc%sigma,ierr)
+      call VecGetArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
+      call VecGetArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
+      vec1_ptr(:) = vec1_ptr(:) + num_calls
+      vec2_ptr(:) = vec1_ptr(:)
+      print *, 'PMC update to solution', vec2_ptr(16)
+      call VecRestoreArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
+      call VecRestoreArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
+
+#if 0
+filename = 'pf_solution' // trim(StringFormatInt(num_calls)) // '.txt'
+call PetscViewerASCIIOpen(this%option%mycomm,filename,viewer,ierr)
+call VecView(pmc%realization%field%work,viewer,ierr)
+call PetscViewerDestroy(viewer,ierr)
+#endif
+
   end select
+  num_calls = num_calls + 1
   
 end subroutine PMCHydrogeophysicsSynchronize
 
@@ -188,7 +214,7 @@ end subroutine PMCHydrogeophysicsSynchronize
 ! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsFinalizeRun(this)
 
-  use Hydrogeophysics_Wrapper_module
+  use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStop
   
   implicit none
   
@@ -196,7 +222,9 @@ recursive subroutine PMCHydrogeophysicsFinalizeRun(this)
   
   call printMsg(this%option,'PMCHydrogeophysics%FinalizeRun()')
   
-  call HydrogeophysicsWrapperStop(this%option)
+  if (this%pf_to_e4d_master_comm /= MPI_COMM_NULL) then
+    call HydrogeophysicsWrapperStop(this%option,this%pf_to_e4d_master_comm)
+  endif
   
 end subroutine PMCHydrogeophysicsFinalizeRun
 
@@ -215,6 +243,8 @@ recursive subroutine PMCHydrogeophysicsDestroy(this)
   implicit none
   
   class(pmc_hydrogeophysics_type) :: this
+
+  PetscErrorCode :: ierr
   
   call printMsg(this%option,'PMCHydrogeophysics%Destroy()')
   
@@ -223,6 +253,13 @@ recursive subroutine PMCHydrogeophysicsDestroy(this)
   if (associated(this%next)) then
     call this%next%Destroy()
   endif 
+
+  if (this%solution_seq /= 0) &
+    call VecDestroy(this%solution_seq,ierr)
+  this%solution_seq = 0
+  if (this%pf_to_e4d_scatter /= 0) &
+    call VecScatterDestroy(this%pf_to_e4d_scatter, ierr)
+  this%pf_to_e4d_scatter = 0
   
 end subroutine PMCHydrogeophysicsDestroy
   

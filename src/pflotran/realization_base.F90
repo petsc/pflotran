@@ -29,7 +29,8 @@ module Realization_Base_class
     type(field_type), pointer :: field
     type(flow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
-    type(mass_transfer_type), pointer :: mass_transfer_list
+    type(mass_transfer_type), pointer :: flow_mass_transfer_list
+    type(mass_transfer_type), pointer :: rt_mass_transfer_list
     
     type(reaction_type), pointer :: reaction
     
@@ -73,8 +74,9 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%reaction)
 
   nullify(realization_base%patch)
-  nullify(realization_base%mass_transfer_list)
-  
+  nullify(realization_base%flow_mass_transfer_list)
+  nullify(realization_base%rt_mass_transfer_list)
+
 end subroutine RealizationBaseInit
 
 ! ************************************************************************** !

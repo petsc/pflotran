@@ -13,10 +13,11 @@ module Timestepper_Surface_class
   private
 
   type, public, extends(stepper_base_type) :: timestepper_surface_type
+    PetscReal :: dt_max_allowable
   contains
     procedure, public :: Init => TimeStepperSurfaceInit
-    procedure, public :: SetTargetTime2 => TimeStepperSurfaceSetTargetTime
-    procedure, public :: StepDT2 => TimeStepperSurfaceStepDT
+    procedure, public :: SetTargetTime => TimeStepperSurfaceSetTargetTime
+    procedure, public :: StepDT => TimeStepperSurfaceStepDT
   end type timestepper_surface_type
 
   public TimeStepperSurfaceSetTargetTime, &
@@ -64,7 +65,8 @@ subroutine TimeStepperSurfaceInit(stepper)
   class (timestepper_surface_type) :: stepper
 
   call TimestepperBaseInit(stepper)
-
+  stepper%dt_max_allowable = 0.d0
+  
 end subroutine TimeStepperSurfaceInit
 
 ! ************************************************************************** !
@@ -75,7 +77,7 @@ end subroutine TimeStepperSurfaceInit
 !!
 !! date: 07/02/13
 ! ************************************************************************** !
-subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max_allowable, &
+subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time, &
                                         option, &
                                         stop_flag,plot_flag, &
                                         transient_plot_flag)
@@ -86,7 +88,6 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max_allowabl
 
   class(timestepper_surface_type) :: timestepper
   PetscReal :: sync_time
-  PetscReal :: dt_max_allowable
   type(option_type) :: option
   PetscInt :: stop_flag
   PetscBool :: plot_flag
@@ -103,7 +104,7 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time,dt_max_allowabl
   
   cur_waypoint => timestepper%cur_waypoint
 
-  dt = min(dt_max_allowable,timestepper%dt_max)
+  dt = min(timestepper%dt_max_allowable,timestepper%dt_max)
   target_time = timestepper%target_time + dt
   tolerance = timestepper%time_step_tolerance
 
@@ -183,7 +184,7 @@ subroutine TimeStepperSurfaceStepDT(timestepper,process_model,stop_flag)
 #include "finclude/petscsnes.h"
 
   class(timestepper_surface_type) :: timestepper
-  class(pm_surface_flow_type) :: process_model
+  class(pm_base_type) :: process_model
   PetscInt :: stop_flag
 
   PetscReal :: time
@@ -197,13 +198,13 @@ subroutine TimeStepperSurfaceStepDT(timestepper,process_model,stop_flag)
   option => process_model%option
 
   call process_model%PreSolve()
-  
+#if 0  
   if(option%subsurf_surf_coupling==SEQ_COUPLED .and. &
      associated(process_model%subsurf_realization)) then
     call SurfaceFlowSurf2SubsurfFlux(process_model%subsurf_realization, &
                                      process_model%surf_realization,tmp)
    endif
-  
+#endif  
   call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
   call TSSolve(solver%ts,process_model%solution_vec,ierr)
   call TSGetTime(solver%ts,time,ierr)
@@ -216,9 +217,9 @@ subroutine TimeStepperSurfaceStepDT(timestepper,process_model,stop_flag)
   if (option%print_screen_flag) then
     write(*, '(" SURFACE FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]")') &
       timestepper%steps, &
-      time/process_model%surf_realization%output_option%tconv, &
-      dtime/process_model%surf_realization%output_option%tconv, &
-      process_model%surf_realization%output_option%tunit
+      time/process_model%output_option%tconv, &
+      dtime/process_model%output_option%tconv, &
+      process_model%output_option%tunit
   endif
 
 end subroutine TimeStepperSurfaceStepDT

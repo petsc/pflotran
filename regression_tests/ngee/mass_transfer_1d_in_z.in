@@ -113,19 +113,19 @@ CONSTRAINT initial_constraint
 END
 
 :=========================== mass transfer ====================================
-MASS_TRANSFER A(im)
+RT_MASS_TRANSFER A(im)
   IDOF 2
   FILENAME mass_transfer_1d_in_z_data.h5
   DATASET A(im) 
 END
 
-MASS_TRANSFER B(im)
+RT_MASS_TRANSFER B(im)
   IDOF 3
   FILENAME mass_transfer_1d_in_z_data.h5
   DATASET B(im) 
 END
 
-MASS_TRANSFER C(im)
+RT_MASS_TRANSFER C(im)
   IDOF 4
   FILENAME mass_transfer_1d_in_z_data.h5
   DATASET C(im) 

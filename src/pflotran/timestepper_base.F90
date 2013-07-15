@@ -63,9 +63,7 @@ module Timestepper_Base_class
     procedure, public :: ReadInput => TimestepperBaseRead
     procedure, public :: Init => TimestepperBaseInit
     procedure, public :: SetTargetTime => TimeStepperBaseSetTargetTime
-    procedure, public :: SetTargetTime2 => TimeStepperBaseSetTargetTime2
     procedure, public :: StepDT => TimeStepperBaseStepDT
-    procedure, public :: StepDT2 => TimeStepperBaseStepDT2
     procedure, public :: UpdateDT => TimeStepperBaseUpdateDT
     procedure, public :: Destroy => TimeStepperBaseDestroy
     
@@ -494,58 +492,6 @@ subroutine TimeStepperBaseSetTargetTime(timestepper,sync_time,option, &
   timestepper%cur_waypoint => cur_waypoint
 
  end subroutine TimeStepperBaseSetTargetTime
-
-! ************************************************************************** !
-!> This is a dummy routine added to be extended in timestepper_surface_type
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/03/13
-! ************************************************************************** !
-subroutine TimeStepperBaseSetTargetTime2(timestepper,sync_time,dt_max_allowable, &
-                                        option,stop_flag,plot_flag, &
-                                        transient_plot_flag)
-
-  use Option_module
-  
-  implicit none
-
-  class(stepper_base_type) :: timestepper
-  PetscReal :: sync_time
-  PetscReal :: dt_max_allowable
-  type(option_type) :: option
-  PetscInt :: stop_flag
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
-
- end subroutine TimeStepperBaseSetTargetTime2
-
-! ************************************************************************** !
-!> This is a dummy routine added to be extended in timestepper_surface_type
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/03/13
-! ************************************************************************** !
-subroutine TimeStepperBaseStepDT2(timestepper,process_model,stop_flag)
-
-  use Process_Model_Base_class
-  use Option_module
-  use Output_module, only : Output
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
-
-  class(stepper_base_type) :: timestepper
-  class(pm_base_type) :: process_model
-  PetscInt :: stop_flag
-
-end subroutine TimeStepperBaseStepDT2
 
 ! ************************************************************************** !
 !

@@ -847,9 +847,35 @@ subroutine Init(simulation)
   endif
   if (realization%output_option%print_permeability) then
     ! add permeability to header
-    call OutputVariableAddToList( &
-           realization%output_option%output_variable_list, &
-           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+    if (MaterialAnisotropyExists(realization%material_properties)) then
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability Y',OUTPUT_GENERIC,'m^2',PERMEABILITY_Y)
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability Z',OUTPUT_GENERIC,'m^2',PERMEABILITY_Z)
+#ifdef DASVYAT
+      if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC .or. &
+         realization%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
+        call OutputVariableAddToList( &
+               realization%output_option%output_variable_list, &
+               'Permeability XY',OUTPUT_GENERIC,'m^2',PERMEABILITY_XY)
+        call OutputVariableAddToList( &
+               realization%output_option%output_variable_list, &
+               'Permeability XZ',OUTPUT_GENERIC,'m^2',PERMEABILITY_XZ)
+        call OutputVariableAddToList( &
+               realization%output_option%output_variable_list, &
+               'Permeability YZ',OUTPUT_GENERIC,'m^2',PERMEABILITY_YZ)
+      endif
+#endif
+    else
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+    endif
   endif
   if (realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
@@ -1007,202 +1033,21 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
   endif ! option%nsurfflowdof > 0
+
+  if (simulation%surf_realization%output_option%print_iproc) then
+    output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
+                                            PROCESSOR_ID)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 1 ! integer
+    call OutputVariableAddToList( &
+           simulation%surf_realization%output_option%output_variable_list,output_variable)
+  endif
+
 #endif
 
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr)
-
-#if 0
-  !----------------------------------------------------------------------------!
-  ! This section for setting up new process model approach
-  !----------------------------------------------------------------------------!
-  simulation%output_option => realization%output_option
-  simulation%option => realization%option
-!  simulation%synchronizer => SynchronizerCreate()
-!  simulation%synchronizer%option => realization%option
-!  simulation%synchronizer%output_option => realization%output_option
-!  simulation%synchronizer%waypoints => WaypointListCopy(realization%waypoints)
-!  simulation%synchronizer%waypoints => realization%waypoints
-  nullify(cur_process_model)
-
-  nullify(surf_flow_process_model_coupler)
-  nullify(sub_flow_process_model_coupler)
-  nullify(sub_tran_process_model_coupler)
-
-#ifdef SURFACE_FLOW
-  ! Create Surface-flow ProcessModel & ProcessModelCoupler
-  if (option%nsurfflowdof > 0) then
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        cur_process_model => PMSurfaceFlowCreate()
-      case(TH_MODE)
-        !cur_process_model => PMSurfaceTHCreate()
-    end select
-    cur_process_model%option => surf_realization%option
-    cur_process_model%output_option => surf_realization%output_option
-
-    surf_flow_process_model_coupler => ProcessModelCouplerCreate()
-    surf_flow_process_model_coupler%option => option
-    surf_flow_process_model_coupler%process_model_list => cur_process_model
-    surf_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
-    surf_flow_process_model_coupler%depth = 0
-    nullify(cur_process_model)
-  endif
-#endif
-
-  ! Create Subsurface-flow ProcessModel & ProcessModelCoupler
-  if (option%nflowdof > 0) then
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        cur_process_model => PMRichardsCreate()
-      case(TH_MODE)
-        cur_process_model => PMTHCreate()
-      case(THC_MODE)
-        cur_process_model => PMTHCCreate()
-    end select
-    cur_process_model%option => realization%option
-    cur_process_model%output_option => realization%output_option
-
-    sub_flow_process_model_coupler => ProcessModelCouplerCreate()
-    sub_flow_process_model_coupler%option => option
-    sub_flow_process_model_coupler%process_model_list => cur_process_model
-    sub_flow_process_model_coupler%pm_ptr%ptr => cur_process_model
-    nullify(cur_process_model)
-  endif
-
-  ! Create Subsurface transport ProcessModel & ProcessModelCoupler
-  if (option%ntrandof > 0) then
-    cur_process_model => PMRTCreate()
-    cur_process_model%output_option => realization%output_option
-    cur_process_model%option => realization%option
-   
-    sub_tran_process_model_coupler => ProcessModelCouplerCreate()
-    sub_tran_process_model_coupler%option => option
-    sub_tran_process_model_coupler%process_model_list => cur_process_model
-    sub_tran_process_model_coupler%pm_ptr%ptr => cur_process_model
-    nullify(cur_process_model)
-  endif
-
-  ! Add the ProcessModelCouplers in a list
-  if (associated(surf_flow_process_model_coupler)) then
-    simulation%process_model_coupler_list => surf_flow_process_model_coupler
-    if (associated(sub_flow_process_model_coupler)) then
-      surf_flow_process_model_coupler%next => sub_flow_process_model_coupler
-      if (associated(sub_tran_process_model_coupler)) then
-        sub_flow_process_model_coupler%below => sub_tran_process_model_coupler
-      endif
-    else if (associated(sub_tran_process_model_coupler)) then
-      ! this will likely never be used (i.e. tranport without flow coupled
-      ! to surface)
-      surf_flow_process_model_coupler%next => sub_tran_process_model_coupler
-    endif
-  else if (associated(sub_flow_process_model_coupler)) then
-    simulation%process_model_coupler_list => sub_flow_process_model_coupler
-    if (associated(sub_tran_process_model_coupler)) then
-      sub_flow_process_model_coupler%below => sub_tran_process_model_coupler
-    endif
-  else
-    simulation%process_model_coupler_list => sub_tran_process_model_coupler
-  endif
-
-  ! For each ProcessModel, set:
-  ! - realization (subsurface or surface),
-  ! - stepper (flow/trans/surf_flow),
-  ! - SNES functions (Residual/Jacobain), or TS function (RHSFunction)
-  cur_process_model_coupler_top => simulation%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler => cur_process_model_coupler_top
-    do
-      if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%process_model_list
-      do
-        if (.not.associated(cur_process_model)) exit
-        realization_class_ptr => realization
-        select type(cur_process_model)
-          class is (pm_richards_type)
-            call cur_process_model%PMRichardsSetRealization( &
-                                                         realization_class_ptr)
-            call cur_process_model_coupler%SetTimestepper(flow_stepper)
-            flow_stepper%dt = option%flow_dt
-          class is (pm_rt_type)
-            call cur_process_model%PMRTSetRealization(realization_class_ptr)
-            call cur_process_model_coupler%SetTimestepper(tran_stepper)
-            tran_stepper%dt = option%tran_dt
-          class is (pm_th_type)
-            call cur_process_model%PMTHSetRealization(realization_class_ptr)
-            call cur_process_model_coupler%SetTimestepper(flow_stepper)
-            flow_stepper%dt = option%flow_dt
-          class is (pm_thc_type)
-            call cur_process_model%PMTHCSetRealization(realization_class_ptr)
-            call cur_process_model_coupler%SetTimestepper(flow_stepper)
-            flow_stepper%dt = option%flow_dt
-#ifdef SURFACE_FLOW
-          class is (pm_surface_flow_type)
-            surf_realization_class_ptr => surf_realization
-            call cur_process_model%PMSurfaceFlowSetRealization(surf_realization_class_ptr)
-            call cur_process_model_coupler%SetTimestepper(surf_flow_stepper)
-            surf_flow_stepper%dt = option%surf_flow_dt
-#endif
-        end select
-
-        call cur_process_model%Init()
-        select type(cur_process_model)
-#ifdef SURFACE_FLOW
-          class is (pm_surface_flow_type)
-            call TSSetRHSFunction( &
-                            cur_process_model_coupler%timestepper%solver%ts, &
-                            cur_process_model%residual_vec, &
-                            PMRHSFunction, &
-                            cur_process_model_coupler%pm_ptr, &
-                            ierr)
-#endif
-          class default
-            call SNESSetFunction( &
-                           cur_process_model_coupler%timestepper%solver%snes, &
-                           cur_process_model%residual_vec, &
-                           PMResidual, &
-                           cur_process_model_coupler%pm_ptr,ierr)
-            call SNESSetJacobian( &
-                           cur_process_model_coupler%timestepper%solver%snes, &
-                           cur_process_model_coupler%timestepper%solver%J, &
-                           cur_process_model_coupler%timestepper%solver%Jpre, &
-                           PMJacobian, &
-                           cur_process_model_coupler%pm_ptr,ierr)
-        end select
-        cur_process_model => cur_process_model%next
-      enddo
-      cur_process_model_coupler => cur_process_model_coupler%below
-    enddo
-    cur_process_model_coupler_top => cur_process_model_coupler_top%next
-  enddo
-
-  ! If running with surface flow, add additional waypoints in waypoint-list
-  ! of synchronizer.
-#if 0  
-#ifdef SURFACE_FLOW
-  if (option%nsurfflowdof > 0) then
-    waypoint => realization%waypoints%first
-    dt_max = waypoint%dt_max
-    if(dt_max<1.d-40) then
-      option%io_buffer='waypoint%dt_max = 0.'
-      call printErrMsg(option)
-    endif
-    time = 0.d0
-    final_time = realization%waypoints%last%time
-    do
-      time = time + surf_realization%dt_coupling
-      if (time > final_time) exit
-      waypoint => WaypointCreate()
-      waypoint%time = time
-      waypoint%dt_max = dt_max
-      call WaypointInsertInList(waypoint,simulation%synchronizer%waypoints)
-   enddo
-  endif
-#endif
-#endif
-#endif
 
 end subroutine Init
 
@@ -1530,7 +1375,8 @@ subroutine InitReadInput(simulation)
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
   class(dataset_base_type), pointer :: dataset
-  type(mass_transfer_type), pointer :: mass_transfer
+  type(mass_transfer_type), pointer :: flow_mass_transfer
+  type(mass_transfer_type), pointer :: rt_mass_transfer
   type(input_type), pointer :: input
 
   nullify(flow_stepper)
@@ -1750,14 +1596,24 @@ subroutine InitReadInput(simulation)
         nullify(coupler)        
       
 !....................
-      case ('MASS_TRANSFER')
-        mass_transfer => MassTransferCreate()
-        call InputReadWord(input,option,mass_transfer%name,PETSC_TRUE)
-        call InputDefaultMsg(input,option,'Mass Transfer name') 
-        call MassTransferRead(mass_transfer,input,option)
-        call MassTransferAddToList(mass_transfer, &
-                                   realization%mass_transfer_list)
-        nullify(mass_transfer)        
+      case ('FLOW_MASS_TRANSFER')
+        flow_mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,flow_mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Flow Mass Transfer name') 
+        call MassTransferRead(flow_mass_transfer,input,option)
+        call MassTransferAddToList(flow_mass_transfer, &
+                                   realization%flow_mass_transfer_list)
+        nullify(flow_mass_transfer)
+      
+!....................
+      case ('RT_MASS_TRANSFER')
+        rt_mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,rt_mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'RT Mass Transfer name')
+        call MassTransferRead(rt_mass_transfer,input,option)
+        call MassTransferAddToList(rt_mass_transfer, &
+                                   realization%rt_mass_transfer_list)
+        nullify(rt_mass_transfer)
       
 !....................
       case ('STRATIGRAPHY','STRATA')

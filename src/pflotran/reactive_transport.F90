@@ -1332,8 +1332,8 @@ subroutine RTCalculateRHS_t1(realization)
   call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   ! Mass Transfer
-  if (associated(realization%mass_transfer_list)) then
-    cur_mass_transfer => realization%mass_transfer_list
+  if (associated(realization%rt_mass_transfer_list)) then
+    cur_mass_transfer => realization%rt_mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
       call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
@@ -2751,8 +2751,8 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
   
   ! Mass Transfer
-  if (associated(realization%mass_transfer_list)) then
-    cur_mass_transfer => realization%mass_transfer_list
+  if (associated(realization%rt_mass_transfer_list)) then
+    cur_mass_transfer => realization%rt_mass_transfer_list
     do
       if (.not.associated(cur_mass_transfer)) exit
       call VecGetArrayF90(cur_mass_transfer%vec, r_p, ierr)
