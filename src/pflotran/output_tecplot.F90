@@ -1518,7 +1518,7 @@ subroutine WriteTecplotUGridElements(fid,realization_base)
   Vec :: global_cconn_vec
   type(ugdm_type), pointer :: ugdm_element
   PetscReal, pointer :: vec_ptr(:)
-  PetscErrorCode :: ierr
+  PetscErrorCode :: ierr  
   
   Vec :: global_vec
   Vec :: natural_vec
@@ -1995,6 +1995,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -2009,9 +2010,15 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
   character(len=MAXSTRINGLENGTH) :: filename
-  PetscReal, pointer :: vec_ptr(:)
+
   PetscErrorCode :: ierr  
   PetscInt :: iconn
+  PetscInt :: count
+  PetscReal, pointer :: flowrates(:,:)
+  PetscInt, pointer :: ids_up(:),ids_dn(:)
+  Vec :: vec_flowrates
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: i, idof
   
   patch => realization_base%patch
   grid => patch%grid
@@ -2021,8 +2028,10 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 
   filename = OutputFilename(output_option,option,'dat','rates')
   
-  call OutputGetExplicitFlowrates(realization_base)
+  call OutputGetExplicitFlowrates(realization_base,count, &
+                                  ids_up,ids_dn,flowrates)
   
+    
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write rate output file: ' // &
                        trim(filename)
@@ -2033,16 +2042,28 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 1000 format(es13.6,1x)
 1009 format('')
 
-  call VecGetArrayF90(field%flowrate_inst,vec_ptr,ierr)
-  if (option%myrank == option%io_rank) then
-    do iconn = 1,size(grid%unstructured_grid%explicit_grid%connections,2)
-      write(OUTPUT_UNIT,1000,advance='no') vec_ptr(iconn)
-      write(OUTPUT_UNIT,1009) 
+  allocate(vec_ptr(size(flowrates,ONE_INTEGER)*(size(flowrates,TWO_INTEGER)+TWO_INTEGER)))
+  
+  
+  do i = 1, count
+    vec_ptr(ONE_INTEGER+THREE_INTEGER*(i-1)) = ids_up(i)
+    vec_ptr(TWO_INTEGER+THREE_INTEGER*(i-1)) = ids_dn(i)
+    do idof = 1, option%nflowdof
+      vec_ptr(THREE_INTEGER+(idof-1)+THREE_INTEGER*(i-1)) = flowrates(i,idof)
     enddo
-  endif
-  call VecRestoreArrayF90(field%flowrate_inst,vec_ptr,ierr)
+  enddo
+
+  call WriteTecplotDataSetNumPerLine(OUTPUT_UNIT,realization_base,vec_ptr, &
+                                     TECPLOT_REAL, &
+                                     count, &
+                                     size(flowrates,TWO_INTEGER)+TWO_INTEGER)
     
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
+  
+  deallocate(flowrates)
+  deallocate(ids_up)
+  deallocate(ids_dn)
+  deallocate(vec_ptr)
 
 end subroutine OutputPrintExplicitFlowrates
 
