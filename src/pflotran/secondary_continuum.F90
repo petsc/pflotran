@@ -743,6 +743,12 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: dtotal_prim_num(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: dPsisec_dCprim_num(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: pert
+  PetscReal :: coeff_diag_dm(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
+  PetscReal :: coeff_left_dm(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
+  PetscReal :: coeff_right_dm(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
   PetscReal :: coeff_left_pert(reaction%naqcomp,reaction%naqcomp, &
                           sec_transport_vars%ncells)
   PetscReal :: coeff_diag_pert(reaction%naqcomp,reaction%naqcomp, &
@@ -936,6 +942,63 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                         
   rhs = -res   
   
+  ! First do an LU decomposition for calculating D_M matrix
+  coeff_diag_dm = coeff_diag
+  coeff_left_dm = coeff_left
+  coeff_right_dm = coeff_right
+  
+  select case (option%secondary_continuum_solver)
+    case(1) 
+      do i = 2, ngcells
+        coeff_left_dm(:,:,i-1) = coeff_left_dm(:,:,i)
+      enddo
+      coeff_left_dm(:,:,ngcells) = 0.d0
+      call bl3dfac(ngcells,ncomp,coeff_right_dm,coeff_diag_dm,coeff_left_dm,pivot)  
+    case(2)
+      call decbt(ncomp,ngcells,ncomp,coeff_diag_dm,coeff_right_dm,coeff_left_dm,pivot,ier)
+      if (ier /= 0) then
+        print *,'error in matrix decbt: ier = ',ier
+        stop
+      endif
+    case(3)
+      ! Thomas algorithm for tridiagonal system
+      ! Forward elimination
+      if (ncomp /= 1) then
+        option%io_buffer = 'THOMAS algorithm can be used only with single '// &
+                           'component chemistry'
+        call printErrMsg(option)
+      endif
+      do i = 2, ngcells
+        m = coeff_left_dm(ncomp,ncomp,i)/coeff_diag_dm(ncomp,ncomp,i-1)
+        coeff_diag_dm(ncomp,ncomp,i) = coeff_diag_dm(ncomp,ncomp,i) - &
+                                    m*coeff_right_dm(ncomp,ncomp,i-1)
+      enddo        
+    case default
+      option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
+                         'HINDMARSH or KEARST. For single component'// &
+                         'chemistry THOMAS can be used.'
+      call printErrMsg(option)  
+  end select
+  
+  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
+  do i = 1, ncomp
+    do j = 1, ncomp
+      D_M(i,j) = coeff_diag_dm(i,j,ngcells)
+      if (j == i) then
+        identity(i,j) = 1.d0
+      else
+        identity(i,j) = 0.d0
+      endif
+    enddo
+  enddo
+  
+  ! Find the inverse of D_M
+  call ludcmp(D_M,ncomp,indx,d) 
+  do j = 1, ncomp
+    call lubksb(D_M,ncomp,indx,identity(1,j))
+  enddo  
+  inv_D_M = identity      
+  
   if (reaction%use_log_formulation) then
   ! scale the jacobian by concentrations
     i = 1
@@ -1001,25 +1064,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
       call printErrMsg(option)  
   end select
     
-  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
-  do i = 1, ncomp
-    do j = 1, ncomp
-      D_M(i,j) = coeff_diag(i,j,ngcells)
-      if (j == i) then
-        identity(i,j) = 1.d0
-      else
-        identity(i,j) = 0.d0
-      endif
-    enddo
-  enddo
-  
-  ! Find the inverse of D_M
-  call ludcmp(D_M,ncomp,indx,d) 
-  do j = 1, ncomp
-    call lubksb(D_M,ncomp,indx,identity(1,j))
-  enddo  
-  inv_D_M = identity      
-  
   ! Update the secondary concentrations
   do i = 1, ncomp
     if (reaction%use_log_formulation) then
