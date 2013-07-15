@@ -164,6 +164,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   use Realization_Base_class, only : RealizationGetDataset
   use Variables_module, only : PRIMARY_MOLALITY
   use String_module
+!  use Discretization_module
 
   implicit none
   
@@ -179,15 +180,34 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   PetscInt, save :: num_calls = 0
   character(len=MAXSTRINGLENGTH) :: filename
   PetscViewer :: viewer
+  Vec :: natural_vec
+  PetscInt :: i
 
   select type(pmc => this)
     class is(pmc_hydrogeophysics_type)
       pmc_hg => pmc
+#if 1
       call RealizationGetDataset(pmc%realization,pmc%realization%field%work, &
                                  PRIMARY_MOLALITY,ONE_INTEGER,0)
+#else
+      call DiscretizationCreateVector(pmc%realization%discretization,ONEDOF, &
+                                      natural_vec,NATURAL,this%option)
+      if (pmc%option%myrank == 0) then
+        do i = 1, pmc%realization%patch%grid%nmax
+          call VecSetValues(natural_vec,1,i-1,i*1.d0, &
+                            INSERT_VALUES,ierr)
+        enddo
+      endif
+      call VecAssemblyBegin(natural_vec,ierr) 
+      call VecAssemblyEnd(natural_vec,ierr) 
+      call DiscretizationNaturalToGlobal(pmc%realization%discretization, &
+                                         natural_vec, &
+                                         pmc%realization%field%work,ONEDOF)
+      call VecDestroy(natural_vec,ierr)
+#endif
       call VecGetArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
       call VecGetArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
-      vec1_ptr(:) = vec1_ptr(:) + num_calls
+!      vec1_ptr(:) = vec1_ptr(:) + num_calls
       vec2_ptr(:) = vec1_ptr(:)
       print *, 'PMC update to solution', vec2_ptr(16)
       call VecRestoreArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
