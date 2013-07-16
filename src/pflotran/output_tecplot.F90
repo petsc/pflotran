@@ -2042,7 +2042,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   
   
 1000 format(es13.6,1x)
-1001 format(i4,1x)
+1001 format(i10,1x)
 1009 format('')
 
   write(string,*) option%myrank
