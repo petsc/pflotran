@@ -931,7 +931,7 @@ subroutine RTUpdateTransportCoefs(realization)
                       rt_parameter,option, &
                       patch%internal_velocities(:,sum_connection), &
                       patch%internal_tran_coefs(:,sum_connection))
-                     
+                                           
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    

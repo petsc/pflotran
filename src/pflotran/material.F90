@@ -37,6 +37,7 @@ module Material_module
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
+    PetscReal :: transverse_dispersivity
     PetscReal :: tortuosity_pwr
     PetscReal :: min_pressure
     PetscReal :: max_pressure
@@ -134,6 +135,7 @@ function MaterialPropertyCreate()
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
+  material_property%transverse_dispersivity = 0.d0
   material_property%min_pressure = 0.d0
   material_property%max_pressure = 1.d6
   material_property%max_permfactor = 1.d0
@@ -218,6 +220,9 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('LONGITUDINAL_DISPERSIVITY') 
         call InputReadDouble(input,option,material_property%longitudinal_dispersivity)
         call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
+      case('TRANSVERSE_DISPERSIVITY') 
+        call InputReadDouble(input,option,material_property%transverse_dispersivity)
+        call InputErrorMsg(input,option,'transverse_dispersivity','MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_dry)
