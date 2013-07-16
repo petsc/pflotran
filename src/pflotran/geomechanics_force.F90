@@ -155,9 +155,7 @@ subroutine GeomechanicsForceInitialGuess(realization)
         select case(boundary_condition%geomech_condition%displacement_x%itype)
           case(DIRICHLET_BC)
             xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_X_DOF) = &
-            2*grid%nodes(local_id)%y*(grid%nodes(local_id)%x + &
-            grid%nodes(local_id)%y + grid%nodes(local_id)%z)
-           ! boundary_condition%geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
+            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_X_DOF,ivertex)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -168,9 +166,7 @@ subroutine GeomechanicsForceInitialGuess(realization)
         select case(boundary_condition%geomech_condition%displacement_y%itype)
           case(DIRICHLET_BC)
             xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_Y_DOF) = &
-            4*grid%nodes(local_id)%x - (grid%nodes(local_id)%y)**2 - &
-            (grid%nodes(local_id)%z)**2
-           ! boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
+            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Y_DOF,ivertex)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -181,9 +177,7 @@ subroutine GeomechanicsForceInitialGuess(realization)
         select case(boundary_condition%geomech_condition%displacement_z%itype)
           case(DIRICHLET_BC)
             xx_p(THREE_INTEGER*(local_id-1) + GEOMECH_DISP_Z_DOF) = &
-            sin(PI*grid%nodes(local_id)%x)*sin(PI*grid%nodes(local_id)%y)* &
-            sin(PI*grid%nodes(local_id)%z)
-           ! boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
+            boundary_condition%geomech_aux_real_var(GEOMECH_DISP_Z_DOF,ivertex)
           case(ZERO_GRADIENT_BC,NEUMANN_BC)
            ! do nothing
         end select
@@ -385,8 +379,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   
   call VecSet(r,0.d0,ierr)
   
+#if 0  
   error_H1_global = 0.d0
   error_L2_global = 0.d0
+#endif
+
  
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
@@ -419,6 +416,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,res_vec,option)
     call VecSetValues(r,size(ids),ids,res_vec,ADD_VALUES,ierr) 
+#if 0
     call GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
                                     eletype,grid%gauss_node(ielem)%dim, &
                                     grid%gauss_node(ielem)%r, &
@@ -426,6 +424,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
                                     error_H1,option)
     error_H1_global = error_H1_global + error_H1
     error_L2_global = error_L2_global + error_L2
+#endif
     deallocate(elenodes)
     deallocate(local_coordinates)
     deallocate(local_disp)
@@ -434,6 +433,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     deallocate(res_vec)
   enddo
       
+#if 0
   call MPI_Allreduce(error_H1_global,error_H1_global,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION, &
                      MPI_SUM,option%mycomm,ierr)      
@@ -445,6 +445,8 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     print *, 'L2 error:', sqrt(error_L2_global)
     print *, 'H1 error:', sqrt(error_H1_global)
   endif
+#endif      
+      
       
   call VecAssemblyBegin(r,ierr)
   call VecAssemblyEnd(r,ierr)  
@@ -622,7 +624,6 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
     call GeomechGetLambdaMu(lambda,mu,x)
-    load_type = 2 ! Need to change
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
@@ -891,7 +892,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
     call GeomechGetLambdaMu(lambda,mu,x)
-    load_type = 2 ! Need to change
+    ! load_type = 2 ! Need to change
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
@@ -936,8 +937,6 @@ subroutine GeomechGetLambdaMu(lambda,mu,coord)
   lambda = E*nu/(1.d0+nu)/(1.d0-2.d0*nu)
   mu = E/2.d0/(1.d0+nu)
 
-  lambda = 1.d0 ! Need to remove this
-  mu = 1.d0
 
 end subroutine GeomechGetLambdaMu
 
@@ -968,16 +967,6 @@ subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf)
   
   
   select case(load_type)
-    case(1)
-      bf(GEOMECH_DISP_X_DOF) = (lambda/3.d0 + 2.d0*mu)*(PI/60.d0)**2* &
-                                sin(pi*coord(1)/60.d0)
-    case(2)
-      bf(1) = - 4*mu - PI**2*lambda*cos(PI*x)*cos(PI*z)*sin(PI*y) &
-              - PI**2*mu*cos(PI*x)*cos(PI*z)*sin(PI*y)
-      bf(2) = 2*mu - 2*mu*((PI**2*cos(PI*y)*cos(PI*z)*sin(PI*x))/2 - 1) &
-              - PI**2*lambda*cos(PI*y)*cos(PI*z)*sin(PI*x)
-      bf(3) = PI**2*lambda*sin(PI*x)*sin(PI*y)*sin(PI*z) & 
-              + 4*PI**2*mu*sin(PI*x)*sin(PI*y)*sin(PI*z)
     case default
       bf(GEOMECH_DISP_Z_DOF) = -9.81
   end select
