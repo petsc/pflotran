@@ -1158,39 +1158,43 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     trim(adjustl(string)) // ', not implemented.'
                   call printErrMsg(option)
               end select
-              select case(flow_condition%temperature%itype)
-                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
-                     (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
-                     flow_condition%temperature%itype /= DIRICHLET_BC)) then
-                    coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-                  endif
-                case (HET_DIRICHLET)
-                  call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                          flow_condition%temperature%flow_dataset, &
-                          num_connections,TH_TEMPERATURE_DOF,option)
-                case default
-                  write(string,*),flow_condition%temperature%itype
-                  option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
-                    trim(adjustl(string)) // ', not implemented.'
-                  call printErrMsg(option)
-              end select
+              if(associated(flow_condition%temperature)) then
+                select case(flow_condition%temperature%itype)
+                  case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                    if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                       (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                       flow_condition%temperature%itype /= DIRICHLET_BC)) then
+                      coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+                              flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                    endif
+                  case (HET_DIRICHLET)
+                    call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                            flow_condition%temperature%flow_dataset, &
+                            num_connections,TH_TEMPERATURE_DOF,option)
+                  case default
+                    write(string,*),flow_condition%temperature%itype
+                    option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
+                      trim(adjustl(string)) // ', not implemented.'
+                    call printErrMsg(option)
+                end select
+              endif
             else
-              select case(flow_condition%temperature%itype)
-                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-                case (HET_DIRICHLET)
-                  call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                          flow_condition%temperature%flow_dataset, &
-                          num_connections,TH_TEMPERATURE_DOF,option)
-                case default
-                  write(string,*),flow_condition%temperature%itype
-                  option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
-                    trim(adjustl(string)) // ', not implemented.'
-                  call printErrMsg(option)
-              end select
+              if(associated(flow_condition%temperature)) then
+                select case(flow_condition%temperature%itype)
+                  case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                    coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+                              flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                  case (HET_DIRICHLET)
+                    call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                            flow_condition%temperature%flow_dataset, &
+                            num_connections,TH_TEMPERATURE_DOF,option)
+                  case default
+                    write(string,*),flow_condition%temperature%itype
+                    option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
+                      trim(adjustl(string)) // ', not implemented.'
+                    call printErrMsg(option)
+                end select
+              endif
             endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
@@ -1206,6 +1210,17 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   option%io_buffer='For TH mode: flow_condition%rate%itype = ' // &
                     trim(adjustl(string)) // ', not implemented.'
                   call printErrMsg(option)
+              end select
+            endif
+            if(associated(flow_condition%energy_rate)) then
+              select case (flow_condition%energy_rate%itype)
+                case (ENERGY_RATE_SS)
+                  coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                case (HET_ENERGY_RATE_SS)
+                  call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                          flow_condition%energy_rate%flow_dataset, &
+                          num_connections,TH_TEMPERATURE_DOF,option)
               end select
             endif
             if (associated(flow_condition%saturation)) then
@@ -3014,6 +3029,24 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_XY)
+      call GridVecGetArrayF90(grid,field%perm_xy_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_XZ)
+      call GridVecGetArrayF90(grid,field%perm_xz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xz_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_YZ)
+      call GridVecGetArrayF90(grid,field%perm_yz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_yz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
@@ -4973,6 +5006,10 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+      enddo
+    case(PROCESSOR_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = option%myrank
       enddo
     case default
       write(option%io_buffer, &

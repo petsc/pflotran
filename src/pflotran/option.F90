@@ -41,6 +41,7 @@ module Option_module
   
     PetscInt :: fid_out
     
+    character(len=MAXWORDLENGTH) :: simulation_mode
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
@@ -86,11 +87,16 @@ module Option_module
     PetscBool :: variables_swapped
     
     PetscInt :: iflag
+    PetscInt :: status
+    !geh: remove once legacy code is gone.
     PetscBool :: init_stage
-    PetscBool :: print_screen_flag
-    PetscBool :: print_file_flag
+    ! these flags are for printing outside of time step loop
     PetscBool :: print_to_screen
     PetscBool :: print_to_file
+    ! these flags are for printing within time step loop where printing may
+    ! need to be temporarily turned off to accommodate periodic screen outout.
+    PetscBool :: print_screen_flag
+    PetscBool :: print_file_flag
     PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
@@ -115,7 +121,9 @@ module Option_module
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt ! The size of the time step.
+    PetscReal :: dt
     PetscBool :: match_waypoint
+    PetscReal :: refactor_dt
   
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
@@ -193,11 +201,15 @@ module Option_module
     PetscBool :: ani_relative_permeability
     PetscBool :: use_upwinding
     PetscBool :: out_of_table
+    
+    PetscBool :: use_process_model
+        
+    ! Specify secondary continuum solver
     PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
     PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
     
-    PetscInt :: simulation_type
+    PetscInt :: subsurface_simulation_type
 
   end type option_type
   
@@ -235,6 +247,11 @@ module Option_module
     module procedure printWrnMsg2
   end interface
 
+  interface OptionInitMPI
+    module procedure OptionInitMPI1
+    module procedure OptionInitMPI2
+  end interface
+
   public :: OptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
@@ -243,6 +260,7 @@ module Option_module
             printMsg, &
             printMsgAnyRank, &
             printMsgByRank, &
+            printVerboseMsg, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
@@ -250,7 +268,7 @@ module Option_module
             OptionMeanVariance, &
             OptionMaxMinMeanVariance, &
             OptionInitMPI, &
-            OptionInitPETSc, &
+            OptionInitPetsc, &
             OptionDivvyUpSimulations, &
             OptionCreateProcessorGroups, &
             OptionBeginTiming, &
@@ -340,7 +358,9 @@ subroutine OptionInitAll(option)
 
   option%out_of_table = PETSC_FALSE
   
-  option%simulation_type = SUBSURFACE_SIM_TYPE
+  option%simulation_mode = 'SUBSURFACE'
+  option%use_process_model = PETSC_FALSE
+  option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   call OptionInitRealization(option)
 
@@ -515,6 +535,8 @@ subroutine OptionInitRealization(option)
   option%tran_weight_t1 = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
+  option%dt = 0.d0
+  option%refactor_dt = 0.d0
   option%match_waypoint = PETSC_FALSE
 
   option%io_handshake_buffer_size = 0
@@ -532,6 +554,7 @@ subroutine OptionInitRealization(option)
   option%idt_switch = -1
 
   option%use_matrix_buffer = PETSC_FALSE
+  option%status = PROCEED 
   option%init_stage = PETSC_FALSE 
   option%force_newton_iteration = PETSC_FALSE
   option%mimetic = PETSC_FALSE
@@ -831,6 +854,25 @@ end subroutine printMsgByRank2
  
 ! ************************************************************************** !
 !
+! printVerboseMsg: Prints the message from p0
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine printVerboseMsg(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  if (option%verbosity > 0) then
+    call printMsg(option,option%io_buffer)
+  endif
+  
+end subroutine printVerboseMsg
+
+! ************************************************************************** !
+!
 ! OptionCheckTouch: Users can steer the code by touching files.
 ! author: Glenn Hammond
 ! date: 03/04/08
@@ -983,12 +1025,12 @@ end subroutine OptionMeanVariance
 
 ! ************************************************************************** !
 !
-! OptionInitMPI: Initializes base MPI communicator
+! OptionInitMPI1: Initializes base MPI communicator
 ! author: Glenn Hammond
 ! date: 06/06/13
 !
 ! ************************************************************************** !
-subroutine OptionInitMPI(option)
+subroutine OptionInitMPI1(option)
 
   implicit none
   
@@ -997,25 +1039,45 @@ subroutine OptionInitMPI(option)
   PetscErrorCode :: ierr
   
   call MPI_Init(ierr)
-  option%global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
+  call OptionInitMPI2(option,MPI_COMM_WORLD)
+
+end subroutine OptionInitMPI1
+
+! ************************************************************************** !
+!
+! OptionInitMPI2: Initializes base MPI communicator
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine OptionInitMPI2(option,communicator)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscMPIInt :: communicator
+  PetscErrorCode :: ierr
+  
+  option%global_comm = communicator
+  call MPI_Comm_rank(communicator,option%global_rank, ierr)
+  call MPI_Comm_size(communicator,option%global_commsize,ierr)
+  call MPI_Comm_group(communicator,option%global_group,ierr)
   option%mycomm = option%global_comm
   option%myrank = option%global_rank
   option%mycommsize = option%global_commsize
   option%mygroup = option%global_group
 
-end subroutine OptionInitMPI
+end subroutine OptionInitMPI2
 
 ! ************************************************************************** !
 !
-! OptionInitPETSc: Initialization of PETSc.
+! OptionInitPetsc: Initialization of PETSc.
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine OptionInitPETSc(option)
+subroutine OptionInitPetsc(option)
 
   implicit none
   
@@ -1033,7 +1095,7 @@ subroutine OptionInitPETSc(option)
     call PetscOptionsInsertString(string, ierr)
   endif 
   
-end subroutine OptionInitPETSc
+end subroutine OptionInitPetsc
 
 ! ************************************************************************** !
 !

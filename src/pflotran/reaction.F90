@@ -60,7 +60,7 @@ module Reaction_module
             RTPrintAuxVar, &
             ReactionInterpolateLogK_hpt, &
             ReactionInitializeLogK_hpt, &
-            RUpdateSolution, &
+            RUpdateKineticState, &
             RUpdateTempDependentCoefs
 
 contains
@@ -1340,23 +1340,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! Jac units = kg water/L water
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
           
-#if 0   
-!geh: deprecated 03/04/13
-        case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
-        
-          ! conversion from m^3 bulk -> L water
-          tempreal = porosity*global_auxvar%sat(iphase)*1000.d0
-          ! total = mol/L water  total_sorb = mol/m^3 bulk
-          Res(icomp) = rt_auxvar%total(icomp,1) + &
-            rt_auxvar%total_sorb_eq(icomp)/tempreal - total_conc(icomp)
-          ! dtotal units = kg water/L water
-          ! dtotal_sorb units = kg water/m^3 bulk
-          ! Jac units = kg water/L water
-          Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1) + &
-          ! dtotal_sorb units = kg water/m^3 bulk
-                         rt_auxvar%dtotal_sorb_eq(icomp,:)/tempreal
-#endif          
-
         case(CONSTRAINT_TOTAL_SORB)
         
           ! units = mol/m^3 bulk
@@ -2064,11 +2047,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
           string = 'total aq'
         case(CONSTRAINT_TOTAL_SORB)
           string = 'total sorb'
-#if 0   
-!geh: deprecated 03/04/13          
-        case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
-          string = 'total aq+sorb'
-#endif
         case(CONSTRAINT_FREE)
           string = 'free'
         case(CONSTRAINT_CHARGE_BAL)
@@ -3310,38 +3288,11 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   ! add new reactions in the 3 locations below
 
   if (.not.option%numerical_derivatives_rxn) then ! analytical derivative
-  !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
     call RReaction(Res,Jac,compute_derivative,rt_auxvar, &
                    global_auxvar,porosity,volume,reaction,option)  
-#if 0    
-    if (reaction%mineral%nkinmnrl > 0) then
-      call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
-                           global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-      call RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
-                              global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-      call RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
-                            global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%ngeneral_rxn > 0) then
-      call RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
-                    global_auxvar,porosity,volume,reaction,option)
-    endif
-    if (reaction%microbial%nrxn > 0) then
-      call RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
-                      global_auxvar,porosity,volume,reaction,option)
-    endif    
-    if (reaction%use_sandbox) then
-      call RSandbox(Res,Jac,compute_derivative,rt_auxvar, &
-                    global_auxvar,porosity,volume,reaction,option)
-    endif
-#endif    
 
-    ! add new reactions here and in RReaction
+    ! add only in RReaction
 
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
@@ -4935,12 +4886,13 @@ end subroutine RCalculateCompression
 
 ! ************************************************************************** !
 !
-! RUpdateSolution: Updates secondary variables such as mineral vol frac, etc.
+! RUpdateKineticState: Updates state variables such as mineral vol frac, 
+!                      etc.
 ! author: Glenn Hammond
 ! date: 01/24/13
 !
 ! ************************************************************************** !
-subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
+subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
 
@@ -5029,7 +4981,7 @@ subroutine RUpdateSolution(rt_auxvar,global_auxvar,reaction,option)
     enddo
   endif  
 
-end subroutine RUpdateSolution
+end subroutine RUpdateKineticState
 
 ! ************************************************************************** !
 !

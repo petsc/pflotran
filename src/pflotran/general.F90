@@ -3343,6 +3343,8 @@ subroutine GeneralDestroy(realization)
   use Level_module
   use Patch_module
 
+  implicit none
+  
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level

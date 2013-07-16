@@ -29,7 +29,8 @@ module Secondary_Continuum_module
             THSecHeatAuxVarCompute, &
             MphaseSecHeatAuxVarCompute, &
             SecondaryRTUpdateIterate, &
-            SecondaryRTUpdateTimestep, &
+            SecondaryRTUpdateEquilState, &
+            SecondaryRTUpdateKineticState, &
             SecondaryRTTimeCut
 
 contains
@@ -742,6 +743,12 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   PetscReal :: dtotal_prim_num(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: dPsisec_dCprim_num(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: pert
+  PetscReal :: coeff_diag_dm(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
+  PetscReal :: coeff_left_dm(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
+  PetscReal :: coeff_right_dm(reaction%naqcomp,reaction%naqcomp, &
+                          sec_transport_vars%ncells)
   PetscReal :: coeff_left_pert(reaction%naqcomp,reaction%naqcomp, &
                           sec_transport_vars%ncells)
   PetscReal :: coeff_diag_pert(reaction%naqcomp,reaction%naqcomp, &
@@ -935,6 +942,63 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                         
   rhs = -res   
   
+  ! First do an LU decomposition for calculating D_M matrix
+  coeff_diag_dm = coeff_diag
+  coeff_left_dm = coeff_left
+  coeff_right_dm = coeff_right
+  
+  select case (option%secondary_continuum_solver)
+    case(1) 
+      do i = 2, ngcells
+        coeff_left_dm(:,:,i-1) = coeff_left_dm(:,:,i)
+      enddo
+      coeff_left_dm(:,:,ngcells) = 0.d0
+      call bl3dfac(ngcells,ncomp,coeff_right_dm,coeff_diag_dm,coeff_left_dm,pivot)  
+    case(2)
+      call decbt(ncomp,ngcells,ncomp,coeff_diag_dm,coeff_right_dm,coeff_left_dm,pivot,ier)
+      if (ier /= 0) then
+        print *,'error in matrix decbt: ier = ',ier
+        stop
+      endif
+    case(3)
+      ! Thomas algorithm for tridiagonal system
+      ! Forward elimination
+      if (ncomp /= 1) then
+        option%io_buffer = 'THOMAS algorithm can be used only with single '// &
+                           'component chemistry'
+        call printErrMsg(option)
+      endif
+      do i = 2, ngcells
+        m = coeff_left_dm(ncomp,ncomp,i)/coeff_diag_dm(ncomp,ncomp,i-1)
+        coeff_diag_dm(ncomp,ncomp,i) = coeff_diag_dm(ncomp,ncomp,i) - &
+                                    m*coeff_right_dm(ncomp,ncomp,i-1)
+      enddo        
+    case default
+      option%io_buffer = 'SECONDARY_CONTINUUM_SOLVER can be only ' // &
+                         'HINDMARSH or KEARST. For single component'// &
+                         'chemistry THOMAS can be used.'
+      call printErrMsg(option)  
+  end select
+  
+  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
+  do i = 1, ncomp
+    do j = 1, ncomp
+      D_M(i,j) = coeff_diag_dm(i,j,ngcells)
+      if (j == i) then
+        identity(i,j) = 1.d0
+      else
+        identity(i,j) = 0.d0
+      endif
+    enddo
+  enddo
+  
+  ! Find the inverse of D_M
+  call ludcmp(D_M,ncomp,indx,d) 
+  do j = 1, ncomp
+    call lubksb(D_M,ncomp,indx,identity(1,j))
+  enddo  
+  inv_D_M = identity      
+  
   if (reaction%use_log_formulation) then
   ! scale the jacobian by concentrations
     i = 1
@@ -1000,25 +1064,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
       call printErrMsg(option)  
   end select
     
-  ! Set the values of D_M matrix and create identity matrix of size ncomp x ncomp  
-  do i = 1, ncomp
-    do j = 1, ncomp
-      D_M(i,j) = coeff_diag(i,j,ngcells)
-      if (j == i) then
-        identity(i,j) = 1.d0
-      else
-        identity(i,j) = 0.d0
-      endif
-    enddo
-  enddo
-  
-  ! Find the inverse of D_M
-  call ludcmp(D_M,ncomp,indx,d) 
-  do j = 1, ncomp
-    call lubksb(D_M,ncomp,indx,identity(1,j))
-  enddo  
-  inv_D_M = identity      
-  
   ! Update the secondary concentrations
   do i = 1, ncomp
     if (reaction%use_log_formulation) then
@@ -1333,20 +1378,19 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
       
 end subroutine SecondaryRTUpdateIterate
 
-
 ! ************************************************************************** !
 !
-! SecondaryRTUpdateTimestep: Updates the secondary continuum variables 
+! SecondaryRTUpdateEquilState: Updates the equilibrium secondary continuum 
+!                              variables 
 ! at the end of time step
-! author: Satish Karra, LANL
-! date: 02/22/13
+! author: Satish Karra, LANL; Glenn Hammond (modification)
+! date: 02/22/13; 06/27/13
 !
 ! ************************************************************************** !
-subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
-                                     reaction,porosity,option) 
+subroutine SecondaryRTUpdateEquilState(sec_transport_vars,global_aux_vars, &
+                                       reaction,option) 
                                      
 
-  use Realization_class
   use Option_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
@@ -1356,21 +1400,15 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
   implicit none
   
 
-  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(sec_transport_type) :: sec_transport_vars
   type(global_auxvar_type) :: global_aux_vars
   type(reaction_type), pointer :: reaction
-  PetscReal :: porosity
   PetscInt :: ngcells,ncomp
-  PetscReal :: vol(sec_transport_vars%ncells)
-  PetscReal :: res_react(reaction%naqcomp)
-  PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: i,j
   
   ngcells = sec_transport_vars%ncells
   ncomp = reaction%naqcomp
-  vol = sec_transport_vars%vol     
                    
   do j = 1, ncomp
     do i = 1, ngcells
@@ -1379,11 +1417,51 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
     enddo
   enddo
     
-  res_react = 0.d0
-  jac_react = 0.d0 ! These are not used anyway
   do i = 1, ngcells
     call RTotal(sec_transport_vars%sec_rt_auxvar(i),global_aux_vars, &
                 reaction,option)
+  enddo
+  
+end subroutine SecondaryRTUpdateEquilState
+
+! ************************************************************************** !
+!
+! SecondaryRTUpdateKineticState: Updates the kinetic secondary continuum 
+!                                variables at the end of time step
+! author: Satish Karra, LANL; Glenn Hammond (modification)
+! date: 02/22/13; 06/27/13
+!
+! ************************************************************************** !
+subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
+                                         reaction,porosity,option) 
+                                     
+
+  use Option_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Reaction_module
+  use Global_Aux_module
+ 
+  implicit none
+  
+
+  type(option_type), pointer :: option
+  type(sec_transport_type) :: sec_transport_vars
+  type(global_auxvar_type) :: global_aux_vars
+  type(reaction_type), pointer :: reaction
+  PetscReal :: porosity
+  PetscInt :: ngcells
+  PetscReal :: vol(sec_transport_vars%ncells)
+  PetscReal :: res_react(reaction%naqcomp)
+  PetscReal :: jac_react(reaction%naqcomp,reaction%naqcomp)
+  PetscInt :: i,j
+  
+  ngcells = sec_transport_vars%ncells
+  vol = sec_transport_vars%vol     
+                   
+  res_react = 0.d0
+  jac_react = 0.d0 ! These are not used anyway
+  do i = 1, ngcells
     call RReaction(res_react,jac_react,PETSC_FALSE, &
                    sec_transport_vars%sec_rt_auxvar(i), &
                    global_aux_vars,porosity,vol(i),reaction,option)
@@ -1404,7 +1482,7 @@ subroutine SecondaryRTUpdateTimestep(sec_transport_vars,global_aux_vars, &
   endif
 
   
-end subroutine SecondaryRTUpdateTimestep
+end subroutine SecondaryRTUpdateKineticState
 
 ! ************************************************************************** !
 !

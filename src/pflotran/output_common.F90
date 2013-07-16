@@ -24,8 +24,6 @@ module Output_Common_module
             OutputGetVarFromArrayAtCoord, &
             OutputGetCellCenteredVelocities, &
             ConvertArrayToNatural, &
-            OutputFormatInt, &
-            OutputFormatDouble, &
             GetCellCoordinates, &
             GetVertexCoordinates, &
             OutputFilenameID, &
@@ -47,14 +45,11 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputCommonInit(realization_base,num_steps)
+subroutine OutputCommonInit()
 
   use Option_module
 
   implicit none
-  
-  class(realization_base_type) :: realization_base
-  PetscInt :: num_steps
   
   ! set size to -1 in order to re-initialize parallel communication blocks
   max_local_size_saved = -1
@@ -408,48 +403,6 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction
   call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
 end subroutine OutputGetCellCenteredVelocities
-
-! ************************************************************************** !
-!
-! OutputFormatInt: Writes a integer to a string
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
-function OutputFormatInt(int_value)
-
-  implicit none
-  
-  PetscInt :: int_value
-  
-  character(len=MAXWORDLENGTH) :: OutputFormatInt
-
-  write(OutputFormatInt,'(1i12)') int_value
-  
-  OutputFormatInt = adjustl(OutputFormatInt)
-  
-end function OutputFormatInt
-
-! ************************************************************************** !
-!
-! OutputFormatDouble: Writes a double or real to a string
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
-function OutputFormatDouble(real_value)
-
-  implicit none
-  
-  PetscReal :: real_value
-  
-  character(len=MAXWORDLENGTH) :: OutputFormatDouble
-
-  write(OutputFormatDouble,'(1es13.5)') real_value
-  
-  OutputFormatDouble = adjustl(OutputFormatDouble)
-  
-end function OutputFormatDouble
 
 ! ************************************************************************** !
 !
@@ -1147,7 +1100,8 @@ end subroutine OutputGetFlowrates
 ! date: 04/24/13
 !
 ! ************************************************************************** !
-subroutine OutputGetExplicitFlowrates(realization_base)
+subroutine OutputGetExplicitFlowrates(realization_base,count, &
+                                      ids_up,ids_dn,flowrates)
 
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1155,7 +1109,8 @@ subroutine OutputGetExplicitFlowrates(realization_base)
   use Option_module
   use Unstructured_Grid_Aux_module
   use Field_module
-  
+  use Connection_module
+
   implicit none
 
 #include "finclude/petscvec.h"
@@ -1169,35 +1124,132 @@ subroutine OutputGetExplicitFlowrates(realization_base)
   type(grid_type), pointer :: grid
   type(unstructured_grid_type),pointer :: ugrid
   type(field_type), pointer :: field
+  type(ugdm_type), pointer :: ugdm  
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+
   
-  PetscInt :: dof
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr2(:)
+  PetscReal, pointer :: vec_proc_ptr(:)
+  PetscInt, pointer :: ids_up(:), ids_dn(:)
+  PetscReal, pointer :: flowrates(:,:)
   PetscInt :: offset
   PetscInt :: istart, iend
   PetscInt :: iconn
   PetscErrorCode :: ierr
   PetscReal :: val
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: local_id_up, local_id_dn
+  PetscReal :: proc_up, proc_dn, conn_proc
+  PetscInt :: sum_connection, count
+  Vec :: global_vec
+  Vec :: local_vec
+  Vec :: vec_proc
+  PetscInt :: idof
   
   patch => realization_base%patch
   grid => patch%grid
   ugrid => grid%unstructured_grid
   option => realization_base%option
   field => realization_base%field
-
-
-  call VecGetOwnershipRange(field%flowrate_inst,istart,iend,ierr)
   
-  offset = option%nflowdof
-
-  do iconn = istart,iend-1
-    do dof = 1,option%nflowdof
-      val = abs(patch%internal_fluxes(dof,1,iconn))
-      call VecSetValues(field%flowrate_inst,ONE_INTEGER,(iconn-1)*offset + dof, &
-                        val,INSERT_VALUES,ierr) 
+  call VecCreateMPI(option%mycomm, &
+                    size(grid%unstructured_grid%explicit_grid%connections,2), &
+                    PETSC_DETERMINE,vec_proc,ierr)
+  call VecSet(vec_proc,0.d0,ierr)  
+  
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm,ONE_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm,global_vec, &
+                           GLOBAL,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm,local_vec, &
+                           LOCAL,option)
+  call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  vec_ptr = option%myrank
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  
+  call VecScatterBegin(ugdm%scatter_gtol,global_vec,local_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm%scatter_gtol,global_vec,local_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+                     
+  call VecGetArrayF90(local_vec,vec_ptr2,ierr)
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr) 
+  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  count = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn)
+      proc_up = vec_ptr2(ghosted_id_up)
+      proc_dn = vec_ptr2(ghosted_id_dn)
+      proc_up = min(option%myrank,int(proc_up))
+      proc_dn = min(option%myrank,int(proc_dn))
+      conn_proc = min(proc_up,proc_dn)
+      vec_proc_ptr(sum_connection) = conn_proc
     enddo
+    cur_connection_set => cur_connection_set%next
   enddo
-   
- call VecAssemblyBegin(field%flowrate_inst,ierr)
- call VecAssemblyEnd(field%flowrate_inst,ierr)
+
+  call VecRestoreArrayF90(local_vec,vec_ptr2,ierr)
+  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+
+  call VecAssemblyBegin(vec_proc,ierr)
+  call VecAssemblyEnd(vec_proc,ierr)   
+  
+  ! Count the number of connections on a local process
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  count = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      if (option%myrank == int(vec_proc_ptr(sum_connection))) &
+        count = count + 1
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo  
+  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+  
+
+  ! Count the number of connections on a local process
+  allocate(ids_up(count))
+  allocate(ids_dn(count))
+  allocate(flowrates(count,option%nflowdof))
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  count = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn)      
+      if (option%myrank == int(vec_proc_ptr(sum_connection))) then
+        count = count + 1
+        ids_up(count) = grid%nG2A(ghosted_id_up)
+        ids_dn(count) = grid%nG2A(ghosted_id_dn)
+        do idof = 1,option%nflowdof
+          flowrates(count,option%nflowdof) = &
+            patch%internal_fluxes(idof,1,sum_connection)
+        enddo
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo  
+  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
 
 end subroutine OutputGetExplicitFlowrates
 

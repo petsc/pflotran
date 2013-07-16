@@ -6,22 +6,49 @@ module PFLOTRAN_Factory_module
 
 #include "definitions.h"
 
-  public :: PFLOTRANInitializePrePETSc, &
-            PFLOTRANInitializePostPETSc, &
+  public :: PFLOTRANInitialize, &
+            PFLOTRANInitializePrePetsc, &
+#ifndef PROCESS_MODEL
+            PFLOTRANInitializePostPetsc, &
             PFLOTRANRun, &
+#endif
             PFLOTRANFinalize
 
 contains
 
 ! ************************************************************************** !
 !
-! PFLOTRANInitialize: Sets up PFLOTRAN subsurface simulation framework prior
-!                     to PETSc initialization
+! PFLOTRANInitialize: Sets up PFLOTRAN subsurface simulation 
+! author: Glenn Hammond
+! date: 06/10/13
+!
+! ************************************************************************** !
+subroutine PFLOTRANInitialize(option)
+
+  use Option_module
+  use Input_module
+  
+  implicit none
+  
+  type(option_type), pointer :: option
+
+  call PFLOTRANInitializePrePetsc(option)
+  call OptionInitPetsc(option)
+#ifdef PROCESS_MODEL
+  call PFLOTRANInitializePostPetsc(option)
+#endif
+
+end subroutine PFLOTRANInitialize
+
+! ************************************************************************** !
+!
+! PFLOTRANInitializePrePetsc: Sets up PFLOTRAN subsurface simulation 
+!                             framework prior to PETSc initialization
 ! author: Glenn Hammond
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine PFLOTRANInitializePrePETSc(option)
+subroutine PFLOTRANInitializePrePetsc(option)
 
   use Option_module
   
@@ -34,17 +61,31 @@ subroutine PFLOTRANInitializePrePETSc(option)
   
   call PFLOTRANInitCommandLineSettings(option)
   
-end subroutine PFLOTRANInitializePrePETSc
+end subroutine PFLOTRANInitializePrePetsc
 
 ! ************************************************************************** !
 !
-! PFLOTRANInitializePostPETSc: Sets up PFLOTRAN subsurface simulation 
-!                              framework after to PETSc initialization
+! PFLOTRANInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
+!                              framework after PETSc initialization
 ! author: Glenn Hammond
-! date: 06/07/13
+! date: 06/17/13
 !
 ! ************************************************************************** !
-subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
+#ifdef PROCESS_MODEL
+subroutine PFLOTRANInitializePostPetsc(option)
+
+  use Option_module
+  use Logging_module
+  
+  implicit none
+  
+  type(option_type) :: option
+
+  call LoggingCreate()
+  call OptionBeginTiming(option)
+  
+#else
+subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
                                        init_status)
 
   use Simulation_module
@@ -56,12 +97,12 @@ subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
 #endif
   
   implicit none
-  
+
   type(simulation_type), pointer :: simulation
-  type(stepper_type), pointer :: master_stepper  
+  type(stepper_type), pointer :: master_stepper
   type(option_type), pointer :: option
   PetscInt :: init_status
-  
+
   call OptionBeginTiming(option)
   simulation => SimulationCreate(option)
   call Init(simulation)
@@ -89,9 +130,10 @@ subroutine PFLOTRANInitializePostPETSc(simulation, master_stepper, option, &
                                 simulation%tran_stepper, &
                                 init_status)
 #endif 
-  
-end subroutine PFLOTRANInitializePostPETSc
+#endif 
+end subroutine PFLOTRANInitializePostPetsc
 
+#ifndef PROCESS_MODEL
 ! ************************************************************************** !
 !
 ! PFLOTRANRun: Runs the PFLOTRAN simulation
@@ -108,11 +150,11 @@ subroutine PFLOTRANRun(simulation, master_stepper, init_status)
 #endif
   
   implicit none
-  
+
   type(simulation_type) :: simulation
   type(stepper_type), pointer :: master_stepper
   PetscInt :: init_status
-  
+
   select case(init_status)
     case(TIMESTEPPER_INIT_PROCEED)
 #ifdef SURFACE_FLOW
@@ -157,6 +199,7 @@ subroutine PFLOTRANRun(simulation, master_stepper, init_status)
   end select
 
 end subroutine PFLOTRANRun
+#endif
 
 ! ************************************************************************** !
 !
@@ -165,17 +208,32 @@ end subroutine PFLOTRANRun
 ! date: 06/07/13
 !
 ! ************************************************************************** !
+#ifdef PROCESS_MODEL
+subroutine PFLOTRANFinalize(option)
+
+  use Option_module
+  use Logging_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  call OptionEndTiming(option)
+  call LoggingDestroy()
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    close(option%fid_out)
+  endif
+#else
 subroutine PFLOTRANFinalize(simulation,option)
 
   use Simulation_module
   use Regression_module
   use Option_module
-  
   implicit none
-  
+
   type(simulation_type), pointer :: simulation
   type(option_type) :: option
-  
+
   call RegressionOutput(simulation%regression,simulation%realization, &
                         simulation%flow_stepper,simulation%tran_stepper)
 
@@ -185,6 +243,7 @@ subroutine PFLOTRANFinalize(simulation,option)
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif
+#endif
 
 end subroutine PFLOTRANFinalize
 
@@ -199,12 +258,13 @@ subroutine PFLOTRANInitCommandLineSettings(option)
 
   use Option_module
   use Input_module
+  use String_module
   
   implicit none
   
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, string2
   PetscBool :: option_found
   PetscBool :: bool_flag
   PetscBool :: pflotranin_option_found
@@ -251,21 +311,22 @@ subroutine PFLOTRANInitCommandLineSettings(option)
   call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
 
   string = '-v'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) option%verbosity = 1
+  call InputGetCommandLineInt(string,i,option_found,option)
+  if (option_found) option%verbosity = i
  
-  string = '-multisimulation'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) option%simulation_type = MULTISIMULATION_SIM_TYPE
-
-  string = '-stochastic'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) option%simulation_type = STOCHASTIC_SIM_TYPE
-
   ! this will get overwritten later if stochastic
   string = '-realization_id'
   call InputGetCommandLineInt(string,i,option_found,option)
   if (option_found) option%id = i
+  
+  ! this will get overwritten later if stochastic
+  string = '-simulation_mode'
+  call InputGetCommandLineString(string,string2, &
+                                 option_found,option)
+  if (option_found) then
+    call StringToUpper(string2)
+    option%simulation_mode = string2
+  endif
 
 end subroutine PFLOTRANInitCommandLineSettings
 

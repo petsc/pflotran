@@ -159,8 +159,6 @@ subroutine Init(simulation)
   geomech_field => geomech_realization%geomech_field
 #endif
   
-  option%init_stage = PETSC_TRUE
-
   nullify(flow_solver)
   nullify(tran_solver)
   
@@ -497,7 +495,7 @@ subroutine Init(simulation)
     call SNESGetLineSearch(flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-    if (option%verbosity >= 1) then
+    if (option%verbosity >= 2) then
       string = '-flow_snes_view'
       call PetscOptionsInsertString(string, ierr)
     endif
@@ -754,7 +752,7 @@ subroutine Init(simulation)
       endif
       
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-      if (option%verbosity >= 1) then
+      if (option%verbosity >= 2) then
         string = '-tran_snes_view'
         call PetscOptionsInsertString(string, ierr)
       endif
@@ -961,9 +959,35 @@ subroutine Init(simulation)
   endif
   if (realization%output_option%print_permeability) then
     ! add permeability to header
-    call OutputVariableAddToList( &
-           realization%output_option%output_variable_list, &
-           'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+    if (MaterialAnisotropyExists(realization%material_properties)) then
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability X',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability Y',OUTPUT_GENERIC,'m^2',PERMEABILITY_Y)
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability Z',OUTPUT_GENERIC,'m^2',PERMEABILITY_Z)
+#ifdef DASVYAT
+      if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC .or. &
+         realization%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
+        call OutputVariableAddToList( &
+               realization%output_option%output_variable_list, &
+               'Permeability XY',OUTPUT_GENERIC,'m^2',PERMEABILITY_XY)
+        call OutputVariableAddToList( &
+               realization%output_option%output_variable_list, &
+               'Permeability XZ',OUTPUT_GENERIC,'m^2',PERMEABILITY_XZ)
+        call OutputVariableAddToList( &
+               realization%output_option%output_variable_list, &
+               'Permeability YZ',OUTPUT_GENERIC,'m^2',PERMEABILITY_YZ)
+      endif
+#endif
+    else
+      call OutputVariableAddToList( &
+             realization%output_option%output_variable_list, &
+             'Permeability',OUTPUT_GENERIC,'m^2',PERMEABILITY)
+    endif
   endif
   if (realization%output_option%print_iproc) then
     output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
@@ -1137,6 +1161,16 @@ subroutine Init(simulation)
         call printErrMsgByRank(option)
     end select
   endif ! option%nsurfflowdof > 0
+
+  if (simulation%surf_realization%output_option%print_iproc) then
+    output_variable => OutputVariableCreate('Processor ID',OUTPUT_DISCRETE,'', &
+                                            PROCESSOR_ID)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 1 ! integer
+    call OutputVariableAddToList( &
+           simulation%surf_realization%output_option%output_variable_list,output_variable)
+  endif
+
 #endif
 
 #ifdef GEOMECH
@@ -1497,7 +1531,8 @@ subroutine InitReadInput(simulation)
   type(output_option_type), pointer :: output_option
   type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
   class(dataset_base_type), pointer :: dataset
-  type(mass_transfer_type), pointer :: mass_transfer
+  type(mass_transfer_type), pointer :: flow_mass_transfer
+  type(mass_transfer_type), pointer :: rt_mass_transfer
   type(input_type), pointer :: input
   
 #ifdef GEOMECH
@@ -1725,14 +1760,24 @@ subroutine InitReadInput(simulation)
         nullify(coupler)        
       
 !....................
-      case ('MASS_TRANSFER')
-        mass_transfer => MassTransferCreate()
-        call InputReadWord(input,option,mass_transfer%name,PETSC_TRUE)
-        call InputDefaultMsg(input,option,'Mass Transfer name') 
-        call MassTransferRead(mass_transfer,input,option)
-        call MassTransferAddToList(mass_transfer, &
-                                   realization%mass_transfer_list)
-        nullify(mass_transfer)        
+      case ('FLOW_MASS_TRANSFER')
+        flow_mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,flow_mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Flow Mass Transfer name') 
+        call MassTransferRead(flow_mass_transfer,input,option)
+        call MassTransferAddToList(flow_mass_transfer, &
+                                   realization%flow_mass_transfer_list)
+        nullify(flow_mass_transfer)
+      
+!....................
+      case ('RT_MASS_TRANSFER')
+        rt_mass_transfer => MassTransferCreate()
+        call InputReadWord(input,option,rt_mass_transfer%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'RT Mass Transfer name')
+        call MassTransferRead(rt_mass_transfer,input,option)
+        call MassTransferAddToList(rt_mass_transfer, &
+                                   realization%rt_mass_transfer_list)
+        nullify(rt_mass_transfer)
       
 !....................
       case ('STRATIGRAPHY','STRATA')

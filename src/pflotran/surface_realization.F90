@@ -405,9 +405,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
                                      surf_field%work)
 
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
-                                     surf_field%vol_subsurf_2_surf)
-  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
-                                     surf_field%press_subsurf)
+                                     surf_field%exchange_subsurf_2_surf)
 
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%mannings0, &
@@ -427,7 +425,9 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%por)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
-                                     surf_field%sat_func_id)
+                                     surf_field%icap_loc)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%ithrm_loc)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%subsurf_xx)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
@@ -435,7 +435,25 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%subsurf_zz)
   call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%surf2subsurf_dist)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
                                      surf_field%surf2subsurf_dist_gravity)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%press_subsurf)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%temp_subsurf)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%sat_ice)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%ckwet)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%ckdry)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%ckice)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%th_alpha)
+  call DiscretizationDuplicateVector(discretization,surf_field%mannings0, &
+                                     surf_field%th_alpha_fr)
 
   ! n degrees of freedom, local
   call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
@@ -718,6 +736,10 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+
+  call FlowConditionUpdate(surf_realization%surf_flow_conditions, &
+                           surf_realization%option, &
+                           surf_realization%option%time)
 
   cur_level => surf_realization%level_list%first
   do 

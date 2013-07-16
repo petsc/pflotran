@@ -1,0 +1,62 @@
+-- PRESSURE: Liquid Pressure --
+      Max:   1.2364313044700E+05
+      Min:   8.4630550724544E+04
+     Mean:   1.0355379493266E+05
+        1:   8.4630550724544E+04
+        8:   1.1075603985456E+05
+       11:   8.7963183721801E+04
+-- SATURATION: Liquid Saturation --
+      Max:   1.0000000000000E+00
+      Min:   8.7173976836301E-01
+     Mean:   9.7007721797620E-01
+        1:   8.7173976836301E-01
+        8:   1.0000000000000E+00
+       11:   9.2505492417143E-01
+-- CONCENTRATION: Total Tracer --
+      Max:   4.3096529375426E-04
+      Min:   1.7584365870599E-08
+     Mean:   5.0656084837321E-05
+        1:   1.9984897381028E-07
+        8:   2.4923171577442E-05
+       11:   7.5744990648585E-05
+-- CONCENTRATION: Total Tracer2 --
+      Max:   3.2262443942583E-05
+      Min:   2.0007268299826E-08
+     Mean:   2.9643130212258E-06
+        1:   3.2262443942583E-05
+        8:   9.7125187008579E-08
+       11:   4.5673778936153E-08
+-- CONCENTRATION: Total Tracer3 --
+      Max:   7.7637733105067E-04
+      Min:   1.5737065090556E-07
+     Mean:   1.9481542982548E-04
+        1:   1.6458883322172E-06
+        8:   5.4879426219626E-04
+       11:   5.1600790388114E-05
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+        1:         1
+        8:         1
+       11:         1
+-- GENERIC: LIQUID VELOCITY [m/d] --
+        1:   7.8849526424368E-03  7.8849526424368E-03 -6.4343375005562E-04
+        8:   2.3198690582875E-05  1.6884375416755E-02  1.6833583378151E-02
+       11:   6.9894636183067E-03  2.9682756000822E-03  3.7393880013463E-02
+-- SOLUTION: Flow --
+   Time (seconds):   1.3050007820129E-01
+   Time Steps:           26
+   Newton Iterations:           79
+   Solver Iterations:          370
+   Time Step Cuts:            0
+   Solution 2-Norm:   4.0436133989179E+05
+   Residual 2-Norm:   1.0386135140189E-16
+-- SOLUTION: Transport --
+   Time (seconds):   3.5400629043579E-02
+   Time Steps:           26
+   Newton Iterations:           27
+   Solver Iterations:           27
+   Time Step Cuts:            0
+   Solution 2-Norm:   1.2359413107707E-03
+   Residual 2-Norm:   1.2672284593897E-17

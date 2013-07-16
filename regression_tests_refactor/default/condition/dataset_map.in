@@ -1,0 +1,227 @@
+:Description: 3D groundwater flow and solute transport
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    5
+    105 
+    205 
+    305 
+    405 
+    505 
+    605 
+    705 
+    805 
+    905 
+  /
+END
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== discretization ===================================
+GRID
+  TYPE unstructured dataset_map_grid.h5
+END
+
+:=========================== datasets =========================================
+DATASET MAPPED et_dataset
+  FILENAME dataset_map_data.h5
+  HDF5_DATASET_NAME ET_3D
+  MAX_BUFFER_SIZE 10
+  MAP_HDF5_DATASET_NAME Map_ET_onto_10x10x5
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY prop_mineral
+  ID 1
+  POROSITY 0.55d0
+  TORTUOSITY 0.5d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf_mineral
+  PERMEABILITY
+    PERM_X 7.918d-11
+    PERM_Y 7.918d-11
+    PERM_Z 7.918d-13
+  /
+END
+
+MATERIAL_PROPERTY prop_organic_bot
+  ID 3
+  POROSITY 0.86d0
+  TORTUOSITY 0.5d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf_organic_bot
+  PERMEABILITY
+    PERM_X 9.465d-10
+    PERM_Y 9.465d-10
+    PERM_Z 9.465d-12
+  /
+END
+
+MATERIAL_PROPERTY prop_organic_top
+  ID 2
+  POROSITY 0.90d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf_organic_top
+  PERMEABILITY
+    PERM_X 1.7656d-09
+    PERM_Y 1.7656d-09
+    PERM_Z 1.7656d-11
+  /
+END
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf_mineral
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.05d0
+  LAMBDA 0.2593d0
+  ALPHA 1.53391d-03
+  MAX_CAPILLARY_PRESSURE 1.d8
+END
+
+SATURATION_FUNCTION sf_organic_bot
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.05d0
+  LAMBDA 0.2593d0
+  ALPHA 1.0226d-03
+  MAX_CAPILLARY_PRESSURE 1.d8
+END
+
+SATURATION_FUNCTION sf_organic_top
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.05d0
+  LAMBDA 0.2593d0
+  ALPHA 2.0452d-03
+  MAX_CAPILLARY_PRESSURE 1.d8
+END
+
+:=========================== output options ===================================
+OUTPUT
+:  PERIODIC TIME 1. d
+:  FORMAT HDF5
+END
+:=========================== times ============================================
+TIME
+  FINAL_TIME 2 d
+  INITIAL_TIMESTEP_SIZE 3600.0 s
+  MAXIMUM_TIMESTEP_SIZE 3600.0 s        ! produces CFL ~<= 1.
+END
+
+:=========================== regions ==========================================
+REGION all
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+REGION Layer01
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+REGION Layer02
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+REGION Layer03
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+REGION Layer04
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+REGION Layer05
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+REGION top
+  FILE dataset_map_grid.h5
+  GRID unstructured
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  UNITS Pa
+  TYPE
+    PRESSURE hydrostatic
+  /
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION et
+  TYPE
+    RATE heterogeneous_mass_rate
+  /
+  RATE DATASET et_dataset
+END
+
+FLOW_CONDITION from_surface
+  TYPE
+    RATE heterogeneous_mass_rate
+  /
+  RATE 0d-6
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION initial_copuler
+  FLOW_CONDITION initial
+  REGION all
+END
+
+SOURCE_SINK root_uptake
+  FLOW_CONDITION et
+  REGION all
+END
+
+SOURCE_SINK from_surface_ss
+  FLOW_CONDITION from_surface
+  REGION top
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION Layer01
+  MATERIAL prop_mineral
+END
+
+STRATA
+  REGION Layer02
+  MATERIAL prop_mineral
+END
+
+STRATA
+  REGION Layer03
+  MATERIAL prop_mineral
+END
+
+STRATA
+  REGION Layer04
+  MATERIAL prop_organic_bot
+END
+
+STRATA
+  REGION Layer05
+  MATERIAL prop_organic_top
+END
+
+

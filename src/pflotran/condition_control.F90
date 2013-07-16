@@ -1089,6 +1089,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   use Level_module
   use Patch_module
   use Water_EOS_module
+  use Surface_TH_Aux_module
+  use Surface_Global_Aux_module
   
   implicit none
 
@@ -1103,6 +1105,9 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   PetscErrorCode :: ierr
   
   PetscReal :: temperature, p_sat
+  PetscReal :: pw, dw_kg, dw_mol, hw
+  PetscReal :: temp
+  PetscReal :: dpsat_dt
   character(len=MAXSTRINGLENGTH) :: string
   
   type(option_type), pointer :: option
@@ -1114,12 +1119,18 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
+  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
 
   option => surf_realization%option
   discretization => surf_realization%discretization
   surf_field => surf_realization%surf_field
   patch => surf_realization%patch
 
+  if (option%iflowmode == TH_MODE) then
+    surf_th_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
+    surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
+  endif
 
   cur_level => surf_realization%level_list%first
   do 
@@ -1160,14 +1171,26 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                     cycle
                   endif
                   do idof = 1, option%nflowdof
-                    xx_p(ibegin+idof-1) = &
+                    select case (idof)
+                      case (ONE_INTEGER)
+                        xx_p(ibegin+idof-1) = &
                           initial_condition%flow_condition% &
                           sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
-                    !TODO(GB): Correct the initialization of surface flow condition
-                    if (idof == 1) xx_p(ibegin+idof-1) = 0.d0
-                    !if (idof == 1.and.option%iflowmode==TH_MODE) then
-                    !  xx_p(ibegin+idof-1) = 0.d0+option%reference_pressure
-                    !endif
+                      case (TWO_INTEGER)
+                        temp = &
+                          initial_condition%flow_condition% &
+                          sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                        pw = option%reference_pressure
+                        
+                        call wateos_noderiv(temp, pw, dw_kg, &
+                                            dw_mol, hw, option%scale, ierr)
+                        ! [rho*h*T*Cw]
+                        xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
+                                              (temp + 273.15d0)* &
+                                              surf_th_aux_vars(ghosted_id)%Cw
+                        surf_global_aux_vars(ghosted_id)%den_kg(1) = dw_kg
+                        surf_global_aux_vars(ghosted_id)%temp(1) = temp
+                    end select
                   enddo
                 enddo
               else
@@ -1205,7 +1228,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   enddo
    
   ! update dependent vectors
-  call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
+  call DiscretizationGlobalToLocal(discretization, surf_field%flow_xx, &
+                                   surf_field%flow_xx_loc, NFLOWDOF)
 
 end subroutine CondControlAssignFlowInitCondSurface
 #endif

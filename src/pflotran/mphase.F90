@@ -206,7 +206,7 @@ subroutine MphaseSetupPatch(realization)
   
 !  option%io_buffer = 'Before Mphase can be run, the thc_parameter object ' // &
 !                     'must be initialized with the proper variables ' // &
-!                     'MphaseAuxCreate() is called anyhwere.'
+!                     'MphaseAuxCreate() is called anywhere.'
 !  call printErrMsg(option)  
 
 ! mphase_parameters create *********************************************
@@ -381,20 +381,21 @@ end subroutine MphaseSetupPatch
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine MphaseComputeMassBalance(realization,mass_balance)
+subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
 
   use Realization_class
   use Level_module
   use Patch_module
 
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nflowspec, &
-                            realization%option%nphase)
-  
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_trapped(realization%option%nphase)
+
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   mass_balance = 0.d0
+  mass_trapped = 0.d0
   
   cur_level => realization%level_list%first
   do
@@ -403,7 +404,7 @@ subroutine MphaseComputeMassBalance(realization,mass_balance)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call MphaseComputeMassBalancePatch(realization,mass_balance)
+      call MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -418,32 +419,37 @@ end subroutine MphaseComputeMassBalance
 ! date: 12/19/08
 !
 ! ************************************************************************** !
-subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
+subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
  
   use Realization_class
   use Option_module
   use Patch_module
   use Field_module
   use Grid_module
+! use Saturation_Function_module
+! use Mphase_pckr_module
  
   implicit none
   
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nflowspec, &
-                            realization%option%nphase)
+! type(saturation_function_type) :: saturation_function_type
+
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_trapped(realization%option%nphase)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(mphase_auxvar_type), pointer :: mphase_aux_vars(:)
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:), icap_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iphase
   PetscInt :: ispec_start, ispec_end, ispec
+  PetscReal :: pckr_sir(realization%option%nphase)
 
   option => realization%option
   patch => realization%patch
@@ -454,13 +460,16 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
 
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p, ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
+
     ! mass = volume * saturation * density * mole fraction
     do iphase = 1, option%nphase
       do ispec = 1, option%nflowspec
@@ -470,11 +479,33 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
           mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
           porosity_loc_p(ghosted_id)*volume_p(local_id)
       enddo
+
+      pckr_sir(iphase) = &
+        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr%sr(iphase)
+
+      if (iphase == 1 .and. &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        mass_trapped(iphase) = mass_trapped(iphase) + &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
+        porosity_loc_p(ghosted_id)*volume_p(local_id)
+      endif
+
+      if (iphase == 2 .and. &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        mass_trapped(iphase) = mass_trapped(iphase) + &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
+        mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
+        porosity_loc_p(ghosted_id)*volume_p(local_id)
+      endif
     enddo
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p, ierr)
   
 end subroutine MphaseComputeMassBalancePatch
 

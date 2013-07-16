@@ -208,6 +208,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Structured_Grid_module
   use Unstructured_Grid_module
   use Dataset_Base_class
+  use Dataset_module
   use Dataset_Common_HDF5_class
   use Unstructured_Grid_Aux_module
   use Discretization_module
@@ -645,6 +646,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
+            case('PROCESSOR_ID')
+              output_option%print_iproc = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
               mass_flowrate = PETSC_TRUE
               energy_flowrate = PETSC_TRUE
@@ -755,11 +758,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         enddo
       !.........................................................................
       case ('SURF_DATASET')
-      dataset => DatasetCommonHDF5Create()
-      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
-      call InputDefaultMsg(input,option,'Dataset name')
-      call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
-                                 option)
+      nullify(dataset)
+      call DatasetRead(input,dataset,option)
       call DatasetBaseAddToList(dataset,surf_realization%datasets)
       nullify(dataset)
       

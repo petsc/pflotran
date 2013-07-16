@@ -1,0 +1,446 @@
+! Process Model Coupler Base class
+module PMC_Base_class
+
+  use Process_Model_Base_class
+  use Timestepper_Base_class
+  use Option_module
+  use Waypoint_module
+  use Process_Model_module
+  use Output_module, only : Output
+  
+  implicit none
+
+#include "definitions.h"
+  
+  private
+  
+  ! process model coupler type
+  type, public :: pmc_base_type
+    character(len=MAXWORDLENGTH) :: name
+    type(option_type), pointer :: option
+    class(stepper_base_type), pointer :: timestepper
+    class(pm_base_type), pointer :: pm_list
+    type(waypoint_list_type), pointer :: waypoints
+    class(pmc_base_type), pointer :: below
+    class(pmc_base_type), pointer :: next
+    type(pm_pointer_type), pointer :: pm_ptr
+    procedure(Output), nopass, pointer :: Output
+    procedure(Synchronize), pointer :: Synchronize1
+    procedure(Synchronize), pointer :: Synchronize2
+    procedure(Synchronize), pointer :: Synchronize3
+  contains
+    procedure, public :: Init => PMCBaseInit
+    procedure, public :: InitializeRun
+    procedure, public :: CastToBase => PMCCastToBase
+    procedure, public :: SetTimestepper => PMCBaseSetTimestepper
+    procedure, public :: RunToTime => PMCBaseRunToTime
+    procedure, public :: FinalizeRun
+    procedure, public :: OutputLocal
+    procedure, public :: UpdateSolution => PMCBaseUpdateSolution
+    procedure, public :: Destroy => PMCBaseDestroy
+  end type pmc_base_type
+  
+  abstract interface
+    subroutine Synchronize(pmc)
+      import pmc_base_type
+      implicit none
+        class(pmc_base_type) :: pmc
+    end subroutine Synchronize
+  end interface
+  
+  public :: PMCBaseCreate, &
+            PMCBaseInit, &
+            SetOutputFlags
+  
+contains
+
+! ************************************************************************** !
+!
+! PMCBaseCreate: Allocates and initializes a new process model coupler object.
+! author: Glenn Hammond
+! date: 06/10/13
+!
+! ************************************************************************** !
+function PMCBaseCreate()
+
+  implicit none
+  
+  class(pmc_base_type), pointer :: PMCBaseCreate
+  
+  class(pmc_base_type), pointer :: pmc
+
+  print *, 'PMCBase%Create()'
+  
+  allocate(pmc)
+  call pmc%Init()
+
+  PMCBaseCreate => pmc  
+  
+end function PMCBaseCreate
+
+! ************************************************************************** !
+!
+! PMCBaseInit: Initializes a new process model coupler object.
+! author: Glenn Hammond
+! date: 06/10/13
+!
+! ************************************************************************** !
+subroutine PMCBaseInit(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+  
+  print *, 'PMCBase%Init()'
+  
+  this%name = 'PMCBase'
+  nullify(this%option)
+  nullify(this%timestepper)
+  nullify(this%pm_list)
+  nullify(this%waypoints)
+  nullify(this%below)
+  nullify(this%next)
+  this%Output => Null()
+  this%Synchronize1 => Null()
+  this%Synchronize2 => Null()
+  this%Synchronize3 => Null()
+  
+  allocate(this%pm_ptr)
+  nullify(this%pm_ptr%ptr)
+  
+end subroutine PMCBaseInit
+
+! ************************************************************************** !
+!
+! PMCBaseCastToBase: Initializes a new process model coupler object.
+! author: Glenn Hammond
+! date: 06/10/13
+!
+! ************************************************************************** !
+function PMCCastToBase(this)
+
+  implicit none
+  
+  class(pmc_base_type), target :: this
+  
+  class(pmc_base_type), pointer :: PMCCastToBase
+
+  PMCCastToBase => this
+  
+end function PMCCastToBase
+
+! ************************************************************************** !
+!
+! PMCBaseSetTimestepper: 
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+subroutine PMCBaseSetTimestepper(this,timestepper)
+
+  use Timestepper_Base_class
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+  class(stepper_base_type), pointer :: timestepper
+
+  call printMsg(this%option,'PMCBase%SetTimestepper()')
+  
+  this%timestepper => timestepper
+  
+end subroutine PMCBaseSetTimestepper
+
+! ************************************************************************** !
+!
+! InitializeRun: Initializes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine InitializeRun(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+  
+  class(pm_base_type), pointer :: cur_pm
+  
+  call printMsg(this%option,'PMCBase%InitializeRun()')
+  
+  cur_pm => this%pm_list
+  do
+    if (.not.associated(cur_pm)) exit
+    call cur_pm%InitializeRun()
+    cur_pm => cur_pm%next
+  enddo
+  
+  if (associated(this%below)) then
+    call this%below%InitializeRun()
+  endif
+  
+  if (associated(this%next)) then
+    call this%next%InitializeRun()
+  endif
+
+end subroutine InitializeRun
+
+! ************************************************************************** !
+!
+! PMCBaseRunToTime: Runs the actual simulation.
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
+
+  use Timestepper_Base_class
+  
+  implicit none
+  
+  class(pmc_base_type), target :: this
+  PetscReal :: sync_time
+  PetscInt :: stop_flag
+  
+  PetscInt :: local_stop_flag
+  PetscBool :: failure
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
+  class(pm_base_type), pointer :: cur_pm
+  
+  this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
+  call printVerboseMsg(this%option)
+  
+  if (associated(this%Synchronize1)) then
+    call this%Synchronize1()
+  endif
+  
+  local_stop_flag = 0
+  do
+    if (local_stop_flag > 0) exit ! end simulation
+    if (this%timestepper%target_time >= sync_time) exit
+    
+    call SetOutputFlags(this)
+    plot_flag = PETSC_FALSE
+    transient_plot_flag = PETSC_FALSE
+    
+    call this%timestepper%SetTargetTime(sync_time,this%option, &
+                                        local_stop_flag,plot_flag, &
+                                        transient_plot_flag)
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
+
+    if (local_stop_flag > 1) exit ! failure
+    ! Have to loop over all process models coupled in this object and update
+    ! the time step size.  Still need code to force all process models to
+    ! use the same time step size if tightly or iteratively coupled.
+    cur_pm => this%pm_list
+    do
+      if (.not.associated(cur_pm)) exit
+      ! have to update option%time for conditions
+      this%option%time = this%timestepper%target_time
+      call cur_pm%UpdateSolution()
+      call this%timestepper%UpdateDT(cur_pm)
+      cur_pm => cur_pm%next
+    enddo
+    ! Run underlying process model couplers
+    if (associated(this%below)) then
+      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
+    endif
+    
+    ! only print output for process models of depth 0
+    if (associated(this%Output)) then
+      if (this%timestepper%time_step_cut_flag) then
+        plot_flag = PETSC_FALSE
+      endif
+      ! however, if we are using the modulus of the output_option%imod, we may
+      ! still print
+      if (mod(this%timestepper%steps, &
+              this%pm_list% &
+                output_option%periodic_output_ts_imod) == 0) then
+        plot_flag = PETSC_TRUE
+      endif
+      if (plot_flag .or. mod(this%timestepper%steps, &
+                             this%pm_list%output_option% &
+                               periodic_tr_output_ts_imod) == 0) then
+        transient_plot_flag = PETSC_TRUE
+      endif
+      call this%Output(this%pm_list%realization_base,plot_flag, &
+                       transient_plot_flag)
+    endif
+    
+  enddo
+  
+  if (associated(this%Synchronize2)) then
+    call this%Synchronize2()
+  endif
+  
+  ! Run neighboring process model couplers
+  if (associated(this%next)) then
+    call this%next%RunToTime(sync_time,local_stop_flag)
+  endif
+
+  if (associated(this%Synchronize3)) then
+    call this%Synchronize3()
+  endif
+  
+  stop_flag = max(stop_flag,local_stop_flag)
+  
+end subroutine PMCBaseRunToTime
+
+! ************************************************************************** !
+!
+! PMCBaseUpdateSolution: 
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine PMCBaseUpdateSolution(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+  class(pm_base_type), pointer :: cur_pm
+  
+  call printMsg(this%option,'PMCBase%UpdateSolution()')
+  
+  cur_pm => this%pm_list
+  do
+    if (.not.associated(cur_pm)) exit
+    ! have to update option%time for conditions
+    this%option%time = this%timestepper%target_time
+    call cur_pm%UpdateSolution()
+    cur_pm => cur_pm%next
+  enddo  
+  
+end subroutine PMCBaseUpdateSolution
+
+! ************************************************************************** !
+!
+! FinalizeRun: Finalizes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine FinalizeRun(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  call printMsg(this%option,'PMCBase%FinalizeRun()')
+  
+  if (OptionPrintToScreen(this%option)) then
+    write(*,'(/," PMC steps = ",i6," newton = ",i8," linear = ",i10, &
+            & " cuts = ",i6)') &
+            this%timestepper%steps, &
+            this%timestepper%cumulative_newton_iterations, &
+            this%timestepper%cumulative_linear_iterations, &
+            this%timestepper%cumulative_time_step_cuts
+    write(string,'(f12.1)') this%timestepper%cumulative_solver_time
+    write(*,*) 'PMC SNES time = ' // trim(adjustl(string)) // ' seconds'
+  endif
+
+  if (associated(this%below)) then
+    call this%below%FinalizeRun()
+  endif
+  
+end subroutine FinalizeRun
+
+! ************************************************************************** !
+!
+! SetOutputFlags: Toggles flags that determine whether output is printed
+!                 to the screen and output file during a time step.
+! author: Glenn Hammond
+! date: 03/29/13
+!
+! ************************************************************************** !
+subroutine SetOutputFlags(this)
+
+  use Option_module
+  use Output_Aux_module
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+  
+  type(output_option_type), pointer :: output_option
+  
+  output_option => this%pm_list%output_option
+
+  if (OptionPrintToScreen(this%option) .and. &
+      mod(this%timestepper%steps,output_option%screen_imod) == 0) then
+    this%option%print_screen_flag = PETSC_TRUE
+  else
+    this%option%print_screen_flag = PETSC_FALSE
+  endif
+
+  if (OptionPrintToFile(this%option) .and. &
+      mod(this%timestepper%steps,output_option%output_file_imod) == 0) then
+    this%option%print_file_flag = PETSC_TRUE
+  else
+    this%option%print_file_flag = PETSC_FALSE
+      
+  endif
+  
+end subroutine SetOutputFlags
+
+! ************************************************************************** !
+!
+! OutputLocal: Finalizes the time stepping
+! author: Glenn Hammond
+! date: 03/18/13
+!
+! ************************************************************************** !
+recursive subroutine OutputLocal(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+  
+  class(pm_base_type), pointer :: cur_pm
+  
+  call printMsg(this%option,'PMC%Output()')
+  
+  cur_pm => this%pm_list
+  do
+    if (.not.associated(cur_pm)) exit
+!    call Output(cur_pm%realization,plot_flag,transient_plot_flag)
+    cur_pm => cur_pm%next
+  enddo
+    
+end subroutine OutputLocal
+
+! ************************************************************************** !
+!
+! PMCBaseDestroy: Deallocates a pmc object
+! author: Glenn Hammond
+! date: 03/14/13
+!
+! ************************************************************************** !
+recursive subroutine PMCBaseDestroy(this)
+
+  use Utility_module, only: DeallocateArray 
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+  
+  call printMsg(this%option,'PMC%Destroy()')
+  
+  if (associated(this%next)) then
+    call this%next%Destroy()
+  endif 
+  
+  if (associated(this%pm_list)) then
+    call this%pm_list%Destroy()
+  endif
+
+!  deallocate(pmc)
+!  nullify(pmc)
+  
+end subroutine PMCBaseDestroy
+  
+end module PMC_Base_class

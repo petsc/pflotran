@@ -132,6 +132,8 @@ PetscInt, parameter :: SATURATION_BC = 15
 PetscInt, parameter :: HET_VOL_RATE_SS = 16
 PetscInt, parameter :: HET_MASS_RATE_SS = 17
 PetscInt, parameter :: HET_DIRICHLET = 18
+PetscInt, parameter :: ENERGY_RATE_SS = 19
+PetscInt, parameter :: HET_ENERGY_RATE_SS = 20
 PetscInt, parameter :: WELL_SS = 100
 
 ! source/sink scaling options
@@ -235,5 +237,9 @@ PetscInt, parameter :: ONE_DIM_GRID = 1
 PetscInt, parameter :: GEOMECH_DISP_X_DOF = 1
 PetscInt, parameter :: GEOMECH_DISP_Y_DOF = 2
 PetscInt, parameter :: GEOMECH_DISP_Z_DOF = 3
+
+PetscInt, parameter :: PROCEED = 0
+PetscInt, parameter :: DONE = 1
+PetscInt, parameter :: FAIL = 2
 
 #define HASH

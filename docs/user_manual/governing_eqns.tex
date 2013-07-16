@@ -502,6 +502,105 @@ Thermal conductivity is determined from the equation (Somerton et al., 1974)
 \EN 
 where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
 
+\subsubsection{Modeling with ice}
+In PFLOTRAN, to model with ice and water vapor, one must compile with the option \texttt{ice=1}. The formulation used involves solving a modified Richard's equation coupled with energy balance equation (in \texttt{THC} mode, the tracer transport equation is also solved). This formulation is different from Painter 2011, where a multiphase approach was used and mass balance for air was also solved for. In this formulation, we do not track the movement of air, and hence we do not consider the mass balance for air. The balance of mass and energy for the water component that can be in three phases (liquid, gas, ice) are given by
+\SEQ
+\BA
+& \pfx{}{t}\left[ \phi \left( s_l \eta_l X_w^l + s_g \eta_g X_w^g + s_i \eta_i X_w^i \right) \right] + \boldsymbol{\nabla} \cdot \left[X_w^l \boldsymbol{v}_l \eta_l + X_w^g \eta_g \boldsymbol{v}_g \right] - \boldsymbol{\nabla} \cdot \left[\phi s_g \tau_g  \eta_g D_g \boldsymbol{\nabla} X^g_w \right] = Q_w, \\
+& \pfx{}{t}\left[ \phi \left( s_l \eta_l U_l + s_g \eta_g U_g + s_i \eta_i U_i \right) + (1- \phi) \rho_r c_r T \right] + \boldsymbol{\nabla} \cdot \left[ \boldsymbol{v}_l \eta_l  H_l+   \boldsymbol{v}_g \eta_gH_g \right] - \boldsymbol{\nabla} \cdot \left[ \kappa \boldsymbol{\nabla} T\right] = Q_e,
+\EA \label{eq:balance_eqns}
+\SEN where the subscripts $l$, $i$, $g$ denote the liquid, ice and gas phases respectivley; $\phi$ is the porosity; $s_{\alpha}  (\alpha = i, l, g)$, is the saturation of the $\alpha$-th phase; $\eta_{\alpha} (\alpha = i, l, g)$ is the molar density of the $\alpha$-th phase; $\rho_g$, $\rho_l$ are the mass densities of the gas and liquid phases; $Q_w$ is the mass source of H$_2$O;  $X_w^{\alpha} (\alpha = i, l, g)$ is the mole fraction of H$_2$O in the $\alpha$-th phase;   $\tau_g$ is the tortuosity of the gas phase; $D_g$ is the diffusion coefficity in the gas phase;  $T$ is the temperature (assuming all the phases and the rock are in thermal equilibrium); $c_r$ is the specific heat of the rock; $\rho_r$ is the density of the rock; $U_{\alpha} (\alpha = i, l, g)$ is the molar internal energy of the $\alpha$-th phase; $H_{\alpha} (\alpha = l, g)$ is the molar enthalpy of the $\alpha$-the phase; $Q_e$ is the heat source; $\boldsymbol{\nabla}\, (\, )$ is the gradient operator; $\boldsymbol{\nabla}\cdot (\,)$ is the divergence operator. 
+
+The Darcy velocity for the gas and liquid phases given as follows:
+\SEQ
+\BA
+& \boldsymbol{v}_g = - \frac{k_{rg}k}{\mu_g} \boldsymbol{\nabla}\left[p_g - \rho_g g  z \right], \\
+& \boldsymbol{v}_l = - \frac{k_{rl}k}{\mu_l} \boldsymbol{\nabla}\left[p_l - \rho_l g z \right], 
+\EA
+\label{eq:darcy}
+\SEN 
+\noindent where $k$ is the absolute permeability; $k_{r \alpha} (\alpha =  l, g)$ is the relative permeability of the $\alpha$-th phase; $\mu_{\alpha}  (\alpha =  l, g)$ is the viscosity of the $\alpha$-th phase; $p_{\alpha}  (\alpha =  l, g)$ is the partial pressure of the $\alpha$-th phase; $g$ is acceleration due to gravity, $z$ is the vertical distance from a reference datum;
+
+Constraint on the saturations of the various phases of water are given by
+\BA
+& s_l + s_g + s_i = 1.
+\EA
+Furthermore, neglecting the amount of air in liquid and ice phases, we have
+\BA
+X_a^l = 0, X_a^i = 0 \Rightarrow X_w^l = 1, X_w^i =1,
+\EA
+and so Eqns.~\eqref{eq:balance_eqns},~\eqref{eq:darcy}, based on the assumption that $p_g$ is hydrostatic (i.e., $p_g = (p_g)_0 + \rho_g g z $),  reduce to
+\SEQ
+\label{eq:gov}
+\BA
+ &\pfx{}{t}\left[ \phi \left( s_g \eta_g X_w^g +s_l \eta_l + s_i \eta_i \right) \right] + \boldsymbol{\nabla} \cdot \left[\boldsymbol{v}_l \eta_l \right] - \boldsymbol{\nabla} \cdot \left[\phi s_g \tau_g  \eta_g D_g \boldsymbol{\nabla} X^g_w \right] = Q_w, \label{eq:gov1}\\
+& \pfx{}{t}\left[ \phi \left( s_l \eta_l U_l + s_g \eta_g U_g + s_i \eta_i U_i \right) + (1- \phi) \rho_r c_r T \right] + \boldsymbol{\nabla} \cdot \left[ \boldsymbol{v}_l \eta_l  H_l \right] - \boldsymbol{\nabla} \cdot \left[ \kappa \boldsymbol{\nabla} T\right] = Q_e, \\
+& \boldsymbol{v}_l = - \frac{k_{rl}k}{\mu_l} \boldsymbol{\nabla}\left[p_l - \rho_l g z \right]. \label{eq:gov2}
+\EA
+\SEN
+In the above formulation, temperature and liquid pressure are chosen to be primary variables. We also ensure that complete dry-out doesn't occur, and that liquid is present at all times. With this approach, one doesn't have to change the primary variables based on the phases present.
+
+In additon to the previously described balance equations, additional constitutive relations are required to model non-isothermal, multiphase flow of water. Assuming thermal equilibrium among the ice, liquid and vapor phases, the mole fraction of water in vapor phase is given by the relation,
+\BA
+& X_w^g = \frac{p_v}{p_g},
+\EA
+where $p_v$ is the vapor pressure, $p_g$ is the gas pressure (For our calculations we shall assume that $p_g$ = 1 atm throughout the domain). Vapor pressure is calculated using Kelvin's relation 
+%(\cite{Edlefsen:193uq}) 
+which includes vapor pressure lowering due to capillary effect as follows
+\BA
+p_v = P_{\text{sat}}(T) \text{exp}\left[\frac{P_{cgl}}{\eta_l R (T + 273.15)} \right],
+\EA
+where $P_{\text{sat}}$ is the saturated vapor pressure, $P_{cgl}$ is the liquid-gas capillary pressure, $R$ is the ideal gas constant. Empirical relations for saturated vapor pressure are used for both above and below freezing conditions. $\eta_g$ is calculated using ideal gas law.
+
+To calculate the partition of ice, liquid and vapor phases, at a known temperature and liquid pressure, the following two relations are used (see Painter 2011):
+\SEQ
+\label{sats}
+\BA
+\frac{s_l}{s_l + s_g} = S_{*}\left(P_{cgl}\right), \label{sats1}\\
+\frac{s_l}{s_l + s_i}  = S_{*}\left[\frac{\sigma_{gl}}{\sigma_{il}} P_{cil} \right], \label{sats2}
+\EA
+\SEN
+$S_{*}$ is the retention curve for unfrozen liquid-gas phases, $P_{cgl}$ is the gas-liquid capillary pressure, $P_{cil}$ is the ice-liquid capillary pressure, $\sigma_{il}$ and $\sigma_{gl}$ are the ice-liquid and gas-liquid interfacial tensions. Also, $P_{cil} = -\rho_i h_{iw} \vartheta $, where $h_{iw}^0$ is the heat of fusion of ice at 273.15 K, $\rho_i$ is the mass density of ice, $\vartheta = \frac{T - T_0}{T_0}$ with $T_0 = 273.15$ K.
+
+
+For $S_{*}$, we use van Genuchten's model % (\cite{Genuchten1980A-closed-form-e}),
+as follows:
+\BA
+S_{*} = \begin{cases}
+           \left[ 1 + \left(\alpha {P_c}\right)^\gamma\right]^{-\lambda} , &\quad P_c > 0\\
+           1, &\quad P_c \leq 0
+            \end{cases}
+\EA
+with Mualem model % (\cite{Mualem1976A-new-model-for}) 
+for the relative permeability of liquid water,
+\BA
+k_{rl} = (s_l)^{\frac{1}{2}} \left[1 - \left( 1 - (s_l)^{\frac{1}{\lambda}}\right)^{\lambda} \right]^2,
+\EA
+where $\lambda$, $\alpha$ are parameters, with $\gamma =  \frac{1}{1-\lambda}$.
+
+The thermal conductivity for the frozen soil is chosen to be 
+\BA
+\kappa = Ke_{f} \kappa_{\text{wet},f} + Ke_{u} \kappa_{\text{wet},u} + (1 - Ke_u - Ke_f) \kappa_{\text{dry}},
+\EA
+where $\kappa_{\text{wet},f}$, $\kappa_{\text{wet},u}$ are the liquid- and ice-saturated thermal conductivities, $\kappa_{\text{dry}}$ is the 
+dry thermal conducitivity, $Ke_f$, $Ke_u$ are the Kersten numbers in frozen and unfrozen conditions and are assumed to be related to the
+ice and liquid saturations by power law relations as follows
+\SEQ
+\BA
+Ke_f = \left(s_i  \right)^{\alpha_f}, \\
+Ke_u = \left(s_l  \right)^{\alpha_u},
+\EA
+\SEN
+with $\alpha_f$, $\alpha_u$ being the power law coefficients. Care is also taken to ensure that the derivatives of the Kersten numbers do not blow up
+when $s_i$, $s_l$ go to zero when $\alpha_f$, $\alpha_u$ are less than one.
+
+The gas diffusion coefficient $D_g$ is assumed to dependent on temperature and pressure as follows:
+\BA
+D_g = D_g^0 \left( \frac{P_{\text{ref}}}{P}\right) \left( \frac{T}{T_{\text{ref}}}\right)^{1.8},
+\EA
+where $D_g^0$ is the reference diffusion coefficient at some reference temperature, $T_{\text{ref}}$, and pressure $P_{\text{ref}}$.
+
+
 \subsection{Thermal Conduction Multiple Continuum Model}
 
 A thermal conduction model employing a multiple continuum model has been added to MPHASE and THC. The formulation is based on Pruess and Narasimhan (1985) using a integrated finite volume approach to develop equations for fracture and matrix temperatures $T_\a$ and $T_\b$, respectively. The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation for the $n$th fracture control volume is given by
@@ -682,7 +781,7 @@ with bulk permeability of the porous medium $k$ and relative permeability $k_\a$
 \EQ
 \bD_\a \eq %\varphi s 
 %\Big(
-\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v},
+\tau D_m + a_T v\bI + \big(a_L-a_T\big)\frac{\bv\bv}{v},
 %\Big),
 \EN
 with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. Currently, only longitudinal dispersion is implemented in PFLOTRAN.

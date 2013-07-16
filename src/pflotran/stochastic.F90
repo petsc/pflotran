@@ -175,11 +175,12 @@ end subroutine StochasticReadCardFromInput
 ! ************************************************************************** !
 subroutine StochasticRun(stochastic,option)
 
+  use Simulation_module
+  use Realization_class
+  use Timestepper_module
   use Option_module
   use Init_module
   use PFLOTRAN_Factory_module
-  use Simulation_module
-  use Timestepper_module
   use Logging_module
 
   implicit none
@@ -189,9 +190,9 @@ subroutine StochasticRun(stochastic,option)
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
 
-  type(simulation_type), pointer :: simulation
   type(stepper_type), pointer :: master_stepper
   PetscInt :: irealization
+  type(simulation_type), pointer :: simulation
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: init_status
   PetscErrorCode :: ierr
@@ -230,11 +231,7 @@ subroutine StochasticRun(stochastic,option)
     call PFLOTRANRun(simulation,master_stepper,init_status)
     call PFLOTRANFinalize(simulation,option)
 
-    if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
-      write(string,'(i6)') option%id
-      print *, 'Finished with ' // trim(adjustl(string)), irealization, &
-               ' of ', stochastic%num_local_realizations
-    endif
+    call SimulationDestroy(simulation)
 
   enddo
   

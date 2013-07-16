@@ -427,7 +427,8 @@ condition_control.o : condition.o connection.o constraint.o coupler.o \
                       field.o general_aux.o global_aux.o grid.o hdf5.o level.o \
                       mfd.o option.o patch.o reaction.o reaction_aux.o \
                       reactive_transport_aux.o realization.o region.o \
-                      surface_field.o surface_realization.o water_eos.o
+                      surface_field.o surface_global_aux.o \
+                      surface_realization.o surface_th_aux.o water_eos.o
 connection.o :
 ifdef PFLOTRAN_RXN_FLAG
 constraint.o : global_aux.o immobile_aux.o input.o mineral_aux.o option.o \
@@ -549,8 +550,7 @@ geomechanics_timestepper.o : condition_control.o convergence.o \
                              timestepper.o waypoint.o
 geometry.o : input.o option.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
-           level.o option.o patch.o realization.o realization_base.o \
-           variables.o
+           option.o patch.o realization.o realization_base.o variables.o
 global_aux.o : option.o utility.o
 grid.o : connection.o logging.o mfd_aux.o option.o region.o structured_grid.o \
          unstructured_cell.o unstructured_explicit.o unstructured_grid.o \
@@ -676,8 +676,9 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
 pflotran.o : input.o logging.o option.o pflotran_factory.o simulation.o \
              stochastic.o stochastic_aux.o timestepper.o
-pflotran_factory.o : geomechanics_timestepper.o init.o input.o option.o \
+pflotran_factory.o : geomechanics_timestepper.o init.o input.o logging.o option.o \
                      regression.o simulation.o timestepper.o
+
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : constraint.o global_aux.o immobile.o immobile_aux.o input.o \
              microbial.o microbial_aux.o mineral.o mineral_aux.o option.o \
@@ -738,8 +739,8 @@ regression.o : discretization.o grid.o input.o option.o output.o output_aux.o \
                output_common.o realization.o string.o timestepper.o utility.o
 richards.o : connection.o coupler.o debug.o discretization.o field.o \
              global_aux.o grid.o logging.o material.o matrix_buffer.o option.o \
-             output_aux.o patch.o realization.o richards_aux.o \
-             richards_common.o richards_lsm.o richards_mfd.o \
+             output_aux.o patch.o realization.o realization_base.o \
+             richards_aux.o richards_common.o richards_lsm.o richards_mfd.o \
              saturation_function.o variables.o water_eos.o
 richards_aux.o : global_aux.o matrix_buffer.o option.o saturation_function.o \
                  water_eos.o
@@ -772,7 +773,7 @@ solid_solution_aux.o : mineral_aux.o
 solver.o : input.o option.o string.o
 spline.o :
 stochastic.o : init.o input.o logging.o option.o pflotran_factory.o \
-               simulation.o stochastic_aux.o timestepper.o
+               realization.o simulation.o stochastic_aux.o timestepper.o
 stochastic_aux.o : input.o option.o simulation.o
 strata.o : input.o material.o option.o region.o string.o surface_material.o
 string.o :
@@ -797,13 +798,14 @@ surface_global.o : connection.o coupler.o discretization.o grid.o level.o \
                    option.o patch.o surface_field.o surface_global_aux.o \
                    surface_realization.o variables.o
 surface_global_aux.o : option.o utility.o
-surface_init.o : condition.o coupler.o dataset_base.o dataset_common_hdf5.o \
-                 debug.o discretization.o field.o grid.o hdf5.o input.o \
-                 level.o material.o option.o output_aux.o output_surface.o \
-                 output_tecplot.o patch.o region.o solver.o strata.o string.o \
-                 structured_grid.o surface_auxiliary.o surface_field.o \
-                 surface_material.o surface_realization.o units.o \
-                 unstructured_grid.o unstructured_grid_aux.o waypoint.o
+surface_init.o : condition.o coupler.o dataset.o dataset_base.o \
+                 dataset_common_hdf5.o debug.o discretization.o field.o grid.o \
+                 hdf5.o input.o level.o material.o option.o output_aux.o \
+                 output_surface.o output_tecplot.o patch.o region.o solver.o \
+                 strata.o string.o structured_grid.o surface_auxiliary.o \
+                 surface_field.o surface_material.o surface_realization.o \
+                 units.o unstructured_grid.o unstructured_grid_aux.o \
+                 waypoint.o
 surface_material.o : input.o option.o string.o
 surface_realization.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
                         discretization.o dm_kludge.o field.o grid.o input.o \

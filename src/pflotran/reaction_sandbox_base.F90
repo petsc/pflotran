@@ -32,6 +32,8 @@ module Reaction_Sandbox_Base_class
       use Option_module
       use Reaction_Aux_module
   
+      import reaction_sandbox_base_type
+    
       implicit none
   
       class(reaction_sandbox_base_type) :: this
@@ -45,6 +47,8 @@ module Reaction_Sandbox_Base_class
       use Option_module
       use Input_module
   
+      import reaction_sandbox_base_type
+    
       implicit none
   
       class(reaction_sandbox_base_type) :: this
@@ -58,6 +62,8 @@ module Reaction_Sandbox_Base_class
       use Option_module
       use Input_module
   
+      import reaction_sandbox_base_type
+    
       implicit none
   
       class(reaction_sandbox_base_type) :: this
@@ -66,13 +72,16 @@ module Reaction_Sandbox_Base_class
   
     end subroutine Base_SkipBlock 
     
-    subroutine Base_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
+    subroutine Base_React(this,Res,Jac,compute_derivative,rt_auxvar, &
                           global_auxvar,porosity,volume,reaction,option)
+
       use Option_module
       use Reaction_Aux_module
       use Reactive_Transport_Aux_module
       use Global_Aux_module
   
+      import reaction_sandbox_base_type
+    
       implicit none
   
       class(reaction_sandbox_base_type) :: this
@@ -80,8 +89,8 @@ module Reaction_Sandbox_Base_class
       type(reaction_type) :: reaction
       PetscBool :: compute_derivative
       ! the following arrays must be declared after reaction
-      PetscReal :: Residual(reaction%ncomp)
-      PetscReal :: Jacobian(reaction%ncomp,reaction%ncomp)
+      PetscReal :: Res(reaction%ncomp)
+      PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
       PetscReal :: porosity
       PetscReal :: volume
       type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -91,6 +100,8 @@ module Reaction_Sandbox_Base_class
     
     subroutine Base_Destroy(this)
 
+      import reaction_sandbox_base_type
+    
       implicit none
   
       class(reaction_sandbox_base_type) :: this

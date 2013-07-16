@@ -27,14 +27,18 @@ module Richards_module
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-6
   
-  public RichardsResidual,RichardsJacobian, &
-         RichardsUpdateFixedAccum,RichardsTimeCut,&
-         RichardsSetup, RichardsNumericalJacTest, &
-         RichardsInitializeTimestep, RichardsUpdateAuxVars, &
-         RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader, RichardsComputeMassBalance, &
+  public RichardsResidual, &
+         RichardsJacobian, &
+         RichardsTimeCut,&
+         RichardsSetup, &
+         RichardsInitializeTimestep, &
+         RichardsUpdateAuxVars, &
+         RichardsMaxChange, &
+         RichardsUpdateSolution, &
+         RichardsComputeMassBalance, &
          RichardsDestroy, &
-         RichardsCheckUpdatePre, RichardsCheckUpdatePost
+         RichardsCheckUpdatePre, &
+         RichardsCheckUpdatePost
 
 contains
 
@@ -1156,6 +1160,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Option_module
   use Logging_module
+  use Mass_Transfer_module, only : mass_transfer_type
 
   implicit none
 
@@ -1169,6 +1174,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
+  type(mass_transfer_type), pointer :: cur_mass_transfer
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)
   
@@ -1205,6 +1211,17 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   endif
 
   call PetscLogEventEnd(logging%event_r_residual,ierr)
+
+  ! Mass Transfer
+  if (associated(realization%flow_mass_transfer_list)) then
+    cur_mass_transfer => realization%flow_mass_transfer_list
+    do
+      if (.not.associated(cur_mass_transfer)) exit
+      call VecStrideScatter(cur_mass_transfer%vec,cur_mass_transfer%idof-1, &
+                            r,ADD_VALUES,ierr)
+      cur_mass_transfer => cur_mass_transfer%next
+    enddo
+  endif
 
 end subroutine RichardsResidual
 
@@ -1409,10 +1426,18 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
 #endif
       if (local_id_up>0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res interior up', local_id_up
+  print *, Res(1)
+#endif  
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
          
       if (local_id_dn>0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res interior dn', local_id_dn
+  print *, Res(1)
+#endif  
         r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
       endif
 
@@ -1474,6 +1499,11 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
+
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res bc', local_id
+  print *, Res(1)
+#endif
 
       r_p(local_id)= r_p(local_id) - Res(1)
 
@@ -1573,6 +1603,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res) 
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Res accum', local_id
+  print *, Res(1)      
+#endif
       r_p(local_id) = r_p(local_id) + Res(1)
     enddo
   endif
@@ -1634,6 +1668,11 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
     enddo
   endif
+
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Residual'
+  print *, r_p(:)
+#endif
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
@@ -1932,6 +1971,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       end select
 
       if (local_id_up > 0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac up', local_id_up
+  print *, Jup(1,1)
+#endif      
 #ifdef BUFFER_MATRIX
         if (option%use_matrix_buffer) then
           call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
@@ -1949,6 +1992,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 #endif
       endif
       if (local_id_dn > 0) then
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac dn', local_id_dn
+  print *, Jdn(1,1)
+#endif        
         Jup = -Jup
         Jdn = -Jdn
 #ifdef BUFFER_MATRIX
@@ -2024,6 +2071,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 patch%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac dn bc', local_id
+  print *, Jdn(1,1)      
+#endif
 #ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then
         call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
@@ -2135,6 +2186,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               patch%saturation_function_array(icap)%ptr,&
                               Jup) 
+#ifdef PM_RICHARDS_DEBUG
+  print *, 'Jac accum'
+  print *, Jup(1,1)     
+#endif
 #ifdef BUFFER_MATRIX
     if (option%use_matrix_buffer) then
       call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
@@ -2332,13 +2387,13 @@ end subroutine RichardsCreateZeroArray
 ! ************************************************************************** !
 subroutine RichardsMaxChange(realization)
 
-  use Realization_class
+  use Realization_Base_class
   use Option_module
   use Field_module
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_base_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -2365,55 +2420,6 @@ subroutine RichardsMaxChange(realization)
   end if
 
 end subroutine RichardsMaxChange
-
-! ************************************************************************** !
-!
-! RichardsGetTecplotHeader: Returns Richards Lite contribution to 
-!                               Tecplot file header
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
-function RichardsGetTecplotHeader(realization,icolumn)
-  
-  use Realization_class
-  use Option_module
-  use Field_module
-    
-  implicit none
-  
-  character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
-  type(realization_type) :: realization
-  PetscInt :: icolumn
-  
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  
-  option => realization%option
-  field => realization%field
-  
-  string = ''
-  
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
-  else
-    write(string2,'('',"P [Pa]"'')') 
-  endif
-  string = trim(string) // trim(string2)
-
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-sl"'')') icolumn
-  else
-    write(string2,'('',"sl"'')') 
-  endif
-  string = trim(string) // trim(string2)
- 
-  RichardsGetTecplotHeader = string
-
-end function RichardsGetTecplotHeader
 
 ! ************************************************************************** !
 !
@@ -2492,6 +2498,8 @@ end subroutine RichardsPrintAuxVars
 subroutine RichardsDestroy(realization)
 
   use Realization_class
+  
+  implicit none
 
   type(realization_type) :: realization
   
