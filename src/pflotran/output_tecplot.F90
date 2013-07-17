@@ -2015,8 +2015,10 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   PetscInt :: iconn
   PetscInt :: count
   PetscReal, pointer :: flowrates(:,:)
-  PetscInt, pointer :: ids_up(:),ids_dn(:)
-  Vec :: vec_flowrates
+  PetscReal, pointer :: darcy(:)
+  PetscInt, pointer :: nat_ids_up(:),nat_ids_dn(:)
+  PetscReal, pointer :: por(:),sat(:)
+  Vec :: vec_proc
   PetscInt :: i, idof
   
   patch => realization_base%patch
@@ -2030,9 +2032,12 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
              '-' // 'rates' // '-' // &
              trim(OutputFilenameID(output_option,option)) 
   
-  call OutputGetExplicitFlowrates(realization_base,count, &
-                                  ids_up,ids_dn,flowrates)
-  
+  call OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
+                                     nat_ids_up,nat_ids_dn)
+  call OutputGetExplicitFlowrates(realization_base,count,vec_proc,flowrates, &
+                                  darcy)
+  call OutputGetExplicitAuxVars(realization_base,count,vec_proc, &
+                                sat,por)
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write rate output file: ' // &
@@ -2044,23 +2049,33 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 1000 format(es13.6,1x)
 1001 format(i10,1x)
 1009 format('')
+ 
+ ! Order of printing
+ ! id1 id2 darcy_vel porosity saturation
 
   write(string,*) option%myrank
   string = trim(filename) // '-rank' // trim(adjustl(string)) // '.dat'
   open(unit=OUTPUT_UNIT,file=trim(string),action="write")
   do i = 1, count
-    write(OUTPUT_UNIT,1001,advance='no') ids_up(i)
-    write(OUTPUT_UNIT,1001,advance='no') ids_dn(i)
-    do idof = 1, option%nflowdof
-      write(OUTPUT_UNIT,1000,advance='no') flowrates(i,idof)
-      write(OUTPUT_UNIT,1009)
-    enddo
+    write(OUTPUT_UNIT,1001,advance='no') nat_ids_up(i)
+    write(OUTPUT_UNIT,1001,advance='no') nat_ids_dn(i)
+!    do idof = 1, option%nflowdof
+!      write(OUTPUT_UNIT,1000,advance='no') flowrates(i,idof)
+!      write(OUTPUT_UNIT,1009)
+!    enddo
+    write(OUTPUT_UNIT,1000,advance='no') darcy(i)
+    write(OUTPUT_UNIT,1000,advance='no') por(i)
+    write(OUTPUT_UNIT,1000,advance='no') sat(i)
+    write(OUTPUT_UNIT,'(a)')
   enddo                     
   close(OUTPUT_UNIT)
                                                                                                            
   deallocate(flowrates)
-  deallocate(ids_up)
-  deallocate(ids_dn)
+  deallocate(darcy)
+  deallocate(nat_ids_up)
+  deallocate(nat_ids_dn)
+  deallocate(por)
+  deallocate(sat)
 
 end subroutine OutputPrintExplicitFlowrates
 
