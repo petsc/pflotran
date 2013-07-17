@@ -1282,7 +1282,6 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal :: rho          ! density      [kg/m^3]
   PetscReal :: hw_up, hw_dn ! water height [m]
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
-  PetscReal :: max_allowable_dt
   PetscReal :: qsrc, qsrc_flow
   PetscReal :: esrc
 
@@ -1332,7 +1331,6 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
   ff_p = 0.d0
   Res  = 0.d0
-  max_allowable_dt = 1.d10
 
   call density(option%reference_temperature,option%reference_pressure,rho)
 
@@ -1361,6 +1359,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
+#if 0
       call SurfaceTHFlux(surf_aux_vars(ghosted_id_up), &
                          surf_global_aux_vars(ghosted_id_up), &
                          zc(ghosted_id_up), &
@@ -1371,13 +1370,13 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
                          option,vel,Res)
-
-      patch%internal_velocities(1,sum_connection) = vel
-#ifdef STORE_FLOWRATE
-      patch%surf_internal_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
-      !patch%surf_internal_fluxes(TH_TEMPERATURE_DOF,sum_connection) =
 #endif
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+
+      !patch%internal_velocities(1,sum_connection) = vel
+      !patch%surf_internal_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(TH_PRESSURE_DOF)
+      !patch%surf_internal_fluxes(TH_TEMPERATURE_DOF,sum_connection) =
+      vel = patch%internal_velocities(1,sum_connection)
+      Res(:) = patch%surf_internal_fluxes(:,sum_connection)
 
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -1414,6 +1413,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
+#if 0
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
                          surf_aux_vars_bc(sum_connection), &
                          surf_global_aux_vars_bc(sum_connection), &
@@ -1421,12 +1421,13 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
-
-      patch%boundary_velocities(1,sum_connection) = vel
-#ifdef STORE_FLOWRATE
-      patch%surf_boundary_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(1)
 #endif
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+
+      !patch%boundary_velocities(1,sum_connection) = vel
+      !patch%surf_boundary_fluxes(TH_PRESSURE_DOF,sum_connection) = Res(1)
+
+      vel = patch%boundary_velocities(1,sum_connection)
+      Res(:) = patch%surf_boundary_fluxes(:,sum_connection)
       
       iend = local_id_dn*option%nflowdof
       istart = iend-option%nflowdof+1
@@ -1627,7 +1628,9 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          dist, cur_connection_set%area(iconn), &
                          option,vel,Res)
 
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      patch%internal_velocities(1,sum_connection) = vel
+      patch%surf_internal_fluxes(:,sum_connection) = Res(:)
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
 
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1660,7 +1663,10 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
 
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/2.d0)
+      patch%boundary_velocities(1,sum_connection) = vel
+      patch%surf_boundary_fluxes(:,sum_connection) = Res(:)
+
+      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
     enddo
     boundary_condition => boundary_condition%next
   enddo

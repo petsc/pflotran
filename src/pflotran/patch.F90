@@ -638,10 +638,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   endif
 #ifdef SURFACE_FLOW
   if (patch%surf_or_subsurf_flag == SURFACE) then
-    if (option%store_flowrate) then
+    !if (option%store_flowrate) then
       allocate(patch%surf_internal_fluxes(option%nflowdof,temp_int))
       patch%surf_internal_fluxes = 0.d0
-    endif
+    !endif
   endif
   ! Always allocate the array to store boundary fluxes as they are needed
   ! to store data for hydrograph output

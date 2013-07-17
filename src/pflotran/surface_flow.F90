@@ -301,7 +301,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal :: slope, slope_dn
   PetscReal :: hw_up, hw_dn ! water height [m]
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
-  PetscReal :: max_allowable_dt
   PetscReal :: qsrc, qsrc_flow
 
   character(len=MAXSTRINGLENGTH)       :: string,string2
@@ -345,7 +344,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
   ff_p = 0.d0
   Res  = 0.d0
-  max_allowable_dt = 1.d10
 
   xc => surf_realization%discretization%grid%x
   yc => surf_realization%discretization%grid%y
@@ -386,6 +384,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
             'Kinematic wave'
           call printErrMsg(option)
         case (DIFFUSION_WAVE)
+#if 0
         call SurfaceFlowFlux(surf_global_aux_vars(ghosted_id_up), &
                              zc(ghosted_id_up), &
                              mannings_loc_p(ghosted_id_up), &
@@ -394,13 +393,14 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                              mannings_loc_p(ghosted_id_dn), &
                              dist, cur_connection_set%area(iconn), &
                              option,vel,Res)
+#endif
       end select
 
-      patch%internal_velocities(1,sum_connection) = vel
-#ifdef STORE_FLOWRATES
-      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
-#endif
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
+      !patch%internal_velocities(1,sum_connection) = vel
+      !patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+
+      vel = patch%internal_velocities(1,sum_connection)
+      Res(1) = patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
 
       if (local_id_up>0) then
         ff_p(local_id_up) = ff_p(local_id_up) - Res(1)/area_p(local_id_up)
@@ -434,16 +434,19 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
+#if 0
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
                          surf_global_aux_vars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
+#endif
 
-      patch%boundary_velocities(1,sum_connection) = vel
-      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
+      !patch%boundary_velocities(1,sum_connection) = vel
+      !patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      vel = patch%boundary_velocities(1,sum_connection)
+      Res(1) = patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
       
       ff_p(local_id) = ff_p(local_id) + Res(1)/area_p(local_id)
     enddo
@@ -612,6 +615,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
                                option,vel,Res)
       end select
 
+      patch%internal_velocities(1,sum_connection) = vel
+      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
 
 
@@ -644,6 +649,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
                          option,vel,Res)
+      patch%boundary_velocities(1,sum_connection) = vel
+      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
 
       if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
     enddo
