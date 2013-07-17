@@ -35,6 +35,7 @@ module Output_Common_module
             OutputGetFlowrates, &
             ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
+            GetCellConnectionsExplicit, &
             OutputGetExplicitIDsFlowrates, &
             OutputGetExplicitAuxVars
               
@@ -695,6 +696,99 @@ subroutine GetCellConnections(grid, vec)
   call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
 
 end subroutine GetCellConnections
+
+! ************************************************************************** !
+!
+! GetCellConnectionsExplicit: returns a vector containing vertex ids in natural order of
+! local cells for unstructured grid of explicit type
+! author: Satish Karra
+! date: 07/16/13
+! 
+! ************************************************************************** !
+subroutine GetCellConnectionsExplicit(grid, vec)
+
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(grid_type) :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(unstructured_explicit_type), pointer :: explicit_grid
+  Vec :: vec
+  PetscInt :: offset
+  PetscInt :: ivertex, iconn
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  ugrid => grid%unstructured_grid
+  explicit_grid => ugrid%explicit_grid
+  
+  call GridVecGetArrayF90(grid, vec, vec_ptr, ierr)
+
+  ! initialize
+  vec_ptr = -999.d0
+  do iconn = 1, explicit_grid%num_elems
+    select case(explicit_grid%cell_connectivity(0,iconn))
+      case(8)
+        offset = (iconn-1)*8
+        do ivertex = 1, 8
+          vec_ptr(offset + ivertex) = &
+            explicit_grid%cell_connectivity(ivertex,iconn)
+        enddo
+      case(6)
+        offset = (iconn-1)*8
+        do ivertex = 1, 6
+          vec_ptr(offset + ivertex) = &
+            explicit_grid%cell_connectivity(ivertex,iconn)
+        enddo
+        vec_ptr(offset + 7) = 0
+        vec_ptr(offset + 8) = 0
+      case (5)
+        offset = (iconn-1)*8
+        do ivertex = 1, 5
+          vec_ptr(offset + ivertex) = &
+            explicit_grid%cell_connectivity(ivertex,iconn)
+        enddo
+        do ivertex = 6, 8
+          vec_ptr(offset + ivertex) = 0
+        enddo
+      case (4)
+        if (grid%unstructured_grid%grid_type /= TWO_DIM_GRID) then
+          offset = (iconn-1)*8
+          do ivertex = 1, 4
+            vec_ptr(offset + ivertex) = &
+              explicit_grid%cell_connectivity(ivertex,iconn)
+          enddo
+          do ivertex = 5, 8
+            vec_ptr(offset + ivertex) = 0
+          enddo
+        else
+          offset = (iconn-1)*4
+          do ivertex = 1, 4
+            vec_ptr(offset + ivertex) = &
+              explicit_grid%cell_connectivity(ivertex,iconn)
+          enddo
+        endif
+      case (3)
+        offset = (iconn-1)*4
+        do ivertex = 1, 3
+          vec_ptr(offset + ivertex) = &
+           explicit_grid%cell_connectivity(ivertex,iconn)
+        enddo
+        ivertex = 4
+        vec_ptr(offset + 4) = 0
+    end select
+  enddo
+
+  call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
+
+end subroutine GetCellConnectionsExplicit
+
 
 ! ************************************************************************** !
 !> This subroutine writes header to a .xmf file

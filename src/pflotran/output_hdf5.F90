@@ -20,7 +20,8 @@ module Output_HDF5_module
   
   public :: OutputHDF5Init, &
             OutputHDF5, &
-            OutputHDF5UGridXDMF
+            OutputHDF5UGridXDMF, &
+            OutputHDF5UGridXDMFExplicit
 
 contains
 
@@ -1088,6 +1089,336 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 ! !defined(PETSC_HAVE_HDF5)
 
 end subroutine OutputHDF5UGridXDMF
+
+! ************************************************************************** !
+!
+! OutputHDF5UGridXDMFExplicit: This subroutine prints the explicit
+! unstructured grid information in xdmf format
+! Author: Satish Karra, LANL
+! Date: 07/17/2013
+!
+! ************************************************************************** !
+subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
+
+  use Realization_Base_class, only : realization_base_type
+  use Discretization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Reaction_Aux_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+
+  implicit none
+  
+  class(realization_base_type) :: realization_base
+  PetscInt :: var_list_type
+
+  call printMsg(realization_base%option,'')
+  write(realization_base%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(realization_base%option)
+
+#else
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use hdf5
+  use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+  use HDF5_Aux_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+
+  class(realization_base_type) :: realization_base
+  PetscInt :: var_list_type
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  PetscMPIInt :: rank
+  integer :: rank_mpi,file_space_rank_mpi
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+#endif
+
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
+
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscReal, pointer :: v_ptr
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
+  character(len=MAXSTRINGLENGTH) :: string, string2,string3
+  character(len=MAXWORDLENGTH) :: word
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
+  PetscInt :: nviz_flow, nviz_tran, nviz_dof
+  PetscInt :: current_component
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscFortranAddr :: app_ptr
+  PetscMPIInt :: hdf5_err  
+  PetscBool :: first
+  PetscInt :: ivar, isubvar, var_type
+  PetscInt :: vert_count
+  PetscErrorCode :: ierr
+
+  discretization => realization_base%discretization
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
+
+  select case (var_list_type)
+    case (INSTANTANEOUS_VARS)
+      string2=''
+      write(string3,'(i4)') output_option%plot_number
+      xmf_filename = OutputFilename(output_option,option,'xmf','')
+    case (AVERAGED_VARS)
+      string2='-aveg'
+      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      xmf_filename = OutputFilename(output_option,option,'xmf','aveg')
+  end select
+
+  if (output_option%print_single_h5_file) then
+    first = hdf5_first
+    filename = trim(option%global_prefix) // trim(string2) // trim(option%group_prefix) // '.h5'
+  else
+    string = OutputHDF5FilenameID(output_option,option,var_list_type)
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        if (mod(output_option%plot_number,output_option%times_per_h5_file)==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+      case (AVERAGED_VARS)
+        if (mod((option%time-output_option%periodic_output_time_incr)/ &
+                output_option%periodic_output_time_incr, &
+                real(output_option%times_per_h5_file))==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+    end select
+
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               trim(string2) // '-' // trim(string) // '.h5'
+  endif
+
+  grid => patch%grid
+
+#ifdef SCORPIO_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with SCORPIO_WRITE'
+   call printErrMsg(option)
+#endif
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                     H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // trim(filename)
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
+  endif
+  call printMsg(option)
+
+  if (first) then
+    if (option%myrank == option%io_rank) then
+      ! create a group for the coordinates data set
+      string = "Domain"
+      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+      call WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,grp_id)
+      call h5gclose_f(grp_id,hdf5_err)
+    endif
+  endif
+
+#if 0
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write xmf output file: ' // trim(filename)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
+    call OutputXMFHeader(OUTPUT_UNIT, &
+                         option%time/output_option%tconv, &
+                         grid%nmax, &
+                         realization_base%output_option%xmf_vert_len, &
+                         grid%unstructured_grid%num_vertices_global,filename)
+  endif
+
+  ! create a group for the data set
+  write(string,'(''Time'',es13.5,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
+  string = trim(string3) // ' ' // trim(string)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  group_name=string
+  if (hdf5_err /= 0) then
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+  endif
+  call h5eset_auto_f(ON,hdf5_err)
+
+  ! write out data sets 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)
+
+  select case (var_list_type)
+
+    case (INSTANTANEOUS_VARS)
+      ! loop over variables and write to file
+      cur_variable => output_option%output_variable_list%first
+      do
+        if (.not.associated(cur_variable)) exit
+        call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
+                                   cur_variable%isubvar)
+        call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                           natural_vec,ONEDOF)
+        string = cur_variable%name
+        if (len_trim(cur_variable%units) > 0) then
+          word = cur_variable%units
+          call HDF5MakeStringCompatible(word)
+          string = trim(string) // ' [' // trim(word) // ']'
+        endif
+        if (cur_variable%iformat == 0) then
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                              natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+        else
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                              natural_vec,grp_id,H5T_NATIVE_INTEGER)
+        endif
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+        cur_variable => cur_variable%next
+      enddo
+
+    case (AVERAGED_VARS)
+      if(associated(output_option%aveg_output_variable_list%first)) then
+        cur_variable => output_option%aveg_output_variable_list%first
+        do ivar = 1,output_option%aveg_output_variable_list%nvars
+          string = 'Aveg. ' // cur_variable%name
+          if (len_trim(cur_variable%units) > 0) then
+            word = cur_variable%units
+            call HDF5MakeStringCompatible(word)
+            string = trim(string) // ' [' // trim(word) // ']'
+          endif
+
+          call DiscretizationGlobalToNatural(discretization,field%avg_vars_vec(ivar), &
+                                            natural_vec,ONEDOF)
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                            natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+          att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+          if (option%myrank == option%io_rank) then
+            call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+          endif
+          cur_variable => cur_variable%next
+        enddo
+      endif
+
+  end select
+
+  !Output flowrates
+  if(output_option%print_hdf5_mass_flowrate.or. &
+     output_option%print_hdf5_energy_flowrate.or. &
+     output_option%print_hdf5_aveg_mass_flowrate.or. &
+     output_option%print_hdf5_aveg_energy_flowrate) then
+
+    select case (var_list_type)
+      case (INSTANTANEOUS_VARS)
+        call OutputGetFlowrates(realization_base)
+        if(output_option%print_hdf5_mass_flowrate.or.&
+           output_option%print_hdf5_energy_flowrate) then
+          call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
+        endif
+      case (AVERAGED_VARS)
+        if(output_option%print_hdf5_aveg_mass_flowrate.or.&
+           output_option%print_hdf5_aveg_energy_flowrate) then
+          call WriteHDF5FlowratesUGrid(realization_base,option,grp_id,var_list_type)
+        endif
+    end select
+  endif
+
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call h5gclose_f(grp_id,hdf5_err)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+  if (option%myrank == option%io_rank) then
+    call OutputXMFFooter(OUTPUT_UNIT)
+    close(OUTPUT_UNIT)
+  endif
+
+  hdf5_first = PETSC_FALSE
+#endif
+!0
+
+#endif
+! !defined(PETSC_HAVE_HDF5)
+
+end subroutine OutputHDF5UGridXDMFExplicit
 
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
@@ -2258,6 +2589,449 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 !if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
+
+! ************************************************************************** !
+!
+! WriteHDF5CoordinatesUGridXDMFExplicit: Writes the coordinates of
+! explicit grid to HDF5 file
+! Author: Satish Karra, LANL
+! Date: 07/17/2013
+!
+! ************************************************************************** !
+subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id)
+
+  use hdf5
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Variables_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+
+#if defined(SCORPIO_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(grid_type), pointer :: grid
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscMPIInt :: hdf5_err  
+
+  PetscInt :: local_size,vert_count,nverts
+  PetscInt :: i,j
+  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
+  PetscReal, pointer :: double_array(:)
+
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: natural_vec
+  PetscInt, pointer :: int_array(:)
+  PetscErrorCode :: ierr
+
+  PetscInt :: TET_ID_XDMF = 6
+  PetscInt :: PYR_ID_XDMF = 7
+  PetscInt :: WED_ID_XDMF = 8
+  PetscInt :: HEX_ID_XDMF = 9
+
+  grid => realization_base%patch%grid
+
+  allocate(vec_x_ptr(grid%unstructured_grid%explicit_grid%num_cells_global))
+  allocate(vec_y_ptr(grid%unstructured_grid%explicit_grid%num_cells_global))
+  allocate(vec_z_ptr(grid%unstructured_grid%explicit_grid%num_cells_global))
+
+  do i = 1, grid%unstructured_grid%explicit_grid%num_cells_global 
+    vec_x_ptr = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%x
+    vec_y_ptr = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%y
+    vec_z_ptr = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%z  
+  enddo
+ 
+ 
+#if defined(SCORPIO_WRITE)
+  write(*,*),'SCORPIO_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
+  call printErrMsg(option)
+#else
+
+  !
+  !        not(SCORPIO_WRITE)
+  !
+  local_size = grid%unstructured_grid%explicit_grid%num_elems
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size * 3
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 2
+  dims = 0
+  dims(2) = grid%unstructured_grid%explicit_grid%num_elems
+  dims(1) = 3
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Vertices" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  start(2) = istart
+  start(1) = 0
+  
+  length(2) = local_size
+  length(1) = 3
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(double_array(local_size*3))
+  do i=1,local_size
+    double_array((i-1)*3+1) = vec_x_ptr(i)
+    double_array((i-1)*3+2) = vec_y_ptr(i)
+    double_array((i-1)*3+3) = vec_z_ptr(i)
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(double_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  deallocate(vec_x_ptr)
+  deallocate(vec_y_ptr)
+  deallocate(vec_z_ptr)
+  
+  !
+  !  Write elements
+  !
+  local_size = grid%unstructured_grid%explicit_grid%num_elems
+
+  call VecCreate(PETSC_COMM_SELF,natural_vec,ierr)
+  call VecSetSizes(natural_vec,local_size*EIGHT_INTEGER, &
+                   PETSC_DECIDE,ierr)  
+  call VecSetBlockSize(natural_vec,EIGHT_INTEGER,ierr)
+  call VecSetFromOptions(natural_vec,ierr)
+
+  call GetCellConnectionsExplicit(grid,natural_vec)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+
+
+  vert_count=0
+  do i=1,local_size*EIGHT_INTEGER
+    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+  enddo
+  vert_count=vert_count+grid%unstructured_grid%explicit_grid%num_elems
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims(1) = vert_count
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  realization_base%output_option%xmf_vert_len=int(dims(1))
+
+  ! file space which is a 2D block
+  rank_mpi = 1
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Cells" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_INTEGER,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  start(1) = istart
+  length(1) = vert_count
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(int_array(vert_count))
+
+  vert_count=0
+  do i=1,local_size
+    nverts=0
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+    enddo
+    vert_count=vert_count+1
+    select case (nverts)
+      case (4) ! Tetrahedron
+        int_array(vert_count) = TET_ID_XDMF
+      case (5) ! Pyramid
+        int_array(vert_count) = PYR_ID_XDMF
+      case (6) ! Wedge
+        int_array(vert_count) = WED_ID_XDMF
+      case (8) ! Hexahedron
+        int_array(vert_count) = HEX_ID_XDMF
+    end select
+
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) then
+        vert_count=vert_count+1
+        int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
+      endif
+    enddo
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(int_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(natural_vec,ierr)
+
+  ! Cell center X/Y/Z
+  local_size = grid%unstructured_grid%explicit_grid%num_elems
+  allocate(vec_x_ptr(local_size))
+  allocate(vec_y_ptr(local_size))
+  allocate(vec_z_ptr(local_size))
+
+  ! XC
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = grid%unstructured_grid%explicit_grid%num_elems
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "XC" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  start(1) = istart
+  length(1) = local_size
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_x_ptr,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  ! YC
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = grid%nmax
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "YC" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  start(1) = istart
+  length(1) = local_size
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_y_ptr,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  ! ZC
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = grid%nmax
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "ZC" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  start(1) = istart
+  length(1) = local_size
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,vec_z_ptr,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  deallocate(vec_x_ptr)
+  deallocate(vec_y_ptr)
+  deallocate(vec_z_ptr)
+#endif
+!if defined(SCORPIO_WRITE)
+
+end subroutine WriteHDF5CoordinatesUGridXDMFExplicit
 
 ! ************************************************************************** !
 !> This routine writes (mass/energy) flowrate for unstructured grid.
