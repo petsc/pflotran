@@ -35,7 +35,7 @@ module Output_Common_module
             OutputGetFlowrates, &
             ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
-            GetCellConnectionsExplicit
+            GetCellConnectionsExplicit, &
             OutputGetExplicitIDsFlowrates, &
             OutputGetExplicitAuxVars
               
