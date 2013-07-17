@@ -36,6 +36,8 @@ module Output_Common_module
             ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
             GetCellConnectionsExplicit
+            OutputGetExplicitIDsFlowrates, &
+            OutputGetExplicitAuxVars
               
 contains
 
@@ -1188,14 +1190,14 @@ end subroutine OutputGetFlowrates
 
 ! ************************************************************************** !
 !
-! OutputGetExplicitFlowrates: Forms a vector of magnitude of flowrates
-! which will be printed out to file for particle tracking.
+! OutputGetExplicitIDsFlowrates: Calculates the ids of the nodes of a 
+! connection for flow rats output
 ! author: Satish Karra, LANL
 ! date: 04/24/13
 !
 ! ************************************************************************** !
-subroutine OutputGetExplicitFlowrates(realization_base,count, &
-                                      ids_up,ids_dn,flowrates)
+subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
+                                         ids_up,ids_dn)
 
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1226,10 +1228,9 @@ subroutine OutputGetExplicitFlowrates(realization_base,count, &
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: vec_ptr2(:)
   PetscReal, pointer :: vec_proc_ptr(:)
-  PetscInt, pointer :: ids_up(:), ids_dn(:)
-  PetscReal, pointer :: flowrates(:,:)
+  PetscInt, pointer :: ids_up(:),ids_dn(:)
   PetscInt :: offset
-  PetscInt :: istart, iend
+  PetscInt :: istart,iend
   PetscInt :: iconn
   PetscErrorCode :: ierr
   PetscReal :: val
@@ -1318,8 +1319,8 @@ subroutine OutputGetExplicitFlowrates(realization_base,count, &
   ! Count the number of connections on a local process
   allocate(ids_up(count))
   allocate(ids_dn(count))
-  allocate(flowrates(count,option%nflowdof))
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
   count = 0
@@ -1335,10 +1336,92 @@ subroutine OutputGetExplicitFlowrates(realization_base,count, &
         count = count + 1
         ids_up(count) = grid%nG2A(ghosted_id_up)
         ids_dn(count) = grid%nG2A(ghosted_id_dn)
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo  
+  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+
+end subroutine OutputGetExplicitIDsFlowrates
+
+! ************************************************************************** !
+!
+! OutputGetExplicitFlowrates: Forms a vector of magnitude of flowrates
+! which will be printed out to file for particle tracking.
+! author: Satish Karra, LANL
+! date: 04/24/13
+!
+! ************************************************************************** !
+subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
+                                      flowrates,darcy)
+
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Field_module
+  use Connection_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(field_type), pointer :: field
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+
+  
+  PetscReal, pointer :: vec_proc_ptr(:)
+  PetscReal, pointer :: flowrates(:,:)
+  PetscReal, pointer :: darcy(:)
+  PetscInt :: offset
+  PetscInt :: iconn
+  PetscErrorCode :: ierr
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: local_id_up, local_id_dn
+  PetscReal :: proc_up, proc_dn, conn_proc
+  PetscInt :: sum_connection, count
+  Vec :: vec_proc
+  PetscInt :: idof
+  
+  patch => realization_base%patch
+  grid => patch%grid
+  ugrid => grid%unstructured_grid
+  option => realization_base%option
+  field => realization_base%field
+
+  ! Count the number of connections on a local process
+  allocate(flowrates(count,option%nflowdof))
+  allocate(darcy(count))
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  count = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn)      
+      if (option%myrank == int(vec_proc_ptr(sum_connection))) then
+        count = count + 1
         do idof = 1,option%nflowdof
           flowrates(count,option%nflowdof) = &
             patch%internal_fluxes(idof,1,sum_connection)
         enddo
+        darcy(count) = patch%internal_velocities(1,sum_connection)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1347,5 +1430,95 @@ subroutine OutputGetExplicitFlowrates(realization_base,count, &
 
 end subroutine OutputGetExplicitFlowrates
 
+! ************************************************************************** !
+!
+! OutputGetExplicitAuxVars: Calculates porosity, saturation at the face 
+! between a connection
+! author: Satish Karra, LANL
+! date: 07/17/13
+!
+! ************************************************************************** !
+subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
+
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Field_module
+  use Connection_module
+  use GLobal_Aux_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "definitions.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(field_type), pointer :: field
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(global_auxvar_type), pointer :: global_auxvar(:)
+
+  PetscReal, pointer :: vec_proc_ptr(:)
+  PetscReal, pointer :: flowrates(:,:)
+  PetscReal, pointer :: darcy(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: sat(:), por(:)
+  PetscInt :: offset
+  PetscInt :: iconn
+  PetscErrorCode :: ierr
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: local_id_up, local_id_dn
+  PetscReal :: proc_up, proc_dn, conn_proc
+  PetscInt :: sum_connection, count
+  Vec :: vec_proc
+  PetscInt :: idof
+  
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  grid => patch%grid
+  global_auxvar => patch%aux%Global%aux_vars
+  
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+  allocate(por(count))
+  allocate(sat(count))
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  count = 0 
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn) 
+      if (option%myrank == int(vec_proc_ptr(sum_connection))) then
+        count = count + 1
+        por(count) = 0.5*(porosity_loc_p(ghosted_id_up) + &
+                          porosity_loc_p(ghosted_id_dn))
+        sat(count) = 0.5*(global_auxvar(ghosted_id_up)%sat(1) + &
+                          global_auxvar(ghosted_id_dn)%sat(1))
+      endif      
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+      
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+
+
+end subroutine OutputGetExplicitAuxVars
 
 end module Output_Common_module
