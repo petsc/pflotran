@@ -36,6 +36,8 @@ module Output_Common_module
             ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
             GetCellConnectionsExplicit, &
+            OutputXMFHeaderExplicit, &
+            OutputXMFAttributeExplicit, &
             OutputGetExplicitIDsFlowrates, &
             OutputGetExplicitAuxVars
               
@@ -768,27 +770,30 @@ subroutine GetCellConnectionsExplicit(grid, vec)
             vec_ptr(offset + ivertex) = 0
           enddo
         else
-          offset = (iconn-1)*4
+          offset = (iconn-1)*8
           do ivertex = 1, 4
             vec_ptr(offset + ivertex) = &
               explicit_grid%cell_connectivity(ivertex,iconn)
           enddo
+          do ivertex = 5, 8
+            vec_ptr(offset + ivertex) = 0
+          enddo          
         endif
       case (3)
-        offset = (iconn-1)*4
+        offset = (iconn-1)*8
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
            explicit_grid%cell_connectivity(ivertex,iconn)
         enddo
-        ivertex = 4
-        vec_ptr(offset + 4) = 0
+        do ivertex = 4, 8
+          vec_ptr(offset + ivertex) = 0
+        enddo
     end select
   enddo
 
   call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
 
 end subroutine GetCellConnectionsExplicit
-
 
 ! ************************************************************************** !
 !> This subroutine writes header to a .xmf file
@@ -918,6 +923,84 @@ subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
 end subroutine OutputXMFHeader
 
 ! ************************************************************************** !
+!
+! OutputXMFHeaderExplicit: Header for xdmf output with explicit grid
+! author: Satish Karra
+! date: 07/17/13
+! 
+! ************************************************************************** !
+subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
+
+  implicit none
+
+  PetscInt :: fid, vert_count
+  PetscReal :: time
+  PetscInt :: nmax,xmf_vert_len,ngvert
+  character(len=MAXSTRINGLENGTH) :: filename
+
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+  string="<?xml version=""1.0"" ?>"
+  write(fid,'(a)') trim(string)
+  
+  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
+  write(fid,'(a)') trim(string)
+
+  string="<Xdmf>"
+  write(fid,'(a)') trim(string)
+
+  string="  <Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="    <Grid Name=""Mesh"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,'(es13.5)') time
+  string="      <Time Value = """ // trim(adjustl(string2)) // """ />"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) nmax
+  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
+    trim(adjustl(string2)) // """ >"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) xmf_vert_len
+  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
+    trim(adjustl(string2)) // """>"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Cells"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Topology>"
+  write(fid,'(a)') trim(string)
+
+  string="      <Geometry GeometryType=""XYZ"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) ngvert
+  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Vertices"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Geometry>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFHeaderExplicit
+
+! ************************************************************************** !
 !> This subroutine writes footer to a .xmf file
 !!
 !> @author
@@ -979,6 +1062,41 @@ subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
   write(fid,'(a)') trim(string)
 
 end subroutine OutputXMFAttribute
+
+! ************************************************************************** !
+!
+! OutputXMFAttributeExplicit: Header for xdmf attribute with explicit grid
+! author: Satish Karra
+! date: 07/17/13
+!
+! ************************************************************************** !
+subroutine OutputXMFAttributeExplicit(fid,nmax,attname,att_datasetname)
+
+  implicit none
+
+  PetscInt :: fid,nmax
+  
+  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
+  character(len=MAXSTRINGLENGTH) :: string,string2
+  string="      <Attribute Name=""" // trim(attname) // &
+    """ AttributeType=""Scalar""  Center=""Node"">"
+  write(fid,'(a)') trim(string)
+
+!  write(string2,*) grid%nmax
+  write(string2,*) nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(att_datasetname)
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFAttributeExplicit
 
 ! ************************************************************************** !
 !> This returns mass/energy flowrate at all faces of a control volume
