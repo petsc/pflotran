@@ -78,6 +78,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
   use Grid_module, only : UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC
+  use Unstructured_Grid_Aux_module, only: EXPLICIT_UNSTRUCTURED_GRID
   
   implicit none
   
@@ -114,7 +115,13 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID .or. &
           realization_base%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-        call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
+        if (realization_base%discretization%grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+          if (option%print_explicit_primal_grid) then
+            call OutputHDF5UGridXDMFExplicit(realization_base,INSTANTANEOUS_VARS)
+          endif
+        else
+          call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
+        endif
       else
         call OutputHDF5(realization_base,INSTANTANEOUS_VARS)
       endif      

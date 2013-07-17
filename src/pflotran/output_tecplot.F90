@@ -1985,8 +1985,7 @@ end subroutine WriteTecplotDataSetNumPerLine
 !
 ! OutputPrintExplicitFlowrates: Prints out the flow rate through a voronoi face
 ! for explicit grid. This will be used for particle tracking.
-! outputs in the format: mag(Res) where the row number is same as connection
-! number
+! Prints out natural id of the two nodes and the value of the flow rate
 ! author: Satish Karra, LANL
 ! date: 04/24/13
 !
