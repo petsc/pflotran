@@ -1563,6 +1563,10 @@ end subroutine vappr
       
 subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
 
+! Fenghour, A., W. A. Wakeham, and V. Vesovic, 
+! The viscosity of carbon dioxide, 
+! J. Phys. Chem. Ref. Data, 27(1), 31−44, 1998.
+
       implicit none
       real*8 :: p, t, rho
       real*8 :: xsection1, xsection2, drhodt, drhodp,dmudp,dmudt
