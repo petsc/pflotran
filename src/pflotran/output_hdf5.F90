@@ -1158,14 +1158,14 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   integer:: dims(3)
   integer :: start(3), length(3), stride(3),istart
 #else
-  integer(HID_T) :: file_id
+  integer(HID_T) :: file_id, new_file_id
   integer(HID_T) :: data_type
-  integer(HID_T) :: grp_id
+  integer(HID_T) :: grp_id, new_grp_id
   integer(HID_T) :: file_space_id
   integer(HID_T) :: realization_set_id
   integer(HID_T) :: memory_space_id
   integer(HID_T) :: data_set_id
-  integer(HID_T) :: prop_id
+  integer(HID_T) :: prop_id, new_prop_id
   PetscMPIInt :: rank
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   integer(HSIZE_T) :: dims(3)
@@ -1186,6 +1186,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
 
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
+  character(len=MAXSTRINGLENGTH) :: new_filename
   character(len=MAXSTRINGLENGTH) :: string, string2,string3
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
@@ -1277,17 +1278,23 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
     option%io_buffer = '--> appending to hdf5 output file: ' // trim(filename)
   endif
   call printMsg(option)
-
+  
   if (first) then
     if (option%myrank == option%io_rank) then
+      new_filename = trim(option%global_prefix) // '-domain.h5'
+      call h5pcreate_f(H5P_FILE_ACCESS_F,new_prop_id,hdf5_err)
+      call h5fcreate_f(new_filename,H5F_ACC_TRUNC_F,new_file_id,hdf5_err, &
+                     H5P_DEFAULT_F,new_prop_id)
+      call h5pclose_f(new_prop_id,hdf5_err)
       ! create a group for the coordinates data set
       string = "Domain"
-      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-      call WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,grp_id)
-      call h5gclose_f(grp_id,hdf5_err)
+      call h5gcreate_f(new_file_id,string,new_grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+      call WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,new_grp_id)
+      call h5gclose_f(new_grp_id,hdf5_err)
+      call h5fclose_f(new_file_id,hdf5_err)    
     endif
-  endif
-
+  endif   
+  
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write xmf output file: ' // trim(filename)
     call printMsg(option)
@@ -1298,7 +1305,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
                                  realization_base%output_option%xmf_vert_len, &
                                  grid%unstructured_grid%explicit_grid% &
                                    num_cells_global, &
-                                 filename)
+                                 new_filename)
   endif
 
   ! create a group for the data set
@@ -1382,9 +1389,10 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
   call h5gclose_f(grp_id,hdf5_err)
-
-  call h5fclose_f(file_id,hdf5_err)
+   
+  call h5fclose_f(file_id,hdf5_err)    
   call h5close_f(hdf5_err)
+
 
   if (option%myrank == option%io_rank) then
     call OutputXMFFooter(OUTPUT_UNIT)
@@ -2657,7 +2665,6 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
     vec_z_ptr(i) = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%z  
   enddo
  
- 
 #if defined(SCORPIO_WRITE)
   write(*,*),'SCORPIO_WRITE'
   option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for SCORPIO_WRITE'
@@ -2667,6 +2674,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   !
   !        not(SCORPIO_WRITE)
   !
+  
   local_size = grid%unstructured_grid%explicit_grid%num_cells_global
   ! memory space which is a 1D vector
   rank_mpi = 1
@@ -2709,10 +2717,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
                              hdf5_err,stride,stride)
     ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
-                            hdf5_err)
-#endif
+
 
   allocate(double_array(local_size*3))
   do i=1,local_size
@@ -2725,8 +2730,8 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
-
   deallocate(double_array)
+  
   call h5pclose_f(prop_id,hdf5_err)
 
   call h5dclose_f(data_set_id,hdf5_err)
@@ -2735,7 +2740,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   deallocate(vec_x_ptr)
   deallocate(vec_y_ptr)
   deallocate(vec_z_ptr)
-  
+   
   !
   !  Write elements
   !
@@ -2750,13 +2755,13 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   call GetCellConnectionsExplicit(grid,natural_vec)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
 
-
   vert_count=0
+
   do i=1,local_size*EIGHT_INTEGER
     if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
   enddo
   vert_count=vert_count+grid%unstructured_grid%explicit_grid%num_elems
-
+  
   ! memory space which is a 1D vector
   rank_mpi = 1
   dims(1) = vert_count
@@ -2793,10 +2798,6 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
 
     ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
-                            hdf5_err)
-#endif
 
   allocate(int_array(vert_count))
 
@@ -2839,6 +2840,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
 
   deallocate(int_array)
+  
   call h5pclose_f(prop_id,hdf5_err)
 
   call h5dclose_f(data_set_id,hdf5_err)
@@ -2846,7 +2848,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
 
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
   call VecDestroy(natural_vec,ierr)
-  
+    
 #endif
 !if defined(SCORPIO_WRITE)
 
