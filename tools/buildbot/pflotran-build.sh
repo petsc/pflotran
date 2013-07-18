@@ -23,7 +23,10 @@
 #    additional TPLs needed for that builder, i.e. hdf5, metis and
 #    parmetis for unstructured mesh.
 #
-#  - 
+#  - NOTE: petsc must be built with '--with-shared-libraries=0'
+#    because we check for the presence of libpetsc.a to figure out if
+#    a petsc build is acceptable.
+#
 #
 ################################################################################
 
@@ -45,13 +48,8 @@ BUILD_STATUS=0
 ################################################################################
 
 function set-builder-info() {
-    _id_file="${HOME}/.pflotran-buildbot-id"
-    if [ ! -f ${_id_file} ]; then
-        echo "ERROR: could not find builder id file: ${_id_file}"
-        exit 1
-    fi
-    BUILDER_ID=`cat ${_id_file}`
-    PETSC_ARCH=${BUILDER_ID}
+    BUILDER_ID=`hostname -s`
+    PETSC_ARCH=${BUILDER_ID}-${COMPILER}
 
     echo "pflotran builder id : ${BUILDER_ID}"
 
@@ -82,8 +80,10 @@ function stage-petsc() {
             echo "Rebuilding PETSc at version: ${_petsc_required_version}"
             petsc-build ${_petsc_required_version}
         fi
-        if [ ! -d ${PETSC_DIR}/${PETSC_ARCH} ]; then
-            echo "PETSc does not appear to have been built yet."
+        _lib_petsc=${PETSC_DIR}/${PETSC_ARCH}/lib/libpetsc.a
+        if [ ! -f ${_lib_petsc} ]; then
+            echo "PETSc : could not find libpetsc.a for this PETSC_ARCH. Rebuilding."
+            echo "    ${_lib_petsc}"
             petsc-build ${_petsc_required_version}
         fi
     else
@@ -121,12 +121,12 @@ function stage-pflotran-build() {
     echo "  PETSC_ARCH=${PETSC_ARCH}"
     export PETSC_DIR PETSC_ARCH
     _pflotran_flags=
-    _info_file=${PFLOTRAN_DIR}/tools/buildbot/builder-info/${BUILDER_ID}.txt
-    if [ -f ${_info_file} ]; then
-        _pflotran_flags=`cat ${_info_file}`
+    _flags_file=${PFLOTRAN_DIR}/tools/buildbot/build-flags/${BUILD_FLAGS}.txt
+    if [ -f ${_flags_file} ]; then
+        _pflotran_flags=`cat ${_flags_file}`
         echo "  pflotran build flags=${_pflotran_flags}"
     else
-        echo "Could not find builder info file: ${_info_file}. Building vanilla pflotran."
+        echo "Could not find build flags file: ${_flags_file}. Building with 'make pflotran'."
     fi
     
     cd ${PFLOTRAN_DIR}/src/pflotran
@@ -142,17 +142,17 @@ function stage-pflotran-test() {
     export PETSC_DIR PETSC_ARCH
     _test_dir=${PFLOTRAN_DIR}/regression_tests
     _pflotran_flags=
-    _info_file=${PFLOTRAN_DIR}/tools/buildbot/builder-info/${BUILDER_ID}.txt
-    if [ -f ${_info_file} ]; then
-        _pflotran_flags=`cat ${_info_file}`
+    _flags_file=${PFLOTRAN_DIR}/tools/buildbot/build-flags/${BUILD_FLAGS}.txt
+    if [ -f ${_flags_file} ]; then
+        _pflotran_flags=`cat ${_flags_file}`
         echo "  pflotran build flags=${_pflotran_flags}"
 
-        grep -e "makefile_new" ${_info_file} &> /dev/null
+        grep -e "makefile_new" ${_flags_file} &> /dev/null
         if [ "$?" -eq "0" ]; then
             _test_dir=${PFLOTRAN_DIR}/regression_tests_refactor
         fi
     else
-        echo "Could not find builder info file: ${_info_file}. Testing vanilla pflotran."
+        echo "Could not find build flags file: ${_flags_file}. Testing with 'make pflotran'."
     fi
 
     echo "  test directory : ${_test_dir}"
@@ -172,6 +172,8 @@ function stage-pflotran-test() {
 function usage() {
      echo "
 Usage: $0 [options]
+    -b BUILD_FLAGS    group of build flags to use.
+    -c COMPILER       compiler name: gnu, pgi, intel
     -h                print this help message
     -p PFLOTRAN_DIR   root directory for the build (default: '.')
     -s BUILD_STAGE    build stage must be one of:
@@ -179,23 +181,35 @@ Usage: $0 [options]
 
 Notes:
 
+  - The build flags group must have a corresponding file in the
+    tools/buildbot/build-flags/ directory.
+
 "
 }
 
 # setup based on commandline args
+BUILD_FLAGS="__NONE__"
 BUILD_STAGE=
-while getopts "hp:s:" FLAG
+COMPILER=
+while getopts "b:c:hp:s:" FLAG
 do
   case ${FLAG} in
+    b) BUILD_FLAGS=${OPTARG};;
+    c) COMPILER=${OPTARG};;
+    h) usage;;
     p) PFLOTRAN_DIR=${OPTARG};;
     s) BUILD_STAGE=${OPTARG};;
-    h) usage;;
   esac
 done
 
 # verify all required info is set
 if [ -z "${BUILD_STAGE}" ]; then
     echo "ERROR: The build stage name must be provided on the command line."
+    exit 1
+fi
+
+if [ -z "${COMPILER}" ]; then
+    echo "ERROR: The compiler name must be provided on the command line."
     exit 1
 fi
 

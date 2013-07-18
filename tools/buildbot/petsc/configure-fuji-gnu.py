@@ -20,6 +20,6 @@ if __name__ == '__main__':
     '--with-petsc-arch=fuji-linux-gnu',
     '--with-shared-libraries=0',
     '--with-valgrind=1',
-    'PETSC_ARCH=fuji-linux-gnu',
+    'PETSC_ARCH=fuji-gnu',
   ]
   configure.petsc_configure(configure_options)
