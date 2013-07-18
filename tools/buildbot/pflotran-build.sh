@@ -37,9 +37,10 @@
 ################################################################################
 BUILDER_ID=
 PFLOTRAN_DIR=`pwd`
-PETSC_DIR=${PFLOTRAN_DIR}/../petsc.git
+PETSC_DIR=
 PETSC_ARCH=
 BUILD_STATUS=0
+PETSC_REPO=https://bitbucket.org/petsc/petsc.git
 
 ################################################################################
 #
@@ -49,53 +50,62 @@ BUILD_STATUS=0
 
 function set-builder-info() {
     BUILDER_ID=`hostname -s`
-    PETSC_ARCH=${BUILDER_ID}-${COMPILER}
-
     echo "pflotran builder id : ${BUILDER_ID}"
 
+    _petsc_version_file=${PFLOTRAN_DIR}/tools/buildbot/petsc/petsc-git-version.txt
+    if [ ! -f ${_petsc_version_file} ]; then
+        echo "ERROR: could not find petsc version file : ${_petsc_version_file}"
+        exit 1
+    fi
+    PETSC_REQUIRED_VERSION=`cat ${_petsc_version_file}`
+    echo "PFLOTRAN requires PETSc git reversion ${PETSC_REQUIRED_VERSION}"
+
+    PETSC_DIR=${PFLOTRAN_DIR}/../petsc.git.${PETSC_REQUIRED_VERSION:0:8}
+    PETSC_ARCH=${BUILDER_ID}-${COMPILER}
+    echo "Requiring petsc env: "
+    echo "  PETSC_DIR=${PETSC_DIR}"
+    echo "  PETSC_ARCH=${PETSC_ARCH}"
+    echo ""
+    echo ""
 }
 
 function stage-petsc() {
     echo "PETSc stage"
 
-    if [ -z ${PETSC_DIR} ]; then
-        echo "ERROR: could not assign PETSC_DIR"
-        exit 1
-    fi
-    if [ -z ${PETSC_ARCH} ]; then
-        echo "ERROR: could not assign PETSC_ARCH"
-        exit 1
-    fi
-
-    _petsc_version_file=${PFLOTRAN_DIR}/tools/buildbot/petsc/petsc-git-version.txt
-    _petsc_required_version=`cat ${_petsc_version_file}`
-    echo "PFLOTRAN requires PETSc git reversion ${_petsc_required_version}"
+    _lib_petsc=${PETSC_DIR}/${PETSC_ARCH}/lib/libpetsc.a
 
     if [ -d ${PETSC_DIR} ]; then
         echo "Found existing PETSc directory."
         cd ${PETSC_DIR}
         _petsc_install_version=`git log --pretty="%H" -1 HEAD`
         echo "Found PETSc version: ${_petsc_install_version}"
-        if [ ${_petsc_install_version} != ${_petsc_required_version} ]; then
-            echo "Rebuilding PETSc at version: ${_petsc_required_version}"
-            petsc-build ${_petsc_required_version}
-        fi
-        _lib_petsc=${PETSC_DIR}/${PETSC_ARCH}/lib/libpetsc.a
-        if [ ! -f ${_lib_petsc} ]; then
+        if [ ${_petsc_install_version} != ${PETSC_REQUIRED_VERSION} ]; then
+            # petsc dir name != petsc version, shouldn't happen...
+            echo "Rebuilding PETSc version: ${PETSC_REQUIRED_VERSION}"
+            petsc-build ${PETSC_REQUIRED_VERSION}
+        elif [ ! -f ${_lib_petsc} ]; then
             echo "PETSc : could not find libpetsc.a for this PETSC_ARCH. Rebuilding."
             echo "    ${_lib_petsc}"
-            petsc-build ${_petsc_required_version}
+            petsc-build ${PETSC_REQUIRED_VERSION}
         fi
     else
         echo "Building PETSc from scratch"
-        git clone https://bitbucket.org/petsc/petsc.git ${PETSC_DIR}
-        cd ${PETSC_DIR}
-        petsc-build ${_petsc_required_version}
+        git clone ${PETSC_REPO} ${PETSC_DIR}
+        petsc-build ${PETSC_REQUIRED_VERSION}
     fi
 
+    if [ ! -f ${_lib_petsc} ]; then
+        echo "PETSc : build failed? : libpetsc.a missing after attempted build."
+    else
+        echo "PETSc appears to be installed at the correct version"
+        if [ -z "${BUILD_STATUS}" ]; then
+            BUILD_STATUS=0
+        fi
+    fi
 }
 
 function petsc-build() {
+    cd ${PETSC_DIR}
     git checkout $1
 
     _petsc_config_file="${PFLOTRAN_DIR}/tools/buildbot/petsc/configure-${PETSC_ARCH}.py"
