@@ -1279,9 +1279,11 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   endif
   call printMsg(option)
   
+  new_filename = trim(option%global_prefix) // '-domain.h5'
+  
+  
   if (first) then
     if (option%myrank == option%io_rank) then
-      new_filename = trim(option%global_prefix) // '-domain.h5'
       call h5pcreate_f(H5P_FILE_ACCESS_F,new_prop_id,hdf5_err)
       call h5fcreate_f(new_filename,H5F_ACC_TRUNC_F,new_file_id,hdf5_err, &
                      H5P_DEFAULT_F,new_prop_id)
@@ -2725,7 +2727,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
     double_array((i-1)*3+2) = vec_y_ptr(i)
     double_array((i-1)*3+3) = vec_z_ptr(i)
   enddo
-
+                    
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
