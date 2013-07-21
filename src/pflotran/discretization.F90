@@ -783,6 +783,8 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
                            dm_ptr%ugdm,ndof,option)
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr)
       call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_gtol,ierr)
+      call DMShellSetLocalToGlobalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_ltog,ierr)
+      call DMShellSetLocalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_ltol,ierr)
   end select
 
 end subroutine DiscretizationCreateDM
@@ -1217,17 +1219,9 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call DMLocalToGlobalBegin(dm_ptr%dm,local_vec,INSERT_VALUES,global_vec,ierr)
-      call DMLocalToGlobalEnd(dm_ptr%dm,local_vec,INSERT_VALUES,global_vec,ierr)
-   case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
-      call VecScatterBegin(dm_ptr%ugdm%scatter_ltog,local_vec,global_vec, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-      call VecScatterEnd(dm_ptr%ugdm%scatter_ltog,local_vec,global_vec, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-  end select
-  
+  call DMLocalToGlobalBegin(dm_ptr%dm,local_vec,INSERT_VALUES,global_vec,ierr)
+  call DMLocalToGlobalEnd(dm_ptr%dm,local_vec,INSERT_VALUES,global_vec,ierr)
+ 
 end subroutine DiscretizationLocalToGlobal
   
 ! ************************************************************************** !
@@ -1259,16 +1253,8 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call DMDALocalToLocalBegin(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
-      call DMDALocalToLocalEnd(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
-      call VecScatterBegin(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-      call VecScatterEnd(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)    
-  end select
+  call DMLocalToLocalBegin(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
+  call DMLocalToLocalEnd(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
   
 end subroutine DiscretizationLocalToLocal
   
@@ -1418,13 +1404,7 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
-      call VecScatterBegin(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-  end select
+  call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
   
 end subroutine DiscretizationGlobalToLocalBegin
   
@@ -1453,14 +1433,8 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
-      call VecScatterEnd(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-  end select
-  
+  call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
+ 
 end subroutine DiscretizationGlobalToLocalEnd
   
 ! ************************************************************************** !
@@ -1717,13 +1691,7 @@ subroutine DiscretizationLocalToLocalBegin(discretization,local_vec1,local_vec2,
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call DMDALocalToLocalBegin(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
-      call VecScatterBegin(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr)
-  end select
+  call DMLocalToLocalBegin(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
 
 end subroutine DiscretizationLocalToLocalBegin
   
@@ -1747,13 +1715,7 @@ subroutine DiscretizationLocalToLocalEnd(discretization,local_vec1,local_vec2,dm
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call DMDALocalToLocalEnd(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
-    case(UNSTRUCTURED_GRID,UNSTRUCTURED_GRID_MIMETIC)
-      call VecScatterEnd(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)    
-  end select
+  call DMLocalToLocalEnd(dm_ptr%dm,local_vec1,INSERT_VALUES,local_vec2,ierr)
 
 end subroutine DiscretizationLocalToLocalEnd
   
