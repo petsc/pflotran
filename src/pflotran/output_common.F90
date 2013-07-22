@@ -1565,7 +1565,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
   use Unstructured_Grid_Aux_module
   use Field_module
   use Connection_module
-  use GLobal_Aux_module
+  use Global_Aux_module
 
   implicit none
 
