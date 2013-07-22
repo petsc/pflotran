@@ -13,10 +13,6 @@ module Timestepper_Surface_class
   private
 
   type, public, extends(stepper_base_type) :: timestepper_surface_type
-!    PetscInt :: num_newton_iterations ! number of Newton iterations in a time step
-!    PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
-!    PetscInt :: cumulative_newton_iterations       ! Total number of Newton iterations
-!    PetscInt :: cumulative_linear_iterations     ! Total number of linear iterations
     PetscReal :: dt_max_allowable
     type(solver_type), pointer :: solver
   contains
@@ -71,11 +67,6 @@ subroutine TimeStepperSurfaceInit(stepper)
 
   call TimestepperBaseInit(stepper)
 
-!  stepper%num_newton_iterations = 0
-!  stepper%num_linear_iterations = 0
-!  stepper%cumulative_newton_iterations = 0
-!  stepper%cumulative_linear_iterations = 0
-    
   stepper%dt_max_allowable = 0.d0
   
 end subroutine TimeStepperSurfaceInit

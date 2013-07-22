@@ -372,17 +372,11 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
   stepper => TimeStepperSurfaceCreate()
   
   stepper%steps = stepper_old%steps
-!geh  stepper%num_newton_iterations = stepper_old%num_newton_iterations
-!geh  stepper%num_linear_iterations = stepper_old%num_linear_iterations
   stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
 
   stepper%max_time_step = stepper_old%max_time_step
   stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
   stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
-!geh  stepper%iaccel = stepper_old%iaccel
-
-!geh  stepper%cumulative_newton_iterations = stepper_old%cumulative_newton_iterations
-!geh  stepper%cumulative_linear_iterations = stepper_old%cumulative_linear_iterations
   stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
   stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
 
@@ -400,18 +394,12 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
   
   stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
 
-!geh  stepper%ntfac = stepper_old%ntfac
-!geh  stepper%tfac => stepper_old%tfac
-!geh  nullify(stepper_old%tfac)
-  
   stepper%init_to_steady_state = stepper_old%init_to_steady_state
   stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
   stepper%run_as_steady_state = stepper_old%run_as_steady_state
 
   stepper%solver => stepper_old%solver
   nullify(stepper_old%solver)
-!geh  stepper%convergence_context => stepper_old%convergence_context
-!geh  nullify(stepper_old%convergence_context)
   stepper%cur_waypoint => stepper_old%cur_waypoint
   nullify(stepper_old%cur_waypoint)
   
