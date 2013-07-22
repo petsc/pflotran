@@ -14,6 +14,7 @@ module Timestepper_Surface_class
 
   type, public, extends(stepper_base_type) :: timestepper_surface_type
     PetscReal :: dt_max_allowable
+    type(solver_type), pointer :: solver
   contains
     procedure, public :: Init => TimeStepperSurfaceInit
     procedure, public :: SetTargetTime => TimeStepperSurfaceSetTargetTime
@@ -65,6 +66,7 @@ subroutine TimeStepperSurfaceInit(stepper)
   class (timestepper_surface_type) :: stepper
 
   call TimestepperBaseInit(stepper)
+
   stepper%dt_max_allowable = 0.d0
   
 end subroutine TimeStepperSurfaceInit

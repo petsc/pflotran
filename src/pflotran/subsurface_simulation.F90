@@ -121,7 +121,7 @@ end subroutine SubsurfaceInitializeRun
 ! ************************************************************************** !
 subroutine SubsurfaceFinalizeRun(this)
 
-  use Timestepper_Base_class
+  use Timestepper_BE_class
 
   implicit none
   
@@ -129,8 +129,8 @@ subroutine SubsurfaceFinalizeRun(this)
   
   PetscErrorCode :: ierr
   
-  class(stepper_base_type), pointer :: flow_stepper
-  class(stepper_base_type), pointer :: tran_stepper
+  class(stepper_BE_type), pointer :: flow_stepper
+  class(stepper_BE_type), pointer :: tran_stepper
 
   call printMsg(this%option,'SubsurfaceFinalizeRun()')
   
@@ -138,10 +138,18 @@ subroutine SubsurfaceFinalizeRun(this)
   
   nullify(flow_stepper)
   nullify(tran_stepper)
-  if (associated(this%flow_process_model_coupler)) &
-    flow_stepper => this%flow_process_model_coupler%timestepper
-  if (associated(this%rt_process_model_coupler)) &
-    tran_stepper => this%rt_process_model_coupler%timestepper
+  if (associated(this%flow_process_model_coupler)) then
+    select type(ts => this%flow_process_model_coupler%timestepper)
+      class is(stepper_BE_type)
+        flow_stepper => ts
+    end select
+  endif
+  if (associated(this%rt_process_model_coupler)) then
+    select type(ts => this%rt_process_model_coupler%timestepper)
+      class is(stepper_BE_type)
+        tran_stepper => ts
+    end select
+  endif
   
   call RegressionOutput(this%regression,this%realization, &
                         flow_stepper,tran_stepper)  

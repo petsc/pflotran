@@ -99,6 +99,7 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
   use Process_Model_Surface_Flow_class
   use Process_Model_Base_class
   use Process_Model_module
+  use Timestepper_Surface_class
 
   implicit none
   
@@ -176,12 +177,15 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
         call cur_process_model%Init()
         select type(cur_process_model)
           class is (pm_surface_flow_type)
-            call TSSetRHSFunction( &
-                          cur_process_model_coupler%timestepper%solver%ts, &
+            select type(ts => cur_process_model_coupler%timestepper)
+              class is (timestepper_surface_type)
+                call TSSetRHSFunction( &
+                          ts%solver%ts, &
                           cur_process_model%residual_vec, &
                           PMRHSFunction, &
                           cur_process_model_coupler%pm_ptr, &
                           ierr)
+            end select
         end select
         cur_process_model => cur_process_model%next
       enddo
@@ -212,7 +216,7 @@ subroutine SurfaceJumpStart(simulation)
 
   use Surface_Realization_class
   use Option_module
-  use Timestepper_Base_class
+  use Timestepper_Surface_class
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
@@ -225,8 +229,8 @@ subroutine SurfaceJumpStart(simulation)
   type(surface_simulation_type) :: simulation
   
   class(surface_realization_type), pointer :: surf_realization
-  class(stepper_base_type), pointer :: master_stepper
-  class(stepper_base_type), pointer :: surf_flow_stepper
+  class(timestepper_surface_type), pointer :: master_stepper
+  class(timestepper_surface_type), pointer :: surf_flow_stepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -239,7 +243,10 @@ subroutine SurfaceJumpStart(simulation)
 
   surf_realization => simulation%surf_realization
   
-  surf_flow_stepper => simulation%surf_flow_process_model_coupler%timestepper
+  select type(ts => simulation%surf_flow_process_model_coupler%timestepper)
+    class is(timestepper_surface_type)
+      surf_flow_stepper => ts
+  end select
   nullify(master_stepper)
   
   option => surf_realization%option
@@ -349,31 +356,27 @@ end subroutine SurfaceJumpStart
 !!
 !! date: 06/28/13
 ! ************************************************************************** !
-subroutine HijackTimestepper(stepper_old,stepper)
+subroutine HijackTimestepper(stepper_old,stepper_base)
 
-  use Timestepper_Base_class
   use Timestepper_Surface_class
+  use Timestepper_Base_class
   use Timestepper_module
 
   implicit none
   
   type(stepper_type), pointer :: stepper_old
-  class(stepper_base_type), pointer :: stepper
+  class(stepper_base_type), pointer :: stepper_base
+  
+  class(timestepper_surface_type), pointer :: stepper
   
   stepper => TimeStepperSurfaceCreate()
   
   stepper%steps = stepper_old%steps
-  stepper%num_newton_iterations = stepper_old%num_newton_iterations
-  stepper%num_linear_iterations = stepper_old%num_linear_iterations
   stepper%num_constant_time_steps = stepper_old%num_constant_time_steps
 
   stepper%max_time_step = stepper_old%max_time_step
   stepper%max_time_step_cuts = stepper_old%max_time_step_cuts
   stepper%constant_time_step_threshold = stepper_old%constant_time_step_threshold
-  stepper%iaccel = stepper_old%iaccel
-
-  stepper%cumulative_newton_iterations = stepper_old%cumulative_newton_iterations
-  stepper%cumulative_linear_iterations = stepper_old%cumulative_linear_iterations
   stepper%cumulative_time_step_cuts = stepper_old%cumulative_time_step_cuts 
   stepper%cumulative_solver_time = stepper_old%cumulative_solver_time
 
@@ -391,18 +394,12 @@ subroutine HijackTimestepper(stepper_old,stepper)
   
   stepper%time_step_cut_flag = stepper_old%time_step_cut_flag
 
-  stepper%ntfac = stepper_old%ntfac
-  stepper%tfac => stepper_old%tfac
-  nullify(stepper_old%tfac)
-  
   stepper%init_to_steady_state = stepper_old%init_to_steady_state
   stepper%steady_state_rel_tol = stepper_old%steady_state_rel_tol
   stepper%run_as_steady_state = stepper_old%run_as_steady_state
 
   stepper%solver => stepper_old%solver
   nullify(stepper_old%solver)
-  stepper%convergence_context => stepper_old%convergence_context
-  nullify(stepper_old%convergence_context)
   stepper%cur_waypoint => stepper_old%cur_waypoint
   nullify(stepper_old%cur_waypoint)
   
@@ -413,6 +410,8 @@ subroutine HijackTimestepper(stepper_old,stepper)
 !  stepper%revert_dt = stepper_old%revert_dt
 !  stepper%num_contig_revert_due_to_sync = &
 !  stepper_old%num_contig_revert_due_to_sync
+
+  stepper_base => stepper
   
 end subroutine HijackTimestepper
 
