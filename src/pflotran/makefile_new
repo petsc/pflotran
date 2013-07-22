@@ -338,6 +338,7 @@ misc_obj = \
 	${common_src}strata.o \
 	${common_src}timestepper.o \
 	${common_src}timestepper_base.o \
+	${common_src}timestepper_BE.o \
 	${common_src}transport.o \
 	${common_src}uniform_velocity.o \
 	${common_src}waypoint.o 
@@ -403,14 +404,14 @@ block_solve.o :
 block_tridiag.o :
 checkpoint.o : discretization.o field.o flash2.o grid.o immis.o logging.o \
                miscible.o mphase.o option.o output_aux.o reaction_aux.o \
-               reactive_transport.o realization.o realization_base.o \
+               reactive_transport.o realization.o realization_base.o string.o \
                variables.o
 co2_span_wagner.o : co2_sw_rtsafe.o option.o
 co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
 co2_sw_rtsafe.o :
 co2eos.o :
-communicator_base.o : discretization.o dm_kludge.o option.o
+communicator_base.o : dm_kludge.o option.o
 condition.o : constraint.o dataset_base.o dataset_common_hdf5.o dataset_map.o \
               dataset_xyz.o general_aux.o global_aux.o hdf5_aux.o input.o \
               logging.o option.o reaction_aux.o string.o time_series.o \
@@ -489,13 +490,13 @@ hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          realization.o realization_base.o region.o unstructured_cell.o \
          utility.o
 hdf5_aux.o : logging.o option.o
-hydrogeophysics_factory.o : hydrogeophysics_simulation.o init.o input.o \
-                            option.o simulation.o simulation_base.o \
-                            subsurface_factory.o pmc_hydrogeophysics.o \
-                            hydrogeophysics_wrapper.o
-hydrogeophysics_simulation.o : option.o output.o pmc_base.o simulation_base.o \
-                               subsurface_simulation.o pmc_hydrogeophysics.o \
-                               hydrogeophysics_wrapper.o
+hydrogeophysics_factory.o : discretization.o hydrogeophysics_simulation.o \
+                            hydrogeophysics_wrapper.o input.o option.o \
+                            pmc_hydrogeophysics.o simulation.o \
+                            simulation_base.o string.o subsurface_factory.o
+hydrogeophysics_simulation.o : hydrogeophysics_wrapper.o option.o output.o \
+                               pmc_base.o pmc_hydrogeophysics.o \
+                               simulation_base.o subsurface_simulation.o
 hydrogeophysics_wrapper.o : option.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
                 grid.o option.o region.o structured_grid.o utility.o \
@@ -562,11 +563,13 @@ option.o : logging.o
 output.o : connection.o coupler.o debug.o discretization.o field.o grid.o \
            hdf5.o input.o level.o logging.o option.o output_aux.o \
            output_common.o output_hdf5.o output_observation.o output_tecplot.o \
-           output_vtk.o patch.o reaction_aux.o realization_base.o variables.o
+           output_vtk.o patch.o reaction_aux.o realization_base.o \
+           unstructured_grid_aux.o variables.o
 output_aux.o : input.o option.o string.o variables.o
-output_common.o : connection.o coupler.o field.o grid.o hdf5.o hdf5_aux.o \
-                  logging.o option.o output_aux.o patch.o realization_base.o \
-                  unstructured_cell.o unstructured_grid_aux.o variables.o
+output_common.o : connection.o coupler.o field.o global_aux.o grid.o hdf5.o \
+                  hdf5_aux.o logging.o option.o output_aux.o patch.o \
+                  realization_base.o unstructured_cell.o \
+                  unstructured_grid_aux.o variables.o
 output_hdf5.o : connection.o coupler.o discretization.o field.o grid.o hdf5.o \
                 hdf5_aux.o logging.o option.o output_aux.o output_common.o \
                 patch.o reaction_aux.o realization_base.o string.o \
@@ -582,13 +585,13 @@ output_observation.o : connection.o coupler.o discretization.o field.o \
 output_surface.o : connection.o coupler.o discretization.o field.o grid.o \
                    hdf5.o hdf5_aux.o input.o logging.o option.o output_aux.o \
                    output_common.o output_hdf5.o output_tecplot.o patch.o \
-                   reaction_aux.o realization.o realization_base.o string.o \
-                   surface_field.o surface_realization.o unstructured_cell.o \
+                   reaction_aux.o realization.o string.o surface_field.o \
+                   surface_realization.o unstructured_cell.o \
                    unstructured_grid_aux.o utility.o variables.o
 output_tecplot.o : connection.o discretization.o field.o grid.o logging.o \
                    observation.o option.o output_aux.o output_common.o patch.o \
                    reaction_aux.o realization_base.o region.o \
-                   secondary_continuum_aux.o structured_grid.o \
+                   secondary_continuum_aux.o string.o structured_grid.o \
                    unstructured_cell.o unstructured_grid_aux.o utility.o \
                    variables.o
 output_vtk.o : discretization.o field.o grid.o logging.o option.o output_aux.o \
@@ -606,14 +609,18 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
 pflotran_factory.o : init.o input.o logging.o option.o regression.o \
                      simulation.o string.o timestepper.o
 pflotran_new.o : hydrogeophysics_factory.o option.o pflotran_factory.o \
-                 simulation_base.o subsurface_factory.o
+                 simulation_base.o subsurface_factory.o surface_factory.o \
+                 surfsubsurface_factory.o
 pmc_base.o : option.o output.o output_aux.o process_model_base.o \
              process_model_top.o timestepper_base.o utility.o waypoint.o
-pmc_hydrogeophysics.o : option.o output.o pmc_base.o utility.o \
-                        hydrogeophysics_wrapper.o
+pmc_hydrogeophysics.o : hydrogeophysics_wrapper.o option.o pmc_base.o \
+                        realization.o realization_base.o string.o utility.o \
+                        variables.o
 pmc_subsurface.o : option.o pmc_base.o realization.o utility.o
-pmc_surface.o : option.o pmc_base.o surface_realization.o utility.o \
-                timestepper_surface.o
+pmc_surface.o : option.o output.o pmc_base.o process_model_base.o \
+                process_model_surface_flow.o realization.o surface_flow.o \
+                surface_realization.o surface_th.o timestepper_base.o \
+                timestepper_surface.o utility.o
 process_model_base.o : option.o output_aux.o realization_base.o
 process_model_richards.o : communicator_base.o condition.o discretization.o \
                            global.o grid.o option.o process_model_base.o \
@@ -625,7 +632,8 @@ process_model_rt.o : communicator_base.o condition.o discretization.o global.o \
                      structured_communicator.o unstructured_communicator.o
 process_model_surface_flow.o : communicator_base.o condition.o \
                                discretization.o grid.o option.o \
-                               process_model_base.o surface_flow.o \
+                               process_model_base.o realization.o \
+                               surface_field.o surface_flow.o \
                                surface_realization.o \
                                unstructured_communicator.o
 process_model_th.o : communicator_base.o condition.o discretization.o global.o \
@@ -636,8 +644,7 @@ process_model_thc.o : communicator_base.o condition.o discretization.o \
                       global.o grid.o option.o process_model_base.o \
                       realization.o structured_communicator.o thc.o \
                       unstructured_communicator.o
-process_model_top.o : option.o process_model_base.o process_model_richards.o \
-                      process_model_rt.o realization.o richards.o
+process_model_top.o : option.o process_model_base.o realization.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : constraint.o global_aux.o immobile.o immobile_aux.o input.o \
              microbial.o microbial_aux.o mineral.o mineral_aux.o option.o \
@@ -695,13 +702,14 @@ realization_base.o : debug.o discretization.o field.o input.o level.o \
 region.o : geometry.o input.o logging.o option.o string.o structured_grid.o \
            unstructured_cell.o utility.o
 regression.o : discretization.o grid.o input.o option.o output.o output_aux.o \
-               output_common.o realization.o string.o timestepper_base.o \
-               utility.o
+               output_common.o realization.o string.o timestepper.o \
+               timestepper_BE.o utility.o
 richards.o : connection.o coupler.o debug.o discretization.o field.o \
-             global_aux.o grid.o logging.o material.o matrix_buffer.o option.o \
-             output_aux.o patch.o realization.o realization_base.o \
-             richards_aux.o richards_common.o richards_lsm.o richards_mfd.o \
-             saturation_function.o variables.o water_eos.o
+             global_aux.o grid.o logging.o mass_transfer.o material.o \
+             matrix_buffer.o option.o output_aux.o patch.o realization.o \
+             realization_base.o richards_aux.o richards_common.o \
+             richards_lsm.o richards_mfd.o saturation_function.o variables.o \
+             water_eos.o
 richards_aux.o : global_aux.o matrix_buffer.o option.o saturation_function.o \
                  water_eos.o
 richards_common.o : global_aux.o option.o richards_aux.o saturation_function.o \
@@ -710,9 +718,9 @@ richards_lsm.o : connection.o coupler.o field.o global_aux.o grid.o logging.o \
                  material.o option.o patch.o realization.o richards_aux.o \
                  richards_common.o saturation_function.o
 richards_mfd.o : connection.o coupler.o debug.o discretization.o field.o \
-                 global_aux.o grid.o logging.o material.o matrix_buffer.o \
-                 mfd.o mfd_aux.o option.o patch.o realization.o richards_aux.o \
-                 richards_common.o water_eos.o
+                 global_aux.o grid.o logging.o mass_transfer.o material.o \
+                 matrix_buffer.o mfd.o mfd_aux.o option.o patch.o \
+                 realization.o richards_aux.o richards_common.o water_eos.o
 saturation.o : condition.o connection.o coupler.o grid.o option.o region.o \
                saturation_function.o water_eos.o
 saturation_function.o : input.o option.o string.o utility.o
@@ -746,11 +754,10 @@ subsurface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
                        process_model_top.o reactive_transport.o realization.o \
                        richards.o simulation.o simulation_base.o \
                        subsurface_simulation.o th.o thc.o thmc.o timestepper.o \
-                       timestepper_base.o waypoint.o surface_checkpoint.o \
-                       output_surface.o
+                       timestepper_BE.o timestepper_base.o waypoint.o
 subsurface_simulation.o : logging.o option.o output.o pmc_base.o \
                           pmc_subsurface.o realization.o regression.o \
-                          simulation_base.o timestepper_base.o
+                          simulation_base.o timestepper_BE.o
 surface_auxiliary.o : surface_global_aux.o surface_th_aux.o
 surface_checkpoint.o : discretization.o grid.o option.o output_aux.o \
                        surface_field.o surface_realization.o
@@ -758,15 +765,13 @@ surface_complexation.o : global_aux.o input.o matrix_block_aux.o option.o \
                          reaction_aux.o reactive_transport_aux.o string.o \
                          surface_complexation_aux.o utility.o
 surface_complexation_aux.o : database_aux.o option.o utility.o
-surface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
-                       immis.o init.o input.o logging.o miscible.o mphase.o \
-                       option.o output.o output_aux.o pmc_base.o \
-                       process_model_base.o process_model_surface_flow.o \
-                       process_model_top.o  surface_realization.o \
-                       surface_flow.o simulation_base.o \
-                       surface_simulation.o \
-                       timestepper_base.o waypoint.o
-
+surface_factory.o : condition_control.o init.o input.o logging.o option.o \
+                    output.o output_aux.o output_surface.o pmc_base.o \
+                    pmc_surface.o process_model_base.o \
+                    process_model_surface_flow.o process_model_top.o \
+                    simulation.o simulation_base.o surface_checkpoint.o \
+                    surface_realization.o surface_simulation.o timestepper.o \
+                    timestepper_base.o timestepper_surface.o
 surface_field.o :
 surface_flow.o : condition.o connection.o coupler.o debug.o discretization.o \
                  dm_kludge.o field.o global_aux.o grid.o level.o logging.o \
@@ -796,34 +801,29 @@ surface_realization.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
                         string.o surface_field.o surface_material.o \
                         unstructured_cell.o unstructured_grid.o \
                         unstructured_grid_aux.o waypoint.o
-surface_simulation.o : logging.o option.o output.o pmc_base.o \
-                          pmc_surface.o realization.o regression.o \
-                          simulation_base.o timestepper_base.o
-surfsubsurface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
-                       immis.o init.o input.o logging.o miscible.o mphase.o \
-                       option.o output.o output_aux.o pmc_base.o \
-                       pmc_subsurface.o process_model_base.o \
-                       process_model_richards.o process_model_rt.o \
-                       process_model_th.o process_model_thc.o \
-                       process_model_top.o reactive_transport.o realization.o \
-                       richards.o simulation.o simulation_base.o \
-                       subsurface_simulation.o th.o thc.o thmc.o \
-                       timestepper_base.o waypoint.o surface_checkpoint.o \
-                       output_surface.o surface_realization.o surface_flow.o \
-                       surfsubsurface_simulation.o
-surfsubsurface_simulation.o : logging.o option.o output.o pmc_base.o \
-                          pmc_subsurface.o pmc_surface.o realization.o regression.o \
-                          simulation_base.o timestepper_base.o
-timestepper_surface.o : timestepper_base.o option.o
+surface_simulation.o : logging.o option.o output.o pmc_base.o pmc_surface.o \
+                       regression.o simulation_base.o surface_realization.o \
+                       timestepper_base.o
 surface_th.o : condition.o connection.o coupler.o debug.o discretization.o \
-               dm_kludge.o field.o fluid.o grid.o level.o option.o \
-               output_aux.o patch.o realization.o realization_base.o region.o \
-               saturation_function.o string.o surface_field.o \
+               dm_kludge.o field.o fluid.o global_aux.o grid.o level.o \
+               option.o output_aux.o patch.o realization.o realization_base.o \
+               region.o saturation_function.o string.o surface_field.o \
                surface_global_aux.o surface_material.o surface_realization.o \
-               surface_th_aux.o unstructured_cell.o unstructured_grid.o \
-               unstructured_grid_aux.o variables.o water_eos.o
+               surface_th_aux.o th_aux.o unstructured_cell.o \
+               unstructured_grid.o unstructured_grid_aux.o variables.o \
+               water_eos.o
 surface_th_aux.o : option.o saturation_function.o surface_global_aux.o \
                    water_eos.o
+surfsubsurface_factory.o : init.o input.o option.o simulation.o \
+                           simulation_base.o subsurface_factory.o \
+                           subsurface_simulation.o surface_factory.o \
+                           surface_flow.o surface_simulation.o surface_th.o \
+                           surfsubsurface_simulation.o timestepper_base.o
+surfsubsurface_simulation.o : logging.o option.o output.o pmc_base.o \
+                              pmc_subsurface.o pmc_surface.o realization.o \
+                              regression.o simulation_base.o \
+                              subsurface_simulation.o surface_realization.o \
+                              surface_simulation.o timestepper_base.o
 th.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
        global_aux.o grid.o level.o material.o option.o output_aux.o patch.o \
        realization.o region.o saturation_function.o secondary_continuum.o \
@@ -850,9 +850,14 @@ timestepper.o : checkpoint.o condition_control.o convergence.o \
                 surface_checkpoint.o surface_field.o surface_flow.o \
                 surface_realization.o surface_th.o th.o thc.o thmc.o utility.o \
                 waypoint.o
-timestepper_base.o : convergence.o input.o option.o output.o \
-                     process_model_base.o solver.o string.o utility.o \
+timestepper_BE.o : convergence.o input.o option.o output.o \
+                   process_model_base.o solver.o string.o timestepper_base.o \
+                   utility.o
+timestepper_base.o : input.o option.o output.o process_model_base.o string.o \
                      waypoint.o
+timestepper_surface.o : option.o output.o process_model_base.o \
+                        process_model_surface_flow.o solver.o surface_flow.o \
+                        timestepper_base.o waypoint.o
 transport.o : global_aux.o matrix_block_aux.o option.o \
               reactive_transport_aux.o
 uniform_velocity.o : input.o logging.o option.o string.o units.o utility.o
