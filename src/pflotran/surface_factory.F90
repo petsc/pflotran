@@ -97,6 +97,7 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
   use PMC_Surface_class
   use Simulation_Base_class
   use Process_Model_Surface_Flow_class
+  use Process_Model_Surface_TH_class
   use Process_Model_Base_class
   use Process_Model_module
   use Timestepper_Surface_class
@@ -133,7 +134,7 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
       case(RICHARDS_MODE)
         cur_process_model => PMSurfaceFlowCreate()
       case(TH_MODE)
-        !cur_process_model => PMSurfaceTHCreate()
+        cur_process_model => PMSurfaceTHCreate()
     end select
     cur_process_model%option => surf_realization%option
     cur_process_model%output_option => surf_realization%output_option
@@ -169,6 +170,11 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
         select type(cur_process_model)
           class is (pm_surface_flow_type)
             call cur_process_model%PMSurfaceFlowSetRealization(surf_realization)
+            call cur_process_model_coupler%SetTimestepper( &
+                    surf_flow_process_model_coupler%timestepper)
+            surf_flow_process_model_coupler%timestepper%dt = option%surf_flow_dt
+          class is (pm_surface_th_type)
+            call cur_process_model%PMSurfaceTHSetRealization(surf_realization)
             call cur_process_model_coupler%SetTimestepper( &
                     surf_flow_process_model_coupler%timestepper)
             surf_flow_process_model_coupler%timestepper%dt = option%surf_flow_dt

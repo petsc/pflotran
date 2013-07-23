@@ -816,7 +816,6 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           exch_p(local_id*option%nflowdof) = exch_p(local_id*option%nflowdof) + &
             area_p(local_id)*Dk_eff*dTemp*option%surf_flow_dt
         endif
-
       enddo
     else
 
@@ -1480,7 +1479,6 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
 
-      qsrc = 0.d0
       ff_p(istart) = ff_p(istart) + qsrc/area_p(local_id)
       ff_p(iend) = ff_p(iend) + esrc + &
                     surf_global_aux_vars_ss(local_id)%den_kg(1)* &
@@ -1510,7 +1508,6 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     call VecView(ff,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-!  call printErrMsg(option,'SurfaceTHRHSFunction')
 
 end subroutine SurfaceTHRHSFunction
 
@@ -2075,7 +2072,6 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
               surf_global_aux_vars(ghosted_id)%den_kg(1)/ &
               surf_aux_vars(ghosted_id)%Cw - 273.15d0
-              
     endif
     surf_global_aux_vars(ghosted_id)%temp(1) = temp
   enddo
