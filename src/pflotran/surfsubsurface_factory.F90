@@ -95,43 +95,40 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       simulation_old%realization
 
     simulation%surf_realization => simulation_old%surf_realization
-  else
-    ! Only subsurface flow active
-    simulation%process_model_coupler_list => &
-      subsurf_simulation%process_model_coupler_list
-    ! call printErrMsg(option,'Only subsurface-flow is active. ' // &
-    !        'Check inputfile or switch -simulation_mode subsurface')
-    nullify(simulation%surf_realization)
-  endif
+    simulation%surf_flow_process_model_coupler => &
+         surf_simulation%surf_flow_process_model_coupler
 
-  simulation%realization => simulation_old%realization
-  simulation%flow_process_model_coupler => &
-    subsurf_simulation%flow_process_model_coupler
-  simulation%rt_process_model_coupler => &
-    subsurf_simulation%rt_process_model_coupler
-  simulation%surf_flow_process_model_coupler => &
-    surf_simulation%surf_flow_process_model_coupler
-  simulation%regression => simulation_old%regression
-
-  nullify(surf_simulation%process_model_coupler_list)
-  nullify(subsurf_simulation%process_model_coupler_list)
-
-  deallocate(simulation_old)
+    nullify(surf_simulation%process_model_coupler_list)
   
-  if (option%nsurfflowdof>0.and. &
-    option%subsurf_surf_coupling == SEQ_COUPLED) then
-    select case(option%iflowmode)
-      case (RICHARDS_MODE)
-        call SurfaceFlowGetSubsurfProp(simulation%realization, &
-                                       simulation%surf_realization)
-      case (TH_MODE)
-        call SurfaceTHGetSubsurfProp(simulation%realization, &
-                                     simulation%surf_realization)
-    end select
-  else
-    ! Decoupled surface-subsurface simulation
-    simulation%surf_flow_process_model_coupler%Synchronize1 => Null()
-  endif
+    if (option%subsurf_surf_coupling == SEQ_COUPLED) then
+       select case(option%iflowmode)
+         case (RICHARDS_MODE)
+            call SurfaceFlowGetSubsurfProp(simulation%realization, &
+                 simulation%surf_realization)
+         case (TH_MODE)
+            call SurfaceTHGetSubsurfProp(simulation%realization, &
+                 simulation%surf_realization)
+         end select
+      end if
+   else
+      ! Only subsurface flow active
+      simulation%process_model_coupler_list => &
+           subsurf_simulation%process_model_coupler_list
+      ! call printErrMsg(option,'Only subsurface-flow is active. ' // &
+      !        'Check inputfile or switch -simulation_mode subsurface')
+      nullify(simulation%surf_realization)
+      nullify(simulation%surf_flow_process_model_coupler)
+   endif
+
+   simulation%realization => simulation_old%realization
+   simulation%flow_process_model_coupler => &
+        subsurf_simulation%flow_process_model_coupler
+   simulation%rt_process_model_coupler => &
+        subsurf_simulation%rt_process_model_coupler
+   simulation%regression => simulation_old%regression
+   nullify(subsurf_simulation%process_model_coupler_list)
+
+   deallocate(simulation_old)
 
 end subroutine SurfSubsurfaceInitializePostPETSc
 
