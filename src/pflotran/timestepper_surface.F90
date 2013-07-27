@@ -157,9 +157,13 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time, &
   
   endif
 
+  if (target_time >= cur_waypoint%time) then
+    cur_waypoint => cur_waypoint%next
+  endif
   timestepper%dt = dt
   timestepper%target_time = target_time
   timestepper%cur_waypoint => cur_waypoint
+  if (.not.associated(cur_waypoint)) stop_flag = 1
 
 end subroutine TimeStepperSurfaceSetTargetTime
 

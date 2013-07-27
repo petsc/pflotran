@@ -82,6 +82,13 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   call HijackSimulation(simulation_old,subsurf_simulation)
   call SubsurfaceJumpStart(subsurf_simulation)
 
+   simulation%realization => simulation_old%realization
+   simulation%flow_process_model_coupler => &
+        subsurf_simulation%flow_process_model_coupler
+   simulation%rt_process_model_coupler => &
+        subsurf_simulation%rt_process_model_coupler
+   simulation%regression => simulation_old%regression
+
   if(option%nsurfflowdof>0) then
     ! Both, Surface-Subsurface flow active
     call HighjackSurfaceSimulation(simulation_old,surf_simulation)
@@ -120,12 +127,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       nullify(simulation%surf_flow_process_model_coupler)
    endif
 
-   simulation%realization => simulation_old%realization
-   simulation%flow_process_model_coupler => &
-        subsurf_simulation%flow_process_model_coupler
-   simulation%rt_process_model_coupler => &
-        subsurf_simulation%rt_process_model_coupler
-   simulation%regression => simulation_old%regression
    nullify(subsurf_simulation%process_model_coupler_list)
 
    deallocate(simulation_old)
