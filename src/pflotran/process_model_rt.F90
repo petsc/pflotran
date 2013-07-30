@@ -836,7 +836,9 @@ subroutine PMRTCheckpoint(this,viewer)
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
-                           "checkpoint_activity_coefs","",ierr)  
+                           "checkpoint_activity_coefs","",ierr)
+  call PetscBagRegisterInt(bag,header%ndof,0, &
+                           "ndof","",ierr)    
   if (associated(realization%reaction)) then
     if (realization%reaction%checkpoint_activity_coefs .and. &
         realization%reaction%act_coef_update_frequency /= &
@@ -848,6 +850,9 @@ subroutine PMRTCheckpoint(this,viewer)
   else
     header%checkpoint_activity_coefs = ZERO_INTEGER
   endif
+  !geh: %ndof should be pushed down to the base class, but this is not possible
+  !     as long as option%ntrandof is used.
+  header%ndof = option%ntrandof
   call PetscBagView(bag,viewer,ierr)
   call PetscBagDestroy(bag,ierr)   
   
@@ -948,7 +953,7 @@ subroutine PMRTRestart(this,viewer)
 
   class(pm_rt_header_type), pointer :: header
   PetscBag :: bag
-  PetscSizeT, parameter :: bagsize = 8
+  PetscSizeT, parameter :: bagsize = 16
   
   realization => this%realization
   option => realization%option
@@ -965,8 +970,10 @@ subroutine PMRTRestart(this,viewer)
   call PetscBagGetData(bag, header, ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
                            "checkpoint_activity_coefs","",ierr)  
+  call PetscBagRegisterInt(bag,header%ndof,0, &
+                           "ndof","",ierr)  
   call PetscBagLoad(viewer, bag, ierr)  
-  
+  option%ntrandof = header%ndof
   
   call VecLoad(field%tran_xx,viewer,ierr)
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
