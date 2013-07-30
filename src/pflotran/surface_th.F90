@@ -2063,17 +2063,20 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
 
   ! Update internal aux vars
   do ghosted_id = 1,grid%ngmax
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    if(xx_loc_p(istart)<1.d-15) then
-      temp = 0.d0
-    else
-      ! T^{t+1} = (rho Cw hw T)^{t+1} / (rho Cw)^{t} (hw)^{t+1}
-      temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
-              surf_global_aux_vars(ghosted_id)%den_kg(1)/ &
-              surf_aux_vars(ghosted_id)%Cw - 273.15d0
+    local_id = grid%nG2L(ghosted_id)
+    if(local_id>0) then
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      if(xx_loc_p(istart)<1.d-15) then
+        temp = 0.d0
+      else
+        ! T^{t+1} = (rho Cw hw T)^{t+1} / (rho Cw)^{t} (hw)^{t+1}
+        temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
+                surf_global_aux_vars(ghosted_id)%den_kg(1)/ &
+                surf_aux_vars(ghosted_id)%Cw - 273.15d0
+      endif
+      surf_global_aux_vars(ghosted_id)%temp(1) = temp
     endif
-    surf_global_aux_vars(ghosted_id)%temp(1) = temp
   enddo
 
   ! Update boundary aux vars

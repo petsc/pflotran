@@ -1,22 +1,11 @@
-:Description: 3D groundwater flow and solute transport
+:Description: 
 
 :=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== solver options ===================================
-TIMESTEPPER
-END
-
-NEWTON_SOLVER FLOW
-  ITOL_UPDATE 1.d0     ! Convergences with max change in pressure is 1 Pa.
-END
-
-LINEAR_SOLVER FLOW
-END
-
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured parking_lot_10_1_3.dat
+  TYPE unstructured sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
 END
 
 :=========================== fluid properties =================================
@@ -27,123 +16,63 @@ END
 :=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
-  POROSITY 0.25d0
+  POROSITY 0.40d0
   TORTUOSITY 0.5d0
   SATURATION_FUNCTION sf1
   PERMEABILITY
-    PERM_X 1.d-10
-    PERM_Y 1.d-10
-    PERM_Z 1.d-11
-  /
-END
-
-MATERIAL_PROPERTY soil2
-  ID 2
-  POROSITY 0.35d0
-  TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
-  PERMEABILITY
-    PERM_X 2.d-10
-    PERM_Y 2.d-10
-    PERM_Z 2.d-11
-  /
-END
-
-MATERIAL_PROPERTY soil3
-  ID 3
-  POROSITY 0.25d0
-  TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
-  PERMEABILITY
-    PERM_X 5.d-11
-    PERM_Y 5.d-11
-    PERM_Z 5.d-12
-  /
-END
-
-MATERIAL_PROPERTY soil4
-  ID 4
-  POROSITY 0.2d0
-  TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
-  PERMEABILITY
-    PERM_X 1.d-10
-    PERM_Y 1.d-10
-    PERM_Z 1.d-11
+    PERM_X 1.171d-14
+    PERM_Y 1.171d-14
+    PERM_Z 1.171d-14
   /
 END
 
 :=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
+  RESIDUAL_SATURATION 0.2d0
   LAMBDA 0.5d0
-  ALPHA 1.d-4
+  ALPHA 1.0194d-04
   MAX_CAPILLARY_PRESSURE 1.d8
-
-END
-
-:=========================== output options ===================================
-OUTPUT
-  PERIODIC TIME 1. s
-  FORMAT TECPLOT BLOCK
 END
 
 :=========================== times ============================================
 TIME
-  :FINAL_TIME 3600.d0 s
-  FINAL_TIME 2000.d0 s
-  INITIAL_TIMESTEP_SIZE 1.0 s
-  MAXIMUM_TIMESTEP_SIZE 1.0 s        ! produces CFL ~<= 1.
+  FINAL_TIME 18000.d0 s
+  INITIAL_TIMESTEP_SIZE 60.0 s
+  MAXIMUM_TIMESTEP_SIZE 60.0 s        ! produces CFL ~<= 1.
 END
 
 :=========================== regions ==========================================
 REGION all
   COORDINATES
-    0.d0 0.d0 0.d0
-    200.d0 1.d0 4.d0
+    0.d0 0.d0 -1.d0
+    420.d0 320.d0 5.d0
   /
 END 
 
 REGION top
-  FILE top_parking_lot_10_1_3.ss
+  FILE sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
   GRID unstructured
 END
 
 :=========================== flow conditions ==================================
-FLOW_CONDITION well
-  TYPE
-    RATE volumetric_rate
-  /
-  RATE LIST
-:    TIME_UNITS sec
-:    DATA_UNITS m/sec
-    0.d0 1.4111d-5
-    5.d0 0.d0
-  /
-END
-
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
   /
   INTERPOLATION linear
-  DATUM 0.d0 0.d0 0.5d0
-  PRESSURE 101325.d0
-END
-
-FLOW_CONDITION recharge
-  TYPE
-    FLUX neumann
+  DATUM 0.d0 0.d0 4.0d0
+  GRADIENT
+    PRESSURE -0.0005 0.0 0.0
   /
-  FLUX 0d-9  ! 25 cm/yr
+  PRESSURE 101325.d0
 END
 
 FLOW_CONDITION from_surface
   TYPE
-    PRESSURE seepage
+    RATE heterogeneous_mass_rate
   /
-  PRESSURE 101325.d0
+  RATE 0d-6
 END
 
 :=========================== condition couplers ===============================
@@ -153,71 +82,55 @@ INITIAL_CONDITION initial_copuler
   REGION all
 END
 
-SOURCE_SINK well_source
-  FLOW_CONDITION well
-  REGION all
-END
-
-skip
-BOUNDARY_CONDITION subsurf_recharge
-  FLOW_CONDITION recharge
-  REGION top
-END
-noskip
-
-BOUNDARY_CONDITION from_surface_bc
+SOURCE_SINK from_surface_ss
   FLOW_CONDITION from_surface
   REGION top
 END
+
 :=========================== stratigraphy couplers ============================
 STRATA
   REGION all
   MATERIAL soil1
 END
 
-:DEBUG
-:VECVIEW_SOLUTION
-:END
-
 :===============================================================================
 :=========================== surface flow ======================================
 :===============================================================================
 SURFACE_FLOW
 
-:FLOW_FORMULATION KINEMATIC
-FLOW_FORMULATION DIFFUSIVE
-
 SURF_GRID
-  TYPE unstructured top_parking_lot_10_1_3.ss
+  TYPE unstructured sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
 END
 
-SURF_OUTPUT
-  PERIODIC TIME 2. s
-  FORMAT TECPLOT FEQUADRILATERAL
+SURF_FLOW_FORMULATION diffusive
+
+SURF_SUBSURFACE_COUPLING
+  seq_coupled
 END
 
 SURF_MATERIAL_PROPERTY surf1
   ID 1
-  MANNINGS 0.025
+  MANNINGS 0.02
+END
+
+SURF_TIME
+  INITIAL_TIMESTEP_SIZE 60.0 s
+  MAXIMUM_TIMESTEP_SIZE 60.0 s
+  COUPLING_TIMESTEP_SIZE 60.0 s
 END
 
 :=========================== regions ==========================================
 SURF_REGION surf_all
   COORDINATES
     0.d0 0.d0 0.d0
-    200.d0 1.d0 4.d0
+    400.d0 320.d0 100.d0
   /
 END 
 
 SURF_REGION surf_east
-  FILE east_parking_lot_10_1_3.ss
+  FILE sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
   GRID unstructured
 END
-
-:SURF_REGION surf_top
-:  FILE top_parking_lot_10_1_3.ss
-:  GRID unstructured
-:END
 
 :=========================== flow conditions ==========================================
 SURF_FLOW_CONDITION rain
@@ -225,10 +138,10 @@ SURF_FLOW_CONDITION rain
     RATE volumetric_rate
   /
   RATE LIST
-:    TIME_UNITS sec
-:    DATA_UNITS m/sec
-    0.d0 1.4111d-5
-    1800.d0 0.d0
+    TIME_UNITS sec
+    DATA_UNITS m/sec
+    0.d0 5.5d-6
+    12000.d0 0.d0
   /
 END
 
@@ -246,6 +159,13 @@ SURF_FLOW_CONDITION outflow
     PRESSURE zero_gradient
   /
   PRESSURE 101325.d0
+END
+
+SURF_FLOW_CONDITION from_subsurface
+  TYPE
+    RATE heterogeneous_volumetric_rate
+  /
+  RATE 0d-6
 END
 
 :=========================== condition couplers ===============================
@@ -266,16 +186,16 @@ SURF_BOUNDARY_CONDITION surf_east_bc
   SURF_REGION surf_east
 END
 
+SURF_SOURCE_SINK from_subsurface_ss
+  SURF_FLOW_CONDITION from_subsurface
+  REGION surf_all
+END
+
+
 :=========================== stratigraphy couplers ============================
 STRATA
   SURF_REGION surf_all
   MATERIAL surf1
 END
-
-:SURF_DEBUG
-:VECVIEW_SOLUTION
-:VECVIEW_RESIDUAL
-:MATVIEW_JACOBIAN
-:END
 
 END

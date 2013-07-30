@@ -157,9 +157,19 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
   
   endif
 
+<<<<<<< local
   this%dt = dt
   this%target_time = target_time
   this%cur_waypoint => cur_waypoint
+=======
+  if (target_time >= cur_waypoint%time) then
+    cur_waypoint => cur_waypoint%next
+  endif
+  timestepper%dt = dt
+  timestepper%target_time = target_time
+  timestepper%cur_waypoint => cur_waypoint
+  if (.not.associated(cur_waypoint)) stop_flag = 1
+>>>>>>> other
 
 end subroutine TimestepperSurfaceSetTargetTime
 

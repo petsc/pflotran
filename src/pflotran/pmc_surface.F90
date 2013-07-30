@@ -99,6 +99,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
+  class(pmc_base_type), pointer :: pmc_base
   PetscInt :: local_stop_flag
   PetscBool :: failure
   PetscBool :: plot_flag
@@ -136,7 +137,10 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
     this%option%surf_flow_dt = this%timestepper%dt
     if (associated(this%Synchronize1)) then
-      call this%Synchronize1()
+      !geh: PGI requires cast to base
+      !call this%Synchronize1()
+      pmc_base => this%CastToBase()
+      call pmc_base%Synchronize1()
     endif
 
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)

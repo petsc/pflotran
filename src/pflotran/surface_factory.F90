@@ -205,6 +205,10 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
   simulation%regression => simulation_old%regression
   surf_flow_process_model_coupler%surf_realization => surf_realization
 
+  ! Decoupled surface-subsurface simulation
+   simulation%surf_flow_process_model_coupler%Synchronize1 => Null()
+   simulation%surf_flow_process_model_coupler%Synchronize2 => Null()
+
   ! point the top process model coupler to Output
   !simulation%process_model_coupler_list%Output => Output
 
