@@ -214,7 +214,9 @@ subroutine RunToTime(this,target_time)
   call printMsg(this%option,'RunToTime()')
   
   call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
-  call this%process_model_coupler_list%Checkpoint(viewer,-1)
+  if (this%option%checkpoint_flag) then
+    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+  endif
 
 end subroutine RunToTime
 
