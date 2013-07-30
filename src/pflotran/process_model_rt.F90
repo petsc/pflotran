@@ -49,6 +49,7 @@ module Process_Model_RT_class
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: SetTranWeights => SetTranWeights
     procedure, public :: Checkpoint => PMRTCheckpoint
+    procedure, public :: Restart => PMRTRestart
     procedure, public :: Destroy => PMRTDestroy
   end type pm_rt_type
   

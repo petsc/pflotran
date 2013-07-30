@@ -42,6 +42,7 @@ module Process_Model_Richards_class
     procedure, public :: MaxChange => PMRichardsMaxChange
     procedure, public :: ComputeMassBalance => PMRichardsComputeMassBalance
     procedure, public :: Checkpoint => PMRichardsCheckpoint    
+    procedure, public :: Restart => PMRichardsRestart  
     procedure, public :: Destroy => PMRichardsDestroy
   end type pm_richards_type
   
@@ -671,6 +672,28 @@ subroutine PMRichardsCheckpoint(this,viewer)
   call CheckpointFlowProcessModel(viewer,this%realization) 
   
 end subroutine PMRichardsCheckpoint
+
+
+! ************************************************************************** !
+!
+! PMRichardsRestart: Restarts data associated with Richards PM
+! author: Glenn Hammond
+! date: 07/30/13
+!
+! ************************************************************************** !
+subroutine PMRichardsRestart(this,viewer)
+
+  use Checkpoint_module
+
+  implicit none
+#include "finclude/petscviewer.h"      
+
+  class(pm_richards_type) :: this
+  PetscViewer :: viewer
+  
+  call RestartFlowProcessModel(viewer,this%realization) 
+  
+end subroutine PMRichardsRestart
 
 ! ************************************************************************** !
 !

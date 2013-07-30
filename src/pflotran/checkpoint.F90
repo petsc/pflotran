@@ -71,7 +71,8 @@ module Checkpoint_module
   
   public :: OpenCheckpointFile, &
             CloseCheckpointFile, &
-            CheckpointFlowProcessModel
+            CheckpointFlowProcessModel, &
+            RestartFlowProcessModel
 
 #include "definitions.h"
 #include "finclude/petscvec.h"
