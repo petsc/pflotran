@@ -482,9 +482,11 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
   
   class(stepper_BE_header_type), pointer :: header
   PetscBag :: bag
-  PetscInt, parameter :: bagsize = 88 ! 60 (base) + 24 (BE)
+  PetscSizeT, parameter :: bagsize = 88 ! 60 (base) + 24 (BE)
   PetscErrorCode :: ierr
-  
+
+  !geh: gfortran crashes without initialization of bag
+  bag = 0  
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
   call TimestepperBESetHeader(this,bag,header)
@@ -554,9 +556,11 @@ subroutine TimestepperBERestart(this,viewer,option)
   
   class(stepper_BE_header_type), pointer :: header
   PetscBag :: bag
-  PetscInt, parameter :: bagsize = 88 ! 60 (base) + 24 (BE)
+  PetscSizeT, parameter :: bagsize = 88 ! 60 (base) + 24 (BE)
   PetscErrorCode :: ierr
   
+  !geh: gfortran crashes without initialization of bag
+  bag = 0
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
   call TimestepperBESetHeader(this,bag,header)

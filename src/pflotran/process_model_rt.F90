@@ -821,7 +821,7 @@ subroutine PMRTCheckpoint(this,viewer)
 
   class(pm_rt_header_type), pointer :: header
   PetscBag :: bag
-  PetscInt, parameter :: bagsize = 8
+  PetscSizeT, parameter :: bagsize = 8
   
   realization => this%realization
   option => realization%option
@@ -831,6 +831,8 @@ subroutine PMRTCheckpoint(this,viewer)
   
   global_vec = 0
   
+  !geh: gfortran crashes without initialization of bag
+  bag = 0
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
@@ -946,7 +948,7 @@ subroutine PMRTRestart(this,viewer)
 
   class(pm_rt_header_type), pointer :: header
   PetscBag :: bag
-  PetscInt, parameter :: bagsize = 8
+  PetscSizeT, parameter :: bagsize = 8
   
   realization => this%realization
   option => realization%option
@@ -957,6 +959,8 @@ subroutine PMRTRestart(this,viewer)
   global_vec = 0
   local_vec = 0
   
+  !geh: gfortran crashes without initialization of bag
+  bag = 0
   call PetscBagCreate(this%option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr)
   call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
