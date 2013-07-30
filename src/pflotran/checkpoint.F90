@@ -1018,4 +1018,111 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
   
 end subroutine CheckpointFlowProcessModel
 
+! ************************************************************************** !
+!
+! RestartFlowProcessModel: Restarts flow process model
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine RestartFlowProcessModel(viewer,realization)
+
+  use Option_module
+  use Realization_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  PetscViewer :: viewer
+  type(realization_type) :: realization
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+  
+  global_vec = 0
+  
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+  ! Load the PETSc vectors.
+    call VecLoad(field%flow_xx,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                     field%flow_xx_loc,NFLOWDOF)
+    call VecCopy(field%flow_xx,field%flow_yy,ierr)  
+
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+           FLASH2_MODE,G_MODE)
+        call VecLoad(global_vec,viewer,ierr)      
+        call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                         field%iphas_loc,ONEDOF)
+        call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
+        call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                        field%iphas_old_loc,ONEDOF)
+        if (option%iflowmode == MPH_MODE) then
+        ! set vardof vec in mphase
+        endif
+        if (option%iflowmode == IMS_MODE) then
+        ! set vardof vec in mphase
+        endif
+        if (option%iflowmode == FLASH2_MODE) then
+        ! set vardof vec in mphase
+        endif
+ 
+      case default
+    end select
+    
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%porosity_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_xx_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_yy_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_zz_loc,ONEDOF)
+    
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        field%perm_xz_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        field%perm_xy_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_yz_loc,ONEDOF)
+
+      call VecLoad(field%flow_xx_faces, viewer,ierr)
+      call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
+                                         field%flow_xx_loc_faces, NFLOWDOF)
+      call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
+    end if
+    
+  endif
+  
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif  
+  
+end subroutine RestartFlowProcessModel
+
 end module Checkpoint_module

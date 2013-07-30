@@ -369,6 +369,10 @@ recursive subroutine FinalizeRun(this)
     call this%below%FinalizeRun()
   endif
   
+  if (associated(this%next)) then
+    call this%next%FinalizeRun()
+  endif
+  
 end subroutine FinalizeRun
 
 ! ************************************************************************** !

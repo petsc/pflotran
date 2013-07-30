@@ -489,11 +489,46 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
   bag = 0  
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
+  call TimestepperBERegisterHeader(this,bag,header)
   call TimestepperBESetHeader(this,bag,header)
   call PetscBagView(bag,viewer,ierr)
   call PetscBagDestroy(bag,ierr)  
 
 end subroutine TimestepperBECheckpoint
+
+! ************************************************************************** !
+!
+! TimestepperBERegisterHeader: Register header entries.
+! author: Glenn Hammond
+! date: 07/30/13
+!
+! ************************************************************************** !
+subroutine TimestepperBERegisterHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(stepper_BE_type) :: this
+  class(stepper_BE_header_type) :: header
+  PetscBag :: bag
+  
+  PetscErrorCode :: ierr
+  
+  ! bagsize = 3 * 8 bytes = 24 bytes
+  call PetscBagRegisterInt(bag,header%cumulative_newton_iterations,0, &
+                           "cumulative_newton_iterations","",ierr)
+  call PetscBagRegisterInt(bag,header%cumulative_linear_iterations,0, &
+                           "cumulative_linear_iterations","",ierr)
+  call PetscBagRegisterInt(bag,header%num_newton_iterations,0, &
+                           "num_newton_iterations","",ierr)
+
+  call TimestepperBaseRegisterHeader(this,bag,header)
+  
+end subroutine TimestepperBERegisterHeader
 
 ! ************************************************************************** !
 !
@@ -517,14 +552,6 @@ subroutine TimestepperBESetHeader(this,bag,header)
   
   PetscErrorCode :: ierr
   
-  ! bagsize = 3 * 8 bytes = 24 bytes
-  call PetscBagRegisterInt(bag,header%cumulative_newton_iterations,0, &
-                           "cumulative_newton_iterations","",ierr)
-  call PetscBagRegisterInt(bag,header%cumulative_linear_iterations,0, &
-                           "cumulative_linear_iterations","",ierr)
-  call PetscBagRegisterInt(bag,header%num_newton_iterations,0, &
-                           "num_newton_iterations","",ierr)
-
   header%cumulative_newton_iterations = this%cumulative_newton_iterations
   header%cumulative_linear_iterations = this%cumulative_linear_iterations
   header%num_newton_iterations = this%num_newton_iterations
@@ -562,8 +589,9 @@ subroutine TimestepperBERestart(this,viewer,option)
   bag = 0
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
-  call TimestepperBESetHeader(this,bag,header)
-  call PetscBagView(bag,viewer,ierr)
+  call TimestepperBERegisterHeader(this,bag,header)
+  call PetscBagLoad(viewer,bag,ierr)
+  call TimestepperBEGetHeader(this,header)
   call PetscBagDestroy(bag,ierr)  
 
 end subroutine TimestepperBERestart

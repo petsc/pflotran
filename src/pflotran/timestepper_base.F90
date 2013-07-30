@@ -74,7 +74,8 @@ module Timestepper_Base_class
             TimestepperBaseStrip, &
             TimestepperBaseInit, &
             TimestepperBaseSetHeader, &
-            TimestepperBaseGetHeader
+            TimestepperBaseGetHeader, &
+            TimestepperBaseRegisterHeader
 
 contains
 
@@ -544,12 +545,12 @@ end subroutine TimestepperBaseCheckpoint
 
 ! ************************************************************************** !
 !
-! TimestepperBaseSetHeader: Sets values in checkpoint header.
+! TimestepperBaseRegisterHeader: Register header entries.
 ! author: Glenn Hammond
-! date: 07/25/13
+! date: 07/30/13
 !
 ! ************************************************************************** !
-subroutine TimestepperBaseSetHeader(this,bag,header)
+subroutine TimestepperBaseRegisterHeader(this,bag,header)
 
   use Option_module
 
@@ -576,6 +577,29 @@ subroutine TimestepperBaseSetHeader(this,bag,header)
                            "num_contig_revert_due_to_sync","",ierr)
   call PetscBagRegisterInt(bag,header%revert_dt,0, &
                            "revert_dt","",ierr)
+    
+end subroutine TimestepperBaseRegisterHeader
+
+! ************************************************************************** !
+!
+! TimestepperBaseSetHeader: Sets values in checkpoint header.
+! author: Glenn Hammond
+! date: 07/25/13
+!
+! ************************************************************************** !
+subroutine TimestepperBaseSetHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscbag.h"  
+
+  class(stepper_base_type) :: this
+  class(stepper_base_header_type) :: header
+  PetscBag :: bag
+  
+  PetscErrorCode :: ierr
 
   header%time = this%target_time
   header%dt = this%dt

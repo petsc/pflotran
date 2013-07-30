@@ -306,7 +306,6 @@ subroutine SubsurfaceJumpStart(simulation)
   use Timestepper_BE_class
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
-  use Logging_module  
   use Condition_Control_module
   use Reactive_Transport_module, only : RTJumpStartKineticSorption  
 
@@ -379,10 +378,10 @@ subroutine SubsurfaceJumpStart(simulation)
   transport_read = PETSC_FALSE
   failure = PETSC_FALSE
   
+#if 0      
   if (option%restart_flag) then
     call SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
                            flow_read,transport_read,activity_coefs_read)
-#if 0      
   else if (master_stepper%init_to_steady_state) then
     option%print_screen_flag = OptionPrintToScreen(option)
     option%print_file_flag = OptionPrintToFile(option)
@@ -420,8 +419,8 @@ subroutine SubsurfaceJumpStart(simulation)
       endif
     endif
 ! #if 0
-#endif
   endif
+#endif
 
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
@@ -453,12 +452,6 @@ subroutine SubsurfaceJumpStart(simulation)
     call RTJumpStartKineticSorption(realization)
   endif
   
-  ! pushed in Init()
-  call PetscLogStagePop(ierr)
-
-  ! popped in TimestepperFinalizeRun()
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
   if (master_stepper%max_time_step < 0) then
     call printMsg(option,'')

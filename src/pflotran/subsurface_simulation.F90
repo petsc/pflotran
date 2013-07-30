@@ -24,7 +24,7 @@ module Subsurface_Simulation_class
     type(regression_type), pointer :: regression
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
-    procedure, public :: InitializeRun => SubsurfaceInitializeRun
+!    procedure, public :: InitializeRun => SubsurfaceInitializeRun
 !    procedure, public :: ExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
