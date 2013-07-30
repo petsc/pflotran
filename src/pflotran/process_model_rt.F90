@@ -779,7 +779,7 @@ subroutine PMRTCheckpoint(this,viewer)
 
   use Option_module
   use Realization_class
-  use Realization_base_class
+  use Realization_Base_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -904,7 +904,7 @@ subroutine PMRTRestart(this,viewer)
 
   use Option_module
   use Realization_class
-  use Realization_base_class
+  use Realization_Base_class
   use Field_module
   use Discretization_module
   use Grid_module
