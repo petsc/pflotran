@@ -55,6 +55,7 @@ module Process_Model_RT_class
   type, public, extends(pm_base_header_type) :: pm_rt_header_type
     integer*8 :: checkpoint_activity_coefs
   end type pm_rt_header_type  
+  PetscSizeT, parameter, private :: bagsize = 16
   
   public :: PMRTCreate
 
@@ -821,7 +822,6 @@ subroutine PMRTCheckpoint(this,viewer)
 
   class(pm_rt_header_type), pointer :: header
   PetscBag :: bag
-  PetscSizeT, parameter :: bagsize = 8
   
   realization => this%realization
   option => realization%option
@@ -953,7 +953,6 @@ subroutine PMRTRestart(this,viewer)
 
   class(pm_rt_header_type), pointer :: header
   PetscBag :: bag
-  PetscSizeT, parameter :: bagsize = 16
   
   realization => this%realization
   option => realization%option
