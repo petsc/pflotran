@@ -17,6 +17,7 @@ module PMC_Base_class
   ! process model coupler type
   type, public :: pmc_base_type
     character(len=MAXWORDLENGTH) :: name
+    PetscBool :: is_master
     type(option_type), pointer :: option
     class(stepper_base_type), pointer :: timestepper
     class(pm_base_type), pointer :: pm_list
@@ -34,6 +35,8 @@ module PMC_Base_class
     procedure, public :: CastToBase => PMCCastToBase
     procedure, public :: SetTimestepper => PMCBaseSetTimestepper
     procedure, public :: RunToTime => PMCBaseRunToTime
+    procedure, public :: Checkpoint => PMCBaseCheckpoint
+    procedure, public :: Restart => PMCBaseRestart
     procedure, public :: FinalizeRun
     procedure, public :: OutputLocal
     procedure, public :: UpdateSolution => PMCBaseUpdateSolution
@@ -48,6 +51,10 @@ module PMC_Base_class
     end subroutine Synchronize
   end interface
   
+  type, public :: pmc_bag_type
+    integer*8 :: plot_number      ! in the checkpoint file format
+  end type pmc_bag_type
+    
   public :: PMCBaseCreate, &
             PMCBaseInit, &
             SetOutputFlags
@@ -94,6 +101,7 @@ subroutine PMCBaseInit(this)
   print *, 'PMCBase%Init()'
   
   this%name = 'PMCBase'
+  this%is_master = PETSC_FALSE
   nullify(this%option)
   nullify(this%timestepper)
   nullify(this%pm_list)
@@ -198,7 +206,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   implicit none
   
-  class(pmc_base_type), target :: this
+#include "finclude/petscviewer.h"  
+
+class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
@@ -207,6 +217,8 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
   class(pm_base_type), pointer :: cur_pm
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
   
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
@@ -268,6 +280,25 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
                        transient_plot_flag)
     endif
     
+    if (this%is_master .and. &
+        this%option%checkpoint_flag .and. &
+        mod(this%timestepper%steps, &
+        this%option%checkpoint_frequency) == 0) then
+      ! if checkpointing, need to sync all other PMCs.  Those "below" are
+      ! already in sync, but not those "next".
+      if (associated(this%Synchronize2)) then
+        call this%Synchronize2()
+      endif
+      ! Run neighboring process model couplers
+      if (associated(this%next)) then
+        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
+      endif
+      if (associated(this%Synchronize3)) then
+        call this%Synchronize3()
+      endif
+      call this%Checkpoint(viewer,this%timestepper%steps)
+    endif
+    
   enddo
   
   if (associated(this%Synchronize2)) then
@@ -282,7 +313,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   if (associated(this%Synchronize3)) then
     call this%Synchronize3()
   endif
-  
+
   stop_flag = max(stop_flag,local_stop_flag)
   
 end subroutine PMCBaseRunToTime
@@ -403,6 +434,130 @@ recursive subroutine OutputLocal(this)
   enddo
     
 end subroutine OutputLocal
+
+! ************************************************************************** !
+!
+! PMCBaseCheckpoint: Checkpoints PMC timestepper and state variables.
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+recursive subroutine PMCBaseCheckpoint(this,viewer,id)
+
+  use Logging_module
+  use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
+
+  implicit none
+  
+#include "finclude/petscviewer.h"
+
+  class(pmc_base_type) :: this
+  PetscViewer :: viewer
+  PetscInt :: id
+  
+  class(pm_base_type), pointer :: cur_pm
+  PetscLogDouble :: tstart, tend
+  PetscErrorCode :: ierr
+
+  ! if the top PMC, 
+  if (this%is_master) then
+    call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
+    call PetscLogEventBegin(logging%event_checkpoint,ierr)  
+    call PetscTime(tstart,ierr)   
+    call OpenCheckpointFile(viewer,id,this%option)
+  endif
+  
+  call this%timestepper%Checkpoint(viewer,this%option)
+  cur_pm => this%pm_list
+  do
+    if (.not.associated(cur_pm)) exit
+    call cur_pm%Checkpoint(viewer)
+    cur_pm => cur_pm%next
+  enddo
+  
+  if (associated(this%below)) then
+    call this%below%Checkpoint(viewer,-999)
+  endif
+  
+  if (associated(this%next)) then
+    call this%next%Checkpoint(viewer,-999)
+  endif
+  
+  if (this%is_master) then
+    call CloseCheckpointFile(viewer)
+    call PetscTime(tend,ierr)
+    write(this%option%io_buffer, &
+          '("      Seconds to write to checkpoint file: ", f10.2)') &
+      tend-tstart
+    call printMsg(this%option)
+    call PetscLogEventEnd(logging%event_checkpoint,ierr)  
+    call PetscLogStagePop(ierr)   
+  endif
+    
+end subroutine PMCBaseCheckpoint
+
+! ************************************************************************** !
+!
+! PMCBaseRestart: Restarts PMC timestepper and state variables.
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+recursive subroutine PMCBaseRestart(this,viewer)
+
+  use Logging_module
+  use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
+
+  implicit none
+  
+#include "finclude/petscviewer.h"
+
+  class(pmc_base_type) :: this
+  PetscViewer :: viewer
+  character(len=MAXWORDLENGTH) :: filename
+  
+  class(pm_base_type), pointer :: cur_pm
+  PetscLogDouble :: tstart, tend
+  PetscErrorCode :: ierr
+
+  ! if the top PMC, 
+  if (this%is_master) then
+    call PetscLogEventBegin(logging%event_restart,ierr)  
+    call PetscTime(tstart,ierr)   
+    call PetscViewerBinaryOpen(this%option%mycomm, &
+                               this%option%restart_filename, &
+                               FILE_MODE_READ,viewer,ierr)
+    ! skip reading info file when loading, but not working
+    call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr)
+  endif
+  
+  call this%timestepper%Restart(viewer,this%option)
+  cur_pm => this%pm_list
+  do
+    if (.not.associated(cur_pm)) exit
+    call cur_pm%Restart(viewer)
+    cur_pm => cur_pm%next
+  enddo
+  
+  if (associated(this%below)) then
+    call this%below%Restart(viewer)
+  endif
+  
+  if (associated(this%next)) then
+    call this%next%Restart(viewer)
+  endif
+  
+  if (this%is_master) then
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscTime(tend,ierr)
+    write(this%option%io_buffer, &
+          '("      Seconds to read from restart file: ", f10.2)') &
+      tend-tstart
+    call printMsg(this%option)
+    call PetscLogEventEnd(logging%event_restart,ierr)  
+  endif
+    
+end subroutine PMCBaseRestart
 
 ! ************************************************************************** !
 !

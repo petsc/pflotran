@@ -142,7 +142,7 @@ function TimestepperCreate()
   
   stepper%solver => SolverCreate()
   
-  TimeStepperCreate => stepper
+  TimestepperCreate => stepper
   
 end function TimestepperCreate 
 
@@ -463,7 +463,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   call PetscLogStagePop(ierr)
   option%init_stage = PETSC_FALSE
 
-  ! popped in TimeStepperFinalizeRun()
+  ! popped in TimestepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
@@ -1084,7 +1084,7 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
     endif            
   endif
 
-  ! pushed in TimeStepperInitializeRun
+  ! pushed in TimestepperInitializeRun
   call PetscLogStagePop(ierr)
 
 end subroutine TimestepperFinalizeRun

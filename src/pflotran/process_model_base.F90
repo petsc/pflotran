@@ -50,6 +50,8 @@ module Process_Model_Base_class
     procedure(PMBaseComputeMassBalance), public, deferred :: ComputeMassBalance
     procedure(PMBaseThisOnly), public, deferred :: Destroy
     procedure(PMBaseRHSFunction), public, deferred :: RHSFunction
+    procedure(PMBaseCheckpoint), public, deferred :: Checkpoint
+    procedure(PMBaseCheckpoint), public, deferred :: Restart
 #else
     procedure, public :: Init => PMBaseInit
     procedure, public :: InitializeRun => PMBaseThisOnly
@@ -70,9 +72,15 @@ module Process_Model_Base_class
     procedure, public :: ComputeMassBalance => PMBaseComputeMassBalance
     procedure, public :: Destroy => PMBaseThisOnly
     procedure, public :: RHSFunction => PMBaseRHSFunction
+    procedure, public :: Checkpoint => PMBaseCheckpoint
+    procedure, public :: Restart => PMBaseCheckpoint
 #endif
   end type pm_base_type
   
+  type, public :: pm_base_header_type
+    integer*8 :: ndof
+  end type pm_base_header_type
+    
 #ifdef ABSTRACT  
   abstract interface
     subroutine PMBaseInit(this)
@@ -173,6 +181,14 @@ module Process_Model_Base_class
       PetscReal :: mass_balance_array(:)
     end subroutine PMBaseComputeMassBalance
 
+    subroutine PMBaseCheckpoint(this,viewer)
+      import pm_base_type
+      implicit none
+#include "finclude/petscviewer.h"      
+      class(pm_base_type) :: this
+      PetscViewer ::  viewer
+    end subroutine PMBaseFunctionThisOnly
+    
   end interface
 #endif  
   
@@ -229,6 +245,8 @@ end subroutine PMBaseRunTo
 subroutine PMBaseInit(this)
   implicit none
   class(pm_base_type) :: this
+  print *, 'Must extend PMBaseInit.'
+  stop
 end subroutine PMBaseInit
 
 subroutine PMBaseResidual(this,snes,xx,r,ierr)
@@ -238,6 +256,8 @@ subroutine PMBaseResidual(this,snes,xx,r,ierr)
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
+  print *, 'Must extend PMBaseResidual.'
+  stop
 end subroutine PMBaseResidual
 
 subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
@@ -248,6 +268,8 @@ subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
   Mat :: A, B
   MatStructure flag
   PetscErrorCode :: ierr
+  print *, 'Must extend PMBaseJacobian.'
+  stop
 end subroutine PMBaseJacobian
     
 subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
@@ -259,6 +281,8 @@ subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
+  print *, 'Must extend PMBaseUpdateTimestep.'
+  stop
 end subroutine PMBaseUpdateTimestep
     
 subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
@@ -269,6 +293,8 @@ subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   Vec :: dP
   PetscBool :: changed
   PetscErrorCode :: ierr
+  print *, 'Must extend PMBaseCheckUpdatePre.'
+  stop
 end subroutine PMBaseCheckUpdatePre
     
 subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
@@ -282,23 +308,31 @@ subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: dP_changed
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
+  print *, 'Must extend PMBaseCheckUpdatePost.'
+  stop
 end subroutine PMBaseCheckUpdatePost
 
 subroutine PMBasePostSolve(this)
   implicit none
   class(pm_base_type) :: this
   PetscBool :: solution_accepted
+  print *, 'Must extend PMBasePostSolve.'
+  stop
 end subroutine PMBasePostSolve
     
 subroutine PMBaseThisOnly(this)
   implicit none
   class(pm_base_type) :: this
+  print *, 'Must extend PMBaseThisOnly.'
+  stop
 end subroutine PMBaseThisOnly
     
 subroutine PMBaseThisTime(this,time)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: time
+  print *, 'Must extend PMBaseThisTime.'
+  stop
 end subroutine PMBaseThisTime
     
 function PMBaseFunctionThisOnly(this)
@@ -306,12 +340,16 @@ function PMBaseFunctionThisOnly(this)
   class(pm_base_type) :: this
   PetscBool ::  PMBaseFunctionThisOnly
   PMBaseFunctionThisOnly = PETSC_TRUE
+  print *, 'Must extend PMBaseFunctionThisOnly.'
+  stop
 end function PMBaseFunctionThisOnly
     
 subroutine PMBaseComputeMassBalance(this,mass_balance_array)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: mass_balance_array(:)
+  print *, 'Must extend PMBaseComputeMassBalance.'
+  stop
 end subroutine PMBaseComputeMassBalance
 
 subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
@@ -322,7 +360,19 @@ subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
   Vec :: xx
   Vec :: ff
   PetscErrorCode :: ierr
+  print *, 'Must extend PMBaseRHSFunction.'
+  stop
 end subroutine PMBaseRHSFunction
+
+subroutine PMBaseCheckpoint(this,viewer)
+  implicit none
+#include "finclude/petscviewer.h"      
+  class(pm_base_type) :: this
+  PetscViewer :: viewer
+  print *, 'Must extend PMBaseCheckpoint/Restart.'
+  stop
+end subroutine PMBaseCheckpoint
+
 #endif
 
 end module Process_Model_Base_class

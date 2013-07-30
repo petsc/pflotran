@@ -39,6 +39,9 @@ subroutine SubsurfaceInitialize(simulation_base,option)
   simulation => SubsurfaceSimulationCreate(option)
   call SubsurfaceInitializePostPetsc(simulation,option)
   
+  ! set first process model coupler as the master
+  simulation%process_model_coupler_list%is_master = PETSC_TRUE
+  
   simulation_base => simulation
 
 end subroutine SubsurfaceInitialize
@@ -453,7 +456,7 @@ subroutine SubsurfaceJumpStart(simulation)
   ! pushed in Init()
   call PetscLogStagePop(ierr)
 
-  ! popped in TimeStepperFinalizeRun()
+  ! popped in TimestepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
@@ -708,7 +711,7 @@ subroutine HijackTimestepper(stepper_old,stepper_base)
   
   class(stepper_BE_type), pointer :: stepper
 
-  stepper => TimeStepperBECreate()
+  stepper => TimestepperBECreate()
   
   stepper%steps = stepper_old%steps
   stepper%num_newton_iterations = stepper_old%num_newton_iterations

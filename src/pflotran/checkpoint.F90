@@ -68,6 +68,10 @@ module Checkpoint_module
   private
 
   public :: Checkpoint, Restart
+  
+  public :: OpenCheckpointFile, &
+            CloseCheckpointFile, &
+            CheckpointFlowProcessModel
 
 #include "definitions.h"
 #include "finclude/petscvec.h"
@@ -842,5 +846,176 @@ subroutine CheckpointRegisterBagHeader(bag,header)
                            ierr)                            
 
 end subroutine CheckpointRegisterBagHeader
+
+! ************************************************************************** !
+!
+! OpenCheckpointFile: Opens checkpoint file; sets format
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine OpenCheckpointFile(viewer,id,option)
+
+  use Option_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  PetscViewer :: viewer
+  PetscInt :: id
+  type(option_type) :: option
+  PetscErrorCode :: ierr
+  
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  if (id < 0) then
+    filename = trim(option%global_prefix) // &
+                trim(option%group_prefix) // &
+                '-restart.chk'
+  else
+    write(filename,'(i8)') id
+    filename = trim(option%global_prefix) // &
+                trim(option%group_prefix) // &
+                '-' // trim(adjustl(filename)) // '.chk'
+  endif
+  !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
+  !     into the routines it calls so that PetscViewerBinarySkipInfo()
+  !     can be called after PetscViewerSetType(), but before
+  !     PetscViewerFileSetName().  See note in PETSc docs.
+  !call PetscViewerBinaryOpen(option%mycomm, filename, FILE_MODE_WRITE, &
+  !                           viewer, ierr)
+  call PetscViewerCreate(option%mycomm,viewer,ierr)
+  call PetscViewerSetType(viewer,PETSCVIEWERBINARY,ierr)
+  call PetscViewerFileSetMode(viewer,FILE_MODE_WRITE,ierr)
+  call PetscViewerBinarySkipInfo(viewer,ierr)
+  call PetscViewerFileSetName(viewer,filename,ierr)
+  
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a32)') &
+    trim(filename)
+  call printMsg(option)
+
+end subroutine OpenCheckpointFile
+
+! ************************************************************************** !
+!
+! CloseCheckpointFile: Closes checkpoint file
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine CloseCheckpointFile(viewer)
+
+  use Option_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+
+  call PetscViewerDestroy(viewer, ierr)  
+
+end subroutine CloseCheckpointFile
+
+! ************************************************************************** !
+!
+! CheckpointFlowProcessModel: Checkpoints flow process model vectors
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine CheckpointFlowProcessModel(viewer,realization)
+
+  use Option_module
+  use Realization_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  PetscViewer :: viewer
+  type(realization_type) :: realization
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+  
+  global_vec = 0
+  
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+    ! grid%flow_xx is the vector into which all of the primary variables are 
+    ! packed for the SNESSolve().
+    call VecView(field%flow_xx, viewer, ierr)
+
+
+    ! If we are running with multiple phases, we need to dump the vector 
+    ! that indicates what phases are present, as well as the 'var' vector 
+    ! that holds variables derived from the primary ones via the translator.
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+           FLASH2_MODE,G_MODE)
+        call DiscretizationLocalToGlobal(realization%discretization, &
+                                         field%iphas_loc,global_vec,ONEDOF)
+        call VecView(global_vec, viewer, ierr)
+       case default
+    end select 
+
+    ! Porosity and permeability.
+    ! (We only write diagonal terms of the permeability tensor for now, 
+    ! since we have yet to add the full-tensor formulation.)
+    call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+
+
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
+      call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call VecView(field%flow_xx_faces, viewer, ierr) 
+    end if
+
+  endif
+  
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif  
+  
+end subroutine CheckpointFlowProcessModel
 
 end module Checkpoint_module
