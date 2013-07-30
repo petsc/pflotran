@@ -485,8 +485,6 @@ subroutine TimestepperBECheckpoint(this,viewer,option)
   PetscBag :: bag
   PetscErrorCode :: ierr
 
-  !geh: gfortran crashes without initialization of bag
-  bag = 0  
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
   call TimestepperBERegisterHeader(this,bag,header)
@@ -585,8 +583,6 @@ subroutine TimestepperBERestart(this,viewer,option)
   PetscBag :: bag
   PetscErrorCode :: ierr
   
-  !geh: gfortran crashes without initialization of bag
-  bag = 0
   call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
   call PetscBagGetData(bag,header,ierr)
   call TimestepperBERegisterHeader(this,bag,header)
