@@ -266,7 +266,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
       if(StringCompare(coupler%name,'from_surface_ss')) then
 
         ! Exchange subsurface PRESSURE
-        call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+        call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,press_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
@@ -277,7 +277,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
           press_p(iconn) = xx_loc_p(istart)
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,press_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+        call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
 
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
@@ -663,22 +663,22 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   surf_global_aux_vars => surf_patch%surf_aux%SurfaceGlobal%aux_vars
   surf_aux_vars => surf_patch%surf_aux%SurfaceTH%aux_vars
 
-  call GridVecGetArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%temp_subsurf,temp_sub_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%flow_xx_loc,xx_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%icap_loc,icap_loc_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ithrm_loc,ithrm_loc_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%exchange_subsurf_2_surf,exch_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist,dist_p,ierr)
-  call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ckdry,ckdry_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ckwet,ckwet_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ckice,ckice_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%th_alpha,th_alpha_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%sat_ice,sat_ice_p,ierr)
+  call VecGetArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
+  call VecGetArrayF90(surf_field%temp_subsurf,temp_sub_p,ierr)
+  call VecGetArrayF90(surf_field%flow_xx_loc,xx_p,ierr)
+  call VecGetArrayF90(surf_field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(surf_field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(surf_field%Dq,Dq_p,ierr)
+  call VecGetArrayF90(surf_field%exchange_subsurf_2_surf,exch_p,ierr)
+  call VecGetArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
+  call VecGetArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
+  call VecGetArrayF90(surf_field%area,area_p,ierr)
+  call VecGetArrayF90(surf_field%ckdry,ckdry_p,ierr)
+  call VecGetArrayF90(surf_field%ckwet,ckwet_p,ierr)
+  call VecGetArrayF90(surf_field%ckice,ckice_p,ierr)
+  call VecGetArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
+  call VecGetArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
+  call VecGetArrayF90(surf_field%sat_ice,sat_ice_p,ierr)
 
   ! Update the surface BC
   coupler_list => surf_patch%source_sinks
@@ -852,21 +852,21 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
     coupler => coupler%next
   enddo
   
-  call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist,dist_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%exchange_subsurf_2_surf,exch_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)  
-  call GridVecRestoreArrayF90(surf_grid,surf_field%icap_loc,icap_loc_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx_loc,xx_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%temp_subsurf,temp_sub_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%press_subsurf,press_sub_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%ckdry,ckdry_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%ckwet,ckwet_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%ckice,ckice_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%th_alpha,th_alpha_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%sat_ice,sat_ice_p,ierr)
+  call VecRestoreArrayF90(surf_field%area,area_p,ierr)
+  call VecRestoreArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
+  call VecRestoreArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
+  call VecRestoreArrayF90(surf_field%exchange_subsurf_2_surf,exch_p,ierr)
+  call VecRestoreArrayF90(surf_field%Dq,Dq_p,ierr)  
+  call VecRestoreArrayF90(surf_field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_p,ierr)
+  call VecRestoreArrayF90(surf_field%temp_subsurf,temp_sub_p,ierr)
+  call VecRestoreArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
+  call VecRestoreArrayF90(surf_field%ckdry,ckdry_p,ierr)
+  call VecRestoreArrayF90(surf_field%ckwet,ckwet_p,ierr)
+  call VecRestoreArrayF90(surf_field%ckice,ckice_p,ierr)
+  call VecRestoreArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
+  call VecRestoreArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
+  call VecRestoreArrayF90(surf_field%sat_ice,sat_ice_p,ierr)
 
 end subroutine SurfaceTHSurf2SubsurfFlux
 
@@ -977,14 +977,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
       if(StringCompare(coupler%name,'from_surface_ss')) then
 
         ! perm_x
-        call GridVecGetArrayF90(grid,field%perm_xx_loc,xx_loc_p, ierr)
+        call VecGetArrayF90(field%perm_xx_loc,xx_loc_p, ierr)
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
           ghosted_id = grid%nL2G(local_id)
           vec_p(iconn)=xx_loc_p(ghosted_id)
         enddo
-        call GridVecRestoreArrayF90(grid,field%perm_xx_loc,xx_loc_p, ierr)
+        call VecRestoreArrayF90(field%perm_xx_loc,xx_loc_p, ierr)
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
@@ -997,14 +997,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
 
         ! perm_y
-        call GridVecGetArrayF90(grid,field%perm_yy_loc,xx_loc_p, ierr)
+        call VecGetArrayF90(field%perm_yy_loc,xx_loc_p, ierr)
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
           ghosted_id = grid%nL2G(local_id)
           vec_p(iconn)=xx_loc_p(ghosted_id)
         enddo
-        call GridVecRestoreArrayF90(grid,field%perm_yy_loc,xx_loc_p, ierr)
+        call VecRestoreArrayF90(field%perm_yy_loc,xx_loc_p, ierr)
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
@@ -1017,14 +1017,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
 
         ! perm_z
-        call GridVecGetArrayF90(grid,field%perm_zz_loc,xx_loc_p, ierr)
+        call VecGetArrayF90(field%perm_zz_loc,xx_loc_p, ierr)
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
           ghosted_id = grid%nL2G(local_id)
           vec_p(iconn)=xx_loc_p(ghosted_id)
         enddo
-        call GridVecRestoreArrayF90(grid,field%perm_zz_loc,xx_loc_p, ierr)
+        call VecRestoreArrayF90(field%perm_zz_loc,xx_loc_p, ierr)
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
@@ -1037,14 +1037,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
 
         ! por
-        call GridVecGetArrayF90(grid,field%porosity_loc,xx_loc_p, ierr)
+        call VecGetArrayF90(field%porosity_loc,xx_loc_p, ierr)
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
           ghosted_id = grid%nL2G(local_id)
           vec_p(iconn)=xx_loc_p(ghosted_id)
         enddo
-        call GridVecRestoreArrayF90(grid,field%porosity_loc,xx_loc_p, ierr)
+        call VecRestoreArrayF90(field%porosity_loc,xx_loc_p, ierr)
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
@@ -1058,14 +1058,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
 
         ! icap
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+        call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
           ghosted_id = grid%nL2G(local_id)
           vec_p(iconn)=icap_loc_p(ghosted_id)
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+        call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
                             surf_field%subsurf_temp_vec_1dof, &
@@ -1078,14 +1078,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
 
         ! ithrm_id
         call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+        call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
         do iconn=1,cur_connection_set%num_connections
           local_id = cur_connection_set%id_dn(iconn)
           ghosted_id = grid%nL2G(local_id)
           vec_p(iconn)=ithrm_loc_p(ghosted_id)
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,vec_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+        call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
         ! Scatter the data
         call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
                             surf_field%subsurf_temp_vec_1dof, &
@@ -1157,21 +1157,21 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
     coupler => coupler%next
   enddo
 
-  call GridVecGetArrayF90(surf_grid,surf_field%subsurf_xx,xx_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%subsurf_yy,yy_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%subsurf_zz,zz_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%perm_xx,perm_xx_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%perm_yy,perm_yy_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%perm_zz,perm_zz_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%surf2subsurf_dist,dist_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ithrm_loc,ithrm_loc_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ckwet,ckwet_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ckdry,ckdry_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%ckice,ckice_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%th_alpha,th_alpha_p,ierr)
-  call GridVecGetArrayF90(surf_grid,surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
+  call VecGetArrayF90(surf_field%subsurf_xx,xx_p,ierr)
+  call VecGetArrayF90(surf_field%subsurf_yy,yy_p,ierr)
+  call VecGetArrayF90(surf_field%subsurf_zz,zz_p,ierr)
+  call VecGetArrayF90(surf_field%perm_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(surf_field%perm_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(surf_field%perm_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(surf_field%Dq,Dq_p,ierr)
+  call VecGetArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
+  call VecGetArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
+  call VecGetArrayF90(surf_field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(surf_field%ckwet,ckwet_p,ierr)
+  call VecGetArrayF90(surf_field%ckdry,ckdry_p,ierr)
+  call VecGetArrayF90(surf_field%ckice,ckice_p,ierr)
+  call VecGetArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
+  call VecGetArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
 
   do local_id=1,surf_grid%nlmax
     dist_x = (xx_p(local_id) - surf_grid%x(local_id))
@@ -1202,20 +1202,20 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
 
   enddo
 
-  call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%surf2subsurf_dist,dist_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_xx,xx_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_yy,yy_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%subsurf_zz,zz_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%perm_xx,perm_xx_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%perm_yy,perm_yy_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%perm_zz,perm_zz_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%ckwet,ckwet_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%ckdry,ckdry_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%ckice,ckice_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%th_alpha,th_alpha_p,ierr)
-  call GridVecRestoreArrayF90(surf_grid,surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
+  call VecRestoreArrayF90(surf_field%surf2subsurf_dist_gravity,dist_gravity_p,ierr)
+  call VecRestoreArrayF90(surf_field%surf2subsurf_dist,dist_p,ierr)
+  call VecRestoreArrayF90(surf_field%subsurf_xx,xx_p,ierr)
+  call VecRestoreArrayF90(surf_field%subsurf_yy,yy_p,ierr)
+  call VecRestoreArrayF90(surf_field%subsurf_zz,zz_p,ierr)
+  call VecRestoreArrayF90(surf_field%perm_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(surf_field%perm_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(surf_field%perm_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(surf_field%Dq,Dq_p,ierr)
+  call VecRestoreArrayF90(surf_field%ckwet,ckwet_p,ierr)
+  call VecRestoreArrayF90(surf_field%ckdry,ckdry_p,ierr)
+  call VecRestoreArrayF90(surf_field%ckice,ckice_p,ierr)
+  call VecRestoreArrayF90(surf_field%th_alpha,th_alpha_p,ierr)
+  call VecRestoreArrayF90(surf_field%th_alpha_fr,th_alpha_fr_p,ierr)
 
   surf_realization%first_time=PETSC_FALSE
 
@@ -1324,9 +1324,9 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! override flags since they will soon be out of date  
   patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
 
-  call GridVecGetArrayF90(grid,ff,ff_p, ierr)
-  call GridVecGetArrayF90(grid,surf_field%mannings_loc,mannings_loc_p, ierr)
-  call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
+  call VecGetArrayF90(ff,ff_p, ierr)
+  call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
+  call VecGetArrayF90(surf_field%area,area_p,ierr)
 
   ff_p = 0.d0
   Res  = 0.d0
@@ -1491,9 +1491,9 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     source_sink => source_sink%next
   enddo
 
-  call GridVecRestoreArrayF90(grid,ff,ff_p, ierr)
-  call GridVecRestoreArrayF90(grid,surf_field%mannings_loc,mannings_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+  call VecRestoreArrayF90(ff,ff_p, ierr)
+  call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
+  call VecRestoreArrayF90(surf_field%area,area_p,ierr)
 
   if (surf_realization%debug%vecview_solution) then
     string = 'Surf_xx_' // trim(adjustl(string2)) // '.bin'
@@ -1578,8 +1578,8 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
   surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
 
-  call GridVecGetArrayF90(grid,surf_field%mannings_loc,mannings_loc_p, ierr)
-  call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
+  call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
+  call VecGetArrayF90(surf_field%area,area_p,ierr)
 
   Res  = 0.d0
   max_allowable_dt = 1.d10
@@ -1668,8 +1668,8 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
     boundary_condition => boundary_condition%next
   enddo
   
-  call GridVecRestoreArrayF90(grid,surf_field%mannings_loc,mannings_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+  call VecRestoreArrayF90(surf_field%mannings_loc,mannings_loc_p,ierr)
+  call VecRestoreArrayF90(surf_field%area,area_p,ierr)
   
 end subroutine SurfaceTHComputeMaxDt
 
@@ -1902,7 +1902,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
   surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
   
-  call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
   ! Internal aux vars
   do ghosted_id = 1, grid%ngmax
@@ -1999,7 +1999,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
   patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_TRUE
 
-  call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
 end subroutine SurfaceTHUpdateAuxVars
 

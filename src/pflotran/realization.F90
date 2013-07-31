@@ -30,6 +30,8 @@ module Realization_class
 private
 
 #include "definitions.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   type, public, extends(realization_base_type) :: realization_type
 
     type(region_list_type), pointer :: regions
@@ -1873,7 +1875,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   if (reaction%update_porosity) then
     porosity_updated = PETSC_TRUE
   
-    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 
     if (reaction%mineral%nkinmnrl > 0) then
       do local_id = 1, grid%nlmax
@@ -1891,7 +1893,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       enddo
     endif
 
-    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
     
   endif
   
@@ -1902,16 +1904,16 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       ! recalculate it every time.
       (reaction%update_mineral_surface_area .and. &
        reaction%update_mnrl_surf_with_porosity)) then
-    call GridVecGetArrayF90(grid,field%porosity0,porosity0_p,ierr)
-    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-    call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+    call VecGetArrayF90(field%porosity0,porosity0_p,ierr)
+    call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       vec_p(local_id) = porosity_loc_p(ghosted_id)/porosity0_p(local_id)
     enddo
-    call GridVecRestoreArrayF90(grid,field%porosity0,porosity0_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr)
+    call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr)
   endif      
 
   if (reaction%update_mineral_surface_area) then
@@ -1919,7 +1921,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     if (reaction%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will
       ! avoid improper access.
-      call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+      call VecGetArrayF90(field%work,vec_p,ierr)
     endif
 
     do local_id = 1, grid%nlmax
@@ -2000,7 +2002,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     enddo
 
     if (reaction%update_mnrl_surf_with_porosity) then
-      call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+      call VecRestoreArrayF90(field%work,vec_p,ierr)
     endif
 
     call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
@@ -2008,33 +2010,33 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif
       
   if (reaction%update_tortuosity) then
-    call GridVecGetArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)  
-    call GridVecGetArrayF90(grid,field%tortuosity0,tortuosity0_p,ierr)  
-    call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+    call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)  
+    call VecGetArrayF90(field%tortuosity0,tortuosity0_p,ierr)  
+    call VecGetArrayF90(field%work,vec_p,ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       scale = vec_p(local_id)** &
         material_property_array(patch%imat(ghosted_id))%ptr%tortuosity_pwr
       tortuosity_loc_p(ghosted_id) = tortuosity0_p(local_id)*scale
     enddo
-    call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)  
-    call GridVecRestoreArrayF90(grid,field%tortuosity0,tortuosity0_p,ierr)  
-    call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)  
+    call VecRestoreArrayF90(field%tortuosity0,tortuosity0_p,ierr)  
+    call VecRestoreArrayF90(field%work,vec_p,ierr)
 
     call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                      field%tortuosity_loc,ONEDOF)
   endif
       
   if (reaction%update_permeability) then
-    call GridVecGetArrayF90(grid,field%porosity0,porosity0_p,ierr)
-    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm_zz_loc,perm_zz_loc_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
-!   call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+    call VecGetArrayF90(field%porosity0,porosity0_p,ierr)
+    call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+    call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr)
+    call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr)
+    call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr)
+    call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
+    call VecGetArrayF90(field%perm_zz_loc,perm_zz_loc_p,ierr)
+    call VecGetArrayF90(field%perm_yy_loc,perm_yy_loc_p,ierr)
+!   call VecGetArrayF90(field%work,vec_p,ierr)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (porosity_loc_p(ghosted_id) >= material_property_array(patch%imat(ghosted_id))%ptr%permeability_crit_por) then
@@ -2057,15 +2059,15 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       perm_yy_loc_p(ghosted_id) = perm0_yy_p(local_id)*scale
       perm_zz_loc_p(ghosted_id) = perm0_zz_p(local_id)*scale
     enddo
-    call GridVecRestoreArrayF90(grid,field%porosity0,porosity0_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm_zz_loc,perm_zz_loc_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
-!   call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%porosity0,porosity0_p,ierr)
+    call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+    call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr)
+    call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr)
+    call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr)
+    call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
+    call VecRestoreArrayF90(field%perm_zz_loc,perm_zz_loc_p,ierr)
+    call VecRestoreArrayF90(field%perm_yy_loc,perm_yy_loc_p,ierr)
+!   call VecRestoreArrayF90(field%work,vec_p,ierr)
 
     call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
                                     field%perm_xx_loc,ONEDOF)
@@ -2520,12 +2522,12 @@ subroutine RealizationNonInitializedData(realization)
   
   min_value = 1.d20
   ! porosity
-  call GridVecGetArrayF90(grid,field%porosity0,vec_p,ierr)
+  call VecGetArrayF90(field%porosity0,vec_p,ierr)
   do local_id = 1, grid%nlmax
     if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
     min_value = min(min_value,vec_p(local_id)) 
   enddo
-  call GridVecRestoreArrayF90(grid,field%porosity0,vec_p,ierr)
+  call VecRestoreArrayF90(field%porosity0,vec_p,ierr)
   call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
   
@@ -2536,18 +2538,18 @@ subroutine RealizationNonInitializedData(realization)
   endif
   
   if (option%iflowmode /= NULL_MODE) then
-    call GridVecGetArrayF90(grid,field%perm0_xx,vec_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm0_yy,vecy_p,ierr)
-    call GridVecGetArrayF90(grid,field%perm0_zz,vecz_p,ierr)
+    call VecGetArrayF90(field%perm0_xx,vec_p,ierr)
+    call VecGetArrayF90(field%perm0_yy,vecy_p,ierr)
+    call VecGetArrayF90(field%perm0_zz,vecz_p,ierr)
     min_value = 1.d20
     do local_id = 1, grid%nlmax
       if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
       min_value = min(min_value,vec_p(local_id),vecy_p(local_id), &
                       vecz_p(local_id)) 
     enddo        
-    call GridVecRestoreArrayF90(grid,field%perm0_xx,vec_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm0_yy,vecy_p,ierr)
-    call GridVecRestoreArrayF90(grid,field%perm0_zz,vecz_p,ierr)
+    call VecRestoreArrayF90(field%perm0_xx,vec_p,ierr)
+    call VecRestoreArrayF90(field%perm0_yy,vecy_p,ierr)
+    call VecRestoreArrayF90(field%perm0_zz,vecz_p,ierr)
     call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
     if (global_value < 1.d-60) then

@@ -911,7 +911,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
 
   grid => patch%grid
 
-  call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+  call VecGetArrayF90(vec,vec_ptr,ierr)
 
   iphase = 1
   select case(ivar)
@@ -1163,11 +1163,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           enddo
       end select
     case(PHASE)
-      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
-      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
@@ -1176,7 +1176,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
       call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')      
   end select
 
-  call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine PatchGetDataset
 
@@ -1396,9 +1396,9 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
       end select
     case(PHASE)
-      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
-      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
     case(MATERIAL_ID)
       value = patch%imat(ghosted_id)
   end select
@@ -1440,7 +1440,7 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
 
   grid => patch%grid
 
-  call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+  call VecGetArrayF90(vec,vec_ptr,ierr)
 
   iphase = 1
   select case(ivar)
@@ -1632,18 +1632,18 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
           enddo
       end select
     case(PHASE)
-      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      call VecGetArrayF90(field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
         vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
       enddo
-      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr)
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         patch%imat(grid%nL2G(local_id)) = vec_ptr(local_id)
       enddo
   end select
 
-  call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine PatchSetDataset
 

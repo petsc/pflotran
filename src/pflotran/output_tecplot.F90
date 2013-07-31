@@ -1007,9 +1007,9 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   call OutputGetCellCenteredVelocities(realization_base,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
   call OutputGetCellCenteredVelocities(realization_base,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
 
-  call GridVecGetArrayF90(grid,global_vec_vx,vec_ptr_vx,ierr)
-  call GridVecGetArrayF90(grid,global_vec_vy,vec_ptr_vy,ierr)
-  call GridVecGetArrayF90(grid,global_vec_vz,vec_ptr_vz,ierr)
+  call VecGetArrayF90(global_vec_vx,vec_ptr_vx,ierr)
+  call VecGetArrayF90(global_vec_vy,vec_ptr_vy,ierr)
+  call VecGetArrayF90(global_vec_vz,vec_ptr_vz,ierr)
 
   ! write points
 1000 format(es13.6,1x)
@@ -1036,9 +1036,9 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     
   enddo
   
-  call GridVecRestoreArrayF90(grid,global_vec_vx,vec_ptr_vx,ierr)
-  call GridVecRestoreArrayF90(grid,global_vec_vy,vec_ptr_vy,ierr)
-  call GridVecRestoreArrayF90(grid,global_vec_vz,vec_ptr_vz,ierr)
+  call VecRestoreArrayF90(global_vec_vx,vec_ptr_vx,ierr)
+  call VecRestoreArrayF90(global_vec_vy,vec_ptr_vy,ierr)
+  call VecRestoreArrayF90(global_vec_vz,vec_ptr_vz,ierr)
   
   call VecDestroy(global_vec_vx,ierr)
   call VecDestroy(global_vec_vy,ierr)
@@ -1577,7 +1577,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
   
   ugrid => grid%unstructured_grid
   
-  call GridVecGetArrayF90(grid, vec, vec_ptr, ierr)
+  call VecGetArrayF90( vec, vec_ptr, ierr)
 
   ! initialize
   vec_ptr = -999.d0
@@ -1652,7 +1652,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
     end select
   enddo
 
-  call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
+  call VecRestoreArrayF90( vec, vec_ptr, ierr)
 
 end subroutine GetCellConnectionsTecplot
 
