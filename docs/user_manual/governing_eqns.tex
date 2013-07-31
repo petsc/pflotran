@@ -166,11 +166,15 @@ of the liquid phase, $n_l$, is represented on a molar basis.
 Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
 \begin{subequations}
 \BA\label{mass_conservation_equation}
-\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\eta_\a^{} X_i^\a \bigg)
-+ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\eta_\a^{} X_i^\a 
- - \varphi s_\a^{} D_\a^{} \eta_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\eta_\a^{} x_i^\a \bigg)
++ \bnabla\cdot\sum_\a\bF_i^\a \eq Q_i,
 \EA
-for the $i$th component, and
+for the $i$th component with flux $\bF_i^\a$
+\EQ
+\bF_i^\a \eq \bq_\a^{}\eta_\a^{} x_i^\a 
+ - \varphi s_\a^{} D_\a^{} \eta_\a^{} \bnabla x_i^\a,
+\EN
+and
 \BA\label{energy_equation}
 \frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\eta_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)
 + \bnabla\cdot\sum_\a\bigg[\bq_\a\eta_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
@@ -182,7 +186,7 @@ Species are designated by the subscript $i$
 ($i\!=\!\textrm{H}_\textrm{2}\textrm{O}$, $\textrm{CO}_\textrm{2}$); 
 $\varphi$ denotes the porosity of the porous medium; 
 $s_\a$ denotes the phase saturation state; 
-$X_i^\a$ denotes the mole fraction of species $i$ ($\sum_i X_i^\alpha=1$); 
+$x_i^\a$ denotes the mole fraction of species $i$ ($\sum_i x_i^\alpha=1$); 
 $\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
 $\bq_\a$ denotes the Darcy flow rate for phase $\a$ defined by
 \EQ
@@ -194,7 +198,7 @@ where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative perm
 \EN
 where the formula weight $W_\a$ is a function of composition according to the relation
 \EQ
-W_\a \eq \frac{\rho_\a}{\eta_\a} \eq \sum_i W_i^{} X_i^\a.
+W_\a \eq \frac{\rho_\a}{\eta_\a} \eq \sum_i W_i^{} x_i^\a.
 \EN
 The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat capacity, and thermal conductivity of the porous rock. 
 
@@ -203,12 +207,12 @@ The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat cap
 The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat, respectively, for various well models. Several different well models are available. The simplest is a volume or mass rate injection/production well given by
 \begin{subequations}
 \BA
-Q_i &\eq \sum_n\sum_\a q_\a^V \eta_\a X_i^\a \delta(\br-\br_{n}),\\
-&\eq \sum_n\sum_\a \frac{\eta_\a}{\rho_\a} q_\a^M X_i^\a \delta(\br-\br_{n}),\\
-&\eq \sum_n\sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{n}),
+Q_i &\eq \sum_n\sum_\a q_\a^V \eta_\a x_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a \frac{\eta_\a}{\rho_\a} q_\a^M x_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a W_\a^{-1} q_\a^M x_i^\a \delta(\br-\br_{n}),
 \EA
 \end{subequations}
-where $q_\a^V$, $q_\a^M$ refer to volume and mass rates with units m$^3$/s, kg/s, respectively, related by
+where $q_\a^V$, $q_\a^M$ refer to volume and mass rates with units m$^3$/s, kg/s, respectively, related by the density
 \EQ
 q_\a^M \eq \rho_\a q_\a^V.
 \EN
@@ -247,21 +251,21 @@ The conditions for phase changes to occur are considered in detail below.
 \toprule
 State & $X_1$ & $X_2$ & $X_3$\\
 \midrule
-liquid & $p_l$ & $T$ & $X_\c^l$\\
-gas & $p_g$ & $T$ & $X_\c^g$\\
+liquid & $p_l$ & $T$ & $x_\c^l$\\
+gas & $p_g$ & $T$ & $x_\c^g$\\
 two-phase & $p_g$ & $T$ & $s_g$\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 
-\paragraph{Gas: $(p_g,\,T,\,X_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$}
+\paragraph{Gas: $(p_g,\,T,\,x_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$} ~
 
-$\bullet$ gas $\rightarrow$ 2-ph: $X_\c^g \leq 1-\dfrac{P_{\rm sat}(T)}{p_g}$, \ or equivalently: $X_\w^g \geq \dfrac{P_{\rm sat}(T)}{p_g}$
+$\bullet$ gas $\rightarrow$ 2-ph: $x_\c^g \leq 1-\dfrac{P_{\rm sat}(T)}{p_g}$, \ or equivalently: $x_\w^g \geq \dfrac{P_{\rm sat}(T)}{p_g}$
 
-\paragraph{Liquid: $(p_l,\,T,\,X_\c^l)$ $\rightarrow$ Two-phase: $(p_g,\,T,\,s_g^{})$}
+\paragraph{Liquid: $(p_l,\,T,\,x_\c^l)$ $\rightarrow$ Two-phase: $(p_g,\,T,\,s_g^{})$} ~
 
-$\bullet$ liq $\rightarrow$ 2-ph: $X_\c^l \geq x_\c^{eq}$
+$\bullet$ liq $\rightarrow$ 2-ph: $x_\c^l \geq x_\c^{eq}$
 
 \noindent
 The equilibrium mole fraction $x_\c^{eq}$ is given by
@@ -277,21 +281,21 @@ where it is assumed that
 y_\c^{} \eq 1-\dfrac{P_{\rm sat}(T)}{p}.
 \EN
 
-\paragraph{Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$ Liquid $(p_l,\,T,\,X_\c^l)$ or Gas $(p_g,\,T,\,X_\c^g)$}
+\paragraph{Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$ Liquid $(p_l,\,T,\,x_\c^l)$ or Gas $(p_g,\,T,\,x_\c^g)$} ~
 
-Equilibrium in a two-phase $\w$-$\c$ system is defined as the equality of chemical potentials between the two phases as expressed by the relation
+Equilibrium in a two-phase $\w$--$\c$ system is defined as the equality of chemical potentials between the two phases as expressed by the relation
 \EQ
 f_\c^{} \eq y_\c^{}\phi_\c^{} p_g^{} \eq K_\c^{} \big(\gamma_\c^{} m_\c^{}\big),
 \EN
 where
 \EQ
-y_\c^{} \eq X_\c^g, \ \ \ \ x_\c^{} \eq X_\c^l,
+y_\c^{} \eq x_\c^g, \ \ \ \ x_\c^{} \eq x_\c^l,
 \EN
 \EQ
-X_\w^g \eq \frac{P_{\rm sat}(T)}{p_g},
+x_\w^g \eq \frac{P_{\rm sat}(T)}{p_g},
 \EN
 \EQ
-y_\c^{} \eq 1-X_\w^g \eq 1-\frac{P_{\rm sat}(T)}{p_g},
+y_\c^{} \eq 1-x_\w^g \eq 1-\frac{P_{\rm sat}(T)}{p_g},
 \EN
 From these equations a Henry coefficient-like relation can be written as
 \EQ

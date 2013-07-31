@@ -2444,18 +2444,22 @@ MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes, bot
 \end{tabularx}
 \end{center}
 
-The output in the mass balance file refers to global mass conservation. This output is described in detail for the {\tt MPHASE} mode. The total number of moles of the $i$th component in phase $\a$ is given as the integral over the entire computational domain
+The output in the mass balance file refers to global mass conservation. This output is described in detail for the {\tt MPHASE} mode. The total number of moles of the $i$th component in phase $\a$ is given as the integral over the entire computational domain (see Eqn.\eqref{mass_conservation_equation})
 \EQ
 N_i^\a \eq \int_V \varphi s_\a \eta_\a x_i^\a \, dV.
 \EN
-From the governing equations the time rate of change of $N_i = \sum_\a N_i^\a$ is given by
+From the governing equations, Eqn.\eqref{mass_conservation_equation}, the time rate of change of the total number of moles of the $i$th component
+\EQ
+N_i = \sum_\a N_i^\a,
+\EN
+is given by
 \BA
 \frac{dN_i}{dt} &\eq \sum_\a \frac{dN_i^\a}{dt} \\
-&\eq -\sum_\a \int_{\p V} \bF_i^\a\cdot\bdS + Q_i,
+&\eq -\sum_\a \int_{\p V} \bF_i^\a\cdot\bdS + \Q_i,
 \EA
-where the integral on the right hand side is over flux flowing through the boundaries of the domain and the source/sink
+where the integral on the right hand side is over the flux flowing through the boundaries of the domain and the source/sink
 \EQ
-Q_i \eq \int_V q_i \, dV.
+\Q_i \eq \int_V Q_i \, dV.
 \EN
 The surface averaged flux $\F_i$ is defined as
 \EQ
@@ -2468,11 +2472,11 @@ Integrating the flux over time gives the cumulative flux $\overline\F_i^\a$
 \EN
 and time integrated source/sink $\overline Q_i$
 \EQ
-\overline Q_i \eq \int_0^t Q_i\, dt'.
+\overline \Q_i \eq \int_0^t \Q_i\, dt'.
 \EN
 Global conservation of mass implies the equality
 \EQ
-N_i(t) \eq N_i(0) + \sum_\a \overline\F_i^\a + \overline Q_i.
+N_i(t) \eq N_i(0) + \sum_\a \overline\F_i^\a + \overline \Q_i.
 \EN
 
 The header for the {\tt MPHASE} mass balance file reads (for time in years):
@@ -2487,8 +2491,8 @@ N_{\rm H_2O}^{\rm H_2O}, \ \ N_{\rm CO_2}^{\rm H_2O}, \ \ \widetilde N_{\rm CO_2
 \F_{\rm CO_2}^{\rm H_2O}, \ \ 
 \F_{\rm H_2O}^{\rm CO_2}, \ \ 
 \F_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol/y]}\nonumber\\
-\overline Q_{\rm H_2O}, \ \ \overline Q_{\rm CO_2}, & \ \text{[kmol]}\nonumber\\
-Q_{\rm H_2O}, \ \ Q_{\rm CO_2}, & \ \text{[kmol/y]}
+\overline \Q_{\rm H_2O}, \ \ \overline \Q_{\rm CO_2}, & \ \text{[kmol]}\nonumber\\
+\Q_{\rm H_2O}, \ \ \Q_{\rm CO_2}, & \ \text{[kmol/y]}
 \EA
 The quantity $\widetilde N_i^\a$ denotes the trapped component in phase $\a$ defined by
 \EQ
