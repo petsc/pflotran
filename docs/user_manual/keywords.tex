@@ -500,7 +500,7 @@ END
 \newpage
 \protect\hypertarget{target_brine}{}
 
-\subsection{Keyword: BRINE (BRIN)}
+\subsection{Keyword: BRINE}
 
 \begin{deflist}{000}
 \item[BRINE] {\tt <float>} \ \ \ [MOLAL, MASS, MOLE]
@@ -2440,9 +2440,61 @@ PERMEABILITY: & \\
 POROSITY: & \\
 FLUXES: & \\
 VELOCITIES: & keyword to output velocities.\\
-MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes.
+MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes, both cumulative and instantaneous.
 \end{tabularx}
 \end{center}
+
+The output in the mass balance file refers to global mass conservation. This output is described in detail for the {\tt MPHASE} mode. The total number of moles of the $i$th component in phase $\a$ is given as the integral over the entire computational domain
+\EQ
+N_i^\a \eq \int_V \varphi s_\a \eta_\a x_i^\a \, dV.
+\EN
+From the governing equations the time rate of change of $N_i = \sum_\a N_i^\a$ is given by
+\BA
+\frac{dN_i}{dt} &\eq \sum_\a \frac{dN_i^\a}{dt} \\
+&\eq -\sum_\a \int_{\p V} \bF_i^\a\cdot\bdS + Q_i,
+\EA
+where the integral on the right hand side is over flux flowing through the boundaries of the domain and the source/sink
+\EQ
+Q_i \eq \int_V q_i \, dV.
+\EN
+The surface averaged flux $\F_i$ is defined as
+\EQ
+\F_i^\a \eq -\int_{\p V} \bF_i^\a\cdot\bdS,
+\EN
+defined as positive for flow into and negative for flow out of the domain $V$.
+Integrating the flux over time gives the cumulative flux $\overline\F_i^\a$
+\EQ
+\overline\F_i^\a \eq \int_0^t \F_i^\a \, dt',
+\EN
+and time integrated source/sink $\overline Q_i$
+\EQ
+\overline Q_i \eq \int_0^t Q_i\, dt'.
+\EN
+Global conservation of mass implies the equality
+\EQ
+N_i(t) \eq N_i(0) + \sum_\a \overline\F_i^\a + \overline Q_i.
+\EN
+
+The header for the {\tt MPHASE} mass balance file reads (for time in years):
+\BA
+t, \ \ \Delta t, & \ [y]\nonumber \\
+N_{\rm H_2O}^{\rm H_2O}, \ \ N_{\rm CO_2}^{\rm H_2O}, \ \ \widetilde N_{\rm CO_2}^{\rm H_2O}, \ \ N_{\rm H_2O}^{\rm CO_2}, \ \ N_{\rm CO_2}^{\rm CO_2}, \ \ \widetilde N_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol]} \nonumber \\
+\overline \F_{\rm H_2O}^{\rm H_2O}, \ \ 
+\overline \F_{\rm CO_2}^{\rm H_2O}, \ \ 
+\overline \F_{\rm H_2O}^{\rm CO_2}, \ \ 
+\overline \F_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol]} \nonumber \\
+\F_{\rm H_2O}^{\rm H_2O}, \ \ 
+\F_{\rm CO_2}^{\rm H_2O}, \ \ 
+\F_{\rm H_2O}^{\rm CO_2}, \ \ 
+\F_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol/y]}\nonumber\\
+\overline Q_{\rm H_2O}, \ \ \overline Q_{\rm CO_2}, & \ \text{[kmol]}\nonumber\\
+Q_{\rm H_2O}, \ \ Q_{\rm CO_2}, & \ \text{[kmol/y]}
+\EA
+The quantity $\widetilde N_i^\a$ denotes the trapped component in phase $\a$ defined by
+\EQ
+\widetilde N_i^\a \eq \int_{V, \, s_\a < s_\a^0} \varphi s_\a \eta_\a x_i^\a \, dV,
+\EN
+where $s_\a^0$ denotes the residual saturation. There are as many rows of cumulative and instantaneous fluxes as there are boundaries.
 
 \begin{mdframed}
 
