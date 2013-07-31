@@ -684,6 +684,7 @@ end subroutine PMRichardsCheckpoint
 subroutine PMRichardsRestart(this,viewer)
 
   use Checkpoint_module
+  use Richards_module, only : RichardsUpdateAuxVars
 
   implicit none
 #include "finclude/petscviewer.h"      
@@ -691,7 +692,9 @@ subroutine PMRichardsRestart(this,viewer)
   class(pm_richards_type) :: this
   PetscViewer :: viewer
   
-  call RestartFlowProcessModel(viewer,this%realization) 
+  call RestartFlowProcessModel(viewer,this%realization)
+  call RichardsUpdateAuxVars(this%realization)
+  call this%UpdateSolution()
   
 end subroutine PMRichardsRestart
 

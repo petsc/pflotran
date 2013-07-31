@@ -536,6 +536,18 @@ recursive subroutine PMCBaseRestart(this,viewer)
   endif
   
   call this%timestepper%Restart(viewer,this%option)
+  
+  ! Point cur_waypoint to the correct waypoint.
+  !geh: there is a problem here in that the timesteppers "prev_waypoint"
+  !     may not be set correctly if the time step does not converge. See
+  !     top of TimestepperBaseSetTargetTime().
+  call WaypointSkipToTime(this%timestepper%cur_waypoint, &
+                          this%timestepper%target_time)
+  !geh: this is a bit of a kludge.  Need to use the timestepper target time
+  !     directly.  Time is needed to update boundary conditions within 
+  !     this%UpdateSolution
+  this%option%time = this%timestepper%target_time
+
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit

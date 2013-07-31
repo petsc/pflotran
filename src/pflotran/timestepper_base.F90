@@ -325,6 +325,12 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   
   if (this%time_step_cut_flag) then
     this%time_step_cut_flag = PETSC_FALSE
+    !geh: pointing the cur_waypoint back may cause problems in the checkpoint
+    !     file.  There is no way of knowing whether prev_waypoint is different
+    !     from cur_waypoint as most of the time it will be identical.  I believe
+    !     the only way around this is to check associated(cur,prev) to see if
+    !     they differ and set a flag in the checkpoint file.  But even this will
+    !     not work if more than one waypoint previous.
     this%cur_waypoint => this%prev_waypoint
   else
     ! If the maximum time step size decreased in the past step, need to set

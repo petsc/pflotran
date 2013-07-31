@@ -914,7 +914,8 @@ subroutine PMRTRestart(this,viewer)
   use Field_module
   use Discretization_module
   use Grid_module
-  use Reactive_Transport_module, only : RTCheckpointKineticSorption  
+  use Reactive_Transport_module, only : RTCheckpointKineticSorption, &
+                                        RTUpdateAuxVars
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
@@ -1028,7 +1029,14 @@ subroutine PMRTRestart(this,viewer)
     call VecDestroy(local_vec,ierr)
   endif
   
-  call PetscBagDestroy(bag,ierr)   
+  call PetscBagDestroy(bag,ierr)
+  
+  if (realization%reaction%use_full_geochemistry) then
+                                     ! cells     bcs        act coefs.
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+  endif
+  ! do not update kinetics.
+  call PMRTUpdateSolution2(this,PETSC_FALSE)
   
 end subroutine PMRTRestart
 
