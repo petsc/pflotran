@@ -70,6 +70,7 @@ subroutine PMCSurfaceInit(this)
   nullify(this%subsurf_realization)
   this%Synchronize1 => PMCSurfaceSynchronize1
   this%Synchronize2 => PMCSurfaceSynchronize2
+  this%Synchronize3 => PMCSurfaceSynchronize3
 !  nullify(this%surf_timestepper)
 
 end subroutine PMCSurfaceInit
@@ -92,6 +93,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Option_module
   use Surface_Flow_module
   use Surface_TH_module
+  use Output_Surface_module
   
   implicit none
   
@@ -110,6 +112,13 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
   
+  if (associated(this%Synchronize1)) then
+    !geh: PGI requires cast to base
+    !call this%Synchronize1()
+    pmc_base => this%CastToBase()
+    call pmc_base%Synchronize1()
+  endif
+
   local_stop_flag = 0
   do
     if (local_stop_flag > 0) exit ! end simulation
@@ -136,16 +145,14 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
                                         transient_plot_flag)
 
     this%option%surf_flow_dt = this%timestepper%dt
-    if (associated(this%Synchronize1)) then
+    if (associated(this%Synchronize2)) then
       !geh: PGI requires cast to base
-      !call this%Synchronize1()
       pmc_base => this%CastToBase()
-      call pmc_base%Synchronize1()
+      call pmc_base%Synchronize2()
     endif
 
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
-#if 0
     if (local_stop_flag > 1) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
@@ -156,17 +163,21 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       ! have to update option%time for conditions
       this%option%time = this%timestepper%target_time
       call cur_pm%UpdateSolution()
-      call this%timestepper%UpdateDT(cur_pm)
+      !! TODO(gb)
+      !!!call this%timestepper%UpdateDT(cur_pm)
       cur_pm => cur_pm%next
     enddo
 
+#if 0
     ! Run underlying process model couplers
     if (associated(this%below)) then
       call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
     endif
+#endif
     
     ! only print output for process models of depth 0
-    if (associated(this%Output)) then
+    ! TODO(GB): Modify OutputSurface()
+    !if (associated(this%Output)) then
       if (this%timestepper%time_step_cut_flag) then
         plot_flag = PETSC_FALSE
       endif
@@ -182,17 +193,18 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
-      call this%Output(this%pm_list%realization_base,plot_flag, &
-                       transient_plot_flag)
-    endif
-#endif
-    
+      !call this%Output(this%pm_list%realization_base,plot_flag, &
+      !                 transient_plot_flag)
+      call OutputSurface(this%surf_realization, this%subsurf_realization, &
+                         plot_flag, transient_plot_flag)
+    !endif
+
   enddo
   
   this%option%surf_flow_time = this%timestepper%target_time
 
-  if (associated(this%Synchronize2)) then
-    call this%Synchronize2()
+  if (associated(this%Synchronize3)) then
+    call this%Synchronize3()
   endif
 
   ! Run neighboring process model couplers
@@ -225,6 +237,44 @@ subroutine PMCSurfaceSynchronize1(this)
 
   class(pmc_base_type), pointer :: this
   PetscErrorCode :: ierr
+
+  PetscReal :: dt
+
+  select type(pmc => this)
+    class is(pmc_surface_type)
+      select case(this%option%iflowmode)
+        case (RICHARDS_MODE)
+          call SurfaceFlowUpdateSurfBC(pmc%subsurf_realization, &
+                                           pmc%surf_realization)
+        case (TH_MODE)
+          call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
+                                         pmc%surf_realization)
+      end select
+  end select
+
+end subroutine PMCSurfaceSynchronize1
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 07/08/13
+! ************************************************************************** !
+subroutine PMCSurfaceSynchronize2(this)
+
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pmc_base_type), pointer :: this
+  PetscErrorCode :: ierr
   PetscReal :: tmp
 
   select type(pmc => this)
@@ -238,8 +288,8 @@ subroutine PMCSurfaceSynchronize1(this)
                                          pmc%surf_realization)
       end select
   end select
-  
-end subroutine PMCSurfaceSynchronize1
+
+end subroutine PMCSurfaceSynchronize2
 
 ! ************************************************************************** !
 !> This routine
@@ -249,7 +299,7 @@ end subroutine PMCSurfaceSynchronize1
 !!
 !! date: 07/08/13
 ! ************************************************************************** !
-subroutine PMCSurfaceSynchronize2(this)
+subroutine PMCSurfaceSynchronize3(this)
 
   use Surface_Flow_module
   use Surface_TH_module
@@ -279,7 +329,7 @@ subroutine PMCSurfaceSynchronize2(this)
         end select
   end select
   
-end subroutine PMCSurfaceSynchronize2
+end subroutine PMCSurfaceSynchronize3
 
 ! ************************************************************************** !
 !> This routine
