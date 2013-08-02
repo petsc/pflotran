@@ -113,11 +113,15 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time, &
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   
+  if (cur_waypoint%time < 1.d-40) then
+    cur_waypoint => cur_waypoint%next
+  endif
+
   force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
   equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
   equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
 
-  if(equal_to_or_exceeds_sync_time .and. &
+  if(equal_to_or_exceeds_sync_time .or. &
       (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
 
       max_time = min(sync_time,cur_waypoint%time)

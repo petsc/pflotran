@@ -314,7 +314,7 @@ subroutine PMCSurfaceSynchronize3(this)
   PetscReal :: dt
   PetscErrorCode :: ierr
 
-  dt = this%option%surf_flow_time - this%option%flow_time
+  dt = this%option%surf_subsurf_coupling_flow_dt
 
   select type(pmc => this)
     class is(pmc_surface_type)
