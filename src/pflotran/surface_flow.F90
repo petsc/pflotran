@@ -1640,7 +1640,6 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
         press_up = press_sub_p(local_id)
         press_dn = press_surf
         gravity = dist_p(local_id)*den
-        write(*,*),'press_up ',press_up,press_dn
         
         dphi = press_up - press_dn + gravity
         
