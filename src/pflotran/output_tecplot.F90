@@ -944,10 +944,12 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   PetscInt :: ghosted_id
   PetscReal :: value  
   Vec :: global_vec_vx, global_vec_vy, global_vec_vz
-  PetscErrorCode :: ierr  
+  Vec :: global_vec_vgx, global_vec_vgy, global_vec_vgz
+  PetscErrorCode :: ierr
 
   PetscReal, pointer :: vec_ptr_vx(:), vec_ptr_vy(:), vec_ptr_vz(:)
-  
+  PetscReal, pointer :: vec_ptr_vgx(:), vec_ptr_vgy(:), vec_ptr_vgz(:)
+
   patch => realization_base%patch
   grid => patch%grid
   field => realization_base%field
@@ -1017,6 +1019,23 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
 1002 format(3(es13.6,1x))
 1009 format('')
 
+  if (option%nphase > 1) then
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vgx,GLOBAL, &
+                                  option)  
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vgy,GLOBAL, &
+                                  option)  
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vgz,GLOBAL, &
+                                  option)  
+  
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgx,GAS_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgy,GAS_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec_vgz,GAS_PHASE,Z_DIRECTION)
+
+    call VecGetArrayF90(global_vec_vgx,vec_ptr_vgx,ierr)
+    call VecGetArrayF90(global_vec_vgy,vec_ptr_vgy,ierr)
+    call VecGetArrayF90(global_vec_vgz,vec_ptr_vgz,ierr)
+  endif
+
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)  ! local and ghosted are same for non-parallel
     write(OUTPUT_UNIT,1000,advance='no') grid%x(ghosted_id)
@@ -1027,13 +1046,18 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vy(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vz(ghosted_id)
 
+    if (option%nphase > 1) then
+      write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vgx(ghosted_id)
+      write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vgy(ghosted_id)
+      write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vgz(ghosted_id)
+    endif
+
     ! material id
     value = RealizGetDatasetValueAtCell(realization_base,MATERIAL_ID, &
                                         ZERO_INTEGER,ghosted_id)
     write(OUTPUT_UNIT,1001,advance='no') int(value)
   
     write(OUTPUT_UNIT,1009)
-    
   enddo
   
   call VecRestoreArrayF90(global_vec_vx,vec_ptr_vx,ierr)
@@ -1043,6 +1067,16 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   call VecDestroy(global_vec_vx,ierr)
   call VecDestroy(global_vec_vy,ierr)
   call VecDestroy(global_vec_vz,ierr)
+
+  if (option%nphase > 1) then
+    call VecRestoreArrayF90(global_vec_vgx,vec_ptr_vgx,ierr)
+    call VecRestoreArrayF90(global_vec_vgy,vec_ptr_vgy,ierr)
+    call VecRestoreArrayF90(global_vec_vgz,vec_ptr_vgz,ierr)
+  
+    call VecDestroy(global_vec_vgx,ierr)
+    call VecDestroy(global_vec_vgy,ierr)
+    call VecDestroy(global_vec_vgz,ierr)
+  endif
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
