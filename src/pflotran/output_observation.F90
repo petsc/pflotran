@@ -379,6 +379,12 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
     call OutputAppendToHeader(header,'vlx',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vly',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
+
+    if (option%nphase > 1) then
+      call OutputAppendToHeader(header,'vgx',string,cell_string,icolumn)
+      call OutputAppendToHeader(header,'vgy',string,cell_string,icolumn)
+      call OutputAppendToHeader(header,'vgz',string,cell_string,icolumn)
+    endif
     write(fid,'(a)',advance="no") trim(header)
   endif
     
@@ -1084,15 +1090,24 @@ subroutine WriteVelocityAtCell(fid,realization_base,local_id)
   
   PetscInt :: fid
   class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
   PetscInt :: local_id
+  PetscInt :: iphase
 
   PetscReal :: velocity(1:3)
+  option => realization_base%option
   
 200 format(3(es14.6))
-  
-  velocity = GetVelocityAtCell(fid,realization_base,local_id)
-  
-  write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv   
+
+  iphase = 1
+  velocity = GetVelocityAtCell(fid,realization_base,local_id,iphase)
+  write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv
+
+  if (option%nphase > 1) then
+    iphase = 2
+    velocity = GetVelocityAtCell(fid,realization_base,local_id,iphase)
+    write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv
+  endif
 
 end subroutine WriteVelocityAtCell
 
@@ -1104,7 +1119,7 @@ end subroutine WriteVelocityAtCell
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-function GetVelocityAtCell(fid,realization_base,local_id)
+function GetVelocityAtCell(fid,realization_base,local_id,iphase)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -1142,7 +1157,7 @@ function GetVelocityAtCell(fid,realization_base,local_id)
 
   sum_velocity = 0.d0
   sum_area = 0.d0
-  iphase = 1
+! iphase = 1
 
   ! interior velocities  
   connection_set_list => grid%internal_connection_set_list
@@ -1221,19 +1236,32 @@ subroutine WriteVelocityAtCoord(fid,realization_base,region)
   PetscInt :: fid
   class(realization_base_type) :: realization_base
   type(region_type) :: region
+  type(option_type), pointer :: option
   PetscInt :: local_id
+  PetscInt :: iphase
   PetscReal :: coordinate(3)
 
   PetscReal :: velocity(1:3)
+
+  option => realization_base%option
   
 200 format(3(es14.6))
-  
+
+  iphase = 1
   velocity = GetVelocityAtCoord(fid,realization_base,region%cell_ids(1), &
                                 region%coordinates(ONE_INTEGER)%x, &
                                 region%coordinates(ONE_INTEGER)%y, &
-                                region%coordinates(ONE_INTEGER)%z)
-  
+                                region%coordinates(ONE_INTEGER)%z,iphase)
   write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv   
+
+  if (option%nphase > 1) then
+    iphase = 2
+    velocity = GetVelocityAtCoord(fid,realization_base,region%cell_ids(1), &
+                                region%coordinates(ONE_INTEGER)%x, &
+                                region%coordinates(ONE_INTEGER)%y, &
+                                region%coordinates(ONE_INTEGER)%z,iphase)
+    write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv   
+  endif
 
 end subroutine WriteVelocityAtCoord
 
@@ -1245,7 +1273,7 @@ end subroutine WriteVelocityAtCoord
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z)
+function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z,iphase)
   use Realization_Base_class, only : realization_base_type
   use Option_module
   use Grid_module
@@ -1286,7 +1314,7 @@ function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z)
 
   sum_velocity = 0.d0
   sum_weight = 0.d0
-  iphase = 1
+! iphase = 1
 
   ghosted_id = grid%nL2G(local_id)
   
