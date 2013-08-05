@@ -2479,18 +2479,18 @@ Global conservation of mass implies the equality
 N_i(t) \eq N_i(0) + \sum_\a \overline\F_i^\a + \overline \Q_i.
 \EN
 
-The header for the {\tt MPHASE} mass balance file reads (for time in years):
+The header for the {\tt MPHASE} mass balance file reads (for time in years, $l$=aqueous liquid phase, sc=supercritical CO$_2$):
 \BA
 t, \ \ \Delta t, & \ [y]\nonumber \\
-N_{\rm H_2O}^{\rm H_2O}, \ \ N_{\rm CO_2}^{\rm H_2O}, \ \ \widetilde N_{\rm CO_2}^{\rm H_2O}, \ \ N_{\rm H_2O}^{\rm CO_2}, \ \ N_{\rm CO_2}^{\rm CO_2}, \ \ \widetilde N_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol]} \nonumber \\
-\overline \F_{\rm H_2O}^{\rm H_2O}, \ \ 
-\overline \F_{\rm CO_2}^{\rm H_2O}, \ \ 
-\overline \F_{\rm H_2O}^{\rm CO_2}, \ \ 
-\overline \F_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol]} \nonumber \\
-\F_{\rm H_2O}^{\rm H_2O}, \ \ 
-\F_{\rm CO_2}^{\rm H_2O}, \ \ 
-\F_{\rm H_2O}^{\rm CO_2}, \ \ 
-\F_{\rm CO_2}^{\rm CO_2}, & \ \text{[kmol/y]}\nonumber\\
+N_{\rm H_2O}^{l}, \ \ N_{\rm CO_2}^{l}, \ \ \widetilde N_{\rm CO_2}^{l}, \ \ N_{\rm H_2O}^{\rm sc}, \ \ N_{\rm CO_2}^{\rm sc}, \ \ \widetilde N_{\rm CO_2}^{\rm sc}, & \ \text{[kmol]} \nonumber \\
+\overline \F_{\rm H_2O}^{l}, \ \ 
+\overline \F_{\rm CO_2}^{l}, \ \ 
+\overline \F_{\rm H_2O}^{\rm sc}, \ \ 
+\overline \F_{\rm CO_2}^{\rm sc}, & \ \text{[kmol]} \nonumber \\
+\F_{\rm H_2O}^{l}, \ \ 
+\F_{\rm CO_2}^{l}, \ \ 
+\F_{\rm H_2O}^{\rm sc}, \ \ 
+\F_{\rm CO_2}^{\rm sc}, & \ \text{[kmol/y]}\nonumber\\
 \overline \Q_{\rm H_2O}, \ \ \overline \Q_{\rm CO_2}, & \ \text{[kmol]}\nonumber\\
 \Q_{\rm H_2O}, \ \ \Q_{\rm CO_2}, & \ \text{[kmol/y]}
 \EA
