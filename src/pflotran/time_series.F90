@@ -253,14 +253,14 @@ end subroutine TimeSeriesPrint
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine TimeSeriesUpdate(option,true_time,time_series)
+subroutine TimeSeriesUpdate(option,time,time_series)
 
   use Option_module
   
   implicit none
   
   type(option_type) :: option
-  PetscReal :: true_time
+  PetscReal :: time
   PetscBool :: is_cyclic
   PetscInt :: interpolation_method
   type(time_series_type) :: time_series
@@ -269,8 +269,6 @@ subroutine TimeSeriesUpdate(option,true_time,time_series)
   PetscInt :: cur_time_index
   PetscInt :: next_time_index
   PetscReal :: time_fraction
-  PetscReal :: mod_time
-  PetscInt :: temp_int
 
   ! cycle times if at max_time_index and cyclic
   if (time_series%cur_time_index == time_series%max_time_index .and. &
@@ -287,22 +285,15 @@ subroutine TimeSeriesUpdate(option,true_time,time_series)
   next_time_index = min(time_series%cur_time_index+1, &
                         time_series%max_time_index)
 
-  ! if cyclic, need the modulus of the time.  The below is essentially a
-  ! mod function on a double precision variable
-  if (time_series%is_cyclic .and. &
-      time_series%times(time_series%max_time_index) > 0.d0) then
-    mod_time = mod(true_time,time_series%times(time_series%max_time_index))
-  else
-    mod_time = true_time
-  endif
-  
+!  Right here we need to get cur_time_index synced with the time on restart.
+
   ! ensure that condition has started
-  if (mod_time >= time_series%times(cur_time_index) .or. &
-      dabs(mod_time-time_series%times(cur_time_index)) < 1.d-40) then
+  if (time >= time_series%times(cur_time_index) .or. &
+      dabs(time-time_series%times(cur_time_index)) < 1.d-40) then
 
     ! find appropriate time interval
     do
-      if (mod_time < time_series%times(next_time_index) .or. &
+      if (time < time_series%times(next_time_index) .or. &
           cur_time_index == next_time_index) &
         exit
       cur_time_index = next_time_index
@@ -324,7 +315,7 @@ subroutine TimeSeriesUpdate(option,true_time,time_series)
           ! interpolate value based on time
           time_series%cur_time_index = cur_time_index
           if (cur_time_index < time_series%max_time_index) then
-            time_fraction = (mod_time-time_series%times(cur_time_index)) / &
+            time_fraction = (time-time_series%times(cur_time_index)) / &
                               (time_series%times(next_time_index) - &
                                time_series%times(cur_time_index))
             time_series%cur_value(irank) = &
