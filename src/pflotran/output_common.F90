@@ -11,6 +11,8 @@ module Output_Common_module
   private
 
 #include "definitions.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   PetscInt, save, public :: max_local_size_saved = -1
 
@@ -639,7 +641,7 @@ subroutine GetCellConnections(grid, vec)
   
   ugrid => grid%unstructured_grid
   
-  call GridVecGetArrayF90(grid, vec, vec_ptr, ierr)
+  call VecGetArrayF90( vec, vec_ptr, ierr)
 
   ! initialize
   vec_ptr = -999.d0
@@ -695,7 +697,7 @@ subroutine GetCellConnections(grid, vec)
     end select
   enddo
 
-  call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
+  call VecRestoreArrayF90( vec, vec_ptr, ierr)
 
 end subroutine GetCellConnections
 
@@ -730,7 +732,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   ugrid => grid%unstructured_grid
   explicit_grid => ugrid%explicit_grid
   
-  call GridVecGetArrayF90(grid, vec, vec_ptr, ierr)
+  call VecGetArrayF90( vec, vec_ptr, ierr)
 
   ! initialize
   vec_ptr = -999.d0
@@ -791,7 +793,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
     end select
   enddo
 
-  call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
+  call VecRestoreArrayF90( vec, vec_ptr, ierr)
 
 end subroutine GetCellConnectionsExplicit
 
@@ -1605,7 +1607,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
   grid => patch%grid
   global_auxvar => patch%aux%Global%aux_vars
   
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   
   allocate(por(count))
   allocate(sat(count))
@@ -1633,7 +1635,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
     cur_connection_set => cur_connection_set%next
   enddo
       
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
 
 

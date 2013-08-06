@@ -2703,20 +2703,20 @@ subroutine assignMaterialPropToRegions(realization)
       if (.not.associated(cur_patch)) exit
       grid => cur_patch%grid
       if (option%nflowdof > 0) then
-        call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
-        call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
-        call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
-        call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
-        call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+        call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+        call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
+        call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
+        call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
         if (option%mimetic) then
-          call GridVecGetArrayF90(grid,field%perm0_xz,perm_xz_p,ierr)
-          call GridVecGetArrayF90(grid,field%perm0_xy,perm_xy_p,ierr)
-          call GridVecGetArrayF90(grid,field%perm0_yz,perm_yz_p,ierr)
+          call VecGetArrayF90(field%perm0_xz,perm_xz_p,ierr)
+          call VecGetArrayF90(field%perm0_xy,perm_xy_p,ierr)
+          call VecGetArrayF90(field%perm0_yz,perm_yz_p,ierr)
         endif
-        call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
+        call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
       endif
-      call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
-      call GridVecGetArrayF90(grid,field%tortuosity0,tor0_p,ierr)
+      call VecGetArrayF90(field%porosity0,por0_p,ierr)
+      call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
@@ -2770,20 +2770,20 @@ subroutine assignMaterialPropToRegions(realization)
       enddo
 
       if (option%nflowdof > 0) then
-        call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+        call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+        call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
+        call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
+        call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
         if (option%mimetic) then
-          call GridVecRestoreArrayF90(grid,field%perm0_xz,perm_xz_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%perm0_xy,perm_xy_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%perm0_yz,perm_yz_p,ierr)
+          call VecRestoreArrayF90(field%perm0_xz,perm_xz_p,ierr)
+          call VecRestoreArrayF90(field%perm0_xy,perm_xy_p,ierr)
+          call VecRestoreArrayF90(field%perm0_yz,perm_yz_p,ierr)
         endif
-        call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
+        call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
       endif
-      call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
-      call GridVecRestoreArrayF90(grid,field%tortuosity0,tor0_p,ierr)
+      call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
+      call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr)
         
       ! read in any user-defined property fields
       do material_id = 1, size(realization%material_property_array)
@@ -2801,16 +2801,16 @@ subroutine assignMaterialPropToRegions(realization)
                        group_name, &
                        dataset_name, &
                        material_property%porosity_dataset%realization_dependent)
-            call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-            call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
+            call VecGetArrayF90(field%work,vec_p,ierr)
+            call VecGetArrayF90(field%porosity0,por0_p,ierr)
             do local_id = 1, grid%nlmax
               if (patch%imat(grid%nL2G(local_id)) == &
                   material_property%id) then
                 por0_p(local_id) = vec_p(local_id)
               endif
             enddo
-            call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
-            call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
+            call VecRestoreArrayF90(field%work,vec_p,ierr)
+            call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
           endif
         endif
       enddo
@@ -3180,9 +3180,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   option => realization%option
   discretization => realization%discretization
 
-  call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
-  call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
-  call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
   
   if (index(material_property%permeability_dataset%filename,'.h5') > 0) then
     group_name = ''
@@ -3201,7 +3201,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                           material_property%permeability_dataset%filename, &
                           group_name,dataset_name,append_realization_id)
-      call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
+      call VecGetArrayF90(global_vec,vec_p,ierr)
       ratio = 1.d0
       scale = 1.d0
       !TODO(geh): fix so that ratio and scale work for perms outside
@@ -3219,7 +3219,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
           perm_zz_p(local_id) = vec_p(local_id)*ratio*scale
         endif
       enddo
-      call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
+      call VecRestoreArrayF90(global_vec,vec_p,ierr)
     else
       temp_int = Z_DIRECTION
       if (grid%itype == STRUCTURED_GRID_MIMETIC) temp_int = YZ_DIRECTION
@@ -3233,19 +3233,19 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             dataset_name = 'PermeabilityZ'
           case(XY_DIRECTION)
             dataset_name = 'PermeabilityXY'
-            call GridVecGetArrayF90(grid,field%perm0_xy,perm_xyz_p,ierr)
+            call VecGetArrayF90(field%perm0_xy,perm_xyz_p,ierr)
           case(XZ_DIRECTION)
             dataset_name = 'PermeabilityXZ'
-            call GridVecGetArrayF90(grid,field%perm0_xz,perm_xyz_p,ierr)
+            call VecGetArrayF90(field%perm0_xz,perm_xyz_p,ierr)
           case(YZ_DIRECTION)
             dataset_name = 'PermeabilityYZ'
-            call GridVecGetArrayF90(grid,field%perm0_yz,perm_xyz_p,ierr)
+            call VecGetArrayF90(field%perm0_yz,perm_xyz_p,ierr)
         end select          
         call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                                           material_property%permeability_dataset%filename, &
                                           group_name, &
                                           dataset_name,append_realization_id)
-        call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
+        call VecGetArrayF90(global_vec,vec_p,ierr)
         select case(idirection)
           case(X_DIRECTION)
             do local_id = 1, grid%nlmax
@@ -3273,17 +3273,17 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             enddo
             select case(idirection)
               case(XY_DIRECTION)
-                call GridVecRestoreArrayF90(grid,field%perm0_xy,perm_xyz_p, &
+                call VecRestoreArrayF90(field%perm0_xy,perm_xyz_p, &
                                             ierr)
               case(XZ_DIRECTION)
-                call GridVecRestoreArrayF90(grid,field%perm0_xz,perm_xyz_p, &
+                call VecRestoreArrayF90(field%perm0_xz,perm_xyz_p, &
                                             ierr)
               case(YZ_DIRECTION)
-                call GridVecRestoreArrayF90(grid,field%perm0_yz,perm_xyz_p, &
+                call VecRestoreArrayF90(field%perm0_yz,perm_xyz_p, &
                                             ierr)
             end select
         end select
-        call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
+        call VecRestoreArrayF90(global_vec,vec_p,ierr)
       enddo
     endif
     call VecDestroy(global_vec,ierr)
@@ -3317,9 +3317,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
     call PetscLogEventEnd(logging%event_hash_map,ierr)
   endif
   
-  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
   
 end subroutine readPermeabilitiesFromFile
 
@@ -3502,7 +3502,7 @@ subroutine readFlowInitialCondition(realization,filename)
       grid => cur_patch%grid
 
        ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+      call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
 
       ! Pressure for all modes 
       offset = 1
@@ -3511,7 +3511,7 @@ subroutine readFlowInitialCondition(realization,filename)
       call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                         filename,group_name, &
                                         dataset_name,option%id>0)
-      call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+      call VecGetArrayF90(field%work,vec_p,ierr)
       do local_id=1, grid%nlmax
         if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
         if (dabs(vec_p(local_id)) < 1.d-40) then
@@ -3521,9 +3521,9 @@ subroutine readFlowInitialCondition(realization,filename)
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
       enddo
-      call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+      call VecRestoreArrayF90(field%work,vec_p,ierr)
 
-      call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+      call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
         
       cur_patch => cur_patch%next
     enddo
@@ -3599,7 +3599,7 @@ subroutine readTransportInitialCondition(realization,filename)
       grid => cur_patch%grid
 
        ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+      call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
 
       ! Primary species concentrations for all modes 
       do idof = 1, option%ntrandof ! primary aqueous concentrations
@@ -3609,7 +3609,7 @@ subroutine readTransportInitialCondition(realization,filename)
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                           filename,group_name, &
                                           dataset_name,option%id>0)
-        call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+        call VecGetArrayF90(field%work,vec_p,ierr)
         do local_id=1, grid%nlmax
           if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
           if (vec_p(local_id) < 1.d-40) then
@@ -3619,11 +3619,11 @@ subroutine readTransportInitialCondition(realization,filename)
           idx = (local_id-1)*option%ntrandof + offset
           xx_p(idx) = vec_p(local_id)
         enddo
-        call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+        call VecRestoreArrayF90(field%work,vec_p,ierr)
      
       enddo     
 
-      call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
+      call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
         
       cur_patch => cur_patch%next
     enddo
@@ -3801,7 +3801,7 @@ subroutine InitReadVelocityField(realization)
                                       group_name,dataset_name,PETSC_FALSE)
     call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc, &
                                      ONEDOF)
-    call GridVecGetArrayF90(grid,field%work_loc,vec_loc_p,ierr)
+    call VecGetArrayF90(field%work_loc,vec_loc_p,ierr)
     connection_set_list => grid%internal_connection_set_list
     cur_connection_set => connection_set_list%first
     sum_connection = 0  
@@ -3816,7 +3816,7 @@ subroutine InitReadVelocityField(realization)
       enddo
       cur_connection_set => cur_connection_set%next
     enddo
-    call GridVecRestoreArrayF90(grid,field%work_loc,vec_loc_p,ierr)
+    call VecRestoreArrayF90(field%work_loc,vec_loc_p,ierr)
   enddo
   
   boundary_condition => patch%boundary_conditions%first
@@ -3826,14 +3826,14 @@ subroutine InitReadVelocityField(realization)
     dataset_name = boundary_condition%name
     call HDF5ReadCellIndexedRealArray(realization,field%work,filename, &
                                       group_name,dataset_name,PETSC_FALSE)
-    call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+    call VecGetArrayF90(field%work,vec_p,ierr)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       patch%boundary_velocities(1,sum_connection) = vec_p(local_id)
     enddo
-    call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+    call VecRestoreArrayF90(field%work,vec_p,ierr)
     boundary_condition => boundary_condition%next
   enddo
   

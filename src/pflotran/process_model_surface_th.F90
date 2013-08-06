@@ -361,7 +361,7 @@ subroutine PMSurfaceTHPostSolve(this)
   surf_field => this%surf_realization%surf_field
 
   ! Ensure evolved solution is +ve
-  call GridVecGetArrayF90(surf_grid,surf_field%flow_xx,xx_p,ierr)
+  call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
   do local_id = 1,this%surf_realization%discretization%grid%nlmax
     iend = local_id*this%option%nflowdof
     istart = iend - this%option%nflowdof + 1
@@ -370,7 +370,7 @@ subroutine PMSurfaceTHPostSolve(this)
       xx_p(iend) = 0.d0
     endif
   enddo
-  call GridVecRestoreArrayF90(surf_grid,surf_field%flow_xx,xx_p,ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
 
   ! First, update the solution vector
