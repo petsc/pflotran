@@ -149,7 +149,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   endif
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
-  call StepperUpdateSolution(realization)
+  call StepperUpdateSolution(realization,PETSC_FALSE)
 
   if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
@@ -185,7 +185,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(realization,master_stepper%steps)
+  call OutputInit(master_stepper%steps)
 #ifdef GEOMECH
   call OutputGeomechInit(geomech_realization,master_stepper%steps)
 #endif
@@ -423,7 +423,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
         if ((tran_stepper%target_time-option%tran_time) / &
             option%tran_time < 1.d-10) exit
 
-        call StepperUpdateTransportSolution(realization)
+        call StepperUpdateTransportSolution(realization,PETSC_TRUE)
         
         ! if still stepping, update the time step size based on convergence
         ! criteria
@@ -459,7 +459,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     ! update solution variables
     
     option%time = master_stepper%target_time
-    call StepperUpdateSolution(realization)
+    call StepperUpdateSolution(realization,PETSC_TRUE)
 
     if (associated(tran_stepper)) then
       !geh: must revert tran_dt back after update of solution.  Otherwise,

@@ -475,6 +475,7 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
+  use String_module
   
   implicit none
 
@@ -495,7 +496,7 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
   
   
   string = 'ZONE T="' // &
-           trim(OutputFormatDouble(option%time/output_option%tconv)) // &
+           trim(StringFormatDouble(option%time/output_option%tconv)) // &
            '"'
   string2 = ''
   select case(tecplot_format)
@@ -506,9 +507,9 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
               ', DATAPACKING=POINT'
     case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
       string2 = ', N=' // &
-                trim(OutputFormatInt(grid%nmax_node)) // &
+                trim(StringFormatInt(grid%nmax_node)) // &
                 ', ELEMENTS=' // &
-                trim(OutputFormatInt(grid%nmax_elem))
+                trim(StringFormatInt(grid%nmax_elem))
       string2 = trim(string2) // ', ZONETYPE=FEBRICK' 
       
       string3 = ', VARLOCATION=(NODAL)'
