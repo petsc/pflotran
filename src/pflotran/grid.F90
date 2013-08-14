@@ -137,8 +137,6 @@ module Grid_module
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
-            GridVecGetArrayF90, &
-            GridVecRestoreArrayF90, &
             GridIndexToCellID, &
             GridComputeCell2FaceConnectivity, &
             GridComputeGlobalCell2FaceConnectivity, &
@@ -1782,9 +1780,9 @@ subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call GridVecGetArrayF90(grid, vector,vec_ptr,ierr)
+  call VecGetArrayF90( vector,vec_ptr,ierr)
   vec_ptr(1:num_values) = array(1:num_values)
-  call GridVecRestoreArrayF90(grid, vector,vec_ptr,ierr)
+  call VecRestoreArrayF90( vector,vec_ptr,ierr)
   
 end subroutine GridCopyIntegerArrayToVec
 
@@ -1811,9 +1809,9 @@ subroutine GridCopyRealArrayToVec(grid,array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
+  call VecGetArrayF90(vector,vec_ptr,ierr)
   vec_ptr(1:num_values) = array(1:num_values)
-  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
   
 end subroutine GridCopyRealArrayToVec
 
@@ -1841,7 +1839,7 @@ subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
+  call VecGetArrayF90(vector,vec_ptr,ierr)
   do i=1,num_values
     if (vec_ptr(i) > 0.d0) then
       array(i) = int(vec_ptr(i)+1.d-4)
@@ -1849,7 +1847,7 @@ subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
       array(i) = int(vec_ptr(i)-1.d-4)
     endif
   enddo
-  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
   
 end subroutine GridCopyVecToIntegerArray
 
@@ -1876,9 +1874,9 @@ subroutine GridCopyVecToRealArray(grid,array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
+  call VecGetArrayF90(vector,vec_ptr,ierr)
   array(1:num_values) = vec_ptr(1:num_values)
-  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
   
 end subroutine GridCopyVecToRealArray
 
@@ -2275,52 +2273,6 @@ subroutine GridDestroy(grid)
 
 end subroutine GridDestroy
       
-! ************************************************************************** !
-!
-! GridVecGetArrayF90: Returns pointer to cell-centered vector values
-! author: Bobby Philip
-! date: 
-!
-! ************************************************************************** !
-subroutine GridVecGetArrayF90(grid, vec, f90ptr, ierr)
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(grid_type) :: grid
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  call VecGetArrayF90(vec, f90ptr, ierr)
-
-end subroutine GridVecGetArrayF90
-      
-! ************************************************************************** !
-!
-! GridVecRestoreArrayF90: Restores pointer to vector values
-! author: Bobby Philip
-! date: 
-!
-! ************************************************************************** !
-subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(grid_type) :: grid
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  call VecRestoreArrayF90(vec, f90ptr, ierr)
-  
-end subroutine GridVecRestoreArrayF90
-
 ! ************************************************************************** !
 !
 ! GridIndexToCellID: Returns the local grid cell id of a Petsc Vec index

@@ -12,6 +12,8 @@ module Condition_Control_module
   private
 
 #include "definitions.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   public :: CondControlAssignFlowInitCond, &
             CondControlAssignTranInitCond, &
@@ -108,8 +110,8 @@ subroutine CondControlAssignFlowInitCond(realization)
       
         case(G_MODE) ! general phase mode
 
-          call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
-          call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+          call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+          call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
       
           xx_p = -999.d0
       
@@ -246,19 +248,19 @@ subroutine CondControlAssignFlowInitCond(realization)
             initial_condition => initial_condition%next
           enddo
      
-          call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-          call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+          call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+          call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
               
         case default
           ! assign initial conditions values to domain
           if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
               discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-            call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+            call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
             call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr); CHKERRQ(ierr)        
           else
-            call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+            call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
           end if
-          call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+          call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
       
           xx_p = -999.d0
       
@@ -422,7 +424,7 @@ subroutine CondControlAssignFlowInitCond(realization)
             initial_condition => initial_condition%next
           enddo
      
-          call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+          call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
 
       end select 
    
@@ -549,8 +551,8 @@ subroutine CondControlAssignTranInitCond(realization)
       global_aux_vars => cur_patch%aux%Global%aux_vars
 
       ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%tran_xx,xx_p,ierr)
-      call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc,ierr)
+      call VecGetArrayF90(field%tran_xx,xx_p,ierr)
+      call VecGetArrayF90(field%porosity_loc,porosity_loc,ierr)
       
       xx_p = -999.d0
       
@@ -592,14 +594,14 @@ subroutine CondControlAssignTranInitCond(realization)
               idof = ONE_INTEGER
               call ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                                    field%work_loc,LOCAL)
-              call GridVecGetArrayF90(grid,field%work_loc,vec_p,ierr)
+              call VecGetArrayF90(field%work_loc,vec_p,ierr)
               do icell=1,initial_condition%region%num_cells
                 local_id = initial_condition%region%cell_ids(icell)
                 ghosted_id = grid%nL2G(local_id)
                 rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
                 rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
               enddo
-              call GridVecRestoreArrayF90(grid,field%work_loc,vec_p,ierr)
+              call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
             endif
           enddo
         endif
@@ -616,13 +618,13 @@ subroutine CondControlAssignTranInitCond(realization)
               idof = ONE_INTEGER
               call ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                                    field%work_loc,LOCAL)
-              call GridVecGetArrayF90(grid,field%work_loc,vec_p,ierr)
+              call VecGetArrayF90(field%work_loc,vec_p,ierr)
               do icell=1,initial_condition%region%num_cells
                 local_id = initial_condition%region%cell_ids(icell)
                 ghosted_id = grid%nL2G(local_id)
                 rt_aux_vars(ghosted_id)%immobile(iimmobile) = vec_p(ghosted_id)
               enddo
-              call GridVecRestoreArrayF90(grid,field%work_loc,vec_p,ierr)
+              call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
             endif
           enddo
         endif
@@ -632,7 +634,7 @@ subroutine CondControlAssignTranInitCond(realization)
         endif
         
         if (use_aq_dataset) then
-          call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
+          call VecGetArrayF90(field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
           call PetscTime(tstart,ierr) 
         endif
         
@@ -771,7 +773,7 @@ subroutine CondControlAssignTranInitCond(realization)
         enddo ! icell=1,initial_condition%region%num_cells
         if (use_aq_dataset) then
           call PetscTime(tend,ierr) 
-          call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
+          call VecRestoreArrayF90(field%tran_xx_loc,xx_loc_p,ierr)
           ave_num_iterations = ave_num_iterations / &
             initial_condition%region%num_cells
           write(option%io_buffer,&
@@ -785,8 +787,8 @@ subroutine CondControlAssignTranInitCond(realization)
         initial_condition => initial_condition%next
       enddo
       
-      call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
-      call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc,ierr)
+      call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
+      call VecRestoreArrayF90(field%porosity_loc,porosity_loc,ierr)
 
       cur_patch => cur_patch%next
     enddo
@@ -966,7 +968,7 @@ subroutine CondControlScaleSourceSink(realization)
 
   ! GB: grid was uninitialized
   grid => patch%grid
-  call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_loc_ptr,ierr)
+  call VecGetArrayF90(field%perm_xx_loc,perm_loc_ptr,ierr)
 
   cur_level => realization%level_list%first
   do 
@@ -984,7 +986,7 @@ subroutine CondControlScaleSourceSink(realization)
         if (.not.associated(cur_source_sink)) exit
 
         call VecZeroEntries(field%work,ierr)
-        call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecGetArrayF90(field%work,vec_ptr,ierr)
 
         cur_connection_set => cur_source_sink%connection_set
     
@@ -1039,12 +1041,12 @@ subroutine CondControlScaleSourceSink(realization)
 
         enddo
         
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
         call VecNorm(field%work,NORM_1,scale,ierr)
         scale = 1.d0/scale
         call VecScale(field%work,scale,ierr)
 
-        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+        call VecGetArrayF90(field%work,vec_ptr, ierr)
         do iconn = 1, cur_connection_set%num_connections      
           local_id = cur_connection_set%id_dn(iconn)
           select case(option%iflowmode)
@@ -1061,7 +1063,7 @@ subroutine CondControlScaleSourceSink(realization)
           end select
 
         enddo
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
         
         cur_source_sink => cur_source_sink%next
       enddo
@@ -1070,7 +1072,7 @@ subroutine CondControlScaleSourceSink(realization)
     cur_level => cur_level%next
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc,perm_loc_ptr, ierr)
    
 end subroutine CondControlScaleSourceSink
 
@@ -1147,7 +1149,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
         case (RICHARDS_MODE,TH_MODE)
           ! assign initial conditions values to domain
-          call GridVecGetArrayF90(grid,surf_field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+          call VecGetArrayF90(surf_field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
     
           xx_p = -999.d0
       
@@ -1215,7 +1217,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
             initial_condition => initial_condition%next
           enddo
      
-          call GridVecRestoreArrayF90(grid,surf_field%flow_xx,xx_p, ierr)
+          call VecRestoreArrayF90(surf_field%flow_xx,xx_p, ierr)
         case default
           option%io_buffer = 'CondControlAssignFlowInitCondSurface not ' // &
             'for this mode'

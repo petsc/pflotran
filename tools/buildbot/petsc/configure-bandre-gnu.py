@@ -13,6 +13,7 @@ if __name__ == '__main__':
     '--with-cxx=/opt/local/bin/mpic++',
     '--with-fc=/opt/local/bin/mpif90',
     '--with-mpiexec=/opt/local/bin/mpiexec',
-    'PETSC_ARCH=margaux-mac-gnu',
+    '--with-shared-libraries=0',
+    'PETSC_ARCH=bandre-gnu',
   ]
   configure.petsc_configure(configure_options)

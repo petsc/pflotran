@@ -9,8 +9,8 @@ module Dataset_Global_class
 #include "definitions.h"
 
   type, public, extends(dataset_common_hdf5_type) :: dataset_global_type
-    PetscInt :: local_size
-    PetscInt :: global_size
+    PetscInt :: local_size    ! local number of entries on this process
+    PetscInt :: global_size   ! global number of entries
 !  contains
 !    procedure, public :: Init => DatasetGlobalInit
 !    procedure, public :: Load => DatasetGlobalLoad

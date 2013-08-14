@@ -17,6 +17,6 @@ if __name__ == '__main__':
     '--with-clanguage=c',
     '--with-debugging=1',
     '--with-shared-libraries=0',
-    'PETSC_ARCH=bryce-linux-gnu',
+    'PETSC_ARCH=bryce-gnu',
   ]
   configure.petsc_configure(configure_options)

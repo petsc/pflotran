@@ -17,9 +17,8 @@ if __name__ == '__main__':
     '--with-fc=/files0/software/mpich2-1.4.1p1/gcc-4.7.2/bin/mpif90',
     '--with-hdf5-dir=/files0/software/hdf5-1.8.9/gcc-4.7.2',
     '--with-hdf5=1',
-    '--with-petsc-arch=fuji-linux-gnu',
     '--with-shared-libraries=0',
     '--with-valgrind=1',
-    'PETSC_ARCH=fuji-linux-gnu',
+    'PETSC_ARCH=fuji-gnu',
   ]
   configure.petsc_configure(configure_options)

@@ -134,7 +134,8 @@ subroutine HijackSimulation(simulation_old,simulation)
   use Process_Model_THC_class
   use Process_Model_Base_class
   use Process_Model_module
-
+  use Timestepper_BE_class
+  
   implicit none
   
   type(simulation_type) :: simulation_old
@@ -255,17 +256,20 @@ subroutine HijackSimulation(simulation_old,simulation)
         call cur_process_model%Init()
         select type(cur_process_model)
           class default
-            call SNESSetFunction( &
-                           cur_process_model_coupler%timestepper%solver%snes, &
-                           cur_process_model%residual_vec, &
-                           PMResidual, &
-                           cur_process_model_coupler%pm_ptr,ierr)
-            call SNESSetJacobian( &
-                           cur_process_model_coupler%timestepper%solver%snes, &
-                           cur_process_model_coupler%timestepper%solver%J, &
-                           cur_process_model_coupler%timestepper%solver%Jpre, &
-                           PMJacobian, &
-                           cur_process_model_coupler%pm_ptr,ierr)
+            select type(ts => cur_process_model_coupler%timestepper)
+              class is(stepper_BE_type)
+              call SNESSetFunction( &
+                             ts%solver%snes, &
+                             cur_process_model%residual_vec, &
+                             PMResidual, &
+                             cur_process_model_coupler%pm_ptr,ierr)
+              call SNESSetJacobian( &
+                             ts%solver%snes, &
+                             ts%solver%J, &
+                             ts%solver%Jpre, &
+                             PMJacobian, &
+                             cur_process_model_coupler%pm_ptr,ierr)
+            end select
         end select
         cur_process_model => cur_process_model%next
       enddo
@@ -296,6 +300,7 @@ subroutine SubsurfaceJumpStart(simulation)
   use Realization_class
   use Option_module
   use Timestepper_Base_class
+  use Timestepper_BE_class
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
@@ -308,8 +313,8 @@ subroutine SubsurfaceJumpStart(simulation)
   
   class(realization_type), pointer :: realization
   class(stepper_base_type), pointer :: master_stepper
-  class(stepper_base_type), pointer :: flow_stepper
-  class(stepper_base_type), pointer :: tran_stepper
+  class(stepper_BE_type), pointer :: flow_stepper
+  class(stepper_BE_type), pointer :: tran_stepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -324,12 +329,18 @@ subroutine SubsurfaceJumpStart(simulation)
   realization => simulation%realization
   
   if (associated(simulation%flow_process_model_coupler)) then
-    flow_stepper => simulation%flow_process_model_coupler%timestepper
+    select type(ts => simulation%flow_process_model_coupler%timestepper)
+      class is(stepper_BE_type)
+        flow_stepper => ts
+    end select
   else
     nullify(flow_stepper)
   endif
   if (associated(simulation%rt_process_model_coupler)) then
-    tran_stepper => simulation%rt_process_model_coupler%timestepper
+    select type(ts => simulation%rt_process_model_coupler%timestepper)
+      class is(stepper_BE_type)
+        tran_stepper => ts
+    end select
   else
     nullify(tran_stepper)
   endif
@@ -536,7 +547,7 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   use Reactive_Transport_module, only : RTUpdateAuxVars
   use Checkpoint_module
   use Option_module
-  use Timestepper_Base_class
+  use Timestepper_BE_class
   use Waypoint_module
   
   use Flash2_module, only: Flash2UpdateAuxVars
@@ -552,8 +563,8 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   implicit none
 
   type(realization_type) :: realization
-  class(stepper_base_type), pointer :: flow_stepper
-  class(stepper_base_type), pointer :: tran_stepper
+  class(stepper_BE_type), pointer :: flow_stepper
+  class(stepper_BE_type), pointer :: tran_stepper
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
@@ -684,17 +695,20 @@ end subroutine SubsurfaceRestart
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine HijackTimestepper(stepper_old,stepper)
+subroutine HijackTimestepper(stepper_old,stepper_base)
 
+  use Timestepper_BE_class
   use Timestepper_Base_class
   use Timestepper_module
 
   implicit none
   
   type(stepper_type), pointer :: stepper_old
-  class(stepper_base_type), pointer :: stepper
+  class(stepper_base_type), pointer :: stepper_base
   
-  stepper => TimeStepperBaseCreate()
+  class(stepper_BE_type), pointer :: stepper
+
+  stepper => TimeStepperBECreate()
   
   stepper%steps = stepper_old%steps
   stepper%num_newton_iterations = stepper_old%num_newton_iterations
@@ -745,6 +759,8 @@ subroutine HijackTimestepper(stepper_old,stepper)
 !  stepper%revert_dt = stepper_old%revert_dt
 !  stepper%num_contig_revert_due_to_sync = &
 !  stepper_old%num_contig_revert_due_to_sync
+
+  stepper_base => stepper
   
 end subroutine HijackTimestepper
 

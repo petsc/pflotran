@@ -9,11 +9,11 @@ module Surface_TH_Aux_module
 #include "definitions.h"
 
   type, public :: Surface_TH_auxvar_type
-    PetscReal :: h
-    PetscReal :: u
-    PetscReal :: pc
-    PetscReal :: Cw
-    PetscReal :: k_therm
+    PetscReal :: h        ! enthalpy -- not currently used
+    PetscReal :: u        ! internal energy -- not currently used
+    PetscReal :: pc       ! pressure change -- not currently used
+    PetscReal :: Cw       ! Specific heat capacity of surface water
+    PetscReal :: k_therm  ! Thermal conductivity of surface water
   end type Surface_TH_auxvar_type
 
   type, public :: Surface_TH_type

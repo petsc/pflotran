@@ -14,6 +14,7 @@ module Timestepper_Surface_class
 
   type, public, extends(stepper_base_type) :: timestepper_surface_type
     PetscReal :: dt_max_allowable
+    type(solver_type), pointer :: solver
   contains
     procedure, public :: Init => TimeStepperSurfaceInit
     procedure, public :: SetTargetTime => TimeStepperSurfaceSetTargetTime
@@ -65,6 +66,7 @@ subroutine TimeStepperSurfaceInit(stepper)
   class (timestepper_surface_type) :: stepper
 
   call TimestepperBaseInit(stepper)
+
   stepper%dt_max_allowable = 0.d0
   
 end subroutine TimeStepperSurfaceInit
@@ -111,11 +113,15 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time, &
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   
+  if (cur_waypoint%time < 1.d-40) then
+    cur_waypoint => cur_waypoint%next
+  endif
+
   force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
   equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
   equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
 
-  if(equal_to_or_exceeds_sync_time .and. &
+  if(equal_to_or_exceeds_sync_time .or. &
       (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
 
       max_time = min(sync_time,cur_waypoint%time)
@@ -155,9 +161,13 @@ subroutine TimeStepperSurfaceSetTargetTime(timestepper,sync_time, &
   
   endif
 
+  if (target_time >= cur_waypoint%time) then
+    cur_waypoint => cur_waypoint%next
+  endif
   timestepper%dt = dt
   timestepper%target_time = target_time
   timestepper%cur_waypoint => cur_waypoint
+  if (.not.associated(cur_waypoint)) stop_flag = 1
 
 end subroutine TimeStepperSurfaceSetTargetTime
 

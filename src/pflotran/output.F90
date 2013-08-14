@@ -113,7 +113,13 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID .or. &
           realization_base%discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-        call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
+        if (realization_base%discretization%grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+          if (option%print_explicit_primal_grid) then
+            call OutputHDF5UGridXDMFExplicit(realization_base,INSTANTANEOUS_VARS)
+          endif
+        else
+          call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
+        endif
       else
         call OutputHDF5(realization_base,INSTANTANEOUS_VARS)
       endif      
@@ -733,7 +739,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
         grid => cur_patch%grid
         coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
         call VecZeroEntries(field%work,ierr)
-        call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecGetArrayF90(field%work,vec_ptr,ierr)
         if (associated(coupler)) then
           cur_connection_set => coupler%connection_set
           do iconn = 1, cur_connection_set%num_connections
@@ -742,7 +748,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
             vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvar,iconn)
           enddo
         endif
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
         cur_patch => cur_patch%next
       enddo
       cur_level => cur_level%next
