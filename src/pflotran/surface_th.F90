@@ -317,6 +317,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
 end subroutine SurfaceTHUpdateSurfBC
 
+! RTM: TODO: Figure out how this needs to be modified for surface freezing.
 ! ************************************************************************** !
 !> This routine updates source/sink term for the subsurface model
 !!
@@ -720,6 +721,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = surf_grid%nL2G(local_id)
 
+        ! RTM: TODO: I think this is incorrect in the case of surface freezing.
         ! Compute densities:
         call density(surf_global_aux_vars(ghosted_id)%temp(1), &
                      option%reference_pressure,den_surf_kg)
@@ -1331,6 +1333,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ff_p = 0.d0
   Res  = 0.d0
 
+  ! RTM: Does this computed density get used anywhere?
   call density(option%reference_temperature,option%reference_pressure,rho)
 
   xc => surf_realization%discretization%grid%x
