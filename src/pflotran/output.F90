@@ -741,7 +741,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
         grid => cur_patch%grid
         coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
         call VecZeroEntries(field%work,ierr)
-        call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecGetArrayF90(field%work,vec_ptr,ierr)
         if (associated(coupler)) then
           cur_connection_set => coupler%connection_set
           do iconn = 1, cur_connection_set%num_connections
@@ -750,7 +750,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
             vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvar,iconn)
           enddo
         endif
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
         cur_patch => cur_patch%next
       enddo
       cur_level => cur_level%next

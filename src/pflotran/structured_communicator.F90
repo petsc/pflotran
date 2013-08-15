@@ -140,8 +140,8 @@ subroutine StructuredLocalToLocal(this,source,destination)
 
   PetscErrorCode :: ierr
   
-  call DMDALocalToLocalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-  call DMDALocalToLocalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMLocalToLocalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
+  call DMLocalToLocalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
   
 end subroutine StructuredLocalToLocal
 

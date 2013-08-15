@@ -132,6 +132,12 @@ SURF_TIME
   MAXIMUM_TIMESTEP_SIZE 60.0 s
 END
 
+:=========================== output ==========================================
+:SURF_OUTPUT
+:  PERIODIC TIME 60 s
+:  HYDROGRAPH
+:END
+
 :=========================== regions ==========================================
 SURF_REGION surf_all
   COORDINATES
