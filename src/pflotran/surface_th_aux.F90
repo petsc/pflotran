@@ -190,7 +190,7 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
 
   call wateos_noderiv(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw,option%scale,ierr)
   global_aux_var%den_kg(1) = dw_kg
-  di_kg = 917 ![kg/m^3]
+  di_kg = 917.d0 ![kg/m^3]
     ! RTM: WARNING!  We are hard-coding the density of ice at atmospheric 
     ! pressure here.  We should actually compute this according to the 
     ! reference pressure in case someone wants to use PFLOTRAN for planetary 

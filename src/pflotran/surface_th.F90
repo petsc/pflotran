@@ -602,6 +602,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal :: den_surf_kg          ! density      [kg/m^3]
+  PetscReal, parameter :: den_surf_ice_kg=917.d0   ! density of surface ice [kg/m^3]
   PetscReal :: den_sub_kg           ! density      [kg/m^3]
   PetscReal :: den_aveg             ! density      [kg/m^3]
   PetscInt :: local_id, ghosted_id, iconn
@@ -721,10 +722,14 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = surf_grid%nL2G(local_id)
 
-        ! RTM: TODO: I think this is incorrect in the case of surface freezing.
         ! Compute densities:
         call density(surf_global_aux_vars(ghosted_id)%temp(1), &
                      option%reference_pressure,den_surf_kg)
+        ! Now modify den_surf_kg to account for frozen fraction.
+        ! WARNING: This assumes density of ice at atmospheric pressure;
+        ! TODO: Need to actually compute this to handle the general case.
+        den_surf_kg = surf_aux_vars%unfrozen_fraction*den_surf_kg + &
+                      (1-surf_aux_vars%unfrozen_fraction)*den_surf_ice_kg
         call density(temp_sub_p(local_id),press_sub_p(local_id),den_sub_kg)
         den_aveg = (den_surf_kg + den_sub_kg)/2.d0
 
