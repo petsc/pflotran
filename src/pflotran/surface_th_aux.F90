@@ -19,6 +19,11 @@ module Surface_TH_Aux_module
       ! parameters, but I'm keeping things as is for now.
     PetscReal :: k_therm  ! Thermal conductivity of surface water
     PetscReal :: unfrozen_fraction ! Proportion of unfrozen surface water.
+    PetscReal :: den_water_kg  ! Density [kg/m^3] of liquid water ONLY.
+      ! Note that we currently use the den_kg(1) field of the global aux var type 
+      ! to store the density of the liquid/ice mixture.  We also need to track
+      ! the liquid density because it is required in in the advective term of 
+      ! the temperature equation.  
   end type Surface_TH_auxvar_type
 
   type, public :: Surface_TH_type
@@ -102,6 +107,7 @@ subroutine SurfaceTHAuxVarInit(aux_var,option)
   aux_var%Cwi = 4.188d3     ! [J/kg/K]
   aux_var%k_therm = 0.57d0 ! [J/s/m/K]
   aux_var%unfrozen_fraction = 1.d0
+  aux_var%den_water_kg = 1.d3  ! [kg/m^3]
 
 end subroutine SurfaceTHAuxVarInit
 
@@ -130,6 +136,7 @@ subroutine SurfaceTHAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%Cwi = aux_var%Cwi
   aux_var2%k_therm = aux_var%k_therm
   aux_var2%unfrozen_fraction = aux_var%unfrozen_fraction
+  aux_var2%den_water_kg = aux_var%den_water_kg
 
 end subroutine SurfaceTHAuxVarCopy
 
@@ -170,7 +177,7 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   PetscReal :: dpsat_dt
   PetscReal :: k_therm_w, k_therm_i
   
-  global_aux_var%den_kg = 0.d0
+  global_aux_var%den_kg(1) = 0.d0
 
   aux_var%h = 0.d0
   aux_var%u = 0.d0
