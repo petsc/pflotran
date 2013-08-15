@@ -1764,7 +1764,7 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
     ! is often taken to be the flow depth, so I believe this makes sense. (?)
     ! The actual total head term ('hw_half' here) is NOT modified by the 
     ! unfrozen fraction.
-    vel = (unfrozen_fraction_half * hw_half**(2.d0/3.d0))/mannings_half* &
+    vel = ((unfrozen_fraction_half * hw_half)**(2.d0/3.d0))/mannings_half* &
           dhead/(abs(dhead)**(1.d0/2.d0))* &
           1.d0/(dist**0.5d0)
 
