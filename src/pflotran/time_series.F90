@@ -285,8 +285,6 @@ subroutine TimeSeriesUpdate(option,time,time_series)
   next_time_index = min(time_series%cur_time_index+1, &
                         time_series%max_time_index)
 
-!  Right here we need to get cur_time_index synced with the time on restart.
-
   ! ensure that condition has started
   if (time >= time_series%times(cur_time_index) .or. &
       dabs(time-time_series%times(cur_time_index)) < 1.d-40) then
