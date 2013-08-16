@@ -3034,7 +3034,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   case(1) 
     r_p(:) = r_p(:)/option%flow_dt
   case(-1)
-    if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+    if(option%flow_dt > 1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -3043,7 +3043,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     endif
 
     istart = 1 + (local_id-1)*option%nflowdof
-    if(volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
+!   if(volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
       r_p (istart:istart+option%nflowdof-1) = &
         r_p(istart:istart+option%nflowdof-1)/volume_p(local_id)
     if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *, r_p (istart:istart+2)
@@ -3561,7 +3561,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                jac_sec_heat*volume_p(local_id) 
     endif
 
-    if (volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
+!   if (volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
       Jup = Jup / volume_p(local_id)
 
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
@@ -3679,9 +3679,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
       if (local_id_up > 0) then
         voltemp=1.D0
-        if (volume_p(local_id_up)>1.D0)then   ! karra added 05/06/2013
+!       if (volume_p(local_id_up) > 1.D0)then   ! karra added 05/06/2013
           voltemp = 1.D0/volume_p(local_id_up)
-        endif
+!       endif
         Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
         Jdn(:,1:option%nflowdof)= &
           ra(:,1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
@@ -3693,9 +3693,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
       if (local_id_dn > 0) then
         voltemp = 1.D0
-        if (volume_p(local_id_dn) > 1.D0) then   ! karra added 05/06/2013
+!       if (volume_p(local_id_dn) > 1.D0) then   ! karra added 05/06/2013
           voltemp = 1.D0/volume_p(local_id_dn)
-        endif
+!       endif
         Jup(:,1:option%nflowdof) = -ra(:,1:option%nflowdof)*voltemp !21
         Jdn(:,1:option%nflowdof) = -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
