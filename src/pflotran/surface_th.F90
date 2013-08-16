@@ -789,6 +789,9 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         endif
         
         ! Mass flux
+        ! RTM: TODO: I believe we need to limit this exchange term when ice is 
+        ! present--the amount of water that can infiltrate needs to be limited 
+        ! to the unfrozen fraction.
         exch_p((local_id-1)*option%nflowdof+1) = &
           exch_p((local_id-1)*option%nflowdof+1) + &
           v_darcy*area_p(local_id)*option%surf_flow_dt
