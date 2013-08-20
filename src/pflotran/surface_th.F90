@@ -317,7 +317,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
 end subroutine SurfaceTHUpdateSurfBC
 
-! RTM: TODO: Figure out how this needs to be modified for surface freezing.
+! RTM: TODO: Figure out if this needs to be modified for surface freezing.
 ! ************************************************************************** !
 !> This routine updates source/sink term for the subsurface model
 !!
@@ -777,9 +777,14 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
         if (v_darcy<=0.d0) then
-          ! Flow is happening from surface to subsurface
-          if ( abs(v_darcy) > xx_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = -xx_p(local_id)/option%surf_flow_dt
+          ! Flow is happening from surface to subsurface.
+          ! Note that we limit the mass exchange when surface ice is present 
+          ! (as the frozen fraction is immobile) by multiplying by the 
+          ! unfrozen fraction.
+          if ( abs(v_darcy) > surf_aux_vars(ghosted_id)%unfrozen_fraction * &
+                              xx_p(local_id)/option%surf_flow_dt ) then
+            v_darcy = surf_aux_vars(ghosted_id)%unfrozen_fraction * &
+                      -xx_p(local_id)/option%surf_flow_dt 
             v_darcy_limit=PETSC_TRUE
           endif
           temp_half = surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0
@@ -789,9 +794,6 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         endif
         
         ! Mass flux
-        ! RTM: TODO: I believe we need to limit this exchange term when ice is 
-        ! present--the amount of water that can infiltrate needs to be limited 
-        ! to the unfrozen fraction.
         exch_p((local_id-1)*option%nflowdof+1) = &
           exch_p((local_id-1)*option%nflowdof+1) + &
           v_darcy*area_p(local_id)*option%surf_flow_dt
@@ -1689,9 +1691,6 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   
 end subroutine SurfaceTHComputeMaxDt
 
-! RTM: TODO: Figure out how we need to limit the amount of water that can 
-! move into the subsurface when we have a frozen fraction present.  The 
-! frozen fraction is immobile but contributes to the pressure head.
 ! ************************************************************************** !
 !> This routine computes the internal flux term for under
 !! diffusion-wave assumption.
@@ -1782,7 +1781,8 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
     ! hydraulic radius (which is a measure of the "efficiency" of the channel) 
     ! is often taken to be the flow depth, so I believe this makes sense. (?)
     ! The actual total head term ('hw_half' here) is NOT modified by the 
-    ! unfrozen fraction.
+    ! unfrozen fraction: though the ice is immobile, its weight does 
+    ! contribute to the pressure head.
     vel = ((unfrozen_fraction_half * hw_half)**(2.d0/3.d0))/mannings_half* &
           dhead/(abs(dhead)**(1.d0/2.d0))* &
           1.d0/(dist**0.5d0)
@@ -1797,7 +1797,7 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   Res(TH_PRESSURE_DOF) = flux*length
   
   ! Temperature equation
-  ! RTM: k_therm is the weighted average of the liquid and and ice thermal 
+  ! RTM: k_therm is the weighted average of the liquid and ice thermal 
   ! conductivities.  For the density and specific heat capacity in the 
   ! advection term, we want these for liquid water ONLY, as the ice portion 
   ! is immobile and thus should not make up part of the advection term. We 
