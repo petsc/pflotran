@@ -1085,7 +1085,8 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
   endif
 
   ! pushed in TimestepperInitializeRun
-  call PetscLogStagePop(ierr)
+  !geh: Now called in OptionFinalize()
+  !call PetscLogStagePop(ierr)
 
 end subroutine TimestepperFinalizeRun
 
