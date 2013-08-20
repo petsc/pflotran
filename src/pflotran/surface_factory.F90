@@ -11,7 +11,7 @@ module Surface_Factory_module
 
   public :: SurfaceInitialize, &
             SurfaceInitializePostPETSc, &
-            HighjackSurfaceSimulation, &
+            HijackSurfaceSimulation, &
             SurfaceJumpStart
 
 contains
@@ -72,7 +72,7 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
   
   simulation_old => SimulationCreate(option)
   call Init(simulation_old)
-  call HighjackSurfaceSimulation(simulation_old,simulation)
+  call HijackSurfaceSimulation(simulation_old,simulation)
   ! no longer need simulation
   deallocate(simulation_old)
   call SurfaceJumpStart(simulation)
@@ -87,7 +87,7 @@ end subroutine SurfaceInitializePostPETSc
 !!
 !! date: 06/27/13
 ! ************************************************************************** !
-subroutine HighjackSurfaceSimulation(simulation_old,simulation)
+subroutine HijackSurfaceSimulation(simulation_old,simulation)
 
   use Simulation_module
   use Surface_Realization_class
@@ -208,7 +208,7 @@ subroutine HighjackSurfaceSimulation(simulation_old,simulation)
   ! point the top process model coupler to Output
   !simulation%process_model_coupler_list%Output => Output
 
-end subroutine HighjackSurfaceSimulation
+end subroutine HijackSurfaceSimulation
 
 ! ************************************************************************** !
 !> This routine

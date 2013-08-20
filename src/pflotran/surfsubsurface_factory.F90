@@ -91,7 +91,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
   if(option%nsurfflowdof>0) then
     ! Both, Surface-Subsurface flow active
-    call HighjackSurfaceSimulation(simulation_old,surf_simulation)
+    call HijackSurfaceSimulation(simulation_old,surf_simulation)
     call SurfaceJumpStart(surf_simulation)
 
     simulation%process_model_coupler_list => &
