@@ -160,7 +160,7 @@ function TimestepperCreate()
   
   stepper%solver => SolverCreate()
   
-  TimeStepperCreate => stepper
+  TimestepperCreate => stepper
   
 end function TimestepperCreate 
 
@@ -481,7 +481,7 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
   call PetscLogStagePop(ierr)
   option%init_stage = PETSC_FALSE
 
-  ! popped in TimeStepperFinalizeRun()
+  ! popped in TimestepperFinalizeRun()
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
@@ -1102,8 +1102,9 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
     endif            
   endif
 
-  ! pushed in TimeStepperInitializeRun
-  call PetscLogStagePop(ierr)
+  ! pushed in TimestepperInitializeRun
+  !geh: Now called in OptionFinalize()
+  !call PetscLogStagePop(ierr)
 
 end subroutine TimestepperFinalizeRun
 
@@ -4445,9 +4446,9 @@ subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
   endif
   
   if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
-    WaypointSkipToTime(realization%waypoints,option%time)
+    WaypointReturnAtTime(realization%waypoints,option%time)
   if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
-    WaypointSkipToTime(realization%waypoints,option%time)
+    WaypointReturnAtTime(realization%waypoints,option%time)
 
   if (flow_read) then
     flow_stepper%target_time = option%flow_time

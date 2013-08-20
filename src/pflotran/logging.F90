@@ -14,6 +14,7 @@ PetscInt, parameter, public :: TS_STAGE = 2
 PetscInt, parameter, public :: FLOW_STAGE = 3
 PetscInt, parameter, public :: TRAN_STAGE = 4
 PetscInt, parameter, public :: OUTPUT_STAGE = 5
+PetscInt, parameter, public :: FINAL_STAGE = 6
 
   type, public :: logging_type 
   
@@ -138,6 +139,8 @@ subroutine LoggingCreate()
                              logging%stage(TRAN_STAGE),ierr)
   call PetscLogStageRegister('Output Stage', &
                              logging%stage(OUTPUT_STAGE),ierr)
+  call PetscLogStageRegister('Finalization Stage', &
+                             logging%stage(FINAL_STAGE),ierr)
                              
 !!  call PetscCookieRegister('PFLOTRAN',logging%class_pflotran,ierr)
   call PetscClassIdRegister('PFLOTRAN',logging%class_pflotran,ierr)

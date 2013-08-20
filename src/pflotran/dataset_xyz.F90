@@ -218,6 +218,11 @@ subroutine DatasetXYZReadData(this,option)
                      attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
     endif
+    attribute_name = "Cell Centered"
+    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+    if (attribute_exists) then
+      this%is_cell_centered = PETSC_TRUE
+    endif
   endif ! this%data_dim == DIM_NULL
   
   num_spatial_dims = DatasetGetNDimensions(this)

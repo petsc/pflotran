@@ -3,7 +3,7 @@ module Timestepper_BE_class
   use Solver_module
   use Convergence_module
   use Timestepper_Base_class
- 
+  
   implicit none
 
   private
@@ -29,31 +29,52 @@ module Timestepper_BE_class
     
     procedure, public :: ReadInput => TimestepperBERead
     procedure, public :: Init => TimestepperBEInit
-!    procedure, public :: SetTargetTime => TimeStepperBaseSetTargetTime
-    procedure, public :: StepDT => TimeStepperBEStepDT
-    procedure, public :: UpdateDT => TimeStepperBEUpdateDT
+!    procedure, public :: SetTargetTime => TimestepperBaseSetTargetTime
+    procedure, public :: StepDT => TimestepperBEStepDT
+    procedure, public :: UpdateDT => TimestepperBEUpdateDT
+    procedure, public :: Checkpoint => TimestepperBECheckpoint
+    procedure, public :: Restart => TimestepperBERestart
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
-    procedure, public :: Destroy => TimeStepperBEDestroy
+    procedure, public :: Destroy => TimestepperBEDestroy
     
   end type stepper_BE_type
   
-  public :: TimeStepperBECreate, TimeStepperBEPrintInfo, &
+  ! For checkpointing
+  type, public, extends(stepper_base_header_type) :: stepper_BE_header_type
+    integer*8 :: cumulative_newton_iterations
+    integer*8 :: cumulative_linear_iterations
+    integer*8 :: num_newton_iterations
+  end type stepper_BE_header_type
+  PetscSizeT, parameter, private :: bagsize = 88 ! 60 (base) + 24 (BE)
+
+  interface PetscBagGetData
+    subroutine PetscBagGetData(bag,header,ierr)
+      import :: stepper_BE_header_type
+      implicit none
+#include "finclude/petscbag.h"      
+      PetscBag :: bag
+      class(stepper_BE_header_type), pointer :: header
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface PetscBagGetData  
+
+  public :: TimestepperBECreate, TimestepperBEPrintInfo, &
             TimestepperBEInit
 
 contains
 
 ! ************************************************************************** !
 !
-! TimeStepperBECreate: Allocates and initializes a new Timestepper object
+! TimestepperBECreate: Allocates and initializes a new Timestepper object
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-function TimeStepperBECreate()
+function TimestepperBECreate()
 
   implicit none
   
-  class(stepper_BE_type), pointer :: TimeStepperBECreate
+  class(stepper_BE_type), pointer :: TimestepperBECreate
   
   class(stepper_BE_type), pointer :: stepper
   
@@ -62,55 +83,55 @@ function TimeStepperBECreate()
   
   stepper%solver => SolverCreate()
   
-  TimeStepperBECreate => stepper
+  TimestepperBECreate => stepper
   
-end function TimeStepperBECreate
+end function TimestepperBECreate
 
 ! ************************************************************************** !
 !
-! TimeStepperBEInit: Allocates and initializes a new Timestepper object
+! TimestepperBEInit: Allocates and initializes a new Timestepper object
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBEInit(stepper)
+subroutine TimestepperBEInit(this)
 
   implicit none
   
-  class(stepper_BE_type) :: stepper
+  class(stepper_BE_type) :: this
   
-  call TimeStepperBaseInit(stepper)
+  call TimestepperBaseInit(this)
   
-  stepper%num_newton_iterations = 0
-  stepper%num_linear_iterations = 0
+  this%num_newton_iterations = 0
+  this%num_linear_iterations = 0
 
-  stepper%cumulative_newton_iterations = 0
-  stepper%cumulative_linear_iterations = 0
+  this%cumulative_newton_iterations = 0
+  this%cumulative_linear_iterations = 0
 
-  stepper%iaccel = 5
-  stepper%ntfac = 13
-  allocate(stepper%tfac(13))
-  stepper%tfac(1)  = 2.0d0; stepper%tfac(2)  = 2.0d0
-  stepper%tfac(3)  = 2.0d0; stepper%tfac(4)  = 2.0d0
-  stepper%tfac(5)  = 2.0d0; stepper%tfac(6)  = 1.8d0
-  stepper%tfac(7)  = 1.6d0; stepper%tfac(8)  = 1.4d0
-  stepper%tfac(9)  = 1.2d0; stepper%tfac(10) = 1.0d0
-  stepper%tfac(11) = 1.0d0; stepper%tfac(12) = 1.0d0
-  stepper%tfac(13) = 1.0d0
+  this%iaccel = 5
+  this%ntfac = 13
+  allocate(this%tfac(13))
+  this%tfac(1)  = 2.0d0; this%tfac(2)  = 2.0d0
+  this%tfac(3)  = 2.0d0; this%tfac(4)  = 2.0d0
+  this%tfac(5)  = 2.0d0; this%tfac(6)  = 1.8d0
+  this%tfac(7)  = 1.6d0; this%tfac(8)  = 1.4d0
+  this%tfac(9)  = 1.2d0; this%tfac(10) = 1.0d0
+  this%tfac(11) = 1.0d0; this%tfac(12) = 1.0d0
+  this%tfac(13) = 1.0d0
   
-  nullify(stepper%solver)
-  nullify(stepper%convergence_context)
+  nullify(this%solver)
+  nullify(this%convergence_context)
   
-end subroutine TimeStepperBEInit
+end subroutine TimestepperBEInit
 
 ! ************************************************************************** !
 !
-! TimeStepperBERead: Reads parameters associated with time stepper
+! TimestepperBERead: Reads parameters associated with time stepper
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBERead(stepper,input,option)
+subroutine TimestepperBERead(this,input,option)
 
   use Option_module
   use String_module
@@ -119,7 +140,7 @@ subroutine TimeStepperBERead(stepper,input,option)
   
   implicit none
 
-  class(stepper_BE_type) :: stepper
+  class(stepper_BE_type) :: this
   type(input_type) :: input
   type(option_type) :: option
   
@@ -140,84 +161,84 @@ subroutine TimeStepperBERead(stepper,input,option)
     select case(trim(keyword))
   
       case('TS_ACCELERATION')
-        call InputReadInt(input,option,stepper%iaccel)
+        call InputReadInt(input,option,this%iaccel)
         call InputDefaultMsg(input,option,'iaccel')
 
       case('DT_FACTOR')
         string='time_step_factor'
-        call UtilityReadArray(stepper%tfac,NEG_ONE_INTEGER,string,input, &
+        call UtilityReadArray(this%tfac,NEG_ONE_INTEGER,string,input, &
             option)
-        stepper%ntfac = size(stepper%tfac)
+        this%ntfac = size(this%tfac)
 
       case default
-        call TimeStepperBaseProcessKeyword(stepper,input,option,keyword)
+        call TimestepperBaseProcessKeyword(this,input,option,keyword)
     end select 
   
   enddo  
 
-end subroutine TimeStepperBERead
+end subroutine TimestepperBERead
 
 
 ! ************************************************************************** !
 !
-! TimeStepperBEUpdateDT: Updates time step
+! TimestepperBEUpdateDT: Updates time step
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBEUpdateDT(timestepper,process_model)
+subroutine TimestepperBEUpdateDT(this,process_model)
 
   use Process_Model_Base_class
   
   implicit none
 
-  class(stepper_BE_type) :: timestepper
+  class(stepper_BE_type) :: this
   class(pm_base_type) :: process_model
   
   PetscBool :: update_time_step
   
   update_time_step = PETSC_TRUE
 
-  if (timestepper%time_step_cut_flag) then
-    timestepper%num_constant_time_steps = 1
-  else if (timestepper%num_constant_time_steps > 0) then
+  if (this%time_step_cut_flag) then
+    this%num_constant_time_steps = 1
+  else if (this%num_constant_time_steps > 0) then
     ! otherwise, only increment if the constant time step counter was
     ! initialized to 1
-    timestepper%num_constant_time_steps = &
-      timestepper%num_constant_time_steps + 1
+    this%num_constant_time_steps = &
+      this%num_constant_time_steps + 1
   endif
 
   ! num_constant_time_steps = 0: normal time stepping with growing steps
   ! num_constant_time_steps > 0: restriction of constant time steps until
   !                              constant_time_step_threshold is met
-  if (timestepper%num_constant_time_steps > &
-      timestepper%constant_time_step_threshold) then
-    timestepper%num_constant_time_steps = 0
-  else if (timestepper%num_constant_time_steps > 0) then
+  if (this%num_constant_time_steps > &
+      this%constant_time_step_threshold) then
+    this%num_constant_time_steps = 0
+  else if (this%num_constant_time_steps > 0) then
     ! do not increase time step size
     update_time_step = PETSC_FALSE
   endif
     
-  if (update_time_step .and. timestepper%iaccel /= 0) then
+  if (update_time_step .and. this%iaccel /= 0) then
       
-    call process_model%UpdateTimestep(timestepper%dt, &
-                                      timestepper%dt_max, &
-                                      timestepper%iaccel, &
-                                      timestepper%num_newton_iterations, &
-                                      timestepper%tfac)
+    call process_model%UpdateTimestep(this%dt, &
+                                      this%dt_max, &
+                                      this%iaccel, &
+                                      this%num_newton_iterations, &
+                                      this%tfac)
     
   endif
 
-end subroutine TimeStepperBEUpdateDT
+end subroutine TimestepperBEUpdateDT
 
 ! ************************************************************************** !
 !
-! TimeStepperBEStepDT: Steps forward one step in time
+! TimestepperBEStepDT: Steps forward one step in time
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
+subroutine TimestepperBEStepDT(this,process_model,stop_flag)
 
   use Process_Model_Base_class
   use Option_module
@@ -229,7 +250,7 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
 #include "finclude/petscvec.h90"
 #include "finclude/petscsnes.h"
 
-  class(stepper_BE_type) :: timestepper
+  class(stepper_BE_type) :: this
   class(pm_base_type) :: process_model
   PetscInt :: stop_flag
   
@@ -251,10 +272,10 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
   PetscBool :: plot_flag, transient_plot_flag
   PetscErrorCode :: ierr
   
-  solver => timestepper%solver
+  solver => this%solver
   option => process_model%option
   
-  write(process_model%option%io_buffer,'(es12.5)') timestepper%dt
+  write(process_model%option%io_buffer,'(es12.5)') this%dt
   process_model%option%io_buffer = 'StepperStepDT(' // &
     trim(adjustl(process_model%option%io_buffer)) // ')'
   call printMsg(process_model%option)  
@@ -265,8 +286,8 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
   sum_newton_iterations = 0
   icut = 0
   
-  option%dt = timestepper%dt
-  option%time = timestepper%target_time-timestepper%dt
+  option%dt = this%dt
+  option%time = this%target_time-this%dt
 
   call process_model%InitializeTimestep()
     
@@ -281,8 +302,8 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
 
     call PetscTime(log_end_time, ierr)
 
-    timestepper%cumulative_solver_time = &
-      timestepper%cumulative_solver_time + &
+    this%cumulative_solver_time = &
+      this%cumulative_solver_time + &
       (log_end_time - log_start_time)
 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations,ierr)
@@ -295,16 +316,16 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
     if (snes_reason <= 0 .or. .not. process_model%AcceptSolution()) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
-      timestepper%time_step_cut_flag = PETSC_TRUE
+      this%time_step_cut_flag = PETSC_TRUE
 
-      if (icut > timestepper%max_time_step_cuts .or. &
-          timestepper%dt < 1.d-20) then
+      if (icut > this%max_time_step_cuts .or. &
+          this%dt < 1.d-20) then
         if (option%print_screen_flag) then
           print *,"--> max_time_step_cuts exceeded: icut/icutmax= ",icut, &
-                  timestepper%max_time_step_cuts, "t= ", &
-                  timestepper%target_time/tconv, &
+                  this%max_time_step_cuts, "t= ", &
+                  this%target_time/tconv, &
                   " dt= ", &
-                  timestepper%dt/tconv
+                  this%dt/tconv
           print *,"Stopping execution!"
         endif
         process_model%output_option%plot_name = 'flow_cut_to_failure'
@@ -315,18 +336,18 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
         return
       endif
  
-      timestepper%target_time = timestepper%target_time - timestepper%dt
+      this%target_time = this%target_time - this%dt
 
-      timestepper%dt = 0.5d0 * timestepper%dt  
+      this%dt = 0.5d0 * this%dt  
       
       if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
-        &   1pe12.5)')  snes_reason,icut,timestepper%cumulative_time_step_cuts, &
+        &   1pe12.5)')  snes_reason,icut,this%cumulative_time_step_cuts, &
             option%time/tconv, &
-            timestepper%dt/tconv
+            this%dt/tconv
 
-      timestepper%target_time = timestepper%target_time + timestepper%dt
-      option%dt = timestepper%dt
+      this%target_time = this%target_time + this%dt
+      option%dt = this%dt
       call process_model%TimeCut()
   
     else
@@ -335,16 +356,16 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
     endif
   enddo
 
-  timestepper%steps = timestepper%steps + 1      
-  timestepper%cumulative_newton_iterations = &
-    timestepper%cumulative_newton_iterations + sum_newton_iterations
-  timestepper%cumulative_linear_iterations = &
-    timestepper%cumulative_linear_iterations + sum_linear_iterations
-  timestepper%cumulative_time_step_cuts = &
-    timestepper%cumulative_time_step_cuts + icut
+  this%steps = this%steps + 1      
+  this%cumulative_newton_iterations = &
+    this%cumulative_newton_iterations + sum_newton_iterations
+  this%cumulative_linear_iterations = &
+    this%cumulative_linear_iterations + sum_linear_iterations
+  this%cumulative_time_step_cuts = &
+    this%cumulative_time_step_cuts + icut
 
-  timestepper%num_newton_iterations = num_newton_iterations
-  timestepper%num_linear_iterations = num_linear_iterations  
+  this%num_newton_iterations = num_newton_iterations
+  this%num_linear_iterations = num_linear_iterations  
   
 ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
@@ -353,13 +374,13 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
     write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      timestepper%steps, &
-      timestepper%target_time/tconv, &
-      timestepper%dt/tconv, &
+      this%steps, &
+      this%target_time/tconv, &
+      this%dt/tconv, &
       tunit,snes_reason,sum_newton_iterations, &
-      timestepper%cumulative_newton_iterations,sum_linear_iterations, &
-      timestepper%cumulative_linear_iterations,icut, &
-      timestepper%cumulative_time_step_cuts
+      this%cumulative_newton_iterations,sum_linear_iterations, &
+      this%cumulative_linear_iterations,icut, &
+      this%cumulative_time_step_cuts
 
 #if 0    
     if (associated(discretization%grid)) then
@@ -379,36 +400,36 @@ subroutine TimeStepperBEStepDT(timestepper,process_model,stop_flag)
       & " [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      timestepper%steps, &
-      timestepper%target_time/tconv, &
-      timestepper%dt/tconv, &
+      this%steps, &
+      this%target_time/tconv, &
+      this%dt/tconv, &
       tunit,snes_reason,sum_newton_iterations, &
-      timestepper%cumulative_newton_iterations,sum_linear_iterations, &
-      timestepper%cumulative_linear_iterations,icut, &
-      timestepper%cumulative_time_step_cuts
+      this%cumulative_newton_iterations,sum_linear_iterations, &
+      this%cumulative_linear_iterations,icut, &
+      this%cumulative_time_step_cuts
   endif  
   
-  option%time = timestepper%target_time
+  option%time = this%target_time
   call process_model%FinalizeTimestep()
   
   if (option%print_screen_flag) print *, ""  
   
-end subroutine TimeStepperBEStepDT
+end subroutine TimestepperBEStepDT
 
 ! ************************************************************************** !
 !
-! TimeStepperBEPrintInfo: Prints information about time stepper
+! TimestepperBEPrintInfo: Prints information about time stepper
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBEPrintInfo(stepper,fid,header,option)
+subroutine TimestepperBEPrintInfo(this,fid,header,option)
 
   use Option_module
   
   implicit none
   
-  class(stepper_BE_type) :: stepper
+  class(stepper_BE_type) :: this
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
@@ -417,46 +438,186 @@ subroutine TimeStepperBEPrintInfo(stepper,fid,header,option)
   if (OptionPrintToScreen(option)) then
     write(*,*) 
     write(*,'(a)') trim(header)
-    write(string,*) stepper%max_time_step
+    write(string,*) this%max_time_step
     write(*,'("max steps:",x,a)') trim(adjustl(string))
-    write(string,*) stepper%constant_time_step_threshold
+    write(string,*) this%constant_time_step_threshold
     write(*,'("max constant cumulative time steps:",x,a)') &
       trim(adjustl(string))
-    write(string,*) stepper%max_time_step_cuts
+    write(string,*) this%max_time_step_cuts
     write(*,'("max cuts:",x,a)') trim(adjustl(string))
   endif
   if (OptionPrintToFile(option)) then
     write(fid,*) 
     write(fid,'(a)') trim(header)
-    write(string,*) stepper%max_time_step
+    write(string,*) this%max_time_step
     write(fid,'("max steps:",x,a)') trim(adjustl(string))
-    write(string,*) stepper%constant_time_step_threshold
+    write(string,*) this%constant_time_step_threshold
     write(fid,'("max constant cumulative time steps:",x,a)') &
       trim(adjustl(string))
-    write(string,*) stepper%max_time_step_cuts
+    write(string,*) this%max_time_step_cuts
     write(fid,'("max cuts:",x,a)') trim(adjustl(string))
   endif    
 
-end subroutine TimeStepperBEPrintInfo
+end subroutine TimestepperBEPrintInfo
 
 ! ************************************************************************** !
 !
-! TimestepperCheckpoint: Checkpoints parameters/variables associated with a 
-!                        time stepper.
+! TimestepperBECheckpoint: Checkpoints parameters/variables associated with 
+!                          a time stepper.
 ! author: Glenn Hammond
-! date: 07/22/13
+! date: 07/25/13
 !
 ! ************************************************************************** !
-subroutine TimestepperCheckpoint(stepper,viewer)
+subroutine TimestepperBECheckpoint(this,viewer,option)
+
+  use Option_module
 
   implicit none
 
 #include "finclude/petscviewer.h"
-
-  class(stepper_BE_type) :: stepper
+#include "finclude/petscbag.h"
+  
+  class(stepper_BE_type) :: this
   PetscViewer :: viewer
-    
-end subroutine TimestepperCheckpoint
+  type(option_type) :: option
+  
+  class(stepper_BE_header_type), pointer :: header
+  PetscBag :: bag
+  PetscErrorCode :: ierr
+
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  call PetscBagGetData(bag,header,ierr)
+  call TimestepperBERegisterHeader(this,bag,header)
+  call TimestepperBESetHeader(this,bag,header)
+  call PetscBagView(bag,viewer,ierr)
+  call PetscBagDestroy(bag,ierr)  
+
+end subroutine TimestepperBECheckpoint
+
+! ************************************************************************** !
+!
+! TimestepperBERegisterHeader: Register header entries.
+! author: Glenn Hammond
+! date: 07/30/13
+!
+! ************************************************************************** !
+subroutine TimestepperBERegisterHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(stepper_BE_type) :: this
+  class(stepper_BE_header_type) :: header
+  PetscBag :: bag
+  
+  PetscErrorCode :: ierr
+  
+  ! bagsize = 3 * 8 bytes = 24 bytes
+  call PetscBagRegisterInt(bag,header%cumulative_newton_iterations,0, &
+                           "cumulative_newton_iterations","",ierr)
+  call PetscBagRegisterInt(bag,header%cumulative_linear_iterations,0, &
+                           "cumulative_linear_iterations","",ierr)
+  call PetscBagRegisterInt(bag,header%num_newton_iterations,0, &
+                           "num_newton_iterations","",ierr)
+
+  call TimestepperBaseRegisterHeader(this,bag,header)
+  
+end subroutine TimestepperBERegisterHeader
+
+! ************************************************************************** !
+!
+! TimestepperBESetHeader: Sets values in checkpoint header.
+! author: Glenn Hammond
+! date: 07/25/13
+!
+! ************************************************************************** !
+subroutine TimestepperBESetHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(stepper_BE_type) :: this
+  class(stepper_BE_header_type) :: header
+  PetscBag :: bag
+  
+  PetscErrorCode :: ierr
+  
+  header%cumulative_newton_iterations = this%cumulative_newton_iterations
+  header%cumulative_linear_iterations = this%cumulative_linear_iterations
+  header%num_newton_iterations = this%num_newton_iterations
+
+  call TimestepperBaseSetHeader(this,bag,header)
+  
+end subroutine TimestepperBESetHeader
+
+! ************************************************************************** !
+!
+! TimestepperBERestart: Checkpoints parameters/variables associated with 
+!                          a time stepper.
+! author: Glenn Hammond
+! date: 07/25/13
+!
+! ************************************************************************** !
+subroutine TimestepperBERestart(this,viewer,option)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(stepper_BE_type) :: this
+  PetscViewer :: viewer
+  type(option_type) :: option
+  
+  class(stepper_BE_header_type), pointer :: header
+  PetscBag :: bag
+  PetscErrorCode :: ierr
+  
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  call PetscBagGetData(bag,header,ierr)
+  call TimestepperBERegisterHeader(this,bag,header)
+  call PetscBagLoad(viewer,bag,ierr)
+  call TimestepperBEGetHeader(this,header)
+  call PetscBagDestroy(bag,ierr)  
+
+end subroutine TimestepperBERestart
+
+! ************************************************************************** !
+!
+! TimestepperBEGetHeader: Gets values in checkpoint header.
+! author: Glenn Hammond
+! date: 07/25/13
+!
+! ************************************************************************** !
+subroutine TimestepperBEGetHeader(this,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(stepper_BE_type) :: this
+  class(stepper_BE_header_type) :: header
+  
+  this%cumulative_newton_iterations = header%cumulative_newton_iterations
+  this%cumulative_linear_iterations = header%cumulative_linear_iterations
+  this%num_newton_iterations = header%num_newton_iterations
+
+  call TimestepperBaseGetHeader(this,header)
+  
+end subroutine TimestepperBEGetHeader
 
 ! ************************************************************************** !
 !
@@ -493,43 +654,43 @@ end subroutine TimestepperBEFinalizeRun
 
 ! ************************************************************************** !
 !
-! TimeStepperBEStrip: Deallocates members of a time stepper
+! TimestepperBEStrip: Deallocates members of a time stepper
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBEStrip(stepper)
+subroutine TimestepperBEStrip(this)
 
   implicit none
   
-  class(stepper_BE_type) :: stepper
+  class(stepper_BE_type) :: this
   
-  call SolverDestroy(stepper%solver)
-  call ConvergenceContextDestroy(stepper%convergence_context)
+  call SolverDestroy(this%solver)
+  call ConvergenceContextDestroy(this%convergence_context)
 
-  if (associated(stepper%tfac)) deallocate(stepper%tfac)
-  nullify(stepper%tfac)
+  if (associated(this%tfac)) deallocate(this%tfac)
+  nullify(this%tfac)
   
-end subroutine TimeStepperBEStrip
+end subroutine TimestepperBEStrip
 
 ! ************************************************************************** !
 !
-! TimeStepperBEDestroy: Deallocates a time stepper
+! TimestepperBEDestroy: Deallocates a time stepper
 ! author: Glenn Hammond
 ! date: 07/22/13
 !
 ! ************************************************************************** !
-subroutine TimeStepperBEDestroy(stepper)
+subroutine TimestepperBEDestroy(this)
 
   implicit none
   
-  class(stepper_BE_type) :: stepper
+  class(stepper_BE_type) :: this
   
-  call TimeStepperBaseStrip(stepper)
+  call TimestepperBaseStrip(this)
   
-!  deallocate(stepper)
-!  nullify(stepper)
+!  deallocate(this)
+!  nullify(this)
   
-end subroutine TimeStepperBEDestroy
+end subroutine TimestepperBEDestroy
 
 end module Timestepper_BE_class
