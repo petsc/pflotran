@@ -7,6 +7,7 @@ module PMC_Base_class
   use Waypoint_module
   use Process_Model_module
   use Output_module, only : Output
+  use Simulation_Aux_module
   
   implicit none
 
@@ -25,6 +26,7 @@ module PMC_Base_class
     class(pmc_base_type), pointer :: below
     class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
+    type(simulation_aux_type),pointer :: sim_aux
     procedure(Output), nopass, pointer :: Output
     procedure(Synchronize), pointer :: Synchronize1
     procedure(Synchronize), pointer :: Synchronize2
@@ -108,6 +110,7 @@ subroutine PMCBaseInit(this)
   nullify(this%waypoints)
   nullify(this%below)
   nullify(this%next)
+  nullify(this%sim_aux)
   this%Output => Null()
   this%Synchronize1 => Null()
   this%Synchronize2 => Null()
@@ -200,10 +203,9 @@ end subroutine InitializeRun
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag,sim_aux)
+recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 
   use Timestepper_Base_class
-  use Simulation_Aux_module
   
   implicit none
   
@@ -258,7 +260,7 @@ class(pmc_base_type), target :: this
     enddo
     ! Run underlying process model couplers
     if (associated(this%below)) then
-      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag,sim_aux)
+      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
     endif
     
     ! only print output for process models of depth 0
@@ -293,7 +295,7 @@ class(pmc_base_type), target :: this
       endif
       ! Run neighboring process model couplers
       if (associated(this%next)) then
-        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag,sim_aux)
+        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       if (associated(this%Synchronize3)) then
         call this%Synchronize3()
@@ -309,7 +311,7 @@ class(pmc_base_type), target :: this
   
   ! Run neighboring process model couplers
   if (associated(this%next)) then
-    call this%next%RunToTime(sync_time,local_stop_flag,sim_aux)
+    call this%next%RunToTime(sync_time,local_stop_flag)
   endif
 
   if (associated(this%Synchronize3)) then

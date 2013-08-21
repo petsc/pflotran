@@ -109,17 +109,15 @@ end subroutine PMCHydrogeophysicsInitializeRun
 ! date: 07/02/13
 !
 ! ************************************************************************** !
-recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag,sim_aux)
+recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
 
   use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStep
-  use Simulation_Aux_module
 
   implicit none
   
   class(pmc_hydrogeophysics_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
-  type(simulation_aux_type) :: sim_aux
   
   class(pmc_base_type), pointer :: pmc_base
   PetscInt :: local_stop_flag

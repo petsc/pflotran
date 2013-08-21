@@ -146,7 +146,7 @@ subroutine ExecuteRun(this)
   call printMsg(this%option,'Simulation%ExecuteRun()')
 
   final_time = SimulationGetFinalWaypointTime(this)
-  call this%RunToTime(final_time,this%sim_aux)
+  call this%RunToTime(final_time)
   
 #if 0  
   type(waypoint_type), pointer :: cur_waypoint
@@ -186,7 +186,7 @@ end subroutine ExecuteRun
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine RunToTime(this,target_time,sim_aux)
+subroutine RunToTime(this,target_time)
 
   use Option_module
   use Simulation_Aux_module
@@ -197,14 +197,13 @@ subroutine RunToTime(this,target_time,sim_aux)
 
   class(simulation_base_type) :: this
   PetscReal :: target_time
-  type(simulation_aux_type) :: sim_aux
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscViewer :: viewer
   
   call printMsg(this%option,'RunToTime()')
   
-  call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag,sim_aux)
+  call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
   if (this%option%checkpoint_flag) then
     call this%process_model_coupler_list%Checkpoint(viewer,-1)
   endif
