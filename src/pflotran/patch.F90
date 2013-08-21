@@ -923,6 +923,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use General_Aux_module
   use Grid_module
   use Dataset_Common_HDF5_class
+  use Dataset_XYZ_class
 
   implicit none
   
@@ -1353,9 +1354,22 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%pressure)) then
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
-                                            1:num_connections) = &
-                    flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                  if (associated(flow_condition%pressure%flow_dataset% &
+                                 time_series)) then
+                    coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
+                                              1:num_connections) = &
+                      flow_condition%pressure%flow_dataset%time_series% &
+                        cur_value(1)
+                  else
+                    select type(dataset => &
+                                flow_condition%pressure%flow_dataset%dataset)
+                      class is(dataset_xyz_type)
+                        call PatchUpdateCouplerFromDataset(coupler,option, &
+                                                        patch%grid,dataset, &
+                                                        RICHARDS_PRESSURE_DOF)
+                      class default
+                    end select
+                  endif
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
              !  case(SATURATION_BC)
@@ -1391,6 +1405,47 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
+!                                  with couplers in list
+! author: Glenn Hammond
+! date: 11/26/07
+!
+! ************************************************************************** !
+subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
+
+  use Option_module
+  use Grid_module
+  use Coupler_module
+  use Dataset_XYZ_class
+  
+  implicit none
+
+  type(coupler_type) :: coupler
+  type(option_type) :: option
+  type(grid_type) :: grid
+  class(dataset_xyz_type) :: dataset
+  PetscInt :: dof
+  
+  PetscReal :: temp_real
+  PetscInt :: iconn
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  
+  do iconn = 1, coupler%connection_set%num_connections
+    local_id = coupler%connection_set%id_dn(iconn)
+    ghosted_id = grid%nL2G(local_id)
+    call DatasetXYZInterpolateReal(dataset, &
+                                   grid%x(ghosted_id), &
+                                   grid%y(ghosted_id), &
+                                   grid%z(ghosted_id), &
+                                   0.d0,temp_real,option)
+    coupler%flow_aux_real_var(dof,iconn) = temp_real
+  enddo
+  
+end subroutine PatchUpdateCouplerFromDataset
 
 ! ************************************************************************** !
 !

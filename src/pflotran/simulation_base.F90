@@ -95,44 +95,30 @@ subroutine InitializeRun(this)
 
   implicit none
   
+#include "finclude/petscviewer.h"  
+
   class(simulation_base_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
+  PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   call printMsg(this%option,'Simulation%InitializeRun()')
   
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    call cur_process_model_coupler%InitializeRun()
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
+  call this%process_model_coupler_list%InitializeRun()  
 
   !TODO(geh): place logic here to stop if only initial state desired (e.g.
   !           solution composition, etc.).
   
-  !TODO(geh): replace integer arguments with logical
-#ifndef SIMPLIFY  
-  if (this%option%restart_flag) then
-    call OutputInit(1) ! number greater than 0
-  else
-    call OutputInit(0)
-  endif
-#endif
+  ! update solutions?
   
-  if (this%output_option%print_initial) then
-    cur_process_model_coupler => this%process_model_coupler_list
-    do
-      if (.not.associated(cur_process_model_coupler)) exit
-      ! arg1 = plot_flag
-      ! arg2 = transient_plot_flag
-!      call cur_process_model_coupler%Output(PETSC_TRUE,PETSC_TRUE)
-      cur_process_model_coupler => cur_process_model_coupler%next
-    enddo
-  endif
+  !TODO(geh): Place I/O reoutines here
   
   !TODO(geh): place logic here to stop if only initial condition desired
+  
+  if (this%option%restart_flag) then
+    call this%process_model_coupler_list%Restart(viewer)
+  endif
   
   ! pushed in Init()
   call PetscLogStagePop(ierr)
@@ -207,15 +193,21 @@ subroutine RunToTime(this,target_time,sim_aux)
 
   implicit none
   
+#include "finclude/petscviewer.h" 
+
   class(simulation_base_type) :: this
   PetscReal :: target_time
   type(simulation_aux_type) :: sim_aux
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
+  PetscViewer :: viewer
   
   call printMsg(this%option,'RunToTime()')
   
   call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag,sim_aux)
+  if (this%option%checkpoint_flag) then
+    call this%process_model_coupler_list%Checkpoint(viewer,-1)
+  endif
 
 end subroutine RunToTime
 
@@ -228,6 +220,8 @@ end subroutine RunToTime
 ! ************************************************************************** !
 subroutine SimulationBaseFinalizeRun(this)
 
+  use Logging_module
+  
   implicit none
   
   class(simulation_base_type) :: this
@@ -238,15 +232,12 @@ subroutine SimulationBaseFinalizeRun(this)
 
   call printMsg(this%option,'SimulationBaseFinalizeRun()')
   
-  cur_process_model_coupler => this%process_model_coupler_list
-  do
-    if (.not.associated(cur_process_model_coupler)) exit
-    call cur_process_model_coupler%FinalizeRun()
-    cur_process_model_coupler => cur_process_model_coupler%next
-  enddo
+  call this%process_model_coupler_list%FinalizeRun()
   
   ! pushed in InitializeRun()
   call PetscLogStagePop(ierr)
+  ! popped in OptionFinalize()
+  call PetscLogStagePush(logging%stage(FINAL_STAGE),ierr)
   
 end subroutine SimulationBaseFinalizeRun
 

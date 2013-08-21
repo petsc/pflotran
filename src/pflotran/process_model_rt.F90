@@ -48,8 +48,15 @@ module Process_Model_RT_class
     procedure, public :: MaxChange => PMRTMaxChange
     procedure, public :: ComputeMassBalance => PMRTComputeMassBalance
     procedure, public :: SetTranWeights => SetTranWeights
+    procedure, public :: Checkpoint => PMRTCheckpoint
+    procedure, public :: Restart => PMRTRestart
     procedure, public :: Destroy => PMRTDestroy
   end type pm_rt_type
+  
+  type, public, extends(pm_base_header_type) :: pm_rt_header_type
+    integer*8 :: checkpoint_activity_coefs
+  end type pm_rt_header_type  
+  PetscSizeT, parameter, private :: bagsize = 16
   
   public :: PMRTCreate
 
@@ -762,6 +769,276 @@ subroutine SetTranWeights(this)
                             flow_dt)
 
 end subroutine SetTranWeights
+
+! ************************************************************************** !
+!
+! PMRTCheckpoint: Checkpoints flow reactive transport process model
+! author: Glenn Hammond
+! date: 07/29/13
+!
+! ************************************************************************** !
+subroutine PMRTCheckpoint(this,viewer)
+
+  use Option_module
+  use Realization_class
+  use Realization_Base_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  use Reactive_Transport_module, only : RTCheckpointKineticSorption  
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+                               SECONDARY_ACTIVITY_COEF, &
+                               MINERAL_VOLUME_FRACTION
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscbag.h"      
+
+  interface PetscBagGetData
+    subroutine PetscBagGetData(bag,header,ierr)
+      import :: pm_rt_header_type
+      implicit none
+#include "finclude/petscbag.h"      
+      PetscBag :: bag
+      class(pm_rt_header_type), pointer :: header
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface PetscBagGetData 
+
+  PetscViewer :: viewer
+  class(pm_rt_type) :: this
+  PetscErrorCode :: ierr
+
+  class(realization_type), pointer :: realization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  PetscInt :: i
+
+  class(pm_rt_header_type), pointer :: header
+  PetscBag :: bag
+  
+  realization => this%realization
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+  
+  global_vec = 0
+  
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  call PetscBagGetData(bag,header,ierr)
+  call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
+                           "checkpoint_activity_coefs","",ierr)
+  call PetscBagRegisterInt(bag,header%ndof,0, &
+                           "ndof","",ierr)    
+  if (associated(realization%reaction)) then
+    if (realization%reaction%checkpoint_activity_coefs .and. &
+        realization%reaction%act_coef_update_frequency /= &
+        ACT_COEF_FREQUENCY_OFF) then
+      header%checkpoint_activity_coefs = ONE_INTEGER
+    else
+      header%checkpoint_activity_coefs = ZERO_INTEGER
+    endif
+  else
+    header%checkpoint_activity_coefs = ZERO_INTEGER
+  endif
+  !geh: %ndof should be pushed down to the base class, but this is not possible
+  !     as long as option%ntrandof is used.
+  header%ndof = option%ntrandof
+  call PetscBagView(bag,viewer,ierr)
+  call PetscBagDestroy(bag,ierr)   
+  
+  if (option%ntrandof > 0) then
+    call VecView(field%tran_xx, viewer, ierr)
+    ! create a global vec for writing below 
+    if (global_vec == 0) then
+      call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                      global_vec,GLOBAL,option)
+    endif
+    if (realization%reaction%checkpoint_activity_coefs .and. &
+        realization%reaction%act_coef_update_frequency /= &
+        ACT_COEF_FREQUENCY_OFF) then
+      ! allocated vector
+      do i = 1, realization%reaction%naqcomp
+        call RealizationGetDataset(realization,global_vec, &
+                                   PRIMARY_ACTIVITY_COEF,i)
+        call VecView(global_vec,viewer,ierr)
+      enddo
+      do i = 1, realization%reaction%neqcplx
+        call RealizationGetDataset(realization,global_vec, &
+                                   SECONDARY_ACTIVITY_COEF,i)
+        call VecView(global_vec,viewer,ierr)
+      enddo
+    endif
+    ! mineral volume fractions for kinetic minerals
+    if (realization%reaction%mineral%nkinmnrl > 0) then
+      do i = 1, realization%reaction%mineral%nkinmnrl
+        call RealizationGetDataset(realization,global_vec, &
+                                   MINERAL_VOLUME_FRACTION,i)
+        call VecView(global_vec,viewer,ierr)
+      enddo
+    endif
+    ! sorbed concentrations for multirate kinetic sorption
+    if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
+        .not.option%no_checkpoint_kinetic_sorption) then
+      ! PETSC_TRUE flag indicates write to file
+      call RTCheckpointKineticSorption(realization,viewer,PETSC_TRUE)
+    endif
+  endif
+
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif
+  
+end subroutine PMRTCheckpoint
+
+! ************************************************************************** !
+!
+! PMRTRestart: Restarts flow reactive transport process model
+! author: Glenn Hammond
+! date: 07/29/13
+!
+! ************************************************************************** !
+subroutine PMRTRestart(this,viewer)
+
+  use Option_module
+  use Realization_class
+  use Realization_Base_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  use Reactive_Transport_module, only : RTCheckpointKineticSorption, &
+                                        RTUpdateAuxVars
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+                               SECONDARY_ACTIVITY_COEF, &
+                               MINERAL_VOLUME_FRACTION
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscbag.h"      
+
+  interface PetscBagGetData
+    subroutine PetscBagGetData(bag,header,ierr)
+      import :: pm_rt_header_type
+      implicit none
+#include "finclude/petscbag.h"      
+      PetscBag :: bag
+      class(pm_rt_header_type), pointer :: header
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface PetscBagGetData 
+
+  PetscViewer :: viewer
+  class(pm_rt_type) :: this
+  PetscErrorCode :: ierr
+
+  class(realization_type), pointer :: realization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec, local_vec
+  PetscInt :: i
+
+  class(pm_rt_header_type), pointer :: header
+  PetscBag :: bag
+  
+  realization => this%realization
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+  
+  global_vec = 0
+  local_vec = 0
+  
+  call PetscBagCreate(this%option%mycomm, bagsize, bag, ierr)
+  call PetscBagGetData(bag, header, ierr)
+  call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
+                           "checkpoint_activity_coefs","",ierr)  
+  call PetscBagRegisterInt(bag,header%ndof,0, &
+                           "ndof","",ierr)  
+  call PetscBagLoad(viewer, bag, ierr)  
+  option%ntrandof = header%ndof
+  
+  call VecLoad(field%tran_xx,viewer,ierr)
+  call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                    field%tran_xx_loc,NTRANDOF)
+  call VecCopy(field%tran_xx,field%tran_yy,ierr)
+
+  if (global_vec == 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+  endif    
+  if (header%checkpoint_activity_coefs == ONE_INTEGER) then
+    call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
+                                    LOCAL,option)
+    do i = 1, realization%reaction%naqcomp
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        local_vec,ONEDOF)
+      call RealizationSetDataset(realization,local_vec,LOCAL, &
+                                  PRIMARY_ACTIVITY_COEF,i)
+    enddo
+    do i = 1, realization%reaction%neqcplx
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        local_vec,ONEDOF)
+      call RealizationSetDataset(realization,local_vec,LOCAL, &
+                                  SECONDARY_ACTIVITY_COEF,i)
+    enddo
+  endif
+  ! mineral volume fractions for kinetic minerals
+  if (realization%reaction%mineral%nkinmnrl > 0) then
+    do i = 1, realization%reaction%mineral%nkinmnrl
+      ! have to load the vecs no matter what
+      call VecLoad(global_vec,viewer,ierr)
+      if (.not.option%no_restart_mineral_vol_frac) then
+        call RealizationSetDataset(realization,global_vec,GLOBAL, &
+                                    MINERAL_VOLUME_FRACTION,i)
+      endif
+    enddo
+  endif
+  ! sorbed concentrations for multirate kinetic sorption
+  if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
+      .not.option%no_checkpoint_kinetic_sorption .and. &
+      ! we need to fix this.  We need something to skip over the reading
+      ! of sorbed concentrations altogether if they do not exist in the
+      ! checkpoint file
+      .not.option%no_restart_kinetic_sorption) then
+    ! PETSC_FALSE flag indicates read from file
+    call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
+  endif
+    
+  ! We are finished, so clean up.
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif
+  if (local_vec /= 0) then
+    call VecDestroy(local_vec,ierr)
+  endif
+  
+  call PetscBagDestroy(bag,ierr)
+  
+  if (realization%reaction%use_full_geochemistry) then
+                                     ! cells     bcs        act coefs.
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+  endif
+  ! do not update kinetics.
+  call PMRTUpdateSolution2(this,PETSC_FALSE)
+  
+end subroutine PMRTRestart
 
 ! ************************************************************************** !
 !
