@@ -196,14 +196,14 @@ mode_aux_obj = \
 	${common_src}immis_aux.o \
 	${common_src}miscible_aux.o \
 	${common_src}mphase_aux.o \
-        ${common_src}process_model_base.o \
-        ${common_src}process_model_richards.o \
-        ${common_src}process_model_rt.o \
-        ${common_src}process_model_surface_flow.o \
-        ${common_src}process_model_surface_th.o \
-        ${common_src}process_model_top.o \
-        ${common_src}process_model_th.o \
-        ${common_src}process_model_thc.o \
+  ${common_src}process_model_base.o \
+  ${common_src}process_model_richards.o \
+  ${common_src}process_model_rt.o \
+  ${common_src}process_model_surface_flow.o \
+  ${common_src}process_model_surface_th.o \
+  ${common_src}process_model_top.o \
+  ${common_src}process_model_th.o \
+  ${common_src}process_model_thc.o \
 	${common_src}richards_aux.o \
 	${common_src}th_aux.o \
 	${common_src}thc_aux.o \
@@ -331,6 +331,7 @@ misc_obj = \
 	${common_src}secondary_continuum_aux.o\
 	${common_src}secondary_continuum.o \
 	${common_src}simulation.o \
+  ${common_src}simulation_aux.o \
 	${common_src}simulation_base.o \
 	${common_src}subsurface_factory.o \
 	${common_src}subsurface_simulation.o \
@@ -613,15 +614,18 @@ pflotran_new.o : hydrogeophysics_factory.o option.o pflotran_factory.o \
                  simulation_base.o subsurface_factory.o surface_factory.o \
                  surfsubsurface_factory.o
 pmc_base.o : option.o output.o output_aux.o process_model_base.o \
-             process_model_top.o timestepper_base.o utility.o waypoint.o
+             process_model_top.o timestepper_base.o utility.o waypoint.o \
+             simulation_aux.o
 pmc_hydrogeophysics.o : hydrogeophysics_wrapper.o option.o pmc_base.o \
                         realization.o realization_base.o string.o utility.o \
-                        variables.o
+                        variables.o simulation_aux.o
 pmc_subsurface.o : option.o pmc_base.o realization.o utility.o
 pmc_surface.o : option.o output.o pmc_base.o process_model_base.o \
                 process_model_surface_flow.o realization.o surface_flow.o \
                 surface_realization.o surface_th.o timestepper_base.o \
-                timestepper_surface.o utility.o process_model_surface_th.o
+                timestepper_surface.o utility.o process_model_surface_th.o \
+                simulation_aux.o
+simulation_aux.o : realization.o surface_realization.o
 process_model_base.o : option.o output_aux.o realization_base.o
 process_model_richards.o : communicator_base.o condition.o discretization.o \
                            global.o grid.o option.o process_model_base.o \
@@ -741,7 +745,7 @@ secondary_continuum_aux.o : option.o reactive_transport_aux.o utility.o
 simulation.o : general.o option.o reactive_transport.o realization.o \
                regression.o richards.o solver.o surface_realization.o \
                timestepper.o
-simulation_base.o : logging.o option.o output.o output_aux.o pmc_base.o \
+simulation_base.o : logging.o option.o output.o output_aux.o simulation_aux.o pmc_base.o \
                     waypoint.o
 solid_solution.o : input.o mineral.o mineral_aux.o option.o reaction_aux.o \
                    solid_solution_aux.o string.o utility.o

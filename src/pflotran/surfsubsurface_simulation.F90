@@ -138,7 +138,7 @@ subroutine SurfSubsurfaceExecuteRun(this)
   call printMsg(this%option,'SurfSubsurfaceExecuteRun()')
 
   if(.not.associated(this%surf_realization)) then
-    call this%RunToTime(final_time)
+    call this%RunToTime(final_time,this%sim_aux)
 
   else
 
@@ -150,7 +150,7 @@ subroutine SurfSubsurfaceExecuteRun(this)
       endif
 
       time = time + dt
-      call this%RunToTime(time)
+      call this%RunToTime(time,this%sim_aux)
       
       if (time >= final_time) exit
     enddo

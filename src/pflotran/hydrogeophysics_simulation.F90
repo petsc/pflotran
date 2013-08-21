@@ -155,7 +155,7 @@ subroutine HydrogeophysicsExecuteRun(this)
     dt = 365.d0*24.d0*3600.d0
     do
       current_time = min(current_time + dt,final_time)
-      call this%RunToTime(current_time)
+      call this%RunToTime(current_time,this%sim_aux)
       if (this%stop_flag > 0) exit
     enddo
   else

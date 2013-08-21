@@ -83,7 +83,7 @@ end subroutine PMCSurfaceInit
 !!
 !! date: 06/27/13
 ! ************************************************************************** !
-recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
+recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag,sim_aux)
 
   use Timestepper_Base_class
   use Output_module, only : Output
@@ -94,12 +94,14 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Surface_Flow_module
   use Surface_TH_module
   use Output_Surface_module
+  use Simulation_Aux_module
   
   implicit none
   
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
+  type(simulation_aux_type) :: sim_aux
   
   class(pmc_base_type), pointer :: pmc_base
   PetscInt :: local_stop_flag
@@ -171,7 +173,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 #if 0
     ! Run underlying process model couplers
     if (associated(this%below)) then
-      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
+      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag,sim_aux)
     endif
 #endif
     
@@ -209,7 +211,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
   ! Run neighboring process model couplers
   if (associated(this%next)) then
-    call this%next%RunToTime(sync_time,local_stop_flag)
+    call this%next%RunToTime(sync_time,local_stop_flag,sim_aux)
   endif
 
   stop_flag = max(stop_flag,local_stop_flag)

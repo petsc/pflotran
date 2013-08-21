@@ -4,6 +4,7 @@ module Simulation_Base_class
   use Option_module
   use Output_Aux_module
   use Output_module
+  use Simulation_Aux_module
   
   implicit none
 
@@ -16,6 +17,7 @@ module Simulation_Base_class
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
+    type(simulation_aux_type), pointer :: sim_aux
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun
@@ -75,6 +77,7 @@ subroutine SimulationBaseInit(this,option)
   this%option => option
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
+  this%sim_aux => SimulationAuxCreate()
   this%stop_flag = 0 
 
 end subroutine SimulationBaseInit
@@ -157,7 +160,7 @@ subroutine ExecuteRun(this)
   call printMsg(this%option,'Simulation%ExecuteRun()')
 
   final_time = SimulationGetFinalWaypointTime(this)
-  call this%RunToTime(final_time)
+  call this%RunToTime(final_time,this%sim_aux)
   
 #if 0  
   type(waypoint_type), pointer :: cur_waypoint
@@ -197,20 +200,22 @@ end subroutine ExecuteRun
 ! date: 06/11/13
 !
 ! ************************************************************************** !
-subroutine RunToTime(this,target_time)
+subroutine RunToTime(this,target_time,sim_aux)
 
   use Option_module
+  use Simulation_Aux_module
 
   implicit none
   
   class(simulation_base_type) :: this
   PetscReal :: target_time
+  type(simulation_aux_type) :: sim_aux
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
   
   call printMsg(this%option,'RunToTime()')
   
-  call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
+  call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag,sim_aux)
 
 end subroutine RunToTime
 
@@ -296,6 +301,7 @@ subroutine SimulationBaseStrip(this)
   class(simulation_base_type) :: this
   
   call printMsg(this%option,'SimulationBaseStrip()')
+  call SimulationAuxDestroy(this%sim_aux)
   
 end subroutine SimulationBaseStrip
 

@@ -192,15 +192,17 @@ end subroutine InitializeRun
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
+recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag,sim_aux)
 
   use Timestepper_Base_class
+  use Simulation_Aux_module
   
   implicit none
   
   class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
+  type(simulation_aux_type) :: sim_aux
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
@@ -244,7 +246,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     enddo
     ! Run underlying process model couplers
     if (associated(this%below)) then
-      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
+      call this%below%RunToTime(this%timestepper%target_time,local_stop_flag,sim_aux)
     endif
     
     ! only print output for process models of depth 0
@@ -276,7 +278,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   ! Run neighboring process model couplers
   if (associated(this%next)) then
-    call this%next%RunToTime(sync_time,local_stop_flag)
+    call this%next%RunToTime(sync_time,local_stop_flag,sim_aux)
   endif
 
   if (associated(this%Synchronize3)) then

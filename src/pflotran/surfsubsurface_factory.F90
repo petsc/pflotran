@@ -61,6 +61,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use Init_module
   use Surface_Flow_module
   use Surface_TH_module
+  use Simulation_Aux_module
   
   implicit none
   
@@ -128,6 +129,17 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
    endif
 
    nullify(subsurf_simulation%process_model_coupler_list)
+
+  ! Create Vectors
+  call SimulationCreateSubSurfVecs(simulation%sim_aux,simulation%realization, &
+                                   option)
+  call SimulationCreateSurfVecs(simulation%sim_aux,simulation%surf_realization, &
+                                option)
+
+  ! Create VectorScatters
+  call SimulationCreateVecScatters(simulation%sim_aux, &
+                                   simulation%realization, &
+                                   simulation%surf_realization)
 
    deallocate(simulation_old)
 
