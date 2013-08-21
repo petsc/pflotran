@@ -696,8 +696,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
             select case(option%iflowmode)
               case (RICHARDS_MODE)
-                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
-                                                 tmp)
+                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
               case (TH_MODE)
                call SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
             end select
