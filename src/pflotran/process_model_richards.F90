@@ -421,7 +421,6 @@ end subroutine PMRichardsFinalizeRun
 subroutine PMRichardsResidual(this,snes,xx,r,ierr)
 
   use Richards_module, only : RichardsResidual
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   implicit none
   
@@ -454,7 +453,6 @@ end subroutine PMRichardsResidual
 subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
 
   use Richards_module, only : RichardsJacobian
-  use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   implicit none
   

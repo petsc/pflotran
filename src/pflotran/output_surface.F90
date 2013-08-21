@@ -1585,7 +1585,6 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   use Output_Aux_module
   use Output_Common_module, only : OutputGetVarFromArray  
   use Surface_Field_module
-  use Grid_module, only : UNSTRUCTURED_GRID
 
   implicit none
   
