@@ -368,7 +368,6 @@ subroutine PMCSurfaceAccumulateAuxData(this)
   class(pmc_surface_type) :: this
 
   PetscErrorCode :: ierr
-  PetscReal :: tmp
 
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
     select type(pmc => this)
@@ -376,7 +375,7 @@ subroutine PMCSurfaceAccumulateAuxData(this)
         select case(this%option%iflowmode)
           case (RICHARDS_MODE)
             call SurfaceFlowSurf2SubsurfFlux(pmc%subsurf_realization, &
-                                             pmc%surf_realization,tmp)
+                                             pmc%surf_realization)
             call VecCopy(pmc%surf_realization%surf_field%exchange_subsurf_2_surf, &
                          pmc%sim_aux%surf_mflux_exchange_with_subsurf,ierr)
             call VecSet(pmc%surf_realization%surf_field%exchange_subsurf_2_surf,0.d0,ierr)

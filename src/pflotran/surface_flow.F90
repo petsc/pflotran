@@ -1603,7 +1603,6 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   coupler => coupler_list%first
   v_darcy_max=0.d0
   v_darcy_limit=PETSC_FALSE
-  max_allowable_dt = 1.d10
   
   !
   !            SURFACE
@@ -1678,9 +1677,6 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
             v_darcy = -hw_p(local_id)/option%surf_flow_dt
             v_darcy_limit=PETSC_TRUE
           endif
-          if(abs(v_darcy)>eps) &
-            max_allowable_dt = &
-              min(max_allowable_dt,hw_p(local_id)/abs(v_darcy)/4.d0)
         else
           ! Exfiltration is occuring
           !v_darcy=0.d0
