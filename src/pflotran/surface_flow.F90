@@ -1498,8 +1498,7 @@ end subroutine SurfaceFlowUpdateSurfBC
 !!
 !! date: 06/06/12
 ! ************************************************************************** !
-subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
-                                       max_allowable_dt)
+subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
 
   use Grid_module
   use String_module
@@ -1577,8 +1576,6 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
   PetscReal :: v_darcy_max
   PetscReal :: gravity
   PetscReal :: press_up, press_dn
-  PetscReal :: max_allowable_dt
-  PetscReal :: max_allowable_dt_glb
     
   PetscBool :: coupler_found = PETSC_FALSE
   PetscBool :: v_darcy_limit

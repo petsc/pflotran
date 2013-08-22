@@ -289,7 +289,6 @@ subroutine PMCSurfaceSynchronize2(this)
 
   class(pmc_base_type), pointer :: this
   PetscErrorCode :: ierr
-  PetscReal :: tmp
 
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
     select type(pmc => this)
@@ -297,7 +296,7 @@ subroutine PMCSurfaceSynchronize2(this)
         select case(this%option%iflowmode)
           case (RICHARDS_MODE)
             call SurfaceFlowSurf2SubsurfFlux(pmc%subsurf_realization, &
-                                             pmc%surf_realization,tmp)
+                                             pmc%surf_realization)
           case (TH_MODE)
             call SurfaceTHSurf2SubsurfFlux(pmc%subsurf_realization, &
                                            pmc%surf_realization)
