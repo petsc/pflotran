@@ -43,6 +43,9 @@ module PMC_Base_class
     procedure, public :: OutputLocal
     procedure, public :: UpdateSolution => PMCBaseUpdateSolution
     procedure, public :: Destroy => PMCBaseDestroy
+    procedure, public :: AccumulateAuxData
+    procedure, public :: GetAuxData
+    procedure, public :: SetAuxData
   end type pmc_base_type
   
   abstract interface
@@ -230,6 +233,9 @@ class(pmc_base_type), target :: this
   if (associated(this%Synchronize1)) then
     call this%Synchronize1()
   endif
+
+  ! Get data of other process-model
+  call this%GetAuxData()
   
   local_stop_flag = 0
   do
@@ -258,6 +264,10 @@ class(pmc_base_type), target :: this
       call this%timestepper%UpdateDT(cur_pm)
       cur_pm => cur_pm%next
     enddo
+
+    ! Accumulate data needed by process-model
+    call this%AccumulateAuxData()
+
     ! Run underlying process model couplers
     if (associated(this%below)) then
       call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
@@ -305,6 +315,9 @@ class(pmc_base_type), target :: this
     
   enddo
   
+  ! Set data needed by process-model
+  call this%SetAuxData()
+
   if (associated(this%Synchronize2)) then
     call this%Synchronize2()
   endif
@@ -578,6 +591,54 @@ recursive subroutine PMCBaseRestart(this,viewer)
   endif
     
 end subroutine PMCBaseRestart
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine AccumulateAuxData(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine AccumulateAuxData
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine GetAuxData(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine GetAuxData
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine SetAuxData(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine SetAuxData
 
 ! ************************************************************************** !
 !

@@ -21,14 +21,15 @@ module Simulation_Aux_module
 
     ! Size of surface cells of subsurface domain
     Vec :: subsurf_pres_top_bc
-    Vec :: subsurf_mass_flux_from_surf
-    Vec :: subsurf_heat_flux_from_surf
+    Vec :: subsurf_temp_top_bc
+    Vec :: subsurf_mflux_exchange_with_surf
+    Vec :: subsurf_hflux_exchange_with_surf
 
     ! Size of entire surface domain
     Vec :: surf_head
     Vec :: surf_temp
-    Vec :: surf_mass_flux_to_subsurf
-    Vec :: surf_heat_flux_to_subsurf
+    Vec :: surf_mflux_exchange_with_subsurf
+    Vec :: surf_hflux_exchange_with_subsurf
 
     VecScatter :: surf_to_subsurf
     VecScatter :: subsurf_to_surf
@@ -36,15 +37,15 @@ module Simulation_Aux_module
 
   end type simulation_aux_type
 
-  interface SimulationCreateVecScatters
-    module procedure SimulationCreateSurfSubSurfVScats
+  interface SimAuxCreateVecScatters
+    module procedure SimAuxCreateSurfSubSurfVScats
   end interface
 
-  public :: SimulationAuxCreate, &
-            SimulationCreateVecScatters, &
-            SimulationCreateSubSurfVecs, &
-            SimulationCreateSurfVecs, &
-            SimulationAuxDestroy
+  public :: SimAuxCreate, &
+            SimAuxCreateVecScatters, &
+            SimAuxCreateSubSurfVecs, &
+            SimAuxCreateSurfVecs, &
+            SimAuxDestroy
 
 contains
 
@@ -56,13 +57,13 @@ contains
 !!
 !! date: 08/20/13
 ! ************************************************************************** !
-function SimulationAuxCreate()
+function SimAuxCreate()
 
   use Option_module
 
   implicit none
 
-  type (simulation_aux_type),pointer :: SimulationAuxCreate
+  type (simulation_aux_type),pointer :: SimAuxCreate
 
   type (simulation_aux_type),pointer :: aux
 
@@ -72,21 +73,22 @@ function SimulationAuxCreate()
   aux%subsurf_sat = 0
   aux%subsurf_den = 0
   aux%subsurf_pres_top_bc = 0
-  aux%subsurf_mass_flux_from_surf = 0
-  aux%subsurf_heat_flux_from_surf = 0
+  aux%subsurf_temp_top_bc = 0
+  aux%subsurf_mflux_exchange_with_surf = 0
+  aux%subsurf_hflux_exchange_with_surf = 0
 
   aux%surf_head = 0
   aux%surf_temp = 0
-  aux%surf_mass_flux_to_subsurf = 0
-  aux%surf_heat_flux_to_subsurf = 0
+  aux%surf_mflux_exchange_with_subsurf = 0
+  aux%surf_hflux_exchange_with_subsurf = 0
 
   aux%surf_to_subsurf = 0
   aux%subsurf_to_surf = 0
   aux%subsurf_to_hydrogeophyics = 0
 
-  SimulationAuxCreate => aux
+  SimAuxCreate => aux
 
-end function SimulationAuxCreate
+end function SimAuxCreate
 
 ! ************************************************************************** !
 !> This routine creates VecScatter between surface-subsurface grids.
@@ -102,7 +104,7 @@ end function SimulationAuxCreate
 !!    Matrix-Matrix mulitplication
 !!
 ! ************************************************************************** !
-subroutine SimulationCreateSurfSubSurfVScats(pm_aux,realization, &
+subroutine SimAuxCreateSurfSubSurfVScats(pm_aux,realization, &
                                             surf_realization)
 
   use Grid_module
@@ -192,7 +194,7 @@ subroutine SimulationCreateSurfSubSurfVScats(pm_aux,realization, &
     cur_level => cur_level%next
   enddo
 
-  if(found.eqv.PETSC_FALSE) then
+  if (found.eqv.PETSC_FALSE) then
     option%io_buffer = 'When running with -DSURFACE_FLOW need to specify ' // &
       ' in the inputfile explicitly region: top '
     call printErrMsg(option)
@@ -370,7 +372,7 @@ subroutine SimulationCreateSurfSubSurfVScats(pm_aux,realization, &
   call VecDestroy(subsurf_petsc_ids,ierr)
   call VecDestroy(surf_petsc_ids,ierr)
 
-end subroutine SimulationCreateSurfSubSurfVScats
+end subroutine SimAuxCreateSurfSubSurfVScats
 
 ! ************************************************************************** !
 !> This subroutine creates a single vector scatter context
@@ -460,7 +462,7 @@ subroutine SimulationCreateSurfSubSurfVScat( &
   field      => realization%field
   surf_field => surf_realization%surf_field
   
-  if(option%mycommsize > 1) then
+  if (option%mycommsize > 1) then
     ! From the MPI-Matrix get the local-matrix
     call MatMPIAIJGetLocalMat(prod_mat,MAT_INITIAL_MATRIX,prod_loc_mat,ierr)
     ! Get i and j indices of the local-matrix
@@ -481,12 +483,12 @@ subroutine SimulationCreateSurfSubSurfVScat( &
   do ii = 1,nrow
     max_value = 0.d0
     do jj = ia_p(ii),ia_p(ii + 1) - 1
-      if(aa(aaa+ jj) > max_value) then
+      if (aa(aaa+ jj) > max_value) then
         corr_v2_ids(ii) = ja_p(jj)
         max_value = aa(aaa+ jj)
       endif
     enddo
-    if(max_value<3) then
+    if (max_value<3) then
       option%io_buffer = 'Atleast three vertices need to form a face'
       call printErrMsg(option)
     endif
@@ -526,8 +528,8 @@ subroutine SimulationCreateSurfSubSurfVScat( &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
 #if UGRID_DEBUG
-  if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
-  if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
+  if (source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
+  if (source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
   string = 'corr_dest_ids_vec_' // trim(string) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
@@ -536,11 +538,11 @@ subroutine SimulationCreateSurfSubSurfVScat( &
 #endif
 
   call VecDestroy(corr_dest_ids_vec,ierr)
-  if(option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
+  if (option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
 
 #if UGRID_DEBUG
-  if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
-  if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
+  if (source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
+  if (source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
   string = 'scatter_bet_grids_' // trim(string) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
@@ -558,7 +560,7 @@ end subroutine SimulationCreateSurfSubSurfVScat
 !!
 !! date: 08/20/13
 ! ************************************************************************** !
-subroutine SimulationCreateSubSurfVecs(aux,subsurf_realization,option)
+subroutine SimAuxCreateSubSurfVecs(aux,subsurf_realization,option)
 
   use Realization_class
   use Coupler_module
@@ -579,38 +581,45 @@ subroutine SimulationCreateSubSurfVecs(aux,subsurf_realization,option)
   PetscInt :: found_global
   PetscErrorCode :: ierr
 
-  call VecDuplicate(subsurf_realization%field%work_loc,aux%subsurf_pres,ierr)
-  call VecDuplicate(subsurf_realization%field%work_loc,aux%subsurf_temp,ierr)
-  call VecDuplicate(subsurf_realization%field%work_loc,aux%subsurf_sat,ierr)
-  call VecDuplicate(subsurf_realization%field%work_loc,aux%subsurf_den,ierr)
+  call VecCreate(option%mycomm,aux%subsurf_pres,ierr)
+  call VecSetSizes(aux%subsurf_pres, &
+                   subsurf_realization%discretization%grid%nlmax, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(aux%subsurf_pres,ierr)
+  call VecSet(aux%subsurf_pres,0.d0,ierr)
+
+  call VecDuplicate(aux%subsurf_pres,aux%subsurf_temp,ierr)
+  call VecDuplicate(aux%subsurf_pres,aux%subsurf_sat,ierr)
+  call VecDuplicate(aux%subsurf_pres,aux%subsurf_den,ierr)
 
   found = 0
   num_conn = 0
   coupler_list => subsurf_realization%patch%source_sinks
   coupler => coupler_list%first
   do
-    if(.not.associated(coupler)) exit
-    if(StringCompare(coupler%name,'from_surface_ss')) then
+    if (.not.associated(coupler)) exit
+    if (StringCompare(coupler%name,'from_surface_ss')) then
       num_conn = coupler%connection_set%num_connections
       found = 1
     endif
     coupler => coupler%next
   enddo
 
-  call MPI_Reduce(found,found_global,ONE_INTEGER_MPI,MPI_INTEGER,MPI_MAX, &
-                  option%io_rank,option%mycomm,ierr)
+  call MPI_AllReduce(found,found_global,ONE_INTEGER_MPI,MPI_INTEGER,MPI_MAX, &
+                     option%mycomm,ierr)
   if (found_global > 0) then
     call VecCreate(option%mycomm,aux%subsurf_pres_top_bc,ierr)
     call VecSetSizes(aux%subsurf_pres_top_bc,num_conn,PETSC_DECIDE,ierr)
     call VecSetFromOptions(aux%subsurf_pres_top_bc,ierr)
     call VecSet(aux%subsurf_pres_top_bc,0.d0,ierr)
 
-    call VecDuplicate(aux%subsurf_pres_top_bc,aux%subsurf_mass_flux_from_surf,ierr)
-    call VecDuplicate(aux%subsurf_pres_top_bc,aux%subsurf_heat_flux_from_surf,ierr)
+    if (option%iflowmode == TH_MODE) &
+      call VecDuplicate(aux%subsurf_pres_top_bc,aux%subsurf_temp_top_bc,ierr)
+    call VecDuplicate(aux%subsurf_pres_top_bc,aux%subsurf_mflux_exchange_with_surf,ierr)
+    call VecDuplicate(aux%subsurf_pres_top_bc,aux%subsurf_hflux_exchange_with_surf,ierr)
   endif
 
-
-end subroutine SimulationCreateSubSurfVecs
+end subroutine SimAuxCreateSubSurfVecs
 
 ! ************************************************************************** !
 !> This routine creates surface vectors.
@@ -620,7 +629,7 @@ end subroutine SimulationCreateSubSurfVecs
 !!
 !! date: 08/20/13
 ! ************************************************************************** !
-subroutine SimulationCreateSurfVecs(aux,surf_realization,option)
+subroutine SimAuxCreateSurfVecs(aux,surf_realization,option)
 
   use Surface_Realization_class
   use Option_module
@@ -633,12 +642,17 @@ subroutine SimulationCreateSurfVecs(aux,surf_realization,option)
 
   PetscErrorCode :: ierr
 
-  call VecDuplicate(surf_realization%surf_field%work_loc,aux%surf_head,ierr)
-  call VecDuplicate(surf_realization%surf_field%work_loc,aux%surf_temp,ierr)
-  call VecDuplicate(surf_realization%surf_field%work_loc,aux%surf_mass_flux_to_subsurf,ierr)
-  call VecDuplicate(surf_realization%surf_field%work_loc,aux%surf_heat_flux_to_subsurf,ierr)
+  call VecCreate(option%mycomm,aux%surf_head,ierr)
+  call VecSetSizes(aux%surf_head,surf_realization%discretization%grid%nlmax, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(aux%surf_head,ierr)
+  call VecSet(aux%surf_head,0.d0,ierr)
 
-end subroutine SimulationCreateSurfVecs
+  call VecDuplicate(aux%surf_head,aux%surf_temp,ierr)
+  call VecDuplicate(aux%surf_head,aux%surf_mflux_exchange_with_subsurf,ierr)
+  call VecDuplicate(aux%surf_head,aux%surf_hflux_exchange_with_subsurf,ierr)
+
+end subroutine SimAuxCreateSurfVecs
 
 ! ************************************************************************** !
 !> This routine deallocates auxillary object.
@@ -648,7 +662,7 @@ end subroutine SimulationCreateSurfVecs
 !!
 !! date: 08/20/13
 ! ************************************************************************** !
-subroutine SimulationAuxDestroy(aux)
+subroutine SimAuxDestroy(aux)
 
   implicit none
 
@@ -656,28 +670,29 @@ subroutine SimulationAuxDestroy(aux)
 
   PetscErrorCode :: ierr
 
-  if(aux%subsurf_pres /= 0) call VecDestroy(aux%subsurf_pres,ierr)
-  if(aux%subsurf_temp /= 0) call VecDestroy(aux%subsurf_temp,ierr)
-  if(aux%subsurf_sat /= 0) call VecDestroy(aux%subsurf_sat,ierr)
-  if(aux%subsurf_den /= 0) call VecDestroy(aux%subsurf_den,ierr)
-  if(aux%subsurf_pres_top_bc /= 0) call VecDestroy(aux%subsurf_pres_top_bc,ierr)
-  if(aux%subsurf_mass_flux_from_surf /= 0) &
-    call VecDestroy(aux%subsurf_mass_flux_from_surf,ierr)
-  if(aux%subsurf_heat_flux_from_surf /= 0) &
-    call VecDestroy(aux%subsurf_heat_flux_from_surf,ierr)
+  if (aux%subsurf_pres /= 0) call VecDestroy(aux%subsurf_pres,ierr)
+  if (aux%subsurf_temp /= 0) call VecDestroy(aux%subsurf_temp,ierr)
+  if (aux%subsurf_sat /= 0) call VecDestroy(aux%subsurf_sat,ierr)
+  if (aux%subsurf_den /= 0) call VecDestroy(aux%subsurf_den,ierr)
+  if (aux%subsurf_pres_top_bc /= 0) call VecDestroy(aux%subsurf_pres_top_bc,ierr)
+  if (aux%subsurf_temp_top_bc /= 0) call VecDestroy(aux%subsurf_temp_top_bc,ierr)
+  if (aux%subsurf_mflux_exchange_with_surf /= 0) &
+    call VecDestroy(aux%subsurf_mflux_exchange_with_surf,ierr)
+  if (aux%subsurf_hflux_exchange_with_surf /= 0) &
+    call VecDestroy(aux%subsurf_hflux_exchange_with_surf,ierr)
 
-  if(aux%surf_head /= 0) call VecDestroy(aux%surf_head,ierr)
-  if(aux%surf_temp /= 0) call VecDestroy(aux%surf_temp,ierr)
-  if(aux%surf_mass_flux_to_subsurf /= 0) &
-    call VecDestroy(aux%surf_mass_flux_to_subsurf,ierr)
-  if(aux%surf_heat_flux_to_subsurf /= 0) &
-    call VecDestroy(aux%surf_heat_flux_to_subsurf,ierr)
+  if (aux%surf_head /= 0) call VecDestroy(aux%surf_head,ierr)
+  if (aux%surf_temp /= 0) call VecDestroy(aux%surf_temp,ierr)
+  if (aux%surf_mflux_exchange_with_subsurf /= 0) &
+    call VecDestroy(aux%surf_mflux_exchange_with_subsurf,ierr)
+  if (aux%surf_hflux_exchange_with_subsurf /= 0) &
+    call VecDestroy(aux%surf_hflux_exchange_with_subsurf,ierr)
 
-  if(aux%surf_to_subsurf /= 0) call VecScatterDestroy(aux%surf_to_subsurf,ierr)
-  if(aux%subsurf_to_surf /= 0) call VecScatterDestroy(aux%subsurf_to_surf,ierr)
-  if(aux%subsurf_to_hydrogeophyics /= 0) &
+  if (aux%surf_to_subsurf /= 0) call VecScatterDestroy(aux%surf_to_subsurf,ierr)
+  if (aux%subsurf_to_surf /= 0) call VecScatterDestroy(aux%subsurf_to_surf,ierr)
+  if (aux%subsurf_to_hydrogeophyics /= 0) &
     call VecScatterDestroy(aux%subsurf_to_hydrogeophyics,ierr)
 
-end subroutine SimulationAuxDestroy
+end subroutine SimAuxDestroy
 
 end module Simulation_Aux_module

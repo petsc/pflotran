@@ -18,6 +18,9 @@ module PMC_Surface_class
   contains
     procedure, public :: Init => PMCSurfaceInit
     procedure, public :: RunToTime => PMCSurfaceRunToTime
+    procedure, public :: AccumulateAuxData => PMCSurfaceAccumulateAuxData
+    procedure, public :: GetAuxData => PMCSurfaceGetAuxData
+    procedure, public :: SetAuxData => PMCSurfaceSetAuxData
   end type pmc_surface_type
 
   public :: PMCSurfaceCreate
@@ -116,8 +119,11 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     !geh: PGI requires cast to base
     !call this%Synchronize1()
     pmc_base => this%CastToBase()
-    call pmc_base%Synchronize1()
+    !call pmc_base%Synchronize1()
   endif
+
+  ! Get data of other process-model
+  call this%GetAuxData()
 
   local_stop_flag = 0
   do
@@ -148,8 +154,11 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     if (associated(this%Synchronize2)) then
       !geh: PGI requires cast to base
       pmc_base => this%CastToBase()
-      call pmc_base%Synchronize2()
+      !call pmc_base%Synchronize2()
     endif
+
+    ! Accumulate data needed by process-model
+    call this%AccumulateAuxData()
 
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
@@ -204,8 +213,11 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   this%option%surf_flow_time = this%timestepper%target_time
 
   if (associated(this%Synchronize3)) then
-    call this%Synchronize3()
+    !call this%Synchronize3()
   endif
+
+  ! Set data needed by process-model
+  call this%SetAuxData()
 
   ! Run neighboring process model couplers
   if (associated(this%next)) then
@@ -337,6 +349,146 @@ subroutine PMCSurfaceSynchronize3(this)
   
 end subroutine PMCSurfaceSynchronize3
 
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine PMCSurfaceAccumulateAuxData(this)
+
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+
+  implicit none
+
+  class(pmc_surface_type) :: this
+
+  PetscErrorCode :: ierr
+  PetscReal :: tmp
+
+  if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call SurfaceFlowSurf2SubsurfFlux(pmc%subsurf_realization, &
+                                             pmc%surf_realization,tmp)
+            call VecCopy(pmc%surf_realization%surf_field%exchange_subsurf_2_surf, &
+                         pmc%sim_aux%surf_mflux_exchange_with_subsurf,ierr)
+            call VecSet(pmc%surf_realization%surf_field%exchange_subsurf_2_surf,0.d0,ierr)
+          case (TH_MODE)
+            call SurfaceTHSurf2SubsurfFlux(pmc%subsurf_realization, &
+                                           pmc%surf_realization)
+            this%option%io_buffer='Extend PMCSurfaceAccumulateAuxData for TH'
+            call printErrMsg(this%option)
+        end select
+    end select
+  endif
+
+end subroutine PMCSurfaceAccumulateAuxData
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine PMCSurfaceGetAuxData(this)
+
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pmc_surface_type) :: this
+
+  PetscErrorCode :: ierr
+
+  if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 pmc%surf_realization%surf_field%press_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               pmc%surf_realization%surf_field%press_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+          case (TH_MODE)
+            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
+                                           pmc%surf_realization)
+            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
+            call printErrMsg(this%option)
+        end select
+    end select
+  endif
+
+end subroutine PMCSurfaceGetAuxData
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine PMCSurfaceSetAuxData(this)
+
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pmc_surface_type) :: this
+
+  PetscReal :: dt
+  PetscErrorCode :: ierr
+
+  dt = this%option%surf_subsurf_coupling_flow_dt
+
+  if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call VecScatterBegin(pmc%sim_aux%surf_to_subsurf, &
+                                 pmc%sim_aux%surf_mflux_exchange_with_subsurf, &
+                                 pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%surf_to_subsurf, &
+                               pmc%sim_aux%surf_mflux_exchange_with_subsurf, &
+                               pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+          case (TH_MODE)
+            call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
+                                            pmc%surf_realization,dt)
+            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
+            call printErrMsg(this%option)
+        end select
+    end select
+  endif
+
+end subroutine PMCSurfaceSetAuxData
+
 ! ************************************************************************** !
 !> This routine
 !!
@@ -351,7 +503,7 @@ recursive subroutine PMCSurfaceFinalizeRun(this)
   
   implicit none
   
-  class(pmc_surface_type) :: this
+  class(pmc_surface_type), target :: this
   
   call printMsg(this%option,'PMCSurface%FinalizeRun()')
   

@@ -62,6 +62,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use Surface_Flow_module
   use Surface_TH_module
   use Simulation_Aux_module
+  use PMC_Base_class
   
   implicit none
   
@@ -71,6 +72,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   type(surface_simulation_type) :: surf_simulation
   type(subsurface_simulation_type) :: subsurf_simulation
   type(simulation_type), pointer :: simulation_old
+  class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscInt :: init_status
   
   ! process command line arguments specific to subsurface
@@ -100,6 +102,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     surf_simulation%process_model_coupler_list%next => &
       subsurf_simulation%process_model_coupler_list
     surf_simulation%surf_flow_process_model_coupler%subsurf_realization => &
+      simulation_old%realization
+    simulation%flow_process_model_coupler%realization => &
       simulation_old%realization
 
     simulation%surf_realization => simulation_old%surf_realization
@@ -131,13 +135,13 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
    nullify(subsurf_simulation%process_model_coupler_list)
 
   ! sim_aux: Create PETSc Vectors
-  call SimulationCreateSubSurfVecs(simulation%sim_aux,simulation%realization, &
+  call SimAuxCreateSubSurfVecs(simulation%sim_aux,simulation%realization, &
                                    option)
-  call SimulationCreateSurfVecs(simulation%sim_aux,simulation%surf_realization, &
+  call SimAuxCreateSurfVecs(simulation%sim_aux,simulation%surf_realization, &
                                 option)
 
   ! sim_aux: Create PETSc VectorScatters
-  call SimulationCreateVecScatters(simulation%sim_aux, &
+  call SimAuxCreateVecScatters(simulation%sim_aux, &
                                    simulation%realization, &
                                    simulation%surf_realization)
 
@@ -148,7 +152,15 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   if(associated(surf_simulation%surf_flow_process_model_coupler)) &
     surf_simulation%surf_flow_process_model_coupler%sim_aux => simulation%sim_aux
 
-   deallocate(simulation_old)
+  ! Set data in sim_aux
+  cur_process_model_coupler => simulation%process_model_coupler_list
+  call cur_process_model_coupler%SetAuxData()
+  if (associated(cur_process_model_coupler%next)) then
+    cur_process_model_coupler => cur_process_model_coupler%next
+    call cur_process_model_coupler%SetAuxData()
+  endif
+
+  deallocate(simulation_old)
 
 end subroutine SurfSubsurfaceInitializePostPETSc
 

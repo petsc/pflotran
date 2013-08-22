@@ -77,7 +77,7 @@ subroutine SimulationBaseInit(this,option)
   this%option => option
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
-  this%sim_aux => SimulationAuxCreate()
+  this%sim_aux => SimAuxCreate()
   this%stop_flag = 0 
 
 end subroutine SimulationBaseInit
@@ -291,7 +291,7 @@ subroutine SimulationBaseStrip(this)
   class(simulation_base_type) :: this
   
   call printMsg(this%option,'SimulationBaseStrip()')
-  call SimulationAuxDestroy(this%sim_aux)
+  call SimAuxDestroy(this%sim_aux)
   
 end subroutine SimulationBaseStrip
 
