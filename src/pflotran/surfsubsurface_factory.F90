@@ -136,15 +136,22 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
    nullify(subsurf_simulation%process_model_coupler_list)
 
   ! sim_aux: Create PETSc Vectors
-  call SimAuxCreateSubSurfVecs(simulation%sim_aux,simulation%realization, &
+  !call SimAuxCreateSubSurfVecs(simulation%sim_aux,simulation%realization, &
+  !                                 option)
+  !call SimAuxCreateSurfVecs(simulation%sim_aux,simulation%surf_realization, &
+  !                              option)
+  call SimAuxCreateSubSurfVecs(simulation%sim_aux,simulation_old%realization, &
                                    option)
-  call SimAuxCreateSurfVecs(simulation%sim_aux,simulation%surf_realization, &
+  call SimAuxCreateSurfVecs(simulation%sim_aux,simulation_old%surf_realization, &
                                 option)
 
   ! sim_aux: Create PETSc VectorScatters
+  !call SimAuxCreateVecScatters(sim%sim_aux, &
+  !                                 simulation%realization, &
+  !                                 simulation%surf_realization)
   call SimAuxCreateVecScatters(simulation%sim_aux, &
-                                   simulation%realization, &
-                                   simulation%surf_realization)
+                                   simulation_old%realization, &
+                                   simulation_old%surf_realization)
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux

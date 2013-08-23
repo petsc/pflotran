@@ -569,12 +569,12 @@ subroutine SimAuxCreateSubSurfVecs(aux,subsurf_realization,option)
 
   implicit none
 
-  type(simulation_aux_type) :: aux
+  type(simulation_aux_type),pointer :: aux
   type(realization_type),pointer :: subsurf_realization
+  type(option_type),pointer :: option
 
   type(coupler_list_type),pointer :: coupler_list
   type(coupler_type),pointer :: coupler
-  type(option_type) :: option
 
   PetscInt :: num_conn
   PetscInt :: found
@@ -636,9 +636,9 @@ subroutine SimAuxCreateSurfVecs(aux,surf_realization,option)
 
   implicit none
 
-  type(simulation_aux_type) :: aux
+  type(simulation_aux_type),pointer :: aux
   type(surface_realization_type),pointer :: surf_realization
-  type(option_type) :: option
+  type(option_type),pointer :: option
 
   PetscErrorCode :: ierr
 
