@@ -7,6 +7,7 @@ module PMC_Base_class
   use Waypoint_module
   use Process_Model_module
   use Output_module, only : Output
+  use Simulation_Aux_module
   
   implicit none
 
@@ -25,6 +26,7 @@ module PMC_Base_class
     class(pmc_base_type), pointer :: below
     class(pmc_base_type), pointer :: next
     type(pm_pointer_type), pointer :: pm_ptr
+    type(simulation_aux_type),pointer :: sim_aux
     procedure(Output), nopass, pointer :: Output
     procedure(Synchronize), pointer :: Synchronize1
     procedure(Synchronize), pointer :: Synchronize2
@@ -41,6 +43,9 @@ module PMC_Base_class
     procedure, public :: OutputLocal
     procedure, public :: UpdateSolution => PMCBaseUpdateSolution
     procedure, public :: Destroy => PMCBaseDestroy
+    procedure, public :: AccumulateAuxData
+    procedure, public :: GetAuxData
+    procedure, public :: SetAuxData
   end type pmc_base_type
   
   abstract interface
@@ -108,6 +113,7 @@ subroutine PMCBaseInit(this)
   nullify(this%waypoints)
   nullify(this%below)
   nullify(this%next)
+  nullify(this%sim_aux)
   this%Output => Null()
   this%Synchronize1 => Null()
   this%Synchronize2 => Null()
@@ -211,6 +217,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 class(pmc_base_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
+  type(simulation_aux_type) :: sim_aux
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
@@ -226,6 +233,9 @@ class(pmc_base_type), target :: this
   if (associated(this%Synchronize1)) then
     call this%Synchronize1()
   endif
+
+  ! Get data of other process-model
+  call this%GetAuxData()
   
   local_stop_flag = 0
   do
@@ -254,6 +264,10 @@ class(pmc_base_type), target :: this
       call this%timestepper%UpdateDT(cur_pm)
       cur_pm => cur_pm%next
     enddo
+
+    ! Accumulate data needed by process-model
+    call this%AccumulateAuxData()
+
     ! Run underlying process model couplers
     if (associated(this%below)) then
       call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
@@ -301,6 +315,9 @@ class(pmc_base_type), target :: this
     
   enddo
   
+  ! Set data needed by process-model
+  call this%SetAuxData()
+
   if (associated(this%Synchronize2)) then
     call this%Synchronize2()
   endif
@@ -574,6 +591,54 @@ recursive subroutine PMCBaseRestart(this,viewer)
   endif
     
 end subroutine PMCBaseRestart
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine AccumulateAuxData(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine AccumulateAuxData
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine GetAuxData(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine GetAuxData
+
+! ************************************************************************** !
+!> This routine
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 08/21/13
+! ************************************************************************** !
+subroutine SetAuxData(this)
+
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+end subroutine SetAuxData
 
 ! ************************************************************************** !
 !

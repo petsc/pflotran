@@ -784,7 +784,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           if ( abs(v_darcy) > surf_aux_vars(ghosted_id)%unfrozen_fraction * &
                               xx_p(local_id)/option%surf_flow_dt ) then
             v_darcy = surf_aux_vars(ghosted_id)%unfrozen_fraction * &
-                      -xx_p(local_id)/option%surf_flow_dt 
+                      (-xx_p(local_id)/option%surf_flow_dt)
             v_darcy_limit=PETSC_TRUE
           endif
           temp_half = surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0

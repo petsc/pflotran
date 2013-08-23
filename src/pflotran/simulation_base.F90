@@ -4,6 +4,7 @@ module Simulation_Base_class
   use Option_module
   use Output_Aux_module
   use Output_module
+  use Simulation_Aux_module
   
   implicit none
 
@@ -16,6 +17,7 @@ module Simulation_Base_class
     type(output_option_type), pointer :: output_option
     PetscInt :: stop_flag
     class(pmc_base_type), pointer :: process_model_coupler_list
+    type(simulation_aux_type), pointer :: sim_aux
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun
@@ -75,6 +77,7 @@ subroutine SimulationBaseInit(this,option)
   this%option => option
   nullify(this%output_option)
   nullify(this%process_model_coupler_list)
+  this%sim_aux => SimAuxCreate()
   this%stop_flag = 0 
 
 end subroutine SimulationBaseInit
@@ -186,6 +189,7 @@ end subroutine ExecuteRun
 subroutine RunToTime(this,target_time)
 
   use Option_module
+  use Simulation_Aux_module
 
   implicit none
   
@@ -287,6 +291,7 @@ subroutine SimulationBaseStrip(this)
   class(simulation_base_type) :: this
   
   call printMsg(this%option,'SimulationBaseStrip()')
+  call SimAuxDestroy(this%sim_aux)
   
 end subroutine SimulationBaseStrip
 
