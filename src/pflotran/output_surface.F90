@@ -1794,8 +1794,6 @@ function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
 
 end function OutputSurfaceHDF5FilenameID
 
-end module Output_Surface_module
-
 ! ************************************************************************** !
 !> This returns mass/energy flowrate at all faces of a control volume for
 !! surface realizaton.
@@ -2275,5 +2273,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5SurfaceFlowratesUGrid
+
+end module Output_Surface_module
 
 #endif
