@@ -2,11 +2,13 @@ module Matrix_Block_Aux_module
 
   ! this module cannot depend on any other modules beside Option_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: matrix_block_auxvar_type
 

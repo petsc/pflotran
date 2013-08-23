@@ -7,11 +7,13 @@ module Condition_Control_module
   ! and patches without calling underlying level/patch versions of the
   ! subroutines, which is common in realization.F90 - GEH
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 

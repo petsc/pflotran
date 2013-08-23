@@ -8,11 +8,13 @@ module Constraint_module
   use Mineral_Aux_module
   use Immobile_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! concentration subcondition types
   PetscInt, parameter, public :: CONSTRAINT_NULL = 0

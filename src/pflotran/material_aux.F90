@@ -1,10 +1,12 @@
 module Material_Aux_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: material_auxvar_type
     PetscReal, pointer :: sir(:,:)

@@ -2,11 +2,13 @@ module Solid_Solution_Aux_module
   
   use Mineral_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: solid_solution_type
     character(len=MAXWORDLENGTH) :: name

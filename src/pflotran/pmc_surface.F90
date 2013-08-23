@@ -6,9 +6,11 @@ module PMC_Surface_class
   use Surface_Realization_class
   use Timestepper_Surface_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   private
 

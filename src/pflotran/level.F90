@@ -2,11 +2,13 @@ module Level_module
 
   use Patch_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: level_type 
     

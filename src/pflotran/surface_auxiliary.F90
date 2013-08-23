@@ -6,11 +6,13 @@ module Surface_Auxiliary_module
 !  use Surface_Flow_Aux_module
   use Surface_TH_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: surface_auxiliary_type
     type(surface_global_type), pointer :: SurfaceGlobal

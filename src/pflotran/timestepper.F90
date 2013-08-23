@@ -4,11 +4,13 @@ module Timestepper_module
   use Waypoint_module 
   use Convergence_module 
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscInt, parameter, public :: TIMESTEPPER_INIT_PROCEED = 0
   PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1

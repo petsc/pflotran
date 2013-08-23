@@ -1,10 +1,12 @@
 module Reaction_Sandbox_Base_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, abstract, public :: reaction_sandbox_base_type
     class(reaction_sandbox_base_type), pointer :: next

@@ -4,11 +4,13 @@ module Coupler_module
   use Connection_module
   use Region_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! coupler types
   PetscInt, parameter, public :: INITIAL_COUPLER_TYPE = 1

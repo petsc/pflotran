@@ -2,7 +2,7 @@ module co2eos_module
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public HENRY_co2_noderiv,VISCO2,duanco2,denmix,Henry_duan_sun, &
          Henry_duan_sun_0NaCl,CO2
@@ -55,6 +55,8 @@ contains
 !********1*********2*********3*********4*********5*********6*********7**
 subroutine CO2(TX,PCX,DC,FC,PHI,HC)
       
+  use PFLOTRAN_Constants_module
+
       implicit none
       
       PetscReal :: AT,T,TOL,TX,PCX,DC,DV,FC,PHI,H,HC,XMWC,R,B,V, &

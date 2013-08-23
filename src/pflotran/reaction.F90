@@ -24,11 +24,13 @@ module Reaction_module
   !           include the module.  Remove once Intel fixes its bug.
   use Reaction_Sandbox_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
  
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   

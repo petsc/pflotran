@@ -3,11 +3,13 @@ module Structured_Communicator_class
   use Communicator_Base_module
   use Structured_Grid_module  
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"

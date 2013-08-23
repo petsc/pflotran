@@ -6,9 +6,11 @@ module Synchronizer_module
   use Output_Aux_module
   use Waypoint_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   private
 

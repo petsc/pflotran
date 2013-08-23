@@ -1,8 +1,10 @@
   module co2_sw_rtsafe_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   contains
 

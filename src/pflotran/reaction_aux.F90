@@ -10,11 +10,13 @@ module Reaction_Aux_module
   use Solid_Solution_Aux_module
 #endif
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! activity coefficients
   PetscInt, parameter, public :: ACT_COEF_FREQUENCY_OFF = 0

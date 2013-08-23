@@ -14,11 +14,13 @@ module Auxiliary_module
   use Material_Aux_module
   use Secondary_Continuum_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: auxiliary_type 
     type(global_type), pointer :: Global

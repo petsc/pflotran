@@ -5,11 +5,13 @@ module Reaction_Sandbox_CLM_CN_class
   use Global_Aux_module
   use Reactive_Transport_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
                           ! 14.00674d0 / 12.011d0
   PetscReal, parameter :: CN_ratio_mass_to_mol = 1.16616d0 

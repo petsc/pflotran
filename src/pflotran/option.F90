@@ -2,11 +2,13 @@ module Option_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 
   type, public :: option_type 

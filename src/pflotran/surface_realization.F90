@@ -19,12 +19,14 @@ module Surface_Realization_class
   use Reaction_Aux_module
   use Output_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
 private
 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscReal, parameter :: eps       = 1.D-8
 

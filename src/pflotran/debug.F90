@@ -1,10 +1,12 @@
 module Debug_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: flow_debug_type
     PetscBool :: vecview_residual

@@ -2,11 +2,13 @@ module Microbial_Aux_module
   
   use Database_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscInt, parameter :: INHIBITION_THRESHOLD = 1
   PetscInt, parameter :: INHIBITION_THERMODYNAMIC = 2

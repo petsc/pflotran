@@ -11,11 +11,13 @@ module Surf_Subsurf_Simulation_class
   use Realization_class
   use Surface_Realization_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public, extends(subsurface_simulation_type) :: surfsubsurface_simulation_type
     class(pmc_surface_type), pointer    :: surf_flow_process_model_coupler

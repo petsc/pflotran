@@ -1,6 +1,6 @@
 module Block_Tridiag_module
 
-#include "definitions.h"      
+#include "finclude/petscsys.h"
 
   private
 
@@ -12,6 +12,8 @@ contains
       
 subroutine decbt (m, n, ndim, a, b, c, ip, ier)
       
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   PetscInt :: m,n,ndim,ip(ndim,n),ier

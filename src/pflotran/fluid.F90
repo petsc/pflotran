@@ -1,10 +1,12 @@
 module Fluid_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: fluid_property_type
     PetscReal :: tort_bin_diff

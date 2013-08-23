@@ -2,9 +2,11 @@ module Sub_Grid_module
 
   use Auxilliary_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   private
 

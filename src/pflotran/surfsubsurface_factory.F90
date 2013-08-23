@@ -3,11 +3,13 @@ module Surf_Subsurf_Factory_module
 
   use Surf_Subsurf_Simulation_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: SurfSubsurfaceInitialize
 

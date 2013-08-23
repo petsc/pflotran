@@ -3,11 +3,13 @@
 
 module Surface_Flow_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 !  PetscInt, parameter, public :: KINEMATIC_WAVE = 1
 !  PetscInt, parameter, public :: DIFFUSION_WAVE = 2
   

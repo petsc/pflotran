@@ -5,9 +5,11 @@ module HDF5_Aux_module
 #endif
   use Logging_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   private
 

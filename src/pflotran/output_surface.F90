@@ -7,11 +7,13 @@ module Output_Surface_module
   use Output_HDF5_module
   use Output_Tecplot_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"
@@ -1825,7 +1827,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(surface_realization_type) :: surf_realization
   type(option_type), pointer :: option
@@ -2035,7 +2037,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(surface_realization_type) :: surf_realization
   type(option_type), pointer :: option
