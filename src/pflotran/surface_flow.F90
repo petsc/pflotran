@@ -31,11 +31,14 @@ module Surface_Flow_module
          SurfaceFlowComputeMaxDt, &
          SurfaceFlowGetTecplotHeader, &
          SurfaceFlowCreateSurfSubsurfVec, &
+         SurfaceFlowCreateSurfSubsurfVecNew, &
          SurfaceFlowUpdateSubsurfSS, &
          SurfaceFlowUpdateSurfBC, &
          SurfaceFlowSurf2SubsurfFlux, &
          SurfaceFlowGetSubsurfProp, &
-         SurfaceFlowUpdateAuxVars
+         SurfaceFlowUpdateAuxVars, &
+         SurfaceFlowUpdateSurfState, &
+         SurfaceFlowUpdateSubsurfBC
 
 contains
 
@@ -1802,6 +1805,374 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
   endif
 
 end subroutine SurfaceFlowCreateSurfSubsurfVec
+
+! ************************************************************************** !
+!> This routine creates a MPI vector to exchanged data from subsurface model
+!! to surface model.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 07/29/13
+! ************************************************************************** !
+subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
+
+  use Grid_module
+  use String_module
+  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+  use Realization_class
+  use Option_module
+  use Level_module
+  use Patch_module
+  use Region_module
+  use Condition_module
+  use Coupler_module
+  use Surface_Field_module
+  use Water_EOS_module
+  use Discretization_module
+  use Surface_Realization_class
+  use Realization_Base_class
+  use DM_Kludge_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(realization_type)         :: realization
+  type(surface_realization_type) :: surf_realization
+
+  type(patch_type),pointer            :: patch,surf_patch
+  type(grid_type),pointer             :: grid,surf_grid
+  type(coupler_list_type), pointer    :: coupler_list
+  type(coupler_type), pointer         :: coupler
+  type(flow_condition_type), pointer  :: flow_condition
+  type(option_type), pointer          :: option
+  type(surface_field_type),pointer    :: surf_field
+  type(dm_ptr_type), pointer          :: dm_ptr
+  
+  Vec            :: destin_mpi_vec, source_mpi_vec
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: xx_loc_p(:),vec_p(:)
+  PetscReal :: den          ! density      [kg/m^3]
+  PetscInt :: local_id,i
+  PetscInt :: iconn
+  
+  PetscBool :: coupler_found = PETSC_FALSE
+
+  patch      => realization%patch
+  surf_patch => surf_realization%patch
+  option     => realization%option
+  grid       => realization%discretization%grid
+  surf_grid  => surf_realization%discretization%grid
+  surf_field => surf_realization%surf_field
+
+  coupler_list => patch%boundary_conditions
+  coupler => coupler_list%first
+  do
+    if (.not.associated(coupler)) exit
+    ! FLOW
+    if (associated(coupler%flow_aux_real_var)) then
+      ! Find the Source/Sink from the list of Source/Sinks
+      if(StringCompare(coupler%name,'from_surface_bc')) then
+        if(coupler%flow_condition%pressure%itype/=HET_SURF_SEEPAGE_BC) then
+          option%io_buffer = 'Flow condition from_surface_bc should be ' // &
+            'heterogeneous_surface_seepage'
+          call printErrMsg(option)
+        endif
+        coupler_found = PETSC_TRUE
+        if(surf_realization%first_time) then
+          call VecCreate(option%mycomm,surf_field%subsurf_temp_vec_1dof,ierr)
+          call VecSetSizes(surf_field%subsurf_temp_vec_1dof, &
+                           coupler%connection_set%num_connections,PETSC_DECIDE,ierr)
+          call VecSetFromOptions(surf_field%subsurf_temp_vec_1dof,ierr)
+          call VecSet(surf_field%subsurf_temp_vec_1dof,0.d0,ierr)
+
+          call VecDuplicate(surf_field%subsurf_temp_vec_1dof, &
+                            surf_field%subsurf_avg_vdarcy, ierr)
+        endif
+      endif
+    endif
+    
+    coupler => coupler%next
+  enddo
+
+  if(.not.coupler_found) then
+    option%io_buffer = 'Missing within the input deck for subsurface ' // &
+      'boundary condition named from_surface_bc.'
+    call printErrMsg(option)
+  endif
+
+end subroutine SurfaceFlowCreateSurfSubsurfVecNew
+
+! ************************************************************************** !
+!> This routine gets updated values of standing water at the end of 
+!! subsurface-flow model timestep.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 07/30/13
+! ************************************************************************** !
+subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
+
+  use Connection_module
+  use Coupler_module
+  use Discretization_module
+  use DM_Kludge_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  use Realization_class
+  use Realization_Base_class
+  use String_module
+  use Surface_Field_module
+  use Surface_Realization_class
+  use Water_EOS_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(realization_type)         :: realization
+  type(surface_realization_type) :: surf_realization
+  PetscReal                      :: dt
+
+  type(coupler_list_type), pointer    :: coupler_list
+  type(coupler_type), pointer         :: coupler
+  type(connection_set_type), pointer  :: cur_connection_set
+  type(dm_ptr_type), pointer          :: dm_ptr
+  type(grid_type),pointer             :: grid,surf_grid
+  type(option_type), pointer          :: option
+  type(patch_type),pointer            :: patch,surf_patch
+  type(surface_field_type),pointer    :: surf_field
+
+  PetscInt                :: count
+  PetscInt                :: ghosted_id
+  PetscInt                :: iconn
+  PetscInt                :: local_id
+  PetscInt                :: sum_connection
+
+  PetscReal               :: den
+  PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
+  PetscReal, pointer      :: hw_p(:)           ! head [m]
+  PetscReal, pointer      :: surfpress_p(:)
+  PetscErrorCode          :: ierr
+
+  PetscBool :: coupler_found = PETSC_FALSE
+
+  dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization, ONEDOF)
+  option     => realization%option
+  patch      => realization%patch
+  surf_field => surf_realization%surf_field
+  surf_grid  => surf_realization%discretization%grid
+  
+  sum_connection = 0
+
+  coupler_list => patch%boundary_conditions
+  coupler => coupler_list%first
+  do
+    if (.not.associated(coupler)) exit
+
+    ! FLOW
+    if (associated(coupler%flow_aux_real_var)) then
+
+      cur_connection_set => coupler%connection_set
+
+      ! Find the BC from the list of BCs
+      if(StringCompare(coupler%name,'from_surface_bc')) then
+      
+        coupler_found = PETSC_TRUE
+
+        ! Save the updated surface-pressure BC from subsurface model into Vec
+        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,surfpress_p,ierr)
+        do iconn = 1,coupler%connection_set%num_connections
+          sum_connection = sum_connection + 1
+          surfpress_p(iconn) = coupler%flow_aux_real_var(ONE_INTEGER,sum_connection)
+        enddo
+        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,surfpress_p,ierr)
+
+      else
+        sum_connection = sum_connection + cur_connection_set%num_connections
+      endif
+
+    endif
+    
+    coupler => coupler%next
+  enddo
+
+  if(.not.coupler_found) then
+    option%io_buffer = 'Missing within the input deck for subsurface ' // &
+      'boundary condition named from_surface_bc.'
+    call printErrMsg(option)
+  endif
+
+  call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
+                       surf_field%subsurf_temp_vec_1dof, &
+                       surf_field%work, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
+                     surf_field%subsurf_temp_vec_1dof, &
+                     surf_field%work, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call density(option%reference_temperature,option%reference_pressure,den)
+
+  call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
+  call VecGetArrayF90(surf_field%work, surfpress_p, ierr)
+  count = 0
+  do ghosted_id = 1,surf_grid%ngmax
+
+    local_id = surf_grid%nL2G(ghosted_id)
+    if(local_id <= 0) cycle
+
+    count = count + 1
+    hw_p(ghosted_id) = (surfpress_p(count)-option%reference_pressure)/ &
+                        (abs(option%gravity(3)))/den
+    if(hw_p(ghosted_id)<1.d-15) hw_p(ghosted_id) = 0.d0
+
+  enddo
+  call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr)
+  call VecRestoreArrayF90(surf_field%work, surfpress_p, ierr)
+
+end subroutine SurfaceFlowUpdateSurfState
+
+! ************************************************************************** !
+!> This routine updates the pressure BC for subsurface model at the end of
+!!  surface-flow model timestep.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 07/30/13
+! ************************************************************************** !
+subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
+
+  use Grid_module
+  use String_module
+  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Cell_module
+  use Realization_class
+  use Option_module
+  use Level_module
+  use Patch_module
+  use Region_module
+  use Condition_module
+  use Coupler_module
+  use Surface_Field_module
+  use Water_EOS_module
+  use Discretization_module
+  use Surface_Realization_class
+  use Realization_Base_class
+  use DM_Kludge_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(realization_type)         :: realization
+  type(surface_realization_type) :: surf_realization
+
+  type(patch_type),pointer            :: patch,surf_patch
+  type(grid_type),pointer             :: grid,surf_grid
+  type(coupler_list_type), pointer    :: coupler_list
+  type(coupler_type), pointer         :: coupler
+  type(flow_condition_type), pointer  :: flow_condition
+  type(option_type), pointer          :: option
+  type(surface_field_type),pointer    :: surf_field
+  type(dm_ptr_type), pointer          :: dm_ptr
+  
+  Vec            :: destin_mpi_vec, source_mpi_vec
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: hw_p(:)
+  PetscReal, pointer :: surfpress_p(:)
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: count
+  PetscInt :: iconn
+  PetscReal :: den
+  
+  PetscBool :: coupler_found = PETSC_FALSE
+
+  patch      => realization%patch
+  surf_patch => surf_realization%patch
+  option     => realization%option
+  grid       => realization%discretization%grid
+  surf_grid  => surf_realization%discretization%grid
+  surf_field => surf_realization%surf_field
+
+  dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
+
+  call density(option%reference_temperature,option%reference_pressure,den)
+
+  call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
+  call VecGetArrayF90(surf_field%work, surfpress_p, ierr)
+  count = 0
+  do ghosted_id = 1,surf_grid%ngmax
+    local_id = surf_grid%nL2G(ghosted_id)
+    if(local_id <= 0) cycle
+    count = count + 1
+    surfpress_p(count) = hw_p(ghosted_id)*(abs(option%gravity(3)))*den + &
+                        option%reference_pressure
+  enddo
+  call VecRestoreArrayF90(surf_field%work, surfpress_p, ierr)
+  call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr)
+
+
+  coupler_list => patch%boundary_conditions
+  coupler => coupler_list%first
+  do
+    if (.not.associated(coupler)) exit
+
+    ! FLOW
+    if (associated(coupler%flow_aux_real_var)) then
+
+      ! Find the BC from the list of BCs
+      if(StringCompare(coupler%name,'from_surface_bc')) then
+
+        coupler_found = PETSC_TRUE
+
+        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids_1dof, &
+                             surf_field%work, &
+                             surf_field%subsurf_temp_vec_1dof, &
+                             INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids_1dof, &
+                           surf_field%work, &
+                           surf_field%subsurf_temp_vec_1dof, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+        call VecGetArrayF90(surf_field%subsurf_temp_vec_1dof,surfpress_p,ierr)
+        do iconn = 1,coupler%connection_set%num_connections
+          coupler%flow_aux_real_var(ONE_INTEGER,iconn) = surfpress_p(iconn)
+        enddo
+        call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,surfpress_p,ierr)
+
+        call VecSet(surf_field%exchange_subsurf_2_surf,0.d0,ierr)
+      endif
+
+    endif
+
+    coupler => coupler%next
+  enddo
+
+  if(.not.coupler_found) then
+    option%io_buffer = 'Missing within the input deck for subsurface ' // &
+      'boundary condition named from_surface_bc.'
+    call printErrMsg(option)
+  endif
+
+end subroutine SurfaceFlowUpdateSubsurfBC
 
 end module Surface_Flow_module
 

@@ -844,6 +844,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = HET_MASS_RATE_SS
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
+            case('heterogeneous_surface_seepage')
+              sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -1555,6 +1557,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = HET_MASS_RATE_SS
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
+            case('heterogeneous_surface_seepage')
+              sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -2542,6 +2546,8 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'energy rate'
     case(HET_ENERGY_RATE_SS)
       string = 'heterogeneous energy rate'
+    case(HET_SURF_SEEPAGE_BC)
+      string = 'heterogeneous surface seepage'
   end select
   100 format(6x,'Type: ',a)  
   write(option%fid_out,100) trim(string)

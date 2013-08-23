@@ -133,6 +133,7 @@ PetscInt, parameter :: HET_MASS_RATE_SS = 17
 PetscInt, parameter :: HET_DIRICHLET = 18
 PetscInt, parameter :: ENERGY_RATE_SS = 19
 PetscInt, parameter :: HET_ENERGY_RATE_SS = 20
+PetscInt, parameter :: HET_SURF_SEEPAGE_BC = 21
 PetscInt, parameter :: WELL_SS = 100
 
 ! source/sink scaling options
@@ -208,6 +209,7 @@ PetscInt, parameter :: SURFACE    = 1
 PetscInt, parameter :: DECOUPLED     = 0
 PetscInt, parameter :: SEQ_COUPLED   = 1
 PetscInt, parameter :: FULLY_COUPLED = 2
+PetscInt, parameter :: SEQ_COUPLED_NEW   = 3
 
 PetscInt, parameter :: KINEMATIC_WAVE = 1
 PetscInt, parameter :: DIFFUSION_WAVE = 2

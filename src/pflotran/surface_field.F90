@@ -47,6 +47,7 @@ module Surface_Field_module
 
     Vec :: subsurf_temp_vec_1dof ! MPI
     Vec :: subsurf_temp_vec_ndof ! MPI
+    Vec :: subsurf_avg_vdarcy    ! MPI +ve value => Flow from surface to subsurface
 
     ! residual vectors
     Vec :: flow_r

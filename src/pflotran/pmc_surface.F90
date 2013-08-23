@@ -266,6 +266,21 @@ subroutine PMCSurfaceSynchronize1(this)
     end select
   endif
 
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+    dt = this%option%surf_subsurf_coupling_flow_dt
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call SurfaceFlowUpdateSurfState(pmc%subsurf_realization, &
+                                             pmc%surf_realization, dt)
+          case (TH_MODE)
+            call printErrMsg(this%option, &
+            'Added code in PMCSurfaceSynchronize1 for SEQ_COUPLED_NEW in TH')
+        end select
+    end select
+  endif
+
 end subroutine PMCSurfaceSynchronize1
 
 ! ************************************************************************** !
@@ -346,6 +361,20 @@ subroutine PMCSurfaceSynchronize3(this)
     end select
   endif
   
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call SurfaceFlowUpdateSubsurfBC(pmc%subsurf_realization, &
+                                            pmc%surf_realization)
+          case (TH_MODE)
+            call printErrMsg(this%option, &
+              'Added code in PMCSurfaceSynchronize3 for SEQ_COUPLED_NEW in TH mode')
+          end select
+    end select
+  endif
+
 end subroutine PMCSurfaceSynchronize3
 
 

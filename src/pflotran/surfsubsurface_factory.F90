@@ -112,7 +112,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
     nullify(surf_simulation%process_model_coupler_list)
   
-    if (option%subsurf_surf_coupling == SEQ_COUPLED) then
+    if (option%subsurf_surf_coupling == SEQ_COUPLED .or. &
+        option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
        select case(option%iflowmode)
          case (RICHARDS_MODE)
             call SurfaceFlowGetSubsurfProp(simulation%realization, &

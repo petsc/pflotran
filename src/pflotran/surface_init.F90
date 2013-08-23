@@ -389,6 +389,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             option%subsurf_surf_coupling = SEQ_COUPLED
           case('FULLY_COUPLED')
             option%subsurf_surf_coupling = FULLY_COUPLED
+          case('SEQ_COUPLED_NEW')
+            option%subsurf_surf_coupling = SEQ_COUPLED_NEW
           case default
             option%io_buffer = 'Invalid value for SURF_SUBSURFACE_COUPLING'
             call printErrMsg(option)

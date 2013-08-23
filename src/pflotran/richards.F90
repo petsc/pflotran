@@ -38,7 +38,8 @@ module Richards_module
          RichardsComputeMassBalance, &
          RichardsDestroy, &
          RichardsCheckUpdatePre, &
-         RichardsCheckUpdatePost
+         RichardsCheckUpdatePost, &
+         RichardsUpdateSurfacePress
 
 contains
 
@@ -797,7 +798,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC,HET_SURF_SEEPAGE_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC,UNIT_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
@@ -2488,6 +2489,104 @@ subroutine RichardsPrintAuxVars(richards_auxvar,global_auxvar,cell_id)
   print *, '   dden_dp: ', richards_auxvar%dden_dp
 
 end subroutine RichardsPrintAuxVars
+
+! ************************************************************************** !
+!> This routine updates the boundary pressure condition corresponding on
+!! the top surface of the subsurface domain accounting for the amount of
+!! infilitration/exfiltration in the previous subsurface timestep.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 07/31/13
+! ************************************************************************** !
+subroutine RichardsUpdateSurfacePress(realization)
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use Material_module
+  use Logging_module
+  use String_module
+  use Water_EOS_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+#ifdef SURFACE_FLOW
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  type(richards_auxvar_type), pointer :: rich_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)  
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+  PetscReal :: den
+  PetscReal :: surfpress_old
+  PetscReal :: surfpress_new
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+
+  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+    
+
+  call density(option%reference_temperature,option%reference_pressure,den)
+
+  ! boundary conditions
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    if(StringCompare(boundary_condition%name,'from_surface_bc')) then
+
+      if(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF) /= &
+         HET_SURF_SEEPAGE_BC) then
+        call printErrMsg(option,'from_surface_bc is not of type ' // &
+                        'HET_SURF_SEEPAGE_BC')
+      endif
+
+      do iconn = 1, cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+
+        surfpress_old = &
+          boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
+
+        surfpress_new = surfpress_old - &
+          patch%boundary_velocities(1,sum_connection)*option%flow_dt* &
+          (abs(option%gravity(3)))*den
+
+        surfpress_new = max(surfpress_new,option%reference_pressure)
+
+        boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn) = &
+          surfpress_new
+      enddo
+        
+    else
+      sum_connection = sum_connection + cur_connection_set%num_connections
+    endif
+ 
+    boundary_condition => boundary_condition%next
+
+  enddo
+#endif
+
+end subroutine RichardsUpdateSurfacePress
 
 ! ************************************************************************** !
 !
