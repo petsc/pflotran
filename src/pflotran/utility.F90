@@ -1,5 +1,7 @@
 module Utility_module
 
+  implicit none
+
 #include "definitions.h"
 
   interface DotProduct
@@ -36,8 +38,11 @@ contains
 
 function rnd()
 
+  implicit none
+
 !  common/rndnr/iseed
   integer*8 iseed
+  PetscReal :: rnd
 
   iseed = iseed*125
   iseed = iseed - (iseed/2796203) * 2796203
@@ -100,10 +105,13 @@ end function ran1
 
 function ran2(idum)
       
-!  implicit none
+  implicit none
 
 !-----Minimal random number generator of Park and Miller 
 !     in the range (0,1)
+
+  PetscReal :: ran2, AM, EPS, RNMX, temp
+  PetscInt :: IA, IM, IQ, IR, NTAB, idum, iy, j, k, iv(32), NDIV
 
   parameter (IA = 16807)
   parameter (IM = 2147483647)
@@ -115,7 +123,7 @@ function ran2(idum)
   parameter (EPS  = 1.2e-7)
   parameter (RNMX = 1.0-EPS)
 
-  dimension iv(NTAB)
+  !dimension iv(NTAB)
 
   iy = 0
   if (idum.le.0 .or. iy.eq.0) then
