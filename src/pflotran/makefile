@@ -89,9 +89,11 @@ ifdef no_vapor_diffusion
   MYFLAGS += -DNO_VAPOR_DIFFUSION
 endif
 
-ifdef scco2
+#geh: CHUAN_CO2 guards portions of reactive transport from modifications for
+#     CO2.  We are now making this default.
+#ifdef scco2
   MYFLAGS += -DCHUAN_CO2
-endif
+#endif
 
 ifdef debug_gen
   MYFLAGS += -DDEBUG_GENERAL
