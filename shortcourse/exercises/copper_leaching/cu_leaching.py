@@ -20,7 +20,7 @@ path = []
 path.append('.')
 
 files = []
-files.append('pflotran-005.tec')
+files.append('cu_leaching-005.tec')
 filenames = pft.get_full_paths(path,files)
 
 f = plt.figure(figsize=(10,6))
@@ -36,7 +36,7 @@ ax.set_zlabel('Volume Fraction')
 #plt.grid(True)
 
 #data = pft.Dataset(filenames[0],6,0)
-data = pft.Dataset(filenames[0],'Jurbanite_vf',0)
+data = pft.Dataset(filenames[0],'Jurbanite VF',0)
 X,Y = np.meshgrid(data.get_array('x'),data.get_array('y'))
 Z = data.get_array('z')
 
