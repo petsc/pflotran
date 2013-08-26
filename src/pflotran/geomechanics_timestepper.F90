@@ -187,7 +187,9 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   ! print initial condition output if not a restarted sim
   call OutputInit(master_stepper%steps)
 #ifdef GEOMECH
-  call OutputGeomechInit(geomech_realization,master_stepper%steps)
+  if (option%ngeomechdof > 0) then
+    call OutputGeomechInit(geomech_realization,master_stepper%steps)
+  endif
 #endif
 
   if (output_option%plot_number == 0 .and. &
@@ -197,10 +199,12 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
 #ifdef GEOMECH
-    geomech_plot_flag = PETSC_TRUE
-    geomech_transient_plot_flag = PETSC_TRUE
-    call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
-                            geomech_transient_plot_flag)
+    if (option%ngeomechdof > 0) then
+      geomech_plot_flag = PETSC_TRUE
+      geomech_transient_plot_flag = PETSC_TRUE
+      call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
+                              geomech_transient_plot_flag)
+    endif
 #endif    
   endif
   
@@ -353,7 +357,9 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                transient_plot_flag)
 
 #ifdef GEOMECH
-    geomech_plot_flag = plot_flag
+    if (option%ngeomechdof > 0) then
+      geomech_plot_flag = plot_flag
+    endif
 #endif
 
     ! flow solution
@@ -368,8 +374,10 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     endif
  
 #ifdef GEOMECH       
-    call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
-                                        failure)
+    if (option%ngeomechdof > 0) then
+      call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                          failure)
+    endif
 #endif
 
 
@@ -496,8 +504,10 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
     
 #ifdef GEOMECH
-    call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
-                            transient_plot_flag)
+    if (option%ngeomechdof > 0) then
+      call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
+                              transient_plot_flag)
+    endif
 #endif    
 
     ! if a simulation wallclock duration time is set, check to see that the

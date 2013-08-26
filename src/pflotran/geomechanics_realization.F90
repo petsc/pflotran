@@ -745,7 +745,8 @@ subroutine GeomechRealizDestroy(geomech_realization)
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)
   nullify(geomech_realization%geomech_material_property_array)
-  call GeomechanicsPatchDestroy(geomech_realization%geomech_patch)                                       
+  if (associated(geomech_realization%geomech_patch)) &
+    call GeomechanicsPatchDestroy(geomech_realization%geomech_patch)                                       
   call GeomechanicsMaterialPropertyDestroy(geomech_realization% &
                                            geomech_material_properties)
   call GeomechDiscretizationDestroy(geomech_realization%discretization)

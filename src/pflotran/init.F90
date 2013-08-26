@@ -313,9 +313,11 @@ subroutine Init(simulation)
 #endif  
 
 #ifdef GEOMECH
-  call CopySubsurfaceGridtoGeomechGrid(realization%discretization%grid%&
-    unstructured_grid,geomech_realization%discretization%grid,option)
-  call GeomechRealizCreateDiscretization(geomech_realization)
+  if (option%ngeomechdof > 0) then
+    call CopySubsurfaceGridtoGeomechGrid(realization%discretization%grid%&
+      unstructured_grid,geomech_realization%discretization%grid,option)
+    call GeomechRealizCreateDiscretization(geomech_realization)
+  endif
 #endif
 
   call RegressionCreateMapping(simulation%regression,realization)
@@ -1036,12 +1038,14 @@ subroutine Init(simulation)
                                string)
   endif    
 #ifdef GEOMECH
-  if (associated(geomech_solver)) then
-    string = 'Geomechanics Newton Solver:'
-    call SolverPrintNewtonInfo(geomech_solver,OptionPrintToScreen(option), &
-                               OptionPrintToFile(option),option%fid_out, &
-                               string)
-  endif  
+  if (option%ngeomechdof > 0) then
+    if (associated(geomech_solver)) then
+      string = 'Geomechanics Newton Solver:'
+      call SolverPrintNewtonInfo(geomech_solver,OptionPrintToScreen(option), &
+                                 OptionPrintToFile(option),option%fid_out, &
+                                 string)
+    endif
+  endif
 #endif
 
   if (associated(flow_solver)) then
@@ -1053,9 +1057,11 @@ subroutine Init(simulation)
     call SolverPrintLinearInfo(tran_solver,string,option)
   endif    
 #ifdef GEOMECH
-  if (associated(geomech_solver)) then
-    string = 'Geomechanics Linear Solver:'
-    call SolverPrintLinearInfo(geomech_solver,string,option)
+  if (option%ngeomechdof > 0) then
+    if (associated(geomech_solver)) then
+      string = 'Geomechanics Linear Solver:'
+      call SolverPrintLinearInfo(geomech_solver,string,option)
+    endif
   endif
 #endif
 #ifdef SURFACE_FLOW

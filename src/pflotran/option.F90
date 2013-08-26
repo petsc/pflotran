@@ -416,6 +416,7 @@ subroutine OptionInitRealization(option)
 #endif
 
 #ifdef GEOMECH
+  option%ngeomechdof = 0
   option%geomech_time = 0.d0
 #endif
 
