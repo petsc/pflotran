@@ -20,7 +20,7 @@ path = []
 path.append('.')
 
 files = []
-files.append('pflotran-005.tec')
+files.append('cu_leaching-005.tec')
 filenames = pft.get_full_paths(path,files)
 
 f = plt.figure(figsize=(10,6))
