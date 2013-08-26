@@ -5,12 +5,13 @@ module Geomechanics_Condition_module
 !  use Global_Aux_module
   use Dataset_Base_class
   use Time_Series_module
+  use PFLOTRAN_Constants_module
   
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscInt, parameter                              :: NULL = 0
   PetscInt, parameter                              :: STEP = 1

@@ -4,11 +4,13 @@ module Output_Observation_module
   use Output_Aux_module
   use Output_Common_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! flags signifying the first time a routine is called during a given
   ! simulation

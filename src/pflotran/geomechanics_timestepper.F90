@@ -6,12 +6,13 @@ module Geomechanics_Timestepper_module
   use Waypoint_module 
   use Convergence_module 
   use Timestepper_module
+  use PFLOTRAN_Constants_module
  
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: GeomechTimestepperInitializeRun, &
             GeomechTimestepperExecuteRun, &

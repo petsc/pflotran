@@ -2,10 +2,12 @@ module Mphase_pckr_module
 
   use Material_module
   use Option_module
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
-#include "definitions.h"
+#include "finclude/petscsys.h"
   PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
   
   public ::  pckrNH_noderiv, pckrHY_noderiv     

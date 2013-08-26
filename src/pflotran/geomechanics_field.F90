@@ -2,13 +2,14 @@
 
 module Geomechanics_Field_module
 
+  use PFLOTRAN_Constants_module
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 

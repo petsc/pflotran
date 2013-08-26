@@ -4,11 +4,13 @@ module Timestepper_module
   use Waypoint_module 
   use Convergence_module 
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscInt, parameter, public :: TIMESTEPPER_INIT_PROCEED = 0
   PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1
@@ -714,8 +716,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
             select case(option%iflowmode)
               case (RICHARDS_MODE)
-                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization, &
-                                                 tmp)
+                call SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
               case (TH_MODE)
                call SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
             end select

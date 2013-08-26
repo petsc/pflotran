@@ -1,4 +1,6 @@
 module Mass_Balance_module
+  
+  use PFLOTRAN_Constants_module
 
   implicit none
 

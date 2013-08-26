@@ -6,11 +6,13 @@ module Dataset_module
   use Dataset_Map_class
   use Dataset_Global_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: DatasetRead, &
             DatasetProcessDatasets, &

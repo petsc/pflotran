@@ -4,12 +4,13 @@ module Geomechanics_Coupler_module
  
   use Geomechanics_Condition_module
   use Geomechanics_Region_module
+  use PFLOTRAN_Constants_module
  
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! coupler types
   ! SK: Note that there is no initial coupler since we solve 

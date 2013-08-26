@@ -6,11 +6,13 @@ module Output_Common_module
   !note: only realization_base_type can be used throughout this module.
   use Realization_Base_class, only : realization_base_type
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
@@ -41,7 +43,8 @@ module Output_Common_module
             OutputXMFHeaderExplicit, &
             OutputXMFAttributeExplicit, &
             OutputGetExplicitIDsFlowrates, &
-            OutputGetExplicitAuxVars
+            OutputGetExplicitAuxVars, &
+            OutputGetExplicitCellInfo
               
 contains
 
@@ -1129,7 +1132,7 @@ subroutine OutputGetFlowrates(realization_base)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1332,7 +1335,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1488,7 +1491,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1552,14 +1555,127 @@ end subroutine OutputGetExplicitFlowrates
 
 ! ************************************************************************** !
 !
-! OutputGetExplicitAuxVars: Calculates porosity, saturation at the face 
+! OutputGetExplicitAuxVars: Calculates density at the face 
 ! between a connection
 ! author: Satish Karra, LANL
 ! date: 07/17/13
 !
 ! ************************************************************************** !
-subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
+subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
 
+  use Realization_Base_class, only : realization_base_type
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Field_module
+  use Connection_module
+  use Global_Aux_module
+  use Richards_Aux_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type),pointer :: ugrid
+  type(field_type), pointer :: field
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  type(global_auxvar_type), pointer :: global_auxvar(:)
+  type(richards_parameter_type), pointer :: richards_parameter
+
+
+  PetscReal, pointer :: vec_proc_ptr(:)
+  PetscReal, pointer :: flowrates(:,:)
+  PetscReal, pointer :: darcy(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: density(:)
+  PetscInt :: offset
+  PetscInt :: iconn
+  PetscErrorCode :: ierr
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: local_id_up, local_id_dn
+  PetscReal :: proc_up, proc_dn, conn_proc
+  PetscInt :: sum_connection, count
+  Vec :: vec_proc
+  PetscInt :: idof
+  PetscInt :: icap_up, icap_dn
+  PetscReal :: sir_up, sir_dn
+  PetscReal, parameter :: eps = 1.D-8
+  PetscReal :: upweight
+
+  
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  grid => patch%grid
+  global_auxvar => patch%aux%Global%aux_vars
+  richards_parameter => patch%aux%Richards%richards_parameter
+  
+ 
+  allocate(density(count))
+  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  count = 0 
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up)
+      local_id_dn = grid%nG2L(ghosted_id_dn) 
+      icap_up = patch%sat_func_id(ghosted_id_up)
+      icap_dn = patch%sat_func_id(ghosted_id_dn)
+
+      if (option%myrank == int(vec_proc_ptr(sum_connection))) then
+        count = count + 1
+        sir_up = richards_parameter%sir(1,icap_up)
+        sir_dn = richards_parameter%sir(1,icap_dn)
+
+        if (global_auxvar(ghosted_id_up)%sat(1) > sir_up .or. &
+            global_auxvar(ghosted_id_dn)%sat(1) > sir_dn) then
+          if (global_auxvar(ghosted_id_up)%sat(1) <eps) then 
+            upweight = 0.d0
+          else if (global_auxvar(ghosted_id_dn)%sat(1) <eps) then 
+            upweight = 1.d0
+          endif
+    
+          density(count) = upweight*global_auxvar(ghosted_id_up)%den(1)+ &
+                  (1.D0 - upweight)*global_auxvar(ghosted_id_dn)%den(1)
+        endif
+      endif  
+          
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+      
+  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
+
+
+end subroutine OutputGetExplicitAuxVars
+
+! ************************************************************************** !
+!
+! OutputGetExplicitCellInfo: Calculates porosity, saturation, density 
+! and pressure in a cell (explicit)
+! author: Satish Karra, LANL
+! date: 08/21/13
+!
+! ************************************************************************** !
+
+subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
+                                     density,pressure)
+                                     
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module
@@ -1574,7 +1690,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1582,24 +1698,18 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
   type(grid_type), pointer :: grid
   type(unstructured_grid_type),pointer :: ugrid
   type(field_type), pointer :: field
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
   type(global_auxvar_type), pointer :: global_auxvar(:)
 
-  PetscReal, pointer :: vec_proc_ptr(:)
-  PetscReal, pointer :: flowrates(:,:)
-  PetscReal, pointer :: darcy(:)
+
   PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: sat(:), por(:)
-  PetscInt :: offset
-  PetscInt :: iconn
   PetscErrorCode :: ierr
-  PetscInt :: ghosted_id_up, ghosted_id_dn
-  PetscInt :: local_id_up, local_id_dn
-  PetscReal :: proc_up, proc_dn, conn_proc
-  PetscInt :: sum_connection, count
-  Vec :: vec_proc
-  PetscInt :: idof
+  PetscInt :: num_cells
+  PetscReal, pointer :: sat(:)
+  PetscReal, pointer :: por(:)
+  PetscReal, pointer :: density(:)
+  PetscReal, pointer :: pressure(:)
+  PetscInt, pointer :: ids(:)
+  PetscInt :: local_id, ghosted_id
   
   patch => realization_base%patch
   option => realization_base%option
@@ -1609,36 +1719,24 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,sat,por)
   
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   
-  allocate(por(count))
-  allocate(sat(count))
-  call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr)
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  count = 0 
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-      local_id_up = grid%nG2L(ghosted_id_up)
-      local_id_dn = grid%nG2L(ghosted_id_dn) 
-      if (option%myrank == int(vec_proc_ptr(sum_connection))) then
-        count = count + 1
-        por(count) = 0.5*(porosity_loc_p(ghosted_id_up) + &
-                          porosity_loc_p(ghosted_id_dn))
-        sat(count) = 0.5*(global_auxvar(ghosted_id_up)%sat(1) + &
-                          global_auxvar(ghosted_id_dn)%sat(1))
-      endif      
-    enddo
-    cur_connection_set => cur_connection_set%next
+  num_cells = grid%nlmax
+  allocate(sat(num_cells))
+  allocate(por(num_cells))
+  allocate(ids(num_cells))
+  allocate(density(num_cells))
+  allocate(pressure(num_cells))
+  
+  do local_id = 1, num_cells
+    ghosted_id = grid%nL2G(local_id)
+    ids(local_id) = grid%nG2A(ghosted_id)
+    sat(local_id) = global_auxvar(ghosted_id)%sat(1)
+    por(local_id) = porosity_loc_p(ghosted_id)
+    density(local_id) = global_auxvar(ghosted_id)%den(1)
+    pressure(local_id) = global_auxvar(ghosted_id)%pres(1)
   enddo
-      
+
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayF90(vec_proc,vec_proc_ptr,ierr)
 
-
-end subroutine OutputGetExplicitAuxVars
+end subroutine OutputGetExplicitCellInfo
 
 end module Output_Common_module

@@ -1,10 +1,12 @@
 module Structured_Grid_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
  
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 ! structured grid faces
   PetscInt, parameter, public :: NULL_FACE = 0

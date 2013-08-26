@@ -4,11 +4,13 @@ module Output_Tecplot_module
   use Output_Aux_module
   use Output_Common_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   PetscInt, parameter, public :: TECPLOT_POINT_FORMAT = 1
   PetscInt, parameter, public :: TECPLOT_BLOCK_FORMAT = 2
   PetscInt, parameter, public :: TECPLOT_FEBRICK_FORMAT = 3
@@ -2021,7 +2023,7 @@ end subroutine WriteTecplotDataSetNumPerLine
 ! for explicit grid. This will be used for particle tracking.
 ! Prints out natural id of the two nodes and the value of the flow rate
 ! author: Satish Karra, LANL
-! date: 04/24/13
+! date: 04/24/13, 08/21/13 (Updated to Walkabout format)
 !
 ! ************************************************************************** !
 subroutine OutputPrintExplicitFlowrates(realization_base)
@@ -2042,7 +2044,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
-  character(len=MAXSTRINGLENGTH) :: filename,string
+  character(len=MAXSTRINGLENGTH) :: filename,string,filename2
 
   PetscErrorCode :: ierr  
   PetscInt :: iconn
@@ -2050,9 +2052,11 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   PetscReal, pointer :: flowrates(:,:)
   PetscReal, pointer :: darcy(:)
   PetscInt, pointer :: nat_ids_up(:),nat_ids_dn(:)
-  PetscReal, pointer :: por(:),sat(:)
+  PetscReal, pointer :: density(:)
   Vec :: vec_proc
-  PetscInt :: i, idof
+  PetscInt :: i, idof, icell, num_cells
+  PetscInt, pointer :: ids(:)
+  PetscReal, pointer :: sat(:), por(:), pressure(:)
   
   patch => realization_base%patch
   grid => patch%grid
@@ -2062,15 +2066,20 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   
   filename = trim(option%global_prefix) // &
              trim(option%group_prefix) // &
-             '-' // 'rates' // '-' // &
+             '-' // 'darcyvel' // '-' // &
              trim(OutputFilenameID(output_option,option)) 
+             
+  filename2 = trim(option%global_prefix) // &
+              trim(option%group_prefix) // &
+              '-' // 'cellinfo' // '-' // &
+              trim(OutputFilenameID(output_option,option)) 
   
   call OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
                                      nat_ids_up,nat_ids_dn)
   call OutputGetExplicitFlowrates(realization_base,count,vec_proc,flowrates, &
                                   darcy)
   call OutputGetExplicitAuxVars(realization_base,count,vec_proc, &
-                                sat,por)
+                                density)
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write rate output file: ' // &
@@ -2083,32 +2092,53 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 1001 format(i10,1x)
 1009 format('')
  
- ! Order of printing
- ! id1 id2 darcy_vel porosity saturation
-
+ ! Order of printing for the 1st file
+ ! id1 id2 darcy_vel[m/s] density[kg/m3]
+ 
   write(string,*) option%myrank
   string = trim(filename) // '-rank' // trim(adjustl(string)) // '.dat'
   open(unit=OUTPUT_UNIT,file=trim(string),action="write")
   do i = 1, count
+    density(i) = density(i)*FMWH2O
     write(OUTPUT_UNIT,1001,advance='no') nat_ids_up(i)
     write(OUTPUT_UNIT,1001,advance='no') nat_ids_dn(i)
-!    do idof = 1, option%nflowdof
-!      write(OUTPUT_UNIT,1000,advance='no') flowrates(i,idof)
-!      write(OUTPUT_UNIT,1009)
-!    enddo
     write(OUTPUT_UNIT,1000,advance='no') darcy(i)
-    write(OUTPUT_UNIT,1000,advance='no') por(i)
-    write(OUTPUT_UNIT,1000,advance='no') sat(i)
+    write(OUTPUT_UNIT,1000,advance='no') density(i)
     write(OUTPUT_UNIT,'(a)')
   enddo                     
   close(OUTPUT_UNIT)
-                                                                                                           
+                                    
   deallocate(flowrates)
   deallocate(darcy)
   deallocate(nat_ids_up)
   deallocate(nat_ids_dn)
-  deallocate(por)
+  deallocate(density)
+  
+ ! Order of printing for the 2nd file
+ ! cellid saturation porosity density[kg/m3] pressure[Pa]
+  
+  call OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
+                                 density,pressure) 
+ 
+  write(string,*) option%myrank
+  string = trim(filename2) // '-rank' // trim(adjustl(string)) // '.dat'
+  open(unit=OUTPUT_UNIT,file=trim(string),action="write")
+  do icell = 1, num_cells
+    density(icell) = density(icell)*FMWH2O
+    write(OUTPUT_UNIT,1001,advance='no') ids(icell)
+    write(OUTPUT_UNIT,1000,advance='no') sat(icell)
+    write(OUTPUT_UNIT,1000,advance='no') por(icell)
+    write(OUTPUT_UNIT,1000,advance='no') density(icell)
+    write(OUTPUT_UNIT,1000,advance='no') pressure(icell)
+    write(OUTPUT_UNIT,'(a)')
+  enddo                     
+  close(OUTPUT_UNIT)
+  
+  deallocate(ids)
   deallocate(sat)
+  deallocate(por)
+  deallocate(density)
+  deallocate(pressure)
 
 end subroutine OutputPrintExplicitFlowrates
 

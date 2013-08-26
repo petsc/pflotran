@@ -2,11 +2,13 @@ module Dataset_Global_class
  
   use Dataset_Common_HDF5_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public, extends(dataset_common_hdf5_type) :: dataset_global_type
     PetscInt :: local_size    ! local number of entries on this process

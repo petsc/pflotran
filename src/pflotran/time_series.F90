@@ -1,10 +1,12 @@
 module Time_Series_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   type, public :: time_series_type
     character(len=MAXWORDLENGTH) :: name

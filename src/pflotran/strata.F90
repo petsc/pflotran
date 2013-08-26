@@ -6,11 +6,13 @@ module Strata_module
   use Surface_Material_module
 #endif
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
  
   type, public :: strata_type

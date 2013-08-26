@@ -2,6 +2,7 @@ module Mphase_module
   
   use Mphase_Aux_module
   use Global_Aux_module
+  use PFLOTRAN_Constants_module
   
   implicit none
   

@@ -14,6 +14,7 @@ module Geomechanics_Realization_module
   use Output_Aux_module
   use Waypoint_module
   use Dataset_Base_class
+  use PFLOTRAN_Constants_module
 
  
   implicit none
@@ -21,7 +22,7 @@ module Geomechanics_Realization_module
 private
 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: geomech_realization_type
     PetscInt :: id

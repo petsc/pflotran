@@ -4,11 +4,13 @@ module Secondary_Continuum_Aux_module
 
   use Reactive_Transport_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: slab_type
     PetscReal :: length                       ! input - length of slab

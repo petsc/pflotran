@@ -2,9 +2,11 @@ module HDF5_module
 
   use Logging_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   private
   
@@ -1741,9 +1743,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   call PetscLogEventBegin(logging%event_region_read_hdf5,ierr)
                           
   ! create hash table for fast lookup
-#ifdef HASH
   call GridCreateNaturalToGhostedHash(grid,option)
-#endif
 
 #if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then

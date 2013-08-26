@@ -2,9 +2,11 @@ module Object_module
 
   ! add accessory modules here
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   private
 

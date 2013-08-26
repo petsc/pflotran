@@ -3,11 +3,13 @@ module Unstructured_Explicit_module
   use Geometry_module
   use Unstructured_Grid_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private 
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"

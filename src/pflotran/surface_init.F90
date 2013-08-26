@@ -2,9 +2,11 @@
 
 module Surface_Init_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -389,6 +391,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             option%subsurf_surf_coupling = SEQ_COUPLED
           case('FULLY_COUPLED')
             option%subsurf_surf_coupling = FULLY_COUPLED
+          case('SEQ_COUPLED_NEW')
+            option%subsurf_surf_coupling = SEQ_COUPLED_NEW
           case default
             option%io_buffer = 'Invalid value for SURF_SUBSURFACE_COUPLING'
             call printErrMsg(option)

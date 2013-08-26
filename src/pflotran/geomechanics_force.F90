@@ -3,12 +3,13 @@
 module Geomechanics_Force_module
 
   use Geomechanics_Global_Aux_module
+  use PFLOTRAN_Constants_module
   
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"

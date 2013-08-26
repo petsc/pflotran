@@ -2,11 +2,13 @@ module DM_Kludge_module
   
   use Unstructured_Grid_Aux_module, only : ugdm_type
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"

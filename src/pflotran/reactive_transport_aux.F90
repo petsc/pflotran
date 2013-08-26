@@ -4,11 +4,13 @@ module Reactive_Transport_Aux_module
   ! and Matrix_Block_Aux_module
   use Matrix_Block_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: reactive_transport_auxvar_type
     ! molality

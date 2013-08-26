@@ -1,10 +1,12 @@
 module Init_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -1156,11 +1158,18 @@ subroutine Init(simulation)
           call SurfaceFlowCreateSurfSubsurfVec( &
                           simulation%realization, simulation%surf_realization)
         endif
+        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+          call SurfaceFlowCreateSurfSubsurfVecNew( &
+                          simulation%realization, simulation%surf_realization)
+        endif
       case(TH_MODE)
         call SurfaceTHUpdateAuxVars(surf_realization)
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
           call SurfaceTHCreateSurfSubsurfVec( &
                           simulation%realization, simulation%surf_realization)
+        endif
+        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+          call printErrMsg(option,'SEQ_COUPLED_NEW not implemented in Surface-TH mode')
         endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
@@ -2479,20 +2488,20 @@ subroutine InitReadInput(simulation)
               endif
             endif
            option%store_flowrate = PETSC_TRUE
-          else
-            if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES
-              option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-                'compile with -DSTORE_FLOWRATES'
-              call printErrMsg(option)
-#endif
-              output_option%print_explicit_flowrate = mass_flowrate
-            else
-              option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-                'only available in HDF5 format for implicit grid' 
-              call printErrMsg(option)
-            endif
           endif
+          if (associated(grid%unstructured_grid%explicit_grid)) then
+#ifndef STORE_FLOWRATES
+            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
+              'compile with -DSTORE_FLOWRATES'
+            call printErrMsg(option)
+#endif
+            output_option%print_explicit_flowrate = mass_flowrate
+          else
+            option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
+              'only available in HDF5 format for implicit grid' 
+            call printErrMsg(option)
+          endif
+        
         endif
 
 !.....................

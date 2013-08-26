@@ -3,11 +3,13 @@ module Richards_Common_module
   use Richards_Aux_module
   use Global_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -460,6 +462,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                                     sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
+#ifdef SURFACE_FLOW
+  use Water_EOS_module
+#endif
  
   implicit none
   
@@ -500,6 +505,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
+#ifdef SURFACE_FLOW
+  PetscReal :: rho, v_darcy_allowable
+#endif
   
   v_darcy = 0.d0
   ukvr = 0.d0
@@ -518,7 +526,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC,HET_SURF_SEEPAGE_BC)
 
       ! dist(0) = scalar - magnitude of distance
       ! gravity = vector(3)
@@ -551,7 +559,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
-            pressure_bc_type == CONDUCTANCE_BC) then
+            pressure_bc_type == CONDUCTANCE_BC .or. &
+            pressure_bc_type == HET_SURF_SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
@@ -591,6 +600,16 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
+#ifdef SURFACE_FLOW
+          ! If running with surface-flow model, ensure (darcy_velocity*dt) does
+          ! not exceed depth of standing water.
+          if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+            call density(option%reference_temperature,option%reference_pressure,rho)
+            v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
+                                /option%flow_dt/(-option%gravity(3))/rho
+            v_darcy = min(v_darcy,v_darcy_allowable)
+          endif
+#endif
           q = v_darcy * area
           dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
         endif
@@ -752,7 +771,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC,HET_SURF_SEEPAGE_BC)
 
       ! dist(0) = scalar - magnitude of distance
       ! gravity = vector(3)
@@ -781,7 +800,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
-            pressure_bc_type == CONDUCTANCE_BC) then
+            pressure_bc_type == CONDUCTANCE_BC .or. &
+            pressure_bc_type == HET_SURF_SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
@@ -817,12 +837,14 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        if (ukvr*Dq>floweps) then
         v_darcy = Dq * ukvr * dphi
 #ifdef SURFACE_FLOW
-        if(option%nsurfflowdof>0) then
-          call density(option%reference_temperature,option%reference_pressure,rho)
-          v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
-                              /option%flow_dt/(-option%gravity(3))/rho
-          v_darcy = min(v_darcy,v_darcy_allowable)
-        endif
+          ! If running with surface-flow model, ensure (darcy_velocity*dt) does
+          ! not exceed depth of standing water.
+          if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
+            call density(option%reference_temperature,option%reference_pressure,rho)
+            v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
+                                /option%flow_dt/(-option%gravity(3))/rho
+            v_darcy = min(v_darcy,v_darcy_allowable)
+          endif
 #endif
        endif
       endif 

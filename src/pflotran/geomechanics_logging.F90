@@ -1,6 +1,8 @@
 #ifdef GEOMECH
 
 module Geomechanics_Logging_module
+  
+  use PFLOTRAN_Constants_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
@@ -8,7 +10,7 @@ module Geomechanics_Logging_module
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 ! stages
 PetscInt, parameter, public :: GEOMECH_INIT_STAGE = 1

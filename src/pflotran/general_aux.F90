@@ -1,10 +1,12 @@
 module General_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! thermodynamic state of fluid ids
   PetscInt, parameter, public :: LIQUID_STATE = 1

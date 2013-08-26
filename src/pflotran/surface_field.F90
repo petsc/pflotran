@@ -4,11 +4,13 @@ module Surface_Field_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
@@ -47,6 +49,7 @@ module Surface_Field_module
 
     Vec :: subsurf_temp_vec_1dof ! MPI
     Vec :: subsurf_temp_vec_ndof ! MPI
+    Vec :: subsurf_avg_vdarcy    ! MPI +ve value => Flow from surface to subsurface
 
     ! residual vectors
     Vec :: flow_r

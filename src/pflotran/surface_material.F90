@@ -2,11 +2,13 @@
 
 module Surface_Material_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: surface_material_property_type
     

@@ -7,11 +7,13 @@ module Output_Surface_module
   use Output_HDF5_module
   use Output_Tecplot_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"
@@ -1793,8 +1795,6 @@ function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
 
 end function OutputSurfaceHDF5FilenameID
 
-end module Output_Surface_module
-
 ! ************************************************************************** !
 !> This returns mass/energy flowrate at all faces of a control volume for
 !! surface realizaton.
@@ -1826,7 +1826,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(surface_realization_type) :: surf_realization
   type(option_type), pointer :: option
@@ -2036,7 +2036,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(surface_realization_type) :: surf_realization
   type(option_type), pointer :: option
@@ -2274,5 +2274,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5SurfaceFlowratesUGrid
+
+end module Output_Surface_module
 
 #endif

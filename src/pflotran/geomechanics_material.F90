@@ -1,12 +1,14 @@
 #ifdef GEOMECH
 
 module Geomechanics_Material_module
+  
+  use PFLOTRAN_Constants_module
 
   implicit none
   
   private
   
-#include "definitions.h"  
+#include "finclude/petscsys.h"  
 
   type, public :: geomech_material_property_type
     character(len=MAXWORDLENGTH)   :: name

@@ -4,12 +4,13 @@ module Geomechanics_Discretization_module
 
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
+  use PFLOTRAN_Constants_module
   
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"

@@ -8,11 +8,13 @@ module Process_Model_RT_class
   use Communicator_Base_module  
   use Option_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"

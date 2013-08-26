@@ -3,11 +3,13 @@ module Waypoint_module
   use Option_module
   use Output_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type

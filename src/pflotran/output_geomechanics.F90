@@ -6,12 +6,13 @@ module Output_Geomechanics_module
   use Output_Tecplot_module
   use Output_Common_module
   use Output_HDF5_module
+  use PFLOTRAN_Constants_module
   
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"

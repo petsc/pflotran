@@ -7,11 +7,13 @@ module Process_Model_Richards_class
   use Communicator_Base_module
   use Option_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -574,7 +576,7 @@ end subroutine PMRichardsTimeCut
 ! ************************************************************************** !
 subroutine PMRichardsUpdateSolution(this)
 
-  use Richards_module, only : RichardsUpdateSolution
+  use Richards_module, only : RichardsUpdateSolution, RichardsUpdateSurfacePress
   use Condition_module
 
   implicit none
@@ -598,6 +600,10 @@ subroutine PMRichardsUpdateSolution(this)
   endif  
   ! end from RealizationUpdate()
   call RichardsUpdateSolution(this%realization)
+#ifdef SURFACE_FLOW
+  if(this%option%nsurfflowdof>0) &
+    call RichardsUpdateSurfacePress(this%realization)
+#endif
 
 end subroutine PMRichardsUpdateSolution     
 

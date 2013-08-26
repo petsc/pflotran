@@ -4,11 +4,13 @@ module Database_module
   use Reaction_Aux_module
   use Database_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: DatabaseRead, BasisInit
   

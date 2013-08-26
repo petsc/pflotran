@@ -11,12 +11,13 @@ module Geomechanics_Patch_module
   use Geomechanics_Field_module
   use Geomechanics_Auxiliary_module
   use Dataset_Base_class
+  use PFLOTRAN_Constants_module
   
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: geomech_patch_type
     PetscInt                                      :: id

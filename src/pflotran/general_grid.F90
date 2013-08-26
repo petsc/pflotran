@@ -1,5 +1,7 @@
 module General_Grid_module
 
+  use PFLOTRAN_Constants_module
+
  implicit none
 
 #define INVERT
@@ -14,7 +16,7 @@ module General_Grid_module
 
  private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 !#include "include/petscf90.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -118,10 +120,8 @@ subroutine ReadStructuredGridHDF5(realization)
   cur_connection_set => connection_set_list%first
   
   ! create hash table for fast lookup
-#ifdef HASH
   call GridCreateNaturalToGhostedHash(grid,option)
 !  call GridPrintHashTable
-#endif
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)

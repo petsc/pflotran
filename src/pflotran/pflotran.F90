@@ -51,9 +51,11 @@ program pflotran
   use Geomechanics_Logging_module
 #endif
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)

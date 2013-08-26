@@ -5,11 +5,13 @@ module Surface_TH_module
   use Surface_Global_Aux_module
   use Surface_TH_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -317,6 +319,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
 end subroutine SurfaceTHUpdateSurfBC
 
+! RTM: TODO: Figure out if this needs to be modified for surface freezing.
 ! ************************************************************************** !
 !> This routine updates source/sink term for the subsurface model
 !!
@@ -601,6 +604,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal :: den_surf_kg          ! density      [kg/m^3]
+  PetscReal, parameter :: den_surf_ice_kg=917.d0   ! density of surface ice [kg/m^3]
   PetscReal :: den_sub_kg           ! density      [kg/m^3]
   PetscReal :: den_aveg             ! density      [kg/m^3]
   PetscInt :: local_id, ghosted_id, iconn
@@ -646,7 +650,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: Dk_eff
   PetscReal :: Ke_up, Ke_fr
   PetscReal :: dtemp
-  PetscReal :: Cw
+  PetscReal :: Cwi
   PetscReal :: temp_half
   PetscReal, parameter :: epsilon = 1.d-6
     
@@ -723,6 +727,11 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         ! Compute densities:
         call density(surf_global_aux_vars(ghosted_id)%temp(1), &
                      option%reference_pressure,den_surf_kg)
+        ! Now modify den_surf_kg to account for frozen fraction.
+        ! WARNING: This assumes density of ice at atmospheric pressure;
+        ! TODO: Need to actually compute this to handle the general case.
+        den_surf_kg = surf_aux_vars(ghosted_id)%unfrozen_fraction*den_surf_kg + &
+                      (1-surf_aux_vars(ghosted_id)%unfrozen_fraction)*den_surf_ice_kg
         call density(temp_sub_p(local_id),press_sub_p(local_id),den_sub_kg)
         den_aveg = (den_surf_kg + den_sub_kg)/2.d0
 
@@ -770,9 +779,14 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
         if (v_darcy<=0.d0) then
-          ! Flow is happening from surface to subsurface
-          if ( abs(v_darcy) > xx_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = -xx_p(local_id)/option%surf_flow_dt
+          ! Flow is happening from surface to subsurface.
+          ! Note that we limit the mass exchange when surface ice is present 
+          ! (as the frozen fraction is immobile) by multiplying by the 
+          ! unfrozen fraction.
+          if ( abs(v_darcy) > surf_aux_vars(ghosted_id)%unfrozen_fraction * &
+                              xx_p(local_id)/option%surf_flow_dt ) then
+            v_darcy = surf_aux_vars(ghosted_id)%unfrozen_fraction * &
+                      (-xx_p(local_id)/option%surf_flow_dt)
             v_darcy_limit=PETSC_TRUE
           endif
           temp_half = surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0
@@ -792,10 +806,10 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         if(abs(v_darcy)>v_darcy_max) v_darcy_max = v_darcy
 
         ! Heat flux associated with mass flux
-        Cw = surf_aux_vars(ghosted_id)%Cw
+        Cwi = surf_aux_vars(ghosted_id)%Cwi
         exch_p((local_id-1)*option%nflowdof+2) = &
           exch_p((local_id-1)*option%nflowdof+2) + &
-          den_aveg*v_darcy*temp_half*Cw*area_p(local_id)*option%surf_flow_dt
+          den_aveg*v_darcy*temp_half*Cwi*area_p(local_id)*option%surf_flow_dt
 
         if (hw>0.d0) then
           ! Exchange of heat between surface water--subsurface domain
@@ -1320,6 +1334,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                                    xx,surf_field%flow_xx_loc,NFLOWDOF)
 
   ! Then, update the aux vars
+  ! RTM: This includes calculation of the accumulation terms, correct?
   call SurfaceTHUpdateAuxVars(surf_realization)
   ! override flags since they will soon be out of date  
   patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
@@ -1331,6 +1346,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ff_p = 0.d0
   Res  = 0.d0
 
+  ! RTM: Does this computed density get used anywhere?
   call density(option%reference_temperature,option%reference_pressure,rho)
 
   xc => surf_realization%discretization%grid%x
@@ -1480,10 +1496,14 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       istart = iend-option%nflowdof+1
 
       ff_p(istart) = ff_p(istart) + qsrc/area_p(local_id)
+      ! RTM: TODO: What should the density term and specific heat capactiy be 
+      ! in the freezing case?
+      ! I think using the weighted average of liquid and ice densities and Cwi 
+      ! is correct here, but I should check.
       ff_p(iend) = ff_p(iend) + esrc + &
                     surf_global_aux_vars_ss(local_id)%den_kg(1)* &
                     (surf_global_aux_vars_ss(local_id)%temp(1) + 237.15d0)* &
-                    surf_aux_vars(local_id)%Cw* &
+                    surf_aux_vars(local_id)%Cwi* &
                     qsrc/area_p(local_id)* &
                     qsrc*option%surf_flow_dt
 
@@ -1718,6 +1738,7 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   PetscReal :: flux       ! units: m^2/s
   PetscReal :: hw_half
   PetscReal :: mannings_half
+  PetscReal :: unfrozen_fraction_half
   PetscReal :: dhead
   PetscReal :: den_aveg
   PetscReal :: temp_half
@@ -1728,13 +1749,14 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   ! initialize
   flux = 0.d0
 
-  ! Flow
+  ! Flow equation
   head_up = surf_global_aux_var_up%head(1) + zc_up
   head_dn = surf_global_aux_var_dn%head(1) + zc_dn
 
   if (head_up>head_dn) then
     mannings_half = mannings_up
     temp_half = surf_global_aux_var_up%temp(1) + 273.15d0
+    unfrozen_fraction_half = surf_aux_var_up%unfrozen_fraction
     if (surf_global_aux_var_up%head(1)>eps) then
       hw_half = surf_global_aux_var_up%head(1)
     else
@@ -1743,6 +1765,7 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   else
     mannings_half = mannings_dn
     temp_half = surf_global_aux_var_dn%temp(1) + 273.15d0
+    unfrozen_fraction_half = surf_aux_var_dn%unfrozen_fraction
     if (surf_global_aux_var_dn%head(1)>eps) then
       hw_half = surf_global_aux_var_dn%head(1)
     else
@@ -1755,18 +1778,39 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
     dhead=0.d0
     vel = 0.d0
   else
-    vel = (hw_half**(2.d0/3.d0))/mannings_half* &
+    ! RTM: We modify the term raised to the power 2/3 (the "hydraulic radius") 
+    ! by the (upwinded) unfrozen fraction.  For a wide rectangular channel, 
+    ! hydraulic radius (which is a measure of the "efficiency" of the channel) 
+    ! is often taken to be the flow depth, so I believe this makes sense. (?)
+    ! The actual total head term ('hw_half' here) is NOT modified by the 
+    ! unfrozen fraction: though the ice is immobile, its weight does 
+    ! contribute to the pressure head.
+    vel = ((unfrozen_fraction_half * hw_half)**(2.d0/3.d0))/mannings_half* &
           dhead/(abs(dhead)**(1.d0/2.d0))* &
           1.d0/(dist**0.5d0)
+
+     !RTM: Original code for when freezing is not considered is 
+!    vel = (hw_half**(2.d0/3.d0))/mannings_half* &
+!          dhead/(abs(dhead)**(1.d0/2.d0))* &
+!          1.d0/(dist**0.5d0)
   endif
 
-  flux = hw_half*vel
+  flux = unfrozen_fraction_half * hw_half*vel
   Res(TH_PRESSURE_DOF) = flux*length
   
-  ! Temperature
+  ! Temperature equation
+  ! RTM: k_therm is the weighted average of the liquid and ice thermal 
+  ! conductivities.  For the density and specific heat capacity in the 
+  ! advection term, we want these for liquid water ONLY, as the ice portion 
+  ! is immobile and thus should not make up part of the advection term. We 
+  ! also multiply the ponded water depth (hw_half) by the unfrozen fraction 
+  ! in the advection term but NOT the conduction term.
+  ! We do the same in SurfaceTHBCFlux().
+
   ! Average density
-  den_aveg = (surf_global_aux_var_up%den_kg(1) + &
-              surf_global_aux_var_dn%den_kg(1))/2.d0
+  ! Here we only consider the LIQUID fraction.
+  den_aveg = (surf_aux_var_up%den_water_kg + &
+              surf_aux_var_dn%den_water_kg)/2.d0
   ! Temperature difference
   dtemp = surf_global_aux_var_up%temp(1) - surf_global_aux_var_dn%temp(1)
 
@@ -1774,7 +1818,10 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   Cw = surf_aux_var_up%Cw
   k_therm = surf_aux_var_up%k_therm
   
-  Res(TH_TEMPERATURE_DOF) = (den_aveg*vel*temp_half*Cw*hw_half + &
+  ! Unfrozen fraction multiplies hw_half in advection term, but does NOT affect the 
+  ! conduction therm.  
+  ! RTM: Brookfield et al. 2009 also has dispersion term, which we are not using.
+  Res(TH_TEMPERATURE_DOF) = (den_aveg*vel*temp_half*Cw*unfrozen_fraction_half*hw_half + &
                              k_therm*dtemp/dist*hw_half)*length
 
 end subroutine SurfaceTHFlux
@@ -1818,6 +1865,11 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   flux = 0.d0
   vel = 0.d0
   
+  ! RTM: I've multiplied the head (ponded water depth, actually) by the 
+  ! unfrozen fraction.  I believe this makes sense, but I should think a bit 
+  ! more about what a "zero gradient" condition means in the case of freezing
+  ! surface water.
+
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
   head = surf_global_aux_var%head(1)
@@ -1827,20 +1879,21 @@ subroutine SurfaceTHBCFlux(ibndtype, &
       if (slope<0.d0) then
         vel =  0.d0
       else
-        vel = -sqrt(dabs(slope))/mannings*((head)**(2.d0/3.d0))
+        vel = -sqrt(dabs(slope))/mannings*((surf_aux_var%unfrozen_fraction * head)**(2.d0/3.d0))
       endif
     case default
       option%io_buffer = 'Uknown pressure_bc_type for surface flow '
   end select
   
-  flux = head*vel
+  flux = surf_aux_var%unfrozen_fraction * head*vel
   Res(TH_PRESSURE_DOF) = flux*length
 
   ! Temperature
-  Res(TH_TEMPERATURE_DOF) = surf_global_aux_var%den_kg(1)* &
+  ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
+  Res(TH_TEMPERATURE_DOF) = surf_aux_var%den_water_kg* &
                             (surf_global_aux_var%temp(1) + 273.15d0)* &
                             surf_aux_var%Cw* &
-                            vel*head*length
+                            vel*head*surf_aux_var%unfrozen_fraction*length
 
 end subroutine SurfaceTHBCFlux
 
@@ -1919,11 +1972,11 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
                                 surf_th_aux_vars(ghosted_id), &
                                 surf_global_aux_vars(ghosted_id), &
                                 option)
-    ! [rho*h*T*Cw]
+    ! [rho*h*T*Cwi]
     xx_loc_p(istart+1) = surf_global_aux_vars(ghosted_id)%den_kg(1)* &
                          xx_loc_p(istart)* &
                          (surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0)* &
-                         surf_th_aux_vars(ghosted_id)%Cw
+                         surf_th_aux_vars(ghosted_id)%Cwi
   enddo
    
   ! Boundary aux vars
@@ -2070,10 +2123,10 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       if(xx_loc_p(istart)<1.d-15) then
         temp = 0.d0
       else
-        ! T^{t+1} = (rho Cw hw T)^{t+1} / (rho Cw)^{t} (hw)^{t+1}
+        ! T^{t+1} = (rho Cwi hw T)^{t+1} / (rho Cw)^{t} (hw)^{t+1}
         temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
                 surf_global_aux_vars(ghosted_id)%den_kg(1)/ &
-                surf_aux_vars(ghosted_id)%Cw - 273.15d0
+                surf_aux_vars(ghosted_id)%Cwi - 273.15d0
       endif
       surf_global_aux_vars(ghosted_id)%temp(1) = temp
     endif

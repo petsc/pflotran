@@ -2,11 +2,13 @@ module Dataset_Common_HDF5_class
  
   use Dataset_Base_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_common_hdf5_type
     character(len=MAXWORDLENGTH) :: hdf5_dataset_name

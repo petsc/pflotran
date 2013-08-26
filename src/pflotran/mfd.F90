@@ -4,11 +4,13 @@ module MFD_module
   use Connection_module
   use Grid_module
   use MFD_Aux_module
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"

@@ -8,12 +8,17 @@ module Simulation_module
 #ifdef SURFACE_FLOW
   use Surface_Realization_class
 #endif
+
 #ifdef GEOMECH
   use Geomechanics_Realization_module
 #endif
+
+  use PFLOTRAN_Constants_module
+
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   private
 

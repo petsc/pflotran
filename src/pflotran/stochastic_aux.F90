@@ -2,11 +2,13 @@ module Stochastic_Aux_module
 
   use Simulation_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: stochastic_type
     PetscInt :: num_groups

@@ -63,6 +63,8 @@ module Checkpoint_module
 
   use Checkpoint_Header_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
@@ -74,7 +76,7 @@ module Checkpoint_module
             CheckpointFlowProcessModel, &
             RestartFlowProcessModel
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"

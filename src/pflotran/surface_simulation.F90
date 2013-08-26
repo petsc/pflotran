@@ -8,9 +8,11 @@ module Surface_Simulation_class
   use PMC_Base_class
   use Surface_Realization_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   private
 

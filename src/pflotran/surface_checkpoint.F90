@@ -46,13 +46,15 @@ module Surface_Checkpoint_module
 
   use Surface_Checkpoint_Header_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
   public :: SurfaceCheckpoint, SurfaceRestart
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"

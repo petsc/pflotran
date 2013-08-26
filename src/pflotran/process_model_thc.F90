@@ -7,11 +7,13 @@ module Process_Model_THC_class
   use Communicator_Base_module
   use Option_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
