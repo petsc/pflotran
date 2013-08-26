@@ -182,6 +182,9 @@ subroutine StochasticRun(stochastic,option)
   use Init_module
   use PFLOTRAN_Factory_module
   use Logging_module
+#ifdef GEOMECH
+  use Geomechanics_Logging_module
+#endif
 
   implicit none
 
@@ -200,6 +203,9 @@ subroutine StochasticRun(stochastic,option)
   
   call OptionInitPetsc(option)
   call LoggingCreate()
+#ifdef GEOMECH
+  call GeomechLoggingCreate()
+#endif
 
   do irealization = 1, stochastic%num_local_realizations
 
@@ -236,6 +242,9 @@ subroutine StochasticRun(stochastic,option)
   enddo
   
   call LoggingDestroy()
+#ifdef GEOMECH
+  call GeomechLoggingDestroy()
+#endif
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun

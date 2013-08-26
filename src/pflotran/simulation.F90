@@ -10,7 +10,6 @@ module Simulation_module
 #endif
 #ifdef GEOMECH
   use Geomechanics_Realization_module
-  use Geomechanics_Logging_module
 #endif
   implicit none
 
@@ -99,7 +98,6 @@ function SimulationCreate2(option)
 #ifdef GEOMECH
   simulation%geomech_realization => GeomechRealizCreate(option)
   simulation%geomech_stepper => TimestepperCreate()
-  call GeomechLoggingCreate()
 #endif
   nullify(simulation%regression)
   
@@ -153,7 +151,6 @@ subroutine SimulationDestroy(simulation)
 #ifdef GEOMECH
   call GeomechRealizDestroy(simulation%geomech_realization)
   call TimestepperDestroy(simulation%geomech_stepper)
-  call GeomechLoggingDestroy()
 #endif
 
   call RegressionDestroy(simulation%regression)

@@ -774,7 +774,7 @@ solver.o : input.o option.o string.o
 spline.o :
 stochastic.o : init.o input.o logging.o option.o pflotran_factory.o \
                realization.o simulation.o stochastic_aux.o timestepper.o
-stochastic_aux.o : input.o option.o simulation.o
+stochastic_aux.o : input.o option.o simulation.o geomechanics_logging.o
 strata.o : input.o material.o option.o region.o string.o surface_material.o
 string.o :
 structured_grid.o : connection.o input.o option.o string.o

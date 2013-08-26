@@ -47,6 +47,9 @@ program pflotran
   use Timestepper_module  
   use PFLOTRAN_Factory_module
   use Logging_module
+#ifdef GEOMECH
+  use Geomechanics_Logging_module
+#endif
   
   implicit none
 
@@ -96,11 +99,17 @@ program pflotran
       endif
       call OptionInitPetsc(option)
       call LoggingCreate()
+#ifdef GEOMECH
+      call GeomechLoggingCreate()
+#endif
       call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
                                        init_status)
       call PFLOTRANRun(simulation,master_stepper,init_status)
       call PFLOTRANFinalize(simulation,option)
       call LoggingDestroy()
+#ifdef GEOMECH
+      call GeomechLoggingDestroy()
+#endif
   end select
 
   call OptionFinalize(option)
