@@ -15,7 +15,7 @@ import pflotran as pft
 path = []
 path.append('.')
 
-files = pft.get_default_tec_filenames(range(1,6))
+files = pft.get_tec_filenames('calcite_tran_only',range(1,6))
 filenames = pft.get_full_paths(path,files)
 
 f = plt.figure(figsize=(6,6))
