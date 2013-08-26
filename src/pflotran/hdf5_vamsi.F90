@@ -1085,9 +1085,7 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   call PetscLogEventBegin(logging%event_region_read_hdf5,ierr)
                           
   ! create hash table for fast lookup
-#ifdef HASH
   call GridCreateNaturalToGhostedHash(grid,option)
-#endif
 
 #if defined(SCORPIO)
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then

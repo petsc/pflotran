@@ -235,6 +235,4 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: DONE = 1
   PetscInt, parameter, public :: FAIL = 2
 
-#define HASH
-
 end module PFLOTRAN_Constants_module
