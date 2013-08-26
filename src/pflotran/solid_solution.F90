@@ -4,11 +4,13 @@ module Solid_Solution_module
   use Reaction_Aux_module
   use Solid_Solution_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: SolidSolutionReadFromInputFile, &
             SolidSolutionLinkNamesToIDs

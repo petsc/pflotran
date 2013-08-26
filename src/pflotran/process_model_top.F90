@@ -2,11 +2,13 @@ module Process_Model_module
 
   use Process_Model_Base_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! Since the context (ctx) for procedures passed to PETSc must be declared 
   ! as a "type" instead of a "class", object is a workaround for passing the 

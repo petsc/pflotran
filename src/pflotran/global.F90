@@ -2,11 +2,13 @@ module Global_module
 
   use Global_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   public GlobalSetup, GlobalSetAuxVarScalar, GlobalSetAuxVarVecLoc, &
          GlobalUpdateDenAndSat, GlobalUpdateAuxVars

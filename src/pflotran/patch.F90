@@ -19,11 +19,13 @@ module Patch_module
   
   use Auxiliary_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: patch_type 
     

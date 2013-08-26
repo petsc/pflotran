@@ -2,11 +2,13 @@ module Matrix_Buffer_module
 
   use Grid_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 #include "finclude/petscvec.h"

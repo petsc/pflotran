@@ -3,11 +3,13 @@ module Surface_Factory_module
 
   use Surface_Simulation_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: SurfaceInitialize, &
             SurfaceInitializePostPETSc, &

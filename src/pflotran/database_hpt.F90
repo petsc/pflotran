@@ -7,11 +7,13 @@ module Database_hpt_module
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: DatabaseRead_hpt, BasisInit_hpt
             

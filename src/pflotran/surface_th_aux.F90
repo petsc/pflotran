@@ -2,11 +2,13 @@
 
 module Surface_TH_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: Surface_TH_auxvar_type
     PetscReal :: h        ! enthalpy -- not currently used

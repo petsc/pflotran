@@ -48,9 +48,11 @@ program pflotran
   use PFLOTRAN_Factory_module
   use Logging_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)

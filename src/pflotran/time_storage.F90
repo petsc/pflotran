@@ -1,10 +1,12 @@
 module Time_Storage_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   type, public :: time_storage_type
     PetscReal, pointer :: times(:)

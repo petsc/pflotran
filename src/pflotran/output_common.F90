@@ -6,11 +6,13 @@ module Output_Common_module
   !note: only realization_base_type can be used throughout this module.
   use Realization_Base_class, only : realization_base_type
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
@@ -1130,7 +1132,7 @@ subroutine OutputGetFlowrates(realization_base)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1333,7 +1335,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1489,7 +1491,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1576,7 +1578,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1688,7 +1690,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option

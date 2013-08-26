@@ -41,11 +41,13 @@
 
 module BatchChem
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: BatchChemInitializeReactions, &
             BatchChemProcessConstraints
@@ -63,7 +65,7 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
 
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petsclog.h"
 
   type(option_type), pointer :: option
@@ -120,7 +122,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
 
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petsclog.h"
 
   type(option_type), pointer :: option
@@ -249,7 +251,7 @@ program pflotran_rxn
 
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petsclog.h"
 
   PetscErrorCode :: ierr

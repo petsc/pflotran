@@ -6,11 +6,13 @@ module Reaction_Sandbox_module
   
   ! Add new reacton sandbox classes here.
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(reaction_sandbox_base_type), pointer, public :: sandbox_list
 

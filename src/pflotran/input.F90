@@ -2,11 +2,13 @@ module Input_module
 
   use Option_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: input_type 
     PetscInt :: fid

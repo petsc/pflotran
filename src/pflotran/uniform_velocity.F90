@@ -1,10 +1,12 @@
 module Uniform_Velocity_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscInt, parameter :: NULL = 0
   PetscInt, parameter :: STEP = 1

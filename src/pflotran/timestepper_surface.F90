@@ -6,9 +6,11 @@ module Timestepper_Surface_class
   use Solver_module
   use Waypoint_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   private
 

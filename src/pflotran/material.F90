@@ -2,11 +2,13 @@ module Material_module
  
   use Dataset_Common_HDF5_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: material_property_type
     PetscInt :: id

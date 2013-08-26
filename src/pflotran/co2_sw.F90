@@ -5,9 +5,11 @@ module co2_sw_module
   ! co2_sw_prop(p,t,rho,dddt,dddp,fg,dfgdp,dfgdt,
   !                 eng,ent,dhdt,dhdp,visc,dvdt,dvdp)
 
+  use PFLOTRAN_Constants_module
+
       implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
       private
       save

@@ -2,11 +2,13 @@ module Stochastic_module
 
   use Stochastic_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   public :: StochasticInit, &
             StochasticRun

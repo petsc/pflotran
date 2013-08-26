@@ -2,11 +2,13 @@ module Timestepper_Base_class
  
   use Waypoint_module 
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: stepper_base_type
   

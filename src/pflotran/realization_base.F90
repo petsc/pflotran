@@ -12,11 +12,13 @@ module Realization_Base_class
   use Reaction_Aux_module
   use Mass_Transfer_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   type, public :: realization_base_type
 
     PetscInt :: id

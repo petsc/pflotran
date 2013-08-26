@@ -4,11 +4,13 @@ module Output_Tecplot_module
   use Output_Aux_module
   use Output_Common_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   PetscInt, parameter, public :: TECPLOT_POINT_FORMAT = 1
   PetscInt, parameter, public :: TECPLOT_BLOCK_FORMAT = 2
   PetscInt, parameter, public :: TECPLOT_FEBRICK_FORMAT = 3

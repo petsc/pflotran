@@ -10,9 +10,11 @@
   !     P [MPa]       T [K]         
   !     rho [kg/m^3] Energy [MJ/kg] Enthalpy [MJ/kg] Vis [Pa s]
 
+  use PFLOTRAN_Constants_module
+
       implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
       save
       

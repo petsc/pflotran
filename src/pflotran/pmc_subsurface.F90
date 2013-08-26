@@ -3,9 +3,11 @@ module PMC_Subsurface_class
   use PMC_Base_class
   use Realization_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   private
 

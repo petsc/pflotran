@@ -2,11 +2,13 @@ module Microbial_module
 
   use Microbial_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: MicrobialRead, &
             RMicrobial

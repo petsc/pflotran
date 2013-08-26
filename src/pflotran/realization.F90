@@ -25,11 +25,13 @@ module Realization_class
   use Level_module
   use Patch_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
 private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   type, public, extends(realization_base_type) :: realization_type
@@ -615,7 +617,7 @@ subroutine RealizationCreatenG2LP(realization)
 #include "finclude/petscviewer.h"
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type(realization_type) :: realization
 

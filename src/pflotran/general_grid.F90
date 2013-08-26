@@ -1,5 +1,7 @@
 module General_Grid_module
 
+  use PFLOTRAN_Constants_module
+
  implicit none
 
 #define INVERT
@@ -14,7 +16,7 @@ module General_Grid_module
 
  private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 !#include "include/petscf90.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"

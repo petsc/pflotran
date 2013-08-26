@@ -2,11 +2,13 @@ module Immis_Aux_module
 
   use Mphase_pckr_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 type, public :: Immis_auxvar_elem_type
   PetscReal :: pres

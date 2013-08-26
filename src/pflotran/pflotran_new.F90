@@ -47,9 +47,11 @@ program pflotran
   use Surface_Factory_module
   use Surf_Subsurf_Factory_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   class(simulation_base_type), pointer :: simulation
   type(option_type), pointer :: option

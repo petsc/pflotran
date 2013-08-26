@@ -5,11 +5,13 @@ module Reaction_Sandbox_CLM_CN_class
   use Global_Aux_module
   use Reactive_Transport_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_clm_cn_type

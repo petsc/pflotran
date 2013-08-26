@@ -2,11 +2,13 @@ module Mineral_Aux_module
   
   use Database_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! mineral types
   PetscInt, parameter, public :: MINERAL_REFERENCE = 1

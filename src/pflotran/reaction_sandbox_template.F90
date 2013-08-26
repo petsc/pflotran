@@ -8,11 +8,13 @@ module Reaction_Sandbox_Template_class
   use Global_Aux_module
   use Reactive_Transport_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 ! 2. Add module variables here.  Note that one must use the PETSc data types 
 !    PetscInt, PetscReal, PetscBool to declare variables of type integer

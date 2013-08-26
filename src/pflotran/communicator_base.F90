@@ -1,5 +1,7 @@
 module Communicator_Base_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
@@ -69,7 +71,7 @@ subroutine CommCreateProcessorGroups(option,num_groups)
   
   implicit none
   
-#include "definitions.h"  
+#include "finclude/petscsys.h"
 
   type(option_type) :: option
   PetscInt :: num_groups

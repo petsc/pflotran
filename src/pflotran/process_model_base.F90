@@ -4,11 +4,13 @@ module Process_Model_Base_class
   use Output_Aux_module
   use Realization_Base_class
 
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"

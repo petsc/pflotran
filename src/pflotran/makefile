@@ -173,6 +173,7 @@ util_obj  = \
 	${common_src}matrix_block_aux.o \
 	${common_src}option.o \
 	${common_src}output_aux.o \
+	${common_src}pflotran_constants.o \
 	${common_src}string.o \
 	${common_src}units.o \
 	${common_src}utility.o \
@@ -490,7 +491,7 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          unstructured_grid_aux.o variables.o water_eos.o waypoint.o
 input.o : option.o string.o
 level.o : patch.o
-logging.o :
+logging.o : pflotran_constants.o
 mass_transfer.o : dataset_common_hdf5.o dataset_global.o discretization.o \
                   grid.o input.o option.o string.o
 material.o : dataset_common_hdf5.o input.o option.o string.o
@@ -570,6 +571,7 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
 pflotran.o : input.o logging.o option.o pflotran_factory.o simulation.o \
              stochastic.o stochastic_aux.o timestepper.o
+pflotran_constants.o :
 pflotran_factory.o : init.o input.o logging.o option.o regression.o \
                      simulation.o string.o timestepper.o
 ifdef PFLOTRAN_RXN_FLAG

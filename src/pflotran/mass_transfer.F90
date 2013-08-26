@@ -2,11 +2,13 @@ module Mass_Transfer_module
  
   use Dataset_Global_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
  

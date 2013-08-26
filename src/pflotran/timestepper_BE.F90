@@ -4,11 +4,13 @@ module Timestepper_BE_class
   use Convergence_module
   use Timestepper_Base_class
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public, extends(stepper_base_type) :: stepper_BE_type
   
