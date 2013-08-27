@@ -254,7 +254,4 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: GEOMECH_DISP_Y_DOF = 2
   PetscInt, parameter, public :: GEOMECH_DISP_Z_DOF = 3
 
-
-#define HASH
-
 end module PFLOTRAN_Constants_module
