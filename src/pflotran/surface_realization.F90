@@ -890,7 +890,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 
   call MatCreateAIJ(option%mycomm, &
                        top_region%num_cells, &
-                       PETSC_DETERMINE, &
+                       PETSC_DECIDE, &
                        PETSC_DETERMINE, &
                        subsurf_grid%num_vertices_global, &
                        4, &
@@ -963,7 +963,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 
   call MatCreateAIJ(option%mycomm, &
                        surf_grid%nlmax, &
-                       PETSC_DETERMINE, &
+                       PETSC_DECIDE, &
                        PETSC_DETERMINE, &
                        subsurf_grid%num_vertices_global, &
                        4, &
