@@ -408,14 +408,14 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
              '"X [m]",' // &
              '"Y [m]",' // &
              '"Z [m]",' // &
-             '"vlx [m/' // trim(output_option%tunit) // ']",' // &
-             '"vly [m/' // trim(output_option%tunit) // ']",' // &
-             '"vlz [m/' // trim(output_option%tunit) // ']"'
+             '"qlx [m/' // trim(output_option%tunit) // ']",' // &
+             '"qly [m/' // trim(output_option%tunit) // ']",' // &
+             '"qlz [m/' // trim(output_option%tunit) // ']"'
     if (option%nphase > 1) then
       string = trim(string) // &
-               ',"vgx [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgy [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgz [m/' // trim(output_option%tunit) // ']"'
+               ',"qgx [m/' // trim(output_option%tunit) // ']",' // &
+               '"qgy [m/' // trim(output_option%tunit) // ']",' // &
+               '"qgz [m/' // trim(output_option%tunit) // ']"'
     endif
 
     string = trim(string) // ',"Material_ID"'
@@ -565,9 +565,9 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
   
   select case(iphase)
     case(LIQUID_PHASE)
-      filename = trim(filename) // 'vl'
+      filename = trim(filename) // 'ql'
     case(GAS_PHASE)
-      filename = trim(filename) // 'vg'
+      filename = trim(filename) // 'qg'
   end select
   
   select case(direction)
@@ -607,11 +607,11 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
   
     select case(direction)
       case(X_DIRECTION)
-        string = trim(string) // ' vlx [m/' // trim(output_option%tunit) // ']"'
+        string = trim(string) // ' qlx [m/' // trim(output_option%tunit) // ']"'
       case(Y_DIRECTION)
-        string = trim(string) // ' vly [m/' // trim(output_option%tunit) // ']"'
+        string = trim(string) // ' qly [m/' // trim(output_option%tunit) // ']"'
       case(Z_DIRECTION)
-        string = trim(string) // ' vlz [m/' // trim(output_option%tunit) // ']"'
+        string = trim(string) // ' qlz [m/' // trim(output_option%tunit) // ']"'
     end select 
     
     write(OUTPUT_UNIT,'(a)') trim(string)
@@ -976,14 +976,14 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
              '"X [m]",' // &
              '"Y [m]",' // &
              '"Z [m]",' // &
-             '"vlx [m/' // trim(output_option%tunit) // ']",' // &
-             '"vly [m/' // trim(output_option%tunit) // ']",' // &
-             '"vlz [m/' // trim(output_option%tunit) // ']"'
+             '"qlx [m/' // trim(output_option%tunit) // ']",' // &
+             '"qly [m/' // trim(output_option%tunit) // ']",' // &
+             '"qlz [m/' // trim(output_option%tunit) // ']"'
     if (option%nphase > 1) then
       string = trim(string) // &
-               ',"vgx [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgy [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgz [m/' // trim(output_option%tunit) // ']"'
+               ',"qgx [m/' // trim(output_option%tunit) // ']",' // &
+               '"qgy [m/' // trim(output_option%tunit) // ']",' // &
+               '"qgz [m/' // trim(output_option%tunit) // ']"'
     endif
     
     string = trim(string) // ',"Material_ID"'

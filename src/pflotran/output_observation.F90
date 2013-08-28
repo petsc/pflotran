@@ -378,14 +378,14 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
     header = ''
 !   write(string,'(''[m/'',a,'']'')') trim(realization_base%output_option%tunit)
     write(string,'(''m/'',a,'' '')') trim(realization_base%output_option%tunit)
-    call OutputAppendToHeader(header,'vlx',string,cell_string,icolumn)
-    call OutputAppendToHeader(header,'vly',string,cell_string,icolumn)
-    call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
+    call OutputAppendToHeader(header,'qlx',string,cell_string,icolumn)
+    call OutputAppendToHeader(header,'qly',string,cell_string,icolumn)
+    call OutputAppendToHeader(header,'qlz',string,cell_string,icolumn)
 
     if (option%nphase > 1) then
-      call OutputAppendToHeader(header,'vgx',string,cell_string,icolumn)
-      call OutputAppendToHeader(header,'vgy',string,cell_string,icolumn)
-      call OutputAppendToHeader(header,'vgz',string,cell_string,icolumn)
+      call OutputAppendToHeader(header,'qgx',string,cell_string,icolumn)
+      call OutputAppendToHeader(header,'qgy',string,cell_string,icolumn)
+      call OutputAppendToHeader(header,'qgz',string,cell_string,icolumn)
     endif
     write(fid,'(a)',advance="no") trim(header)
   endif
