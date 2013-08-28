@@ -610,9 +610,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr)
   if (option_found) option%flowmode = "thc"     
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thmc", &
-                           option_found, ierr)
-  if (option_found) option%flowmode = "thmc"     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)

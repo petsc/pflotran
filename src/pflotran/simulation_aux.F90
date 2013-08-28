@@ -416,7 +416,6 @@ subroutine SimulationCreateSurfSubSurfVScat( &
   type(realization_type),pointer         :: realization
   type(surface_realization_type),pointer :: surf_realization
   Mat :: prod_mat
-!  PetscInt  :: source_grid_flag
   Vec :: source_petsc_ids
   VecScatter :: scatter
 
@@ -529,28 +528,8 @@ subroutine SimulationCreateSurfSubSurfVScat( &
   call VecScatterEnd(scatter,source_petsc_ids,corr_dest_ids_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
 
-#if UGRID_DEBUG
-  if (source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
-  if (source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
-  string = adjustl(string)
-  string = 'corr_dest_ids_vec_' // trim(string) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call VecView(corr_dest_ids_vec,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
-
   call VecDestroy(corr_dest_ids_vec,ierr)
   if (option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
-
-#if UGRID_DEBUG
-  if (source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
-  if (source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
-  string = adjustl(string)
-  string = 'scatter_bet_grids_' // trim(string) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
-  call VecScatterView(dm_ptr%ugdm%scatter_bet_grids,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
 
 end subroutine SimulationCreateSurfSubSurfVScat
 

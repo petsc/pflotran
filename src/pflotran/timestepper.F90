@@ -1240,18 +1240,6 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             ut = min(up,utmp,uus)
           endif
           dtt = fac * dt * (1.d0 + ut)
-        case(THMC_MODE)
-          fac = 0.5d0
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
-            fac = 0.33d0
-            ut = 0.d0
-          else
-            up = option%dpmxe/(option%dpmax+0.1)
-            utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-            uus= option%dsmxe/(option%dsmax+1.d-6)
-            ut = min(up,utmp,uus)
-          endif
-          dtt = fac * dt * (1.d0 + ut)
         case(RICHARDS_MODE)
           if (flow_stepper%iaccel > 0) then
             fac = 0.5d0
@@ -1917,7 +1905,6 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
                              RichardsTimeCut, RichardsResidual
   use TH_module, only : THMaxChange, THInitializeTimestep, THTimeCut
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
-  use THMC_module, only : THMCMaxChange, THMCInitializeTimestep, THMCTimeCut
 
   use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
                              GeneralTimeCut
@@ -1996,8 +1983,6 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   endif
     
   select case(option%iflowmode)
-    case(THMC_MODE)
-      call THMCInitializeTimestep(realization)
     case(TH_MODE)
       call THInitializeTimestep(realization)
     case(THC_MODE)
@@ -2021,7 +2006,7 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
     call PetscTime(log_start_time, ierr)
 
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+      case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
       case(RICHARDS_MODE)
         if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
@@ -2064,8 +2049,6 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
           if (option%use_mc) then
             option%sec_vars_update = PETSC_TRUE
           endif
-        case(THMC_MODE)
-          update_reason=1
         case (MIS_MODE)
           update_reason=1
         case(RICHARDS_MODE,G_MODE)
@@ -2112,8 +2095,6 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
           call THTimeCut(realization)
         case(THC_MODE)
           call THCTimeCut(realization)
-        case(THMC_MODE)
-          call THMCTimeCut(realization)
         case(RICHARDS_MODE)
           call RichardsTimeCut(realization)
         case(MPH_MODE)
@@ -2202,18 +2183,6 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax, option%dcmax
-      endif
-    case(THMC_MODE)
-      call THMCMaxChange(realization)
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax, option%dcmax
-      endif
-      if (option%print_file_flag) then 
-        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax
       endif
     case(RICHARDS_MODE)
       call RichardsMaxChange(realization)
@@ -2424,7 +2393,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
                              RichardsTimeCut, RichardsResidual
   use TH_module, only : THMaxChange, THInitializeTimestep, THTimeCut
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
-  use THMC_module, only : THMCMaxChange, THMCInitializeTimestep, THMCTimeCut
 
   use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
                              GeneralTimeCut
@@ -2520,8 +2488,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     endif
     
     select case(option%iflowmode)
-      case(THMC_MODE)
-        call THMCInitializeTimestep(realization)
       case(TH_MODE)
         call THInitializeTimestep(realization)
       case(THC_MODE)
@@ -2546,7 +2512,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       call PetscTime(log_start_time, ierr)
 
       select case(option%iflowmode)
-        case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
@@ -2615,8 +2581,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             if (option%use_mc) then
               option%sec_vars_update = PETSC_TRUE
             endif
-          case(THMC_MODE)
-            update_reason=1
           case (MIS_MODE)
             update_reason=1
           case(RICHARDS_MODE,G_MODE)
@@ -2671,8 +2635,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call THTimeCut(realization)
           case(THC_MODE)
             call THCTimeCut(realization)
-          case(THMC_MODE)
-            call THMCTimeCut(realization)
           case(RICHARDS_MODE)
             call RichardsTimeCut(realization)
           case(MPH_MODE)
@@ -2841,18 +2803,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax, option%dcmax
-      endif
-    case(THMC_MODE)
-      call THMCMaxChange(realization)
-      if (option%print_screen_flag) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax, option%dcmax
-      endif
-      if (option%print_file_flag) then 
-        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax
       endif
     case(RICHARDS_MODE)
       call RichardsMaxChange(realization)
@@ -3724,7 +3674,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   end select
 
   select case(option%iflowmode)
-    case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
     case(RICHARDS_MODE)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
@@ -3948,7 +3898,6 @@ subroutine StepperUpdateFlowSolution(realization)
   use Richards_module, only : RichardsUpdateSolution
   use TH_module, only : THUpdateSolution
   use THC_module, only : THCUpdateSolution
-  use THMC_module, only : THMCUpdateSolution
   use General_module, only : GeneralUpdateSolution
 
   use Realization_class
@@ -3977,8 +3926,6 @@ subroutine StepperUpdateFlowSolution(realization)
       call THUpdateSolution(realization)
     case(THC_MODE)
       call THCUpdateSolution(realization)
-    case(THMC_MODE)
-      call THMCUpdateSolution(realization)
     case(RICHARDS_MODE)
       call RichardsUpdateSolution(realization)
     case(G_MODE)
@@ -4097,7 +4044,6 @@ subroutine StepperUpdateFlowAuxVars(realization)
   use Richards_module, only : RichardsUpdateAuxVars
   use TH_module, only : THUpdateAuxVars
   use THC_module, only : THCUpdateAuxVars
-  use THMC_module, only : THMCUpdateAuxVars
   use General_module, only : GeneralUpdateAuxVars
 
   use Realization_class
@@ -4126,8 +4072,6 @@ subroutine StepperUpdateFlowAuxVars(realization)
       call THUpdateAuxVars(realization)
     case(THC_MODE)
       call THCUpdateAuxVars(realization)
-    case(THMC_MODE)
-      call THMCUpdateAuxVars(realization)
     case(RICHARDS_MODE)
       call RichardsUpdateAuxVars(realization)
     case(G_MODE)

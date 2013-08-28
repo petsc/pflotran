@@ -146,7 +146,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
       aux_var%reaction_rate_store = 0.d0
     ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
     ! aux_var%reaction_rate_store = 0.d0
-    case(TH_MODE,THC_MODE,THMC_MODE)
+    case(TH_MODE,THC_MODE)
     ! allocate(aux_var%xmass(option%nphase))
     ! aux_var%xmass = 1.d0
       allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))

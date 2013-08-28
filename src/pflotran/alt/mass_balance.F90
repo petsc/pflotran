@@ -65,7 +65,6 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
   
   use TH_module, only : THResidualToMass
   use THC_module, only : THCResidualToMass
-  use THMC_module, only : THMCResidualToMass
 
   
   implicit none
@@ -102,11 +101,6 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
         call THCResidualToMass(realization)      
         call VecAXPY(field%flow_total_mass_balance, &
                      1.d0,field%flow_ts_mass_balance,ierr)
-      case(THMC_MODE)
-        call THMCResidualToMass(realization)      
-        call VecAXPY(field%flow_total_mass_balance, &
-                     1.d0,field%flow_ts_mass_balance,ierr)
-
       case(RICHARDS_MODE,G_MODE)
         call VecAXPY(field%flow_total_mass_balance, &
                      1.d0,field%flow_ts_mass_balance,ierr)

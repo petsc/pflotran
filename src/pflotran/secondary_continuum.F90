@@ -944,6 +944,27 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                         
   rhs = -res   
   
+  if (reaction%use_log_formulation) then
+  ! scale the jacobian by concentrations
+    i = 1
+    do k = 1, ncomp
+      coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
+      coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i+1)
+    enddo
+    do i = 2, ngcells-1
+      do k = 1, ncomp
+        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
+        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i-1)
+        coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i+1)
+      enddo
+    enddo
+    i = ngcells
+      do k = 1, ncomp
+        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
+        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i-1)
+      enddo
+  endif 
+  
   ! First do an LU decomposition for calculating D_M matrix
   coeff_diag_dm = coeff_diag
   coeff_left_dm = coeff_left
@@ -1000,27 +1021,6 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
     call lubksb(D_M,ncomp,indx,identity(1,j))
   enddo  
   inv_D_M = identity      
-  
-  if (reaction%use_log_formulation) then
-  ! scale the jacobian by concentrations
-    i = 1
-    do k = 1, ncomp
-      coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
-      coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i+1)
-    enddo
-    do i = 2, ngcells-1
-      do k = 1, ncomp
-        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
-        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i-1)
-        coeff_right(:,k,i) = coeff_right(:,k,i)*conc_upd(k,i+1)
-      enddo
-    enddo
-    i = ngcells
-      do k = 1, ncomp
-        coeff_diag(:,k,i) = coeff_diag(:,k,i)*conc_upd(k,i) ! m3/s*kg/L
-        coeff_left(:,k,i) = coeff_left(:,k,i)*conc_upd(k,i-1)
-      enddo
-  endif
   
   if (option%numerical_derivatives_multi_coupling) then  
     ! Store the coeffs for numerical jacobian
@@ -1089,33 +1089,65 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   
 
   b_m = pordiff/dm_plus(ngcells)*area(ngcells)*inv_D_M ! in m3/kg
-  b_m = b_m*1.d3 ! in L/kg
+  b_m = b_m*1.d3 ! in L/kg  For log formulation, L/mol
   
   dCsec_dCprim = b_m*dtotal_prim
       
   ! Calculate the dervative of outer matrix node total with respect to the 
   ! primary node concentration
-  dPsisec_dCprim = dCsec_dCprim       ! dimensionless
   
-  if (reaction%neqcplx > 0) then
-    do icplx = 1, reaction%neqcplx
-      ncompeq = reaction%eqcplxspecid(0,icplx)
-      do j = 1, ncompeq
-        jcomp = reaction%eqcplxspecid(j,icplx)
-        do l = 1, ncompeq
-          lcomp = reaction%eqcplxspecid(l,icplx)
-          do k = 1, ncompeq
-            kcomp = reaction%eqcplxspecid(k,icplx)
-            dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
-                                          reaction%eqcplxstoich(j,icplx)* &
-                                          reaction%eqcplxstoich(k,icplx)* &
-                                          dCsec_dCprim(kcomp,lcomp)* &
-                                          sec_sec_molal_M(icplx)/ &
-                                          conc_current_M(kcomp)
-          enddo
-        enddo      
+  if (reaction%use_log_formulation) then ! log formulation
+    do j = 1, ncomp
+      do l = 1, ncomp
+        dPsisec_dCprim(j,l) = dCsec_dCprim(j,l)*conc_current_M(j)
       enddo
     enddo
+   
+    if (reaction%neqcplx > 0) then
+      do icplx = 1, reaction%neqcplx
+        ncompeq = reaction%eqcplxspecid(0,icplx)
+        do j = 1, ncompeq
+          jcomp = reaction%eqcplxspecid(j,icplx)
+          do l = 1, ncompeq
+            lcomp = reaction%eqcplxspecid(l,icplx)
+            do k = 1, ncompeq
+              kcomp = reaction%eqcplxspecid(k,icplx)
+              dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
+                                            reaction%eqcplxstoich(j,icplx)* &
+                                            reaction%eqcplxstoich(k,icplx)* &
+                                            dCsec_dCprim(kcomp,lcomp)* &
+                                            sec_sec_molal_M(icplx)
+            enddo
+          enddo      
+        enddo
+      enddo
+    endif
+   
+  else   ! linear case  
+  
+    dPsisec_dCprim = dCsec_dCprim       ! dimensionless
+  
+    if (reaction%neqcplx > 0) then
+      do icplx = 1, reaction%neqcplx
+        ncompeq = reaction%eqcplxspecid(0,icplx)
+        do j = 1, ncompeq
+          jcomp = reaction%eqcplxspecid(j,icplx)
+          do l = 1, ncompeq
+            lcomp = reaction%eqcplxspecid(l,icplx)
+            do k = 1, ncompeq
+              kcomp = reaction%eqcplxspecid(k,icplx)
+              dPsisec_dCprim(jcomp,lcomp) = dPsisec_dCprim(jcomp,lcomp) + &
+                                            reaction%eqcplxstoich(j,icplx)* &
+                                            reaction%eqcplxstoich(k,icplx)* &
+                                            dCsec_dCprim(kcomp,lcomp)* &
+                                            sec_sec_molal_M(icplx)/ &
+                                            conc_current_M(kcomp)
+            enddo
+          enddo      
+        enddo
+      enddo
+    endif
+  
   endif
   
   dPsisec_dCprim = dPsisec_dCprim*global_aux_var%den_kg(1)*1.d-3 ! in kg/L
