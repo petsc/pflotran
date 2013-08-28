@@ -13,6 +13,14 @@ ifneq (,$(filter libpflotranchem.a pflotran_rxn,$(MAKECMDGOALS)))
   PFLOTRAN_RXN_FLAG := 1
 endif
 
+ifdef geomech
+  MYFLAGS += -DGEOMECH
+endif
+
+ifdef satish
+  MYFLAGS += -DGEOMECH_DEBUG
+endif
+
 ifdef uo2
   MYFLAGS += -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
@@ -81,9 +89,11 @@ ifdef no_vapor_diffusion
   MYFLAGS += -DNO_VAPOR_DIFFUSION
 endif
 
-ifdef scco2
+#geh: CHUAN_CO2 guards portions of reactive transport from modifications for
+#     CO2.  We are now making this default.
+#ifdef scco2
   MYFLAGS += -DCHUAN_CO2
-endif
+#endif
 
 ifdef debug_gen
   MYFLAGS += -DDEBUG_GENERAL
@@ -122,7 +132,7 @@ ifdef ugrid_debug
 endif
 
 ifdef surface_flow
-  MYFLAGS += -DSURFACE_FLOW -w
+  MYFLAGS += -DSURFACE_FLOW -w -g
 endif
 
 ifdef amanzi_bgd
@@ -173,6 +183,7 @@ util_obj  = \
 	${common_src}matrix_block_aux.o \
 	${common_src}option.o \
 	${common_src}output_aux.o \
+	${common_src}pflotran_constants.o \
 	${common_src}string.o \
 	${common_src}units.o \
 	${common_src}utility.o \
@@ -304,6 +315,7 @@ misc_obj = \
 	${common_src}matrix_buffer.o \
 	${common_src}observation.o \
 	${common_src}patch.o \
+	${common_src}pflotran_factory.o \
 	${common_src}realization.o \
 	${common_src}realization_base.o \
 	${common_src}region.o \
@@ -324,6 +336,7 @@ misc_obj = \
 
 surface_obj = \
 	${common_src}surface_auxiliary.o \
+	${common_src}surface_checkpoint.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_flow_aux.o \
@@ -335,12 +348,38 @@ surface_obj = \
 	${common_src}surface_th_aux.o \
 	${common_src}surface_th.o
 
+geomech_obj = \
+  ${common_src}geomechanics_auxiliary.o \
+  ${common_src}geomechanics_init.o \
+  ${common_src}geomechanics_realization.o \
+  ${common_src}geomechanics_discretization.o \
+  ${common_src}geomech_grid.o \
+  ${common_src}geomech_grid_aux.o \
+  ${common_src}geomechanics_material.o \
+  ${common_src}geomechanics_patch.o \
+  ${common_src}geomechanics_field.o \
+  ${common_src}geomechanics_debug.o \
+  ${common_src}geomechanics_region.o \
+  ${common_src}geomechanics_strata.o \
+  ${common_src}geomechanics_coupler.o \
+  ${common_src}geomechanics_condition.o \
+  ${common_src}geomechanics_logging.o \
+  ${common_src}geomechanics_global.o \
+  ${common_src}geomechanics_force.o \
+  ${common_src}geomechanics_timestepper.o \
+  ${common_src}gauss.o \
+  ${common_src}shape_function.o \
+  ${common_src}geomechanics_global_aux.o\
+  ${common_src}output_geomechanics.o  
+
+
 # End Source Block
 
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
 	$(relations_obj) $(properties_obj) $(dataset_obj) \
-	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
+	$(io_obj) $(misc_obj) $(surface_obj) $(geomech_obj) \
+	${pflotran_src}pflotran.o
 
 pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
@@ -387,4 +426,3 @@ check : FORCE
 
 # null rule to force things to happen
 FORCE :
-
