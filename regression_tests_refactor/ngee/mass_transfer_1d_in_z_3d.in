@@ -4,11 +4,11 @@
 :=========================== regression =======================================
 REGRESSION
   CELLS
-    2
-    4
-    6
-    8
-    10
+    5
+    13
+    21
+    29
+    37
   /
 END
 
@@ -37,18 +37,17 @@ END
 
 :=========================== solver options ===================================
 LINEAR_SOLVER TRANSPORT
-  SOLVER DIRECT
+  SOLVER ITERATIVE
 END
 
 :=========================== discretization ===================================
 GRID
   TYPE structured
-  NXYZ 1 1 10
+  NXYZ 2 2 10
   DXYZ
     1.d0
     1.d0
     0.1d0 0.2d0 0.3d0 0.4d0 0.5d0 0.6d0 0.7d0 0.8d0 0.9d0 1.d0
-:    1.d0
   /
 END
 
@@ -79,17 +78,17 @@ END
 
 :=========================== regions ==========================================
 REGION all
-  BLOCK 1 1 1 1 1 10
+  BLOCK 1 2 1 2 1 10
 END
 
 REGION bottom
   FACE bottom
-  BLOCK 1 1 1 1 1 1 
+  BLOCK 1 2 1 2 1 1 
 END
 
 REGION top
   FACE top
-  BLOCK 1 1 1 1 1 10
+  BLOCK 1 2 1 2 1 10
 END
 
 :=========================== transport conditions =============================
@@ -115,19 +114,19 @@ END
 :=========================== mass transfer ====================================
 RT_MASS_TRANSFER A(im)
   IDOF 2
-  FILENAME mass_transfer_1d_in_z_data.h5
+  FILENAME mass_transfer_1d_in_z_3d_data.h5
   DATASET A(im) 
 END
 
 RT_MASS_TRANSFER B(im)
   IDOF 3
-  FILENAME mass_transfer_1d_in_z_data.h5
+  FILENAME mass_transfer_1d_in_z_3d_data.h5
   DATASET B(im) 
 END
 
 RT_MASS_TRANSFER C(im)
   IDOF 4
-  FILENAME mass_transfer_1d_in_z_data.h5
+  FILENAME mass_transfer_1d_in_z_3d_data.h5
   DATASET C(im) 
 END
 :=========================== condition couplers ===============================
