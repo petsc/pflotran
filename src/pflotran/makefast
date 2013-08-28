@@ -196,8 +196,7 @@ mode_aux_obj = \
 	${common_src}mphase_aux.o \
 	${common_src}richards_aux.o \
 	${common_src}th_aux.o \
-	${common_src}thc_aux.o \
-	${common_src}thmc_aux.o
+	${common_src}thc_aux.o
 
 mode_obj = \
 	${common_src}flash2.o \
@@ -212,8 +211,7 @@ mode_obj = \
 	${common_src}richards_lsm.o \
 	${common_src}richards_mfd.o \
 	${common_src}th.o \
-	${common_src}thc.o \
-	${common_src}thmc.o 
+	${common_src}thc.o
 
 shared_mode_aux_obj = \
 	${common_src}global_aux.o \

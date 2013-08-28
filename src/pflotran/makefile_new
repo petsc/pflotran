@@ -207,8 +207,7 @@ mode_aux_obj = \
         ${common_src}process_model_thc.o \
 	${common_src}richards_aux.o \
 	${common_src}th_aux.o \
-	${common_src}thc_aux.o \
-	${common_src}thmc_aux.o
+	${common_src}thc_aux.o 
 
 mode_obj = \
 	${common_src}flash2.o \
@@ -223,9 +222,8 @@ mode_obj = \
 	${common_src}richards_lsm.o \
 	${common_src}richards_mfd.o \
 	${common_src}th.o \
-	${common_src}thc.o \
-	${common_src}thmc.o 
-
+	${common_src}thc.o 
+  
 shared_mode_aux_obj = \
 	${common_src}global_aux.o \
 	${common_src}reactive_transport_aux.o 
@@ -402,7 +400,7 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               material_aux.o miscible_aux.o mphase_aux.o pflotran_constants.o \
               reactive_transport_aux.o richards_aux.o \
-              secondary_continuum_aux.o th_aux.o thc_aux.o thmc_aux.o
+              secondary_continuum_aux.o th_aux.o thc_aux.o 
 block_solve.o :
 block_tridiag.o : pflotran_constants.o
 checkpoint.o : discretization.o field.o flash2.o grid.o immis.o logging.o \
@@ -539,7 +537,7 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          secondary_continuum.o simulation.o solid_solution.o solver.o strata.o \
          string.o structured_grid.o surface_field.o surface_flow.o \
          surface_global.o surface_init.o surface_realization.o surface_th.o \
-         th.o thc.o thmc.o timestepper.o uniform_velocity.o units.o \
+         th.o thc.o timestepper.o uniform_velocity.o units.o \
          unstructured_grid.o unstructured_grid_aux.o variables.o water_eos.o \
          waypoint.o
 input.o : option.o pflotran_constants.o string.o
@@ -608,7 +606,7 @@ output_observation.o : connection.o coupler.o discretization.o field.o \
                        reaction_aux.o reactive_transport.o \
                        reactive_transport_aux.o realization.o \
                        realization_base.o region.o richards.o \
-                       structured_grid.o th.o thc.o thmc.o utility.o \
+                       structured_grid.o th.o thc.o utility.o \
                        variables.o
 output_surface.o : connection.o coupler.o discretization.o field.o grid.o \
                    hdf5.o hdf5_aux.o input.o logging.o option.o output_aux.o \
@@ -633,7 +631,7 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           reaction_aux.o reactive_transport_aux.o region.o richards_aux.o \
           saturation.o saturation_function.o strata.o surface_auxiliary.o \
           surface_complexation_aux.o surface_field.o surface_material.o \
-          th_aux.o thc_aux.o thmc_aux.o utility.o variables.o water_eos.o
+          th_aux.o thc_aux.o utility.o variables.o water_eos.o
 pflotran_constants.o :
 pflotran_factory.o : init.o input.o logging.o option.o pflotran_constants.o \
                      regression.o simulation.o string.o timestepper.o
@@ -814,7 +812,7 @@ subsurface_factory.o : checkpoint.o condition_control.o flash2.o general.o \
                        process_model_th.o process_model_thc.o \
                        process_model_top.o reactive_transport.o realization.o \
                        richards.o simulation.o simulation_base.o \
-                       subsurface_simulation.o th.o thc.o thmc.o timestepper.o \
+                       subsurface_simulation.o th.o thc.o timestepper.o \
                        timestepper_BE.o timestepper_base.o waypoint.o
 subsurface_simulation.o : logging.o option.o output.o pflotran_constants.o \
                           pmc_base.o pmc_subsurface.o realization.o \
@@ -906,12 +904,6 @@ thc.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
         variables.o water_eos.o
 thc_aux.o : global_aux.o option.o pflotran_constants.o saturation_function.o \
             water_eos.o
-thmc.o : connection.o coupler.o debug.o discretization.o field.o fluid.o \
-         global_aux.o grid.o level.o material.o option.o patch.o \
-         pflotran_constants.o realization.o region.o saturation_function.o \
-         thmc_aux.o utility.o water_eos.o
-thmc_aux.o : global_aux.o option.o pflotran_constants.o saturation_function.o \
-             water_eos.o
 time_series.o : option.o pflotran_constants.o
 time_storage.o : option.o pflotran_constants.o
 timestepper.o : checkpoint.o condition_control.o convergence.o \
@@ -922,7 +914,7 @@ timestepper.o : checkpoint.o condition_control.o convergence.o \
                 reaction_aux.o reactive_transport.o reactive_transport_aux.o \
                 realization.o richards.o secondary_continuum_aux.o solver.o \
                 string.o surface_checkpoint.o surface_field.o surface_flow.o \
-                surface_realization.o surface_th.o th.o thc.o thmc.o utility.o \
+                surface_realization.o surface_th.o th.o thc.o utility.o \
                 waypoint.o
 timestepper_BE.o : convergence.o input.o option.o output.o \
                    pflotran_constants.o process_model_base.o solver.o string.o \
