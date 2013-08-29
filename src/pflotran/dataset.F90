@@ -113,6 +113,8 @@ subroutine DatasetProcessDatasets(datasets,option)
     select type(cur_dataset)
       class is(dataset_map_type)
         ! do nothing
+      class is(dataset_global_type)
+        ! do nothing
       class is(dataset_common_hdf5_type)
         cur_dataset%is_cell_indexed = &
           DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
