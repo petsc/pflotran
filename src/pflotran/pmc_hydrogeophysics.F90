@@ -26,6 +26,7 @@ module PMC_Hydrogeophysics_class
     procedure, public :: RunToTime => PMCHydrogeophysicsRunToTime
     procedure, public :: FinalizeRun => PMCHydrogeophysicsFinalizeRun
     procedure, public :: Destroy => PMCHydrogeophysicsDestroy
+    procedure, public :: GetAuxData => PMCHydrogeophysicsSynchronize
   end type pmc_hydrogeophysics_type
   
   public :: PMCHydrogeophysicsCreate
@@ -74,7 +75,6 @@ subroutine PMCHydrogeophysicsInit(this)
   this%solution_mpi = 0
   this%solution_seq = 0
   this%pf_to_e4d_scatter = 0
-  this%Synchronize1 => PMCHydrogeophysicsSynchronize
 
 end subroutine PMCHydrogeophysicsInit
 
@@ -127,12 +127,7 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   this%option%io_buffer = trim(this%name)
   call printVerboseMsg(this%option)
   
-  if (associated(this%Synchronize1)) then
-    !geh: PGI requires cast to base
-    !call this%Synchronize1()
-    pmc_base => this%CastToBase()
-    call pmc_base%Synchronize1()
-  endif
+  call this%GetAuxData()
   
   local_stop_flag = 0
   
@@ -174,8 +169,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 #include "finclude/petscvec.h90"
 #include "finclude/petscviewer.h"
 
-  class(pmc_base_type), pointer :: this
-  class(pmc_hydrogeophysics_type), pointer :: pmc_hg
+  class(pmc_hydrogeophysics_type) :: this
 
   PetscReal, pointer :: vec1_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
@@ -185,44 +179,40 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   Vec :: natural_vec
   PetscInt :: i
 
-  select type(pmc => this)
-    class is(pmc_hydrogeophysics_type)
-      pmc_hg => pmc
 #if 1
-      call RealizationGetVariable(pmc%realization,pmc%realization%field%work, &
-                                 PRIMARY_MOLALITY,ONE_INTEGER,0)
+  call RealizationGetVariable(this%realization,this%realization%field%work, &
+                              PRIMARY_MOLALITY,ONE_INTEGER,0)
 #else
-      call DiscretizationCreateVector(pmc%realization%discretization,ONEDOF, &
-                                      natural_vec,NATURAL,this%option)
-      if (pmc%option%myrank == 0) then
-        do i = 1, pmc%realization%patch%grid%nmax
-          call VecSetValues(natural_vec,1,i-1,i*1.d0, &
-                            INSERT_VALUES,ierr)
-        enddo
-      endif
-      call VecAssemblyBegin(natural_vec,ierr) 
-      call VecAssemblyEnd(natural_vec,ierr) 
-      call DiscretizationNaturalToGlobal(pmc%realization%discretization, &
-                                         natural_vec, &
-                                         pmc%realization%field%work,ONEDOF)
-      call VecDestroy(natural_vec,ierr)
+  call DiscretizationCreateVector(this%realization%discretization,ONEDOF, &
+                                  natural_vec,NATURAL,this%option)
+  if (this%option%myrank == 0) then
+    do i = 1, this%realization%patch%grid%nmax
+      call VecSetValues(natural_vec,1,i-1,i*1.d0, &
+                        INSERT_VALUES,ierr)
+    enddo
+  endif
+  call VecAssemblyBegin(natural_vec,ierr) 
+  call VecAssemblyEnd(natural_vec,ierr) 
+  call DiscretizationNaturalToGlobal(this%realization%discretization, &
+                                      natural_vec, &
+                                      this%realization%field%work,ONEDOF)
+  call VecDestroy(natural_vec,ierr)
 #endif
-      call VecGetArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
-      call VecGetArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
+  call VecGetArrayF90(this%realization%field%work,vec1_ptr,ierr)
+  call VecGetArrayF90(this%solution_mpi,vec2_ptr,ierr)
 !      vec1_ptr(:) = vec1_ptr(:) + num_calls
-      vec2_ptr(:) = vec1_ptr(:)
-      print *, 'PMC update to solution', vec2_ptr(16)
-      call VecRestoreArrayF90(pmc%realization%field%work,vec1_ptr,ierr)
-      call VecRestoreArrayF90(pmc_hg%solution_mpi,vec2_ptr,ierr)
+  vec2_ptr(:) = vec1_ptr(:)
+  print *, 'PMC update to solution', vec2_ptr(16)
+  call VecRestoreArrayF90(this%realization%field%work,vec1_ptr,ierr)
+  call VecRestoreArrayF90(this%solution_mpi,vec2_ptr,ierr)
 
 #if 0
-filename = 'pf_solution' // trim(StringFormatInt(num_calls)) // '.txt'
-call PetscViewerASCIIOpen(this%option%mycomm,filename,viewer,ierr)
-call VecView(pmc%realization%field%work,viewer,ierr)
-call PetscViewerDestroy(viewer,ierr)
+  filename = 'pf_solution' // trim(StringFormatInt(num_calls)) // '.txt'
+  call PetscViewerASCIIOpen(this%option%mycomm,filename,viewer,ierr)
+  call VecView(this%realization%field%work,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  end select
   num_calls = num_calls + 1
   
 end subroutine PMCHydrogeophysicsSynchronize
