@@ -105,7 +105,7 @@ end subroutine DatasetCommonHDF5Copy
 
 ! ************************************************************************** !
 !
-! DatasetCommonHDF5Init: Initializes members of common hdf5 dataset class
+! DatasetCommonHDF5Cast: Casts a dataset_base_type to dataset_common_hdf5_type
 ! author: Glenn Hammond
 ! date: 05/03/13
 !

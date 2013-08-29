@@ -33,6 +33,7 @@ module Dataset_XYZ_class
 
   public :: DatasetXYZCreate, &
             DatasetXYZInit, &
+            DatasetXYZCast, &
             DatasetXYZLoad, &
             DatasetXYZInterpolateReal, &
             DatasetXYZStrip, &
@@ -82,6 +83,31 @@ subroutine DatasetXYZInit(this)
   nullify(this%discretization)
     
 end subroutine DatasetXYZInit
+
+! ************************************************************************** !
+!
+! DatasetXYZCast: Casts a dataset_base_type to dataset_xyz_type
+! author: Glenn Hammond
+! date: 08/29/13
+!
+! ************************************************************************** !
+function DatasetXYZCast(this)
+  
+  use Dataset_Base_class
+
+  implicit none
+
+  class(dataset_base_type), pointer :: this
+
+  class(dataset_xyz_type), pointer :: DatasetXYZCast
+  
+  nullify(DatasetXYZCast)
+  select type (this)
+    class is (dataset_xyz_type)
+      DatasetXYZCast => this
+  end select
+    
+end function DatasetXYZCast
 
 ! ************************************************************************** !
 !
