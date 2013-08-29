@@ -792,7 +792,7 @@ end subroutine WriteObservationHeaderForBC
 subroutine WriteObservationDataForCell(fid,realization_base,local_id)
 
   use Realization_Base_class, only : realization_base_type, &
-                                     RealizGetDatasetValueAtCell
+                                     RealizGetVariableValueAtCell
   use Option_module
   use Grid_module
   use Field_module
@@ -836,7 +836,7 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
       cur_variable => cur_variable%next
       cycle
     endif     
-    temp_real = RealizGetDatasetValueAtCell(realization_base, &
+    temp_real = RealizGetVariableValueAtCell(realization_base, &
                                             cur_variable%ivar, &
                                             cur_variable%isubvar,ghosted_id)
     if (cur_variable%iformat == 0) then ! real
@@ -1417,7 +1417,7 @@ end function GetVelocityAtCoord
 subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,ivar)
 
   use Realization_Base_class, only : realization_base_type, &
-                                     RealizGetDatasetValueAtCell
+                                     RealizGetVariableValueAtCell
   use Option_module
   use Grid_module
   use Field_module
@@ -1458,7 +1458,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         case(MPH_MODE,TH_MODE,THC_MODE)
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization_base,SECONDARY_TEMPERATURE,i, &
+              RealizGetVariableValueAtCell(realization_base,SECONDARY_TEMPERATURE,i, &
                                           ghosted_id)
           enddo
         end select
@@ -1469,7 +1469,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do naqcomp = 1, reaction%naqcomp
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization_base,SECONDARY_CONCENTRATION,i, &
+              RealizGetVariableValueAtCell(realization_base,SECONDARY_CONCENTRATION,i, &
                                           ghosted_id,naqcomp)
           enddo
         enddo 
@@ -1478,7 +1478,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do nkinmnrl = 1, reaction%mineral%nkinmnrl
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization_base,SEC_MIN_VOLFRAC,i, &
+              RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC,i, &
                                           ghosted_id,nkinmnrl)
           enddo
         enddo

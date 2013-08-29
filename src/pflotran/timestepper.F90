@@ -3358,15 +3358,15 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 
   ! for debugging
 #if 0    
-      call RealizationGetDataset(realization,field%work,TOTAL_MOLARITY,idof)
+      call RealizationGetVariable(realization,field%work,TOTAL_MOLARITY,idof)
       call VecGetArrayF90(field%work,vec_ptr,ierr)
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
   
-      call RealizationGetDataset(realization,field%work,TOTAL_MOLALITY,idof)
+      call RealizationGetVariable(realization,field%work,TOTAL_MOLALITY,idof)
       call VecGetArrayF90(field%work,vec_ptr,ierr)
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
   
-      call RealizationGetDataset(realization,field%work,PRIMARY_MOLALITY,idof)
+      call RealizationGetVariable(realization,field%work,PRIMARY_MOLALITY,idof)
       call VecGetArrayF90(field%work,vec_ptr,ierr)
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 #endif

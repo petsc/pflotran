@@ -98,10 +98,10 @@ module Patch_module
   PetscInt, parameter, public :: INT_VAR = 0
   PetscInt, parameter, public :: REAL_VAR = 1
     
-  interface PatchGetDataset
-    module procedure PatchGetDataset1
+  interface PatchGetVariable
+    module procedure PatchGetVariable1
 #ifdef SURFACE_FLOW
-    module procedure PatchGetDataset2
+    module procedure PatchGetVariable2
 #endif
   end interface
 
@@ -109,8 +109,8 @@ module Patch_module
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
             PatchLocalizeRegions, PatchUpdateUniformVelocity, &
-            PatchGetDataset, PatchGetDatasetValueAtCell, &
-            PatchSetDataset, &
+            PatchGetVariable, PatchGetVariableValueAtCell, &
+            PatchSetVariable, &
             PatchInitConstraints, &
             PatchCountCells, PatchGetIvarsFromKeyword, &
             PatchGetVarNameFromKeyword, &
@@ -2108,12 +2108,12 @@ end function PatchAuxVarsUpToDate
 
 ! ************************************************************************** !
 !
-! PatchGetDataset: Extracts variables indexed by ivar and isubvar from a patch
+! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, &
+subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
 
   use Grid_module
@@ -3051,23 +3051,23 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
       enddo
     case default
       write(option%io_buffer, &
-            '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
+            '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
       call printErrMsg(option)
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
-end subroutine PatchGetDataset1
+end subroutine PatchGetVariable1
 
 ! ************************************************************************** !
 !
-! PatchGetDatasetValueAtCell: Returns variables indexed by ivar,
+! PatchGetVariableValueAtCell: Returns variables indexed by ivar,
 !                             isubvar, local id from Reactive Transport type
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
+function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                                     output_option, &
                                     ivar,isubvar,ghosted_id,isubvar1)
 
@@ -3094,7 +3094,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  PetscReal :: PatchGetDatasetValueAtCell
+  PetscReal :: PatchGetVariableValueAtCell
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
@@ -3118,7 +3118,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
 
   ! inactive grid cell
   if (patch%imat(ghosted_id) <= 0) then
-    PatchGetDatasetValueAtCell = 0.d0
+    PatchGetVariableValueAtCell = 0.d0
     return
   endif
 
@@ -3636,23 +3636,23 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
      case default
       write(option%io_buffer, &
-            '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
+            '(''IVAR ('',i3,'') not found in PatchGetVariableValueAtCell'')') &
             ivar
       call printErrMsg(option)
   end select
 
-  PatchGetDatasetValueAtCell = value
+  PatchGetVariableValueAtCell = value
  
-end function PatchGetDatasetValueAtCell
+end function PatchGetVariableValueAtCell
 
 ! ************************************************************************** !
 !
-! PatchSetDataset: Sets variables indexed by ivar and isubvar within a patch
+! PatchSetVariable: Sets variables indexed by ivar and isubvar within a patch
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
+subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
 
   use Grid_module
   use Option_module
@@ -3685,7 +3685,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
 
   if (vec_format == NATURAL) then
     call printErrMsg(option,&
-                     'NATURAL vector format not supported by PatchSetDataset')
+                     'NATURAL vector format not supported by PatchSetVariable')
   endif
 
   iphase = 1
@@ -4445,7 +4445,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
       endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
-      option%io_buffer = 'Setting of permeability in "PatchSetDataset"' // &
+      option%io_buffer = 'Setting of permeability in "PatchSetVariable"' // &
         ' not supported.'
       call printErrMsg(option)
     case(PHASE)
@@ -4470,12 +4470,12 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
       endif
     case(PROCESSOR_ID)
       call printErrMsg(option, &
-                       'Cannot set PROCESSOR_ID through PatchSetDataset()')
+                       'Cannot set PROCESSOR_ID through PatchSetVariable()')
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
-end subroutine PatchSetDataset
+end subroutine PatchSetVariable
 
 ! ************************************************************************** !
 !
@@ -4802,12 +4802,12 @@ end subroutine PatchDestroy
 #ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !
-! PatchGetDataset: Extracts variables indexed by ivar and isubvar from a patch
+! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
+subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
 
   use Grid_module
@@ -4866,11 +4866,11 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
       enddo
     case default
       write(option%io_buffer, &
-            '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
+            '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
       call printErrMsg(option)
   end select
 
-end subroutine PatchGetDataset2
+end subroutine PatchGetVariable2
 
 #endif
 ! SURFACE_FLOW

@@ -384,7 +384,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
   surf_field => surf_realization%surf_field
   
   ! liquid density
-  call SurfRealizGetDataset(surf_realization,surf_field%work,LIQUID_DENSITY, &
+  call SurfRealizGetVariable(surf_realization,surf_field%work,LIQUID_DENSITY, &
                              ZERO_INTEGER)
   call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                    surf_field%work,surf_field%work_loc,ONEDOF)
@@ -394,7 +394,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
   select case(option%iflowmode)
     case(TH_MODE)
       ! head
-      call SurfRealizGetDataset(surf_realization,surf_field%work, &
+      call SurfRealizGetVariable(surf_realization,surf_field%work, &
               SURFACE_LIQUID_HEAD,ZERO_INTEGER)
       call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                   surf_field%work,surf_field%work_loc,ONEDOF)
@@ -402,7 +402,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
               SURFACE_LIQUID_HEAD,time_level)
  
       ! temperature
-      call SurfRealizGetDataset(surf_realization,surf_field%work, &
+      call SurfRealizGetVariable(surf_realization,surf_field%work, &
               SURFACE_LIQUID_TEMPERATURE, ZERO_INTEGER)
       call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                    surf_field%work,surf_field%work_loc,ONEDOF)

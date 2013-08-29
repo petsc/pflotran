@@ -472,7 +472,7 @@ end subroutine GlobalUpdateDenAndSat
 subroutine GlobalUpdateAuxVars(realization,time_level,time)
 
   use Realization_class
-  use Realization_Base_class, only : RealizationGetDataset
+  use Realization_Base_class, only : RealizationGetVariable
   use Field_module
   use Option_module
   use Discretization_module
@@ -499,7 +499,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
   end select   
   
   ! liquid density
-  call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
+  call RealizationGetVariable(realization,field%work,LIQUID_DENSITY, &
                              ZERO_INTEGER)
   call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
@@ -507,7 +507,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                              time_level)
 
   ! liquid saturation
-  call RealizationGetDataset(realization,field%work,LIQUID_SATURATION, &
+  call RealizationGetVariable(realization,field%work,LIQUID_SATURATION, &
                              ZERO_INTEGER)
   call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
@@ -516,13 +516,13 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
   select case(option%iflowmode)
     case(MPH_MODE,FLASH2_MODE)
       ! Gas density
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -531,7 +531,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
  
  
       ! Gas saturation
-      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+      call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -539,7 +539,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)                         
    
       ! liquid pressure
-      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+      call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -547,7 +547,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)                      
  
       ! gas pressure
-      call RealizationGetDataset(realization,field%work,GAS_PRESSURE, &
+      call RealizationGetVariable(realization,field%work,GAS_PRESSURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -555,7 +555,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
  
       ! temperature
-      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+      call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -563,7 +563,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
       
       ! fugacity coeff
-      call RealizationGetDataset(realization,field%work,SC_FUGA_COEFF, &
+      call RealizationGetVariable(realization,field%work,SC_FUGA_COEFF, &
                                  ZERO_INTEGER)
       
       call DiscretizationGlobalToLocal(realization%discretization, &
@@ -572,7 +572,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
     case(TH_MODE)
       ! pressure
-      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+      call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -580,7 +580,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
  
       ! temperature
-      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+      call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -591,13 +591,13 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
     case(THC_MODE)
 #if 0
       ! Gas density
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -607,7 +607,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
 
 #if 0
       ! Gas saturation
-      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+      call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -616,7 +616,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
 #endif
 
       ! pressure
-      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+      call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -624,7 +624,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
  
       ! temperature
-      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+      call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -633,13 +633,13 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       
     case(IMS_MODE)
       ! Gas density
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -648,7 +648,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
  
  
       ! Gas saturation
-      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+      call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -656,7 +656,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
    
       ! pressure
-      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+      call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
@@ -664,7 +664,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
  
       ! temperature
-      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+      call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
@@ -673,13 +673,13 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
 
     case(MIS_MODE)
       ! Gas density
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
                                  time_level)
-      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY_MOL, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -688,7 +688,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
  
  
       ! Gas saturation
-      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+      call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -696,7 +696,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)                  
    
       ! pressure
-      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
+      call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
@@ -704,7 +704,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                  time_level)
  
       ! temperature
-      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+      call RealizationGetVariable(realization,field%work,TEMPERATURE, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)

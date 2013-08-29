@@ -869,12 +869,12 @@ subroutine PMRTCheckpoint(this,viewer)
         ACT_COEF_FREQUENCY_OFF) then
       ! allocated vector
       do i = 1, realization%reaction%naqcomp
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
       enddo
       do i = 1, realization%reaction%neqcplx
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    SECONDARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
       enddo
@@ -882,7 +882,7 @@ subroutine PMRTCheckpoint(this,viewer)
     ! mineral volume fractions for kinetic minerals
     if (realization%reaction%mineral%nkinmnrl > 0) then
       do i = 1, realization%reaction%mineral%nkinmnrl
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
         call VecView(global_vec,viewer,ierr)
       enddo
@@ -990,14 +990,14 @@ subroutine PMRTRestart(this,viewer)
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                         local_vec,ONEDOF)
-      call RealizationSetDataset(realization,local_vec,LOCAL, &
+      call RealizationSetVariable(realization,local_vec,LOCAL, &
                                   PRIMARY_ACTIVITY_COEF,i)
     enddo
     do i = 1, realization%reaction%neqcplx
       call VecLoad(global_vec,viewer,ierr)
       call DiscretizationGlobalToLocal(discretization,global_vec, &
                                         local_vec,ONEDOF)
-      call RealizationSetDataset(realization,local_vec,LOCAL, &
+      call RealizationSetVariable(realization,local_vec,LOCAL, &
                                   SECONDARY_ACTIVITY_COEF,i)
     enddo
   endif
@@ -1007,7 +1007,7 @@ subroutine PMRTRestart(this,viewer)
       ! have to load the vecs no matter what
       call VecLoad(global_vec,viewer,ierr)
       if (.not.option%no_restart_mineral_vol_frac) then
-        call RealizationSetDataset(realization,global_vec,GLOBAL, &
+        call RealizationSetVariable(realization,global_vec,GLOBAL, &
                                     MINERAL_VOLUME_FRACTION,i)
       endif
     enddo

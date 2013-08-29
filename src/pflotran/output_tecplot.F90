@@ -818,7 +818,7 @@ end subroutine OutputFluxVelocitiesTecplotBlk
 subroutine OutputTecplotPoint(realization_base)
 
   use Realization_Base_class, only : realization_base_type, &
-                                     RealizGetDatasetValueAtCell
+                                     RealizGetVariableValueAtCell
   use Discretization_module
   use Grid_module
   use Structured_Grid_module
@@ -890,7 +890,7 @@ subroutine OutputTecplotPoint(realization_base)
     cur_variable => output_option%output_variable_list%first
     do
       if (.not.associated(cur_variable)) exit
-      value = RealizGetDatasetValueAtCell(realization_base,cur_variable%ivar, &
+      value = RealizGetVariableValueAtCell(realization_base,cur_variable%ivar, &
                                           cur_variable%isubvar,ghosted_id)
       if (cur_variable%iformat == 0) then
         write(OUTPUT_UNIT,1000,advance='no') value
@@ -922,7 +922,7 @@ end subroutine OutputTecplotPoint
 subroutine OutputVelocitiesTecplotPoint(realization_base)
  
   use Realization_Base_class, only : realization_base_type, &
-                                     RealizGetDatasetValueAtCell
+                                     RealizGetVariableValueAtCell
   use Discretization_module
   use Grid_module
   use Option_module
@@ -1055,7 +1055,7 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     endif
 
     ! material id
-    value = RealizGetDatasetValueAtCell(realization_base,MATERIAL_ID, &
+    value = RealizGetVariableValueAtCell(realization_base,MATERIAL_ID, &
                                         ZERO_INTEGER,ghosted_id)
     write(OUTPUT_UNIT,1001,advance='no') int(value)
   
@@ -2156,7 +2156,7 @@ end subroutine OutputPrintExplicitFlowrates
 subroutine OutputSecondaryContinuumTecplot(realization_base)
 
   use Realization_Base_class, only : realization_base_type, &
-                                     RealizGetDatasetValueAtCell
+                                     RealizGetVariableValueAtCell
   use Option_module
   use Field_module
   use Patch_module
@@ -2301,13 +2301,13 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
         ghosted_id = grid%nL2G(local_id)
         if (observation%print_secondary_data(1)) then
           write(fid,1000,advance='no') &
-          RealizGetDatasetValueAtCell(realization_base,SECONDARY_TEMPERATURE, &
+          RealizGetVariableValueAtCell(realization_base,SECONDARY_TEMPERATURE, &
                                       sec_id,ghosted_id)        
         endif
         if (observation%print_secondary_data(2)) then
           do naqcomp = 1, reaction%naqcomp
             write(fid,1000,advance='no') &
-            RealizGetDatasetValueAtCell(realization_base, &
+            RealizGetVariableValueAtCell(realization_base, &
                                         SECONDARY_CONCENTRATION, &
                                         sec_id,ghosted_id,naqcomp)
           enddo
@@ -2315,7 +2315,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
         if (observation%print_secondary_data(3)) then
           do nkinmnrl = 1, reaction%mineral%nkinmnrl
             write(fid,1000,advance='no') &
-            RealizGetDatasetValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
+            RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
                                         sec_id,ghosted_id,nkinmnrl) 
           enddo
         endif        

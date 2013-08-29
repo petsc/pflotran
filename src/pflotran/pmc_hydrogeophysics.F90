@@ -163,7 +163,7 @@ end subroutine PMCHydrogeophysicsRunToTime
 ! ************************************************************************** !
 subroutine PMCHydrogeophysicsSynchronize(this)
 
-  use Realization_Base_class, only : RealizationGetDataset
+  use Realization_Base_class, only : RealizationGetVariable
   use Variables_module, only : PRIMARY_MOLALITY
   use String_module
 !  use Discretization_module
@@ -189,7 +189,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
     class is(pmc_hydrogeophysics_type)
       pmc_hg => pmc
 #if 1
-      call RealizationGetDataset(pmc%realization,pmc%realization%field%work, &
+      call RealizationGetVariable(pmc%realization,pmc%realization%field%work, &
                                  PRIMARY_MOLALITY,ONE_INTEGER,0)
 #else
       call DiscretizationCreateVector(pmc%realization%discretization,ONEDOF, &
