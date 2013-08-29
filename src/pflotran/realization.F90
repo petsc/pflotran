@@ -810,6 +810,7 @@ subroutine RealizationProcessConditions(realization)
   if (associated(realization%flow_mass_transfer_list)) then
     call MassTransferInit(realization%flow_mass_transfer_list, &
                           realization%discretization, &
+                          realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%flow_mass_transfer_list, &
                           realization%discretization, &
@@ -819,6 +820,7 @@ subroutine RealizationProcessConditions(realization)
   if (associated(realization%rt_mass_transfer_list)) then
     call MassTransferInit(realization%rt_mass_transfer_list, &
                           realization%discretization, &
+                          realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%rt_mass_transfer_list, &
                           realization%discretization, &

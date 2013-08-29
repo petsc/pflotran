@@ -15,8 +15,6 @@ module Mass_Transfer_module
   type, public :: mass_transfer_type
     PetscInt :: idof
     character(len=MAXWORDLENGTH) :: name
-    character(len=MAXSTRINGLENGTH) :: filename
-    character(len=MAXWORDLENGTH) :: dataset_name
     class(dataset_global_type), pointer :: dataset
     Vec :: vec
     type(mass_transfer_type), pointer :: next
@@ -46,8 +44,6 @@ function MassTransferCreate()
   allocate(mass_transfer)
   mass_transfer%idof = 0
   mass_transfer%name = ''
-  mass_transfer%filename = ''
-  mass_transfer%dataset_name = ''
   nullify(mass_transfer%dataset)
   nullify(mass_transfer%next)
   mass_transfer%vec = 0
@@ -88,19 +84,15 @@ subroutine MassTransferRead(mass_transfer,input,option)
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
-    
       case('IDOF') 
         call InputReadInt(input,option,mass_transfer%idof)
         call InputErrorMsg(input,option,'idof','MASS_TRANSFER')
       case('DATASET')
+        mass_transfer%dataset => DatasetGlobalCreate()
         call InputReadNChars(input,option, &
-                             mass_transfer%dataset_name,&
+                             mass_transfer%dataset%name,&
                              MAXWORDLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'DATASET,NAME','MASS_TRANSFER')
-      case('FILENAME') 
-        call InputReadNChars(input,option,mass_transfer%filename, &
-                             MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'FILENAME','MASS_TRANSFER')        
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in mass transfer'    
@@ -149,9 +141,11 @@ end subroutine MassTransferAddToList
 ! date: 05/09/13
 !
 ! ************************************************************************** !
-recursive subroutine MassTransferInit(mass_transfer, discretization, option)
+recursive subroutine MassTransferInit(mass_transfer, discretization, &
+                                      available_datasets, option)
 
   use Discretization_module
+  use Dataset_Base_class
   use Dataset_Common_HDF5_class
   use Option_module
 
@@ -162,22 +156,39 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, option)
   
   type(mass_transfer_type), pointer :: mass_transfer
   type(discretization_type) :: discretization
+  class(dataset_base_type), pointer :: available_datasets
   type(option_type) :: option
   
+  class(dataset_base_type), pointer :: dataset_base_ptr
+  character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   
   if (.not.associated(mass_transfer)) return
   
   if (.not.associated(mass_transfer%dataset)) then
-    mass_transfer%dataset => DatasetGlobalCreate()
-    mass_transfer%dataset%local_size = discretization%grid%nlmax
-    mass_transfer%dataset%global_size = discretization%grid%nmax
-    mass_transfer%dataset%filename = mass_transfer%filename
-    mass_transfer%dataset%hdf5_dataset_name = mass_transfer%dataset_name
-    call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
-                                    GLOBAL,option)
-    call VecZeroEntries(mass_transfer%vec,ierr)    
+    option%io_buffer = 'A "global" DATASET does not exist for ' // &
+      'MASS_TRANSFER object "' // trim(mass_transfer%name) // '".'
+    call printErrMsg(option)
   endif
+
+  string = 'Mass Transfer ' // trim(mass_transfer%name)
+  dataset_base_ptr => &
+    DatasetBaseGetPointer(available_datasets,mass_transfer%dataset%name, &
+                          string,option)
+  call DatasetGlobalDestroy(mass_transfer%dataset)
+  select type(dataset => dataset_base_ptr)
+    class is(dataset_global_type)
+      mass_transfer%dataset => dataset
+    class default
+      option%io_buffer = 'DATASET ' // trim(dataset%name) // 'is not of ' // &
+        'GLOBAL type, which is necessary for all MASS_TRANSFER objects.'
+      call printErrMsg(option)
+  end select
+  mass_transfer%dataset%local_size = discretization%grid%nlmax
+  mass_transfer%dataset%global_size = discretization%grid%nmax
+  call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
+                                    GLOBAL,option)
+  call VecZeroEntries(mass_transfer%vec,ierr)    
   
   if (.not.associated(mass_transfer%dataset%time_storage)) then
 #if defined(PETSC_HAVE_HDF5)    
@@ -187,9 +198,10 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, option)
 #endif
   endif 
   
-  ! update the next one
+  ! update the next one recursively
   if (associated(mass_transfer%next)) then
-    call MassTransferInit(mass_transfer%next,discretization,option)
+    call MassTransferInit(mass_transfer%next,discretization, &
+                          available_datasets,option)
   endif  
   
 end subroutine MassTransferInit

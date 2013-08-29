@@ -20,6 +20,7 @@ module Dataset_Global_class
   
   public :: DatasetGlobalCreate, &
             DatasetGlobalInit, &
+            DatasetGlobalCast, &
             DatasetGlobalLoad, &
             DatasetGlobalDestroy
   
@@ -46,6 +47,32 @@ function DatasetGlobalCreate()
   DatasetGlobalCreate => dataset
     
 end function DatasetGlobalCreate
+
+
+! ************************************************************************** !
+!
+! DatasetGlobalCast: Casts a dataset_base_type to database_global_type
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetGlobalCast(this)
+
+  use Dataset_Base_class
+  
+  implicit none
+
+  class(dataset_base_type), pointer :: this
+
+  class(dataset_global_type), pointer :: DatasetGlobalCast
+  
+  nullify(DatasetGlobalCast)
+  select type (this)
+    class is (dataset_global_type)
+      DatasetGlobalCast => this
+  end select
+    
+end function DatasetGlobalCast
 
 ! ************************************************************************** !
 !

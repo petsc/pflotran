@@ -1539,7 +1539,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       call printErrMsg(option)
     endif
     if (.not.associated(general%gas_saturation)) then
-      option%io_buffer = 'General Phase flus condition must include ' // &
+      option%io_buffer = 'General Phase flux condition must include ' // &
         'gas or liquid saturation'
       call printErrMsg(option)
     endif
@@ -1941,7 +1941,8 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
     if (input%ierr == 0) then
       filename = string2
     else
-      option%io_buffer = 'The ability to read realization dependent datasets outside the DATASET block is no longer supported'
+      option%io_buffer = 'The ability to read realization dependent ' // &
+        'datasets outside the DATASET block is no longer supported'
       call printErrMsg(option)
     endif
     

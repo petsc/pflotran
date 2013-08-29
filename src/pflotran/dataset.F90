@@ -38,6 +38,8 @@ subroutine DatasetRead(input,dataset,option)
 
   type(input_type) :: input
   class(dataset_base_type), pointer :: dataset
+  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_global_type), pointer :: dataset_global
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: word, word2
@@ -52,22 +54,28 @@ subroutine DatasetRead(input,dataset,option)
   
   select case(word2)
     case('MAPPED')
-      dataset => DatasetMapCreate()
-      call InputReadWord(input,option,dataset%name,PETSC_TRUE)
-      call InputDefaultMsg(input,option,'Dataset name') 
-      call DatasetMapRead(DatasetMapCast(dataset),input,option)
-!    case(
+      dataset_map => DatasetMapCreate()
+      call InputReadWord(input,option,dataset_map%name,PETSC_TRUE)
+      call InputDefaultMsg(input,option,'DATASET name') 
+      call DatasetMapRead(dataset_map,input,option)
+      dataset => dataset_map
+    case('GLOBAL')
+      dataset_global => DatasetGlobalCreate()
+      call InputReadWord(input,option,dataset_global%name,PETSC_TRUE)
+      call InputDefaultMsg(input,option,'DATASET name') 
+      call DatasetCommonHDF5Read(dataset_global,input,option)
+      dataset => dataset_global
     case default ! CELL_INDEXED, GLOBAL, XYZ
       dataset => DatasetCommonHDF5Create()
       select case(word2)
-        case('CELL_INDEXED', 'GLOBAL', 'XYZ')
+        case('CELL_INDEXED', 'XYZ')
           call InputReadWord(input,option,dataset%name,PETSC_TRUE)
         case default
           if (.not.InputError(input)) then
             dataset%name = trim(word)
           endif
       end select
-      call InputDefaultMsg(input,option,'Dataset name') 
+      call InputDefaultMsg(input,option,'DATASET name') 
       call DatasetCommonHDF5Read(DatasetCommonHDF5Cast(dataset),input, &
                                  option)
   end select

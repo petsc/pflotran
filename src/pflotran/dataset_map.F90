@@ -82,11 +82,9 @@ subroutine DatasetMapInit(this)
     
 end subroutine DatasetMapInit
 
-
 ! ************************************************************************** !
 !
-! DatasetMapCast: Initializes members of common hdf5 dataset class
-! author: Glenn Hammond
+! DatasetMapCast: Casts a dataset_base_type to dataset_map_type
 ! date: 05/03/13
 !
 ! ************************************************************************** !
