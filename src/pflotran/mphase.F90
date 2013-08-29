@@ -1881,7 +1881,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: upweight,cond,gravity,dphi
   PetscReal :: Neuman_total_mass_flux, Neuman_mass_flux_spec(option%nflowspec)
   PetscReal :: mol_total_flux(option%nphase)
-  
+  PetscInt :: pressure_bc_type
+
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
@@ -1890,7 +1891,11 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area*vol_frac_prim
 
   ! Flow   
-  do np = 1, option%nphase  
+  do np = 1, option%nphase
+    pressure_bc_type = ibndtype(MPH_PRESSURE_DOF)
+
+!   print *,'phase: ',np,pressure_bc_type
+
     select case(ibndtype(MPH_PRESSURE_DOF))
         ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
@@ -1900,14 +1905,14 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         if (option%use_mc) Dq = Dq*2.d0/3.d0*vol_frac_prim
 #endif
         ! Flow term
-        ukvr=0.D0
-        v_darcy=0.D0 
+        ukvr = 0.D0
+        v_darcy = 0.D0 
         if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-          upweight=1.D0
+          upweight = 1.D0
           if (aux_var_up%sat(np) < eps) then 
-            upweight=0.d0
+            upweight = 0.d0
           else if (aux_var_dn%sat(np) < eps) then 
-            upweight=1.d0
+            upweight = 1.d0
           endif
           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
            
@@ -1917,30 +1922,42 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        
           dphi = aux_var_up%pres - aux_var_dn%pres &
                 - aux_var_up%pc(np) + aux_var_dn%pc(np) + gravity
-   
-          if (dphi>=0.D0) then
+
+!         print *,'Seepage BC: ',option%nphase,np,aux_var_up%pres,aux_var_dn%pres,dphi,gravity
+
+          if (pressure_bc_type == SEEPAGE_BC .or. &
+            pressure_bc_type == CONDUCTANCE_BC .or. &
+            pressure_bc_type == HET_SURF_SEEPAGE_BC .and. np == 2) then
+              ! flow in         ! boundary cell is <= pref
+            if (dphi > 0.d0) then
+              dphi = 0.d0
+            endif
+          endif
+
+          if (dphi >= 0.D0) then
             ukvr = aux_var_up%kvr(np)
           else
             ukvr = aux_var_dn%kvr(np)
           endif
      
-          if (ukvr*Dq>floweps) then
+          if (ukvr*Dq > floweps) then
             v_darcy = Dq * ukvr * dphi
           endif
         endif
+
         q = v_darcy * area 
         vv_darcy(np) = v_darcy
-        uh=0.D0
-        uxmol=0.D0
+        uh = 0.D0
+        uxmol = 0.D0
         mol_total_flux(np) = q*density_ave  
         if (v_darcy >= 0.D0) then
 !     if(option%use_isothermal == PETSC_FALSE) &
           uh = aux_var_up%h(np)
-          uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+          uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
         else
 !     if(option%use_isothermal == PETSC_FALSE) &
           uh = aux_var_dn%h(np)
-          uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+          uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
         endif
  
      
@@ -1954,19 +1971,19 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
             density_ave = aux_var_dn%den(np)
           endif
           if(np == 1)then
-            Neuman_mass_flux_spec(np)= &
-            Neuman_total_mass_flux * (1D0-aux_vars(MPH_CONCENTRATION_DOF))
-            uxmol(1) =1D0; uxmol(2)=0D0
+            Neuman_mass_flux_spec(np) = &
+            Neuman_total_mass_flux * (1.D0-aux_vars(MPH_CONCENTRATION_DOF))
+            uxmol(1) = 1.D0; uxmol(2)=0.D0
             mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWH2O
             uh = aux_var_dn%h(np)
           else
-            Neuman_mass_flux_spec(np)= &
-            Neuman_total_mass_flux *aux_vars(MPH_CONCENTRATION_DOF)
-            uxmol(1) =0D0; uxmol(2)=1D0
+            Neuman_mass_flux_spec(np) = &
+            Neuman_total_mass_flux * aux_vars(MPH_CONCENTRATION_DOF)
+            uxmol(1) = 0.D0; uxmol(2) = 1.D0
             mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWCO2
             uh = aux_var_dn%h(np)
         endif
-        vv_darcy(np)=mol_total_flux(np)/density_ave
+        vv_darcy(np) = mol_total_flux(np)/density_ave
       endif 
     end select
      
@@ -1986,7 +2003,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       do np = 1, option%nphase
-        if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
+        if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np) > eps)then
           diff =  diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
                     (aux_var_up%den(np)+aux_var_up%den(np))
           do ispec = 1, option%nflowspec
@@ -2017,8 +2034,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 !   print *, fluxe, aux_vars
 ! end if
   
-  Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
-  Res(option%nflowdof)=fluxe * option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:)* option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
 
 end subroutine MphaseBCFlux
 
