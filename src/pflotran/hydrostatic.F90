@@ -372,6 +372,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     select case(option%iflowmode)
       case(G_MODE)
         coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = pressure
+      case (MPH_MODE)
+        coupler%flow_aux_real_var(1,iconn) = pressure
       case default
         if (condition%pressure%itype == SEEPAGE_BC) then
           coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
