@@ -270,8 +270,7 @@ recursive subroutine MassTransferDestroy(mass_transfer)
   
   ! Simply nullify the pointer as the dataset resides in a list to be
   ! destroyed separately.
-!  nullify(mass_transfer%dataset)
-  call DatasetGlobalDestroy(mass_transfer%dataset)
+  nullify(mass_transfer%dataset)
   if (mass_transfer%vec /= 0) &
     call VecDestroy(mass_transfer%vec ,ierr)
   call MassTransferDestroy(mass_transfer%next)
