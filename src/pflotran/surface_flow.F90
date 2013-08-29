@@ -565,6 +565,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   PetscReal :: hw_up, hw_dn ! water height [m]
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
   PetscReal :: max_allowable_dt
+  PetscReal :: dt
+  PetscReal :: dt2
 
   PetscReal, pointer :: mannings_loc_p(:),area_p(:)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
@@ -622,7 +624,18 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
+      if(abs(vel)>eps) then
+        !dt = dist/abs(vel)/4.d0
+        !max_allowable_dt = min(max_allowable_dt,dt)
+
+        if (Res(1)>0.d0) then
+          dt2 = surf_global_aux_vars(ghosted_id_dn)%head(1)/3.d0/(Res(1)/dist)
+        else
+          dt2 = surf_global_aux_vars(ghosted_id_up)%head(1)/3.d0/(Res(1)/dist)
+        endif
+        dt2 = abs(dt2)*cur_connection_set%area(iconn)
+        max_allowable_dt = min(max_allowable_dt,dt2)
+      endif
 
 
     enddo
@@ -646,7 +659,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
-      slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
+      dist = sqrt(dx*dx + dy*dy + dz*dz)
+      slope_dn = dz/dist
 
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
                          surf_global_aux_vars_bc(sum_connection), &
@@ -657,7 +671,14 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
 
-      if(abs(vel)>eps) max_allowable_dt = min(max_allowable_dt,dist/abs(vel)/4.d0)
+      if(abs(vel)>eps) then
+        !dt = dist/abs(vel)/4.d0
+        !max_allowable_dt = min(max_allowable_dt,dt)
+
+        dt2 = surf_global_aux_vars_bc(sum_connection)%head(1)/3.d0/(Res(1)/dist)
+        dt2 = abs(dt2)*cur_connection_set%area(iconn)
+        max_allowable_dt = min(max_allowable_dt,dt2)
+      endif
     enddo
     boundary_condition => boundary_condition%next
   enddo

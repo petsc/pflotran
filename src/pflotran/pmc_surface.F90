@@ -112,7 +112,9 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
   class(pm_base_type), pointer :: cur_pm
-  PetscReal :: dt_max
+  PetscReal :: dt_max_loc
+  PetscReal :: dt_max_glb
+  PetscErrorCode :: ierr
   
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)
   call printVerboseMsg(this%option)
@@ -140,13 +142,18 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
     select case(this%option%iflowmode)
       case (RICHARDS_MODE)
-        call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max)
+        call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max_loc)
       case (TH_MODE)
-        call SurfaceTHComputeMaxDt(this%surf_realization,dt_max)
+        call SurfaceTHComputeMaxDt(this%surf_realization,dt_max_loc)
     end select
+
+    ! Find mininum allowable timestep across all processors
+    call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION,&
+                     MPI_MIN,this%option%mycomm,ierr)
+
     select type(timestepper => this%timestepper)
       class is(timestepper_surface_type)
-        timestepper%dt_max_allowable = dt_max
+        timestepper%dt_max_allowable = dt_max_glb
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
