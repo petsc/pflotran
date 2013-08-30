@@ -1070,7 +1070,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          case(HYDROSTATIC_BC)
+          case(HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
             if (idof >= MPH_TEMPERATURE_DOF) then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -1925,7 +1925,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           dphi = aux_var_up%pres - aux_var_dn%pres &
                 - aux_var_up%pc(np) + aux_var_dn%pc(np) + gravity
 
-!         print *,'Seepage BC: ',option%nphase,np,aux_var_up%pres,aux_var_dn%pres,dphi,gravity
+          print *,'Seepage BC: ',option%nphase,np,aux_var_up%pres,aux_var_dn%pres,dphi,gravity
 
           if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC .or. &
