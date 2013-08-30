@@ -487,6 +487,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
       if (iphase == 1 .and. &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        ispec = 1
         mass_trapped(iphase) = mass_trapped(iphase) + &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
@@ -496,6 +497,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
       if (iphase == 2 .and. &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        ispec = 2
         mass_trapped(iphase) = mass_trapped(iphase) + &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
