@@ -47,11 +47,11 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
         um=pckr_m
         un=1.D0/(1.D0-um)
 
-        if(sw>pckr_sat_water_cut)then
+        if (sw>pckr_sat_water_cut) then
           upc=0.D0; upc_s=0.D0
-          kr(1)=1.d0;  kr(2)=0.d0;
+          kr(1)=1.d0; kr(2)=0.d0;
           kr_s(1)=0.d0; kr_s(2)=0.d0;
-        elseif(sw>(1.05D0*swir))then
+        elseif (sw > (1.05D0*swir)) then
           se=(sw-swir)/(1.D0-swir)
           temp=se**(-1.D0/um)
           upc=(temp-1.D0)**(1.d0/un)/ala
@@ -68,7 +68,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
           temp=se**(-1.D0/um)
           upc=(temp-1.D0)**(1.d0/un)/ala
           upc_s=-1.D0/um/un*upc*(se**(-1.D0-1.D0/um))/(se**(-1.D0/um)-1.d0)
-          if(sw>swir)then
+          if (sw>swir) then
             temp=1.D0/temp
             kr(1)=sqrt(se)*(1.D0-(1.D0-temp)**um)**2.D0
             kr_s(1)=0.5d0*kr(1)/se+2.d0*sqrt(se)*(1.D0-(1.D0-temp)**um)* &
@@ -89,7 +89,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
           end if
         end if
 
-        pc(1)=upc;  pc(2)=0.d0
+        pc(1)=upc; pc(2)=0.d0
         pc_s(1)=upc_s 
         pc_s(2)=0.d0
 
@@ -104,7 +104,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
         lam=pckr_lambda
         ala=pckr_alpha
 
-        if(sw>(1.05D0*swir))then
+        if (sw > (1.05D0*swir)) then
           se=(sw-swir)/(sw0-swir)
           upc=se**(-1.D0/lam)/ala
           upc_s=-upc/se/lam
@@ -116,7 +116,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
           se=(0.05d0*swir)/(1.D0-swir)
           upc=se**(-1.D0/lam)/ala
           upc_s=-upc/se/lam
-          if(sw>swir)then
+          if (sw > swir) then
             kr(1)=se**(2.d0/lam+3.d0)
             kr_s(1)=(2.d0/lam+3.d0)*kr(1)/se
             ser=(sw-swir)/(1.D0-swir)
@@ -132,7 +132,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
             kr_s(2)=0.D0
           end if
         end if
-        pc(1)=upc;  pc(2)=0.d0
+        pc(1)=upc; pc(2)=0.d0
         pc_s(1)=upc_s 
         pc_s(2)=0.d0
 
@@ -230,7 +230,7 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
         if(kr(2)>1.D0) kr(2)=1.D0; kr_s(2)=0.D0!;kr(1)=0.D0; kr_s(1)=0.D0
 
      
-        pc(1)=upc;  pc(2)=0.d0
+        pc(1)=upc; pc(2)=0.d0
         pc_s(1)=upc_s 
         pc_s(2)=0.d0
 
@@ -279,13 +279,15 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
     ! if(present(pckr_beta))
       pckr_betac = pckr_beta
       sw = 1.D0 - sg
-      if(sw > 1.D0) sw = 1.D0
-      if(sw < 0.D0) sw = 0.D0
+      if (sw > 1.D0) sw = 1.D0
+      if (sw < 0.D0) sw = 0.D0
      
       sw0 = 1.d0
       pcmax = pckr_pcmax
       swir = pckr_sir(1)
       sgir = pckr_sir(2)
+      upc = 0.d0
+
       select case(ipckrtype)
 
       case(0) ! kr = 1

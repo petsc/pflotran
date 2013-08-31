@@ -1095,25 +1095,25 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                          realization%fluid_properties, option, xphi)
     
       if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+        global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars_bc(sum_connection)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%fugacoeff(1) = xphi
+        global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
 !       print *,'xxbc ', xxbc, iphasebc, global_aux_vars_bc(sum_connection)%den_kg(:)
         mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
-        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
+        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl = global_aux_vars_bc(sum_connection)%m_nacl(2)
         ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-        global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
+        global_aux_vars_bc(sum_connection)%xmass(1) = (1.d0-ynacl)&
                               *aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O&
                               /((1.d0-ynacl)*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O &
                               +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(2) * FMWCO2 &
                               +ynacl*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars_bc(sum_connection)%xmass(2)=aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
+      global_aux_vars_bc(sum_connection)%xmass(2) = aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               /(aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(4) * FMWCO2) 
  
@@ -1603,16 +1603,16 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
-      if( dabs(well_status + 1D0) < 1D-1) then 
+      if( dabs(well_status + 1.D0) < 1.D-1) then
         if(aux_var%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
             dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
-            if (dphi>=0.D0) then ! outflow only
+            if (dphi >= 0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
-              if(ukvr<1e-20) ukvr=0D0
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
+              if(ukvr < 1.e-20) ukvr = 0.D0
+              v_darcy = 0.D0
+              if (ukvr*Dq > floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = -1.d0*v_darcy
@@ -1630,7 +1630,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
       endif 
      !print *,'well-prod: ',  aux_var%pres,psrc(1), res
     ! injection well (well status = 2)
-      if( dabs(well_status - 2D0) < 1D-1) then 
+      if( dabs(well_status - 2.D0) < 1.D-1) then
 
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
@@ -1641,9 +1641,9 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         if( aux_var%pres < pressure_max)then  
           do np = 1, option%nphase
             dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
-            if (dphi>=0.D0) then ! outflow only
+            if (dphi >= 0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
-              v_darcy=0.D0
+              v_darcy = 0.D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
@@ -1655,7 +1655,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   well_inj_co2 * option%flow_dt
 !               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np) * &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1908,8 +1908,12 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 #endif
         ! Flow term
         ukvr = 0.D0
-        v_darcy = 0.D0 
-        if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+        v_darcy = 0.D0
+
+!       print *,'Seepage BC: pc/sat ',np, &
+!         aux_var_up%pc(np),aux_var_dn%pc(np),aux_var_up%sat(np),aux_var_dn%sat(np)
+
+       if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
           upweight = 1.D0
           if (aux_var_up%sat(np) < eps) then 
             upweight = 0.d0
@@ -1925,11 +1929,11 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           dphi = aux_var_up%pres - aux_var_dn%pres &
                 - aux_var_up%pc(np) + aux_var_dn%pc(np) + gravity
 
-!         print *,'Seepage BC: ',option%nphase,np,aux_var_up%pres,aux_var_dn%pres,dphi,gravity
+!         print *,'Seepage BC: press ',np,aux_var_up%pres,aux_var_dn%pres,dphi,gravity
 
-          if (pressure_bc_type == SEEPAGE_BC .or. &
+          if ((pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC .or. &
-            pressure_bc_type == HET_SURF_SEEPAGE_BC .and. np == 2) then
+            pressure_bc_type == HET_SURF_SEEPAGE_BC) .and. np == 2) then
               ! flow in         ! boundary cell is <= pref
             if (dphi > 0.d0) then
               dphi = 0.d0
@@ -1945,10 +1949,13 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           if (ukvr*Dq > floweps) then
             v_darcy = Dq * ukvr * dphi
           endif
+
+!         print *,'Seepage: vD/kvr/dphi ',np,V_darcy,ukvr,Dq,dphi
         endif
 
         q = v_darcy * area 
         vv_darcy(np) = v_darcy
+
         uh = 0.D0
         uxmol = 0.D0
         mol_total_flux(np) = q*density_ave  
@@ -2918,13 +2925,13 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
 #if 1
       if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+        global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
       !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%fugacoeff(1) = xphi
+        global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !     global_aux_vars(ghosted_id)%den_kg_store
