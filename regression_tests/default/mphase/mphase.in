@@ -1,6 +1,6 @@
 MODE MPHASE
 
-CO2_DATABASE /Users/lichtner/pflotran/bitbucket/pflotran-dev/database/co2data0.dat
+CO2_DATABASE ../../../database/co2data0.dat
 
 :=========================== regression =======================================
 REGRESSION

@@ -610,21 +610,6 @@ subroutine DiscretizationRead(discretization,input,option)
                   ' not recognized in DISCRETIZATION, second read.'
                 call printErrMsg(option)
             end select
-          case ('MECHANICAL')
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','GRID')
-            call StringToUpper(word)
-            select case(trim(word))
-              case ('TWO_POINT_FLUX')
-                discretization%mech_flux_method = TWO_POINT_FLUX
-              case ('LSM_FLUX')
-                discretization%mech_flux_method = LSM_FLUX
-                discretization%lsm_flux_method = PETSC_TRUE
-              case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                  ' not recognized in DISCRETIZATION, second read.'
-                call printErrMsg(option)
-            end select
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
             ' not recognized in DISCRETIZATION, second read.'
