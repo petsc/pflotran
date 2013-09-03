@@ -253,7 +253,11 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         
       !.........................................................................
       case ('GEOMECHANICS_DEBUG')
-        call GeomechDebugRead(geomech_realization%debug,input,option)       
+        call GeomechDebugRead(geomech_realization%debug,input,option)    
+
+      !.........................................................................
+      case('GEOMECHANICS_SUBSURFACE_COUPLING')
+        option%geomech_subsurf_coupling = PETSC_TRUE        
         
       !.........................................................................
       case ('GEOMECHANICS_OUTPUT')
