@@ -15,6 +15,7 @@ module Geomechanics_Material_module
     PetscInt                       :: id
     PetscReal                      :: youngs_modulus
     PetscReal                      :: poissons_ratio
+    PetscReal                      :: density
   
     type(geomech_material_property_type), pointer :: next
   end type geomech_material_property_type
@@ -53,6 +54,7 @@ function GeomechanicsMaterialPropertyCreate()
   geomech_material_property%id = 0
   geomech_material_property%youngs_modulus = 0.d0
   geomech_material_property%poissons_ratio = 0.d0
+  geomech_material_property%density = 0.d0
   
   nullify(geomech_material_property%next)
   
@@ -65,7 +67,7 @@ end function GeomechanicsMaterialPropertyCreate
 ! GeomechanicsMaterialPropertyRead: Reads geomechanics material properties
 ! property
 ! author: Satish Karra, LANL
-! date: 05/23/13
+! date: 05/23/13. 09/02/13
 !
 ! ************************************************************************** !
 subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
@@ -106,6 +108,11 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
         call InputReadDouble(input,option,geomech_material_property% &
                              poissons_ratio)
         call InputErrorMsg(input,option,'POISSONS_RATIO', &
+                           'GEOMECHANICS_MATERIAL_PROPERTY')
+      case('ROCK_DENSITY')
+        call InputReadDouble(input,option,geomech_material_property% &
+                             density)
+        call InputErrorMsg(input,option,'ROCK_DENSITY', &
                            'GEOMECHANICS_MATERIAL_PROPERTY')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &

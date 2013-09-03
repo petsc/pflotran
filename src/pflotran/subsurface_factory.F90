@@ -557,7 +557,6 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
   use Richards_module, only : RichardsUpdateAuxVars
   use TH_module, only : THUpdateAuxVars
   use THC_module, only : THCUpdateAuxVars
-  use THMC_module, only : THMCUpdateAuxVars
   use General_module, only : GeneralUpdateAuxVars  
 
   implicit none
@@ -667,8 +666,6 @@ subroutine SubsurfaceRestart(realization,flow_stepper,tran_stepper, &
         call THUpdateAuxVars(realization)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
-      case(THMC_MODE)
-        call THMCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
         call RichardsUpdateAuxVars(realization)
       case(G_MODE)                            ! do not update state

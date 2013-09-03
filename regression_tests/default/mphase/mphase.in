@@ -1,0 +1,289 @@
+MODE MPHASE
+
+CO2_DATABASE ../../../database/co2data0.dat
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 10
+END
+
+REFERENCE_TEMPERATURE 75.d0
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 11 1 10
+BOUNDS
+0.d0 100.d0
+0.d0 100.d0
+0.d0 100.d0
+/
+END
+
+:=========================== solver options ===================================
+TIMESTEPPER
+  TS_ACCELERATION 8
+: MAX_STEPS 2
+  MAX_PRESSURE_CHANGE 5.e4
+  MAX_TEMPERATURE_CHANGE 5.d0
+  MAX_CONCENTRATION_CHANGE 0.01
+  MAX_SATURATION_CHANGE 0.005
+/
+
+NEWTON_SOLVER FLOW
+  ATOL 1D-12
+  RTOL 1D-10
+  STOL 1D-30
+  DTOL 1D15
+  ITOL 1D-9
+  MAXIT 25
+  MAXF 100
+END
+
+LINEAR_SOLVER FLOW
+: PC_TYPE NONE
+: PC_TYPE LU
+  PC_TYPE BJACOBI
+: pc_type eisenstat !*
+: SOLVER GMRES
+  SOLVER BCGS
+: SOLVER IBCGS
+: KSP_TYPE RICHARDSON
+: KSP_TYPE CHEBYSHEV !*
+: KSP_TYPE CG
+: KSP_TYPE BICG
+: KSP_TYPE GMRES
+: KSP_TYPE FGMRES
+: KSP_TYPE dgmres
+: KSP_TYPE gcr !*
+  KSP_TYPE BCGS
+: KSP_TYPE IBCGS
+: KSP_TYPE CGS !*
+: KSP_TYPE TFQMR !*
+: KSP_TYPE TCQMR !*
+: KSP_TYPE CR !*
+: KSP_TYPE LSQR !*
+: KSP_TYPE PREONLY
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 0.1e0 y
+INITIAL_TIMESTEP_SIZE 1.d-9 y
+MAXIMUM_TIMESTEP_SIZE 1.d-2 y
+MAXIMUM_TIMESTEP_SIZE 0.1d0 y at 0.1 y
+MAXIMUM_TIMESTEP_SIZE 0.25d0 y at 100. y
+MAXIMUM_TIMESTEP_SIZE 0.5d0 y at 200. y
+/
+
+:=========================== output options ===================================
+OUTPUT
+  PERIODIC_OBSERVATION TIMESTEP 1
+  PRINT_COLUMN_IDS
+: MASS_BALANCE
+  TIMES y 0.1 !10. 50. 60. 70. 80. 90. 100. \
+: 101. 102. 103. 104. 105. 106. 107. 108. 109. \
+: 110. 120. 130. 140. 150. 160. 170. 180. 190. 200. \
+: 225. 250. 275. 300. 325. 350. 400. 450. 500. 750. 1000.
+: FORMAT TECPLOT POINT
+  FORMAT TECPLOT BLOCK
+: FORMAT HDF5
+  VELOCITIES
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.3d0
+TORTUOSITY 5.d-1
+ROCK_DENSITY 2.65E3
+SPECIFIC_HEAT 1.E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5 
+SATURATION_FUNCTION sf1
+PERMEABILITY
+:PERM_X 9.869d-14
+:PERM_Y 9.869d-14
+:PERM_Z 9.869d-14
+PERM_X 2.d-12
+PERM_Y 2.d-12
+PERM_Z 2.d-12
+/
+/
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+:RESIDUAL_SATURATION 0.1
+RESIDUAL_SATURATION LIQUID_PHASE 0.1
+RESIDUAL_SATURATION GAS_PHASE 0.0
+LAMBDA 0.762d0
+ALPHA 7.5d-4
+MAX_CAPILLARY_PRESSURE 1.d6
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 100.D0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 100.d0 100.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 100.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION well
+COORDINATES
+50.d0 50.d0 50.d0
+50.d0 50.d0 50.d0
+/
+END
+
+REGION obs
+  FACE TOP
+  COORDINATES
+    50.d0 50.d0 100.d0
+    50.d0 50.d0 100.d0
+  /
+END
+
+OBSERVATION obs
+  REGION obs
+  VELOCITY
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION Initial
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
+/
+DATUM 0.d0 0.d0 100.d0
+IPHASE 1
+PRESSURE 2.d7 2.d7
+TEMPERATURE 75. C
+CONCENTRATION 1.d-16
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION Top
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE seepage
+:PRESSURE dirichlet
+:PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
+/
+DATUM 0.d0 0.d0 100.d0
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 75.d0
+CONCENTRATION 1d-16
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION Side
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
+/
+DATUM 0.d0 0.d0 100.d0
+IPHASE 1
+PRESSURE 2.D7 2.D7
+TEMPERATURE 75.d0
+CONCENTRATION 1d-16
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION Source
+  UNITS Pa,C,M,yr
+  SYNC_TIMESTEP_WITH_UPDATE
+  TYPE
+    RATE mass_rate
+    PRESSURE dirichlet
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  RATE LIST
+    TIME_UNITS y
+    DATA_UNITS kg/s
+     0.  0. 10.d0
+    0.1 0. 0.
+  /
+  PRESSURE 2.d7 2.d7
+  TEMPERATURE 75.d0
+  CONCENTRATION 0.D0
+  ENTHALPY 0.d0 0.d0
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION Initial
+REGION all
+END
+
+skip
+: boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION Side
+  REGION east
+END
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION Side
+  REGION west
+END
+noskip
+
+BOUNDARY_CONDITION top
+  FLOW_CONDITION Top
+  REGION top
+END
+
+SOURCE_SINK src
+FLOW_CONDITION Source
+REGION well
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION all
+MATERIAL soil1
+END

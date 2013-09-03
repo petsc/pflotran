@@ -487,6 +487,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
       if (iphase == 1 .and. &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        ispec = 1
         mass_trapped(iphase) = mass_trapped(iphase) + &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
@@ -496,6 +497,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
       if (iphase == 2 .and. &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase) <= pckr_sir(iphase)) then
+        ispec = 2
         mass_trapped(iphase) = mass_trapped(iphase) + &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
         mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
@@ -1068,7 +1070,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          case(HYDROSTATIC_BC)
+          case(HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
             if (idof >= MPH_TEMPERATURE_DOF) then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -1093,25 +1095,25 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                          realization%fluid_properties, option, xphi)
     
       if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+        global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars_bc(sum_connection)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%fugacoeff(1) = xphi
+        global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
 !       print *,'xxbc ', xxbc, iphasebc, global_aux_vars_bc(sum_connection)%den_kg(:)
         mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
-        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
+        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl = global_aux_vars_bc(sum_connection)%m_nacl(2)
         ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-        global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
+        global_aux_vars_bc(sum_connection)%xmass(1) = (1.d0-ynacl)&
                               *aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O&
                               /((1.d0-ynacl)*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O &
                               +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(2) * FMWCO2 &
                               +ynacl*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars_bc(sum_connection)%xmass(2)=aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
+      global_aux_vars_bc(sum_connection)%xmass(2) = aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               /(aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(4) * FMWCO2) 
  
@@ -1601,16 +1603,16 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
-      if( dabs(well_status + 1D0) < 1D-1) then 
+      if( dabs(well_status + 1.D0) < 1.D-1) then
         if(aux_var%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
             dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
-            if (dphi>=0.D0) then ! outflow only
+            if (dphi >= 0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
-              if(ukvr<1e-20) ukvr=0D0
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
+              if(ukvr < 1.e-20) ukvr = 0.D0
+              v_darcy = 0.D0
+              if (ukvr*Dq > floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = -1.d0*v_darcy
@@ -1628,7 +1630,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
       endif 
      !print *,'well-prod: ',  aux_var%pres,psrc(1), res
     ! injection well (well status = 2)
-      if( dabs(well_status - 2D0) < 1D-1) then 
+      if( dabs(well_status - 2.D0) < 1.D-1) then
 
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
@@ -1639,9 +1641,9 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         if( aux_var%pres < pressure_max)then  
           do np = 1, option%nphase
             dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
-            if (dphi>=0.D0) then ! outflow only
+            if (dphi >= 0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
-              v_darcy=0.D0
+              v_darcy = 0.D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
@@ -1653,7 +1655,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   well_inj_co2 * option%flow_dt
 !               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np) * &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1881,7 +1883,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: upweight,cond,gravity,dphi
   PetscReal :: Neuman_total_mass_flux, Neuman_mass_flux_spec(option%nflowspec)
   PetscReal :: mol_total_flux(option%nphase)
-  
+  PetscInt :: pressure_bc_type
+
   fluxm = 0.d0
   fluxe = 0.d0
   v_darcy = 0.d0
@@ -1890,7 +1893,11 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area*vol_frac_prim
 
   ! Flow   
-  do np = 1, option%nphase  
+  do np = 1, option%nphase
+    pressure_bc_type = ibndtype(MPH_PRESSURE_DOF)
+
+!   print *,'phase: ',np,pressure_bc_type
+
     select case(ibndtype(MPH_PRESSURE_DOF))
         ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
@@ -1900,14 +1907,18 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         if (option%use_mc) Dq = Dq*2.d0/3.d0*vol_frac_prim
 #endif
         ! Flow term
-        ukvr=0.D0
-        v_darcy=0.D0 
-        if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-          upweight=1.D0
+        ukvr = 0.D0
+        v_darcy = 0.D0
+
+!       print *,'Seepage BC: pc/sat ',np, &
+!         aux_var_up%pc(np),aux_var_dn%pc(np),aux_var_up%sat(np),aux_var_dn%sat(np)
+
+       if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+          upweight = 1.D0
           if (aux_var_up%sat(np) < eps) then 
-            upweight=0.d0
+            upweight = 0.d0
           else if (aux_var_dn%sat(np) < eps) then 
-            upweight=1.d0
+            upweight = 1.d0
           endif
           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
            
@@ -1917,30 +1928,45 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        
           dphi = aux_var_up%pres - aux_var_dn%pres &
                 - aux_var_up%pc(np) + aux_var_dn%pc(np) + gravity
-   
-          if (dphi>=0.D0) then
+
+!         print *,'Seepage BC: press ',np,aux_var_up%pres,aux_var_dn%pres,dphi,gravity
+
+          if ((pressure_bc_type == SEEPAGE_BC .or. &
+            pressure_bc_type == CONDUCTANCE_BC .or. &
+            pressure_bc_type == HET_SURF_SEEPAGE_BC) .and. np == 2) then
+              ! flow in         ! boundary cell is <= pref
+            if (dphi > 0.d0) then
+              dphi = 0.d0
+            endif
+          endif
+
+          if (dphi >= 0.D0) then
             ukvr = aux_var_up%kvr(np)
           else
             ukvr = aux_var_dn%kvr(np)
           endif
      
-          if (ukvr*Dq>floweps) then
+          if (ukvr*Dq > floweps) then
             v_darcy = Dq * ukvr * dphi
           endif
+
+!         print *,'Seepage: vD/kvr/dphi ',np,V_darcy,ukvr,Dq,dphi
         endif
+
         q = v_darcy * area 
         vv_darcy(np) = v_darcy
-        uh=0.D0
-        uxmol=0.D0
+
+        uh = 0.D0
+        uxmol = 0.D0
         mol_total_flux(np) = q*density_ave  
         if (v_darcy >= 0.D0) then
 !     if(option%use_isothermal == PETSC_FALSE) &
           uh = aux_var_up%h(np)
-          uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+          uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
         else
 !     if(option%use_isothermal == PETSC_FALSE) &
           uh = aux_var_dn%h(np)
-          uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+          uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
         endif
  
      
@@ -1954,19 +1980,19 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
             density_ave = aux_var_dn%den(np)
           endif
           if(np == 1)then
-            Neuman_mass_flux_spec(np)= &
-            Neuman_total_mass_flux * (1D0-aux_vars(MPH_CONCENTRATION_DOF))
-            uxmol(1) =1D0; uxmol(2)=0D0
+            Neuman_mass_flux_spec(np) = &
+            Neuman_total_mass_flux * (1.D0-aux_vars(MPH_CONCENTRATION_DOF))
+            uxmol(1) = 1.D0; uxmol(2)=0.D0
             mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWH2O
             uh = aux_var_dn%h(np)
           else
-            Neuman_mass_flux_spec(np)= &
-            Neuman_total_mass_flux *aux_vars(MPH_CONCENTRATION_DOF)
-            uxmol(1) =0D0; uxmol(2)=1D0
+            Neuman_mass_flux_spec(np) = &
+            Neuman_total_mass_flux * aux_vars(MPH_CONCENTRATION_DOF)
+            uxmol(1) = 0.D0; uxmol(2) = 1.D0
             mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWCO2
             uh = aux_var_dn%h(np)
         endif
-        vv_darcy(np)=mol_total_flux(np)/density_ave
+        vv_darcy(np) = mol_total_flux(np)/density_ave
       endif 
     end select
      
@@ -1986,7 +2012,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       do np = 1, option%nphase
-        if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
+        if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np) > eps)then
           diff =  diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
                     (aux_var_up%den(np)+aux_var_up%den(np))
           do ispec = 1, option%nflowspec
@@ -2017,8 +2043,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 !   print *, fluxe, aux_vars
 ! end if
   
-  Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
-  Res(option%nflowdof)=fluxe * option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:)* option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
 
 end subroutine MphaseBCFlux
 
@@ -2866,11 +2892,11 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-      do idof =1, option%nflowdof   
+      do idof =1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          case(HYDROSTATIC_BC)
+          case(HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
             if(idof>=MPH_TEMPERATURE_DOF)then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -2886,9 +2912,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       enddo
 
       select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
-        case(DIRICHLET_BC,SEEPAGE_BC)
+        case(DIRICHLET_BC,SEEPAGE_BC,HYDROSTATIC_BC)
           iphase = boundary_condition%flow_aux_int_var(1,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphase=int(iphase_loc_p(ghosted_id))                               
       end select
  
@@ -2899,13 +2925,13 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
 #if 1
       if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+        global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
       !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%fugacoeff(1) = xphi
+        global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !     global_aux_vars(ghosted_id)%den_kg_store
@@ -3467,7 +3493,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           delxbc(idof) = 0.D0
-        case(HYDROSTATIC_BC)
+        case(HYDROSTATIC_BC,SEEPAGE_BC)
           xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
           if (idof >= MPH_TEMPERATURE_DOF) then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -3484,9 +3510,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
 
       select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
-      case(DIRICHLET_BC,SEEPAGE_BC)
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
         iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
-      case(ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+      case(ZERO_GRADIENT_BC)
         iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
       if (boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF) /= NEUMANN_BC) then

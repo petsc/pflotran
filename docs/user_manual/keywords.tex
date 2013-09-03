@@ -27,6 +27,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_dbg}{\bf DEBUG} & \\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
+\hyperlink{target_geomech}{\bf GEOMECHANICS} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
@@ -1501,6 +1502,16 @@ FLUID_PROPERTY
 %========================================================================
 
 \newpage
+\protect\hypertarget{target_geomech}{}
+ 
+\subsection{Keyword: GEOMECHANICS}
+
+\noindent{\bf Description:} This keyword is required when using geomechanics.
+
+
+%========================================================================
+
+\newpage
 \protect\hypertarget{target_grid}{}
 
 \subsection{Keyword: GRID \hfill Required}
@@ -2455,12 +2466,9 @@ N_i = \sum_\a N_i^\a,
 is given by
 \BA
 \frac{dN_i}{dt} &\eq \sum_\a \frac{dN_i^\a}{dt} \\
-&\eq -\sum_\a \int_{\p V} \bF_i^\a\cdot\bdS + \Q_i,
+&\eq -\sum_\a \int_{\p V} \bF_i^\a\cdot\bdS + Q_i,
 \EA
-where the integral on the right hand side is over the flux flowing through the boundaries of the domain and the source/sink
-\EQ
-\Q_i \eq \int_V Q_i \, dV.
-\EN
+where the surface integral on the right hand side is over the flux flowing through the boundaries of the domain.
 The surface averaged flux $\F_i$ is defined as
 \EQ
 \F_i^\a \eq -\int_{\p V} \bF_i^\a\cdot\bdS,
@@ -2472,11 +2480,11 @@ Integrating the flux over time gives the cumulative flux $\overline\F_i^\a$
 \EN
 and time integrated source/sink $\overline Q_i$
 \EQ
-\overline \Q_i \eq \int_0^t \Q_i\, dt'.
+\overline Q_i \eq \int_0^t Q_i\, dt'.
 \EN
 Global conservation of mass implies the equality
 \EQ
-N_i(t) \eq N_i(0) + \sum_\a \overline\F_i^\a + \overline \Q_i.
+N_i(t) \eq N_i(0) + \sum_\a \overline\F_i^\a + \overline Q_i.
 \EN
 
 The header for the {\tt MPHASE} mass balance file reads (for time in years, $l$=aqueous liquid phase, sc=supercritical CO$_2$):
@@ -2491,8 +2499,8 @@ N_{\rm H_2O}^{l}, \ \ N_{\rm CO_2}^{l}, \ \ \widetilde N_{\rm CO_2}^{l}, \ \ N_{
 \F_{\rm CO_2}^{l}, \ \ 
 \F_{\rm H_2O}^{\rm sc}, \ \ 
 \F_{\rm CO_2}^{\rm sc}, & \ \text{[kmol/y]}\nonumber\\
-\overline \Q_{\rm H_2O}, \ \ \overline \Q_{\rm CO_2}, & \ \text{[kmol]}\nonumber\\
-\Q_{\rm H_2O}, \ \ \Q_{\rm CO_2}, & \ \text{[kmol/y]}
+\overline Q_{\rm H_2O}, \ \ \overline Q_{\rm CO_2}, & \ \text{[kmol]}\nonumber\\
+Q_{\rm H_2O}, \ \ Q_{\rm CO_2}, & \ \text{[kmol/y]}
 \EA
 The quantity $\widetilde N_i^\a$ denotes the trapped component in phase $\a$ defined by
 \EQ

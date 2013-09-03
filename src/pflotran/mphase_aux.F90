@@ -318,7 +318,6 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%pc(:) = 0.D0
       aux_var%sat(1) = 0.D0
       aux_var%sat(2) = 1.D0
-      aux_var%pc(2) = 0.D0
       kr(1)= 0.D0
       kr(2)= 1.D0
     case(3)    

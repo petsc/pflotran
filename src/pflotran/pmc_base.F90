@@ -30,9 +30,6 @@ module PMC_Base_class
     type(pm_pointer_type), pointer :: pm_ptr
     type(simulation_aux_type),pointer :: sim_aux
     procedure(Output), nopass, pointer :: Output
-    procedure(Synchronize), pointer :: Synchronize1
-    procedure(Synchronize), pointer :: Synchronize2
-    procedure(Synchronize), pointer :: Synchronize3
   contains
     procedure, public :: Init => PMCBaseInit
     procedure, public :: InitializeRun
@@ -117,9 +114,6 @@ subroutine PMCBaseInit(this)
   nullify(this%next)
   nullify(this%sim_aux)
   this%Output => Null()
-  this%Synchronize1 => Null()
-  this%Synchronize2 => Null()
-  this%Synchronize3 => Null()
   
   allocate(this%pm_ptr)
   nullify(this%pm_ptr%ptr)
@@ -232,10 +226,6 @@ class(pmc_base_type), target :: this
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
   
-  if (associated(this%Synchronize1)) then
-    call this%Synchronize1()
-  endif
-
   ! Get data of other process-model
   call this%GetAuxData()
   
@@ -302,15 +292,11 @@ class(pmc_base_type), target :: this
         this%option%checkpoint_frequency) == 0) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
-      if (associated(this%Synchronize2)) then
-        call this%Synchronize2()
-      endif
+      ! Set data needed by process-model
+      call this%SetAuxData()
       ! Run neighboring process model couplers
       if (associated(this%next)) then
         call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
-      endif
-      if (associated(this%Synchronize3)) then
-        call this%Synchronize3()
       endif
       call this%Checkpoint(viewer,this%timestepper%steps)
     endif
@@ -320,17 +306,9 @@ class(pmc_base_type), target :: this
   ! Set data needed by process-model
   call this%SetAuxData()
 
-  if (associated(this%Synchronize2)) then
-    call this%Synchronize2()
-  endif
-  
   ! Run neighboring process model couplers
   if (associated(this%next)) then
     call this%next%RunToTime(sync_time,local_stop_flag)
-  endif
-
-  if (associated(this%Synchronize3)) then
-    call this%Synchronize3()
   endif
 
   stop_flag = max(stop_flag,local_stop_flag)

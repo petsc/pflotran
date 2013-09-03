@@ -77,13 +77,13 @@ private
 !            SurfRealizUpdateSubsurfBC, &
 !            SurfRealizUpdateSurfBC, &
 !            SurfRealizSurf2SubsurfFlux, &
-            SurfRealizGetDataset
+            SurfRealizGetVariable
 
   !TODO(intel)
-!  public :: SurfaceRealizationGetDataset     
+!  public :: SurfaceRealizationGetVariable     
   
-!  interface SurfaceRealizationGetDataset
-!    module procedure :: RealizationGetDataset ! from Realization_Base_class
+!  interface SurfaceRealizationGetVariable
+!    module procedure :: RealizationGetVariable ! from Realization_Base_class
 !  end interface
   
 contains
@@ -1358,7 +1358,7 @@ end subroutine SurfRealizUpdate
 !!
 !! date: 05/22/12
 ! ************************************************************************** !
-subroutine SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+subroutine SurfRealizGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
 
   use Option_module
   use Surface_Field_module
@@ -1371,14 +1371,14 @@ subroutine SurfRealizGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
 
-  call PatchGetDataset(surf_realization%patch, &
+  call PatchGetVariable(surf_realization%patch, &
                        surf_realization%surf_field, &
                        !surf_realization%reaction, &
                        surf_realization%option, &
                        surf_realization%output_option, &
                        vec,ivar,isubvar,isubvar1)
 
-end subroutine SurfRealizGetDataset
+end subroutine SurfRealizGetVariable
 
 ! ************************************************************************** !
 !> This routine creates waypoints assocated with source/sink, boundary 

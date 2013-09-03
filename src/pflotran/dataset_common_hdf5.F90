@@ -105,7 +105,7 @@ end subroutine DatasetCommonHDF5Copy
 
 ! ************************************************************************** !
 !
-! DatasetCommonHDF5Init: Initializes members of common hdf5 dataset class
+! DatasetCommonHDF5Cast: Casts a dataset_base_type to dataset_common_hdf5_type
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
@@ -260,13 +260,14 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: attribute_name, time_units
   PetscMPIInt :: int_mpi
-  PetscInt :: temp_int
-  PetscMPIInt :: hdf5_err
+  PetscInt :: temp_int, num_times_read_by_iorank
+  PetscMPIInt :: hdf5_err, h5fopen_err
   PetscBool :: attribute_exists, group_exists
   PetscErrorCode :: ierr
   
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
   
+  h5fopen_err = 0
   if (option%myrank == option%io_rank) then
     ! open the file
     call h5open_f(hdf5_err)
@@ -281,49 +282,63 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
 !    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 !#endif
     call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+    h5fopen_err = hdf5_err
     call h5pclose_f(prop_id,hdf5_err)
 
-    option%io_buffer = 'Opening hdf5 group: ' // trim(dataset_name)
-    call printMsg(option)
-    call h5gopen_f(file_id,dataset_name,grp_id,hdf5_err)
+    if (h5fopen_err == 0) then
+      option%io_buffer = 'Opening hdf5 group: ' // trim(dataset_name)
+      call printMsg(option)
+      call h5gopen_f(file_id,dataset_name,grp_id,hdf5_err)
 
-    attribute_name = "Time Units"
-    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
-    if (attribute_exists) then
-      attribute_dim = 1
-      call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
-      size_t_int = MAXWORDLENGTH
-      call h5tset_size_f(atype_id,size_t_int,hdf5_err)
-      call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
-      call h5aread_f(attribute_id,atype_id,time_units,attribute_dim,hdf5_err)
-      call h5aclose_f(attribute_id,hdf5_err)
-    else
-      option%io_buffer = 'Time Units assumed to be seconds.'
-      call printWrnMsg(option)
-      time_units = 's'
-    endif
+      attribute_name = "Time Units"
+      call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+      if (attribute_exists) then
+        attribute_dim = 1
+        call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
+        size_t_int = MAXWORDLENGTH
+        call h5tset_size_f(atype_id,size_t_int,hdf5_err)
+        call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+        call h5aread_f(attribute_id,atype_id,time_units,attribute_dim,hdf5_err)
+        call h5aclose_f(attribute_id,hdf5_err)
+      else
+        option%io_buffer = 'Time Units assumed to be seconds.'
+        call printWrnMsg(option)
+        time_units = 's'
+      endif
 
-    ! Check whether a time array actually exists
-    string = 'Times'
-    call h5lexists_f(grp_id,string,group_exists,hdf5_err)
+      ! Check whether a time array actually exists
+      string = 'Times'
+      call h5lexists_f(grp_id,string,group_exists,hdf5_err)
 
-    if (group_exists) then
-      !geh: Should check to see if "Times" dataset exists.
-      option%io_buffer = 'Opening data set: ' // trim(string)
-      call printMsg(option)  
-      call h5dopen_f(grp_id,string,dataset_id,hdf5_err)
-      call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
-      call h5sget_simple_extent_npoints_f(file_space_id,num_times,hdf5_err)
-      temp_int = num_times
-    else
-      temp_int = -1
-    endif
+      if (group_exists) then
+        !geh: Should check to see if "Times" dataset exists.
+        option%io_buffer = 'Opening data set: ' // trim(string)
+        call printMsg(option)  
+        call h5dopen_f(grp_id,string,dataset_id,hdf5_err)
+        call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
+        call h5sget_simple_extent_npoints_f(file_space_id,num_times,hdf5_err)
+        num_times_read_by_iorank = num_times
+      else
+        num_times_read_by_iorank = -1
+      endif
+    endif ! h5fopen_err == 0
   endif
-  
+
+  ! Need to catch errors in opening the file.  Since the file is only opened
+  ! by the I/O rank, need to broadcast the error flag.
+  temp_int = h5fopen_err
   int_mpi = 1
   call MPI_Bcast(temp_int,int_mpi,MPI_INTEGER,option%io_rank, &
                  option%mycomm,ierr)
-  num_times = temp_int
+  if (temp_int < 0) then ! actually h5fopen_err
+    option%io_buffer = 'Error opening file: ' // trim(filename)
+    call printErrMsg(option)
+  endif
+  
+  int_mpi = 1
+  call MPI_Bcast(num_times_read_by_iorank,int_mpi,MPI_INTEGER, &
+                 option%io_rank,option%mycomm,ierr)
+  num_times = num_times_read_by_iorank
   
   if (num_times == -1) then
     ! no times exist, simply return

@@ -154,7 +154,7 @@ end function OutputFilename
 ! ************************************************************************** !
 subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 
-  use Realization_Base_class, only : RealizationGetDataset
+  use Realization_Base_class, only : RealizationGetVariable
   use Grid_module
   use Option_module
   use Field_module
@@ -175,7 +175,7 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
-  call RealizationGetDataset(realization_base,vec,ivar,isubvar,isubvar1)
+  call RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   
@@ -242,7 +242,7 @@ end subroutine ConvertArrayToNatural
 function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
                                       num_cells,ghosted_ids,isubvar1)
 
-  use Realization_Base_class, only : RealizGetDatasetValueAtCell
+  use Realization_Base_class, only : RealizGetVariableValueAtCell
   use Grid_module
   use Option_module
 
@@ -275,7 +275,7 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
     dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    value = RealizGetDatasetValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
+    value = RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
       isubvar1)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0

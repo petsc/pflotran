@@ -20,6 +20,7 @@ module Dataset_Global_class
   
   public :: DatasetGlobalCreate, &
             DatasetGlobalInit, &
+            DatasetGlobalCast, &
             DatasetGlobalLoad, &
             DatasetGlobalDestroy
   
@@ -46,6 +47,32 @@ function DatasetGlobalCreate()
   DatasetGlobalCreate => dataset
     
 end function DatasetGlobalCreate
+
+
+! ************************************************************************** !
+!
+! DatasetGlobalCast: Casts a dataset_base_type to database_global_type
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+function DatasetGlobalCast(this)
+
+  use Dataset_Base_class
+  
+  implicit none
+
+  class(dataset_base_type), pointer :: this
+
+  class(dataset_global_type), pointer :: DatasetGlobalCast
+  
+  nullify(DatasetGlobalCast)
+  select type (this)
+    class is (dataset_global_type)
+      DatasetGlobalCast => this
+  end select
+    
+end function DatasetGlobalCast
 
 ! ************************************************************************** !
 !
@@ -135,6 +162,7 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
 #include "finclude/petscdmda.h"
+#include "finclude/petscviewer.h"
 
 ! Default HDF5 Mechanism 
  
@@ -162,6 +190,8 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
   integer, allocatable :: integer_buffer_i4(:)
   PetscErrorCode :: ierr
   PetscMPIInt :: hdf5_err
+
+  PetscViewer :: viewer
   
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
 
@@ -208,6 +238,12 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
   if (ndims > 1) then
     file_rank2_size = dims(2)
   else
+    if (option%mycommsize > 1) then
+      option%io_buffer = 'Dataset "' // trim(this%hdf5_dataset_name) // &
+        '" in file "' // trim (this%filename) // &
+        '" must be a 2D dataset (time,cell) if PFLOTRAN is run in parallel.'
+      call printErrMsg(option)
+    endif
     file_rank2_size = 1
   endif
 
@@ -252,7 +288,7 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
   length(1) = file_rank1_size
   if (ndims > 1) then
     offset(2) = this%buffer_slice_offset
-    length(1) = file_rank1_size
+    length(1) = this%local_size
     length(2) = min(buffer_rank2_size,file_rank2_size-this%buffer_slice_offset)
   else
     offset(1) = this%buffer_slice_offset*this%local_size
@@ -311,6 +347,15 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
     call VecGetArrayF90(natural_vec,vec_ptr,ierr)
     vec_ptr(:) = this%rbuffer(istart+1:istart+this%local_size)
     call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+
+    !geh: for debugging purposes
+    !write(string,*) i
+    !string = trim(adjustl(this%hdf5_dataset_name)) // '_' // &
+    !         trim(adjustl(string)) // '_natural.txt'
+    !call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+    !call VecView(natural_vec,viewer,ierr)
+    !call PetscViewerDestroy(viewer,ierr)
+
     call DMDANaturalToGlobalBegin(dm_wrapper%dm,natural_vec,INSERT_VALUES, &
                                   global_vec,ierr)
     call DMDANaturalToGlobalEnd(dm_wrapper%dm,natural_vec,INSERT_VALUES, &
@@ -318,8 +363,20 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
     call VecGetArrayF90(global_vec,vec_ptr,ierr)
     this%rbuffer(istart+1:istart+this%local_size) = vec_ptr(:)
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+
+    !geh: for debugging purposes
+    !write(string,*) i
+    !string = trim(adjustl(this%hdf5_dataset_name)) // '_' // &
+    !         trim(adjustl(string)) // '_global.txt'
+    !call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+    !call VecView(global_vec,viewer,ierr)
+    !call PetscViewerDestroy(viewer,ierr)
+
     istart = istart + this%local_size
   enddo
+
+
+
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
   

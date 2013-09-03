@@ -469,7 +469,7 @@ PFLOTRAN can be run from the command line as
 
 A number of command line options are available:
 
-\begin{tabular}{ll}
+\begin{tabular}{lp{8cm}}
 \toprule
 Option & \multicolumn{1}{c}{Description}\\
 \midrule
@@ -484,12 +484,21 @@ Option & \multicolumn{1}{c}{Description}\\
 \midrule
 \multicolumn{2}{c}{PETSc}\\
 \midrule
-{\tt -log\_summary} & print out run performance (PETSc option)\\
+{\tt -help} & print list of command line options\\
+{\tt -log\_summary} & print out run performance\\
+{\tt -snes\_converged\_reason} & print the reason for convergence/divergence after each solve\\
 {\tt -on\_error\_abort} & aborts run on hitting NaNs\\
-{\tt -v} & verbose\\
-{\tt -options\_left} & for debugging: lists any PETSc objects \\
-&that have not been freed\\
-{\tt -snes\_monitor} & print out function norm with each iteration\\
+{\tt -v} & <int> verbose\\
+{\tt -options\_left} & for debugging: lists any PETSc objects that have not been freed\\
+{\tt -snes\_monitor} & print to screen function norm with each iteration\\
+{\tt -snes\_linesearch\_monitor} & print to screen line search information\\
+{\tt -snes\_view} & print line search method\\
+{\tt -snes\_ls} & options: [cubic, quadratic, basic, basicnonorms] \\
+{\tt -snes\_type newtonls} & \\
+{\tt -snes\_type newtontr} & \\
+{\tt -snes\_tr\_delta0} & <delta0>\\
+{\tt -snes\_monitor\_lg\_residualnorm} & draws line graph of the residual norm convergence using X11\\
+{\tt -ksp\_monitor\_lg\_residualnorm} & \\
 \bottomrule
 \end{tabular}
 

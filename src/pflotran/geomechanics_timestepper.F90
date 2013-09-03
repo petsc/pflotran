@@ -671,8 +671,8 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   PetscBool :: failure
 
   PetscErrorCode :: ierr
-  PetscInt :: num_newton_iterations
-  PetscInt :: num_linear_iterations
+  PetscInt :: sum_newton_iterations, sum_linear_iterations
+  PetscInt :: num_newton_iterations, num_linear_iterations
   PetscInt :: snes_reason
   PetscReal :: fnorm
   PetscReal :: inorm
@@ -688,11 +688,11 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   field => realization%geomech_field
   solver => stepper%solver
 
-  num_newton_iterations = 0
-  num_linear_iterations = 0
+  sum_newton_iterations = 0
+  sum_linear_iterations = 0
 
     
-  if (option%print_screen_flag) write(*,'(/,2("=")," DEFORMATION ",65("="))')
+  if (option%print_screen_flag) write(*,'(/,2("=")," GEOMECHANICS ",65("="))')
 
   call GeomechanicsForceInitialGuess(realization)
 
@@ -705,15 +705,15 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
 
   if (snes_reason <= 0) then
     if (option%print_screen_flag) then
-      print *, 'Newton solver failed to converge in DEFORMATION, reason: ', &
+      print *, 'Newton solver failed to converge in GEOMECHANICS, reason: ', &
                 snes_reason
     endif
     failure = PETSC_TRUE
     return
   endif
   
-  stepper%cumulative_newton_iterations = num_newton_iterations
-  stepper%cumulative_linear_iterations = num_linear_iterations
+!  stepper%cumulative_newton_iterations = num_newton_iterations
+!  stepper%cumulative_linear_iterations = num_linear_iterations
 
   ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
@@ -729,7 +729,27 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
     write(*,'(" --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
   endif
   
+
+  sum_newton_iterations = sum_newton_iterations + num_newton_iterations
+  sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+  
+  stepper%steps = stepper%steps + 1      
+  stepper%cumulative_newton_iterations = &
+    stepper%cumulative_newton_iterations + sum_newton_iterations
+  stepper%cumulative_linear_iterations = &
+    stepper%cumulative_linear_iterations + sum_linear_iterations  
+  
   if (option%print_screen_flag) print *, ""
+  
+  if (option%print_file_flag) then
+    write(option%fid_out, '(" GEOMECHANICS ",i6," snes_conv_reason: ",i4,/, &
+      &"  newton = ",i3," [",i8,"]", &
+      & " linear = ",i5," [",i10,"]")') &
+      stepper%steps, &
+      snes_reason,sum_newton_iterations, &
+      stepper%cumulative_newton_iterations,sum_linear_iterations, &
+      stepper%cumulative_linear_iterations
+  endif  
 
 end subroutine StepperSolveGeomechSteadyState
 

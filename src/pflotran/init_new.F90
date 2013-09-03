@@ -61,7 +61,6 @@ subroutine Init(simulation)
   use Richards_MFD_module
   use TH_module
   use THC_module
-  use THMC_module
   use General_module
   
   use Reactive_Transport_module
@@ -272,7 +271,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
+        case(MPH_MODE,TH_MODE,THC_MODE,IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -292,11 +291,9 @@ subroutine Init(simulation)
         case(MIS_MODE)
           write(*,'(" mode = MIS: p, Xs")')
         case(TH_MODE)
-          write(*,'(" mode = THC: p, T")')
+          write(*,'(" mode = TH: p, T")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
-        case(THMC_MODE)
-          write(*,'(" mode = THMC: p, T, s/X")')
         case(RICHARDS_MODE)
           write(*,'(" mode = Richards: p")')  
         case(G_MODE)    
@@ -344,9 +341,6 @@ subroutine Init(simulation)
       case(THC_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
-      case(THMC_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,THMCResidual, &
-                             realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC)
@@ -386,9 +380,6 @@ subroutine Init(simulation)
       case(THC_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THCJacobian,realization,ierr)
-      case(THMC_MODE)
-        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             THMCJacobian,realization,ierr)
       case(RICHARDS_MODE)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC)
@@ -693,8 +684,6 @@ subroutine Init(simulation)
         call THSetup(realization)
       case(THC_MODE)
         call THCSetup(realization)
-      case(THMC_MODE)
-        call THMCSetup(realization)
       case(RICHARDS_MODE)
         call RichardsSetup(realization)
       case(MPH_MODE)
@@ -723,8 +712,6 @@ subroutine Init(simulation)
         call THUpdateAuxVars(realization)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
-      case(THMC_MODE)
-        call THMCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
 #ifdef DASVYAT
        if (option%mimetic) then
@@ -2341,15 +2328,6 @@ subroutine setFlowMode(option)
       option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
-      option%use_isothermal = PETSC_FALSE
-   case('THMC')
-      option%iflowmode = THMC_MODE
-      option%nphase = 1
-      option%liquid_phase = 1      
-      option%gas_phase = 2      
-      option%nflowdof = 6
-      option%nflowspec = 2
-      option%nmechdof = 3
       option%use_isothermal = PETSC_FALSE
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE

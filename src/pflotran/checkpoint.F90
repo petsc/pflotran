@@ -117,7 +117,7 @@ subroutine Checkpoint(realization, &
                       id_string)
 
   use Realization_class
-  use Realization_Base_class, only : RealizationGetDataset
+  use Realization_Base_class, only : RealizationGetVariable
   use Reaction_Aux_module
   use Discretization_module
   use Option_module
@@ -299,7 +299,7 @@ subroutine Checkpoint(realization, &
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
@@ -357,12 +357,12 @@ subroutine Checkpoint(realization, &
         ACT_COEF_FREQUENCY_OFF) then
       ! allocated vector
       do i = 1, realization%reaction%naqcomp
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
       enddo
       do i = 1, realization%reaction%neqcplx
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    SECONDARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
       enddo
@@ -370,7 +370,7 @@ subroutine Checkpoint(realization, &
     ! mineral volume fractions for kinetic minerals
     if (realization%reaction%mineral%nkinmnrl > 0) then
       do i = 1, realization%reaction%mineral%nkinmnrl
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
         call VecView(global_vec,viewer,ierr)
       enddo
@@ -425,7 +425,7 @@ subroutine Restart(realization, &
                    activity_coefs_read)
 
   use Realization_class
-  use Realization_Base_class, only : RealizationSetDataset
+  use Realization_Base_class, only : RealizationSetVariable
   use Discretization_module
   use Option_module
   use Output_Aux_module
@@ -585,7 +585,7 @@ subroutine Restart(realization, &
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
@@ -658,14 +658,14 @@ subroutine Restart(realization, &
         call VecLoad(global_vec,viewer,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
-        call RealizationSetDataset(realization,local_vec,LOCAL, &
+        call RealizationSetVariable(realization,local_vec,LOCAL, &
                                    PRIMARY_ACTIVITY_COEF,i)
       enddo
       do i = 1, realization%reaction%neqcplx
         call VecLoad(global_vec,viewer,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
-        call RealizationSetDataset(realization,local_vec,LOCAL, &
+        call RealizationSetVariable(realization,local_vec,LOCAL, &
                                    SECONDARY_ACTIVITY_COEF,i)
       enddo
     endif
@@ -675,7 +675,7 @@ subroutine Restart(realization, &
         ! have to load the vecs no matter what
         call VecLoad(global_vec,viewer,ierr)
         if (.not.option%no_restart_mineral_vol_frac) then
-          call RealizationSetDataset(realization,global_vec,GLOBAL, &
+          call RealizationSetVariable(realization,global_vec,GLOBAL, &
                                      MINERAL_VOLUME_FRACTION,i)
         endif
       enddo
@@ -972,7 +972,7 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
@@ -1069,7 +1069,7 @@ subroutine RestartFlowProcessModel(viewer,realization)
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
     select case(option%iflowmode)
-      case(MPH_MODE,TH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &

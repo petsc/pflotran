@@ -75,6 +75,7 @@ module Option_module
 #ifdef GEOMECH
     PetscInt :: ngeomechdof
     PetscReal :: geomech_time
+    PetscBool :: geomech_subsurf_coupling
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -420,6 +421,7 @@ subroutine OptionInitRealization(option)
 #ifdef GEOMECH
   option%ngeomechdof = 0
   option%geomech_time = 0.d0
+  option%geomech_subsurf_coupling = PETSC_FALSE
 #endif
 
   option%tranmode = ""
@@ -610,9 +612,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr)
   if (option_found) option%flowmode = "thc"     
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thmc", &
-                           option_found, ierr)
-  if (option_found) option%flowmode = "thmc"     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)

@@ -167,9 +167,9 @@ Local equilibrium is assumed between phases for modeling multiphase systems with
 \begin{subequations}
 \BA\label{mass_conservation_equation}
 \frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\eta_\a^{} x_i^\a \bigg)
-+ \bnabla\cdot\sum_\a\bF_i^\a \eq Q_i,
++ \bnabla\cdot\sum_\a\bF_i^\a \eq Q_{i},
 \EA
-for the $i$th component with flux $\bF_i^\a$
+for the $i$th component where the flux $\bF_i^\a$ is given by
 \EQ
 \bF_i^\a \eq \bq_\a^{}\eta_\a^{} x_i^\a 
  - \varphi s_\a^{} D_\a^{} \eta_\a^{} \bnabla x_i^\a,
@@ -177,17 +177,20 @@ for the $i$th component with flux $\bF_i^\a$
 and
 \BA\label{energy_equation}
 \frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\eta_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)
-+ \bnabla\cdot\sum_\a\bigg[\bq_\a\eta_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
++ \bnabla\cdot\sum_\a\bigg[\bq_\a\eta_\a H_\a - \kappa\bnabla T\bigg] \eq Q_{e},
 \EA
 \end{subequations}
 for energy. 
-In these equations $\a$ designates a fluid phase ($\a=\textrm{H}_\textrm{2}$O, supercritical CO$_\textrm{2}$) at temperature $T$ and pressure $P_\a$ with the sums over all fluid phases present in the system, and source/sink terms $Q_i$ and $Q_e$ described in more detail below. 
+In these equations $\a$ designates a fluid phase ($\a=l$, sc) at temperature $T$ and pressure $P_\a$ with the sums over all fluid phases present in the system, and source/sink terms $Q_i$ and $Q_e$ described in more detail below. 
 Species are designated by the subscript $i$ 
 ($i\!=\!\textrm{H}_\textrm{2}\textrm{O}$, $\textrm{CO}_\textrm{2}$); 
 $\varphi$ denotes the porosity of the porous medium; 
 $s_\a$ denotes the phase saturation state; 
-$x_i^\a$ denotes the mole fraction of species $i$ ($\sum_i x_i^\alpha=1$); 
-$\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
+$x_i^\a$ denotes the mole fraction of species $i$ satisfying
+\EQ
+\sum_i x_i^\alpha=1,
+\EN
+the quantities $\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
 $\bq_\a$ denotes the Darcy flow rate for phase $\a$ defined by
 \EQ
 \bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-\rho_\a g \bz\big),

@@ -30,8 +30,6 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: alpha    ! conductivity saturation relation exponent
-    PetscReal :: youngs_modulus
-    PetscReal :: poissons_ratio
 #ifdef ICE
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
@@ -129,8 +127,6 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
   material_property%alpha = 0.45d0
-  material_property%youngs_modulus = 2.d11 ! in Pa
-  material_property%poissons_ratio = 0.3
 #ifdef ICE
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
@@ -406,16 +402,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
-      case('YOUNGS_MODULUS') 
-        call InputReadDouble(input,option, &
-                             material_property%youngs_modulus)
-        call InputErrorMsg(input,option,'youngs modulus', &
-                           'MATERIAL_PROPERTY')
-      case('POISSONS_RATIO') 
-        call InputReadDouble(input,option, &
-                             material_property%poissons_ratio)
-        call InputErrorMsg(input,option,'poissons_ratio', &
-                           'MATERIAL_PROPERTY')
       case('PERMEABILITY_POWER')
         call InputReadDouble(input,option, &
                              material_property%permeability_pwr)

@@ -44,7 +44,6 @@ list (APPEND SRC
 	reactive_transport_aux.F90
 	reaction_aux.F90
 	thc_aux.F90
-	thmc_aux.F90
 	richards_aux.F90
 	general_aux.F90
 	mphase_aux.F90
@@ -96,7 +95,6 @@ list (APPEND SRC
 	reaction.F90
 	reactive_transport.F90
 	thc.F90
-	thmc.F90
 	richards.F90
 	general.F90
 	condition_control.F90

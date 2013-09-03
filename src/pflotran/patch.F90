@@ -98,10 +98,10 @@ module Patch_module
   PetscInt, parameter, public :: INT_VAR = 0
   PetscInt, parameter, public :: REAL_VAR = 1
     
-  interface PatchGetDataset
-    module procedure PatchGetDataset1
+  interface PatchGetVariable
+    module procedure PatchGetVariable1
 #ifdef SURFACE_FLOW
-    module procedure PatchGetDataset2
+    module procedure PatchGetVariable2
 #endif
   end interface
 
@@ -109,8 +109,8 @@ module Patch_module
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
             PatchLocalizeRegions, PatchUpdateUniformVelocity, &
-            PatchGetDataset, PatchGetDatasetValueAtCell, &
-            PatchSetDataset, &
+            PatchGetVariable, PatchGetVariableValueAtCell, &
+            PatchSetVariable, &
             PatchInitConstraints, &
             PatchCountCells, PatchGetIvarsFromKeyword, &
             PatchGetVarNameFromKeyword, &
@@ -797,12 +797,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
               
-            case(THMC_MODE)
-              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
-
             case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
 !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
@@ -1576,7 +1570,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
           vec_ptr(local_id)
       case(TH_MODE)
       case(THC_MODE)
-      case(THMC_MODE)
       case(MPH_MODE)
       case(IMS_MODE)
       case(MIS_MODE)
@@ -2080,7 +2073,6 @@ function PatchAuxVarsUpToDate(patch)
   use Mphase_Aux_module
   use TH_Aux_module
   use THC_Aux_module
-  use THMC_Aux_module
   use Richards_Aux_module
   use Reactive_Transport_Aux_module  
   
@@ -2096,8 +2088,6 @@ function PatchAuxVarsUpToDate(patch)
     flow_up_to_date = patch%aux%THC%aux_vars_up_to_date
   else if (associated(patch%aux%TH)) then
     flow_up_to_date = patch%aux%TH%aux_vars_up_to_date
-  else if (associated(patch%aux%THMC)) then
-    flow_up_to_date = patch%aux%THMC%aux_vars_up_to_date
   else if (associated(patch%aux%Richards)) then
     flow_up_to_date = patch%aux%Richards%aux_vars_up_to_date
   else if (associated(patch%aux%Mphase)) then
@@ -2118,12 +2108,12 @@ end function PatchAuxVarsUpToDate
 
 ! ************************************************************************** !
 !
-! PatchGetDataset: Extracts variables indexed by ivar and isubvar from a patch
+! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, &
+subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
 
   use Grid_module
@@ -2135,7 +2125,6 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use Mphase_Aux_module
   use TH_Aux_module
   use THC_Aux_module
-  use THMC_Aux_module
   use Richards_Aux_module
   use Mineral_module
   use Reaction_module
@@ -2295,64 +2284,6 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%aux_vars(grid%nL2G(local_id))%u
-            enddo
-        end select
-        
-      else if (associated(patch%aux%THMC)) then
-        select case(ivar)
-          case(TEMPERATURE)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
-            enddo
-          case(LIQUID_PRESSURE)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
-            enddo
-          case(LIQUID_SATURATION)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1)
-            enddo
-          case(LIQUID_DENSITY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
-            enddo
-          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = 0.d0
-            enddo
-          case(GAS_SATURATION)
-            do local_id=1,grid%nlmax
-#ifdef ICE
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%sat_gas
-#else
-              vec_ptr(local_id) = 0.d0
-#endif 
-            enddo
-#ifdef ICE
-          case(ICE_SATURATION)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%sat_ice
-            enddo
-          case(ICE_DENSITY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%den_ice*FMWH2O
-            enddo
-#endif
-          case(LIQUID_VISCOSITY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%vis
-            enddo
-          case(LIQUID_MOBILITY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%kvr
-            enddo
-          case(LIQUID_MOLE_FRACTION)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%xmol(isubvar)
-            enddo
-          case(LIQUID_ENERGY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THMC%aux_vars(grid%nL2G(local_id))%u
             enddo
         end select
         
@@ -3120,23 +3051,23 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
       enddo
     case default
       write(option%io_buffer, &
-            '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
+            '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
       call printErrMsg(option)
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
-end subroutine PatchGetDataset1
+end subroutine PatchGetVariable1
 
 ! ************************************************************************** !
 !
-! PatchGetDatasetValueAtCell: Returns variables indexed by ivar,
+! PatchGetVariableValueAtCell: Returns variables indexed by ivar,
 !                             isubvar, local id from Reactive Transport type
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
+function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                                     output_option, &
                                     ivar,isubvar,ghosted_id,isubvar1)
 
@@ -3147,7 +3078,6 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Mphase_Aux_module
   use TH_Aux_module
   use THC_Aux_module
-  use THMC_Aux_module
   use Richards_Aux_module
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
@@ -3164,7 +3094,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  PetscReal :: PatchGetDatasetValueAtCell
+  PetscReal :: PatchGetVariableValueAtCell
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
@@ -3188,7 +3118,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
 
   ! inactive grid cell
   if (patch%imat(ghosted_id) <= 0) then
-    PatchGetDatasetValueAtCell = 0.d0
+    PatchGetVariableValueAtCell = 0.d0
     return
   endif
 
@@ -3276,39 +3206,6 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           case(SECONDARY_TEMPERATURE)
             local_id = grid%nG2L(ghosted_id)
             value = patch%aux%SC_heat%sec_heat_vars(local_id)%sec_temp(isubvar)
-        end select
-     else if (associated(patch%aux%THMC)) then
-        select case(ivar)
-          case(TEMPERATURE)
-            value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
-          case(LIQUID_PRESSURE)
-            value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
-          case(LIQUID_SATURATION)
-            value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
-          case(LIQUID_DENSITY)
-            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
-          case(LIQUID_VISCOSITY)
-            value = patch%aux%THMC%aux_vars(ghosted_id)%vis
-          case(LIQUID_MOBILITY)
-            value = patch%aux%THMC%aux_vars(ghosted_id)%kvr
-          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
-            value = 0.d0
-          case(GAS_SATURATION)
-#ifdef ICE
-            value = patch%aux%THMC%aux_vars(ghosted_id)%sat_gas
-#else
-            value = 0.d0
-#endif
-#ifdef ICE
-          case(ICE_SATURATION)
-            value = patch%aux%THMC%aux_vars(ghosted_id)%sat_ice
-          case(ICE_DENSITY)
-            value = patch%aux%THMC%aux_vars(ghosted_id)%den_ice*FMWH2O
-#endif
-          case(LIQUID_MOLE_FRACTION)
-            value = patch%aux%THMC%aux_vars(ghosted_id)%xmol(isubvar)
-          case(LIQUID_ENERGY)
-            value = patch%aux%THMC%aux_vars(ghosted_id)%u
         end select
       else if (associated(patch%aux%Richards)) then
         select case(ivar)
@@ -3739,23 +3636,23 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
      case default
       write(option%io_buffer, &
-            '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
+            '(''IVAR ('',i3,'') not found in PatchGetVariableValueAtCell'')') &
             ivar
       call printErrMsg(option)
   end select
 
-  PatchGetDatasetValueAtCell = value
+  PatchGetVariableValueAtCell = value
  
-end function PatchGetDatasetValueAtCell
+end function PatchGetVariableValueAtCell
 
 ! ************************************************************************** !
 !
-! PatchSetDataset: Sets variables indexed by ivar and isubvar within a patch
+! PatchSetVariable: Sets variables indexed by ivar and isubvar within a patch
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
+subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
 
   use Grid_module
   use Option_module
@@ -3788,7 +3685,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
 
   if (vec_format == NATURAL) then
     call printErrMsg(option,&
-                     'NATURAL vector format not supported by PatchSetDataset')
+                     'NATURAL vector format not supported by PatchSetVariable')
   endif
 
   iphase = 1
@@ -3996,107 +3893,6 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
                 patch%aux%TH%aux_vars(ghosted_id)%u = vec_ptr(ghosted_id)
-              enddo
-            endif
-        end select
-      else if (associated(patch%aux%THMC)) then
-        select case(ivar)
-          case(TEMPERATURE)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%Global%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
-              enddo
-            endif
-          case(LIQUID_PRESSURE)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%Global%aux_vars(ghosted_id)%pres = vec_ptr(ghosted_id)
-              enddo
-            endif
-          case(LIQUID_SATURATION)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%Global%aux_vars(ghosted_id)%sat = vec_ptr(ghosted_id)
-              enddo
-            endif
-          case(LIQUID_DENSITY)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%Global%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
-              enddo
-            endif
-          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
-          case(GAS_SATURATION)
-#ifdef ICE
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%THMC%aux_vars(grid%nL2G(local_id))%sat_gas = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%THMC%aux_vars(ghosted_id)%sat_gas = vec_ptr(ghosted_id)
-              enddo
-            endif
-#else
-#endif
-#ifdef ICE
-          case(ICE_SATURATION)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%THMC%aux_vars(grid%nL2G(local_id))%sat_ice = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%THMC%aux_vars(ghosted_id)%sat_ice = vec_ptr(ghosted_id)
-              enddo
-            endif
-          case(ICE_DENSITY)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%THMC%aux_vars(grid%nL2G(local_id))%den_ice = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%THMC%aux_vars(ghosted_id)%den_ice = vec_ptr(ghosted_id)
-              enddo
-            endif
-#endif
-          case(LIQUID_VISCOSITY)
-          case(GAS_VISCOSITY)
-          case(LIQUID_MOLE_FRACTION)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%THMC%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%THMC%aux_vars(ghosted_id)%xmol(isubvar) = vec_ptr(ghosted_id)
-              enddo
-            endif
-          case(LIQUID_ENERGY)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%THMC%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%THMC%aux_vars(ghosted_id)%u = vec_ptr(ghosted_id)
               enddo
             endif
         end select
@@ -4649,7 +4445,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
       endif
     case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
-      option%io_buffer = 'Setting of permeability in "PatchSetDataset"' // &
+      option%io_buffer = 'Setting of permeability in "PatchSetVariable"' // &
         ' not supported.'
       call printErrMsg(option)
     case(PHASE)
@@ -4674,12 +4470,12 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
       endif
     case(PROCESSOR_ID)
       call printErrMsg(option, &
-                       'Cannot set PROCESSOR_ID through PatchSetDataset()')
+                       'Cannot set PROCESSOR_ID through PatchSetVariable()')
   end select
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
-end subroutine PatchSetDataset
+end subroutine PatchSetVariable
 
 ! ************************************************************************** !
 !
@@ -5006,12 +4802,12 @@ end subroutine PatchDestroy
 #ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !
-! PatchGetDataset: Extracts variables indexed by ivar and isubvar from a patch
+! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
+subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
 
   use Grid_module
@@ -5070,11 +4866,11 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
       enddo
     case default
       write(option%io_buffer, &
-            '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
+            '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
       call printErrMsg(option)
   end select
 
-end subroutine PatchGetDataset2
+end subroutine PatchGetVariable2
 
 #endif
 ! SURFACE_FLOW

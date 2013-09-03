@@ -1314,105 +1314,6 @@ subroutine FlowConditionRead(condition,input,option)
       if (associated(temperature)) call FlowSubConditionDestroy(temperature)
       if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
 
-   case(THMC_MODE)
-      if (.not.associated(pressure) .and. .not.associated(rate)&
-           .and. .not.associated(well) .and. .not.associated(saturation)) then
-        option%io_buffer = 'pressure, rate and saturation condition null in ' // &
-                           'condition: ' // trim(condition%name)
-        call printErrMsg(option)
-      endif
-      
-      if (associated(pressure)) then
-        condition%pressure => pressure
-      endif
-      if (associated(rate)) then
-        condition%rate => rate
-      endif
-      if (associated(well)) then
-        condition%well => well
-      endif
-      if (associated(saturation)) then
-        condition%saturation => saturation
-      endif
-     
-      
-      if (.not.associated(temperature)) then
-        option%io_buffer = 'temperature condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%temperature => temperature
-      
-      if (.not.associated(concentration)) then
-        option%io_buffer = 'concentration condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%concentration => concentration
-      
-!       if (.not.associated(enthalpy)) then
-!         option%io_buffer = 'enthalpy condition null in condition: ' // &
-!                             trim(condition%name)      
-!         call printErrMsg(option)
-!       endif                         
-!       condition%enthalpy => enthalpy
-      
-      if (.not.associated(displacement_x)) then
-        option%io_buffer = 'displacement_x condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%displacement_x => displacement_x
-
-      if (.not.associated(displacement_y)) then
-        option%io_buffer = 'displacement_y condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%displacement_y => displacement_y
-
-      if (.not.associated(displacement_z)) then
-        option%io_buffer = 'displacement_z condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%displacement_z => displacement_z
-
-      condition%num_sub_conditions = 6
-      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      do idof = 1, 6
-        nullify(condition%sub_condition_ptr(idof)%ptr)
-      enddo
-
-      ! must be in this order, which matches the dofs i problem
-      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
-      if (associated(well)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
-      if (associated(saturation)) condition%sub_condition_ptr(ONE_INTEGER)%ptr &
-                                  => saturation
-      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-!      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-      condition%sub_condition_ptr(FOUR_INTEGER)%ptr => displacement_x
-      condition%sub_condition_ptr(FIVE_INTEGER)%ptr => displacement_y
-      condition%sub_condition_ptr(SIX_INTEGER)%ptr => displacement_z
-
-              
-      allocate(condition%itype(SIX_INTEGER))
-      condition%itype = 0
-      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
-      if (associated(well)) condition%itype(ONE_INTEGER) = well%itype
-      if (associated(saturation)) condition%itype(ONE_INTEGER) = &
-                                    saturation%itype
-      condition%itype(TWO_INTEGER) = temperature%itype
-      condition%itype(THREE_INTEGER) = concentration%itype
-!      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = enthalpy%itype
-      condition%itype(FOUR_INTEGER) = displacement_x%itype
-      condition%itype(FIVE_INTEGER) = displacement_y%itype
-      condition%itype(SIX_INTEGER) = displacement_z%itype
-
-      
   end select
   
   call FlowConditionDatasetDestroy(default_flow_dataset)
@@ -1638,7 +1539,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
       call printErrMsg(option)
     endif
     if (.not.associated(general%gas_saturation)) then
-      option%io_buffer = 'General Phase flus condition must include ' // &
+      option%io_buffer = 'General Phase flux condition must include ' // &
         'gas or liquid saturation'
       call printErrMsg(option)
     endif
@@ -2040,7 +1941,8 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
     if (input%ierr == 0) then
       filename = string2
     else
-      option%io_buffer = 'The ability to read realization dependent datasets outside the DATASET block is no longer supported'
+      option%io_buffer = 'The ability to read realization dependent ' // &
+        'datasets outside the DATASET block is no longer supported'
       call printErrMsg(option)
     endif
     

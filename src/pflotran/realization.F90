@@ -76,9 +76,9 @@ private
             RealizationAddObservation, &
             RealizUpdateUniformVelocity, &
             RealizationRevertFlowParameters, &
-!            RealizationGetDataset, &
-!            RealizGetDatasetValueAtCell, &
-!            RealizationSetDataset, &
+!            RealizationGetVariable, &
+!            RealizGetVariableValueAtCell, &
+!            RealizationSetVariable, &
             RealizationPrintCouplers, &
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
@@ -95,7 +95,7 @@ private
 
   !TODO(intel)
   ! public from Realization_Base_class
-  !public :: RealizationGetDataset
+  !public :: RealizationGetVariable
 
 contains
   
@@ -810,6 +810,7 @@ subroutine RealizationProcessConditions(realization)
   if (associated(realization%flow_mass_transfer_list)) then
     call MassTransferInit(realization%flow_mass_transfer_list, &
                           realization%discretization, &
+                          realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%flow_mass_transfer_list, &
                           realization%discretization, &
@@ -819,6 +820,7 @@ subroutine RealizationProcessConditions(realization)
   if (associated(realization%rt_mass_transfer_list)) then
     call MassTransferInit(realization%rt_mass_transfer_list, &
                           realization%discretization, &
+                          realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%rt_mass_transfer_list, &
                           realization%discretization, &
@@ -1701,13 +1703,13 @@ end subroutine RealizationAddWaypointsToList
 #if 0
 ! ************************************************************************** !
 !
-! RealizationGetDataset: Extracts variables indexed by ivar and isubvar from a 
+! RealizationGetVariable: Extracts variables indexed by ivar and isubvar from a 
 !                        realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
+subroutine RealizationGetVariable(realization,vec,ivar,isubvar,isubvar1)
 
   use Option_module
 
@@ -1719,28 +1721,28 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   
-  call PatchGetDataset(realization%patch,realization%field, &
+  call PatchGetVariable(realization%patch,realization%field, &
                        realization%reaction,realization%option, &
                        realization%output_option,vec,ivar,isubvar,isubvar1)
 
-end subroutine RealizationGetDataset
+end subroutine RealizationGetVariable
 
 ! ************************************************************************** !
 !
-! RealizGetDatasetValueAtCell: Extracts variables indexed by ivar and isubvar
+! RealizGetVariableValueAtCell: Extracts variables indexed by ivar and isubvar
 !                              from a realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
+function RealizGetVariableValueAtCell(realization,ivar,isubvar,ghosted_id, &
                                      isubvar1)
 
   use Option_module
 
   implicit none
   
-  PetscReal :: RealizGetDatasetValueAtCell
+  PetscReal :: RealizGetVariableValueAtCell
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -1749,24 +1751,24 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
   
   PetscReal :: value
   
-  value = PatchGetDatasetValueAtCell(realization%patch,realization%field, &
+  value = PatchGetVariableValueAtCell(realization%patch,realization%field, &
                                      realization%reaction, &
                                      realization%option, &
                                      realization%output_option, &
                                      ivar,isubvar,ghosted_id,isubvar1)
-  RealizGetDatasetValueAtCell = value
+  RealizGetVariableValueAtCell = value
 
-end function RealizGetDatasetValueAtCell
+end function RealizGetVariableValueAtCell
 
 ! ************************************************************************** !
 !
-! RealizationSetDataset: Sets variables indexed by ivar and isubvar in a 
+! RealizationSetVariable: Sets variables indexed by ivar and isubvar in a 
 !                        realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
+subroutine RealizationSetVariable(realization,vec,vec_format,ivar,isubvar)
 
   use Option_module
 
@@ -1778,11 +1780,11 @@ subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  call PatchSetDataset(realization%patch,realization%field, &
+  call PatchSetVariable(realization%patch,realization%field, &
                        realization%option, &
                        vec,vec_format,ivar,isubvar)
 
-end subroutine RealizationSetDataset
+end subroutine RealizationSetVariable
 
 #endif
 

@@ -39,9 +39,9 @@ module Realization_Base_class
   end type realization_base_type
   
   public :: RealizationBaseInit, &
-            RealizationGetDataset, &
-            RealizGetDatasetValueAtCell, &
-            RealizationSetDataset
+            RealizationGetVariable, &
+            RealizGetVariableValueAtCell, &
+            RealizationSetVariable
 
 contains
 
@@ -83,13 +83,13 @@ end subroutine RealizationBaseInit
 
 ! ************************************************************************** !
 !
-! RealizationGetDataset: Extracts variables indexed by ivar and isubvar from a 
+! RealizationGetVariable: Extracts variables indexed by ivar and isubvar from a 
 !                        realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationGetDataset(realization_base,vec,ivar,isubvar,isubvar1)
+subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
 
   use Option_module
 
@@ -104,28 +104,28 @@ subroutine RealizationGetDataset(realization_base,vec,ivar,isubvar,isubvar1)
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   
-  call PatchGetDataset(realization_base%patch,realization_base%field, &
+  call PatchGetVariable(realization_base%patch,realization_base%field, &
                        realization_base%reaction,realization_base%option, &
                        realization_base%output_option,vec,ivar,isubvar,isubvar1)
 
-end subroutine RealizationGetDataset
+end subroutine RealizationGetVariable
 
 ! ************************************************************************** !
 !
-! RealizGetDatasetValueAtCell: Extracts variables indexed by ivar and isubvar
+! RealizGetVariableValueAtCell: Extracts variables indexed by ivar and isubvar
 !                              from a realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-function RealizGetDatasetValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
+function RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
                                      isubvar1)
 
   use Option_module
 
   implicit none
   
-  PetscReal :: RealizGetDatasetValueAtCell
+  PetscReal :: RealizGetVariableValueAtCell
   class(realization_base_type) :: realization_base
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -134,24 +134,24 @@ function RealizGetDatasetValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
   
   PetscReal :: value
   
-  value = PatchGetDatasetValueAtCell(realization_base%patch,realization_base%field, &
+  value = PatchGetVariableValueAtCell(realization_base%patch,realization_base%field, &
                                      realization_base%reaction, &
                                      realization_base%option, &
                                      realization_base%output_option, &
                                      ivar,isubvar,ghosted_id,isubvar1)
-  RealizGetDatasetValueAtCell = value
+  RealizGetVariableValueAtCell = value
 
-end function RealizGetDatasetValueAtCell
+end function RealizGetVariableValueAtCell
 
 ! ************************************************************************** !
 !
-! RealizationSetDataset: Sets variables indexed by ivar and isubvar in a 
+! RealizationSetVariable: Sets variables indexed by ivar and isubvar in a 
 !                        realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationSetDataset(realization_base,vec,vec_format,ivar,isubvar)
+subroutine RealizationSetVariable(realization_base,vec,vec_format,ivar,isubvar)
 
   use Option_module
 
@@ -166,10 +166,10 @@ subroutine RealizationSetDataset(realization_base,vec,vec_format,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  call PatchSetDataset(realization_base%patch,realization_base%field, &
+  call PatchSetVariable(realization_base%patch,realization_base%field, &
                        realization_base%option, &
                        vec,vec_format,ivar,isubvar)
 
-end subroutine RealizationSetDataset
+end subroutine RealizationSetVariable
 
 end module Realization_Base_class
