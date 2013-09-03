@@ -588,6 +588,22 @@ subroutine SimAuxCreateSubSurfVecs(aux,subsurf_realization,option)
 
   call MPI_AllReduce(found,found_global,ONE_INTEGER_MPI,MPI_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
+
+  if (found_global == 0) then
+    coupler_list => subsurf_realization%patch%boundary_conditions
+    coupler => coupler_list%first
+    do
+      if (.not.associated(coupler)) exit
+      if (StringCompare(coupler%name,'from_surface_bc')) then
+        num_conn = coupler%connection_set%num_connections
+        found = 1
+      endif
+      coupler => coupler%next
+    enddo
+    call MPI_AllReduce(found,found_global,ONE_INTEGER_MPI,MPI_INTEGER,MPI_MAX, &
+                       option%mycomm,ierr)
+  endif
+
   if (found_global > 0) then
     call VecCreate(option%mycomm,aux%subsurf_pres_top_bc,ierr)
     call VecSetSizes(aux%subsurf_pres_top_bc,num_conn,PETSC_DECIDE,ierr)

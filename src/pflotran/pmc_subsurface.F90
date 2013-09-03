@@ -109,8 +109,10 @@ subroutine PMCSubsurfaceGetAuxData(this)
   PetscInt                             :: iconn
   PetscReal                            :: den
   PetscReal                            :: dt
+  PetscReal                            :: surfpress
   PetscReal, pointer                   :: mflux_p(:)
   PetscReal, pointer                   :: hflux_p(:)
+  PetscReal, pointer                   :: head_p(:)
   PetscErrorCode                       :: ierr
 
   print *, 'PMCSubsurfaceGetAuxData()'
@@ -142,6 +144,14 @@ subroutine PMCSubsurfaceGetAuxData(this)
                                pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
 
+            call VecScatterBegin(pmc%sim_aux%surf_to_subsurf, &
+                                 pmc%sim_aux%surf_head, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%surf_to_subsurf, &
+                               pmc%sim_aux%surf_head, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
             call density(option%reference_temperature, option%reference_pressure, &
                          den)
 
@@ -169,6 +179,32 @@ subroutine PMCSubsurfaceGetAuxData(this)
                 endif
               endif
 
+              coupler => coupler%next
+            enddo
+
+            coupler_list => patch%boundary_conditions
+            coupler => coupler_list%first
+            do
+              if (.not.associated(coupler)) exit
+
+              ! FLOW
+              if (associated(coupler%flow_aux_real_var)) then
+                ! Find the BC from the list of BCs
+                if(StringCompare(coupler%name,'from_surface_bc')) then
+                  coupler_found = PETSC_TRUE
+                  call VecGetArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
+                                      head_p,ierr)
+                  do iconn = 1,coupler%connection_set%num_connections
+                    surfpress = head_p(iconn)*(abs(option%gravity(3)))*den + &
+                                option%reference_pressure
+                    coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn) = &
+                    surfpress
+                  enddo
+                  call VecRestoreArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
+                                          head_p,ierr)
+
+                endif
+              endif
               coupler => coupler%next
             enddo
 
@@ -202,6 +238,7 @@ subroutine PMCSubsurfaceSetAuxData(this)
   use Field_module
   use Connection_module
   use Realization_Base_class
+  use Water_EOS_module
 
   implicit none
   
@@ -223,9 +260,11 @@ subroutine PMCSubsurfaceSetAuxData(this)
   PetscInt                             :: iconn
   PetscInt                             :: istart
   PetscInt                             :: iend
+  PetscReal                            :: den
   PetscReal, pointer                   :: xx_loc_p(:)
   PetscReal, pointer                   :: pres_top_bc_p(:)
   PetscReal, pointer                   :: temp_top_bc_p(:)
+  PetscReal, pointer                   :: head_p(:)
   PetscErrorCode                       :: ierr
 
   print *, 'PMCSubsurfaceSetAuxData()'
@@ -290,6 +329,38 @@ subroutine PMCSubsurfaceSetAuxData(this)
                 end select
               endif
 
+            endif
+
+            coupler => coupler%next
+          enddo
+
+          call density(option%reference_temperature, option%reference_pressure, &
+                       den)
+          coupler_list => patch%boundary_conditions
+          coupler => coupler_list%first
+          do
+            if (.not.associated(coupler)) exit
+
+            ! FLOW
+            if (associated(coupler%flow_aux_real_var)) then
+
+              ! Find the BC from the list of BCs
+              if(StringCompare(coupler%name,'from_surface_bc')) then
+                select case(this%option%iflowmode)
+                  case (RICHARDS_MODE)
+                    call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc, &
+                                        pres_top_bc_p,ierr)
+                    do iconn = 1,coupler%connection_set%num_connections
+                      pres_top_bc_p(iconn) = &
+                        coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
+                    enddo
+                    call VecRestoreArrayF90(this%sim_aux%subsurf_pres_top_bc, &
+                                            pres_top_bc_p,ierr)
+                  case (TH_MODE)
+                    call printErrMsg(this%option, &
+                      'PMCSubsurfaceSetAuxData not supported for this MODE')
+                end select
+              endif
             endif
 
             coupler => coupler%next

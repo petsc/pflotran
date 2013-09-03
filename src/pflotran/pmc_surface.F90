@@ -451,7 +451,7 @@ subroutine PMCSurfaceGetAuxData(this)
 
   PetscErrorCode :: ierr
 
-  if(this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+  if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
     select type(pmc => this)
       class is(pmc_surface_type)
         select case(this%option%iflowmode)
@@ -464,6 +464,7 @@ subroutine PMCSurfaceGetAuxData(this)
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                pmc%surf_realization%surf_field%press_subsurf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call SurfaceFlowUpdateSurfStateNew(pmc%surf_realization)
           case (TH_MODE)
             call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
                                            pmc%surf_realization)
@@ -514,6 +515,23 @@ subroutine PMCSurfaceSetAuxData(this)
                                pmc%sim_aux%surf_mflux_exchange_with_subsurf, &
                                pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+          case (TH_MODE)
+            call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
+                                            pmc%surf_realization,dt)
+            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
+            call printErrMsg(this%option)
+        end select
+    end select
+  endif
+
+  if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call VecCopy(pmc%surf_realization%surf_field%flow_xx, &
+                         pmc%sim_aux%surf_head, ierr)
           case (TH_MODE)
             call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
                                             pmc%surf_realization,dt)

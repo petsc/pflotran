@@ -40,7 +40,8 @@ module Surface_Flow_module
          SurfaceFlowGetSubsurfProp, &
          SurfaceFlowUpdateAuxVars, &
          SurfaceFlowUpdateSurfState, &
-         SurfaceFlowUpdateSubsurfBC
+         SurfaceFlowUpdateSubsurfBC, &
+         SurfaceFlowUpdateSurfStateNew
 
 contains
 
@@ -389,7 +390,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
             'Kinematic wave'
           call printErrMsg(option)
         case (DIFFUSION_WAVE)
-#if 0
+#if 1
         call SurfaceFlowFlux(surf_global_aux_vars(ghosted_id_up), &
                              zc(ghosted_id_up), &
                              mannings_loc_p(ghosted_id_up), &
@@ -401,8 +402,8 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 #endif
       end select
 
-      !patch%internal_velocities(1,sum_connection) = vel
-      !patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      patch%internal_velocities(1,sum_connection) = vel
+      patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
 
       vel = patch%internal_velocities(1,sum_connection)
       Res(1) = patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
@@ -439,7 +440,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
-#if 0
+#if 1
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
                          surf_global_aux_vars_bc(sum_connection), &
                          slope_dn, &
@@ -448,8 +449,8 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
                          option,vel,Res)
 #endif
 
-      !patch%boundary_velocities(1,sum_connection) = vel
-      !patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
+      patch%boundary_velocities(1,sum_connection) = vel
+      patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
       vel = patch%boundary_velocities(1,sum_connection)
       Res(1) = patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection)
       
@@ -566,7 +567,6 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
   PetscReal :: max_allowable_dt
   PetscReal :: dt
-  PetscReal :: dt2
 
   PetscReal, pointer :: mannings_loc_p(:),area_p(:)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
@@ -625,18 +625,9 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       patch%internal_velocities(1,sum_connection) = vel
       patch%surf_internal_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
       if(abs(vel)>eps) then
-        !dt = dist/abs(vel)/4.d0
-        !max_allowable_dt = min(max_allowable_dt,dt)
-
-        if (Res(1)>0.d0) then
-          dt2 = surf_global_aux_vars(ghosted_id_dn)%head(1)/3.d0/(Res(1)/dist)
-        else
-          dt2 = surf_global_aux_vars(ghosted_id_up)%head(1)/3.d0/(Res(1)/dist)
-        endif
-        dt2 = abs(dt2)*cur_connection_set%area(iconn)
-        max_allowable_dt = min(max_allowable_dt,dt2)
+        dt = dist/abs(vel)/4.d0
+        max_allowable_dt = min(max_allowable_dt,dt)
       endif
-
 
     enddo
     cur_connection_set => cur_connection_set%next
@@ -672,12 +663,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       patch%surf_boundary_fluxes(RICHARDS_PRESSURE_DOF,sum_connection) = Res(1)
 
       if(abs(vel)>eps) then
-        !dt = dist/abs(vel)/4.d0
-        !max_allowable_dt = min(max_allowable_dt,dt)
-
-        dt2 = surf_global_aux_vars_bc(sum_connection)%head(1)/3.d0/(Res(1)/dist)
-        dt2 = abs(dt2)*cur_connection_set%area(iconn)
-        max_allowable_dt = min(max_allowable_dt,dt2)
+        dt = dist/abs(vel)/4.d0
+        max_allowable_dt = min(max_allowable_dt,dt)
       endif
     enddo
     boundary_condition => boundary_condition%next
@@ -889,7 +876,9 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
     endif
     surf_global_aux_vars(ghosted_id)%head(1) = xx_loc_p(ghosted_id)
   enddo
+  call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
    
+  call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
   ! Boundary aux vars
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -2066,6 +2055,88 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
   call VecRestoreArrayF90(surf_field%work, surfpress_p, ierr)
 
 end subroutine SurfaceFlowUpdateSurfState
+
+! ************************************************************************** !
+!> This routine gets updated values of standing water at the end of 
+!! subsurface-flow model timestep.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 07/30/13
+! ************************************************************************** !
+subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
+
+  use Connection_module
+  use Coupler_module
+  use Discretization_module
+  use DM_Kludge_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  use Realization_class
+  use Realization_Base_class
+  use String_module
+  use Surface_Field_module
+  use Surface_Realization_class
+  use Water_EOS_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(surface_realization_type) :: surf_realization
+
+  type(coupler_list_type), pointer    :: coupler_list
+  type(coupler_type), pointer         :: coupler
+  type(connection_set_type), pointer  :: cur_connection_set
+  type(dm_ptr_type), pointer          :: dm_ptr
+  type(grid_type),pointer             :: grid,surf_grid
+  type(option_type), pointer          :: option
+  type(patch_type),pointer            :: patch,surf_patch
+  type(surface_field_type),pointer    :: surf_field
+
+  PetscInt                :: count
+  PetscInt                :: ghosted_id
+  PetscInt                :: iconn
+  PetscInt                :: local_id
+  PetscInt                :: sum_connection
+
+  PetscReal               :: den
+  PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
+  PetscReal, pointer      :: hw_p(:)           ! head [m]
+  PetscReal, pointer      :: surfpress_p(:)
+  PetscErrorCode          :: ierr
+
+  PetscBool :: coupler_found = PETSC_FALSE
+
+  option     => surf_realization%option
+  surf_field => surf_realization%surf_field
+  surf_grid  => surf_realization%discretization%grid
+  
+  call density(option%reference_temperature,option%reference_pressure,den)
+
+  call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
+  call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
+  count = 0
+  do ghosted_id = 1,surf_grid%ngmax
+
+    local_id = surf_grid%nL2G(ghosted_id)
+    if(local_id <= 0) cycle
+
+    count = count + 1
+    hw_p(ghosted_id) = (surfpress_p(count)-option%reference_pressure)/ &
+                        (abs(option%gravity(3)))/den
+    if(hw_p(ghosted_id)<1.d-15) hw_p(ghosted_id) = 0.d0
+
+  enddo
+  call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr)
+  call VecRestoreArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
+
+end subroutine SurfaceFlowUpdateSurfStateNew
 
 ! ************************************************************************** !
 !> This routine updates the pressure BC for subsurface model at the end of
