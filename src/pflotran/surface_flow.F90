@@ -2124,7 +2124,7 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   count = 0
   do ghosted_id = 1,surf_grid%ngmax
 
-    local_id = surf_grid%nL2G(ghosted_id)
+    local_id = surf_grid%nG2L(ghosted_id)
     if(local_id <= 0) cycle
 
     count = count + 1
