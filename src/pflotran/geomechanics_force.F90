@@ -96,7 +96,7 @@ end subroutine GeomechForceSetPlotVariables
 ! ************************************************************************** !
 !
 ! GeomechanicsForceInitialGuess: Sets up the inital guess for the solution
-!                                The boudnary conditions are set here
+!                                The boundary conditions are set here
 ! author: Satish Karra, LANL
 ! date: 06/19/13
 !
@@ -126,10 +126,6 @@ subroutine GeomechanicsForceInitialGuess(realization)
   PetscInt :: ghosted_id,local_id,total_verts,ivertex
   PetscReal, pointer :: xx_p(:)
   PetscErrorCode :: ierr
-  
-  PetscReal :: pi
-  
-  pi = 3.14159265359
   
   option => realization%option
   field => realization%geomech_field

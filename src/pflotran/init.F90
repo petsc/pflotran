@@ -315,8 +315,6 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    call CopySubsurfaceGridtoGeomechGrid(realization%discretization%grid%&
-      unstructured_grid,geomech_realization%discretization%grid,option)
     call GeomechRealizCreateDiscretization(geomech_realization)
   endif
 #endif

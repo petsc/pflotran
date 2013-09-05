@@ -291,7 +291,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #include "finclude/petscviewer.h"  
   
   type(unstructured_grid_type), pointer      :: ugrid
-  type(geomech_Grid_type), pointer           :: geomech_grid
+  type(geomech_grid_type), pointer           :: geomech_grid
   type(option_type), pointer                 :: option
   PetscInt                                   :: local_id
   PetscInt                                   :: ghosted_id

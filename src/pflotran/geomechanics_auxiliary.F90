@@ -13,7 +13,13 @@ module Geomechanics_Auxiliary_module
 
   type, public :: geomech_auxiliary_type
     type(geomech_global_type), pointer :: GeomechGlobal
+    type(geomech_parameter_type), pointer :: GeomechParam
   end type geomech_auxiliary_type
+
+  type, public :: geomech_parameter_type
+    PetscReal, pointer :: youngs_modulus(:)
+    PetscReal, pointer :: poissons_ratio(:)
+  end type geomech_parameter_type  
   
   public :: GeomechAuxInit, &
             GeomechAuxDestroy
@@ -34,6 +40,9 @@ subroutine GeomechAuxInit(geomech_aux)
   type(geomech_auxiliary_type) :: geomech_aux
   
   nullify(geomech_aux%GeomechGlobal)
+  allocate(geomech_aux%GeomechParam)
+  nullify(geomech_aux%GeomechParam%youngs_modulus)
+  nullify(geomech_aux%GeomechParam%poissons_ratio)
   
 end subroutine GeomechAuxInit
 
@@ -53,7 +62,16 @@ subroutine GeomechAuxDestroy(geomech_aux)
   call GeomechGlobalAuxDestroy(geomech_aux%GeomechGlobal)
 
   nullify(geomech_aux%GeomechGlobal)
-
+  
+  if (associated(geomech_aux%GeomechParam)) then
+    if (associated(geomech_aux%GeomechParam%youngs_modulus)) &
+      deallocate(geomech_aux%GeomechParam%youngs_modulus) 
+    nullify(geomech_aux%GeomechParam%youngs_modulus)
+    if (associated(geomech_aux%GeomechParam%poissons_ratio)) &
+      deallocate(geomech_aux%GeomechParam%poissons_ratio)
+    nullify(geomech_aux%GeomechParam%poissons_ratio)
+  endif
+    
 end subroutine GeomechAuxDestroy
 
 end module Geomechanics_Auxiliary_module

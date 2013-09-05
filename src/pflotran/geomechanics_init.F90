@@ -62,6 +62,11 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   call InputFindStringInFile(input,option,string)
   if(InputError(input)) return
   option%ngeomechdof = 3  ! displacements in x, y, z directions
+  
+  string = "GEOMECHANICS_GRID"
+  call InputFindStringInFile(input,option,string)
+  call GeomechanicsInit(geomech_realization,input,option)  
+
 
 end subroutine GeomechicsInitReadRequiredCards
 
@@ -82,6 +87,8 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Grid_module
   
   implicit none
   
@@ -89,19 +96,50 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   type(geomech_discretization_type), pointer :: discretization
   type(geomech_patch_type), pointer          :: patch
   type(input_type)                           :: input
-  type(option_type)                          :: option
+  type(option_type), pointer                 :: option
   character(len=MAXWORDLENGTH)               :: word
+  type(unstructured_grid_type), pointer      :: ugrid
   
   discretization       => geomech_realization%discretization
-  discretization%grid  => GMGridCreate()
-  discretization%itype = UNSTRUCTURED_GRID ! Assuming only unstructured for now
-  
-  select case(discretization%itype)
-    case(UNSTRUCTURED_GRID)
-      patch => GeomechanicsPatchCreate()
-      patch%geomech_grid => discretization%grid
-      geomech_realization%geomech_patch => patch
-  end select  
+       
+ input%ierr = 0
+  ! we initialize the word to blanks to avoid error reported by valgrind
+  word = ''
+
+  call InputReadFlotranString(input,option)
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'keyword','GEOMECHANICS')
+  call StringToUpper(word)
+    
+  select case(trim(word))
+    case ('TYPE')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'keyword','TYPE')
+      call StringToUpper(word)
+
+      select case(trim(word))
+        case ('UNSTRUCTURED')
+          discretization%itype = UNSTRUCTURED_GRID
+          call InputReadNChars(input,option, &
+                               discretization%filename, &
+                               MAXSTRINGLENGTH, &
+                               PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','filename')
+
+          discretization%grid  => GMGridCreate()
+          ugrid => UGridCreate()
+          call UGridRead(ugrid,discretization%filename,option)
+          call UGridDecompose(ugrid,option)
+          call CopySubsurfaceGridtoGeomechGrid(ugrid, &
+                                               discretization%grid,option)
+          patch => GeomechanicsPatchCreate()
+          patch%geomech_grid => discretization%grid
+          geomech_realization%geomech_patch => patch
+        case default
+          option%io_buffer = 'Geomechanics supports only unstructured grid'
+          call printErrMsg(option)
+      end select
+  end select
      
 end subroutine GeomechanicsInit
 
@@ -170,9 +208,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   discretization => geomech_realization%discretization
   output_option => geomech_realization%output_option
-  
-  call GeomechanicsInit(geomech_realization,input,option)  
-  
+    
   if (associated(geomech_realization%geomech_patch)) grid => &
     geomech_realization%geomech_patch%geomech_grid
     
@@ -187,6 +223,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
     call printMsg(option)   
 
     select case(trim(word))
+    
+      !.........................................................................
+      ! Read geomechanics grid information
+      case ('GEOMECHANICS_GRID')
+        call InputSkipToEND(input,option,trim(word))
+        
       !.........................................................................
       ! Read geomechanics material information
       case ('GEOMECHANICS_MATERIAL_PROPERTY')
