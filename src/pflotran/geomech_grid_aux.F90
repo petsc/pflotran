@@ -47,6 +47,10 @@ module Geomechanics_Grid_Aux_module
     PetscInt, pointer :: ghosted_node_ids_petsc(:)   ! Petsc ids of the ghost nodes only
     PetscInt, pointer :: nL2G(:),nG2L(:),nG2A(:)
     type(gauss_type), pointer  :: gauss_node(:)
+    character(len=MAXSTRINGLENGTH) :: mapping_filename ! mapping between subsurf and geomech meshes
+    PetscInt :: mapping_num_cells
+    PetscInt, pointer :: mapping_cell_ids_flow(:)
+    PetscInt, pointer :: mapping_vertex_ids_geomech(:)
   end type geomech_grid_type
   
 

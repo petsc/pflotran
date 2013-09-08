@@ -34,7 +34,7 @@ module Geomechanics_Discretization_module
     character(len=MAXSTRINGLENGTH) :: filename
     PetscInt :: dm_index_to_ndof(3)            ! mapping between a dm_ptr to the number of degrees of freedom
     type(gmdm_ptr_type), pointer :: dm_1dof
-    type(gmdm_ptr_type), pointer :: dm_ngeodof    
+    type(gmdm_ptr_type), pointer :: dm_ngeodof 
   end type geomech_discretization_type
 
   public :: GeomechDiscretizationCreate, &

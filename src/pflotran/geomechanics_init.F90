@@ -299,8 +299,21 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
 
       !.........................................................................
       case('GEOMECHANICS_SUBSURFACE_COUPLING')
-        option%geomech_subsurf_coupling = PETSC_TRUE        
-        
+        option%geomech_subsurf_coupling = PETSC_TRUE      
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','MAPPING_FILE')
+          call InputReadNChars(input,option, &
+                               grid%mapping_filename, &
+                               MAXSTRINGLENGTH, &
+                               PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','mapping_file')
+          call GeomechSubsurfMapFromFilename(grid,grid%mapping_filename, &
+                                             option)
+        enddo
       !.........................................................................
       case ('GEOMECHANICS_OUTPUT')
         do

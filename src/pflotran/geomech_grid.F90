@@ -32,7 +32,8 @@ module Geomechanics_Grid_module
             GeomechGridVecGetArrayF90, &
             GeomechGridVecRestoreArrayF90, &
             GeomechGridCopyIntegerArrayToVec, &
-            GeomechGridCopyVecToIntegerArray 
+            GeomechGridCopyVecToIntegerArray, &
+            GeomechSubsurfMapFromFilename 
 
 contains
 
@@ -328,9 +329,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   PetscInt                                   :: nlmax_node
   PetscInt, pointer                          :: int_ptr(:)
   type(point_type), pointer                  :: vertices(:)
-
-  call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
-                  'be used for geomechanics.')
   
 #ifdef GEOMECH_DEBUG
   call printMsg(option,'Copying unstructured grid to geomechanics grid')
@@ -1230,6 +1228,175 @@ subroutine GeomechGridCopyVecToIntegerArray(grid,array,vector,num_values)
   call GeomechGridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
 end subroutine GeomechGridCopyVecToIntegerArray
+
+! ************************************************************************** !
+!
+! GeomechSubsurfMapFromFilename: Reads a list of vertex ids from a file named 
+!                                filename
+! author: Satish Karra, LANL
+! date: 09/07/13
+!
+! ************************************************************************** !
+subroutine GeomechSubsurfMapFromFilename(grid,filename,option)
+
+  use Input_module
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  type(geomech_grid_type)            :: grid
+  type(option_type)                  :: option
+  type(input_type), pointer          :: input
+  character(len=MAXSTRINGLENGTH)     :: filename
+  
+  input => InputCreate(IUNIT_TEMP,filename,option)
+  call GeomechSubsurfMapFromFileId(grid,input,option)          
+  call InputDestroy(input)         
+
+end subroutine GeomechSubsurfMapFromFilename
+
+! ************************************************************************** !
+!
+! GeomechSubsurfMapFromFileId: Reads a list of vertex ids from an open file
+! author: Satish Karra, LANL
+! date: 09/07/13
+!
+! ************************************************************************** !
+subroutine GeomechSubsurfMapFromFileId(grid,input,option)
+
+  use Input_module
+  use Option_module
+  use Utility_module
+  use Logging_module
+  use Unstructured_Cell_module
+  
+  implicit none
+  
+  type(geomech_grid_type)           :: grid
+  type(option_type)                 :: option
+  type(input_type)                  :: input
+  
+  PetscBool                         :: continuation_flag
+  character(len=MAXWORDLENGTH)      :: word
+  character(len=1)                  :: backslash
+  character(len=MAXSTRINGLENGTH)    :: string, string1
+
+  PetscInt, pointer :: temp_int_array(:)
+  PetscInt, pointer :: vertex_ids_geomech(:)
+  PetscInt, pointer :: cell_ids_flow(:)
+  PetscInt :: max_size
+  PetscInt :: count
+  PetscInt :: temp_int
+  PetscInt :: input_data_type
+  PetscInt :: ii
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscInt :: remainder
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
+    
+  max_size = 1000
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+  
+  allocate(temp_int_array(max_size))
+  allocate(vertex_ids_geomech(max_size))
+  allocate(cell_ids_flow(max_size))
+  
+  temp_int_array = 0
+  vertex_ids_geomech = 0
+  cell_ids_flow = 0
+  
+  count = 0
+  call InputReadFlotranString(input, option)
+  do 
+    call InputReadInt(input, option, temp_int)
+    if (InputError(input)) exit
+    count = count + 1
+    temp_int_array(count) = temp_int
+  enddo
+
+  if (count == 2) then
+    cell_ids_flow(1) = temp_int_array(1)
+    vertex_ids_geomech(1) = temp_int_array(2)
+    count = 1 ! reset the counter to represent the num of rows read
+
+    ! Read the data
+    do
+      call InputReadFlotranString(input, option)
+      if (InputError(input)) exit
+      call InputReadInt(input, option, temp_int)
+      if (InputError(input)) exit
+      count = count + 1
+      cell_ids_flow(count) = temp_int
+
+      call InputReadInt(input,option,temp_int)
+      if (InputError(input)) then
+        option%io_buffer = 'ERROR while reading ' // &
+          'GEOMECHANICS_SUBSURFACE_COUPLING mapping file.'
+        call printErrMsg(option)
+      endif
+      vertex_ids_geomech(count) = temp_int
+      if (count+1 > max_size) then ! resize temporary array
+        call reallocateIntArray(cell_ids_flow, max_size)
+        call reallocateIntArray(vertex_ids_geomech, max_size)
+      endif
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
+    grid%mapping_num_cells = count/option%mycommsize
+      remainder = count - grid%mapping_num_cells*option%mycommsize
+    if (option%myrank < remainder) grid%mapping_num_cells = &
+                                     grid%mapping_num_cells + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(grid%mapping_num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(grid%mapping_num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+
+    ! Allocate memory and save the data
+    allocate(grid%mapping_cell_ids_flow(grid%mapping_num_cells))
+    allocate(grid%mapping_vertex_ids_geomech(grid%mapping_num_cells))
+    grid%mapping_cell_ids_flow(1:grid%mapping_num_cells) = &
+      cell_ids_flow(istart + 1:iend)
+    grid%mapping_vertex_ids_geomech(1:grid%mapping_num_cells) = &
+      vertex_ids_geomech(istart + 1:iend)
+    deallocate(cell_ids_flow)
+    deallocate(vertex_ids_geomech)  
+  else
+    option%io_buffer = 'Provide a flow cell_id and a geomech vertex_id per ' // &
+      'line in GEOMECHANICS_SUBSURFACE_COUPLING mapping file.'
+    call printErrMsg(option) 
+  endif
+  
+  deallocate(temp_int_array)
+  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_subsurf_mapping_vertex_ids_geomech' &
+    // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ii = 1, grid%mapping_num_cells
+    write(86,'(i5)') grid%mapping_vertex_ids_geomech(ii)
+  enddo  
+  close(86)
+
+  write(string,*) option%myrank
+  string = 'geomech_subsurf_mapping_cell_ids_flow' &
+    // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ii = 1, grid%mapping_num_cells
+    write(86,'(i5)') grid%mapping_cell_ids_flow(ii)
+  enddo  
+  close(86)
+#endif    
+    
+  call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
+
+end subroutine GeomechSubsurfMapFromFileId
 
 end module Geomechanics_Grid_module
 #endif 
