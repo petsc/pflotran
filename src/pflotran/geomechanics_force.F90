@@ -1367,6 +1367,13 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
                        geomech_field%temp, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
   endif                       
+ 
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+                                          geomech_field%press, & 
+                                          geomech_field%press_loc,ONEDOF)
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+                                          geomech_field%temp, &
+                                          geomech_field%temp_loc,ONEDOF)
 
 end subroutine
 

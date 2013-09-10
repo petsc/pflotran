@@ -19,6 +19,8 @@ module Geomechanics_Field_module
     ! residual vectors
     Vec :: disp_r
     Vec :: press      ! store pressure from subsurf
+    Vec :: press_loc
+    Vec :: temp_loc
     Vec :: temp       ! store temperature from subsurf
     Vec :: subsurf_vec_1dof ! MPI
 
@@ -61,7 +63,9 @@ function GeomechFieldCreate()
   geomech_field%disp_accum = 0
   
   geomech_field%press = 0
+  geomech_field%press_loc = 0
   geomech_field%temp = 0
+  geomech_field%temp_loc = 0
   geomech_field%subsurf_vec_1dof = 0
   
   GeomechFieldCreate => geomech_field
@@ -94,7 +98,9 @@ subroutine GeomechFieldDestroy(geomech_field)
   if (geomech_field%disp_accum /= 0) call VecDestroy(geomech_field%disp_accum,ierr)
   
   if (geomech_field%press /= 0) call VecDestroy(geomech_field%press,ierr)
+  if (geomech_field%press_loc /= 0) call VecDestroy(geomech_field%press_loc,ierr)
   if (geomech_field%temp /= 0) call VecDestroy(geomech_field%temp,ierr)
+  if (geomech_field%temp_loc /= 0) call VecDestroy(geomech_field%temp_loc,ierr)
 
   if (geomech_field%subsurf_vec_1dof /= 0 ) &
     call VecDestroy(geomech_field%subsurf_vec_1dof,ierr)
