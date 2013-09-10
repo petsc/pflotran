@@ -289,7 +289,6 @@ subroutine GeomechForceResidual(snes,xx,r,realization,ierr)
   option => realization%option
 
   ! Communication -----------------------------------------
-  ! These 3 must be called before RichardsUpdateAuxVars()
   call GeomechDiscretizationGlobalToLocal(discretization,xx, &
                                           field%disp_xx_loc,NGEODOF)
   
