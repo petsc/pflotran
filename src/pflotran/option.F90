@@ -73,7 +73,7 @@ module Option_module
 #endif
 
 #ifdef GEOMECH
-    PetscInt :: ngeomechdof
+    PetscInt  :: ngeomechdof
     PetscReal :: geomech_time
     PetscBool :: geomech_subsurf_coupling
 #endif

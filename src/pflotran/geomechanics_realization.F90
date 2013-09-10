@@ -250,7 +250,14 @@ subroutine GeomechRealizCreateDiscretization(realization)
                                             geomech_field%disp_accum)
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
                                             geomech_field%work)
-
+                                            
+  call GeomechDiscretizationCreateVector(discretization,ONEDOF,geomech_field%press, &
+                                         GLOBAL,option)
+  call VecSet(geomech_field%press,0.d0,ierr)
+  
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press, &
+                                            geomech_field%temp)
+                                            
   ! n degrees of freedom, local
   call GeomechDiscretizationCreateVector(discretization,NGEODOF,geomech_field%disp_xx_loc, &
                                          LOCAL,option)
@@ -406,7 +413,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #endif
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
-                                                   discretization,NFLOWDOF)
+                                                   discretization,ONEDOF)
 
   call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof,ierr)
   

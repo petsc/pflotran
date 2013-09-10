@@ -1197,6 +1197,9 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
+    if (option%geomech_subsurf_coupling) &
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
   endif
 #endif
 

@@ -377,7 +377,8 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
  
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      call GeomechUpdateFromSubsurf(realization,geomech_realization)
+      if (option%geomech_subsurf_coupling) &
+        call GeomechUpdateFromSubsurf(realization,geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
     endif

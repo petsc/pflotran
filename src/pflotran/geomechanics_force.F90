@@ -29,7 +29,8 @@ module Geomechanics_Force_module
             GeomechanicsForceInitialGuess, &
             GeomechForceResidual, &
             GeomechForceJacobian, &
-            GeomechUpdateFromSubsurf
+            GeomechUpdateFromSubsurf, &
+            GeomechCreateGeomechSubsurfVec
   
 contains
 
@@ -1323,36 +1324,81 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   geomech_field => geomech_realization%geomech_field
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
-                                                   discretization,NFLOWDOF)
-#if 0                                                   
+                                                   discretization,ONEDOF)
+
+
+  ! pressure
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p,ierr)
-  call GeomechGridVecGetArrayF90(geomech_grid,geomech_field%subsurf_vec_2dof,vec_p,ierr)
+  call GeomechGridVecGetArrayF90(geomech_grid,geomech_field%subsurf_vec_1dof,vec_p,ierr)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    if (option%nflowdof == 1) then
-      vec_p(local_id) = xx_loc_p(ghosted_id)  ! Then pass only pressure
-    else
-      vec_p(2*(local_id-1)+1) = xx_loc_p(option%nflowdof*(ghosted_id-1)+1) ! pressure
-      vec_p(2*(local_id-1)+2) = xx_loc_p(option%nflowdof*(ghosted_id-1)+2) ! temperature
-    endif
+    vec_p(local_id) = xx_loc_p(option%nflowdof*(ghosted_id-1)+1) 
   enddo
-  call GeomechGridVecRestoreArrayF90(geomech_grid,geomech_field%subsurf_vec_2dof,vec_p,ierr)
+  call GeomechGridVecRestoreArrayF90(geomech_grid,geomech_field%subsurf_vec_1dof,vec_p,ierr)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p,ierr)
   
   ! Scatter the data
   call VecScatterBegin(dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
-                       geomech_field%subsurf_vec_2dof, &
-                       geomech_field%press_temp, &
+                       geomech_field%subsurf_vec_1dof, &
+                       geomech_field%press, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
-                     geomech_field%subsurf_vec_2dof, &
-                     geomech_field%press_temp, &
+                     geomech_field%subsurf_vec_1dof, &
+                     geomech_field%press, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
-#endif
-  
+                     
+ ! temperature
+                         
 
 end subroutine
 
+! ************************************************************************** !
+!
+! GeomechCreateGeomechSubsurfVec: Creates the MPI vector that stores the
+! variables from subsurface
+! author: Satish Karra, LANL
+! date: 09/10/13
+!
+! ************************************************************************** !
+subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
+
+  use Grid_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Field_module
+  use String_module
+  use Realization_class
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(realization_type)               :: realization
+  type(geomech_realization_type)       :: geomech_realization
+
+  type(grid_type), pointer             :: grid
+  type(geomech_grid_type), pointer     :: geomech_grid
+  type(option_type), pointer           :: option
+  type(geomech_field_type), pointer    :: geomech_field
+  
+  PetscErrorCode :: ierr
+  
+  option     => realization%option
+  grid       => realization%discretization%grid
+  geomech_field => geomech_realization%geomech_field
+  
+  call VecCreate(option%mycomm,geomech_field%subsurf_vec_1dof,ierr)
+  call VecSetSizes(geomech_field%subsurf_vec_1dof, &
+                   grid%nlmax,PETSC_DECIDE,ierr)
+  call VecSetFromOptions(geomech_field%subsurf_vec_1dof,ierr)
+  
+end subroutine GeomechCreateGeomechSubsurfVec
 
 end module Geomechanics_Force_module
 
