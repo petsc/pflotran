@@ -18,6 +18,10 @@ module Geomechanics_Field_module
     Vec :: work_loc
     ! residual vectors
     Vec :: disp_r
+    Vec :: press_temp       ! has both pressures and temperatures
+                            ! to reduce commucation cost
+    Vec :: subsurf_vec_2dof ! MPI
+
 
     ! Solution vectors (yy = previous solution, xx = current iterate)
     Vec :: disp_xx, disp_xx_loc, disp_dxx, disp_yy, disp_accum
@@ -57,6 +61,9 @@ function GeomechFieldCreate()
   geomech_field%disp_yy = 0
   geomech_field%disp_accum = 0
   
+  geomech_field%press_temp = 0
+  geomech_field%subsurf_vec_2dof = 0
+  
   GeomechFieldCreate => geomech_field
 
 end function GeomechFieldCreate
@@ -85,6 +92,9 @@ subroutine GeomechFieldDestroy(geomech_field)
   if (geomech_field%disp_dxx /= 0) call VecDestroy(geomech_field%disp_dxx,ierr)
   if (geomech_field%disp_yy /= 0) call VecDestroy(geomech_field%disp_yy,ierr)
   if (geomech_field%disp_accum /= 0) call VecDestroy(geomech_field%disp_accum,ierr)
+  
+  if (geomech_field%press_temp /= 0) call VecDestroy(geomech_field%press_temp,ierr)
+  if (geomech_field%subsurf_vec_2dof /= 0 ) call VecDestroy(geomech_field%subsurf_vec_2dof,ierr)
   
 end subroutine GeomechFieldDestroy
 

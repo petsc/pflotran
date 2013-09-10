@@ -81,6 +81,11 @@ module Geomechanics_Grid_Aux_module
     Vec :: global_vec                        ! global vec (no ghost nodes), petsc-ordering
     Vec :: local_vec                         ! local vec (includes local and ghosted nodes), local ordering
     Vec :: global_vec_elem
+    VecScatter :: scatter_subsurf_to_geomech_ndof ! scatter context between subsurface and
+                                                  ! geomech grids for 1-DOF
+    VecScatter :: scatter_geomech_to_subsurf_ndof ! scatter context between geomech and
+                                                  ! subsurface grids for N-DOFs (Ndof = ngeomechdof)
+
   end type gmdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -139,6 +144,8 @@ function GMDMCreate()
   gmdm%global_vec = 0
   gmdm%local_vec = 0
   gmdm%global_vec_elem = 0
+  gmdm%scatter_subsurf_to_geomech_ndof = 0
+  gmdm%scatter_geomech_to_subsurf_ndof = 0
 
   GMDMCreate => gmdm
 
@@ -899,7 +906,8 @@ subroutine GMDMDestroy(gmdm)
   call VecDestroy(gmdm%global_vec,ierr)
   call VecDestroy(gmdm%local_vec,ierr)
   call VecDestroy(gmdm%global_vec_elem,ierr)
-  
+  call VecScatterDestroy(gmdm%scatter_subsurf_to_geomech_ndof,ierr)
+  call VecScatterDestroy(gmdm%scatter_geomech_to_subsurf_ndof,ierr)  
   deallocate(gmdm)
   nullify(gmdm)
 

@@ -28,7 +28,8 @@ module Geomechanics_Force_module
             GeomechForceUpdateAuxVars, &
             GeomechanicsForceInitialGuess, &
             GeomechForceResidual, &
-            GeomechForceJacobian
+            GeomechForceJacobian, &
+            GeomechUpdateFromSubsurf
   
 contains
 
@@ -1278,6 +1279,80 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif 
     
 end subroutine GeomechForceJacobianPatch  
+
+! ************************************************************************** !
+!
+! GeomechUpdateFromSubsurf: The pressure/temperature from subsurface are
+! mapped to geomech
+! author: Satish Karra, LANL
+! date: 09/10/13
+!
+! ************************************************************************** !
+subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
+
+  use Realization_class
+  use Grid_module
+  use Field_module
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Field_module
+  use Geomechanics_Discretization_module
+  use Option_module
+  
+  implicit none
+  
+  type(realization_type)                       :: realization
+  type(geomech_realization_type)               :: geomech_realization
+  type(grid_type), pointer                     :: grid
+  type(geomech_grid_type), pointer             :: geomech_grid
+  type(option_type), pointer                   :: option
+  type(field_type), pointer                    :: field
+  type(geomech_field_type), pointer            :: geomech_field
+  type(gmdm_ptr_type), pointer                 :: dm_ptr
+  
+
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: vec_p(:), xx_loc_p(:)
+  PetscInt :: local_id, ghosted_id
+
+  option        => realization%option
+  grid          => realization%discretization%grid
+  field         => realization%field
+  geomech_grid  => geomech_realization%discretization%grid
+  geomech_field => geomech_realization%geomech_field
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
+                                                   discretization,NFLOWDOF)
+#if 0                                                   
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p,ierr)
+  call GeomechGridVecGetArrayF90(geomech_grid,geomech_field%subsurf_vec_2dof,vec_p,ierr)
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (option%nflowdof == 1) then
+      vec_p(local_id) = xx_loc_p(ghosted_id)  ! Then pass only pressure
+    else
+      vec_p(2*(local_id-1)+1) = xx_loc_p(option%nflowdof*(ghosted_id-1)+1) ! pressure
+      vec_p(2*(local_id-1)+2) = xx_loc_p(option%nflowdof*(ghosted_id-1)+2) ! temperature
+    endif
+  enddo
+  call GeomechGridVecRestoreArrayF90(geomech_grid,geomech_field%subsurf_vec_2dof,vec_p,ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p,ierr)
+  
+  ! Scatter the data
+  call VecScatterBegin(dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
+                       geomech_field%subsurf_vec_2dof, &
+                       geomech_field%press_temp, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
+                     geomech_field%subsurf_vec_2dof, &
+                     geomech_field%press_temp, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+#endif
+  
+
+end subroutine
+
 
 end module Geomechanics_Force_module
 

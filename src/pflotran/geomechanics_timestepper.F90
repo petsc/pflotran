@@ -269,8 +269,8 @@ end subroutine GeomechTimestepperInitializeRun
 !
 ! ************************************************************************** !
 subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
-                                       master_stepper,flow_stepper, &
-                                       tran_stepper,geomech_stepper)
+                                        master_stepper,flow_stepper, &
+                                        tran_stepper,geomech_stepper)
 
   use Realization_class
 
@@ -283,6 +283,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 #ifdef GEOMECH
   use Geomechanics_Realization_module
   use Output_Geomechanics_module, only : OutputGeomechanics
+  use Geomechanics_Force_module
 #endif  
 
   implicit none
@@ -376,6 +377,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
  
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
+      call GeomechUpdateFromSubsurf(realization,geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
     endif

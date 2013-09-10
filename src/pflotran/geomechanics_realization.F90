@@ -57,7 +57,8 @@ public :: GeomechRealizCreate, &
           GeomechRealizPrintCouplers, &
           GeomechRealizAddWaypointsToList, &
           GeomechRealizGetDataset, &
-          GeomechRealizLocalToLocalWithArray
+          GeomechRealizLocalToLocalWithArray, &
+          GeomechRealizMapSubsurfGeomechGrid
 
 contains
 
@@ -268,6 +269,154 @@ subroutine GeomechRealizCreateDiscretization(realization)
 
   
 end subroutine GeomechRealizCreateDiscretization
+
+! ************************************************************************** !
+!
+! GeomechRealizMapSubsurfGeomechGrid: This routine creates scatter contexts
+! betweeen subsurface and geomech grids
+! author: Satish Karra, LANL
+! date: 09/09/13
+!
+! ************************************************************************** !
+subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
+                                              option)
+
+  use Option_module
+  use Geomechanics_Grid_Aux_module
+  use Realization_class
+  use Unstructured_Grid_Aux_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscdm.h"  
+#include "finclude/petscdm.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+  type(realization_type), pointer              :: realization
+  type(geomech_realization_type), pointer      :: geomech_realization
+  type(geomech_grid_type), pointer             :: geomech_grid
+  type(option_type)                            :: option
+  type(unstructured_grid_type), pointer        :: unstructured_grid
+  type(gmdm_type), pointer                     :: gmdm
+  type(gmdm_ptr_type), pointer                 :: dm_ptr
+  IS                                           :: is_geomech, is_subsurf
+  IS                                           :: is_subsurf_petsc
+  PetscViewer                                  :: viewer
+  PetscErrorCode                               :: ierr
+  AO                                           :: ao_geomech_to_subsurf_natural
+  PetscInt, allocatable                        :: int_array(:)
+  PetscInt                                     :: local_id
+  VecScatter                                   :: scatter
+  IS                                           :: is_geomech_petsc
+
+  geomech_grid => geomech_realization%discretization%grid
+  unstructured_grid => realization%discretization%grid%unstructured_grid
+    
+  ! Convert from 1-based to 0-based  
+  call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
+                       geomech_grid%mapping_cell_ids_flow-1, &
+                       PETSC_COPY_VALUES,is_subsurf,ierr)
+                       
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_mapping_cell_ids_flow.out', &
+                            viewer,ierr)
+  call ISView(is_subsurf,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+ 
+  call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
+                       geomech_grid%mapping_vertex_ids_geomech-1, &
+                       PETSC_COPY_VALUES,is_geomech,ierr)   
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_mapping_vertex_ids_geomech.out', &
+                            viewer,ierr)
+  call ISView(is_geomech,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+
+  call AOCreateMappingIS(is_geomech,is_subsurf,ao_geomech_to_subsurf_natural,ierr)
+  call ISDestroy(is_geomech,ierr)
+  call ISDestroy(is_subsurf,ierr)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_ao_geomech_to_subsurf_natural.out', &
+                            viewer,ierr)
+  call AOView(ao_geomech_to_subsurf_natural,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+  
+  allocate(int_array(unstructured_grid%nlmax))
+  do local_id = 1, unstructured_grid%nlmax
+    int_array(local_id) = (local_id-1) + unstructured_grid%global_offset
+  enddo
+
+  call ISCreateGeneral(option%mycomm,unstructured_grid%nlmax, &
+                       int_array,PETSC_COPY_VALUES,is_subsurf_petsc,ierr)
+  deallocate(int_array)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_petsc.out', &
+                            viewer,ierr)
+  call ISView(is_subsurf_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+  
+  call ISDuplicate(is_subsurf_petsc,is_geomech_petsc,ierr)
+  call ISCopy(is_subsurf_petsc,is_geomech_petsc,ierr)
+  
+  call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc,ierr)
+ 
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_subsurf_petsc_geomech_natural.out', &
+                            viewer,ierr)
+  call ISView(is_geomech_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+
+  call AOApplicationToPetscIS(geomech_grid%ao_natural_to_petsc_nodes, &
+                              is_geomech_petsc,ierr)
+                              
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_subsurf_petsc_geomech_petsc.out', &
+                            viewer,ierr)
+  call ISView(is_geomech_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif                              
+
+  call VecScatterCreate(realization%field%flow_xx,is_subsurf_petsc,&
+                        geomech_realization%geomech_field%disp_xx, &
+                        is_geomech_petsc,scatter,ierr)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_scatter_subsurf_to_geomech.out', &
+                            viewer,ierr)
+  call VecScatterView(scatter,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
+                                                   discretization,NFLOWDOF)
+
+  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof,ierr)
+  
+  call VecScatterDestroy(scatter,ierr)
+  call ISDestroy(is_geomech,ierr)
+  call ISDestroy(is_subsurf,ierr)
+  call ISDestroy(is_geomech_petsc,ierr)
+  call ISDestroy(is_subsurf_petsc,ierr)
+
+end subroutine
 
 ! ************************************************************************** !
 !
@@ -536,7 +685,6 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
   enddo
 
 end subroutine GeomechRealizProcessGeomechConditions
-
 
 
 ! ************************************************************************** !
