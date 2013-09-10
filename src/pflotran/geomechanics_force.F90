@@ -1347,8 +1347,27 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
                      geomech_field%press, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
                      
- ! temperature
-                         
+  ! temperature
+  if (option%nflowdof > 1) then
+    call VecGetArrayF90(field%flow_xx_loc,xx_loc_p,ierr)
+    call GeomechGridVecGetArrayF90(geomech_grid,geomech_field%subsurf_vec_1dof,vec_p,ierr)
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      vec_p(local_id) = xx_loc_p(option%nflowdof*(ghosted_id-1)+2) 
+    enddo
+    call GeomechGridVecRestoreArrayF90(geomech_grid,geomech_field%subsurf_vec_1dof,vec_p,ierr)
+    call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p,ierr)
+  
+    ! Scatter the data
+    call VecScatterBegin(dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
+                         geomech_field%subsurf_vec_1dof, &
+                         geomech_field%temp, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof, &
+                       geomech_field%subsurf_vec_1dof, &
+                       geomech_field%temp, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  endif                       
 
 end subroutine
 
