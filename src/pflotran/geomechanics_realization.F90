@@ -262,8 +262,17 @@ subroutine GeomechRealizCreateDiscretization(realization)
   call GeomechDiscretizationCreateVector(discretization,NGEODOF,geomech_field%disp_xx_loc, &
                                          LOCAL,option)
   call VecSet(geomech_field%disp_xx_loc,0.d0,ierr)
+ 
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx_loc, &
                                             geomech_field%work_loc)
+
+  call GeomechDiscretizationCreateVector(discretization,ONEDOF,geomech_field%press_loc, &
+                                         LOCAL,option)
+
+  call VecSet(geomech_field%press_loc,0.d0,ierr)
+
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+                                            geomech_field%temp_loc)
 
   grid => discretization%grid
   
