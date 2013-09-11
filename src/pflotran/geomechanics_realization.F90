@@ -265,9 +265,8 @@ subroutine GeomechRealizCreateDiscretization(realization)
 
   call VecSet(geomech_field%press_loc,0.d0,ierr)
   
-  if (option%nflowdof > 1) &
-    call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
-                                              geomech_field%temp_loc)
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+                                            geomech_field%temp_loc)
 
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
                                             geomech_field%imech_loc)

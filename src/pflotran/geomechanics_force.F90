@@ -1430,9 +1430,11 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
                                           geomech_field%press, & 
                                           geomech_field%press_loc,ONEDOF)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
-                                          geomech_field%temp, &
-                                          geomech_field%temp_loc,ONEDOF)
+  
+  if (option%nflowdof > 1) &
+    call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+                                            geomech_field%temp, &
+                                            geomech_field%temp_loc,ONEDOF)
 
 end subroutine
 
