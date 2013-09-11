@@ -4526,6 +4526,9 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   use Global_Aux_module
   
   implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(patch_type) :: patch
   type(option_type) :: option
