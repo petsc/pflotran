@@ -1701,6 +1701,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
         !coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=0.d0
         hw_p(local_id) = hw_p(local_id) + v_darcy*option%surf_flow_dt
+        if(hw_p(local_id)<1.d-15) hw_p(local_id) = 0.d0
         if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
       enddo
 
