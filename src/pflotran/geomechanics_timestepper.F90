@@ -727,6 +727,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
     else
        scaled_fnorm = fnorm
     endif
+    write(*,*) ''
     print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
     write(*,'(" --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
