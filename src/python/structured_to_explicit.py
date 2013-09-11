@@ -39,9 +39,9 @@ Coord = np.zeros((N_cells,3),'float')
 for k in range(1,z_verts):
     for j in range(1,y_verts):
         for i in range(1,x_verts):
-            Coord[count,0] = delta_x/2.0 + (i-1)*delta_x
-            Coord[count,1] = delta_x/2.0 + (j-1)*delta_y
-            Coord[count,2] = delta_x/2.0 + (k-1)*delta_z
+            Coord[count,0] = x_min + delta_x/2.0 + (i-1)*delta_x
+            Coord[count,1] = y_min + delta_y/2.0 + (j-1)*delta_y
+            Coord[count,2] = z_min + delta_z/2.0 + (k-1)*delta_z
             count = count + 1
 
 
