@@ -354,9 +354,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
   PetscReal, allocatable :: local_disp(:,:)
+  PetscReal, allocatable :: local_press(:), local_temp(:)
   PetscInt, allocatable :: petsc_ids(:)
   PetscInt, allocatable :: ids(:)
   PetscReal, allocatable :: res_vec(:)
+  PetscReal, pointer :: press(:), temp(:)
   PetscInt :: ielem,ivertex 
   PetscInt :: ghosted_id
   PetscInt :: eletype, idof
@@ -382,12 +384,17 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   error_L2_global = 0.d0
 #endif
 
- 
+  ! Get pressure and temperature from subsurface
+  call VecGetArrayF90(field%press_loc,press,ierr)
+  call VecGetArrayF90(field%temp_loc,temp,ierr)
+   
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
     allocate(elenodes(grid%elem_nodes(0,ielem)))
     allocate(local_coordinates(size(elenodes),THREE_INTEGER))
     allocate(local_disp(size(elenodes),option%ngeomechdof))
+    allocate(local_press(size(elenodes)))
+    allocate(local_temp(size(elenodes)))
     allocate(petsc_ids(size(elenodes)))
     allocate(ids(size(elenodes)*option%ngeomechdof))
     allocate(res_vec(size(elenodes)*option%ngeomechdof))
@@ -408,9 +415,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
         ids(idof + (ivertex-1)*option%ngeomechdof) = &
           (petsc_ids(ivertex)-1)*option%ngeomechdof + (idof-1)
       enddo
+      local_press(ivertex) = press(ghosted_id)
+      local_temp(ivertex) = temp(ghosted_id)
     enddo
     call GeomechForceLocalElemResidual(elenodes,local_coordinates, &
-       local_disp,eletype, &
+       local_disp,local_press,local_temp,eletype, &
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,res_vec,option)
     call VecSetValues(r,size(ids),ids,res_vec,ADD_VALUES,ierr) 
@@ -429,7 +438,12 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     deallocate(petsc_ids)
     deallocate(ids)
     deallocate(res_vec)
+    deallocate(local_press)
+    deallocate(local_temp)
   enddo
+      
+  call VecRestoreArrayF90(field%press_loc,press,ierr)
+  call VecRestoreArrayF90(field%temp_loc,temp,ierr)
       
 #if 0
   call MPI_Allreduce(error_H1_global,error_H1_global,ONE_INTEGER_MPI, &
@@ -532,6 +546,7 @@ end subroutine GeomechForceResidualPatch
 !
 ! ************************************************************************** !
 subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, &
+                                         local_press,local_temp, &
                                          eletype,dim,r,w,res_vec,option)
                                          
   use Unstructured_Cell_module
@@ -549,6 +564,8 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: res_vec(:)
   PetscReal, allocatable :: local_disp(:,:)
+  PetscReal, allocatable :: local_press(:)
+  PetscReal, allocatable :: local_temp(:)
   PetscReal, pointer :: r(:,:), w(:)
   PetscInt :: igpt
   PetscInt :: len_w
@@ -560,7 +577,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal :: eye_three(THREE_INTEGER)
   PetscInt :: indx(THREE_INTEGER)
   PetscInt :: dim
-  PetscReal :: lambda, mu
+  PetscReal :: lambda, mu, beta, alpha
   PetscInt :: load_type
   PetscReal :: bf(THREE_INTEGER)
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
@@ -622,6 +639,8 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
     call GeomechGetLambdaMu(lambda,mu,x)
+    call GeomechGetBiotCoeff(beta,x)
+    call GeomechGetThermalExpCoeff(alpha,x)
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
@@ -634,6 +653,8 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     Kmat = Kmat + w(igpt)*mu*matmul(kron_B_eye,kron_B_transpose_eye)*detJ_map
     Kmat = Kmat + w(igpt)*mu*matmul(matmul(kron_B_eye,kron_eye_B_transpose),Trans)*detJ_map
     force = force + w(igpt)*matmul(kron_N_eye,bf)*detJ_map
+    force = force + w(igpt)*beta*dot_product(N(:,1),local_press)*vecB_transpose(:,1)*detJ_map
+    force = force + w(igpt)*alpha*dot_product(N(:,1),local_temp)*vecB_transpose(:,1)*detJ_map
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
   enddo
@@ -937,6 +958,44 @@ subroutine GeomechGetLambdaMu(lambda,mu,coord)
 
 
 end subroutine GeomechGetLambdaMu
+
+! ************************************************************************** !
+!
+! GeomechGetBiotCoeff: Gets the Biot coefficient
+! author: Satish Karra
+! date: 09/10/13
+!
+! ************************************************************************** !
+subroutine GeomechGetBiotCoeff(beta,coord)
+
+  PetscReal :: beta
+  PetscReal :: coord(THREE_INTEGER)
+  
+  ! This subroutine needs major changes. For given position, it needs to give 
+  ! out beta
+  beta = 1.d-4
+
+
+end subroutine GeomechGetBiotCoeff
+
+! ************************************************************************** !
+!
+! GeomechGetThermalExpCoeff: Gets the coefficient of thermal expansion
+! author: Satish Karra
+! date: 09/10/13
+!
+! ************************************************************************** !
+subroutine GeomechGetThermalExpCoeff(alpha,coord)
+
+  PetscReal :: alpha
+  PetscReal :: coord(THREE_INTEGER)
+  
+  ! This subroutine needs major changes. For given position, it needs to give 
+  ! out alpha
+  alpha = 1.d-4
+
+
+end subroutine GeomechGetThermalExpCoeff
 
 ! ************************************************************************** !
 !
