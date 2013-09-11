@@ -2489,13 +2489,15 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   
     ! add secondary mineral volume fractions to header
     if (print_secondary_data(3)) then
-      header = ''
-      do j = 1, reaction%mineral%nkinmnrl
-        string = trim(reaction%mineral%mineral_names(j)) // ' VF'
-        call OutputAppendToHeader(header,string,'',cell_string, &
-                                  icolumn)
-      enddo
-      write(fid,'(a)',advance="no") trim(header)
+      if (reaction%mineral%nkinmnrl > 0) then
+        header = ''
+        do j = 1, reaction%mineral%nkinmnrl
+          string = trim(reaction%mineral%mineral_names(j)) // ' VF'
+          call OutputAppendToHeader(header,string,'',cell_string, &
+                                    icolumn)
+        enddo
+        write(fid,'(a)',advance="no") trim(header)
+      endif
     endif
   endif 
   
