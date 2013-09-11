@@ -16,6 +16,8 @@ module Geomechanics_Material_module
     PetscReal                      :: youngs_modulus
     PetscReal                      :: poissons_ratio
     PetscReal                      :: density
+    PetscReal                      :: biot_coeff
+    PetscReal                      :: thermal_exp_coeff
   
     type(geomech_material_property_type), pointer :: next
   end type geomech_material_property_type
@@ -55,6 +57,8 @@ function GeomechanicsMaterialPropertyCreate()
   geomech_material_property%youngs_modulus = 0.d0
   geomech_material_property%poissons_ratio = 0.d0
   geomech_material_property%density = 0.d0
+  geomech_material_property%biot_coeff = 0.d0
+  geomech_material_property%thermal_exp_coeff = 0.d0
   
   nullify(geomech_material_property%next)
   
@@ -113,6 +117,16 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
         call InputReadDouble(input,option,geomech_material_property% &
                              density)
         call InputErrorMsg(input,option,'ROCK_DENSITY', &
+                           'GEOMECHANICS_MATERIAL_PROPERTY')
+      case('BIOT_COEFFICIENT')
+        call InputReadDouble(input,option,geomech_material_property% &
+                             biot_coeff)
+        call InputErrorMsg(input,option,'BIOT_COEFFICIENT', &
+                           'GEOMECHANICS_MATERIAL_PROPERTY')
+      case('THERMAL_EXPANSION_COEFFICIENT')
+        call InputReadDouble(input,option,geomech_material_property% &
+                             thermal_exp_coeff)
+        call InputErrorMsg(input,option,'THERMAL_EXPANSION_COEFFICIENT', &
                            'GEOMECHANICS_MATERIAL_PROPERTY')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &

@@ -241,13 +241,7 @@ subroutine GeomechRealizCreateDiscretization(realization)
   call VecSet(geomech_field%disp_xx,0.d0,ierr)
 
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
-                                            geomech_field%disp_yy)
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
-                                            geomech_field%disp_dxx)
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
                                             geomech_field%disp_r)
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
-                                            geomech_field%disp_accum)
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
                                             geomech_field%work)
                                             
@@ -270,9 +264,13 @@ subroutine GeomechRealizCreateDiscretization(realization)
                                          LOCAL,option)
 
   call VecSet(geomech_field%press_loc,0.d0,ierr)
+  
+  if (option%nflowdof > 1) &
+    call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+                                              geomech_field%temp_loc)
 
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
-                                            geomech_field%temp_loc)
+                                            geomech_field%imech_loc)
 
   grid => discretization%grid
   
