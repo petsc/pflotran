@@ -282,6 +282,20 @@ subroutine PMCSurfaceGetAuxData(this)
 
   PetscErrorCode :: ierr
 
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call SurfaceFlowUpdateSurfBC(pmc%subsurf_realization, &
+                                             pmc%surf_realization)
+          case (TH_MODE)
+            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
+                                           pmc%surf_realization)
+        end select
+    end select
+  endif
+
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
     select type(pmc => this)
       class is(pmc_surface_type)
