@@ -47,9 +47,65 @@ subroutine GeomechForceSetup(geomech_realization)
   
   type(geomech_realization_type) :: geomech_realization
 
+  call GeomechForceSetupPatch(geomech_realization)
   call GeomechForceSetPlotVariables(geomech_realization)
-  
+   
 end subroutine GeomechForceSetup
+
+! ************************************************************************** !
+!
+! GeomechForceSetupPatch: Sets up the arrays for geomech parameters 
+! author: Satish Karra, LANL
+! date: 09/11/13
+!
+! ************************************************************************** !
+subroutine GeomechForceSetupPatch(geomech_realization)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Patch_module
+  use Option_module
+ 
+  implicit none
+
+  type(geomech_realization_type) :: geomech_realization
+  type(option_type), pointer :: option
+  type(geomech_patch_type), pointer :: patch
+
+  PetscInt :: i
+
+  option => geomech_realization%option
+  patch => geomech_realization%geomech_patch
+
+  allocate(patch%geomech_aux%GeomechParam%youngs_modulus &
+    (size(geomech_realization%geomech_material_property_array)))
+  allocate(patch%geomech_aux%GeomechParam%poissons_ratio &
+    (size(geomech_realization%geomech_material_property_array)))
+  allocate(patch%geomech_aux%GeomechParam%biot_coef &
+    (size(geomech_realization%geomech_material_property_array)))
+  allocate(patch%geomech_aux%GeomechParam%thermal_exp_coef &
+    (size(geomech_realization%geomech_material_property_array)))
+  allocate(patch%geomech_aux%GeomechParam%density &
+    (size(geomech_realization%geomech_material_property_array)))
+
+  do i = 1, size(geomech_realization%geomech_material_property_array)
+    patch%geomech_aux%GeomechParam%youngs_modulus(geomech_realization% &
+      geomech_material_property_array(i)%ptr%id) = geomech_realization% &
+      geomech_material_property_array(i)%ptr%youngs_modulus
+    patch%geomech_aux%GeomechParam%poissons_ratio(geomech_realization% &
+      geomech_material_property_array(i)%ptr%id) = geomech_realization% &
+      geomech_material_property_array(i)%ptr%poissons_ratio
+    patch%geomech_aux%GeomechParam%density(geomech_realization% &
+      geomech_material_property_array(i)%ptr%id) = geomech_realization% &
+      geomech_material_property_array(i)%ptr%density
+    patch%geomech_aux%GeomechParam%biot_coef(geomech_realization% &
+      geomech_material_property_array(i)%ptr%id) = geomech_realization% &
+      geomech_material_property_array(i)%ptr%biot_coeff
+    patch%geomech_aux%GeomechParam%thermal_exp_coef(geomech_realization% &
+      geomech_material_property_array(i)%ptr%id) = geomech_realization% &
+      geomech_material_property_array(i)%ptr%thermal_exp_coeff
+  enddo
+
+end subroutine GeomechForceSetupPatch
 
 ! ************************************************************************** !
 !
@@ -332,6 +388,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   use Geomechanics_Region_module
   use Geomechanics_Coupler_module
   use Option_module
+  use Geomechanics_Auxiliary_module
 
   implicit none
 
@@ -350,6 +407,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(gm_region_type), pointer :: region
   type(geomech_coupler_type), pointer :: boundary_condition
+  type(geomech_parameter_type), pointer :: GeomechParam
 
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
@@ -359,13 +417,16 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   PetscInt, allocatable :: ids(:)
   PetscReal, allocatable :: res_vec(:)
   PetscReal, pointer :: press(:), temp(:)
-  PetscInt :: ielem,ivertex 
+  PetscReal, allocatable :: beta_vec(:), alpha_vec(:)
+  PetscReal, allocatable :: density_vec(:)
+  PetscReal, allocatable :: youngs_vec(:), poissons_vec(:)
+  PetscInt :: ielem, ivertex 
   PetscInt :: ghosted_id
   PetscInt :: eletype, idof
   PetscInt :: petsc_id, local_id
   PetscReal :: error_H1_global, error_L2_global
   PetscReal :: error_L2, error_H1
-        
+  PetscReal, pointer :: imech_loc_p(:)      
                     
   field => realization%geomech_field
   discretization => realization%discretization
@@ -373,6 +434,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   grid => patch%geomech_grid
   option => realization%option
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
+  GeomechParam => patch%geomech_aux%GeomechParam 
 
   call GeomechForceUpdateAuxVars(realization)
   ! Add flag for the update
@@ -387,7 +449,8 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   ! Get pressure and temperature from subsurface
   call VecGetArrayF90(field%press_loc,press,ierr)
   call VecGetArrayF90(field%temp_loc,temp,ierr)
-   
+  call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
+ 
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
     allocate(elenodes(grid%elem_nodes(0,ielem)))
@@ -398,7 +461,12 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     allocate(petsc_ids(size(elenodes)))
     allocate(ids(size(elenodes)*option%ngeomechdof))
     allocate(res_vec(size(elenodes)*option%ngeomechdof))
-    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    allocate(beta_vec(size(elenodes)))
+    allocate(alpha_vec(size(elenodes)))
+    allocate(density_vec(size(elenodes)))
+    allocate(youngs_vec(size(elenodes)))
+    allocate(poissons_vec(size(elenodes)))
+   elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     eletype = grid%gauss_node(ielem)%EleType
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex)
@@ -417,9 +485,15 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
       enddo
       local_press(ivertex) = press(ghosted_id)
       local_temp(ivertex) = temp(ghosted_id)
+      alpha_vec(ivertex) = GeomechParam%thermal_exp_coef(int(imech_loc_p(ghosted_id))) 
+      beta_vec(ivertex) = GeomechParam%biot_coef(int(imech_loc_p(ghosted_id))) 
+      density_vec(ivertex) = GeomechParam%density(int(imech_loc_p(ghosted_id))) 
+      youngs_vec(ivertex) = GeomechParam%youngs_modulus(int(imech_loc_p(ghosted_id))) 
+      poissons_vec(ivertex) = GeomechParam%poissons_ratio(int(imech_loc_p(ghosted_id))) 
     enddo
     call GeomechForceLocalElemResidual(elenodes,local_coordinates, &
-       local_disp,local_press,local_temp,eletype, &
+       local_disp,local_press,local_temp,youngs_vec,poissons_vec, &
+       density_vec,beta_vec,alpha_vec,eletype, &
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,res_vec,option)
     call VecSetValues(r,size(ids),ids,res_vec,ADD_VALUES,ierr) 
@@ -440,11 +514,17 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     deallocate(res_vec)
     deallocate(local_press)
     deallocate(local_temp)
+    deallocate(beta_vec)
+    deallocate(alpha_vec)
+    deallocate(density_vec)
+    deallocate(youngs_vec)
+    deallocate(poissons_vec)
   enddo
       
   call VecRestoreArrayF90(field%press_loc,press,ierr)
   call VecRestoreArrayF90(field%temp_loc,temp,ierr)
-      
+  call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)
+    
 #if 0
   call MPI_Allreduce(error_H1_global,error_H1_global,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION, &
@@ -547,6 +627,8 @@ end subroutine GeomechForceResidualPatch
 ! ************************************************************************** !
 subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, &
                                          local_press,local_temp, &
+                                         local_youngs,local_poissons, &
+                                         local_density,local_beta,local_alpha, &
                                          eletype,dim,r,w,res_vec,option)
                                          
   use Unstructured_Cell_module
@@ -566,6 +648,12 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: local_disp(:,:)
   PetscReal, allocatable :: local_press(:)
   PetscReal, allocatable :: local_temp(:)
+  PetscReal, allocatable :: local_youngs(:)
+  PetscReal, allocatable :: local_poissons(:)
+  PetscReal, allocatable :: local_density(:)
+  PetscReal, allocatable :: local_beta(:)
+  PetscReal, allocatable :: local_alpha(:)
+      
   PetscReal, pointer :: r(:,:), w(:)
   PetscInt :: igpt
   PetscInt :: len_w
@@ -578,10 +666,10 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscInt :: indx(THREE_INTEGER)
   PetscInt :: dim
   PetscReal :: lambda, mu, beta, alpha
+  PetscReal :: density, youngs_mod, poissons_ratio
   PetscInt :: load_type
   PetscReal :: bf(THREE_INTEGER)
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
-  PetscReal :: den_rock
   PetscReal, allocatable :: N(:,:)
   PetscReal, pointer :: vecB_transpose(:,:), transpose_vecB_transpose(:,:)
   PetscReal, pointer :: kron_B_eye(:,:)
@@ -638,9 +726,12 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
       inv_J_map(:,i) = eye_three
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
-    call GeomechGetLambdaMu(lambda,mu,x)
-    call GeomechGetBiotCoeff(beta,x)
-    call GeomechGetThermalExpCoeff(alpha,x)
+    youngs_mod = dot_product(shapefunction%N,local_youngs)
+    poissons_ratio = dot_product(shapefunction%N,local_poissons)
+    alpha = dot_product(shapefunction%N,local_alpha)
+    beta = dot_product(shapefunction%N,local_beta)
+    density = dot_product(shapefunction%N,local_density)    
+    call GeomechGetLambdaMu(lambda,mu,youngs_mod,poissons_ratio)
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
@@ -652,7 +743,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     call Kron(N,identity,kron_N_eye)
     Kmat = Kmat + w(igpt)*mu*matmul(kron_B_eye,kron_B_transpose_eye)*detJ_map
     Kmat = Kmat + w(igpt)*mu*matmul(matmul(kron_B_eye,kron_eye_B_transpose),Trans)*detJ_map
-    force = force + w(igpt)*matmul(kron_N_eye,bf)*detJ_map
+    force = force + w(igpt)*density*matmul(kron_N_eye,bf)*detJ_map
     force = force + w(igpt)*beta*dot_product(N(:,1),local_press)*vecB_transpose(:,1)*detJ_map
     force = force + w(igpt)*alpha*dot_product(N(:,1),local_temp)*vecB_transpose(:,1)*detJ_map
     call ShapeFunctionDestroy(shapefunction)
@@ -678,6 +769,7 @@ end subroutine GeomechForceLocalElemResidual
 ! date: 07/08/13
 !
 ! ************************************************************************** !
+#if 0
 subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
                                       eletype,dim,r,w,error_L2,error_H1,option)
                                          
@@ -782,6 +874,8 @@ subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
   deallocate(B)
 
 end subroutine GeomechForceLocalElemError
+#endif
+
 
 ! ************************************************************************** !
 !
@@ -831,6 +925,8 @@ end subroutine GetAnalytical
 !
 ! ************************************************************************** !
 subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, &
+                                         local_youngs,local_poissons, &
+                                         local_density,local_beta,local_alpha, &
                                          eletype,dim,r,w,Kmat,option)
                                          
   use Unstructured_Cell_module
@@ -870,7 +966,12 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscReal, pointer :: Trans(:,:)
   PetscReal, pointer :: kron_eye_B_transpose(:,:)
   PetscReal, pointer :: kron_N_eye(:,:)
-  
+  PetscReal, allocatable :: local_youngs(:)
+  PetscReal, allocatable :: local_poissons(:)
+  PetscReal, allocatable :: local_density(:)
+  PetscReal, allocatable :: local_beta(:)
+  PetscReal, allocatable :: local_alpha(:)
+
   allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
   
@@ -910,7 +1011,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
       inv_J_map(:,i) = eye_three
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
-    call GeomechGetLambdaMu(lambda,mu,x)
+  !  call GeomechGetLambdaMu(lambda,mu,x)
     ! load_type = 2 ! Need to change
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
@@ -940,62 +1041,17 @@ end subroutine GeomechForceLocalElemJacobian
 ! date: 06/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechGetLambdaMu(lambda,mu,coord)
+subroutine GeomechGetLambdaMu(lambda,mu,E,nu)
 
   PetscReal :: lambda, mu
   PetscReal :: E, nu
   PetscReal :: coord(THREE_INTEGER)
  
-  E = 1.d4
-  nu = 0.0
-  
-  
-  ! This subroutine needs major changes. For given position, it needs to give 
-  ! out lambda, mu
-  
   lambda = E*nu/(1.d0+nu)/(1.d0-2.d0*nu)
   mu = E/2.d0/(1.d0+nu)
 
 
 end subroutine GeomechGetLambdaMu
-
-! ************************************************************************** !
-!
-! GeomechGetBiotCoeff: Gets the Biot coefficient
-! author: Satish Karra
-! date: 09/10/13
-!
-! ************************************************************************** !
-subroutine GeomechGetBiotCoeff(beta,coord)
-
-  PetscReal :: beta
-  PetscReal :: coord(THREE_INTEGER)
-  
-  ! This subroutine needs major changes. For given position, it needs to give 
-  ! out beta
-  beta = 1.d-4
-
-
-end subroutine GeomechGetBiotCoeff
-
-! ************************************************************************** !
-!
-! GeomechGetThermalExpCoeff: Gets the coefficient of thermal expansion
-! author: Satish Karra
-! date: 09/10/13
-!
-! ************************************************************************** !
-subroutine GeomechGetThermalExpCoeff(alpha,coord)
-
-  PetscReal :: alpha
-  PetscReal :: coord(THREE_INTEGER)
-  
-  ! This subroutine needs major changes. For given position, it needs to give 
-  ! out alpha
-  alpha = 1.d-4
-
-
-end subroutine GeomechGetThermalExpCoeff
 
 ! ************************************************************************** !
 !

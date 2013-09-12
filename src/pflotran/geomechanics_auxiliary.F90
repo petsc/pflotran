@@ -19,6 +19,9 @@ module Geomechanics_Auxiliary_module
   type, public :: geomech_parameter_type
     PetscReal, pointer :: youngs_modulus(:)
     PetscReal, pointer :: poissons_ratio(:)
+    PetscReal, pointer :: biot_coef(:)
+    PetscReal, pointer :: thermal_exp_coef(:)
+    PetscReal, pointer :: density(:)
   end type geomech_parameter_type  
   
   public :: GeomechAuxInit, &
@@ -43,7 +46,10 @@ subroutine GeomechAuxInit(geomech_aux)
   allocate(geomech_aux%GeomechParam)
   nullify(geomech_aux%GeomechParam%youngs_modulus)
   nullify(geomech_aux%GeomechParam%poissons_ratio)
-  
+  nullify(geomech_aux%GeomechParam%biot_coef)
+  nullify(geomech_aux%GeomechParam%thermal_exp_coef)
+  nullify(geomech_aux%GeomechParam%density)
+ 
 end subroutine GeomechAuxInit
 
 ! ************************************************************************** !
@@ -70,6 +76,15 @@ subroutine GeomechAuxDestroy(geomech_aux)
     if (associated(geomech_aux%GeomechParam%poissons_ratio)) &
       deallocate(geomech_aux%GeomechParam%poissons_ratio)
     nullify(geomech_aux%GeomechParam%poissons_ratio)
+    if (associated(geomech_aux%GeomechParam%biot_coef)) &
+      deallocate(geomech_aux%GeomechParam%biot_coef)
+    nullify(geomech_aux%GeomechParam%biot_coef)
+    if (associated(geomech_aux%GeomechParam%thermal_exp_coef)) &
+      deallocate(geomech_aux%GeomechParam%thermal_exp_coef)
+    nullify(geomech_aux%GeomechParam%thermal_exp_coef)
+    if (associated(geomech_aux%GeomechParam%density)) &
+      deallocate(geomech_aux%GeomechParam%density)
+    nullify(geomech_aux%GeomechParam%density)
   endif
     
 end subroutine GeomechAuxDestroy
