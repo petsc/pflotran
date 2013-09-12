@@ -730,7 +730,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     poissons_ratio = dot_product(shapefunction%N,local_poissons)
     alpha = dot_product(shapefunction%N,local_alpha)
     beta = dot_product(shapefunction%N,local_beta)
-    density = dot_product(shapefunction%N,local_density)    
+    density = dot_product(shapefunction%N,local_density) 
     call GeomechGetLambdaMu(lambda,mu,youngs_mod,poissons_ratio)
     call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
@@ -926,7 +926,6 @@ end subroutine GetAnalytical
 ! ************************************************************************** !
 subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, &
                                          local_youngs,local_poissons, &
-                                         local_density,local_beta,local_alpha, &
                                          eletype,dim,r,w,Kmat,option)
                                          
   use Unstructured_Cell_module
@@ -955,10 +954,8 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscInt :: indx(THREE_INTEGER)
   PetscInt :: dim
   PetscReal :: lambda, mu
-  PetscInt :: load_type
-  PetscReal :: bf(THREE_INTEGER)
+  PetscReal :: youngs_mod, poissons_ratio
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
-  PetscReal :: den_rock
   PetscReal, allocatable :: N(:,:)
   PetscReal, pointer :: vecB_transpose(:,:), transpose_vecB_transpose(:,:)
   PetscReal, pointer :: kron_B_eye(:,:)
@@ -968,9 +965,6 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscReal, pointer :: kron_N_eye(:,:)
   PetscReal, allocatable :: local_youngs(:)
   PetscReal, allocatable :: local_poissons(:)
-  PetscReal, allocatable :: local_density(:)
-  PetscReal, allocatable :: local_beta(:)
-  PetscReal, allocatable :: local_alpha(:)
 
   allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
@@ -1011,9 +1005,9 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
       inv_J_map(:,i) = eye_three
     enddo
     B = matmul(shapefunction%DN,inv_J_map)
-  !  call GeomechGetLambdaMu(lambda,mu,x)
-    ! load_type = 2 ! Need to change
-    call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
+    youngs_mod = dot_product(shapefunction%N,local_youngs)
+    poissons_ratio = dot_product(shapefunction%N,local_poissons)
+    call GeomechGetLambdaMu(lambda,mu,youngs_mod,poissons_ratio)
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
       matmul(vecB_transpose,transpose(vecB_transpose))*detJ_map
@@ -1027,7 +1021,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
   enddo
-  
+    
   deallocate(zeta)
   deallocate(B)
 
@@ -1195,6 +1189,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Option_module
   use Unstructured_Cell_module
   use Geomechanics_Region_module
+  use Geomechanics_Auxiliary_module
       
   implicit none
 
@@ -1215,6 +1210,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option
   type(gm_region_type), pointer :: region
   type(geomech_coupler_type), pointer :: boundary_condition
+  type(geomech_parameter_type), pointer :: GeomechParam
 
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
@@ -1223,6 +1219,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal, allocatable :: Jac_full(:,:)
   PetscReal, allocatable :: Jac_sub_mat(:,:)
   PetscInt, allocatable :: rows(:)
+  PetscReal, allocatable :: youngs_vec(:), poissons_vec(:)
   PetscInt :: ielem,ivertex 
   PetscInt :: ghosted_id
   PetscInt :: eletype, idof
@@ -1230,6 +1227,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ghosted_id1, ghosted_id2
   PetscInt :: petsc_id1, petsc_id2
   PetscInt :: id1, id2, i, j, vertex_count, count
+  PetscReal, pointer :: imech_loc_p(:)
         
   field => realization%geomech_field
   discretization => realization%discretization
@@ -1237,8 +1235,10 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   grid => patch%geomech_grid
   option => realization%option
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
+  GeomechParam => patch%geomech_aux%GeomechParam 
 
- 
+  call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
+
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
     allocate(elenodes(grid%elem_nodes(0,ielem)))
@@ -1248,6 +1248,8 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     allocate(Jac_full(size(elenodes)*option%ngeomechdof, &
                       size(elenodes)*option%ngeomechdof))
     allocate(Jac_sub_mat(option%ngeomechdof,option%ngeomechdof))
+    allocate(youngs_vec(size(elenodes)))
+    allocate(poissons_vec(size(elenodes)))
     elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     eletype = grid%gauss_node(ielem)%EleType
     do ivertex = 1, grid%elem_nodes(0,ielem)
@@ -1263,9 +1265,11 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         local_disp(idof + (ivertex-1)*option%ngeomechdof) = &
           geomech_global_aux_vars(ghosted_id)%disp_vector(idof)
       enddo
+      youngs_vec(ivertex) = GeomechParam%youngs_modulus(int(imech_loc_p(ghosted_id))) 
+      poissons_vec(ivertex) = GeomechParam%poissons_ratio(int(imech_loc_p(ghosted_id))) 
     enddo
     call GeomechForceLocalElemJacobian(elenodes,local_coordinates, &
-       local_disp,eletype, &
+       local_disp,youngs_vec,poissons_vec,eletype, &
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,Jac_full,option)
     do id1 = 1, size(ghosted_ids)
@@ -1292,7 +1296,11 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     deallocate(ghosted_ids)
     deallocate(Jac_full)
     deallocate(Jac_sub_mat)
+    deallocate(youngs_vec)
+    deallocate(poissons_vec)
   enddo
+  
+  call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)  
   
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)  

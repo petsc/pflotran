@@ -406,7 +406,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   call PetscViewerDestroy(viewer,ierr)
 #endif                              
 
-  call VecScatterCreate(realization%field%flow_xx,is_subsurf_petsc, &
+  call VecScatterCreate(realization%field%porosity0,is_subsurf_petsc, &
                         geomech_realization%geomech_field%press, &
                         is_geomech_petsc,scatter,ierr)
 
