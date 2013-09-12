@@ -1175,9 +1175,10 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
-                                            simulation%geomech_realization, &
-                                            option)
+    if (option%geomech_subsurf_coupling) &
+      call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
+                                              simulation%geomech_realization, &
+                                              option)
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)

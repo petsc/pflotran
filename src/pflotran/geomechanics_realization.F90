@@ -297,7 +297,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   use Option_module
   use Geomechanics_Grid_Aux_module
   use Realization_class
-  use Unstructured_Grid_Aux_module
+  use Grid_module
 
   implicit none
 
@@ -313,7 +313,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   type(geomech_realization_type), pointer      :: geomech_realization
   type(geomech_grid_type), pointer             :: geomech_grid
   type(option_type)                            :: option
-  type(unstructured_grid_type), pointer        :: unstructured_grid
+  type(grid_type), pointer                     :: grid
   type(gmdm_type), pointer                     :: gmdm
   type(gmdm_ptr_type), pointer                 :: dm_ptr
   IS                                           :: is_geomech, is_subsurf
@@ -327,7 +327,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   IS                                           :: is_geomech_petsc
 
   geomech_grid => geomech_realization%discretization%grid
-  unstructured_grid => realization%discretization%grid%unstructured_grid
+  grid => realization%discretization%grid
     
   ! Convert from 1-based to 0-based  
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
@@ -366,12 +366,12 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   call PetscViewerDestroy(viewer,ierr)
 #endif  
   
-  allocate(int_array(unstructured_grid%nlmax))
-  do local_id = 1, unstructured_grid%nlmax
-    int_array(local_id) = (local_id-1) + unstructured_grid%global_offset
+  allocate(int_array(grid%nlmax))
+  do local_id = 1, grid%nlmax
+    int_array(local_id) = (local_id-1) + grid%global_offset
   enddo
 
-  call ISCreateGeneral(option%mycomm,unstructured_grid%nlmax, &
+  call ISCreateGeneral(option%mycomm,grid%nlmax, &
                        int_array,PETSC_COPY_VALUES,is_subsurf_petsc,ierr)
   deallocate(int_array)
 
