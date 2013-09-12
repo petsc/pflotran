@@ -293,6 +293,16 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             call SolverReadNewton(geomech_solver,input,option)
         end select     
         
+     !....................
+      case ('LINEAR_SOLVER')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case(word)
+          case('GEOMECHANICS')
+            call SolverReadLinear(geomech_solver,input,option)
+        end select
+
+        
       !.........................................................................
       case ('GEOMECHANICS_DEBUG')
         call GeomechDebugRead(geomech_realization%debug,input,option)    
