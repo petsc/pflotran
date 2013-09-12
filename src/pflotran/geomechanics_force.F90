@@ -758,6 +758,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   deallocate(zeta)
   deallocate(B)
   deallocate(force)
+  deallocate(Kmat)
   deallocate(res_vec_mat)
 
 end subroutine GeomechForceLocalElemResidual
@@ -1381,10 +1382,12 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next      
   enddo
-  
+    
   call MatZeroRowsLocal(A,count,rows,1.d0, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE,ierr)  
+
+  deallocate(rows)
 
 
 #ifdef GEOMECH_DEBUG  
