@@ -1057,7 +1057,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   PetscInt, pointer :: temp_int_array(:)
   PetscInt, pointer :: vertex_ids_geomech(:)
   PetscInt, pointer :: cell_ids_flow(:)
-  PetscInt :: max_size
+  PetscInt :: max_size, max_size_old
   PetscInt :: count
   PetscInt :: temp_int
   PetscInt :: input_data_type
@@ -1112,7 +1112,8 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
       endif
       vertex_ids_geomech(count) = temp_int
       if (count+1 > max_size) then ! resize temporary array
-        call reallocateIntArray(cell_ids_flow, max_size)
+        max_size_old = max_size
+        call reallocateIntArray(cell_ids_flow, max_size_old)
         call reallocateIntArray(vertex_ids_geomech, max_size)
       endif
     enddo
