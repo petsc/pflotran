@@ -466,7 +466,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
     allocate(density_vec(size(elenodes)))
     allocate(youngs_vec(size(elenodes)))
     allocate(poissons_vec(size(elenodes)))
-   elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     eletype = grid%gauss_node(ielem)%EleType
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex)
@@ -671,14 +671,14 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal :: bf(THREE_INTEGER)
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
   PetscReal, allocatable :: N(:,:)
-  PetscReal, pointer :: vecB_transpose(:,:), transpose_vecB_transpose(:,:)
+  PetscReal, pointer :: vecB_transpose(:,:)
   PetscReal, pointer :: kron_B_eye(:,:)
   PetscReal, pointer :: kron_B_transpose_eye(:,:)
   PetscReal, pointer :: Trans(:,:)
   PetscReal, pointer :: kron_eye_B_transpose(:,:)
   PetscReal, pointer :: kron_N_eye(:,:)
   PetscReal, pointer :: vec_local_disp(:,:)
-  PetscReal, allocatable :: force(:), res_vec_mat(:,:)
+  PetscReal, pointer :: force(:), res_vec_mat(:,:)
   
   allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
@@ -748,6 +748,11 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     force = force + w(igpt)*alpha*dot_product(N(:,1),local_temp)*vecB_transpose(:,1)*detJ_map
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
+    deallocate(vecB_transpose)
+    deallocate(kron_B_eye)
+    deallocate(kron_B_transpose_eye)
+    deallocate(kron_eye_B_transpose)
+    deallocate(kron_N_eye)
   enddo
   
   call ConvertMatrixToVector(transpose(local_disp),vec_local_disp)
@@ -760,6 +765,8 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   deallocate(force)
   deallocate(Kmat)
   deallocate(res_vec_mat)
+  deallocate(vec_local_disp)
+  deallocate(Trans)
 
 end subroutine GeomechForceLocalElemResidual
 
@@ -958,7 +965,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscReal :: youngs_mod, poissons_ratio
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
   PetscReal, allocatable :: N(:,:)
-  PetscReal, pointer :: vecB_transpose(:,:), transpose_vecB_transpose(:,:)
+  PetscReal, pointer :: vecB_transpose(:,:)
   PetscReal, pointer :: kron_B_eye(:,:)
   PetscReal, pointer :: kron_B_transpose_eye(:,:)
   PetscReal, pointer :: Trans(:,:)
@@ -1021,10 +1028,16 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     Kmat = Kmat + w(igpt)*mu*matmul(matmul(kron_B_eye,kron_eye_B_transpose),Trans)*detJ_map
     call ShapeFunctionDestroy(shapefunction)
     deallocate(N)
+    deallocate(vecB_transpose)
+    deallocate(kron_B_eye)
+    deallocate(kron_B_transpose_eye)
+    deallocate(kron_eye_B_transpose)
+    deallocate(kron_N_eye)
   enddo
     
   deallocate(zeta)
   deallocate(B)
+  deallocate(Trans)
 
 end subroutine GeomechForceLocalElemJacobian
 

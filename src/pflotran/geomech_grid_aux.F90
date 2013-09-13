@@ -571,6 +571,7 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_elem, &
                      int_array,PETSC_COPY_VALUES,is_tmp_petsc,ierr)
   deallocate(int_array) 
+  deallocate(int_array2)
 
   ! create a local to global mapping
   call ISLocalToGlobalMappingCreateIS(is_tmp_petsc, &

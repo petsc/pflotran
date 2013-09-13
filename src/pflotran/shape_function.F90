@@ -247,6 +247,8 @@ subroutine ShapeFunctionDestroy(shapefunction)
   nullify(shapefunction%N)
   deallocate(shapefunction%DN)
   nullify(shapefunction%DN)
+  deallocate(shapefunction%zeta)
+  nullify(shapefunction%zeta)
   
 end subroutine ShapeFunctionDestroy
      
