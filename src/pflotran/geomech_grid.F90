@@ -290,6 +290,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   deallocate(val)
   deallocate(cols)
+  call MatDestroy(Rank_Mat,ierr)
   
   ! Change rank to start from 0
   int_array = int_array - 1

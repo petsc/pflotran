@@ -671,14 +671,14 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal :: bf(THREE_INTEGER)
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
   PetscReal, allocatable :: N(:,:)
-  PetscReal, pointer :: vecB_transpose(:,:)
-  PetscReal, pointer :: kron_B_eye(:,:)
-  PetscReal, pointer :: kron_B_transpose_eye(:,:)
-  PetscReal, pointer :: Trans(:,:)
-  PetscReal, pointer :: kron_eye_B_transpose(:,:)
-  PetscReal, pointer :: kron_N_eye(:,:)
-  PetscReal, pointer :: vec_local_disp(:,:)
-  PetscReal, pointer :: force(:), res_vec_mat(:,:)
+  PetscReal, allocatable :: vecB_transpose(:,:)
+  PetscReal, allocatable :: kron_B_eye(:,:)
+  PetscReal, allocatable :: kron_B_transpose_eye(:,:)
+  PetscReal, allocatable :: Trans(:,:)
+  PetscReal, allocatable :: kron_eye_B_transpose(:,:)
+  PetscReal, allocatable :: kron_N_eye(:,:)
+  PetscReal, allocatable :: vec_local_disp(:,:)
+  PetscReal, allocatable :: force(:), res_vec_mat(:,:)
   
   allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
@@ -965,12 +965,12 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscReal :: youngs_mod, poissons_ratio
   PetscReal :: identity(THREE_INTEGER,THREE_INTEGER)
   PetscReal, allocatable :: N(:,:)
-  PetscReal, pointer :: vecB_transpose(:,:)
-  PetscReal, pointer :: kron_B_eye(:,:)
-  PetscReal, pointer :: kron_B_transpose_eye(:,:)
-  PetscReal, pointer :: Trans(:,:)
-  PetscReal, pointer :: kron_eye_B_transpose(:,:)
-  PetscReal, pointer :: kron_N_eye(:,:)
+  PetscReal, allocatable :: vecB_transpose(:,:)
+  PetscReal, allocatable :: kron_B_eye(:,:)
+  PetscReal, allocatable :: kron_B_transpose_eye(:,:)
+  PetscReal, allocatable :: Trans(:,:)
+  PetscReal, allocatable :: kron_eye_B_transpose(:,:)
+  PetscReal, allocatable :: kron_N_eye(:,:)
   PetscReal, allocatable :: local_youngs(:)
   PetscReal, allocatable :: local_poissons(:)
 
@@ -1163,20 +1163,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
-
-#if 0
-    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out', &
-                              viewer,ierr)   
-    call VecView(realization%field%flow_dxx,viewer,ierr) 
-
-    call PetscViewerDestroy(viewer,ierr)
- 
-
-    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy.out', &
-                              viewer,ierr)   
-    call VecView(realization%field%flow_yy,viewer,ierr) 
-    call PetscViewerDestroy(viewer,ierr)
-#endif
 
   call PetscLogEventEnd(geomech_logging%event_geomech_jacobian,ierr)
 !  call printErrMsg(option)
