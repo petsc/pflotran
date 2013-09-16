@@ -43,6 +43,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   use Geomechanics_Realization_module
   use Geomechanics_Logging_module  
   use Output_Geomechanics_module
+  use Geomechanics_Force_module
 #endif
 
   implicit none
@@ -184,6 +185,15 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
     init_status = TIMESTEPPER_INIT_DONE
     return
   endif
+  
+#ifdef GEOMECH       
+    if (option%ngeomechdof > 0) then
+      if (option%geomech_subsurf_coupling) &
+        call GeomechUpdateFromSubsurf(realization,geomech_realization)
+      call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                          failure)
+    endif
+#endif  
 
   ! print initial condition output if not a restarted sim
   call OutputInit(master_stepper%steps)
