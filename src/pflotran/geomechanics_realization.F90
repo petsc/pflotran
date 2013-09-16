@@ -409,6 +409,13 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   call VecScatterCreate(realization%field%porosity0,is_subsurf_petsc, &
                         geomech_realization%geomech_field%press, &
                         is_geomech_petsc,scatter,ierr)
+                        
+  if (ierr /= 0) then
+    option%io_buffer = 'The number of cells specified in ' // &
+                       'input file might not be same as the ' // &
+                       'SUBSURF->GEOMECH mapping used.'
+    call printErrMsg(option)
+  endif
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
