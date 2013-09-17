@@ -642,7 +642,6 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
-  PetscReal, allocatable :: zeta(:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: res_vec(:)
   PetscReal, allocatable :: local_disp(:,:)
@@ -680,7 +679,6 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: vec_local_disp(:,:)
   PetscReal, allocatable :: force(:), res_vec_mat(:,:)
   
-  allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
   allocate(Kmat(size(elenodes)*option%ngeomechdof, &
                 size(elenodes)*option%ngeomechdof))  
@@ -760,7 +758,6 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   res_vec = res_vec + res_vec_mat(:,1)
   res_vec = res_vec - force
 
-  deallocate(zeta)
   deallocate(B)
   deallocate(force)
   deallocate(Kmat)
@@ -792,7 +789,6 @@ subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
   
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
-  PetscReal, allocatable :: zeta(:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: res_vec(:)
   PetscReal, allocatable :: local_disp(:,:)
@@ -819,7 +815,6 @@ subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
   PetscReal :: error_H1, error_L2
   PetscReal :: trace_disp, trace_disp_grad
   
-  allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
   
   error_H1 = 0.d0
@@ -878,7 +873,6 @@ subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
     call ShapeFunctionDestroy(shapefunction)
   enddo
 
-  deallocate(zeta)
   deallocate(B)
 
 end subroutine GeomechForceLocalElemError
@@ -947,7 +941,6 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   
   PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
-  PetscReal, allocatable :: zeta(:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: local_disp(:)
   PetscReal, pointer :: r(:,:), w(:)
@@ -974,7 +967,6 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: local_youngs(:)
   PetscReal, allocatable :: local_poissons(:)
 
-  allocate(zeta(size(r,2)))
   allocate(B(size(elenodes),dim))
   
   Kmat = 0.d0
@@ -1035,7 +1027,6 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     deallocate(kron_N_eye)
   enddo
     
-  deallocate(zeta)
   deallocate(B)
   deallocate(Trans)
 

@@ -13,7 +13,7 @@ module Geomechanics_Global_Aux_module
   type, public :: geomech_global_auxvar_type
     PetscReal, pointer :: disp_vector(:)   ! [m]
     PetscReal, pointer :: strain(:,:)      ! dimensionless
-    PetscReal, pointer :: stress(:,:)      ! [N]
+    PetscReal, pointer :: stress(:,:)      ! [Pa]
   end type geomech_global_auxvar_type
   
   type, public :: geomech_global_type
