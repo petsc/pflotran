@@ -427,6 +427,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: error_H1_global, error_L2_global
   PetscReal :: error_L2, error_H1
   PetscReal, pointer :: imech_loc_p(:)      
+  PetscInt :: size_elenodes
                     
   field => realization%geomech_field
   discretization => realization%discretization
@@ -491,14 +492,15 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
       youngs_vec(ivertex) = GeomechParam%youngs_modulus(int(imech_loc_p(ghosted_id))) 
       poissons_vec(ivertex) = GeomechParam%poissons_ratio(int(imech_loc_p(ghosted_id))) 
     enddo
-    call GeomechForceLocalElemResidual(elenodes,local_coordinates, &
+    size_elenodes = size(elenodes)
+    call GeomechForceLocalElemResidual(size_elenodes,local_coordinates, &
        local_disp,local_press,local_temp,youngs_vec,poissons_vec, &
        density_vec,beta_vec,alpha_vec,eletype, &
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,res_vec,option)
     call VecSetValues(r,size(ids),ids,res_vec,ADD_VALUES,ierr) 
 #if 0
-    call GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
+    call GeomechForceLocalElemError(size_elenodes,local_coordinates,local_disp, &
                                     eletype,grid%gauss_node(ielem)%dim, &
                                     grid%gauss_node(ielem)%r, &
                                     grid%gauss_node(ielem)%w,error_L2, &
@@ -625,7 +627,7 @@ end subroutine GeomechForceResidualPatch
 ! date: 06/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, &
+subroutine GeomechForceLocalElemResidual(size_elenodes,local_coordinates,local_disp, &
                                          local_press,local_temp, &
                                          local_youngs,local_poissons, &
                                          local_density,local_beta,local_alpha, &
@@ -639,8 +641,6 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   type(shapefunction_type) :: shapefunction
   type(option_type) :: option
 
-  
-  PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: res_vec(:)
@@ -678,12 +678,13 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: kron_N_eye(:,:)
   PetscReal, allocatable :: vec_local_disp(:,:)
   PetscReal, allocatable :: force(:), res_vec_mat(:,:)
+  PetscInt :: size_elenodes
   
-  allocate(B(size(elenodes),dim))
-  allocate(Kmat(size(elenodes)*option%ngeomechdof, &
-                size(elenodes)*option%ngeomechdof))  
-  allocate(force(size(elenodes)*option%ngeomechdof))
-  allocate(res_vec_mat(size(elenodes)*option%ngeomechdof,1))
+  allocate(B(size_elenodes,dim))
+  allocate(Kmat(size_elenodes*option%ngeomechdof, &
+                size_elenodes*option%ngeomechdof))  
+  allocate(force(size_elenodes*option%ngeomechdof))
+  allocate(res_vec_mat(size_elenodes*option%ngeomechdof,1))
   
   res_vec = 0.d0
   res_vec_mat = 0.d0
@@ -698,7 +699,7 @@ subroutine GeomechForceLocalElemResidual(elenodes,local_coordinates,local_disp, 
     enddo
   enddo
   
-  call Transposer(option%ngeomechdof,size(elenodes),Trans)
+  call Transposer(option%ngeomechdof,size_elenodes,Trans)
  
   do igpt = 1, len_w
     shapefunction%EleType = eletype
@@ -775,7 +776,7 @@ end subroutine GeomechForceLocalElemResidual
 !
 ! ************************************************************************** !
 #if 0
-subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
+subroutine GeomechForceLocalElemError(size_elenodes,local_coordinates,local_disp, &
                                       eletype,dim,r,w,error_L2,error_H1,option)
                                          
   use Unstructured_Cell_module
@@ -787,7 +788,6 @@ subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
   type(option_type) :: option
 
   
-  PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: res_vec(:)
@@ -815,7 +815,7 @@ subroutine GeomechForceLocalElemError(elenodes,local_coordinates,local_disp, &
   PetscReal :: error_H1, error_L2
   PetscReal :: trace_disp, trace_disp_grad
   
-  allocate(B(size(elenodes),dim))
+  allocate(B(size_elenodes,dim))
   
   error_H1 = 0.d0
   error_L2 = 0.d0
@@ -926,7 +926,7 @@ end subroutine GetAnalytical
 ! date: 06/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, &
+subroutine GeomechForceLocalElemJacobian(size_elenodes,local_coordinates,local_disp, &
                                          local_youngs,local_poissons, &
                                          eletype,dim,r,w,Kmat,option)
                                          
@@ -938,8 +938,6 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   type(shapefunction_type) :: shapefunction
   type(option_type) :: option
 
-  
-  PetscInt, allocatable :: elenodes(:)
   PetscReal, allocatable :: local_coordinates(:,:)
   PetscReal, allocatable :: B(:,:), Kmat(:,:)
   PetscReal, allocatable :: local_disp(:)
@@ -966,8 +964,9 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
   PetscReal, allocatable :: kron_N_eye(:,:)
   PetscReal, allocatable :: local_youngs(:)
   PetscReal, allocatable :: local_poissons(:)
+  PetscInt :: size_elenodes
 
-  allocate(B(size(elenodes),dim))
+  allocate(B(size_elenodes,dim))
   
   Kmat = 0.d0
   len_w = size(w)
@@ -979,7 +978,7 @@ subroutine GeomechForceLocalElemJacobian(elenodes,local_coordinates,local_disp, 
     enddo
   enddo
   
-  call Transposer(option%ngeomechdof,size(elenodes),Trans)
+  call Transposer(option%ngeomechdof,size_elenodes,Trans)
 
   do igpt = 1, len_w
     shapefunction%EleType = eletype
@@ -1219,6 +1218,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: petsc_id1, petsc_id2
   PetscInt :: id1, id2, i, j, vertex_count, count
   PetscReal, pointer :: imech_loc_p(:)
+  PetscInt :: size_elenodes
         
   field => realization%geomech_field
   discretization => realization%discretization
@@ -1259,7 +1259,8 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       youngs_vec(ivertex) = GeomechParam%youngs_modulus(int(imech_loc_p(ghosted_id))) 
       poissons_vec(ivertex) = GeomechParam%poissons_ratio(int(imech_loc_p(ghosted_id))) 
     enddo
-    call GeomechForceLocalElemJacobian(elenodes,local_coordinates, &
+    size_elenodes = size(elenodes)
+    call GeomechForceLocalElemJacobian(size_elenodes,local_coordinates, &
        local_disp,youngs_vec,poissons_vec,eletype, &
        grid%gauss_node(ielem)%dim,grid%gauss_node(ielem)%r, &
        grid%gauss_node(ielem)%w,Jac_full,option)
