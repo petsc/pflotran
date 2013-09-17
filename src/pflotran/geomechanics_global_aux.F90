@@ -12,8 +12,11 @@ module Geomechanics_Global_Aux_module
 
   type, public :: geomech_global_auxvar_type
     PetscReal, pointer :: disp_vector(:)   ! [m]
-    PetscReal, pointer :: strain(:,:)      ! dimensionless
-    PetscReal, pointer :: stress(:,:)      ! [Pa]
+    PetscReal, pointer :: strain(:)        ! dimensionless
+    PetscReal, pointer :: stress(:)        ! [Pa]
+    PetscInt :: count                      ! Number of elements shared by a vertex
+    ! The count above will be used for averaging the strains and stresses
+    ! over the elements
   end type geomech_global_auxvar_type
   
   type, public :: geomech_global_type
@@ -75,8 +78,8 @@ subroutine GeomechGlobalAuxVarInit(aux_var,option)
   type(option_type)                      :: option
   
   allocate(aux_var%disp_vector(option%ngeomechdof))
-  allocate(aux_var%strain(option%ngeomechdof,option%ngeomechdof))
-  allocate(aux_var%stress(option%ngeomechdof,option%ngeomechdof))
+  allocate(aux_var%strain(SIX_INTEGER))
+  allocate(aux_var%stress(SIX_INTEGER))
   aux_var%disp_vector = 0.d0
   aux_var%strain = 0.d0
   aux_var%stress = 0.d0

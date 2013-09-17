@@ -30,8 +30,9 @@ module Geomechanics_Force_module
             GeomechForceResidual, &
             GeomechForceJacobian, &
             GeomechUpdateFromSubsurf, &
-            GeomechCreateGeomechSubsurfVec
-  
+            GeomechCreateGeomechSubsurfVec, &
+            GeomechUpdateSolution 
+ 
 contains
 
 ! ************************************************************************** !
@@ -1543,6 +1544,298 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
   call VecSetFromOptions(geomech_field%subsurf_vec_1dof,ierr)
   
 end subroutine GeomechCreateGeomechSubsurfVec
+
+! ************************************************************************** !
+!
+! GeomechForceStressStrain: Computes the stress strain on a patch 
+! author: Satish Karra
+! date: 09/17/13
+!
+! ************************************************************************** !
+subroutine GeomechForceStressStrain(realization)
+
+  use Geomechanics_Realization_module
+  use Geomechanics_Field_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Logging_module
+  use Geomechanics_Patch_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Unstructured_Cell_module
+  use Geomechanics_Region_module
+  use Geomechanics_Coupler_module
+  use Option_module
+  use Geomechanics_Auxiliary_module
+
+  implicit none
+
+  type(geomech_realization_type) :: realization
+  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_field_type), pointer :: field
+  type(geomech_grid_type), pointer :: grid
+  type(geomech_global_auxvar_type), pointer :: geomech_global_aux_vars(:)
+  type(option_type), pointer :: option
+  type(gm_region_type), pointer :: region
+  type(geomech_coupler_type), pointer :: boundary_condition
+  type(geomech_parameter_type), pointer :: GeomechParam
+
+  PetscInt, allocatable :: elenodes(:)
+  PetscReal, allocatable :: local_coordinates(:,:)
+  PetscReal, allocatable :: local_disp(:,:)
+  PetscInt, allocatable :: petsc_ids(:)
+  PetscInt, allocatable :: ids(:)
+  PetscReal, allocatable :: youngs_vec(:), poissons_vec(:)
+  PetscReal, allocatable :: strain(:,:), stress(:,:)
+  PetscInt, allocatable :: count(:)
+  PetscInt :: ielem, ivertex 
+  PetscInt :: ghosted_id
+  PetscInt :: eletype, idof
+  PetscInt :: petsc_id, local_id
+  PetscInt :: size_elenodes
+  PetscReal, pointer :: imech_loc_p(:)  
+  
+  PetscErrorCode :: ierr
+                  
+  field => realization%geomech_field
+  discretization => realization%discretization
+  patch => realization%geomech_patch
+  grid => patch%geomech_grid
+  option => realization%option
+  geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
+  GeomechParam => patch%geomech_aux%GeomechParam 
+
+  call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
+
+   ! Loop over elements on a processor
+  do ielem = 1, grid%nlmax_elem
+    allocate(elenodes(grid%elem_nodes(0,ielem)))
+    allocate(local_coordinates(size(elenodes),THREE_INTEGER))
+    allocate(local_disp(size(elenodes),option%ngeomechdof))
+    allocate(petsc_ids(size(elenodes)))
+    allocate(ids(size(elenodes)*option%ngeomechdof))
+    allocate(youngs_vec(size(elenodes)))
+    allocate(poissons_vec(size(elenodes)))
+    allocate(strain(size(elenodes),SIX_INTEGER))
+    allocate(stress(size(elenodes),SIX_INTEGER))
+    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    eletype = grid%gauss_node(ielem)%EleType
+    do ivertex = 1, grid%elem_nodes(0,ielem)
+      ghosted_id = elenodes(ivertex)
+      local_coordinates(ivertex,GEOMECH_DISP_X_DOF) = grid%nodes(ghosted_id)%x
+      local_coordinates(ivertex,GEOMECH_DISP_Y_DOF) = grid%nodes(ghosted_id)%y
+      local_coordinates(ivertex,GEOMECH_DISP_Z_DOF) = grid%nodes(ghosted_id)%z
+      petsc_ids(ivertex) = grid%node_ids_ghosted_petsc(ghosted_id)
+    enddo
+    do ivertex = 1, grid%elem_nodes(0,ielem)
+      ghosted_id = elenodes(ivertex)
+      do idof = 1, option%ngeomechdof
+        local_disp(ivertex,idof) = &
+          geomech_global_aux_vars(ghosted_id)%disp_vector(idof)
+        ids(idof + (ivertex-1)*option%ngeomechdof) = &
+          (petsc_ids(ivertex)-1)*option%ngeomechdof + (idof-1)
+      enddo
+      youngs_vec(ivertex) = GeomechParam%youngs_modulus(int(imech_loc_p(ghosted_id))) 
+      poissons_vec(ivertex) = GeomechParam%poissons_ratio(int(imech_loc_p(ghosted_id))) 
+    enddo
+    size_elenodes = size(elenodes)
+    call GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
+       local_disp,youngs_vec,poissons_vec, &
+       eletype,grid%gauss_node(ielem)%dim,strain,stress,option)
+
+#if 0 
+    do ivertex = 1, grid%elem_nodes(0,ielem)
+      ghosted_id = elenodes(ivertex)
+      geomech_global_aux_vars(ghosted_id)%strain(:) = geomech_global_aux_vars(ghosted_id)%strain(:) + &
+                                                      strain(ivertex,:)
+      geomech_global_aux_vars(ghosted_id)%stress(:) = geomech_global_aux_vars(ghosted_id)%stress(:) + &
+                                                      stress(ivertex,:)
+    enddo
+#endif
+   
+    deallocate(elenodes)
+    deallocate(local_coordinates)
+    deallocate(local_disp)
+    deallocate(petsc_ids)
+    deallocate(ids)
+    deallocate(youngs_vec)
+    deallocate(poissons_vec)
+    deallocate(strain)
+    deallocate(stress)
+  enddo
+
+  call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)
+
+ 
+   
+end subroutine GeomechForceStressStrain
+
+! ************************************************************************** !
+!
+! GeomechForceLocalElemStressStrain: Computes the stress-strain for a local
+! element
+! author: Satish Karra
+! date: 09/17/13
+!
+! ************************************************************************** !
+subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates,local_disp, &
+                                             local_youngs,local_poissons, &
+                                             eletype,dim,strain,stress,option)
+                                         
+  use Unstructured_Cell_module
+  use Shape_Function_module
+  use Option_module
+  use Utility_module
+  
+  type(shapefunction_type) :: shapefunction
+  type(option_type) :: option
+
+  PetscReal, allocatable :: local_coordinates(:,:)
+  PetscReal, allocatable :: B(:,:), Kmat(:,:)
+  PetscReal, allocatable :: res_vec(:)
+  PetscReal, allocatable :: local_disp(:,:)
+  PetscReal, allocatable :: local_youngs(:)
+  PetscReal, allocatable :: local_poissons(:)
+  PetscReal, allocatable :: strain(:,:)
+  PetscReal, allocatable :: stress(:,:) 
+  PetscReal :: strain_local(NINE_INTEGER,ONE_INTEGER)
+  PetscReal :: stress_local(NINE_INTEGER,ONE_INTEGER) 
+    
+  PetscReal, pointer :: r(:,:), w(:)
+  PetscInt :: ivertex
+  PetscInt :: eletype
+  PetscReal :: identity(THREE_INTEGER,THREE_INTEGER) 
+  PetscInt :: indx(THREE_INTEGER)
+  PetscInt :: dim
+  PetscInt :: i, j, d
+  PetscReal :: lambda, mu
+  PetscReal :: youngs_mod, poissons_ratio
+  PetscReal, allocatable :: kron_B_eye(:,:)
+  PetscReal, allocatable :: kron_B_transpose_eye(:,:)
+  PetscReal, allocatable :: Trans(:,:)
+  PetscReal, allocatable :: kron_eye_B_transpose(:,:)
+  PetscReal, allocatable :: vec_local_disp(:,:)
+  PetscInt :: size_elenodes
+  PetscReal :: J_map(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: inv_J_map(THREE_INTEGER,THREE_INTEGER)
+  PetscReal :: eye_three(THREE_INTEGER)
+  PetscReal :: eye_vec(NINE_INTEGER,ONE_INTEGER) 
+  
+  allocate(B(size_elenodes,dim))
+  
+  call Transposer(option%ngeomechdof,size_elenodes,Trans)
+  strain = 0.d0
+  stress = 0.d0 
+
+  call ConvertMatrixToVector(transpose(local_disp),vec_local_disp)
+
+  identity = 0.d0
+  do i = 1, THREE_INTEGER
+    do j = 1, THREE_INTEGER
+      if (i == j) identity(i,j) = 1.d0
+    enddo
+  enddo
+
+  eye_vec = 0.d0
+  eye_vec(1,1) = 1.d0
+  eye_vec(5,1) = 1.d0
+  eye_vec(9,1) = 1.d0
+ 
+  do ivertex = 1, size_elenodes
+    strain_local = 0.d0
+    stress_local = 0.d0 
+    shapefunction%EleType = eletype
+    call ShapeFunctionInitialize(shapefunction)
+    shapefunction%zeta = local_coordinates(ivertex,:)
+    call ShapeFunctionCalculate(shapefunction)
+    J_map = matmul(transpose(local_coordinates),shapefunction%DN)
+    call ludcmp(J_map,THREE_INTEGER,indx,d)
+    do i = 1, THREE_INTEGER
+      eye_three = 0.d0
+      eye_three(i) = 1.d0
+      call lubksb(J_map,THREE_INTEGER,indx,eye_three)
+      inv_J_map(:,i) = eye_three
+    enddo
+    B = matmul(shapefunction%DN,inv_J_map)
+    youngs_mod = dot_product(shapefunction%N,local_youngs)
+    poissons_ratio = dot_product(shapefunction%N,local_poissons)
+    call GeomechGetLambdaMu(lambda,mu,youngs_mod,poissons_ratio)
+    call Kron(B,identity,kron_B_eye)
+    call Kron(transpose(B),identity,kron_B_transpose_eye)
+    call Kron(identity,transpose(B),kron_eye_B_transpose)
+    strain_local =  0.5*matmul((kron_B_transpose_eye + matmul(kron_eye_B_transpose,Trans)),vec_local_disp)
+    stress_local = lambda*(strain_local(1,1)+strain_local(5,1)+strain_local(9,1))*eye_vec + &
+                   2*mu*strain_local 
+    call ShapeFunctionDestroy(shapefunction)
+    deallocate(kron_B_eye)
+    deallocate(kron_B_transpose_eye)
+    deallocate(kron_eye_B_transpose)
+    strain(ivertex,1) = strain_local(1,1)
+    strain(ivertex,2) = strain_local(5,1)
+    strain(ivertex,3) = strain_local(9,1)
+    strain(ivertex,4) = strain_local(2,1)
+    strain(ivertex,5) = strain_local(4,1)
+    strain(ivertex,6) = strain_local(3,1)
+    stress(ivertex,1) = stress_local(1,1)
+    stress(ivertex,2) = stress_local(5,1)
+    stress(ivertex,3) = stress_local(9,1)
+    stress(ivertex,4) = stress_local(2,1)
+    stress(ivertex,5) = stress_local(4,1)
+    stress(ivertex,6) = stress_local(3,1)
+  enddo
+  
+  deallocate(B)
+  deallocate(vec_local_disp)
+  deallocate(Trans)
+
+end subroutine GeomechForceLocalElemStressStrain 
+
+! ************************************************************************** !
+!
+! GeomechUpdateSolution: Updates data in module after a successful time 
+!                        step
+! author: Satish Karra
+! date: 09/17/13 
+!
+! ************************************************************************** !
+subroutine GeomechUpdateSolution(realization)
+
+  use Geomechanics_Realization_module 
+  use Geomechanics_Field_module
+  
+  implicit none 
+  
+  type(geomech_realization_type) :: realization
+  type(geomech_field_type), pointer :: field
+  
+  PetscErrorCode :: ierr 
+  PetscViewer :: viewer
+  
+  field => realization%geomech_field
+
+  call GeomechUpdateSolutionPatch(realization)
+
+end subroutine GeomechUpdateSolution
+
+! ************************************************************************** !
+!
+! GeomechUpdateSolutionPatch: Updates data in module after a successful time 
+!                             step
+! author: Satish Karra, LANL 
+! date: 09/17/13
+!
+! ************************************************************************** !
+subroutine GeomechUpdateSolutionPatch(realization)
+
+  use Geomechanics_Realization_module
+    
+  implicit none 
+  
+  type(geomech_realization_type) :: realization
+
+  call GeomechForceStressStrain(realization)
+
+end subroutine GeomechUpdateSolutionPatch
 
 end module Geomechanics_Force_module
 

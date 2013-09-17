@@ -192,6 +192,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
         call GeomechUpdateFromSubsurf(realization,geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
+      call GeomechUpdateSolution(geomech_realization)
     endif
 #endif  
 
@@ -482,6 +483,12 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     
     option%time = master_stepper%target_time
     call StepperUpdateSolution(realization,PETSC_TRUE)
+
+#if GEOMECH
+    if (option%ngeomechdof > 0) then
+      call GeomechUpdateSolution(geomech_realization)
+    endif
+#endif
 
     if (associated(tran_stepper)) then
       !geh: must revert tran_dt back after update of solution.  Otherwise,
