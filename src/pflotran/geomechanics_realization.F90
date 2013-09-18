@@ -58,7 +58,8 @@ public :: GeomechRealizCreate, &
           GeomechRealizAddWaypointsToList, &
           GeomechRealizGetDataset, &
           GeomechRealizLocalToLocalWithArray, &
-          GeomechRealizMapSubsurfGeomechGrid
+          GeomechRealizMapSubsurfGeomechGrid, &
+          GeomechGridElemSharedByNodes
 
 contains
 
@@ -455,6 +456,56 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   call AODestroy(ao_geomech_to_subsurf_natural,ierr)
 
 end subroutine
+
+! ************************************************************************** !
+!
+! GeomechGridElemsSharedByNodes: Calculates the number of elements common
+! to a node (vertex)
+! author: Satish Karra
+! date: 09/17/13
+!
+! ************************************************************************** !
+subroutine GeomechGridElemSharedByNodes(realization)
+  
+  use Geomechanics_Grid_Aux_module
+
+  implicit none
+
+  type(geomech_realization_type) :: realization
+  type(geomech_grid_type), pointer :: grid
+  
+  PetscInt :: ielem
+  PetscInt :: ivertex
+  PetscInt :: ghosted_id
+  PetscInt, allocatable :: elenodes(:)
+  PetscReal, pointer :: elem_sharing_node_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  grid => realization%discretization%grid
+  
+  call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
+                      ierr)
+  
+  do ielem = 1, grid%nlmax_elem
+    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    do ivertex = 1, grid%elem_nodes(0,ielem)
+      ghosted_id = elenodes(ivertex) 
+      elem_sharing_node_loc_p(ghosted_id) = &
+        elem_sharing_node_loc_p(ghosted_id) + 1
+    enddo
+  enddo
+  
+  call VecRestoreArrayF90(grid%no_elems_sharing_node_loc, &
+                         elem_sharing_node_loc_p,ierr)
+
+  
+  ! Local to global scatter
+  call GeomechDiscretizationLocalToGlobalAdd(realization%discretization, &
+                                             grid%no_elems_sharing_node_loc, &
+                                             grid%no_elems_sharing_node, &
+                                             ONEDOF)  
+                                             
+end subroutine GeomechGridElemSharedByNodes
 
 ! ************************************************************************** !
 !

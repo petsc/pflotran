@@ -1792,7 +1792,8 @@ end subroutine GeomechForceStressStrain
 ! date: 09/17/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates,local_disp, &
+subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
+                                             local_disp, &
                                              local_youngs,local_poissons, &
                                              eletype,dim,strain,stress,option)
                                          

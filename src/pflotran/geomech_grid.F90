@@ -32,9 +32,8 @@ module Geomechanics_Grid_module
             GeomechGridVecRestoreArrayF90, &
             GeomechGridCopyIntegerArrayToVec, &
             GeomechGridCopyVecToIntegerArray, &
-            GeomechSubsurfMapFromFilename, &
-            GeomechGridElemSharedByNodes 
-
+            GeomechSubsurfMapFromFilename
+            
 contains
 
 ! ************************************************************************** !
@@ -673,59 +672,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call VecSet(geomech_grid%no_elems_sharing_node,0,ierr)
  
 end subroutine CopySubsurfaceGridtoGeomechGrid
-
-! ************************************************************************** !
-!
-! GeomechGridElemsSharedByNodes: Calculates the number of elements common
-! to a node (vertex)
-! author: Satish Karra
-! date: 09/17/13
-!
-! ************************************************************************** !
-subroutine GeomechGridElemSharedByNodes(realization)
-
-  use Geomechanics_Discretization_module
-  use Geomechanics_Realization_module
-  
-  implicit none
-
-  type(geomech_realization_type) :: realization
-  type(geomech_discretization_type), pointer :: discretization
-  type(geomech_grid_type), pointer :: grid
-  
-  PetscInt :: ielem
-  PetscInt :: ivertex
-  PetscInt :: ghosted_id
-  PetscInt, allocatable :: elenodes(:)
-  PetscReal, pointer :: elem_sharing_node_loc_p(:)
-  PetscErrorCode :: ierr
-  
-  discretization => realization%discretization
-  grid => discretization%grid
-  
-  call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
-                      ierr)
-  
-  do ielem = 1, grid%nlmax_elem
-    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
-    do ivertex = 1, grid%elem_nodes(0,ielem)
-      ghosted_id = elenodes(ivertex) 
-      elem_sharing_node_loc_p(ghosted_id) = &
-        elem_sharing_node_loc_p(ghosted_id) + 1
-    enddo
-  enddo
-  
-  call VecRestoreArrayF90(grid%no_elems_sharing_node_loc, &
-                         elem_sharing_node_loc_p,ierr)
-
-  
-  ! Local to global scatter
-  call GeomechDiscretizationLocalToGlobalAdd(discretization, &
-                                             grid%no_elems_sharing_node_loc, &
-                                             grid%no_elems_sharing_node, &
-                                             ONEDOF)  
-                                             
-end subroutine GeomechGridElemSharedByNodes
 
 ! ************************************************************************** !
 !
