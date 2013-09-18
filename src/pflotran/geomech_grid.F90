@@ -32,7 +32,8 @@ module Geomechanics_Grid_module
             GeomechGridVecRestoreArrayF90, &
             GeomechGridCopyIntegerArrayToVec, &
             GeomechGridCopyVecToIntegerArray, &
-            GeomechSubsurfMapFromFilename 
+            GeomechSubsurfMapFromFilename, &
+            GeomechGridElemSharedByNodes 
 
 contains
 
@@ -667,6 +668,9 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%ngmax_node, &
                    PETSC_DECIDE,ierr)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node,ierr)
+
+  call VecSet(geomech_grid%no_elems_sharing_node_loc,0,ierr)
+  call VecSet(geomech_grid%no_elems_sharing_node,0,ierr)
  
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
@@ -678,34 +682,50 @@ end subroutine CopySubsurfaceGridtoGeomechGrid
 ! date: 09/17/13
 !
 ! ************************************************************************** !
-#if 0 
-subroutine GeomechGridElemSharedByNodes(grid,option)
+subroutine GeomechGridElemSharedByNodes(realization)
 
-  use Option_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Realization_module
   
   implicit none
 
+  type(geomech_realization_type) :: realization
+  type(geomech_discretization_type), pointer :: discretization
   type(geomech_grid_type), pointer :: grid
   
   PetscInt :: ielem
   PetscInt :: ivertex
   PetscInt :: ghosted_id
-  PetscInt :: elenodes(:)
-
-  VecSet(grid%no_elems_sharing_node_loc,0,ierr)
-  VecSet(grid%no_elems_sharing_node,0,ierr)
+  PetscInt, allocatable :: elenodes(:)
+  PetscReal, pointer :: elem_sharing_node_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  discretization => realization%discretization
+  grid => discretization%grid
+  
+  call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
+                      ierr)
   
   do ielem = 1, grid%nlmax_elem
     elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex) 
-      grid%no_elems_sharing_node(ghosted_id) = grid%no_elems_sharing_node(ghosted_id) + 1
-
+      elem_sharing_node_loc_p(ghosted_id) = &
+        elem_sharing_node_loc_p(ghosted_id) + 1
     enddo
   enddo
+  
+  call VecRestoreArrayF90(grid%no_elems_sharing_node_loc, &
+                         elem_sharing_node_loc_p,ierr)
 
+  
+  ! Local to global scatter
+  call GeomechDiscretizationLocalToGlobalAdd(discretization, &
+                                             grid%no_elems_sharing_node_loc, &
+                                             grid%no_elems_sharing_node, &
+                                             ONEDOF)  
+                                             
 end subroutine GeomechGridElemSharedByNodes
-#endif
 
 ! ************************************************************************** !
 !

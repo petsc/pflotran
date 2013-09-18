@@ -1188,6 +1188,7 @@ subroutine Init(simulation)
     call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
     call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
+    call GeomechGridElemSharedByNodes(geomech_realization)
     call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
     call WaypointListRemoveExtraWaypnts(option, &
                                     simulation%geomech_realization%waypoints)

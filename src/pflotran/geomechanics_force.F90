@@ -148,8 +148,69 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
   name = 'Material ID'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_DISCRETE,units, &
-                               MATERIAL_ID)
+                               GEOMECH_MATERIAL_ID)
+                               
+  name = 'strain_xx'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRAIN_XX)
+                               
+  name = 'strain_yy'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRAIN_YY)
+                               
+  name = 'strain_zz'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRAIN_ZZ)
+                               
+  name = 'strain_xy'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRAIN_XY)
+                               
+  name = 'strain_yz'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRAIN_YZ)
+                               
+  name = 'strain_zx'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRAIN_ZX)
+                                                                              
+  name = 'stress_xx'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRESS_XX)
+                               
+  name = 'stress_yy'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRESS_YY)
+                               
+  name = 'stress_zz'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRESS_ZZ)
+                               
+  name = 'stress_xy'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRESS_XY)
+                               
+  name = 'stress_yz'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRESS_YZ)
+                               
+  name = 'stress_zx'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               STRESS_ZX)
   
+
 end subroutine GeomechForceSetPlotVariables
 
 ! ************************************************************************** !
@@ -1596,6 +1657,8 @@ subroutine GeomechForceStressStrain(realization)
   PetscReal, pointer :: imech_loc_p(:)  
   PetscReal, pointer :: strain_loc_p(:)
   PetscReal, pointer :: stress_loc_p(:)
+  PetscReal, pointer :: strain_p(:), stress_p(:)
+  PetscReal, pointer :: no_elems_p(:)
   
   PetscErrorCode :: ierr
                   
@@ -1678,6 +1741,46 @@ subroutine GeomechForceStressStrain(realization)
   call GeomechDiscretizationLocalToGlobalAdd(discretization, &
                                              field%stress_loc,field%stress, &
                                              SIX_INTEGER)
+                                             
+! Now take the average at each node for elements sharing the node
+  call VecGetArrayF90(grid%no_elems_sharing_node,no_elems_p,ierr)
+  call VecGetArrayF90(field%strain,strain_p,ierr)
+  call VecGetArrayF90(field%stress,stress_p,ierr)
+  do local_id = 1, grid%nlmax_node
+    ghosted_id = grid%nL2G(local_id)
+    do idof = 1, SIX_INTEGER
+      strain_p(idof + (ghosted_id-1)*SIX_INTEGER) = &
+        strain_p(idof + (ghosted_id-1)*SIX_INTEGER)/int(no_elems_p(ghosted_id))
+      stress_p(idof + (ghosted_id-1)*SIX_INTEGER) = &
+        stress_p(idof + (ghosted_id-1)*SIX_INTEGER)/int(no_elems_p(ghosted_id))
+    enddo
+  enddo
+  call VecRestoreArrayF90(field%stress,stress_p,ierr)
+  call VecRestoreArrayF90(field%strain,strain_p,ierr)
+  call VecRestoreArrayF90(grid%no_elems_sharing_node,no_elems_p,ierr)
+
+! Now scatter back to local domains
+  call GeomechDiscretizationGlobalToLocal(discretization, &
+                                          field%strain,field%strain_loc, &
+                                          SIX_INTEGER)
+  call GeomechDiscretizationGlobalToLocal(discretization, &
+                                          field%stress,field%stress_loc, &
+                                          SIX_INTEGER)
+                                          
+  call VecGetArrayF90(field%strain_loc,strain_loc_p,ierr)
+  call VecGetArrayF90(field%stress_loc,stress_loc_p,ierr)                                        
+! Copy them to global_aux_vars
+  do local_id = 1, grid%ngmax_node  
+    ghosted_id = grid%nL2G(local_id)
+    do idof = 1, SIX_INTEGER
+      geomech_global_aux_vars(ghosted_id)%strain(idof) = &
+        strain_loc_p(idof + (ghosted_id-1)*SIX_INTEGER)
+      geomech_global_aux_vars(ghosted_id)%stress(idof) = &
+        stress_loc_p(idof + (ghosted_id-1)*SIX_INTEGER)
+    enddo
+  enddo
+  call VecRestoreArrayF90(field%strain_loc,strain_loc_p,ierr)
+  call VecRestoreArrayF90(field%stress_loc,stress_loc_p,ierr)
 
 end subroutine GeomechForceStressStrain
 
