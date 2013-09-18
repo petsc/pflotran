@@ -629,7 +629,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     call GaussInitialize(geomech_grid%gauss_node(local_id))  
     geomech_grid%gauss_node(local_id)%Eletype = geomech_grid%Elem_type(local_id)
     geomech_grid%gauss_node(local_id)%dim = THREE_DIM_GRID
-    geomech_grid%gauss_node(local_id)%NGPTS = TWO_INTEGER
+    geomech_grid%gauss_node(local_id)%NGPTS = FOUR_INTEGER
     if (geomech_grid%gauss_node(local_id)%Eletype == PYR_TYPE) &
       geomech_grid%gauss_node(local_id)%NGPTS = FIVE_INTEGER
     call GaussCalculatePoints(geomech_grid%gauss_node(local_id))
