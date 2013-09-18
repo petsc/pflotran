@@ -24,7 +24,11 @@ module Geomechanics_Field_module
     Vec :: temp       ! store temperature from subsurf
     Vec :: subsurf_vec_1dof ! MPI
     Vec :: imech_loc
-
+    Vec :: strain
+    Vec :: strain_loc
+    Vec :: stress
+    Vec :: stress_loc
+  
     ! Solution vectors (xx = current iterate)
     Vec :: disp_xx, disp_xx_loc
 
@@ -66,7 +70,12 @@ function GeomechFieldCreate()
   geomech_field%temp_loc = 0
   geomech_field%subsurf_vec_1dof = 0
   geomech_field%imech_loc = 0
-  
+
+  geomech_field%strain = 0
+  geomech_field%strain_loc = 0
+  geomech_field%stress = 0
+  geomech_field%stress_loc = 0 
+
   GeomechFieldCreate => geomech_field
 
 end function GeomechFieldCreate
@@ -102,7 +111,11 @@ subroutine GeomechFieldDestroy(geomech_field)
     call VecDestroy(geomech_field%subsurf_vec_1dof,ierr)
   if (geomech_field%imech_loc /= 0) call VecDestroy(geomech_field%imech_loc,ierr)
 
-  
+  if (geomech_field%strain /= 0) call VecDestroy(geomech_field%strain,ierr)
+  if (geomech_field%strain_loc /= 0) call VecDestroy(geomech_field%strain_loc,ierr)
+  if (geomech_field%stress /= 0) call VecDestroy(geomech_field%stress,ierr)
+  if (geomech_field%stress_loc /= 0) call VecDestroy(geomech_field%stress_loc,ierr)
+
 end subroutine GeomechFieldDestroy
 
 end module Geomechanics_Field_module

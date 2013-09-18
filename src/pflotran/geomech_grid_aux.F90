@@ -51,6 +51,8 @@ module Geomechanics_Grid_Aux_module
     PetscInt :: mapping_num_cells
     PetscInt, pointer :: mapping_cell_ids_flow(:)
     PetscInt, pointer :: mapping_vertex_ids_geomech(:)
+    Vec :: no_elems_sharing_node_loc
+    Vec :: no_elems_sharing_node
   end type geomech_grid_type
   
 
@@ -191,6 +193,8 @@ function GMGridCreate()
   nullify(geomech_grid%ghosted_node_ids_natural)
   nullify(geomech_grid%ghosted_node_ids_petsc)
   nullify(geomech_grid%gauss_node)
+  geomech_grid%no_elems_sharing_node_loc = 0
+  geomech_grid%no_elems_sharing_node = 0
 
   GMGridCreate => geomech_grid
   
@@ -862,7 +866,12 @@ subroutine GMGridDestroy(geomech_grid)
   endif
   
   nullify(geomech_grid%gauss_node)
-  
+ 
+ if (geomech_grid%no_elems_sharing_node_loc /= 0) &
+   call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr)
+ if ( geomech_grid%no_elems_sharing_node /= 0) &
+   call VecDestroy(geomech_grid%no_elems_sharing_node,ierr)
+ 
   deallocate(geomech_grid)
   nullify(geomech_grid)
   

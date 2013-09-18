@@ -1594,6 +1594,8 @@ subroutine GeomechForceStressStrain(realization)
   PetscInt :: petsc_id, local_id
   PetscInt :: size_elenodes
   PetscReal, pointer :: imech_loc_p(:)  
+  PetscReal, pointer :: strain_loc_p(:)
+  PetscReal, pointer :: stress_loc_p(:)
   
   PetscErrorCode :: ierr
                   
@@ -1606,6 +1608,8 @@ subroutine GeomechForceStressStrain(realization)
   GeomechParam => patch%geomech_aux%GeomechParam 
 
   call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
+  call VecGetArrayF90(field%strain_loc,strain_loc_p,ierr)
+  call VecGetArrayF90(field%stress_loc,stress_loc_p,ierr)
 
    ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
@@ -1643,15 +1647,15 @@ subroutine GeomechForceStressStrain(realization)
        local_disp,youngs_vec,poissons_vec, &
        eletype,grid%gauss_node(ielem)%dim,strain,stress,option)
 
-#if 0 
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex)
-      geomech_global_aux_vars(ghosted_id)%strain(:) = geomech_global_aux_vars(ghosted_id)%strain(:) + &
-                                                      strain(ivertex,:)
-      geomech_global_aux_vars(ghosted_id)%stress(:) = geomech_global_aux_vars(ghosted_id)%stress(:) + &
-                                                      stress(ivertex,:)
+      do idof = 1, SIX_INTEGER
+        strain_loc_p(idof + (ghosted_id-1)*SIX_INTEGER) = strain_loc_p(idof + (ghosted_id-1)*SIX_INTEGER) + &
+                                                       strain(ivertex,idof)
+        stress_loc_p(idof + (ghosted_id-1)*SIX_INTEGER) = stress_loc_p(idof + (ghosted_id-1)*SIX_INTEGER) + & 
+                                                       stress(ivertex,idof)
+      enddo
     enddo
-#endif
    
     deallocate(elenodes)
     deallocate(local_coordinates)
@@ -1665,9 +1669,16 @@ subroutine GeomechForceStressStrain(realization)
   enddo
 
   call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)
+  call VecRestoreArrayF90(field%strain_loc,strain_loc_p,ierr)
+  call VecRestoreArrayF90(field%stress_loc,stress_loc_p,ierr)
+  
+  call GeomechDiscretizationLocalToGlobalAdd(discretization, &
+                                             field%strain_loc,field%strain, &
+                                             SIX_INTEGER)
+  call GeomechDiscretizationLocalToGlobalAdd(discretization, &
+                                             field%stress_loc,field%stress, &
+                                             SIX_INTEGER)
 
- 
-   
 end subroutine GeomechForceStressStrain
 
 ! ************************************************************************** !

@@ -35,6 +35,7 @@ module Geomechanics_Discretization_module
     PetscInt :: dm_index_to_ndof(3)            ! mapping between a dm_ptr to the number of degrees of freedom
     type(gmdm_ptr_type), pointer :: dm_1dof
     type(gmdm_ptr_type), pointer :: dm_ngeodof 
+    type(gmdm_ptr_type), pointer :: dm_6dof    ! For stress and strain
   end type geomech_discretization_type
 
   public :: GeomechDiscretizationCreate, &
@@ -44,6 +45,7 @@ module Geomechanics_Discretization_module
             GeomechDiscretizationCreateJacobian, &
             GeomechDiscretizationGlobalToLocal, &
             GeomechDiscretizationLocalToGlobal, &
+            GeomechDiscretizationLocalToGlobalAdd, &
             GeomechDiscretizationLocalToLocal, &
             GeomechDiscretizationGlobalToNatural, &
             GeomechDiscretizationNaturalToGlobal, &
@@ -84,10 +86,13 @@ function GeomechDiscretizationCreate()
   ! nullify DM pointers
   allocate(discretization%dm_1dof)
   allocate(discretization%dm_ngeodof)
+  allocate(discretization%dm_6dof)
   discretization%dm_1dof%dm = 0
   discretization%dm_ngeodof%dm = 0
+  discretization%dm_6dof%dm = 0
   nullify(discretization%dm_1dof%gmdm)
   nullify(discretization%dm_ngeodof%gmdm)  
+  nullify(discretization%dm_6dof%gmdm) 
   nullify(discretization%grid)
   
   GeomechDiscretizationCreate => discretization
@@ -129,6 +134,9 @@ subroutine GeomechDiscretizationCreateDMs(discretization,option)
     ndof = option%ngeomechdof
     call GeomechDiscretizationCreateDM(discretization,discretization%dm_ngeodof, &
                                        ndof,option)
+
+    call GeomechDiscretizationCreateDM(discretization,discretization%dm_6dof, &
+                                       SIX_INTEGER,option)
   endif
 
 
@@ -242,6 +250,8 @@ function GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
       GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_1dof
     case(NGEODOF)
       GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_ngeodof
+    case(SIX_INTEGER)
+      GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_6dof
   end select  
   
 end function GeomechDiscretizationGetDMPtrFromIndex
@@ -334,6 +344,35 @@ subroutine GeomechDiscretizationLocalToGlobal(discretization,local_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   
 end subroutine GeomechDiscretizationLocalToGlobal
+
+! ************************************************************************** !
+!
+! GeomechDiscretizationLocalToGlobalAdd: Performs local to global communication
+! with DM and adds
+! author: Satish Karra, LANL
+! date: 09/17/13
+!
+! ************************************************************************** !
+subroutine GeomechDiscretizationLocalToGlobalAdd(discretization,local_vec, &
+                                                 global_vec,dm_index)
+
+  implicit none
+  
+  type(geomech_discretization_type)             :: discretization
+  type(gmdm_ptr_type), pointer                  :: dm_ptr
+  Vec                                           :: local_vec
+  Vec                                           :: global_vec
+  PetscInt                                      :: dm_index
+  PetscErrorCode                                :: ierr
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  
+  call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
+                       ADD_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
+                     ADD_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine GeomechDiscretizationLocalToGlobalAdd
 
 ! ************************************************************************** !
 !

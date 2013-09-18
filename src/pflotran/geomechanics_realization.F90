@@ -271,6 +271,23 @@ subroutine GeomechRealizCreateDiscretization(realization)
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
                                             geomech_field%imech_loc)
 
+  call GeomechDiscretizationCreateVector(discretization,SIX_INTEGER,geomech_field%strain_loc, &
+                                         LOCAL,option)
+
+  call VecSet(geomech_field%strain_loc,0.d0,ierr)
+ 
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%strain_loc, &
+                                            geomech_field%stress_loc)
+
+  call GeomechDiscretizationCreateVector(discretization,SIX_INTEGER,geomech_field%strain, &
+                                         GLOBAL,option)
+
+  call VecSet(geomech_field%strain,0.d0,ierr)
+ 
+  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%strain, &
+                                            geomech_field%stress)
+ 
+
   grid => discretization%grid
   
   ! set up nG2L, NL2G, etc.

@@ -655,9 +655,57 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo  
   close(86)
 #endif    
-  
+ 
+  ! local vector
+  call VecCreate(PETSC_COMM_SELF,geomech_grid%no_elems_sharing_node_loc,ierr)
+  call VecSetSizes(geomech_grid%no_elems_sharing_node_loc,geomech_grid%ngmax_node, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(geomech_grid%no_elems_sharing_node_loc,ierr)
+
+  ! global vector
+  call VecCreate(option%mycomm,geomech_grid%no_elems_sharing_node,ierr)
+  call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%ngmax_node, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(geomech_grid%no_elems_sharing_node,ierr)
+ 
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
+! ************************************************************************** !
+!
+! GeomechGridElemsSharedByNodes: Calculates the number of elements common
+! to a node (vertex)
+! author: Satish Karra
+! date: 09/17/13
+!
+! ************************************************************************** !
+#if 0 
+subroutine GeomechGridElemSharedByNodes(grid,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(geomech_grid_type), pointer :: grid
+  
+  PetscInt :: ielem
+  PetscInt :: ivertex
+  PetscInt :: ghosted_id
+  PetscInt :: elenodes(:)
+
+  VecSet(grid%no_elems_sharing_node_loc,0,ierr)
+  VecSet(grid%no_elems_sharing_node,0,ierr)
+  
+  do ielem = 1, grid%nlmax_elem
+    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    do ivertex = 1, grid%elem_nodes(0,ielem)
+      ghosted_id = elenodes(ivertex) 
+      grid%no_elems_sharing_node(ghosted_id) = grid%no_elems_sharing_node(ghosted_id) + 1
+
+    enddo
+  enddo
+
+end subroutine GeomechGridElemSharedByNodes
+#endif
 
 ! ************************************************************************** !
 !
