@@ -470,6 +470,9 @@ subroutine GeomechGridElemSharedByNodes(realization)
   use Geomechanics_Grid_Aux_module
 
   implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(geomech_realization_type) :: realization
   type(geomech_grid_type), pointer :: grid
