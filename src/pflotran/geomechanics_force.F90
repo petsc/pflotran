@@ -1889,13 +1889,13 @@ subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
     strain(ivertex,2) = strain_local(5,1)
     strain(ivertex,3) = strain_local(9,1)
     strain(ivertex,4) = strain_local(2,1)
-    strain(ivertex,5) = strain_local(4,1)
+    strain(ivertex,5) = strain_local(6,1)
     strain(ivertex,6) = strain_local(3,1)
     stress(ivertex,1) = stress_local(1,1)
     stress(ivertex,2) = stress_local(5,1)
     stress(ivertex,3) = stress_local(9,1)
     stress(ivertex,4) = stress_local(2,1)
-    stress(ivertex,5) = stress_local(4,1)
+    stress(ivertex,5) = stress_local(6,1)
     stress(ivertex,6) = stress_local(3,1)
   enddo
   
