@@ -80,44 +80,44 @@ subroutine ShapeFunctionInitialize(shapefunction)
   
   select case(shapefunction%EleType)
     case(LINE_TYPE)
-      coord(1,1) = 1.d0
-      coord(2,1) = -1.d0
+      coord(1,1) = -1.d0
+      coord(2,1) = 1.d0
     case(QUAD_TYPE)
-      coord(1,1) = 1.d0
-      coord(1,2) = 1.d0
-      coord(2,1) = -1.d0
-      coord(2,2) = 1.d0
-      coord(3,1) = -1.d0
-      coord(3,2) = -1.d0
-      coord(4,1) = 1.d0
-      coord(4,2) = -1.d0
+      coord(1,1) = -1.d0
+      coord(1,2) = -1.d0
+      coord(2,1) = 1.d0
+      coord(2,2) = -1.d0
+      coord(3,1) = 1.d0
+      coord(3,2) = 1.d0
+      coord(4,1) = -1.d0
+      coord(4,2) = 1.d0
     case(WEDGE_TYPE)
-      coord(1,:) = (/0.d0,1.d0,1.d0/)
-      coord(2,:) = (/-1.d0,-1.d0,1.d0/)
-      coord(3,:) = (/1.d0,-1.d0,1.d0/)
-      coord(4,:) = (/0.d0,1.d0,-1.d0/)
-      coord(5,:) = (/-1.d0,-1.d0,-1.d0/)
-      coord(6,:) = (/1.d0,-1.d0,-1.d0/)
+      coord(1,:) = -(/0.d0,1.d0,1.d0/)
+      coord(2,:) = -(/-1.d0,-1.d0,1.d0/)
+      coord(3,:) = -(/1.d0,-1.d0,1.d0/)
+      coord(4,:) = -(/0.d0,1.d0,-1.d0/)
+      coord(5,:) = -(/-1.d0,-1.d0,-1.d0/)
+      coord(6,:) = -(/1.d0,-1.d0,-1.d0/)
     case(TET_TYPE)
-      coord(1,:) = (/0.d0,1.d0,1.d0/)
-      coord(2,:) = (/-1.d0,-1.d0,1.d0/)
-      coord(3,:) = (/1.d0,-1.d0,1.d0/)
-      coord(4,:) = (/0.d0,0.d0,-1.d0/)
+      coord(1,:) = -(/0.d0,1.d0,1.d0/)
+      coord(2,:) = -(/-1.d0,-1.d0,1.d0/)
+      coord(3,:) = -(/1.d0,-1.d0,1.d0/)
+      coord(4,:) = -(/0.d0,0.d0,-1.d0/)
     case(PYR_TYPE)
-      coord(1,:) = (/1.d0,1.d0,1.d0/)
-      coord(2,:) = (/-1.d0,1.d0,1.d0/)
-      coord(3,:) = (/-1.d0,-1.d0,1.d0/)
-      coord(4,:) = (/1.d0,-1.d0,1.d0/)
-      coord(5,:) = (/0.d0,0.d0,-1.d0/)
+      coord(1,:) = -(/1.d0,1.d0,1.d0/)
+      coord(2,:) = -(/-1.d0,1.d0,1.d0/)
+      coord(3,:) = -(/-1.d0,-1.d0,1.d0/)
+      coord(4,:) = -(/1.d0,-1.d0,1.d0/)
+      coord(5,:) = -(/0.d0,0.d0,-1.d0/)
     case(HEX_TYPE)
-      coord(1,:) = (/1.d0,1.d0,1.d0/)
-      coord(2,:) = (/-1.d0,1.d0,1.d0/)
-      coord(3,:) = (/-1.d0,-1.d0,1.d0/)
-      coord(4,:) = (/1.d0,-1.d0,1.d0/)
-      coord(5,:) = (/1.d0,1.d0,-1.d0/)
-      coord(6,:) = (/-1.d0,1.d0,-1.d0/)
-      coord(7,:) = (/-1.d0,-1.d0,-1.d0/)
-      coord(8,:) = (/1.d0,-1.d0,-1.d0/)
+      coord(1,:) = -(/1.d0,1.d0,1.d0/)
+      coord(2,:) = -(/-1.d0,1.d0,1.d0/)
+      coord(3,:) = -(/-1.d0,-1.d0,1.d0/)
+      coord(4,:) = -(/1.d0,-1.d0,1.d0/)
+      coord(5,:) = -(/1.d0,1.d0,-1.d0/)
+      coord(6,:) = -(/-1.d0,1.d0,-1.d0/)
+      coord(7,:) = -(/-1.d0,-1.d0,-1.d0/)
+      coord(8,:) = -(/1.d0,-1.d0,-1.d0/)
     case default
       print *, 'Error: Invalid EleType. Enter an EleType from L2,' // &
                ' T3, Q4, B8 only.'       
