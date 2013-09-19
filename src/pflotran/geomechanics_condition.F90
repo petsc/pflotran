@@ -33,6 +33,9 @@ module Geomechanics_Condition_module
     type(geomech_sub_condition_type), pointer      :: displacement_x
     type(geomech_sub_condition_type), pointer      :: displacement_y
     type(geomech_sub_condition_type), pointer      :: displacement_z
+    type(geomech_sub_condition_type), pointer      :: force_x ! Added force conditions 09/19/2013, SK
+    type(geomech_sub_condition_type), pointer      :: force_y 
+    type(geomech_sub_condition_type), pointer      :: force_z
     type(geomech_sub_condition_ptr_type), pointer  :: sub_condition_ptr(:)
     type(geomech_condition_type), pointer          :: next ! pointer to next condition_type for linked-lists
   end type geomech_condition_type
@@ -98,6 +101,9 @@ function GeomechConditionCreate(option)
   nullify(condition%displacement_x)
   nullify(condition%displacement_y)
   nullify(condition%displacement_z)
+  nullify(condition%force_x)
+  nullify(condition%force_y)
+  nullify(condition%force_z)
   nullify(condition%sub_condition_ptr)
   nullify(condition%itype)
   nullify(condition%next)
@@ -291,6 +297,7 @@ subroutine GeomechConditionRead(condition,input,option)
   type(geomech_sub_condition_type), pointer :: sub_condition_ptr,  &
                                        displacement_x, displacement_y, &
                                        displacement_z
+  type(geomech_sub_condition_type), pointer :: force_x, force_y, force_z 
   PetscReal                                        :: default_time
   PetscInt                                         :: default_iphase
   type(geomech_condition_dataset_type)             :: default_geomech_dataset
@@ -317,9 +324,15 @@ subroutine GeomechConditionRead(condition,input,option)
   displacement_x => GeomechSubConditionCreate(ONE_INTEGER)
   displacement_y => GeomechSubConditionCreate(ONE_INTEGER)
   displacement_z => GeomechSubConditionCreate(ONE_INTEGER)
+  force_x => GeomechSubConditionCreate(ONE_INTEGER)
+  force_y => GeomechSubConditionCreate(ONE_INTEGER)
+  force_z => GeomechSubConditionCreate(ONE_INTEGER)
   displacement_x%name = 'displacement_x'
   displacement_y%name = 'displacement_y'
   displacement_z%name = 'displacement_z'
+  force_x%name = 'force_x'
+  force_y%name = 'force_y'
+  force_z%name = 'force_z'
   
   condition%time_units = 'yr'
   condition%length_units = 'm'
@@ -330,6 +343,9 @@ subroutine GeomechConditionRead(condition,input,option)
   displacement_x%units = 'm'
   displacement_y%units = 'm'
   displacement_z%units = 'm'
+  force_x%units = 'N'
+  force_y%units = 'N'
+  force_z%units = 'N'
 
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
@@ -392,6 +408,12 @@ subroutine GeomechConditionRead(condition,input,option)
               sub_condition_ptr => displacement_y
             case('DISPLACEMENT_Z')
               sub_condition_ptr => displacement_z
+            case('FORCE_X')
+              sub_condition_ptr => force_x 
+            case('FORCE_Y')
+              sub_condition_ptr => force_y 
+            case('FORCE_Z')
+              sub_condition_ptr => force_z 
             case default
               option%io_buffer = 'keyword (' // trim(word) // &
                                  ') not recognized in condition,type'
@@ -429,6 +451,18 @@ subroutine GeomechConditionRead(condition,input,option)
         call GeomechConditionReadValues(input,option,word,string, &
                                      displacement_z%geomech_dataset, &
                                      displacement_z%units)
+      case('FORCE_X')
+        call GeomechConditionReadValues(input,option,word,string, &
+                                     force_x%geomech_dataset, &
+                                     force_x%units)
+      case('FORCE_Y')
+        call GeomechConditionReadValues(input,option,word,string, &
+                                     force_y%geomech_dataset, &
+                                     force_y%units)
+      case('FORCE_Z')
+        call GeomechConditionReadValues(input,option,word,string, &
+                                     force_z%geomech_dataset, &
+                                     force_z%units)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                            ' not recognized in geomech condition'
@@ -450,6 +484,23 @@ subroutine GeomechConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_geomech_dataset,PETSC_TRUE)
 
+  word = 'force_x'
+  call GeomechSubConditionVerify(option,condition,word,force_x,default_time, &
+                              default_ctype, default_itype, &
+                              default_geomech_dataset,PETSC_TRUE)
+
+  word = 'force_y'
+  call GeomechSubConditionVerify(option,condition,word,force_y,default_time, &
+                              default_ctype, default_itype, &
+                              default_geomech_dataset,PETSC_TRUE)
+
+  word = 'force_z'
+  call GeomechSubConditionVerify(option,condition,word,force_z,default_time, &
+                              default_ctype, default_itype, &
+                              default_geomech_dataset,PETSC_TRUE)
+
+
+
   num_sub_conditions = 0
   if (associated(displacement_x)) then
     condition%displacement_x => displacement_x
@@ -469,8 +520,26 @@ subroutine GeomechConditionRead(condition,input,option)
     condition%displacement_z%isubtype = THREE_INTEGER
   endif                         
 
+  if (associated(force_x)) then
+    condition%force_x => force_x 
+    num_sub_conditions = num_sub_conditions + 1
+    condition%force_x%isubtype = FOUR_INTEGER 
+  endif                         
+
+  if (associated(force_y)) then
+    condition%force_y => force_y 
+    num_sub_conditions = num_sub_conditions + 1
+    condition%force_y%isubtype = FIVE_INTEGER 
+  endif                         
+
+  if (associated(force_z)) then
+    condition%force_z => force_z 
+    num_sub_conditions = num_sub_conditions + 1
+    condition%force_z%isubtype = THREE_INTEGER
+  endif                         
+
   if (num_sub_conditions == 0) then
-    option%io_buffer = 'displacement condition null in condition: ' // &
+    option%io_buffer = 'displacement/force condition null in condition: ' // &
                         trim(condition%name)
     call printErrMsg(option)   
   endif
@@ -496,7 +565,18 @@ subroutine GeomechConditionRead(condition,input,option)
     count = count + 1
     condition%sub_condition_ptr(count)%ptr => displacement_z
   endif
-    
+  if (associated(force_x)) then
+    count = count + 1
+    condition%sub_condition_ptr(count)%ptr => force_x 
+  endif
+  if (associated(force_y)) then
+    count = count + 1
+    condition%sub_condition_ptr(count)%ptr => force_y 
+  endif
+  if (associated(force_z)) then
+    count = count + 1
+    condition%sub_condition_ptr(count)%ptr => force_z 
+  endif    
   call GeomechConditionDatasetDestroy(default_geomech_dataset)
     
   call PetscLogEventEnd(geomech_logging%event_geomech_condition_read,ierr)
@@ -1328,7 +1408,14 @@ function GeomechConditionIsTransient(condition)
       GeomechSubConditionIsTransient(condition%displacement_z)) then
     GeomechConditionIsTransient = PETSC_TRUE
   endif
+ 
+  if (GeomechSubConditionIsTransient(condition%force_x) .or. &
+      GeomechSubConditionIsTransient(condition%force_y) .or. &
+      GeomechSubConditionIsTransient(condition%force_z)) then
+    GeomechConditionIsTransient = PETSC_TRUE
+  endif
   
+ 
 end function GeomechConditionIsTransient
 
 ! ************************************************************************** !
@@ -1460,6 +1547,9 @@ subroutine GeomechConditionDestroy(condition)
   nullify(condition%displacement_x)
   nullify(condition%displacement_y)
   nullify(condition%displacement_z)
+  nullify(condition%force_x)
+  nullify(condition%force_y)
+  nullify(condition%force_z)
   
   nullify(condition%next)  
   

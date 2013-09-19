@@ -661,7 +661,40 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
            ! do nothing
         end select
       endif
+ 
+      ! X force 
+      if (associated(boundary_condition%geomech_condition%force_x)) then
+        select case(boundary_condition%geomech_condition%force_x%itype)
+          case(DIRICHLET_BC)
+            call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_X_DOF-1,0.d0,ADD_VALUES,ierr)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
       
+       ! Y force 
+      if (associated(boundary_condition%geomech_condition%force_y)) then
+        select case(boundary_condition%geomech_condition%force_y%itype)
+          case(DIRICHLET_BC)
+            call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_Y_DOF-1,0.d0,ADD_VALUES,ierr)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+
+       ! Z force 
+      if (associated(boundary_condition%geomech_condition%force_z)) then
+        select case(boundary_condition%geomech_condition%force_z%itype)
+          case(DIRICHLET_BC)
+            call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
+              GEOMECH_DISP_Z_DOF-1,0.d0,ADD_VALUES,ierr)
+          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+           ! do nothing
+        end select
+      endif
+ 
     enddo
     boundary_condition => boundary_condition%next      
   enddo
