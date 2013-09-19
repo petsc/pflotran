@@ -107,6 +107,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       simulation_old%realization
     simulation%flow_process_model_coupler%realization => &
       simulation_old%realization
+    simulation%process_model_coupler_list%is_master = PETSC_TRUE
+    subsurf_simulation%process_model_coupler_list%is_master = PETSC_FALSE
 
     simulation%surf_realization => simulation_old%surf_realization
     simulation%surf_flow_process_model_coupler => &
