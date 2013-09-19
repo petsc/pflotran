@@ -49,6 +49,8 @@ module Process_Model_Surface_Flow_class
 !    procedure, public :: ComputeMassBalance => PMSurfaceFlowComputeMassBalance
     procedure, public :: Destroy => PMSurfaceFlowDestroy
     procedure, public :: RHSFunction => PMSurfaceFlowRHSFunction
+    procedure, public :: Checkpoint => PMSurfaceCheckpoint
+    procedure, public :: Restart => PMSurfaceRestart
   end type pm_surface_flow_type
 
   public :: PMSurfaceFlowCreate, &
@@ -371,6 +373,52 @@ subroutine PMSurfaceFlowPostSolve(this)
 
 end subroutine PMSurfaceFlowPostSolve
 
+! ************************************************************************** !
+!> This routine checkpoints data associated with surface-flow PM
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine PMSurfaceCheckpoint(this,viewer)
+
+  use Surface_Checkpoint_module
+
+  implicit none
+#include "finclude/petscviewer.h"
+
+  class(pm_surface_flow_type) :: this
+  PetscViewer :: viewer
+
+  call SurfaceCheckpointProcessModel(viewer,this%surf_realization)
+
+end subroutine PMSurfaceCheckpoint
+
+! ************************************************************************** !
+!> This routine reads checkpoint data associated with surface-flow PM
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine PMSurfaceRestart(this,viewer)
+
+  use Surface_Checkpoint_module
+  use Surface_Flow_module, only : SurfaceFlowUpdateAuxVars
+
+  implicit none
+#include "finclude/petscviewer.h"
+
+  class(pm_surface_flow_type) :: this
+  PetscViewer :: viewer
+
+  call SurfaceRestartProcessModel(viewer,this%surf_realization)
+  call SurfaceFlowUpdateAuxVars(this%surf_realization)
+  call this%UpdateSolution()
+
+end subroutine PMSurfaceRestart
 
 ! ************************************************************************** !
 !> This routine

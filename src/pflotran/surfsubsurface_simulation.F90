@@ -28,6 +28,7 @@ module Surf_Subsurf_Simulation_class
     procedure, public :: FinalizeRun => SurfSubsurfaceFinalizeRun
     procedure, public :: Strip => SurfSubsurfaceSimulationStrip
     procedure, public :: ExecuteRun => SurfSubsurfaceExecuteRun
+    procedure, public :: RunToTime => SurfSubsurfaceSimulationRunToTime
   end type surfsubsurface_simulation_type
 
   public :: SurfSubsurfaceSimulationCreate, &
@@ -100,6 +101,8 @@ subroutine SurfSubsurfaceInitializeRun(this)
 
   implicit none
   
+#include "finclude/petscviewer.h"
+
   class(surfsubsurface_simulation_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -107,10 +110,15 @@ subroutine SurfSubsurfaceInitializeRun(this)
   class(pmc_base_type), pointer :: cur_process_model_coupler_below
   PetscInt :: depth
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
   
   call printMsg(this%option,'Simulation%InitializeRun()')
 
   call this%process_model_coupler_list%InitializeRun()
+
+  if (this%option%restart_flag) then
+    call this%process_model_coupler_list%Restart(viewer)
+  endif
 
 end subroutine SurfSubsurfaceInitializeRun
 
@@ -128,13 +136,18 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   implicit none
   
+#include "finclude/petscviewer.h"
+
   class(surfsubsurface_simulation_type) :: this
 
   PetscReal :: time
   PetscReal :: final_time
   PetscReal :: dt
+  PetscViewer :: viewer
 
   time = 0.d0
+  time = this%option%time
+
   final_time = SimulationGetFinalWaypointTime(this)
 
   call printMsg(this%option,'SurfSubsurfaceExecuteRun()')
@@ -157,6 +170,9 @@ subroutine SurfSubsurfaceExecuteRun(this)
       if (time >= final_time) exit
     enddo
 
+  endif
+  if (this%option%checkpoint_flag) then
+    call this%process_model_coupler_list%Checkpoint(viewer,-1)
   endif
 
 end subroutine SurfSubsurfaceExecuteRun
@@ -210,6 +226,34 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   call RegressionDestroy(this%regression)
   
 end subroutine SurfSubsurfaceSimulationStrip
+
+! ************************************************************************** !
+!> This routine executes surface-subsurface simualation
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 06/27/13
+! ************************************************************************** !
+subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
+
+  use Option_module
+  use Simulation_Aux_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  class(surfsubsurface_simulation_type) :: this
+  PetscReal :: target_time
+
+  class(pmc_base_type), pointer :: cur_process_model_coupler
+  PetscViewer :: viewer
+
+  call printMsg(this%option,'RunToTime()')
+  call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
+
+end subroutine SurfSubsurfaceSimulationRunToTime
 
 ! ************************************************************************** !
 !> This routine

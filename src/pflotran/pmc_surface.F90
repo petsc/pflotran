@@ -98,6 +98,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Output_Surface_module
   
   implicit none
+#include "finclude/petscviewer.h"
   
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
@@ -111,6 +112,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   class(pm_base_type), pointer :: cur_pm
   PetscReal :: dt_max_loc
   PetscReal :: dt_max_glb
+  PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)
@@ -144,6 +146,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     select type(timestepper => this%timestepper)
       class is(timestepper_surface_type)
         timestepper%dt_max_allowable = dt_max_glb
+        timestepper%surf_subsurf_coupling_flow_dt = &
+          this%option%surf_subsurf_coupling_flow_dt
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
@@ -201,6 +205,21 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
     !endif
+
+    if (this%is_master .and. &
+        this%option%checkpoint_flag .and. &
+        mod(this%timestepper%steps, &
+        this%option%checkpoint_frequency) == 0) then
+      ! if checkpointing, need to sync all other PMCs.  Those "below" are
+      ! already in sync, but not those "next".
+      ! Set data needed by process-model
+      call this%SetAuxData()
+      ! Run neighboring process model couplers
+      if (associated(this%next)) then
+        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
+      endif
+      call this%Checkpoint(viewer,this%timestepper%steps)
+    endif
 
   enddo
   
