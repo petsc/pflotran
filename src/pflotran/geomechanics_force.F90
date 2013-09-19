@@ -1670,10 +1670,16 @@ subroutine GeomechForceStressStrain(realization)
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
   GeomechParam => patch%geomech_aux%GeomechParam 
 
+  call VecSet(field%strain,0.d0,ierr)
+  call VecSet(field%stress,0.d0,ierr)
+
   call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
   call VecGetArrayF90(field%strain_loc,strain_loc_p,ierr)
   call VecGetArrayF90(field%stress_loc,stress_loc_p,ierr)
-
+  
+  strain_loc_p = 0.d0
+  stress_loc_p = 0.d0
+  
    ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
     allocate(elenodes(grid%elem_nodes(0,ielem)))
@@ -1861,7 +1867,7 @@ subroutine GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
     stress_local = 0.d0 
     shapefunction%EleType = eletype
     call ShapeFunctionInitialize(shapefunction)
-    shapefunction%zeta = local_coordinates(ivertex,:)
+    shapefunction%zeta = shapefunction%coord(ivertex,:)
     call ShapeFunctionCalculate(shapefunction)
     J_map = matmul(transpose(local_coordinates),shapefunction%DN)
     call ludcmp(J_map,THREE_INTEGER,indx,d)
