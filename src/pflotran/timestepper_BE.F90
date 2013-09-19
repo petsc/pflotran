@@ -47,7 +47,7 @@ module Timestepper_BE_class
     integer*8 :: cumulative_linear_iterations
     integer*8 :: num_newton_iterations
   end type stepper_BE_header_type
-  PetscSizeT, parameter, private :: bagsize = 88 ! 60 (base) + 24 (BE)
+  PetscSizeT, parameter, private :: bagsize = 88 ! 64 (base) + 24 (BE)
 
   interface PetscBagGetData
     subroutine PetscBagGetData(bag,header,ierr)
