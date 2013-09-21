@@ -126,10 +126,10 @@ SURF_TIME
 END
 
 :=========================== output ==========================================
-:SURF_OUTPUT
-:  PERIODIC TIME 60 s
-:  HYDROGRAPH
-:END
+SURF_OUTPUT
+  PERIODIC TIME 60 s
+  HYDROGRAPH
+END
 
 :=========================== regions ==========================================
 SURF_REGION surf_all
