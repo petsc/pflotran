@@ -635,8 +635,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
           case(DIRICHLET_BC)
             call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
               GEOMECH_DISP_X_DOF-1,0.d0,INSERT_VALUES,ierr)
-          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+          case(ZERO_GRADIENT_BC)
            ! do nothing
+          case(NEUMANN_BC)
+            option%io_buffer = 'Neumann BC for displacement not available.'
+            call printErrMsg(option)
         end select
       endif
       
@@ -646,8 +649,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
           case(DIRICHLET_BC)
             call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
               GEOMECH_DISP_Y_DOF-1,0.d0,INSERT_VALUES,ierr)
-          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+          case(ZERO_GRADIENT_BC)
            ! do nothing
+          case(NEUMANN_BC)
+            option%io_buffer = 'Neumann BC for displacement not available.'
+            call printErrMsg(option)
         end select
       endif
       
@@ -657,8 +663,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
           case(DIRICHLET_BC)
             call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
               GEOMECH_DISP_Z_DOF-1,0.d0,INSERT_VALUES,ierr)
-          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+          case(ZERO_GRADIENT_BC)
            ! do nothing
+          case(NEUMANN_BC)
+            option%io_buffer = 'Neumann BC for displacement not available.'
+            call printErrMsg(option)
         end select
       endif
  
@@ -667,9 +676,14 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
         select case(boundary_condition%geomech_condition%force_x%itype)
           case(DIRICHLET_BC)
             call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_X_DOF-1,0.d0,ADD_VALUES,ierr)
-          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+              GEOMECH_DISP_X_DOF-1, &
+              -boundary_condition%geomech_aux_real_var &
+              (GEOMECH_DISP_X_DOF,ivertex),ADD_VALUES,ierr)
+          case(ZERO_GRADIENT_BC)
            ! do nothing
+          case(NEUMANN_BC)
+            option%io_buffer = 'Neumann BC for force not available.'
+            call printErrMsg(option)
         end select
       endif
       
@@ -678,9 +692,15 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
         select case(boundary_condition%geomech_condition%force_y%itype)
           case(DIRICHLET_BC)
             call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_Y_DOF-1,0.d0,ADD_VALUES,ierr)
-          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+              GEOMECH_DISP_Y_DOF-1, &
+              -boundary_condition%geomech_aux_real_var &
+              (GEOMECH_DISP_Y_DOF,ivertex),ADD_VALUES,ierr)
+          case(ZERO_GRADIENT_BC)
            ! do nothing
+          case(NEUMANN_BC)
+            option%io_buffer = 'Neumann BC for force not available.'
+            call printErrMsg(option)
+
         end select
       endif
 
@@ -689,9 +709,14 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
         select case(boundary_condition%geomech_condition%force_z%itype)
           case(DIRICHLET_BC)
             call VecSetValue(r,(petsc_id-1)*option%ngeomechdof + &
-              GEOMECH_DISP_Z_DOF-1,0.d0,ADD_VALUES,ierr)
-          case(ZERO_GRADIENT_BC,NEUMANN_BC)
+              GEOMECH_DISP_Z_DOF-1, &
+              -boundary_condition%geomech_aux_real_var &
+              (GEOMECH_DISP_Z_DOF,ivertex),ADD_VALUES,ierr)
+          case(ZERO_GRADIENT_BC)
            ! do nothing
+          case(NEUMANN_BC)
+            option%io_buffer = 'Neumann BC for force not available.'
+            call printErrMsg(option)
         end select
       endif
  
