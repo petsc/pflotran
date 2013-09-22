@@ -3074,7 +3074,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 !   if(volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
       r_p (istart:istart+option%nflowdof-1) = &
         r_p(istart:istart+option%nflowdof-1)/volume_p(local_id)
-    if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *, r_p (istart:istart+2)
+    if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *,'mphase residual: ', r_p (istart:istart+2)
   enddo
 
 ! print *,'finished rp vol scale'
