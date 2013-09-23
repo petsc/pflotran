@@ -2137,6 +2137,12 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecRestoreArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
 
+  call DiscretizationGlobalToLocal(surf_realization%discretization, &
+                                   surf_field%flow_xx, &
+                                   surf_field%flow_xx_loc, &
+                                   NFLOWDOF)
+  call SurfaceFlowUpdateAuxVars(surf_realization)
+
 end subroutine SurfaceFlowUpdateSurfStateNew
 
 ! ************************************************************************** !
