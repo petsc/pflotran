@@ -488,6 +488,7 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
   use Discretization_module
   use Output_Aux_module
   use Option_module
+  use Surface_Flow_module
 
   implicit none
 
@@ -520,6 +521,8 @@ subroutine SurfaceRestartProcessModel(viewer,surf_realization)
     call VecLoad(global_vec,viewer,ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      surf_field%mannings_loc,ONEDOF)
+    call SurfaceFlowUpdateAuxVars(surf_realization)
+
   endif
 
   ! We are finished, so clean up.

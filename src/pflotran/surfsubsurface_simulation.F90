@@ -98,6 +98,7 @@ subroutine SurfSubsurfaceInitializeRun(this)
 
   use Logging_module
   use Output_module
+  use PMC_Surface_class
 
   implicit none
   
@@ -118,6 +119,18 @@ subroutine SurfSubsurfaceInitializeRun(this)
 
   if (this%option%restart_flag) then
     call this%process_model_coupler_list%Restart(viewer)
+    cur_process_model_coupler => this%process_model_coupler_list
+    select type(pmc => cur_process_model_coupler)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call pmc%PMCSurfaceGetAuxDataAfterRestart()
+          case (TH_MODE)
+            call printErrMsg(this%option,'extend SurfSubsurfaceInitializeRun ' // &
+                  'for TH mode')
+        end select
+    end select
+
   endif
 
 end subroutine SurfSubsurfaceInitializeRun
