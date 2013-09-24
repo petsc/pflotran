@@ -517,7 +517,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
           call GeomechUpdateSolution(geomech_realization)
         endif
      else
-        call GeomechUpdateFromSubsurf(realization,geomech_realization)
         call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
         call GeomechUpdateSolution(geomech_realization)
