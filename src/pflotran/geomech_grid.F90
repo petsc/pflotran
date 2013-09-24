@@ -664,7 +664,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 
   ! global vector
   call VecCreate(option%mycomm,geomech_grid%no_elems_sharing_node,ierr)
-  call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%ngmax_node, &
+  call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%nlmax_node, &
                    PETSC_DECIDE,ierr)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node,ierr)
 

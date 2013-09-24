@@ -1834,8 +1834,7 @@ subroutine GeomechForceStressStrain(realization)
   call VecGetArrayF90(field%strain_loc,strain_loc_p,ierr)
   call VecGetArrayF90(field%stress_loc,stress_loc_p,ierr)                                        
 ! Copy them to global_aux_vars
-  do local_id = 1, grid%ngmax_node  
-    ghosted_id = grid%nL2G(local_id)
+  do ghosted_id = 1, grid%ngmax_node  
     do idof = 1, SIX_INTEGER
       geomech_global_aux_vars(ghosted_id)%strain(idof) = &
         strain_loc_p(idof + (ghosted_id-1)*SIX_INTEGER)
