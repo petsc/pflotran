@@ -75,7 +75,7 @@ module Option_module
 #ifdef GEOMECH
     PetscInt  :: ngeomechdof
     PetscReal :: geomech_time
-    PetscBool :: geomech_subsurf_coupling
+    PetscInt  :: geomech_subsurf_coupling
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -421,7 +421,7 @@ subroutine OptionInitRealization(option)
 #ifdef GEOMECH
   option%ngeomechdof = 0
   option%geomech_time = 0.d0
-  option%geomech_subsurf_coupling = PETSC_FALSE
+  option%geomech_subsurf_coupling = 0 
 #endif
 
   option%tranmode = ""

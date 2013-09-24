@@ -1175,7 +1175,7 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    if (option%geomech_subsurf_coupling) &
+    if (option%geomech_subsurf_coupling /= 0) &
       call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
                                               simulation%geomech_realization, &
                                               option)
@@ -1199,7 +1199,7 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
-    if (option%geomech_subsurf_coupling) &
+    if (option%geomech_subsurf_coupling /= 0) &
       call GeomechCreateGeomechSubsurfVec(simulation%realization, &
                                           simulation%geomech_realization)
   endif

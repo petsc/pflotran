@@ -308,8 +308,13 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call GeomechDebugRead(geomech_realization%debug,input,option)    
 
       !.........................................................................
-      case('GEOMECHANICS_SUBSURFACE_COUPLING')
-        option%geomech_subsurf_coupling = PETSC_TRUE      
+      case ('GEOMECHANICS_SUBSURFACE_COUPLING')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (word)
+          case ('ONE_WAY_COUPLED')      
+            option%geomech_subsurf_coupling = ONE_WAY_COUPLED 
+        end select
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)

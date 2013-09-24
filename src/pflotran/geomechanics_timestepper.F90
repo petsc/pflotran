@@ -188,7 +188,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling) &
+      if (option%geomech_subsurf_coupling /= 0) &
         call GeomechUpdateFromSubsurf(realization,geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
@@ -371,12 +371,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                option,plot_flag, &
                                transient_plot_flag)
 
-#ifdef GEOMECH
-    if (option%ngeomechdof > 0) then
-      geomech_plot_flag = plot_flag
-    endif
-#endif
-
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
 
@@ -387,16 +381,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
- 
-#ifdef GEOMECH       
-    if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling) &
-        call GeomechUpdateFromSubsurf(realization,geomech_realization)
-      call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
-                                          failure)
-    endif
-#endif
-
 
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
@@ -486,12 +470,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
     option%time = master_stepper%target_time
     call StepperUpdateSolution(realization,PETSC_TRUE)
 
-#if GEOMECH
-    if (option%ngeomechdof > 0) then
-      call GeomechUpdateSolution(geomech_realization)
-    endif
-#endif
-
     if (associated(tran_stepper)) then
       !geh: must revert tran_dt back after update of solution.  Otherwise,
       !     explicit update of mineral vol fracs, etc. will be updated based
@@ -520,14 +498,30 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 !      call MassBalanceUpdate(realization,flow_stepper%solver, &
 !                             tran_stepper%solver)
 !    endif
-
+#ifdef GEOMECH       
+    if (option%ngeomechdof > 0) &
+      geomech_plot_flag = plot_flag
+#endif 
     call Output(realization,plot_flag,transient_plot_flag)
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
-    
-#ifdef GEOMECH
+  
+#ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
+      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then ! call geomech only at plot times
+        if (geomech_plot_flag) then
+          call GeomechUpdateFromSubsurf(realization,geomech_realization)
+          call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                              failure)
+          call GeomechUpdateSolution(geomech_realization)
+        endif
+     else
+        call GeomechUpdateFromSubsurf(realization,geomech_realization)
+        call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                          failure)
+        call GeomechUpdateSolution(geomech_realization)
+     endif
       call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
                               transient_plot_flag)
     endif

@@ -253,5 +253,6 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: GEOMECH_DISP_X_DOF = 1
   PetscInt, parameter, public :: GEOMECH_DISP_Y_DOF = 2
   PetscInt, parameter, public :: GEOMECH_DISP_Z_DOF = 3
+  PetscInt, parameter, public :: ONE_WAY_COUPLED = 4
 
 end module PFLOTRAN_Constants_module
