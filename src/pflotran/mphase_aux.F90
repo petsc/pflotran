@@ -412,9 +412,13 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
    
     select case(iphase)     
     case(1)
-    ! do nothing
+      aux_var%xmol(4) = aux_var%xmol(2)*henry/p   
+      aux_var%xmol(3) = 1.D0-aux_var%xmol(4)
+      if (aux_var%xmol(3) < 0.D0) aux_var%xmol(3) = 0.D0
+!     if(xmol(3) < 0.D0) xmol(3) = 0.D0
     case(2)   
-    ! do nothing
+      aux_var%xmol(2) = p*aux_var%xmol(4)/henry
+      aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
     case(3)
       temp= sat_pressure/p
       aux_var%xmol(2) = xco2eq
@@ -425,20 +429,17 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
     call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
-    if (iphase == 2 .or. iphase == 3) then  ! SK, 09/05/13
-      aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
-      aux_var%h(2) = hg  
-      aux_var%u(2) = hg - p/dg*option%scale
-      aux_var%pc(2) = 0.D0
-    endif
+    aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
+    aux_var%h(2) = hg  
+    aux_var%u(2) = hg - p/dg*option%scale
+    aux_var%pc(2) = 0.D0
 
 !   aux_var%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
     aux_var%diff(option%nflowspec+1:option%nflowspec*2) = &
       fluid_properties%gas_diffusion_coefficient
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
-    if (iphase == 2 .or. iphase == 3) &
-      aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1.D-3)
+    aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1.D-3)
 
 !***************  Liquid phase properties **************************
  
@@ -472,28 +473,24 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
     y_nacl = m_nacl/(m_nacl + 1.D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
-    if (iphase == 1 .or. iphase == 3) then  ! SK, 09/05/13
-      aux_var%avgmw(1) = aux_var%xmol(1)*((1.D0 - y_nacl)*FMWH2O &
-         + y_nacl*FMWNACL) + aux_var%xmol(2)*FMWCO2
+    aux_var%avgmw(1) = aux_var%xmol(1)*((1.D0 - y_nacl)*FMWH2O &
+       + y_nacl*FMWNACL) + aux_var%xmol(2)*FMWCO2
 
 !duan mixing **************************
 #ifdef DUANDEN
 !                 units: t [C], p [MPa], dw_kg [kg/m^3]
-      call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
-
 
 ! Garcia mixing **************************
 #ifdef GARCIA
-      vphi = 1D-6*(37.51D0 + t &
-           *(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
-      aux_var%den(1) = dw_kg/(1D0-(FMWCO2*1.D-3-dw_kg*vphi) &
-           *aux_var%xmol(2)/(aux_var%avgmw(1)*1.D-3))
-      aux_var%den(1) = aux_var%den(1)/aux_var%avgmw(1)
+  vphi = 1D-6*(37.51D0 + t &
+       *(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
+  aux_var%den(1) = dw_kg/(1D0-(FMWCO2*1.D-3-dw_kg*vphi) &
+       *aux_var%xmol(2)/(aux_var%avgmw(1)*1.D-3))
+  aux_var%den(1) = aux_var%den(1)/aux_var%avgmw(1)
 #endif  
-
-    endif       
- 
+       
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 ***********
  !   den(1) = 949.7109D0 + p*(0.559684D-6 - 0.00097D-12*p) &  
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  

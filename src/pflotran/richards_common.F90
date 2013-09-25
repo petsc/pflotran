@@ -608,6 +608,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
             v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             v_darcy = min(v_darcy,v_darcy_allowable)
+            dphi_dp_dn = 0.d0
           endif
 #endif
           q = v_darcy * area
@@ -665,10 +666,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   end select
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
-  ! TODO(GB): Change coupling of surface-subsurface from BC to SS
-  if(pressure_bc_type == HET_SURF_SEEPAGE_BC) then
-    Jdn(1,1) = 0.d0
-  endif
 
   if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
