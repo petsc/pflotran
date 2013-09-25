@@ -139,6 +139,9 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
           option%io_buffer = 'Geomechanics supports only unstructured grid'
           call printErrMsg(option)
       end select
+   case default    
+      option%io_buffer = 'Keyword: ' // trim(word) // &
+        ' not recognized in GEOMECHANICS_GRID.'
   end select
      
 end subroutine GeomechanicsInit

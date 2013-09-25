@@ -32,7 +32,7 @@ module Geomechanics_Force_module
             GeomechUpdateFromSubsurf, &
             GeomechCreateGeomechSubsurfVec, &
             GeomechUpdateSolution, &
-            GeomechStoreInitialDisp 
+            GeomechStoreInitialPressTemp
  
 contains
 
@@ -210,23 +210,7 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                STRESS_ZX)
-  
- name = 'rel_disp_x'
-  units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               GEOMECH_REL_DISP_X)
-                               
-  name = 'rel_disp_y'
-  units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               GEOMECH_REL_DISP_Y)
-                               
-  name = 'rel_disp_z'
-  units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               GEOMECH_REL_DISP_Z)
-
-
+ 
 end subroutine GeomechForceSetPlotVariables
 
 ! ************************************************************************** !
@@ -356,7 +340,7 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
   type(geomech_global_auxvar_type), pointer :: geomech_global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id
-  PetscReal, pointer :: xx_loc_p(:), xx_init_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:)
   PetscErrorCode :: ierr
 
   option => geomech_realization%option
@@ -367,7 +351,6 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars
   
   call GeomechGridVecGetArrayF90(grid,geomech_field%disp_xx_loc,xx_loc_p,ierr)
-  call GeomechGridVecGetArrayF90(grid,geomech_field%disp_xx_init_loc,xx_init_loc_p,ierr)
 
   ! Internal aux vars
   do ghosted_id = 1, grid%ngmax_node
@@ -382,22 +365,10 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
       xx_loc_p(GEOMECH_DISP_Y_DOF + (ghosted_id-1)*THREE_INTEGER)
     geomech_global_aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Z_DOF) = &
       xx_loc_p(GEOMECH_DISP_Z_DOF + (ghosted_id-1)*THREE_INTEGER)
- 
-    geomech_global_aux_vars(ghosted_id)%rel_disp_vector(GEOMECH_DISP_X_DOF) = &
-      xx_loc_p(GEOMECH_DISP_X_DOF + (ghosted_id-1)*THREE_INTEGER) - &
-      xx_init_loc_p(GEOMECH_DISP_X_DOF + (ghosted_id-1)*THREE_INTEGER)
-    geomech_global_aux_vars(ghosted_id)%rel_disp_vector(GEOMECH_DISP_Y_DOF) = &
-      xx_loc_p(GEOMECH_DISP_Y_DOF + (ghosted_id-1)*THREE_INTEGER) - &
-      xx_init_loc_p(GEOMECH_DISP_Y_DOF + (ghosted_id-1)*THREE_INTEGER)
-    geomech_global_aux_vars(ghosted_id)%rel_disp_vector(GEOMECH_DISP_Z_DOF) = &
-      xx_loc_p(GEOMECH_DISP_Z_DOF + (ghosted_id-1)*THREE_INTEGER) - &
-      xx_init_loc_p(GEOMECH_DISP_Z_DOF + (ghosted_id-1)*THREE_INTEGER)
-  enddo
+ enddo
    
   call GeomechGridVecRestoreArrayF90(grid,geomech_field%disp_xx_loc, &
                                      xx_loc_p,ierr)
-  call GeomechGridVecRestoreArrayF90(grid,geomech_field%disp_xx_init_loc, &
-                                     xx_init_loc_p,ierr)
 
 end subroutine GeomechForceUpdateAuxVars
 
@@ -508,6 +479,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   PetscInt, allocatable :: ids(:)
   PetscReal, allocatable :: res_vec(:)
   PetscReal, pointer :: press(:), temp(:)
+  PetscReal, pointer :: press_init(:), temp_init(:)
   PetscReal, allocatable :: beta_vec(:), alpha_vec(:)
   PetscReal, allocatable :: density_vec(:)
   PetscReal, allocatable :: youngs_vec(:), poissons_vec(:)
@@ -542,6 +514,10 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%press_loc,press,ierr)
   call VecGetArrayF90(field%temp_loc,temp,ierr)
   call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
+
+  ! Get initial pressure and temperature 
+  call VecGetArrayF90(field%press_init_loc,press_init,ierr)
+  call VecGetArrayF90(field%temp_init_loc,temp_init,ierr)
  
   ! Loop over elements on a processor
   do ielem = 1, grid%nlmax_elem
@@ -575,8 +551,8 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
         ids(idof + (ivertex-1)*option%ngeomechdof) = &
           (petsc_ids(ivertex)-1)*option%ngeomechdof + (idof-1)
       enddo
-      local_press(ivertex) = press(ghosted_id)
-      local_temp(ivertex) = temp(ghosted_id)
+      local_press(ivertex) = press(ghosted_id) - press_init(ghosted_id)  ! p - p_0
+      local_temp(ivertex) = temp(ghosted_id) - temp_init(ghosted_id)     ! T - T_0
       alpha_vec(ivertex) = GeomechParam%thermal_exp_coef(int(imech_loc_p(ghosted_id))) 
       beta_vec(ivertex) = GeomechParam%biot_coef(int(imech_loc_p(ghosted_id))) 
       density_vec(ivertex) = GeomechParam%density(int(imech_loc_p(ghosted_id))) 
@@ -618,6 +594,9 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%temp_loc,temp,ierr)
   call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)
     
+  call VecRestoreArrayF90(field%press_init_loc,press_init,ierr)
+  call VecRestoreArrayF90(field%temp_init_loc,temp_init,ierr)
+
 #if 0
   call MPI_Allreduce(error_H1_global,error_H1_global,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION, &
@@ -880,7 +859,7 @@ subroutine GeomechForceLocalElemResidual(size_elenodes,local_coordinates,local_d
     beta = dot_product(shapefunction%N,local_beta)
     density = dot_product(shapefunction%N,local_density) 
     call GeomechGetLambdaMu(lambda,mu,youngs_mod,poissons_ratio)
-    call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
+    call GeomechGetBodyForce(load_type,lambda,mu,x,bf,option) 
     call ConvertMatrixToVector(transpose(B),vecB_transpose)
     Kmat = Kmat + w(igpt)*lambda* &
       matmul(vecB_transpose,transpose(vecB_transpose))*detJ_map
@@ -1005,7 +984,7 @@ subroutine GeomechForceLocalElemError(size_elenodes,local_coordinates,local_disp
     grad_u = matmul(transpose(local_disp),B)
     call GeomechGetLambdaMu(lambda,mu,x)
     load_type = 2 ! Need to change
-    call GeomechGetBodyForce(load_type,lambda,mu,x,bf) 
+    call GeomechGetBodyForce(load_type,lambda,mu,x,bf,option) 
     call GetAnalytical(load_type,lambda,mu,x,u_exact,grad_u_exact)
     trace_disp = 0.d0
     do i = 1,3
@@ -1208,7 +1187,11 @@ end subroutine GeomechGetLambdaMu
 ! date: 06/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf)
+subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf,option)
+
+  use Option_module
+
+  type(option_type) :: option
 
   PetscInt :: load_type
   PetscReal :: lambda, mu, den_rock
@@ -1228,7 +1211,9 @@ subroutine GeomechGetBodyForce(load_type,lambda,mu,coord,bf)
   
   select case(load_type)
     case default
-      bf(GEOMECH_DISP_Z_DOF) = -9.81
+      bf(GEOMECH_DISP_X_DOF) = option%gravity(X_DIRECTION)
+      bf(GEOMECH_DISP_Y_DOF) = option%gravity(Y_DIRECTION)
+      bf(GEOMECH_DISP_Z_DOF) = option%gravity(Z_DIRECTION)
   end select
   
 end subroutine GeomechGetBodyForce
@@ -2046,13 +2031,13 @@ end subroutine geomechupdatesolutionpatch
 
 ! ************************************************************************** !
 !
-! GeomechStoreInitialDisp: updates data in module after a successful time 
+! GeomechStoreInitialPressTemp: updates data in module after a successful time 
 !                             step
 ! Author: Satish Karra, LANL 
 ! Date: 09/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechStoreInitialDisp(realization)
+subroutine GeomechStoreInitialPressTemp(realization)
 
   use geomechanics_realization_module
     
@@ -2062,10 +2047,13 @@ subroutine GeomechStoreInitialDisp(realization)
 
   PetscErrorCode :: ierr
 
-  call VecCopy(realization%geomech_field%disp_xx_loc, & 
-               realization%geomech_field%disp_xx_init_loc,ierr)
-    
-end subroutine GeomechStoreInitialDisp  
+  call VecCopy(realization%geomech_field%press_loc, & 
+               realization%geomech_field%press_init_loc,ierr)
+ 
+  call VecCopy(realization%geomech_field%temp_loc, & 
+               realization%geomech_field%temp_init_loc,ierr)
+   
+end subroutine GeomechStoreInitialPressTemp
 
 end module Geomechanics_Force_module
 

@@ -18,21 +18,20 @@ module Geomechanics_Field_module
     Vec :: work_loc
     ! residual vectors
     Vec :: disp_r
-    Vec :: press      ! store pressure from subsurf
+    Vec :: press          ! store pressure from subsurf
     Vec :: press_loc
+    Vec :: press_init_loc ! store initial pressure
+    Vec :: temp           ! store temperature from subsurf
     Vec :: temp_loc
-    Vec :: temp       ! store temperature from subsurf
+    Vec :: temp_init_loc  ! store initial temperature
     Vec :: subsurf_vec_1dof ! MPI
     Vec :: imech_loc
     Vec :: strain
     Vec :: strain_loc
     Vec :: stress
     Vec :: stress_loc
-  
     ! Solution vectors (xx = current iterate)
     Vec :: disp_xx, disp_xx_loc
-    Vec :: disp_xx_init_loc
-
   end type geomech_field_type
 
   public :: GeomechFieldCreate, &
@@ -64,12 +63,13 @@ function GeomechFieldCreate()
   geomech_field%disp_r = 0
   geomech_field%disp_xx = 0
   geomech_field%disp_xx_loc = 0
-  geomech_field%disp_xx_init_loc= 0
   
   geomech_field%press = 0
   geomech_field%press_loc = 0
+  geomech_field%press_init_loc = 0
   geomech_field%temp = 0
   geomech_field%temp_loc = 0
+  geomech_field%temp_init_loc = 0
   geomech_field%subsurf_vec_1dof = 0
   geomech_field%imech_loc = 0
 
@@ -103,12 +103,13 @@ subroutine GeomechFieldDestroy(geomech_field)
   if (geomech_field%disp_r /= 0) call VecDestroy(geomech_field%disp_r,ierr)
   if (geomech_field%disp_xx /= 0) call VecDestroy(geomech_field%disp_xx,ierr)
   if (geomech_field%disp_xx_loc /= 0) call VecDestroy(geomech_field%disp_xx_loc,ierr)
-  if (geomech_field%disp_xx_init_loc /= 0) call VecDestroy(geomech_field%disp_xx_init_loc,ierr)
   
   if (geomech_field%press /= 0) call VecDestroy(geomech_field%press,ierr)
   if (geomech_field%press_loc /= 0) call VecDestroy(geomech_field%press_loc,ierr)
+  if (geomech_field%press_init_loc /= 0) call VecDestroy(geomech_field%press_init_loc,ierr)
   if (geomech_field%temp /= 0) call VecDestroy(geomech_field%temp,ierr)
   if (geomech_field%temp_loc /= 0) call VecDestroy(geomech_field%temp_loc,ierr)
+  if (geomech_field%temp_init_loc /= 0) call VecDestroy(geomech_field%temp_init_loc,ierr)
 
   if (geomech_field%subsurf_vec_1dof /= 0 ) &
     call VecDestroy(geomech_field%subsurf_vec_1dof,ierr)

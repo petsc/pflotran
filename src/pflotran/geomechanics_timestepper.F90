@@ -188,13 +188,13 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling /= 0) &
+      if (option%geomech_subsurf_coupling /= 0) then 
         call GeomechUpdateFromSubsurf(realization,geomech_realization)
+        call GeomechStoreInitialPressTemp(geomech_realization)
+      endif
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
       call GeomechUpdateSolution(geomech_realization)
-      call GeomechStoreInitialDisp(geomech_realization)
-      call GeomechForceUpdateAuxVars(geomech_realization)
     endif
 #endif  
 

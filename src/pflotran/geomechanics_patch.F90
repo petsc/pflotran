@@ -599,18 +599,6 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
       do local_id=1,grid%nlmax_node
         vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(3)
       enddo
-    case(GEOMECH_REL_DISP_X)
-      do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(1)
-      enddo
-    case(GEOMECH_REL_DISP_Y)
-      do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(2)
-      enddo
-    case(GEOMECH_REL_DISP_Z)
-      do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(3)
-      enddo
     case(STRAIN_XX)
       do local_id=1,grid%nlmax_node
         vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(1)
