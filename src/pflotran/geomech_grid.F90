@@ -101,7 +101,10 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   PetscInt                                   :: nlmax_node
   PetscInt, pointer                          :: int_ptr(:)
   type(point_type), pointer                  :: vertices(:)
-  
+  PetscInt, allocatable                      :: vertex_count_array(:)
+  PetscInt, allocatable                      :: vertex_count_array2(:)
+
+ 
 #ifdef GEOMECH_DEBUG
   call printMsg(option,'Copying unstructured grid to geomechanics grid')
 #endif
@@ -306,23 +309,33 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #endif    
     
   ! Find the local nodes on a process
+  allocate(vertex_count_array(option%mycommsize))
+  allocate(vertex_count_array2(option%mycommsize))
+  vertex_count_array = 0
+  vertex_count_array2 = 0
+
   do int_rank = 0, option%mycommsize
-    vertex_count = 0
     do local_id = 1, count
       if (int_array(local_id) == int_rank) then
-        vertex_count = vertex_count + 1
+        vertex_count_array(int_rank+1) = vertex_count_array(int_rank+1) + 1
       endif
     enddo
-    call MPI_Allreduce(vertex_count,vertex_count2, &
-                       ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
-                       option%mycomm,ierr)
-    if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count2
+  enddo
+  call MPI_Allreduce(vertex_count_array,vertex_count_array2, &
+                     option%mycommsize,MPIU_INTEGER,MPI_SUM, &
+                     option%mycomm,ierr)
+
+  do int_rank = 0, option%mycommsize
+    if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count_array2(int_rank+1)
     if (geomech_grid%nlmax_node > geomech_grid%ngmax_node) then
       option%io_buffer = 'Error: nlmax_node cannot be greater than' // &
                          ' ngmax_node.'
       call printErrMsg(option)
     endif
   enddo
+
+  if (allocated(vertex_count_array)) deallocate(vertex_count_array)
+  if (allocated(vertex_count_array2)) deallocate(vertex_count_array2)
   
   ! Add a check on nlmax_node to see if there are too many processes 
   call MPI_Allreduce(geomech_grid%nlmax_node,nlmax_node, &
@@ -440,8 +453,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%node_ids_local_natural = geomech_grid%node_ids_local_natural + 1
 
   ! Find the natural ids of ghost nodes (vertices)
+  vertex_count = 0 
   if (geomech_grid%ngmax_node - geomech_grid%nlmax_node > 0) then  
-    vertex_count = 0 
     allocate(int_array2(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
     do ivertex = 1, geomech_grid%ngmax_node
       do local_id = 1, geomech_grid%nlmax_node
@@ -457,6 +470,9 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
          int_array2(vertex_count) = geomech_grid%node_ids_ghosted_natural(ivertex)
        endif
     enddo
+  else
+    allocate(int_array2(1))
+    int_array2 = 0
   endif
   
   if (vertex_count /= geomech_grid%ngmax_node - geomech_grid%nlmax_node) then
@@ -468,7 +484,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   write(string,*) option%myrank
   string = 'geomech_node_ids_ghosts_natural' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
-  if (allocated(int_array2)) then
+  if (vertex_count > 0) then
     do local_id = 1, vertex_count
       write(86,'(i5)') int_array2(local_id)
     enddo
@@ -482,7 +498,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                                    geomech_grid%nlmax_node  
     
   ! Changing the index to 0 based
-  if (allocated(int_array2))  int_array2 = int_array2 - 1    
+  if (allocated(int_array2)) & 
+     int_array2 = int_array2 - 1   
     
   ! Create a new IS with local PETSc numbering
   call ISCreateGeneral(option%mycomm,geomech_grid%num_ghost_nodes, &
