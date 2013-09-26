@@ -28,6 +28,13 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
 \hyperlink{target_geomech}{\bf GEOMECHANICS} & \\
+\hyperlink{target_geomech_grid}{\bf GEOMECHANICS\_GRID} & \\
+\hyperlink{target_geomech_output}{\bf GEOMECHANICS\_OUTPUT} & \\
+\hyperlink{target_geomech_material_prop}{\bf GEOMECHANICS\_MATERIAL\_PROPERTY} & \\
+\hyperlink{target_geomech_region}{\bf GEOMECHANICS\_REGION} & \\
+\hyperlink{target_geomech_condition}{\bf GEOMECHANICS\_CONDITION} & \\
+\hyperlink{target_geomech_bc}{\bf GEOMECHANICS\_BOUNDARY\_CONDITION} & \\
+\hyperlink{target_geomech_strata}{\bf GEOMECHANICS\_STRATA} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
@@ -1506,7 +1513,100 @@ FLUID_PROPERTY
  
 \subsection{Keyword: GEOMECHANICS}
 
-\noindent{\bf Description:} This keyword is required when using geomechanics.
+\noindent{\bf Description:} This keyword is required when using geomechanics. All the geomechanics part should go in this card.
+
+\begin{description}
+\item[GEOMECHANICS]~
+\item[Required Input Parameters:]~
+All the geomechanics keywords  should go here.
+\item[\keyend] ~
+
+\end{description}
+%
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_grid}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_GRID}
+
+\noindent{\bf Description:} The grid type and the format for geomechanics is specified here.
+Only unstructured grids can be read. If you need to use a structured grid, generate the grid as an unstructured grid in the implicit format (see GRID keyword for details of the format below).
+
+\begin{description}
+\item[GEOMECHANICS\_GRID]~
+\item[Required Input Parameters:]~
+
+\begin{description}
+\item[TYPE <type> :] ~
+
+\begin{description}
+\item Grid type (unstructured)
+\end{description}
+
+\item[FILE <filename>:] Name of file containing grid information (unstructured only)
+
+\end{description}
+
+\item[\keyend] ~
+
+\end{description}
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_output}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_OUTPUT}
+
+\noindent{\bf Description:} This keyword is required for output of geomechanics data. The geomechanics data is saved in separate set of files (unlike flow and transport). The filenames of these files have the word \texttt{-geomech-} included in them.  Uses the same keywords as OUTPUT. 
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_material_prop}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_MATERIAL\_PROPERTY}
+
+\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_region}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_REGION}
+
+\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_condition}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_CONDITION}
+
+\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_bc}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_BOUNDARY\_CONDITION}
+
+\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_strata}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_STRATA}
+
+\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
 
 
 %========================================================================

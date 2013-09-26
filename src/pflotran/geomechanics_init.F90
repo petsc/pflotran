@@ -99,51 +99,68 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   type(option_type), pointer                 :: option
   character(len=MAXWORDLENGTH)               :: word
   type(unstructured_grid_type), pointer      :: ugrid
+  character(len=MAXWORDLENGTH)               :: card
   
   discretization       => geomech_realization%discretization
        
- input%ierr = 0
+  input%ierr = 0
   ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
 
-  call InputReadFlotranString(input,option)
-  call InputReadWord(input,option,word,PETSC_TRUE)
-  call InputErrorMsg(input,option,'keyword','GEOMECHANICS')
-  call StringToUpper(word)
+  do
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,card)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','GEOMECHANICS')
+    call StringToUpper(word)
     
-  select case(trim(word))
-    case ('TYPE')
-      call InputReadWord(input,option,word,PETSC_TRUE)
-      call InputErrorMsg(input,option,'keyword','TYPE')
-      call StringToUpper(word)
+    select case(trim(word))
+      case ('TYPE')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','TYPE')
+        call StringToUpper(word)
 
-      select case(trim(word))
-        case ('UNSTRUCTURED')
-          discretization%itype = UNSTRUCTURED_GRID
-          call InputReadNChars(input,option, &
-                               discretization%filename, &
-                               MAXSTRINGLENGTH, &
-                               PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword','filename')
+        select case(trim(word))
+          case ('UNSTRUCTURED')
+            discretization%itype = UNSTRUCTURED_GRID
+            call InputReadNChars(input,option, &
+                                 discretization%filename, &
+                                 MAXSTRINGLENGTH, &
+                                 PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','filename')
 
-          discretization%grid  => GMGridCreate()
-          ugrid => UGridCreate()
-          call UGridRead(ugrid,discretization%filename,option)
-          call UGridDecompose(ugrid,option)
-          call CopySubsurfaceGridtoGeomechGrid(ugrid, &
-                                               discretization%grid,option)
-          patch => GeomechanicsPatchCreate()
-          patch%geomech_grid => discretization%grid
-          geomech_realization%geomech_patch => patch
-        case default
-          option%io_buffer = 'Geomechanics supports only unstructured grid'
-          call printErrMsg(option)
-      end select
-   case default    
-      option%io_buffer = 'Keyword: ' // trim(word) // &
-        ' not recognized in GEOMECHANICS_GRID.'
-  end select
-     
+            discretization%grid  => GMGridCreate()
+            ugrid => UGridCreate()
+            call UGridRead(ugrid,discretization%filename,option)
+            call UGridDecompose(ugrid,option)
+            call CopySubsurfaceGridtoGeomechGrid(ugrid, &
+                                                 discretization%grid,option)
+            patch => GeomechanicsPatchCreate()
+            patch%geomech_grid => discretization%grid
+            geomech_realization%geomech_patch => patch
+          case default
+            option%io_buffer = 'Geomechanics supports only unstructured grid'
+            call printErrMsg(option)
+        end select
+      case ('GRAVITY')
+        call InputReadDouble(input,option,option%geomech_gravity(X_DIRECTION))
+        call InputErrorMsg(input,option,'x-direction','GEOMECH GRAVITY')
+        call InputReadDouble(input,option,option%geomech_gravity(Y_DIRECTION))
+        call InputErrorMsg(input,option,'y-direction','GEOMECH GRAVITY')
+        call InputReadDouble(input,option,option%geomech_gravity(Z_DIRECTION))
+        call InputErrorMsg(input,option,'z-direction','GEOMECH GRAVITY')
+        if (option%myrank == option%io_rank .and. &
+            option%print_to_screen) &
+            write(option%fid_out,'(/," *GEOMECH_GRAV",/, &
+            & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
+            & )') option%geomech_gravity(1:3)
+      case default    
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+          ' not recognized in GEOMECHANICS_GRID.'
+    end select
+  enddo
+    
 end subroutine GeomechanicsInit
 
 ! ************************************************************************** !
@@ -318,6 +335,10 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         select case (word)
           case ('ONE_WAY_COUPLED')      
             option%geomech_subsurf_coupling = ONE_WAY_COUPLED 
+          case default
+            option%io_buffer = 'Keyword: ' // trim(word) // &
+                               ' not recognized in GEOMECHANICS_SUBSURFACE_COUPLING.'
+            call printErrMsg(option)
         end select
         do
           call InputReadFlotranString(input,option)

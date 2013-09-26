@@ -76,6 +76,7 @@ module Option_module
     PetscInt  :: ngeomechdof
     PetscReal :: geomech_time
     PetscInt  :: geomech_subsurf_coupling
+    PetscReal :: geomech_gravity(3)
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -422,6 +423,8 @@ subroutine OptionInitRealization(option)
   option%ngeomechdof = 0
   option%geomech_time = 0.d0
   option%geomech_subsurf_coupling = 0 
+  option%geomech_gravity(:) = 0.d0
+  option%geomech_gravity(3) = -9.8068d0    ! m/s^2
 #endif
 
   option%tranmode = ""
