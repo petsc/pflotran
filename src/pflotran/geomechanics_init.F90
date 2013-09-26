@@ -312,6 +312,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
 
       !.........................................................................
       case ('GEOMECHANICS_SUBSURFACE_COUPLING')
+        option%geomech_subsurf_coupling = -1
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
         select case (word)
