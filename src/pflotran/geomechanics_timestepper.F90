@@ -192,7 +192,6 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
         call GeomechUpdateFromSubsurf(realization,geomech_realization)
         call GeomechStoreInitialPressTemp(geomech_realization)
       endif
-      call GeomechUpdateFromSubsurf(realization,geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
       call GeomechUpdateSolution(geomech_realization)
@@ -517,13 +516,14 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                               failure)
           call GeomechUpdateSolution(geomech_realization)
         endif
-     else
+      elseif (option%geomech_subsurf_coupling /= 0) then
+        call GeomechUpdateFromSubsurf(realization,geomech_realization)
+      endif
         call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
         call GeomechUpdateSolution(geomech_realization)
-     endif
-      call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
-                              transient_plot_flag)
+        call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
+                                transient_plot_flag)
     endif
 #endif    
 
