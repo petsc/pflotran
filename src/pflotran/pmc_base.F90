@@ -443,7 +443,7 @@ end subroutine OutputLocal
 ! date: 07/26/13
 !
 ! ************************************************************************** !
-recursive subroutine PMCBaseCheckpoint(this,viewer,id)
+recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
 
   use Logging_module
   use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
@@ -455,6 +455,7 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id)
   class(pmc_base_type) :: this
   PetscViewer :: viewer
   PetscInt :: id
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   
   class(pm_base_type), pointer :: cur_pm
   PetscLogDouble :: tstart, tend
@@ -465,7 +466,11 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id)
     call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
     call PetscLogEventBegin(logging%event_checkpoint,ierr)  
     call PetscTime(tstart,ierr)   
-    call OpenCheckpointFile(viewer,id,this%option)
+    if (present(id_stamp)) then
+       call OpenCheckpointFile(viewer,id,this%option,id_stamp)
+    else
+       call OpenCheckpointFile(viewer,id,this%option)
+    endif
   endif
   
   call this%timestepper%Checkpoint(viewer,this%option)
