@@ -1890,13 +1890,17 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
+  ukvr = 0.d0
+  uh = 0.d0
+
+  mol_total_flux = 0.d0
+  uxmol = 0.d0
+
   diffdp = por_dn*tor_dn/dd_up*area*vol_frac_prim
 
   ! Flow   
   do np = 1, option%nphase
     pressure_bc_type = ibndtype(MPH_PRESSURE_DOF)
-
-!   print *,'phase: ',np,pressure_bc_type
 
     select case(ibndtype(MPH_PRESSURE_DOF))
         ! figure out the direction of flow
@@ -1979,7 +1983,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           else 
             density_ave = aux_var_dn%den(np)
           endif
-          if(np == 1)then
+          if (np == 1) then
             Neuman_mass_flux_spec(np) = &
             Neuman_total_mass_flux * (1.D0-aux_vars(MPH_CONCENTRATION_DOF))
             uxmol(1) = 1.D0; uxmol(2)=0.D0
@@ -1991,9 +1995,12 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
             uxmol(1) = 0.D0; uxmol(2) = 1.D0
             mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWCO2
             uh = aux_var_dn%h(np)
+          endif
+          vv_darcy(np) = mol_total_flux(np)/density_ave
         endif
-        vv_darcy(np) = mol_total_flux(np)/density_ave
-      endif 
+
+      case(ZERO_GRADIENT_BC)
+
     end select
      
      
@@ -2003,7 +2010,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     enddo
       !if(option%use_isothermal == PETSC_FALSE) &
     fluxe = fluxe + mol_total_flux(np)*uh
-!   print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
+!   print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol, mol_total_flux
   enddo
   
 ! Diffusion term   
@@ -2012,8 +2019,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       do np = 1, option%nphase
-        if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np) > eps)then
-          diff =  diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
+        if (aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np) > eps) then
+          diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
                     (aux_var_up%den(np)+aux_var_up%den(np))
           do ispec = 1, option%nflowspec
             fluxm(ispec) = fluxm(ispec) + &
@@ -2042,8 +2049,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     end select
 !   print *, fluxe, aux_vars
 ! end if
-  
-  Res(1:option%nflowspec) = fluxm(:)* option%flow_dt
+
+  Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
   Res(option%nflowdof) = fluxe * option%flow_dt
 
 end subroutine MphaseBCFlux
