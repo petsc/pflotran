@@ -1701,6 +1701,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
         !coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=0.d0
         hw_p(local_id) = hw_p(local_id) + v_darcy*option%surf_flow_dt
+        if(hw_p(local_id)<1.d-15) hw_p(local_id) = 0.d0
         if(abs(v_darcy)>v_darcy_max) v_darcy_max=v_darcy
       enddo
 
@@ -2135,6 +2136,12 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecRestoreArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
+
+  call DiscretizationGlobalToLocal(surf_realization%discretization, &
+                                   surf_field%flow_xx, &
+                                   surf_field%flow_xx_loc, &
+                                   NFLOWDOF)
+  call SurfaceFlowUpdateAuxVars(surf_realization)
 
 end subroutine SurfaceFlowUpdateSurfStateNew
 

@@ -16,12 +16,33 @@ module Timestepper_Surface_class
 
   type, public, extends(stepper_base_type) :: timestepper_surface_type
     PetscReal :: dt_max_allowable
+    PetscReal :: surf_subsurf_coupling_flow_dt
     type(solver_type), pointer :: solver
   contains
+    procedure, public :: Checkpoint => TimestepperSurfaceCheckpoint
     procedure, public :: Init => TimestepperSurfaceInit
+    procedure, public :: Restart => TimestepperSurfaceRestart
     procedure, public :: SetTargetTime => TimestepperSurfaceSetTargetTime
     procedure, public :: StepDT => TimestepperSurfaceStepDT
   end type timestepper_surface_type
+
+  ! For checkpointing
+  type, public, extends(stepper_base_header_type) :: timestepper_surface_header_type
+    real*8 :: dt_max_allowable
+    real*8 :: surf_subsurf_coupling_flow_dt
+  end type timestepper_surface_header_type
+  PetscSizeT, parameter, private :: bagsize = 80 ! 64 (base) + 16 (BE)
+
+  interface PetscBagGetData
+    subroutine PetscBagGetData(bag,header,ierr)
+      import :: timestepper_surface_header_type
+      implicit none
+#include "finclude/petscbag.h"
+      PetscBag :: bag
+      class(timestepper_surface_header_type), pointer :: header
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface PetscBagGetData
 
   public TimestepperSurfaceSetTargetTime, &
          TimestepperSurfaceCreate
@@ -70,6 +91,7 @@ subroutine TimestepperSurfaceInit(this)
   call TimestepperBaseInit(this)
 
   this%dt_max_allowable = 0.d0
+  this%surf_subsurf_coupling_flow_dt = 0.d0
   
 end subroutine TimestepperSurfaceInit
 
@@ -235,6 +257,167 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
   endif
 
 end subroutine TimestepperSurfaceStepDT
+
+! ************************************************************************** !
+!> This checkpoints parameters/variables associated with surface-timestepper
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/18/13
+! ************************************************************************** !
+subroutine TimestepperSurfaceCheckpoint(this,viewer,option)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(timestepper_surface_type) :: this
+  PetscViewer :: viewer
+  type(option_type) :: option
+
+  class(timestepper_surface_header_type), pointer :: header
+  PetscBag :: bag
+  PetscErrorCode :: ierr
+
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  call PetscBagGetData(bag,header,ierr)
+  call TimestepperSurfaceRegisterHeader(this,bag,header)
+  call TimestepperSurfaceSetHeader(this,bag,header)
+  call PetscBagView(bag,viewer,ierr)
+  call PetscBagDestroy(bag,ierr)
+
+end subroutine TimestepperSurfaceCheckpoint
+
+! ************************************************************************** !
+!> This checkpoints parameters/variables associated with surface-timestepper
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/18/13
+! ************************************************************************** !
+subroutine TimestepperSurfaceRestart(this,viewer,option)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(timestepper_surface_type) :: this
+  PetscViewer :: viewer
+  type(option_type) :: option
+
+  class(timestepper_surface_header_type), pointer :: header
+  PetscBag :: bag
+  PetscErrorCode :: ierr
+
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr)
+  call PetscBagGetData(bag,header,ierr)
+  call TimestepperSurfaceRegisterHeader(this,bag,header)
+  call PetscBagLoad(viewer,bag,ierr)
+  call TimestepperSurfaceGetHeader(this,header)
+  call PetscBagDestroy(bag,ierr)
+
+end subroutine TimestepperSurfaceRestart
+
+! ************************************************************************** !
+!> This subroutine register header entries for surface-flow.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine TimestepperSurfaceRegisterHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(timestepper_surface_type) :: this
+  class(timestepper_surface_header_type) :: header
+  PetscBag :: bag
+
+  PetscErrorCode :: ierr
+
+  ! bagsize = 2 * 8 bytes = 16 bytes
+  call PetscBagRegisterReal(bag,header%dt_max_allowable,0.d0, &
+                           "dt_max_allowable","",ierr)
+  call PetscBagRegisterReal(bag,header%surf_subsurf_coupling_flow_dt,0.d0, &
+                           "surf_subsurf_coupling_flow_dt","",ierr)
+
+  call TimestepperBaseRegisterHeader(this,bag,header)
+
+end subroutine TimestepperSurfaceRegisterHeader
+
+! ************************************************************************** !
+!> This subroutine sets values in checkpoint header.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine TimestepperSurfaceSetHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(timestepper_surface_type) :: this
+  class(timestepper_surface_header_type) :: header
+  PetscBag :: bag
+
+  PetscErrorCode :: ierr
+
+  header%dt_max_allowable = this%dt_max_allowable
+  header%surf_subsurf_coupling_flow_dt = this%surf_subsurf_coupling_flow_dt
+
+  call TimestepperBaseSetHeader(this,bag,header)
+
+end subroutine TimestepperSurfaceSetHeader
+
+! ************************************************************************** !
+!> This subroutine gets values in checkpoint header.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine TimestepperSurfaceGetHeader(this,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  class(timestepper_surface_type) :: this
+  class(timestepper_surface_header_type) :: header
+
+  PetscErrorCode :: ierr
+
+  this%dt_max_allowable = header%dt_max_allowable
+  this%surf_subsurf_coupling_flow_dt = header%surf_subsurf_coupling_flow_dt
+
+  call TimestepperBaseGetHeader(this,header)
+
+  call TSSetTime(this%solver%ts,this%target_time,ierr)
+
+end subroutine TimestepperSurfaceGetHeader
 
 end module Timestepper_Surface_class
 

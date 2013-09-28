@@ -53,6 +53,8 @@ module Surface_Checkpoint_module
   private
 
   public :: SurfaceCheckpoint, SurfaceRestart
+  public :: SurfaceCheckpointProcessModel, &
+            SurfaceRestartProcessModel
 
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
@@ -407,6 +409,126 @@ subroutine SurfCheckpointRegisterBagHeader(bag,header)
                             ierr)
 
 end subroutine SurfCheckpointRegisterBagHeader
+
+! ************************************************************************** !
+!> This subroutine writes a checkpoint file for surface realization using
+!! process model approach.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine SurfaceCheckpointProcessModel(viewer, surf_realization)
+
+  use Surface_Realization_class
+  use Surface_Field_module
+  use Grid_module
+  use Discretization_module
+  use Output_Aux_module
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(surface_realization_type) :: surf_realization
+  PetscViewer :: viewer
+
+  type(surface_field_type), pointer :: surf_field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  PetscErrorCode :: ierr
+  Vec :: global_vec
+
+  surf_field => surf_realization%surf_field
+  option => surf_realization%option
+  discretization => surf_realization%discretization
+  grid => discretization%grid
+
+  global_vec = 0
+  !--------------------------------------------------------------------
+  ! Dump all the relevant vectors.
+  !--------------------------------------------------------------------
+
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+    ! grid%flow_xx is the vector into which all of the primary variables are
+    ! packed for the TSSolve().
+    call VecView(surf_field%flow_xx, viewer, ierr)
+
+    ! Mannings coefficient.
+    call DiscretizationLocalToGlobal(discretization,surf_field%mannings_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+  endif
+
+  if (global_vec /= 0) call VecDestroy(global_vec,ierr)
+
+end subroutine SurfaceCheckpointProcessModel
+
+! ************************************************************************** !
+!> This subroutine reads a checkpoint file for surface realization using
+!! process model approach.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine SurfaceRestartProcessModel(viewer,surf_realization)
+
+  use Surface_Realization_class
+  use Surface_Field_module
+  use Grid_module
+  use Discretization_module
+  use Output_Aux_module
+  use Option_module
+  use Surface_Flow_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  PetscViewer :: viewer
+
+  type(surface_field_type), pointer :: surf_field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  PetscErrorCode :: ierr
+  Vec :: global_vec
+
+  surf_field => surf_realization%surf_field
+  option => surf_realization%option
+  discretization => surf_realization%discretization
+  grid => discretization%grid
+
+  global_vec = 0
+
+  if (option%nsurfflowdof > 0) then
+    call DiscretizationCreateVector(discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+    ! Load the PETSc vectors.
+    call VecLoad(surf_field%flow_xx,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx, &
+                                     surf_field%flow_xx_loc,NFLOWDOF)
+    call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
+
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     surf_field%mannings_loc,ONEDOF)
+    call SurfaceFlowUpdateAuxVars(surf_realization)
+
+  endif
+
+  ! We are finished, so clean up.
+  if (global_vec /= 0) call VecDestroy(global_vec,ierr)
+
+end subroutine SurfaceRestartProcessModel
 
 end module Surface_Checkpoint_module
 #endif

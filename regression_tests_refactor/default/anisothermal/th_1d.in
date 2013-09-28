@@ -245,3 +245,6 @@ CONSTRAINT inlet_constraint
     Ca++   1.d-6      T 
   /
 END
+
+:=========================== checkpoint / restart =============================
+CHECKPOINT 10

@@ -23,6 +23,7 @@ module PMC_Surface_class
     procedure, public :: AccumulateAuxData => PMCSurfaceAccumulateAuxData
     procedure, public :: GetAuxData => PMCSurfaceGetAuxData
     procedure, public :: SetAuxData => PMCSurfaceSetAuxData
+    procedure, public :: PMCSurfaceGetAuxDataAfterRestart
   end type pmc_surface_type
 
   public :: PMCSurfaceCreate
@@ -98,6 +99,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Output_Surface_module
   
   implicit none
+#include "finclude/petscviewer.h"
   
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
@@ -111,6 +113,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   class(pm_base_type), pointer :: cur_pm
   PetscReal :: dt_max_loc
   PetscReal :: dt_max_glb
+  PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)
@@ -144,6 +147,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     select type(timestepper => this%timestepper)
       class is(timestepper_surface_type)
         timestepper%dt_max_allowable = dt_max_glb
+        timestepper%surf_subsurf_coupling_flow_dt = &
+          this%option%surf_subsurf_coupling_flow_dt
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
@@ -201,6 +206,22 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
     !endif
+
+    if (this%is_master .and. &
+        this%option%checkpoint_flag .and. &
+        mod(this%timestepper%steps, &
+        this%option%checkpoint_frequency) == 0) then
+      ! if checkpointing, need to sync all other PMCs.  Those "below" are
+      ! already in sync, but not those "next".
+      ! Set data needed by process-model
+      call this%SetAuxData()
+      ! Run neighboring process model couplers
+      if (associated(this%next)) then
+        call this%next%RunToTime(this%timestepper%target_time,local_stop_flag)
+      endif
+      call this%GetAuxData()
+      call this%Checkpoint(viewer,this%timestepper%steps)
+    endif
 
   enddo
   
@@ -281,6 +302,21 @@ subroutine PMCSurfaceGetAuxData(this)
   class(pmc_surface_type) :: this
 
   PetscErrorCode :: ierr
+
+  print *, 'PMCSurfaceGetAuxData()'
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+            call SurfaceFlowUpdateSurfBC(pmc%subsurf_realization, &
+                                             pmc%surf_realization)
+          case (TH_MODE)
+            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
+                                           pmc%surf_realization)
+        end select
+    end select
+  endif
 
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
     select type(pmc => this)
@@ -373,6 +409,91 @@ subroutine PMCSurfaceSetAuxData(this)
   endif
 
 end subroutine PMCSurfaceSetAuxData
+
+! ************************************************************************** !
+!> This routine is called to set values in sim_aux PETSc vectors after restart
+!! checkpoint files is read.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/23/13
+! ************************************************************************** !
+subroutine PMCSurfaceGetAuxDataAfterRestart(this)
+
+  use Surface_Flow_module
+  use Surface_TH_module
+  use Option_module
+  use Water_EOS_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(pmc_surface_type) :: this
+
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: count
+  PetscReal, pointer      :: hw_p(:)           ! head [m]
+  PetscReal, pointer      :: surfpress_p(:)
+  PetscReal :: den
+  PetscErrorCode :: ierr
+
+  print *, 'PMCSurfaceGetAuxDataAfterRestart()'
+  if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+          case (TH_MODE)
+        end select
+    end select
+  endif
+
+  if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+    select type(pmc => this)
+      class is(pmc_surface_type)
+        select case(this%option%iflowmode)
+          case (RICHARDS_MODE)
+
+            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, hw_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
+            count = 0
+            do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
+
+              local_id = pmc%surf_realization%discretization%grid%nG2L(ghosted_id)
+              if(local_id <= 0) cycle
+
+              count = count + 1
+              surfpress_p(count) = hw_p(ghosted_id)*den*abs(this%option%gravity(3)) + &
+                                   this%option%reference_pressure
+            enddo
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, hw_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
+
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%surf_realization%surf_field%press_subsurf, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 INSERT_VALUES,SCATTER_REVERSE,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%surf_realization%surf_field%press_subsurf, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               INSERT_VALUES,SCATTER_REVERSE,ierr)
+
+          case (TH_MODE)
+            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
+                                           pmc%surf_realization)
+            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
+            call printErrMsg(this%option)
+        end select
+    end select
+  endif
+
+end subroutine PMCSurfaceGetAuxDataAfterRestart
 
 ! ************************************************************************** !
 !> This routine

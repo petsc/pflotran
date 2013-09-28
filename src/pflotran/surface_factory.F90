@@ -276,6 +276,7 @@ subroutine SurfaceJumpStart(simulation)
   surf_flow_read = PETSC_FALSE
   failure = PETSC_FALSE
   
+#if 0
   if (option%restart_flag) then
     call SurfaceRestart(surf_realization,surf_flow_prev_dt,surf_flow_read)
 
@@ -292,6 +293,7 @@ subroutine SurfaceJumpStart(simulation)
     endif
 
   endif
+#endif
 
   ! pushed in Init()
   call PetscLogStagePop(ierr)
