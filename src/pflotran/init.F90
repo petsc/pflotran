@@ -304,7 +304,15 @@ subroutine Init(simulation)
       call init_span_wanger(realization)
   end select
   
-
+  ! SK 09/30/13, Added to check if Mphase is called with OS
+  if (option%reactive_transport_coupling == OPERATOR_SPLIT .and. &
+      option%iflowmode == MPH_MODE) then
+    option%io_buffer = 'Operator split not implemented with MPHASE. ' // &
+                       'Switching to Global Implicit.'
+    call printWrnMsg(option)
+    option%reactive_transport_coupling = GLOBAL_IMPLICIT
+  endif
+  
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
 #ifdef SURFACE_FLOW
@@ -687,8 +695,8 @@ subroutine Init(simulation)
     call SolverCreateSNES(tran_solver,option%mycomm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
-      
-     if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
           tran_solver%Jpre_mat_type = tran_solver%J_mat_type
