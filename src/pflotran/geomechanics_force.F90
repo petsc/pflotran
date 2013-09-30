@@ -383,13 +383,13 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
     geomech_global_aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Z_DOF) = &
       xx_loc_p(GEOMECH_DISP_Z_DOF + (ghosted_id-1)*THREE_INTEGER)
  
-    geomech_global_aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_X_DOF) = &
+    geomech_global_aux_vars(ghosted_id)%rel_disp_vector(GEOMECH_DISP_X_DOF) = &
       xx_loc_p(GEOMECH_DISP_X_DOF + (ghosted_id-1)*THREE_INTEGER) - &
       xx_init_loc_p(GEOMECH_DISP_X_DOF + (ghosted_id-1)*THREE_INTEGER)
-    geomech_global_aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Y_DOF) = &
+    geomech_global_aux_vars(ghosted_id)%rel_disp_vector(GEOMECH_DISP_Y_DOF) = &
       xx_loc_p(GEOMECH_DISP_Y_DOF + (ghosted_id-1)*THREE_INTEGER) - &
       xx_init_loc_p(GEOMECH_DISP_Y_DOF + (ghosted_id-1)*THREE_INTEGER)
-    geomech_global_aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Z_DOF) = &
+    geomech_global_aux_vars(ghosted_id)%rel_disp_vector(GEOMECH_DISP_Z_DOF) = &
       xx_loc_p(GEOMECH_DISP_Z_DOF + (ghosted_id-1)*THREE_INTEGER) - &
       xx_init_loc_p(GEOMECH_DISP_Z_DOF + (ghosted_id-1)*THREE_INTEGER)
  enddo
@@ -1546,7 +1546,6 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   type(field_type), pointer                    :: field
   type(geomech_field_type), pointer            :: geomech_field
   type(gmdm_ptr_type), pointer                 :: dm_ptr
-  
 
   PetscErrorCode :: ierr
   PetscReal, pointer :: vec_p(:), xx_loc_p(:)
@@ -1557,6 +1556,10 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   field         => realization%field
   geomech_grid  => geomech_realization%discretization%grid
   geomech_field => geomech_realization%geomech_field
+
+  ! use the subsurface output option parameters for geomechanics as well
+  geomech_realization%output_option%tunit = realization%output_option%tunit
+  geomech_realization%output_option%tconv = realization%output_option%tconv
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
                                                    discretization,ONEDOF)
