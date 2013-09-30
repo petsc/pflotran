@@ -614,14 +614,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
       
   call VecAssemblyBegin(r,ierr)
   call VecAssemblyEnd(r,ierr)  
-  
-#ifdef GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(realization%option%mycomm, &
-                            'Geomech_residual_debug_beforeBC.out',viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif  
-
+ 
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
@@ -734,17 +727,6 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
 
   call VecAssemblyBegin(r,ierr)
   call VecAssemblyEnd(r,ierr)  
-  
-#ifdef GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(realization%option%mycomm, &
-                            'Geomech_residual_debug_afterBC.out',viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-  call PetscViewerBinaryOpen(realization%option%mycomm,'Geomech_residual_debug_afterBC.bin', &
-                             FILE_MODE_WRITE,viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)  
-#endif   
 
 end subroutine GeomechForceResidualPatch
 
@@ -1431,18 +1413,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)  
   
-#ifdef GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(realization%option%mycomm, &
-                            'Geomech_jacobian_debug_beforeBC.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-  call PetscViewerBinaryOpen(realization%option%mycomm,&
-                             'Geomech_jacobian_debug_beforeBC.bin', &
-                             FILE_MODE_WRITE,viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr) 
-#endif 
-    
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
   
@@ -1514,21 +1484,6 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   deallocate(rows)
 
-
-#ifdef GEOMECH_DEBUG  
-  call PetscViewerASCIIOpen(realization%option%mycomm, &
-                           'Geomech_jacobian_afterBC.out', &
-                            viewer,ierr)
-  
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)  
-  call PetscViewerBinaryOpen(realization%option%mycomm, &
-                             'Geomech_jacobian_afterBC.bin', &
-                             FILE_MODE_WRITE,viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)  
-#endif 
-    
 end subroutine GeomechForceJacobianPatch  
 
 ! ************************************************************************** !
