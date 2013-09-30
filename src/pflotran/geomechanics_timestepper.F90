@@ -192,10 +192,11 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
         call GeomechUpdateFromSubsurf(realization,geomech_realization)
         call GeomechStoreInitialPressTemp(geomech_realization)
       endif
-      call GeomechStoreInitialDisp(geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
       call GeomechUpdateSolution(geomech_realization)
+      call GeomechStoreInitialDisp(geomech_realization)
+      call GeomechForceUpdateAuxVars(geomech_realization)
     endif
 #endif  
 
