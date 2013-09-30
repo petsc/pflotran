@@ -245,7 +245,8 @@ subroutine GeomechRealizCreateDiscretization(realization)
                                             geomech_field%disp_r)
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
                                             geomech_field%work)
-                                            
+  
+  ! 1 degree of freedom, global                                                                                    
   call GeomechDiscretizationCreateVector(discretization,ONEDOF,geomech_field%press, &
                                          GLOBAL,option)
   call VecSet(geomech_field%press,0.d0,ierr)
@@ -260,7 +261,8 @@ subroutine GeomechRealizCreateDiscretization(realization)
  
   call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx_loc, &
                                             geomech_field%work_loc)
-
+                                            
+  ! 1 degree of freedom, local
   call GeomechDiscretizationCreateVector(discretization,ONEDOF,geomech_field%press_loc, &
                                          LOCAL,option)
 
@@ -342,6 +344,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   type(gmdm_type), pointer                     :: gmdm
   type(gmdm_ptr_type), pointer                 :: dm_ptr
   IS                                           :: is_geomech, is_subsurf
+  IS                                           :: is_subsurf_natural
   IS                                           :: is_subsurf_petsc
   PetscViewer                                  :: viewer
   PetscErrorCode                               :: ierr
@@ -393,22 +396,38 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   
   allocate(int_array(grid%nlmax))
   do local_id = 1, grid%nlmax
+    int_array(local_id) = grid%nG2A(grid%nL2G(local_id)) - 1
+  enddo
+
+  call ISCreateGeneral(option%mycomm,grid%nlmax, &
+                       int_array,PETSC_COPY_VALUES,is_subsurf_natural,ierr)
+  deallocate(int_array)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_natural.out', &
+                            viewer,ierr)
+  call ISView(is_subsurf_natural,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+
+  allocate(int_array(grid%nlmax))
+  do local_id = 1, grid%nlmax
     int_array(local_id) = (local_id-1) + grid%global_offset
   enddo
 
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
                        int_array,PETSC_COPY_VALUES,is_subsurf_petsc,ierr)
   deallocate(int_array)
-
+  
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_subsurf_petsc.out', &
                             viewer,ierr)
-  call ISView(is_subsurf_petsc,viewer,ierr)
+  call ISView(is_subsurf_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
   
-  call ISDuplicate(is_subsurf_petsc,is_geomech_petsc,ierr)
-  call ISCopy(is_subsurf_petsc,is_geomech_petsc,ierr)
+  call ISDuplicate(is_subsurf_natural,is_geomech_petsc,ierr)
+  call ISCopy(is_subsurf_natural,is_geomech_petsc,ierr)
   
   call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc,ierr)
  

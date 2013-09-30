@@ -269,12 +269,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   call MatAssemblyBegin(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
-  
-#ifdef GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'geomech_Rank_Mat.out',viewer,ierr)
-  call MatView(Rank_Mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif  
 
   allocate(val(option%mycommsize))
   allocate(cols(option%mycommsize))
