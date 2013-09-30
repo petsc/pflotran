@@ -32,6 +32,7 @@ module Geomechanics_Field_module
     Vec :: stress_loc
     ! Solution vectors (xx = current iterate)
     Vec :: disp_xx, disp_xx_loc
+    Vec :: disp_xx_init_loc
   end type geomech_field_type
 
   public :: GeomechFieldCreate, &
@@ -63,6 +64,7 @@ function GeomechFieldCreate()
   geomech_field%disp_r = 0
   geomech_field%disp_xx = 0
   geomech_field%disp_xx_loc = 0
+  geomech_field%disp_xx_init_loc = 0
   
   geomech_field%press = 0
   geomech_field%press_loc = 0
@@ -103,6 +105,7 @@ subroutine GeomechFieldDestroy(geomech_field)
   if (geomech_field%disp_r /= 0) call VecDestroy(geomech_field%disp_r,ierr)
   if (geomech_field%disp_xx /= 0) call VecDestroy(geomech_field%disp_xx,ierr)
   if (geomech_field%disp_xx_loc /= 0) call VecDestroy(geomech_field%disp_xx_loc,ierr)
+  if (geomech_field%disp_xx_init_loc /= 0) call VecDestroy(geomech_field%disp_xx_init_loc,ierr)
   
   if (geomech_field%press /= 0) call VecDestroy(geomech_field%press,ierr)
   if (geomech_field%press_loc /= 0) call VecDestroy(geomech_field%press_loc,ierr)

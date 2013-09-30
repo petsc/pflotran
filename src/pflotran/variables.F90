@@ -98,7 +98,9 @@ module Variables_module
   PetscInt, parameter, public :: STRESS_YZ               = 84
   PetscInt, parameter, public :: STRESS_ZX               = 85
   PetscInt, parameter, public :: GEOMECH_MATERIAL_ID     = 86
- 
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_X      = 87 
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_Y      = 88
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_Z      = 89
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
