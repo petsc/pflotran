@@ -133,6 +133,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Subsurface_class  
   use Simulation_Base_class
+  use Process_Model_Mphase_class
   use Process_Model_Richards_class
   use Process_Model_RT_class
   use Process_Model_TH_class
@@ -172,6 +173,8 @@ subroutine HijackSimulation(simulation_old,simulation)
   ! Create Subsurface-flow ProcessModel & ProcessModelCoupler
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
+      case(MPH_MODE)
+        cur_process_model => PMMphaseCreate()
       case(RICHARDS_MODE)
         cur_process_model => PMRichardsCreate()
       case(TH_MODE)
@@ -238,19 +241,20 @@ subroutine HijackSimulation(simulation_old,simulation)
       do
         if (.not.associated(cur_process_model)) exit
         select type(cur_process_model)
+          class is (pm_mphase_type)
+            call cur_process_model%PMMphaseSetRealization(realization)
+            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_richards_type)
             call cur_process_model%PMRichardsSetRealization(realization)
-!            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
             call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
             flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_rt_type)
             call cur_process_model%PMRTSetRealization(realization)
-!            call cur_process_model_coupler%SetTimestepper(simulation_old%tran_stepper)
             call cur_process_model_coupler%SetTimestepper(tran_process_model_coupler%timestepper)
             tran_process_model_coupler%timestepper%dt = option%tran_dt
           class is (pm_th_type)
             call cur_process_model%PMTHSetRealization(realization)
-!            call cur_process_model_coupler%SetTimestepper(simulation_old%flow_stepper)
             call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
             flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_thc_type)
