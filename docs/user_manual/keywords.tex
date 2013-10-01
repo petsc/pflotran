@@ -1565,8 +1565,41 @@ Only unstructured grids can be read. If you need to use a structured grid, gener
 \protect\hypertarget{target_geomech_material_prop}{}
  
 \subsection{Keyword: GEOMECHANICS\_MATERIAL\_PROPERTY}
+\noindent{\bf Description:} Specifies geomechanics material properties to be associated with a geomechanics region in the problem domain.
 
-\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[GEOMECHANICS\_MATERIAL\_PROPERTY] \ {\tt <char>}
+\begin{deflist}{000}
+\item[ID] \ {\tt <int>}
+\item[YOUNGS\_MODULUS] \ {\tt <float>} \ [Pa]
+\item[POISSONS\_RATIO] \ {\tt <float>}
+\item[ROCK\_DENSITY] \ {\tt <float>} \ [kg/m$^3$]
+\item[BIOT\_COEFFICIENT] \ {\tt <float>} 
+\item[THERMAL\_EXPANSION\_COEFFICIENT] \ {\tt <float>} \ [Pa/K]
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+\noindent{\bf Explanation:}
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+\begin{verbatim}
+MATERIAL_PROPERTY rock	 
+  ID 1
+  YOUNGS_MODULUS 1.d10
+  POISSONS_RATIO 0.3
+  ROCK_DENSITY 2200
+  BIOT_COEFFICIENT 1.0
+  THERMAL_EXPANSION_COEFFICIENT 1.d-5
+END
+\end{verbatim}
+
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
 
 
 %========================================================================
@@ -1576,8 +1609,9 @@ Only unstructured grids can be read. If you need to use a structured grid, gener
  
 \subsection{Keyword: GEOMECHANICS\_REGION}
 
-\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
-
+\noindent{\bf Description:} The GEOMECHANICS\_REGION keyword defines a set of geomechanics finite element grid vertices.
+ The GEOMECHANICS\_REGION name can then be used to link this set of vertices to geomechanics  material properties, strata and boundary conditions. 
+The list of vertices can be read from an ASCII file by using the keyword FILE under the GEOMECHANICS\_REGION card.
 
 %========================================================================
 

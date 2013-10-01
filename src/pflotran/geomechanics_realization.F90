@@ -480,6 +480,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   call VecScatterDestroy(scatter,ierr)
   call ISDestroy(is_geomech,ierr)
   call ISDestroy(is_subsurf,ierr)
+  call ISDestroy(is_subsurf_natural,ierr)
   call ISDestroy(is_geomech_petsc,ierr)
   call ISDestroy(is_subsurf_petsc,ierr)
   call AODestroy(ao_geomech_to_subsurf_natural,ierr)
