@@ -238,16 +238,16 @@ module PFLOTRAN_Constants_module
 
 
   ! Grid type
+  PetscInt, parameter, public :: NULL_GRID = 0
   PetscInt, parameter, public :: STRUCTURED_GRID = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
+  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
   PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 4
   PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 5
-  PetscInt, parameter, public :: NULL_GRID = 0
-  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
   PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 6
-  PetscInt, parameter, public :: THREE_DIM_GRID = 3
-  PetscInt, parameter, public :: TWO_DIM_GRID = 2
   PetscInt, parameter, public :: ONE_DIM_GRID = 1
+  PetscInt, parameter, public :: TWO_DIM_GRID = 2
+  PetscInt, parameter, public :: THREE_DIM_GRID = 3
 
   ! Geomechanics
   PetscInt, parameter, public :: GEOMECH_DISP_X_DOF = 1

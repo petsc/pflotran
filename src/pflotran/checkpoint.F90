@@ -857,9 +857,10 @@ end subroutine CheckpointRegisterBagHeader
 ! date: 07/26/13
 !
 ! ************************************************************************** !
-subroutine OpenCheckpointFile(viewer,id,option)
+subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
 
   use Option_module
+  use String_module, only : StringNull
   
   implicit none
 
@@ -868,20 +869,26 @@ subroutine OpenCheckpointFile(viewer,id,option)
   PetscViewer :: viewer
   PetscInt :: id
   type(option_type) :: option
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   PetscErrorCode :: ierr
   
+  character(len=MAXWORDLENGTH) :: id_string
   character(len=MAXSTRINGLENGTH) :: filename
-  
-  if (id < 0) then
-    filename = trim(option%global_prefix) // &
-                trim(option%group_prefix) // &
-                '-restart.chk'
-  else
-    write(filename,'(i8)') id
-    filename = trim(option%global_prefix) // &
-                trim(option%group_prefix) // &
-                '-' // trim(adjustl(filename)) // '.chk'
-  endif
+
+  write(id_string,'(i8)') id
+  if (present(id_stamp)) then
+     if (.not. StringNull(id_stamp)) then
+        id_string = id_stamp
+     end if
+  else if (id < 0) then
+     id_string = 'restart'
+  end if
+  !else if (id >= 0) then --> use default id
+
+  filename = trim(option%global_prefix) // &
+       trim(option%group_prefix) // &
+       '-' // trim(adjustl(id_string)) // '.chk'
+
   !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
   !     into the routines it calls so that PetscViewerBinarySkipInfo()
   !     can be called after PetscViewerSetType(), but before
@@ -894,8 +901,8 @@ subroutine OpenCheckpointFile(viewer,id,option)
   call PetscViewerBinarySkipInfo(viewer,ierr)
   call PetscViewerFileSetName(viewer,filename,ierr)
   
-  write(option%io_buffer,'(" --> Dump checkpoint file: ", a32)') &
-    trim(filename)
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a64)') &
+    trim(adjustl(filename))
   call printMsg(option)
 
 end subroutine OpenCheckpointFile

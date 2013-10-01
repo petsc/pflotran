@@ -78,6 +78,7 @@ def exodus_to_pflotran_mesh():
 		
 		for j in range(block_size[i,0]):
 			mat_id[counter] = i+1
+			cell_array[counter, 0] = 6 
 			for k in range(6):
 				cell_array[counter, k+1] = block[j,k]
 			counter += 1
@@ -95,7 +96,7 @@ def exodus_to_pflotran_mesh():
 	# Write Material Ids
 	int_array = numpy.arange(num_elem)
 	int_array += 1
-	h5dset = pflotranfile.create_dataset('Materials/Cell Ids', data=mat_id)
+	h5dset = pflotranfile.create_dataset('Materials/Cell Ids', data=int_array)
 	h5dset = pflotranfile.create_dataset('Materials/Material Ids', data=mat_id)
 
 	print "Preparing sidesets"
@@ -137,10 +138,12 @@ def exodus_to_pflotran_mesh():
 				sideset[j,3] = cell_array[jelem,4]
 				sideset[j,4] = cell_array[jelem,6]
 			elif side[j] == 4:
+				sideset[j,0] = 3 
 				sideset[j,1] = cell_array[jelem,3]
 				sideset[j,2] = cell_array[jelem,2]
 				sideset[j,3] = cell_array[jelem,1]
 			elif side[j] == 5:
+				sideset[j,0] = 3 
 				sideset[j,1] = cell_array[jelem,4]
 				sideset[j,2] = cell_array[jelem,5]
 				sideset[j,3] = cell_array[jelem,6]

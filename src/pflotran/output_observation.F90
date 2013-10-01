@@ -1738,13 +1738,13 @@ subroutine OutputMassBalance(realization_base)
             if (reaction%primary_species_print(i)) then
               string = trim(coupler%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
-              call OutputAppendToHeader(header,string,'mol','',icol)
+              call OutputAppendToHeader(header,string,'kmol','',icol)
             endif
           enddo
           write(fid,'(a)',advance="no") trim(header)
           
           header = ''    
-          units = 'mol/' // trim(output_option%tunit) // ''
+          units = 'kmol/' // trim(output_option%tunit) // ''
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               string = trim(coupler%name) // ' ' // &
@@ -2229,12 +2229,10 @@ subroutine OutputMassBalance(realization_base)
 
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        do iphase = 1, option%nphase
-          do icomp = 1, reaction%naqcomp
-            if (reaction%primary_species_print(icomp)) then
-              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
-            endif
-          enddo
+        do icomp = 1, reaction%naqcomp
+          if (reaction%primary_species_print(icomp)) then
+            write(fid,110,advance="no") -sum_mol_global(icomp,1)
+          endif
         enddo
       endif
     
@@ -2251,13 +2249,11 @@ subroutine OutputMassBalance(realization_base)
                       
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        do iphase = 1, option%nphase
-          do icomp = 1, reaction%naqcomp
-            if (reaction%primary_species_print(icomp)) then
-              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)* &
+        do icomp = 1, reaction%naqcomp
+          if (reaction%primary_species_print(icomp)) then
+            write(fid,110,advance="no") -sum_mol_global(icomp,1)* &
                                           output_option%tconv
-            endif
-          enddo
+          endif
         enddo
       endif
     endif

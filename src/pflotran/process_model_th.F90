@@ -44,6 +44,8 @@ module Process_Model_TH_class
     procedure, public :: UpdateSolution => PMTHUpdateSolution
     procedure, public :: MaxChange => PMTHMaxChange
     procedure, public :: ComputeMassBalance => PMTHComputeMassBalance
+    procedure, public :: Checkpoint => PMTHCheckpoint
+    procedure, public :: Restart => PMTHRestart
     procedure, public :: Destroy => PMTHDestroy
   end type pm_th_type
   
@@ -657,6 +659,52 @@ subroutine PMTHComputeMassBalance(this,mass_balance_array)
 #endif
 
 end subroutine PMTHComputeMassBalance
+
+! ************************************************************************** !
+!
+! PMTHCheckpoint: Checkpoints data associated with TH PM
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine PMTHCheckpoint(this,viewer)
+
+  use Checkpoint_module
+
+  implicit none
+#include "finclude/petscviewer.h"      
+
+  class(pm_th_type) :: this
+  PetscViewer :: viewer
+  
+  call CheckpointFlowProcessModel(viewer,this%realization) 
+  
+end subroutine PMTHCheckpoint
+
+
+! ************************************************************************** !
+!
+! PMTHRestart: Restarts data associated with TH PM
+! author: Glenn Hammond
+! date: 07/30/13
+!
+! ************************************************************************** !
+subroutine PMTHRestart(this,viewer)
+
+  use Checkpoint_module
+  use TH_module, only : THUpdateAuxVars
+
+  implicit none
+#include "finclude/petscviewer.h"      
+
+  class(pm_th_type) :: this
+  PetscViewer :: viewer
+  
+  call RestartFlowProcessModel(viewer,this%realization)
+  call THUpdateAuxVars(this%realization)
+  call this%UpdateSolution()
+  
+end subroutine PMTHRestart
 
 ! ************************************************************************** !
 !> This routine 
