@@ -1548,6 +1548,12 @@ Only unstructured grids can be read. If you need to use a structured grid, gener
 
 \end{description}
 
+\item[Optional Input Parameters:]~
+\begin{description}
+\item[GRAVITY] <\# \# \#>: Specifies gravity vector for geomechanics calculations (or specific body force) [Default: 0 0 -9.81 m/s$^2$] 
+\end{description}
+
+
 \item[\keyend] ~
 
 \end{description}
@@ -1581,7 +1587,7 @@ Only unstructured grids can be read. If you need to use a structured grid, gener
 \item[\keyend]
 \end{deflist}
 
-\noindent{\bf Explanation:}
+\noindent{\bf Explanation:} The Young's modulus and Poisson's ratio (for the linear elastic model), rock density (used in body force calculation), Biot's coefficient and thermal expansion coefficient can be set here.
 
 \begin{mdframed}
 
@@ -1613,6 +1619,21 @@ END
  The GEOMECHANICS\_REGION name can then be used to link this set of vertices to geomechanics  material properties, strata and boundary conditions. 
 The list of vertices can be read from an ASCII file by using the keyword FILE under the GEOMECHANICS\_REGION card.
 
+\begin{mdframed}
+
+{\noindent\bf
+Examples:}
+
+\begin{verbatim}
+GEOMECHANICS_REGION top 
+  FILE top.vset 
+END
+\end{verbatim}
+
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -1620,7 +1641,81 @@ The list of vertices can be read from an ASCII file by using the keyword FILE un
  
 \subsection{Keyword: GEOMECHANICS\_CONDITION}
 
-\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+\noindent{\bf Description:} Condition coupler between regions and geomechanics boundary conditions. Since the geomechanics is solved in a quasi-steady manner, initial conditions are not needed. 
+
+
+{\noindent\bf Input:}
+\begin{deflist}{000}
+\item [GEOMECHANICS\_CONDITION] \ {\tt geomechanics\_condition\_name}
+\begin{deflist}{000}
+\item[TYPE] ~
+
+\begin{deflist}{000000}
+\item[DISPLACEMENT\_X] {\tt [dirichlet]}
+\item[DISPLACEMENT\_Y] {\tt [dirichlet]}
+\item[DISPLACEMENT\_Z] {\tt [dirichlet]}
+\item[FORCE\_X] {\tt [dirichlet]}
+\item[FORCE\_Y] {\tt [dirichlet]}
+\item[FORCE\_Z] {\tt [dirichlet]}
+\end{deflist}
+\item[\keyend]
+\item[DISPLACEMENT\_X] \ {\tt <float>}
+\item[DISPLACEMENT\_Y] \ {\tt <float>}
+\item[DISPLACEMENT\_Z] \ {\tt <float>}
+\item[FORCE\_X] \ {\tt <float>}
+\item[FORCE\_Y] \ {\tt <float>}
+\item[FORCE\_Z] \ {\tt <float>}
+\end{deflist}
+\item[\keyend] ~
+\end{deflist}
+
+{\noindent\bf Explanation:}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf GEOMECHANICS\_CONDITION & Initiates a geomechanics condition entry and defines its name\\
+\midrule
+\bf TYPE & Specifies condition type\\
+\midrule
+    \bf DISPLACEMENT\_X & Specifies $x-$ displacement condition type\\
+    \bf DISPLACEMENT\_Y & Specifies $y-$ displacement condition type\\
+    \bf DISPLACEMENT\_Z & Specifies $z-$ displacement condition type\\
+    \bf FORCE\_X & Specifies in $x-$ force condition type\\
+    \bf FORCE\_Y & Specifies in $y-$ force condition type\\
+    \bf FORCE\_Z & Specifies in $z-$ force condition type\\
+    \bf END & Terminates type entry\\
+\toprule[1.5pt]
+\bf DISPLACEMENT\_X & Displacement in the $x-$ direction \\ 
+\bf DISPLACEMENT\_Y & Displacement in the $y-$ direction \\ 
+\bf DISPLACEMENT\_Z & Displacement in the $z-$ direction \\ 
+\bf FORCE\_X & Force in the $x-$ direction \\ 
+\bf FORCE\_X & Force in the $y-$ direction \\ 
+\bf FORCE\_X & Force in the $z-$ direction \\ 
+\bf END & Terminates condition entry\\
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{center}
+
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+
+\begin{verbatim}
+GEOMECHANICS_CONDITION
+  TYPE
+    DISPLACEMENT_Z dirichlet
+  /
+DISPLACEMENT_Z 0.d0
+END
+
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
 
 
 %========================================================================
@@ -1630,7 +1725,54 @@ The list of vertices can be read from an ASCII file by using the keyword FILE un
  
 \subsection{Keyword: GEOMECHANICS\_BOUNDARY\_CONDITION}
 
-\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+\noindent{\bf Description:} 
+The GEOMECHANICS\_BOUNDARY\_CONDITION keyword couples condition specified under the GEOMECHANICS\_CONDITION keyword to a REGION in the problem domain.  The use of this keyword enables the use/reuse of geomechanics conditions and regions within multiple geomechanics boundary conditions the input deck.
+
+{\noindent\bf Input:}
+
+\begin{deflist}{000}
+\item[GEOMECHANICS\_BOUNDARY\_CONDITION] {\tt geomechanics\_boundary\_condition\_name}
+\begin{deflist}{000}
+\item[GEOMECHANICS\_CONDITION] {\tt GEOMECHANICS\_condition\_name}
+\item[REGION] {\tt region\_name}
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+{\noindent\bf Explanation:}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf GEOMECHANICS\_BOUNDARY\_CONDITION & Defines the beginning of a geomechanics boundary condition entry and the name of the geomechanics boundary condition.\\
+\midrule
+\bf GEOMECHANICS\_CONDITION & Defines the name of the geomechanics condition to be linked to this geomechanics boundary condition.\\
+\midrule
+\bf REGION & Defines the name of the region to which the conditions are linked.\\
+\midrule
+\bf END & Terminates the geomechanics boundary condition entry.\\
+%\midrule\midrule
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{center}
+
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+
+\begin{verbatim}
+GEOMECHANICS_BOUNDARY_CONDITION bottom
+  GEOMECHANICS_CONDITION z_disp_zero
+  GEOMECHANICS_REGION bottom
+END
+
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
 
 
 %========================================================================
@@ -1640,7 +1782,27 @@ The list of vertices can be read from an ASCII file by using the keyword FILE un
  
 \subsection{Keyword: GEOMECHANICS\_STRATA}
 
-\noindent{\bf Description:} This keyword is required when using geomechanics and closed with and END. All the geomechanics part should go in this card.
+\noindent{\bf Description:} 
+Couples geomechanics material IDs and/or properties with a geomechanics region in the problem domain.
+
+\begin{deflist}{00}
+\item[GEOMECHANICS\_STRATA] ~
+\begin{deflist}{000}
+\item[GEOMECHANICS\_MATERIAL] <string> \ name of the geomechanics material property to be associated with a geomechanics region
+\item[GEOMECHANICS\_REGION] <string> \ name of geomechanics region associated with a geomechanics material property
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+\begin{mdframed}
+\noindent{\bf Example:}
+\begin{verbatim}
+GEOMECHANICS_STRATA
+  GEOMECHANICS_MATERIAL granite 
+  GEOMECHANICS_REGION all
+END
+\end{verbatim}
+\end{mdframed}
 
 
 %========================================================================
