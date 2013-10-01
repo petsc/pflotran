@@ -28,6 +28,13 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
 \hyperlink{target_geomech}{\bf GEOMECHANICS} & \\
+\hyperlink{target_geomech_grid}{\bf GEOMECHANICS\_GRID} & \\
+\hyperlink{target_geomech_output}{\bf GEOMECHANICS\_OUTPUT} & \\
+\hyperlink{target_geomech_material_prop}{\bf GEOMECHANICS\_MATERIAL\_PROPERTY} & \\
+\hyperlink{target_geomech_region}{\bf GEOMECHANICS\_REGION} & \\
+\hyperlink{target_geomech_condition}{\bf GEOMECHANICS\_CONDITION} & \\
+\hyperlink{target_geomech_bc}{\bf GEOMECHANICS\_BOUNDARY\_CONDITION} & \\
+\hyperlink{target_geomech_strata}{\bf GEOMECHANICS\_STRATA} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
@@ -1506,7 +1513,296 @@ FLUID_PROPERTY
  
 \subsection{Keyword: GEOMECHANICS}
 
-\noindent{\bf Description:} This keyword is required when using geomechanics.
+\noindent{\bf Description:} This keyword is required when using geomechanics. All the geomechanics part should go in this card.
+
+\begin{description}
+\item[GEOMECHANICS]~
+\item[Required Input Parameters:]~
+All the geomechanics keywords  should go here.
+\item[\keyend] ~
+
+\end{description}
+%
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_grid}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_GRID}
+
+\noindent{\bf Description:} The grid type and the format for geomechanics is specified here.
+Only unstructured grids can be read. If you need to use a structured grid, generate the grid as an unstructured grid in the implicit format (see GRID keyword for details of the format below).
+
+\begin{description}
+\item[GEOMECHANICS\_GRID]~
+\item[Required Input Parameters:]~
+
+\begin{description}
+\item[TYPE <type> :] ~
+
+\begin{description}
+\item Grid type (unstructured)
+\end{description}
+
+\item[FILE <filename>:] Name of file containing grid information (unstructured only)
+
+\end{description}
+
+\item[Optional Input Parameters:]~
+\begin{description}
+\item[GRAVITY] <\# \# \#>: Specifies gravity vector for geomechanics calculations (or specific body force) [Default: 0 0 -9.81 m/s$^2$] 
+\end{description}
+
+
+\item[\keyend] ~
+
+\end{description}
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_output}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_OUTPUT}
+
+\noindent{\bf Description:} This keyword is required for output of geomechanics data. The geomechanics data is saved in separate set of files (unlike flow and transport). The filenames of these files have the word \texttt{-geomech-} included in them.  Uses the same keywords as OUTPUT. 
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_material_prop}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_MATERIAL\_PROPERTY}
+\noindent{\bf Description:} Specifies geomechanics material properties to be associated with a geomechanics region in the problem domain.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[GEOMECHANICS\_MATERIAL\_PROPERTY] \ {\tt <char>}
+\begin{deflist}{000}
+\item[ID] \ {\tt <int>}
+\item[YOUNGS\_MODULUS] \ {\tt <float>} \ [Pa]
+\item[POISSONS\_RATIO] \ {\tt <float>}
+\item[ROCK\_DENSITY] \ {\tt <float>} \ [kg/m$^3$]
+\item[BIOT\_COEFFICIENT] \ {\tt <float>} 
+\item[THERMAL\_EXPANSION\_COEFFICIENT] \ {\tt <float>} \ [Pa/K]
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+\noindent{\bf Explanation:} The Young's modulus and Poisson's ratio (for the linear elastic model), rock density (used in body force calculation), Biot's coefficient and thermal expansion coefficient can be set here.
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+\begin{verbatim}
+MATERIAL_PROPERTY rock	 
+  ID 1
+  YOUNGS_MODULUS 1.d10
+  POISSONS_RATIO 0.3
+  ROCK_DENSITY 2200
+  BIOT_COEFFICIENT 1.0
+  THERMAL_EXPANSION_COEFFICIENT 1.d-5
+END
+\end{verbatim}
+
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_region}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_REGION}
+
+\noindent{\bf Description:} The GEOMECHANICS\_REGION keyword defines a set of geomechanics finite element grid vertices.
+ The GEOMECHANICS\_REGION name can then be used to link this set of vertices to geomechanics  material properties, strata and boundary conditions. 
+The list of vertices can be read from an ASCII file by using the keyword FILE under the GEOMECHANICS\_REGION card.
+
+\begin{mdframed}
+
+{\noindent\bf
+Examples:}
+
+\begin{verbatim}
+GEOMECHANICS_REGION top 
+  FILE top.vset 
+END
+\end{verbatim}
+
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_condition}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_CONDITION}
+
+\noindent{\bf Description:} Condition coupler between regions and geomechanics boundary conditions. Since the geomechanics is solved in a quasi-steady manner, initial conditions are not needed. 
+
+
+{\noindent\bf Input:}
+\begin{deflist}{000}
+\item [GEOMECHANICS\_CONDITION] \ {\tt geomechanics\_condition\_name}
+\begin{deflist}{000}
+\item[TYPE] ~
+
+\begin{deflist}{000000}
+\item[DISPLACEMENT\_X] {\tt [dirichlet]}
+\item[DISPLACEMENT\_Y] {\tt [dirichlet]}
+\item[DISPLACEMENT\_Z] {\tt [dirichlet]}
+\item[FORCE\_X] {\tt [dirichlet]}
+\item[FORCE\_Y] {\tt [dirichlet]}
+\item[FORCE\_Z] {\tt [dirichlet]}
+\end{deflist}
+\item[\keyend]
+\item[DISPLACEMENT\_X] \ {\tt <float>}
+\item[DISPLACEMENT\_Y] \ {\tt <float>}
+\item[DISPLACEMENT\_Z] \ {\tt <float>}
+\item[FORCE\_X] \ {\tt <float>}
+\item[FORCE\_Y] \ {\tt <float>}
+\item[FORCE\_Z] \ {\tt <float>}
+\end{deflist}
+\item[\keyend] ~
+\end{deflist}
+
+{\noindent\bf Explanation:}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf GEOMECHANICS\_CONDITION & Initiates a geomechanics condition entry and defines its name\\
+\midrule
+\bf TYPE & Specifies condition type\\
+\midrule
+    \bf DISPLACEMENT\_X & Specifies $x-$ displacement condition type\\
+    \bf DISPLACEMENT\_Y & Specifies $y-$ displacement condition type\\
+    \bf DISPLACEMENT\_Z & Specifies $z-$ displacement condition type\\
+    \bf FORCE\_X & Specifies in $x-$ force condition type\\
+    \bf FORCE\_Y & Specifies in $y-$ force condition type\\
+    \bf FORCE\_Z & Specifies in $z-$ force condition type\\
+    \bf END & Terminates type entry\\
+\toprule[1.5pt]
+\bf DISPLACEMENT\_X & Displacement in the $x-$ direction \\ 
+\bf DISPLACEMENT\_Y & Displacement in the $y-$ direction \\ 
+\bf DISPLACEMENT\_Z & Displacement in the $z-$ direction \\ 
+\bf FORCE\_X & Force in the $x-$ direction \\ 
+\bf FORCE\_X & Force in the $y-$ direction \\ 
+\bf FORCE\_X & Force in the $z-$ direction \\ 
+\bf END & Terminates condition entry\\
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{center}
+
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+
+\begin{verbatim}
+GEOMECHANICS_CONDITION
+  TYPE
+    DISPLACEMENT_Z dirichlet
+  /
+DISPLACEMENT_Z 0.d0
+END
+
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_bc}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_BOUNDARY\_CONDITION}
+
+\noindent{\bf Description:} 
+The GEOMECHANICS\_BOUNDARY\_CONDITION keyword couples condition specified under the GEOMECHANICS\_CONDITION keyword to a REGION in the problem domain.  The use of this keyword enables the use/reuse of geomechanics conditions and regions within multiple geomechanics boundary conditions the input deck.
+
+{\noindent\bf Input:}
+
+\begin{deflist}{000}
+\item[GEOMECHANICS\_BOUNDARY\_CONDITION] {\tt geomechanics\_boundary\_condition\_name}
+\begin{deflist}{000}
+\item[GEOMECHANICS\_CONDITION] {\tt GEOMECHANICS\_condition\_name}
+\item[REGION] {\tt region\_name}
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+{\noindent\bf Explanation:}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf GEOMECHANICS\_BOUNDARY\_CONDITION & Defines the beginning of a geomechanics boundary condition entry and the name of the geomechanics boundary condition.\\
+\midrule
+\bf GEOMECHANICS\_CONDITION & Defines the name of the geomechanics condition to be linked to this geomechanics boundary condition.\\
+\midrule
+\bf REGION & Defines the name of the region to which the conditions are linked.\\
+\midrule
+\bf END & Terminates the geomechanics boundary condition entry.\\
+%\midrule\midrule
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{center}
+
+
+\begin{mdframed}
+
+\noindent{\bf Example:}
+
+\begin{verbatim}
+GEOMECHANICS_BOUNDARY_CONDITION bottom
+  GEOMECHANICS_CONDITION z_disp_zero
+  GEOMECHANICS_REGION bottom
+END
+
+\end{verbatim}
+\end{mdframed}
+
+\hyperlink{target_key}{\return}
+
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_geomech_strata}{}
+ 
+\subsection{Keyword: GEOMECHANICS\_STRATA}
+
+\noindent{\bf Description:} 
+Couples geomechanics material IDs and/or properties with a geomechanics region in the problem domain.
+
+\begin{deflist}{00}
+\item[GEOMECHANICS\_STRATA] ~
+\begin{deflist}{000}
+\item[GEOMECHANICS\_MATERIAL] <string> \ name of the geomechanics material property to be associated with a geomechanics region
+\item[GEOMECHANICS\_REGION] <string> \ name of geomechanics region associated with a geomechanics material property
+\end{deflist}
+\item[\keyend]
+\end{deflist}
+
+\begin{mdframed}
+\noindent{\bf Example:}
+\begin{verbatim}
+GEOMECHANICS_STRATA
+  GEOMECHANICS_MATERIAL granite 
+  GEOMECHANICS_REGION all
+END
+\end{verbatim}
+\end{mdframed}
 
 
 %========================================================================

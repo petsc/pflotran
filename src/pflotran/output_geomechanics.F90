@@ -1100,7 +1100,8 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
-  
+ 
+#if 0
   string="      <Attribute Name=""X"" AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
@@ -1116,6 +1117,7 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   string="      </Attribute>"
   write(fid,'(a)') trim(string)  
+#endif
 
 end subroutine OutputXMFHeaderGeomech
 

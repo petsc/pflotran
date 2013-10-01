@@ -109,7 +109,7 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   endif
 
   if (plot_flag) then
-  
+
     if (realization_base%output_option%print_hdf5) then
       call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    

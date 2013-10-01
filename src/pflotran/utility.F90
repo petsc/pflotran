@@ -1523,7 +1523,7 @@ end subroutine DeallocateArray2DString
 subroutine ConvertMatrixToVector(A,vecA)
 
   PetscReal :: A(:,:)
-  PetscReal, pointer :: vecA(:,:)
+  PetscReal, allocatable :: vecA(:,:)
   PetscInt :: m, n, i, j
   
   m = size(A,1)
@@ -1548,7 +1548,7 @@ end subroutine ConvertMatrixToVector
 subroutine Kron(A,B,K)
 
   PetscReal :: A(:,:),B(:,:)
-  PetscReal, pointer :: K(:,:)
+  PetscReal, allocatable :: K(:,:)
   PetscInt :: mA,nA,mB,nB
   PetscInt :: iA,jA,iB,jB,iK,jK
   
@@ -1582,11 +1582,11 @@ end subroutine Kron
 ! ************************************************************************** !
 subroutine Transposer(m,n,T)
 
-  PetscReal, pointer :: T(:,:)
+  PetscReal, allocatable :: T(:,:)
   PetscInt :: m,n
   PetscInt :: i,j
   PetscReal :: A(m,n)
-  PetscReal, pointer :: vecA(:,:)
+  PetscReal, allocatable :: vecA(:,:)
   
   allocate(T(m*n,m*n))
   T = 0.d0
@@ -1597,6 +1597,7 @@ subroutine Transposer(m,n,T)
       A(i,j) = 1.d0
       call ConvertMatrixToVector(transpose(A),vecA)
       T(:,i+m*(j-1)) = vecA(:,1)
+      deallocate(vecA)
     enddo
   enddo
   

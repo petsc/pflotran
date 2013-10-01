@@ -47,6 +47,12 @@ module Geomechanics_Grid_Aux_module
     PetscInt, pointer :: ghosted_node_ids_petsc(:)   ! Petsc ids of the ghost nodes only
     PetscInt, pointer :: nL2G(:),nG2L(:),nG2A(:)
     type(gauss_type), pointer  :: gauss_node(:)
+    character(len=MAXSTRINGLENGTH) :: mapping_filename ! mapping between subsurf and geomech meshes
+    PetscInt :: mapping_num_cells
+    PetscInt, pointer :: mapping_cell_ids_flow(:)
+    PetscInt, pointer :: mapping_vertex_ids_geomech(:)
+    Vec :: no_elems_sharing_node_loc
+    Vec :: no_elems_sharing_node
   end type geomech_grid_type
   
 
@@ -77,6 +83,11 @@ module Geomechanics_Grid_Aux_module
     Vec :: global_vec                        ! global vec (no ghost nodes), petsc-ordering
     Vec :: local_vec                         ! local vec (includes local and ghosted nodes), local ordering
     Vec :: global_vec_elem
+    VecScatter :: scatter_subsurf_to_geomech_ndof ! scatter context between subsurface and
+                                                  ! geomech grids for 1-DOF
+    VecScatter :: scatter_geomech_to_subsurf_ndof ! scatter context between geomech and
+                                                  ! subsurface grids for N-DOFs (Ndof = ngeomechdof)
+
   end type gmdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -135,6 +146,8 @@ function GMDMCreate()
   gmdm%global_vec = 0
   gmdm%local_vec = 0
   gmdm%global_vec_elem = 0
+  gmdm%scatter_subsurf_to_geomech_ndof = 0
+  gmdm%scatter_geomech_to_subsurf_ndof = 0
 
   GMDMCreate => gmdm
 
@@ -180,6 +193,8 @@ function GMGridCreate()
   nullify(geomech_grid%ghosted_node_ids_natural)
   nullify(geomech_grid%ghosted_node_ids_petsc)
   nullify(geomech_grid%gauss_node)
+  geomech_grid%no_elems_sharing_node_loc = 0
+  geomech_grid%no_elems_sharing_node = 0
 
   GMGridCreate => geomech_grid
   
@@ -560,6 +575,7 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call ISCreateBlock(option%mycomm,ndof,geomech_grid%nlmax_elem, &
                      int_array,PETSC_COPY_VALUES,is_tmp_petsc,ierr)
   deallocate(int_array) 
+  deallocate(int_array2)
 
   ! create a local to global mapping
   call ISLocalToGlobalMappingCreateIS(is_tmp_petsc, &
@@ -850,7 +866,12 @@ subroutine GMGridDestroy(geomech_grid)
   endif
   
   nullify(geomech_grid%gauss_node)
-  
+ 
+ if (geomech_grid%no_elems_sharing_node_loc /= 0) &
+   call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr)
+ if ( geomech_grid%no_elems_sharing_node /= 0) &
+   call VecDestroy(geomech_grid%no_elems_sharing_node,ierr)
+ 
   deallocate(geomech_grid)
   nullify(geomech_grid)
   
@@ -895,7 +916,8 @@ subroutine GMDMDestroy(gmdm)
   call VecDestroy(gmdm%global_vec,ierr)
   call VecDestroy(gmdm%local_vec,ierr)
   call VecDestroy(gmdm%global_vec_elem,ierr)
-  
+  call VecScatterDestroy(gmdm%scatter_subsurf_to_geomech_ndof,ierr)
+  call VecScatterDestroy(gmdm%scatter_geomech_to_subsurf_ndof,ierr)  
   deallocate(gmdm)
   nullify(gmdm)
 

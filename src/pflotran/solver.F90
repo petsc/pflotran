@@ -382,9 +382,9 @@ subroutine SolverReadLinear(solver,input,option)
             solver%pc_type = PCBJACOBI
           case('ASM','ADDITIVE_SCHWARZ')
             solver%pc_type = PCASM
-         case('HYPRE')
+          case('HYPRE')
             solver%pc_type = PCHYPRE
-         case('SHELL')
+          case('SHELL')
             solver%pc_type = PCSHELL
           case default
             option%io_buffer  = 'Preconditioner type: ' // trim(word) // ' unknown.'

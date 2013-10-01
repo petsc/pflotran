@@ -304,7 +304,15 @@ subroutine Init(simulation)
       call init_span_wanger(realization)
   end select
   
-
+  ! SK 09/30/13, Added to check if Mphase is called with OS
+  if (option%reactive_transport_coupling == OPERATOR_SPLIT .and. &
+      option%iflowmode == MPH_MODE) then
+    option%io_buffer = 'Operator split not implemented with MPHASE. ' // &
+                       'Switching to Global Implicit.'
+    call printWrnMsg(option)
+    option%reactive_transport_coupling = GLOBAL_IMPLICIT
+  endif
+  
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
 #ifdef SURFACE_FLOW
@@ -315,8 +323,6 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    call CopySubsurfaceGridtoGeomechGrid(realization%discretization%grid%&
-      unstructured_grid,geomech_realization%discretization%grid,option)
     call GeomechRealizCreateDiscretization(geomech_realization)
   endif
 #endif
@@ -687,8 +693,8 @@ subroutine Init(simulation)
     call SolverCreateSNES(tran_solver,option%mycomm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
-      
-     if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
           tran_solver%Jpre_mat_type = tran_solver%J_mat_type
@@ -1177,6 +1183,10 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
+    if (option%geomech_subsurf_coupling /= 0) &
+      call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
+                                              simulation%geomech_realization, &
+                                              option)
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)
@@ -1186,6 +1196,7 @@ subroutine Init(simulation)
     call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
     call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
+    call GeomechGridElemSharedByNodes(geomech_realization)
     call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
     call WaypointListRemoveExtraWaypnts(option, &
                                     simulation%geomech_realization%waypoints)
@@ -1196,6 +1207,9 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
+    if (option%geomech_subsurf_coupling /= 0) &
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
   endif
 #endif
 

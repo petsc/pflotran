@@ -1405,7 +1405,7 @@ function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
   
   num_connections = size(cell_ids)
   connections => ConnectionCreate(num_connections,connection_type)
-  
+    
   do iconn = 1, num_connections
     id = cell_ids(iconn)
     connections%id_dn(iconn) = id
