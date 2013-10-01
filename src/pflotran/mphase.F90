@@ -50,7 +50,7 @@ module Mphase_module
          MphaseGetTecplotHeader,MphaseInitializeTimestep, &
          MphaseUpdateAuxVars, init_span_wanger, &
          MphaseSecondaryHeat, MphaseSecondaryHeatJacobian, &
-         MphaseComputeMassBalance
+         MphaseComputeMassBalance,MphaseDestroy
 
 contains
 
@@ -4511,7 +4511,6 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
               
 end subroutine MphaseSecondaryHeatJacobian
 
-#if 0
 ! ************************************************************************** !
 !
 ! MphaseDestroy: Deallocates variables associated with Richard
@@ -4519,19 +4518,18 @@ end subroutine MphaseSecondaryHeatJacobian
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine MphaseDestroy(patch)
+subroutine MphaseDestroy(realization)
 
-  use Patch_module
+  use Realization_class
 
   implicit none
   
-  type(patch_type) :: patch
+  type(realization_type) :: realization
   
   ! need to free array in aux vars
   !call MphaseAuxDestroy(patch%aux%mphase)
 
 end subroutine MphaseDestroy
-#endif
 
 #if 0
 ! ************************************************************************** !
