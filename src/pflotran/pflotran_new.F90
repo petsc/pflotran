@@ -44,8 +44,10 @@ program pflotran
   use PFLOTRAN_Factory_module
   use Subsurface_Factory_module
   use Hydrogeophysics_Factory_module
+#ifdef SURFACE_FLOW  
   use Surface_Factory_module
   use Surf_Subsurf_Factory_module
+#endif  
   
   use PFLOTRAN_Constants_module
 
@@ -65,10 +67,12 @@ program pflotran
       call SubsurfaceInitialize(simulation,option)
     case('HYDROGEOPHYSICS')
       call HydrogeophysicsInitialize(simulation,option)
+#ifdef SURFACE_FLOW      
     case('SURFACE')
       call SurfaceInitialize(simulation,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,option)
+#endif      
     case default
       option%io_buffer = 'Simulation Mode not recognized.'
       call printErrMsg(option)
