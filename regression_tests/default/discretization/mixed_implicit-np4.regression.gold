@@ -55,7 +55,7 @@
         5:   7.8783568488997E-05
         7:   8.1885697507913E-05
         9:   3.9277340009690E-04
-       11:   5.1600803601592E-05
+       11:   5.1600803601593E-05
        13:   7.7637741150781E-04
        15:   2.4233141012057E-04
 -- DISCRETE: Material ID --
@@ -80,7 +80,7 @@
        13:   4.1699141809699E-03  2.2292972045364E-02  1.5619883208632E-02
        15:   1.3764626690448E-03  1.0599785946937E-02 -2.7291708799771E-04
 -- SOLUTION: Flow --
-   Time (seconds):   2.7523636817932E-01
+   Time (seconds):   2.5056338310242E-01
    Time Steps:           26
    Newton Iterations:           78
    Solver Iterations:          593
@@ -88,10 +88,10 @@
    Solution 2-Norm:   4.0436136401538E+05
    Residual 2-Norm:   6.6098227890177E-16
 -- SOLUTION: Transport --
-   Time (seconds):   5.8198213577271E-02
+   Time (seconds):   5.1975727081299E-02
    Time Steps:           26
    Newton Iterations:           38
    Solver Iterations:           64
    Time Step Cuts:            0
    Solution 2-Norm:   1.2359414747584E-03
-   Residual 2-Norm:   8.9978093568340E-19
+   Residual 2-Norm:   8.9996359169074E-19

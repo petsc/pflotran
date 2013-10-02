@@ -40,12 +40,11 @@ STANDARD_CFG = \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
-	default/mphase/mphase.cfg \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
-	shortcourse/copper_leaching/cu_leaching.cfg 
+	shortcourse/copper_leaching/cu_leaching.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
@@ -65,7 +64,7 @@ GEOCHEMISTRY_CFG = \
 	default/multicontinuum/multicontinuum.cfg \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
-	shortcourse/copper_leaching/cu_leaching.cfg 
+	shortcourse/copper_leaching/cu_leaching.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
@@ -84,9 +83,6 @@ MESH_CFG = \
 
 MFD_CFG = \
 	mfd/mfd.cfg
-
-SCCO2_CFG = \
-	scco2/scco2.cfg
 
 CHECK_CFG = \
 	ascem/1d/1d-calcite/1d-calcite.cfg
@@ -147,10 +143,6 @@ test_mimetic :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		--config-files $(MFD_CFG)
 
-test_scco2 :
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
-		--config-files $(SCCO2_CFG)
-
 #
 # Try to cleanup the regression test output.
 #
@@ -173,5 +165,3 @@ clean-tests :
 	-rm -f default/anisothermal/th_1d.h5
 	-rm -f mfd/mfd-mas.dat
 	-rm -f mfd/mfd.h5
-	-rm -f scco2/scco2.h5
-	-rm -f scco2/scco2-mas.dat

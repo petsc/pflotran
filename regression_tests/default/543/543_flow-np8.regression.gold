@@ -80,7 +80,7 @@
        54:   9.2809671724983E-04 -7.8634736500808E-03 -6.1705108529684E-04
        59:   2.9944859866939E-04  2.3610908922034E-03 -2.4680233053906E-04
 -- SOLUTION: Flow --
-   Time (seconds):   2.8320360183716E-01
+   Time (seconds):   2.8660559654236E-01
    Time Steps:           33
    Newton Iterations:           90
    Solver Iterations:          458
