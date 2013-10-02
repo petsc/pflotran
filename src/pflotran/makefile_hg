@@ -2,7 +2,7 @@
 
 pflotran_src = ./
 common_src   = ./
-pflotran_test_dir = ../../regression_tests_refactor
+pflotran_test_dir = ../../regression_tests
 
 
 MYFLAGS = -I.
@@ -376,7 +376,7 @@ surface_obj = \
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
 	$(relations_obj) $(properties_obj) $(dataset_obj) \
-	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran_new.o
+	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
 
 pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
@@ -646,7 +646,7 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
 pflotran_constants.o :
 pflotran_factory.o : init.o input.o logging.o option.o pflotran_constants.o \
                      regression.o simulation.o string.o timestepper.o
-pflotran_new.o : hydrogeophysics_factory.o option.o pflotran_constants.o \
+pflotran.o : hydrogeophysics_factory.o option.o pflotran_constants.o \
                  pflotran_factory.o simulation_base.o subsurface_factory.o \
                  surface_factory.o surfsubsurface_factory.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
