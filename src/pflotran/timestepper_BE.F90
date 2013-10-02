@@ -277,10 +277,11 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   solver => this%solver
   option => process_model%option
   
-  write(process_model%option%io_buffer,'(es12.5)') this%dt
-  process_model%option%io_buffer = 'StepperStepDT(' // &
-    trim(adjustl(process_model%option%io_buffer)) // ')'
-  call printMsg(process_model%option)  
+!geh: for debugging
+!  write(process_model%option%io_buffer,'(es12.5)') this%dt
+!  process_model%option%io_buffer = 'StepperStepDT(' // &
+!    trim(adjustl(process_model%option%io_buffer)) // ')'
+!  call printMsg(process_model%option)  
 
   tconv = process_model%output_option%tconv
   tunit = process_model%output_option%tunit

@@ -115,7 +115,7 @@ subroutine PMCSubsurfaceGetAuxData(this)
   PetscReal, pointer                   :: head_p(:)
   PetscErrorCode                       :: ierr
 
-  print *, 'PMCSubsurfaceGetAuxData()'
+!  print *, 'PMCSubsurfaceGetAuxData()'
 
 #ifdef SURFACE_FLOW
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -269,7 +269,7 @@ subroutine PMCSubsurfaceSetAuxData(this)
   PetscReal, pointer                   :: head_p(:)
   PetscErrorCode                       :: ierr
 
-  print *, 'PMCSubsurfaceSetAuxData()'
+!  print *, 'PMCSubsurfaceSetAuxData()'
 
   if (associated(this%sim_aux)) then
 
