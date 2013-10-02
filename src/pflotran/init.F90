@@ -323,8 +323,6 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    call CopySubsurfaceGridtoGeomechGrid(realization%discretization%grid%&
-      unstructured_grid,geomech_realization%discretization%grid,option)
     call GeomechRealizCreateDiscretization(geomech_realization)
   endif
 #endif
@@ -1185,6 +1183,10 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
+    if (option%geomech_subsurf_coupling /= 0) &
+      call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
+                                              simulation%geomech_realization, &
+                                              option)
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)
@@ -1194,6 +1196,7 @@ subroutine Init(simulation)
     call GeomechRealizInitAllCouplerAuxVars(simulation%geomech_realization)  
     call GeomechRealizPrintCouplers(simulation%geomech_realization)  
     call GeomechRealizAddWaypointsToList(simulation%geomech_realization)
+    call GeomechGridElemSharedByNodes(geomech_realization)
     call WaypointListFillIn(option,simulation%geomech_realization%waypoints)
     call WaypointListRemoveExtraWaypnts(option, &
                                     simulation%geomech_realization%waypoints)
@@ -1204,6 +1207,9 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
+    if (option%geomech_subsurf_coupling /= 0) &
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
   endif
 #endif
 

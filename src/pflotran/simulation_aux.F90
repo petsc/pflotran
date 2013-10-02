@@ -39,14 +39,18 @@ module Simulation_Aux_module
 
   end type simulation_aux_type
 
+#ifdef SURFACE_FLOW  
   interface SimAuxCreateVecScatters
     module procedure SimAuxCreateSurfSubSurfVScats
   end interface
+#endif  
 
   public :: SimAuxCreate, &
+#ifdef SURFACE_FLOW  
             SimAuxCreateVecScatters, &
             SimAuxCreateSubSurfVecs, &
             SimAuxCreateSurfVecs, &
+#endif
             SimAuxDestroy
 
 contains
@@ -92,6 +96,7 @@ function SimAuxCreate()
 
 end function SimAuxCreate
 
+#ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !> This routine creates VecScatter between surface-subsurface grids.
 !!
@@ -689,6 +694,7 @@ subroutine SimAuxCreateSurfVecs(aux,surf_realization,option)
   call VecDuplicate(aux%surf_head,aux%surf_hflux_exchange_with_subsurf,ierr)
 
 end subroutine SimAuxCreateSurfVecs
+#endif
 
 ! ************************************************************************** !
 !> This routine deallocates auxillary object.

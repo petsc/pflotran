@@ -64,6 +64,18 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \newcommand\returnb{{\hfill$\nearrow$ Return to List of Keywords}}
 %\newcommand\return{{\hfill\bf Return to List of Keywords}}
 
+\newcommand{\grad}{\ensuremath{\mathrm{grad}}}                                  % grad
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\SEQ#1\SEN{\begin{subequations}#1\end{subequations}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\LM#1\EM{\begin{linenomath}#1\end{linenomath}}
+\renewcommand{\thefigure}{\arabic{figure}}
+\newcommand{\pfx}[2]{\dfrac{\partial{#1}}{\partial{#2}}}
+\newcommand{\ppfx}[2]{\frac{\partial{#1}}{\partial{#2}}}
+\newcommand{\tfx}[2]{\frac{d{#1}}{d{#2}}}
+\newcommand{\Dsfx}[2]{\frac{D{#1}}{D{^s#2}}}
+\newcommand{\bss}[1]{\boldsymbol{#1}}
+
 \newcommand{\negsp}{\vspace{-4mm}}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
@@ -239,12 +251,6 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \def\BA#1\EA{\begin{align}#1\end{align}}
 \def\LM#1\EM{\begin{linenomath}#1\end{linenomath}}
 \renewcommand{\thefigure}{\arabic{figure}}
-\newcommand{\pfx}[2]{\dfrac{\partial{#1}}{\partial{#2}}}
-\newcommand{\ppfx}[2]{\frac{\partial{#1}}{\partial{#2}}}
-\newcommand{\tfx}[2]{\frac{d{#1}}{d{#2}}}
-\newcommand{\Dsfx}[2]{\frac{D{#1}}{D{^s#2}}}
-\newcommand{\bss}[1]{\boldsymbol{#1}}
-\newcommand{\ve}{\text{vec}}
 
 
 \setlongtables
