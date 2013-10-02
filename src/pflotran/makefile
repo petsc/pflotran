@@ -334,9 +334,9 @@ misc_obj = \
 
 surface_obj = \
 	${common_src}surface_auxiliary.o \
-	${common_src}surface_checkpoint.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
+	${common_src}surface_checkpoint.o \
 	${common_src}surface_flow_aux.o \
 	${common_src}surface_init.o \
 	${common_src}surface_global_aux.o \
@@ -831,7 +831,7 @@ structured_grid.o : connection.o input.o option.o pflotran_constants.o \
 surface_auxiliary.o : pflotran_constants.o surface_global_aux.o \
                       surface_th_aux.o
 surface_checkpoint.o : discretization.o grid.o option.o output_aux.o \
-                       pflotran_constants.o surface_field.o \
+                       pflotran_constants.o surface_field.o surface_flow.o \
                        surface_realization.o
 surface_complexation.o : global_aux.o input.o matrix_block_aux.o option.o \
                          pflotran_constants.o reaction_aux.o \
