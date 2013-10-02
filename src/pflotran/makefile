@@ -8,6 +8,7 @@ pflotran_test_dir = ../../regression_tests
 MYFLAGS = -I.
 MYFLAGS += -DPROCESS_MODEL
 MYFLAGS += -DSURFACE_FLOW
+MYFLAGS += -DCHUAN_CO2
 
 # if compiling pflotran_rxn or libpflotranchem.a, need to toggle 
 # PFLOTRAN_RXN_FLAG 
