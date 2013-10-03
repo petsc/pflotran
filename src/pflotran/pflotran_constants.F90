@@ -114,8 +114,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: FLASH2_MODE = 6
   PetscInt, parameter, public :: G_MODE = 7
   PetscInt, parameter, public :: MIS_MODE = 8
-  PetscInt, parameter, public :: THMC_MODE = 9
-  PetscInt, parameter, public :: TH_MODE = 10
+  PetscInt, parameter, public :: TH_MODE = 9
   
   ! transport modes
   PetscInt, parameter, public :: EXPLICIT_ADVECTION = 1
@@ -170,16 +169,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: TH_TEMPERATURE_DOF = 2
   PetscInt, parameter, public :: TH_CONCENTRATION_DOF = 3
   PetscInt, parameter, public :: TH_ENTHALPY_DOF = 5
-  
-  PetscInt, parameter, public :: THMC_PRESSURE_DOF = 1
-  PetscInt, parameter, public :: THMC_TEMPERATURE_DOF = 2
-  PetscInt, parameter, public :: THMC_CONCENTRATION_DOF = 3
-  !PetscInt, parameter, public :: THMC_MASS_RATE_DOF = 4
-  !PetscInt, parameter, public :: THMC_ENTHALPY_DOF = 5
-  PetscInt, parameter, public :: THMC_DISP_X_DOF = 4
-  PetscInt, parameter, public :: THMC_DISP_Y_DOF = 5
-  PetscInt, parameter, public :: THMC_DISP_Z_DOF = 6
-  
+    
   PetscInt, parameter, public :: MPH_PRESSURE_DOF = 1
   PetscInt, parameter, public :: MPH_TEMPERATURE_DOF = 2
   PetscInt, parameter, public :: MPH_CONCENTRATION_DOF = 3
