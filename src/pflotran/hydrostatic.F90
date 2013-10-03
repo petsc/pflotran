@@ -33,7 +33,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Region_module
   use Structured_Grid_module
   use Utility_module, only : DotProduct
-  use Dataset_XYZ_class
+  use Dataset_Gridded_class
   
   use General_Aux_module
   
@@ -61,7 +61,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: gravity_magnitude
   PetscReal :: z_offset
   
-  class(dataset_xyz_type), pointer :: datum_dataset
+  class(dataset_gridded_type), pointer :: datum_dataset
   PetscReal :: datum_dataset_rmax
   PetscReal :: datum_dataset_rmin
   
@@ -127,7 +127,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         nullify(datum_dataset)
       else
         select type(dataset=>condition%pressure%datum%dataset)
-          class is (dataset_xyz_type)
+          class is (dataset_gridded_type)
             datum_dataset => dataset
           class default
             option%io_buffer = &
@@ -320,11 +320,11 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         dist_x = 0.d0
         dist_y = 0.d0
         !TODO(geh): check that sign is correct for dx/y_conn
-        call DatasetXYZInterpolateReal(datum_dataset, &
-                                       grid%x(ghosted_id)-dx_conn, &
-                                       grid%y(ghosted_id)-dy_conn, &
-                                       0.d0, &
-                                       0.d0,temp_real,option)
+        call DatasetGriddedInterpolateReal(datum_dataset, &
+                                           grid%x(ghosted_id)-dx_conn, &
+                                           grid%y(ghosted_id)-dy_conn, &
+                                           0.d0, &
+                                           0.d0,temp_real,option)
         ! temp_real is now the real datum
         dist_z = grid%z(ghosted_id)-dz_conn-temp_real
         z_offset = temp_real-datum(Z_DIRECTION)

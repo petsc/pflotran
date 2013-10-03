@@ -2571,7 +2571,7 @@ end subroutine FlowConditionUpdate
 subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
 
   use Option_module
-  use Dataset_XYZ_class
+  use Dataset_Gridded_class
   use Dataset_Map_class
   use Dataset_Common_HDF5_class
   
@@ -2581,7 +2581,7 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
   PetscReal :: time
   type(flow_condition_dataset_type) :: flow_condition_dataset
 
-  class(dataset_xyz_type), pointer :: dataset_xyz
+  class(dataset_gridded_type), pointer :: dataset_xyz
   class(dataset_map_type), pointer :: dataset_map
 
   if (associated(flow_condition_dataset%time_series)) then
@@ -2598,9 +2598,9 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
              dataset%is_transient) .and. &
             .not.dataset%is_cell_indexed) then
           select type(common_hdf5_dataset=>dataset)
-            class is(dataset_xyz_type)
+            class is(dataset_gridded_type)
               dataset_xyz => common_hdf5_dataset
-              call DatasetXYZLoad(dataset_xyz,option)
+              call DatasetGriddedLoad(dataset_xyz,option)
             class is(dataset_map_type)
               dataset_map => common_hdf5_dataset
               call DatasetMapLoad(dataset_map,option)

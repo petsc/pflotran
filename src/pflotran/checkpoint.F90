@@ -4,8 +4,8 @@
 ! use the PetscBagGetData() routine.
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
-#ifndef PROCESS_MODEL
 module Checkpoint_Header_module
+#ifndef PROCESS_MODEL
   implicit none
   private
   ! We manually specify the number of bytes required for the 
@@ -57,12 +57,14 @@ module Checkpoint_Header_module
     real*8 :: tran_cumulative_solver_time  ! don't implement yet; will screw up restarts
     integer*8 :: checkpoint_activity_coefs
   end type checkpoint_header_type
-end module Checkpoint_Header_module
 #endif
+end module Checkpoint_Header_module
 
 module Checkpoint_module
 
+#ifndef PROCESS_MODEL
   use Checkpoint_Header_module
+#endif
 
   use PFLOTRAN_Constants_module
 
@@ -91,6 +93,7 @@ module Checkpoint_module
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
+#ifndef PROCESS_MODEL
 Interface PetscBagGetData
 Subroutine PetscBagGetData(bag,ctx,ierr)
       use Checkpoint_Header_module
@@ -99,6 +102,7 @@ Subroutine PetscBagGetData(bag,ctx,ierr)
       PetscErrorCode ierr
 End Subroutine
 End Interface PetscBagGetData
+#endif      
 
 contains
 

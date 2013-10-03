@@ -1,4 +1,4 @@
-module Dataset_XYZ_class
+module Dataset_Gridded_class
  
   use Dataset_Common_HDF5_class
   
@@ -10,15 +10,15 @@ module Dataset_XYZ_class
 
 #include "finclude/petscsys.h"
 
-  type, public, extends(dataset_common_hdf5_type) :: dataset_xyz_type
+  type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_type
     PetscBool :: is_cell_centered
     PetscInt :: data_dim
     PetscReal, pointer :: origin(:)
     PetscReal, pointer :: discretization(:)
 !  contains
-!    procedure, public :: Init => DatasetXYZInit
-!    procedure, public :: Load => DatasetXYZLoad
-  end type dataset_xyz_type
+!    procedure, public :: Init => DatasetGriddedInit
+!    procedure, public :: Load => DatasetGriddedLoad
+  end type dataset_gridded_type
   
   PetscInt, parameter, public :: DIM_NULL = 0
   PetscInt, parameter, public :: DIM_X = 1
@@ -31,50 +31,50 @@ module Dataset_XYZ_class
   
   PetscInt, parameter :: MAX_NSLICE = 4
 
-  public :: DatasetXYZCreate, &
-            DatasetXYZInit, &
-            DatasetXYZCast, &
-            DatasetXYZLoad, &
-            DatasetXYZInterpolateReal, &
-            DatasetXYZStrip, &
-            DatasetXYZDestroy
+  public :: DatasetGriddedCreate, &
+            DatasetGriddedInit, &
+            DatasetGriddedCast, &
+            DatasetGriddedLoad, &
+            DatasetGriddedInterpolateReal, &
+            DatasetGriddedStrip, &
+            DatasetGriddedDestroy
   
 contains
 
 ! ************************************************************************** !
 !
-! DatasetXYZCreate: Creates global dataset class
+! DatasetGriddedCreate: Creates global dataset class
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-function DatasetXYZCreate()
+function DatasetGriddedCreate()
   
   implicit none
   
-  class(dataset_xyz_type), pointer :: dataset
+  class(dataset_gridded_type), pointer :: dataset
 
-  class(dataset_xyz_type), pointer :: DatasetXYZCreate
+  class(dataset_gridded_type), pointer :: DatasetGriddedCreate
   
   allocate(dataset)
-  call DatasetXYZInit(dataset)
+  call DatasetGriddedInit(dataset)
 
-  DatasetXYZCreate => dataset
+  DatasetGriddedCreate => dataset
     
-end function DatasetXYZCreate
+end function DatasetGriddedCreate
 
 ! ************************************************************************** !
 !
-! DatasetXYZInit: Initializes members of global dataset class
+! DatasetGriddedInit: Initializes members of global dataset class
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZInit(this)
+subroutine DatasetGriddedInit(this)
   
   implicit none
   
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   
   call DatasetCommonHDF5Init(this)
   this%is_cell_centered = PETSC_FALSE
@@ -82,16 +82,16 @@ subroutine DatasetXYZInit(this)
   nullify(this%origin)
   nullify(this%discretization)
     
-end subroutine DatasetXYZInit
+end subroutine DatasetGriddedInit
 
 ! ************************************************************************** !
 !
-! DatasetXYZCast: Casts a dataset_base_type to dataset_xyz_type
+! DatasetGriddedCast: Casts a dataset_base_type to dataset_gridded_type
 ! author: Glenn Hammond
 ! date: 08/29/13
 !
 ! ************************************************************************** !
-function DatasetXYZCast(this)
+function DatasetGriddedCast(this)
   
   use Dataset_Base_class
 
@@ -99,24 +99,24 @@ function DatasetXYZCast(this)
 
   class(dataset_base_type), pointer :: this
 
-  class(dataset_xyz_type), pointer :: DatasetXYZCast
+  class(dataset_gridded_type), pointer :: DatasetGriddedCast
   
-  nullify(DatasetXYZCast)
+  nullify(DatasetGriddedCast)
   select type (this)
-    class is (dataset_xyz_type)
-      DatasetXYZCast => this
+    class is (dataset_gridded_type)
+      DatasetGriddedCast => this
   end select
     
-end function DatasetXYZCast
+end function DatasetGriddedCast
 
 ! ************************************************************************** !
 !
-! DatasetXYZLoad: Load new data into dataset buffer
+! DatasetGriddedLoad: Load new data into dataset buffer
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZLoad(this,option)
+subroutine DatasetGriddedLoad(this,option)
   
   use Option_module
   use Time_Storage_module
@@ -124,29 +124,29 @@ subroutine DatasetXYZLoad(this,option)
 
   implicit none
   
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   type(option_type) :: option
   
   if (DatasetCommonHDF5Load(this,option)) then
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetXYZReadData(this,option)
+    call DatasetGriddedReadData(this,option)
 #endif    
 !    call this%Reorder(option)
     call DatasetBaseReorder(this,option)
   endif
   call DatasetBaseInterpolateTime(this)
     
-end subroutine DatasetXYZLoad
+end subroutine DatasetGriddedLoad
 
 #if defined(PETSC_HAVE_HDF5)    
 ! ************************************************************************** !
 !
-! DatasetXYZReadData: Read an hdf5 data into arrays
+! DatasetGriddedReadData: Read an hdf5 data into arrays
 ! author: Glenn Hammond
 ! date: 10/25/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZReadData(this,option)
+subroutine DatasetGriddedReadData(this,option)
 
   use hdf5
   use Option_module
@@ -155,7 +155,7 @@ subroutine DatasetXYZReadData(this,option)
   
   implicit none
   
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   type(option_type) :: option
   
   integer(HID_T) :: file_id
@@ -234,7 +234,8 @@ subroutine DatasetXYZReadData(this,option)
       call h5aclose_f(attribute_id,hdf5_err)
     else
       option%io_buffer = &
-        '"Discretization" attribute must be included in XYZ hdf5 dataset file.'
+        '"Discretization" attribute must be included in GRIDDED hdf5 ' // &
+        'dataset file.'
     endif
     attribute_name = "Origin"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
@@ -401,7 +402,7 @@ subroutine DatasetXYZReadData(this,option)
   !TODO(geh): add to event log
   !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
                           
-end subroutine DatasetXYZReadData
+end subroutine DatasetGriddedReadData
 
 #endif
 
@@ -418,7 +419,7 @@ subroutine DatasetSetDimension(this,word)
 
   implicit none
   
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   character(len=MAXWORDLENGTH) :: word
 
   call StringToUpper(word)
@@ -452,7 +453,7 @@ function DatasetGetNDimensions(this)
 
   implicit none
   
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   
   PetscInt :: DatasetGetNDimensions
 
@@ -471,19 +472,19 @@ end function DatasetGetNDimensions
 
 ! ************************************************************************** !
 !
-! DatasetXYZInterpolateReal: Interpolates data from the dataset
+! DatasetGriddedInterpolateReal: Interpolates data from the dataset
 ! author: Glenn Hammond
 ! date: 10/26/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZInterpolateReal(this,xx,yy,zz,time,real_value,option)
+subroutine DatasetGriddedInterpolateReal(this,xx,yy,zz,time,real_value,option)
 
   use Utility_module, only : InterpolateBilinear
   use Option_module
   
   implicit none
   
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   PetscReal, intent(in) :: xx, yy, zz
   PetscReal :: time
   PetscReal :: real_value
@@ -499,7 +500,7 @@ subroutine DatasetXYZInterpolateReal(this,xx,yy,zz,time,real_value,option)
   PetscInt :: nx
   character(len=MAXWORDLENGTH) :: word
   
-  call DatasetXYZGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
+  call DatasetGriddedGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   
   spatial_interpolation_method = INTERPOLATION_LINEAR
   
@@ -581,20 +582,20 @@ subroutine DatasetXYZInterpolateReal(this,xx,yy,zz,time,real_value,option)
       end select
   end select
   
-end subroutine DatasetXYZInterpolateReal
+end subroutine DatasetGriddedInterpolateReal
 
 ! ************************************************************************** !
 !
-! DatasetXYZGetIndices: Returns bounding indices for point in dataset
+! DatasetGriddedGetIndices: Returns bounding indices for point in dataset
 ! author: Glenn Hammond
 ! date: 10/26/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
+subroutine DatasetGriddedGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
 
   implicit none
 
-  class(dataset_xyz_type) :: this
+  class(dataset_gridded_type) :: this
   PetscReal, intent(in)  :: xx, yy, zz
   PetscInt :: i, j, k
   PetscReal :: x, y, z
@@ -649,50 +650,50 @@ subroutine DatasetXYZGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
     endif
   endif
   
-end subroutine DatasetXYZGetIndices
+end subroutine DatasetGriddedGetIndices
 
 ! ************************************************************************** !
 !
-! DatasetXYZStrip: Strips allocated objects within XYZ dataset object
+! DatasetGriddedStrip: Strips allocated objects within XYZ dataset object
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZStrip(this)
+subroutine DatasetGriddedStrip(this)
 
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(dataset_xyz_type)  :: this
+  class(dataset_gridded_type)  :: this
   
   call DatasetCommonHDF5Strip(this)
   
   call DeallocateArray(this%origin)
   call DeallocateArray(this%discretization)
   
-end subroutine DatasetXYZStrip
+end subroutine DatasetGriddedStrip
 
 ! ************************************************************************** !
 !
-! DatasetXYZDestroy: Destroys a dataset
+! DatasetGriddedDestroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetXYZDestroy(this)
+subroutine DatasetGriddedDestroy(this)
 
   implicit none
   
-  class(dataset_xyz_type), pointer :: this
+  class(dataset_gridded_type), pointer :: this
   
   if (.not.associated(this)) return
   
-  call DatasetXYZStrip(this)
+  call DatasetGriddedStrip(this)
   
   deallocate(this)
   nullify(this)
   
-end subroutine DatasetXYZDestroy
+end subroutine DatasetGriddedDestroy
 
-end module Dataset_XYZ_class
+end module Dataset_Gridded_class

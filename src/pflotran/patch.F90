@@ -919,7 +919,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use General_Aux_module
   use Grid_module
   use Dataset_Common_HDF5_class
-  use Dataset_XYZ_class
+  use Dataset_Gridded_class
 
   implicit none
   
@@ -1271,7 +1271,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   else
                     select type(dataset => &
                                 flow_condition%pressure%flow_dataset%dataset)
-                      class is(dataset_xyz_type)
+                      class is(dataset_gridded_type)
                         call PatchUpdateCouplerFromDataset(coupler,option, &
                                                         patch%grid,dataset, &
                                                         RICHARDS_PRESSURE_DOF)
@@ -1327,14 +1327,14 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
   use Option_module
   use Grid_module
   use Coupler_module
-  use Dataset_XYZ_class
+  use Dataset_Gridded_class
   
   implicit none
 
   type(coupler_type) :: coupler
   type(option_type) :: option
   type(grid_type) :: grid
-  class(dataset_xyz_type) :: dataset
+  class(dataset_gridded_type) :: dataset
   PetscInt :: dof
   
   PetscReal :: temp_real
@@ -1345,11 +1345,11 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
   do iconn = 1, coupler%connection_set%num_connections
     local_id = coupler%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
-    call DatasetXYZInterpolateReal(dataset, &
-                                   grid%x(ghosted_id), &
-                                   grid%y(ghosted_id), &
-                                   grid%z(ghosted_id), &
-                                   0.d0,temp_real,option)
+    call DatasetGriddedInterpolateReal(dataset, &
+                                       grid%x(ghosted_id), &
+                                       grid%y(ghosted_id), &
+                                       grid%z(ghosted_id), &
+                                       0.d0,temp_real,option)
     coupler%flow_aux_real_var(dof,iconn) = temp_real
   enddo
   

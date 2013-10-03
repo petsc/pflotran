@@ -388,7 +388,7 @@ end subroutine DatasetGlobalReadData
 
 ! ************************************************************************** !
 !
-! DatasetGlobalStrip: Strips allocated objects within XYZ dataset object
+! DatasetGlobalStrip: Strips allocated objects within Global dataset object
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
