@@ -285,7 +285,7 @@ dataset_obj = \
 	${common_src}dataset_global.o \
 	${common_src}dataset_map.o \
 	${common_src}dataset.o \
-	${common_src}dataset_xyz.o \
+	${common_src}dataset_gridded.o \
 	${common_src}time_series.o \
 	${common_src}time_storage.o 
 
@@ -420,7 +420,7 @@ co2_sw_rtsafe.o : pflotran_constants.o
 co2eos.o : pflotran_constants.o
 communicator_base.o : dm_kludge.o option.o pflotran_constants.o
 condition.o : constraint.o dataset_base.o dataset_common_hdf5.o dataset_map.o \
-              dataset_xyz.o general_aux.o global_aux.o hdf5_aux.o input.o \
+              dataset_gridded.o general_aux.o global_aux.o hdf5_aux.o input.o \
               logging.o option.o pflotran_constants.o reaction_aux.o string.o \
               time_series.o time_storage.o units.o utility.o
 condition_control.o : condition.o connection.o constraint.o coupler.o \
@@ -454,7 +454,7 @@ database_hpt.o : database.o database_aux.o input.o mineral_aux.o option.o \
                  pflotran_constants.o reaction.o reaction_aux.o string.o \
                  surface_complexation_aux.o utility.o
 dataset.o : dataset_base.o dataset_common_hdf5.o dataset_global.o \
-            dataset_map.o dataset_xyz.o dm_kludge.o input.o option.o \
+            dataset_map.o dataset_gridded.o dm_kludge.o input.o option.o \
             pflotran_constants.o string.o
 dataset_base.o : option.o pflotran_constants.o string.o time_storage.o \
                  utility.o
@@ -466,7 +466,7 @@ dataset_global.o : dataset_base.o dataset_common_hdf5.o dm_kludge.o logging.o \
 dataset_map.o : dataset_base.o dataset_common_hdf5.o input.o logging.o \
                 option.o pflotran_constants.o string.o time_storage.o units.o \
                 utility.o
-dataset_xyz.o : dataset_base.o dataset_common_hdf5.o logging.o option.o \
+dataset_gridded.o : dataset_base.o dataset_common_hdf5.o logging.o option.o \
                 pflotran_constants.o string.o time_storage.o units.o utility.o
 debug.o : input.o option.o pflotran_constants.o
 discretization.o : dm_kludge.o grid.o input.o mfd.o mfd_aux.o option.o \
@@ -521,7 +521,7 @@ hydrogeophysics_simulation.o : hydrogeophysics_wrapper.o option.o output.o \
                                subsurface_simulation.o
 hydrogeophysics_wrapper.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
-hydrostatic.o : condition.o connection.o coupler.o dataset_xyz.o general_aux.o \
+hydrostatic.o : condition.o connection.o coupler.o dataset_gridded.o general_aux.o \
                 grid.o option.o pflotran_constants.o region.o \
                 structured_grid.o utility.o water_eos.o
 immis.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
@@ -635,7 +635,7 @@ output_vtk.o : discretization.o field.o grid.o logging.o option.o output_aux.o \
                output_common.o patch.o pflotran_constants.o reaction_aux.o \
                realization_base.o string.o structured_grid.o variables.o
 patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
-          dataset_base.o dataset_common_hdf5.o dataset_map.o dataset_xyz.o \
+          dataset_base.o dataset_common_hdf5.o dataset_map.o dataset_gridded.o \
           field.o general_aux.o global_aux.o grid.o hydrostatic.o immis_aux.o \
           material.o mineral.o mineral_aux.o miscible_aux.o mphase_aux.o \
           observation.o option.o output_aux.o pflotran_constants.o reaction.o \
