@@ -74,8 +74,11 @@ module Timestepper_module
   end type stepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, &
+#ifndef PROCESS_MODEL
             TimestepperExecuteRun, &
-            TimestepperInitializeRun, TimestepperFinalizeRun, &
+            TimestepperInitializeRun, &
+            TimestepperFinalizeRun, &
+#endif            
 #ifdef GEOMECH
             FlowStepperStepToSteadyState, &
             StepperCheckpoint, &
@@ -318,6 +321,7 @@ subroutine TimestepperRead(stepper,input,option)
 
 end subroutine TimestepperRead
 
+#ifndef PROCESS_MODEL
 ! ************************************************************************** !
 !
 ! TimestepperInitializeRun: Initializes timestepping run the time step loop
@@ -4572,6 +4576,7 @@ subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
   endif    
 
 end subroutine TimestepperEnforceCFLLimit
+#endif ! ifndef PROCESS_MODEL
 
 ! ************************************************************************** !
 !
