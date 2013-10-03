@@ -4,7 +4,7 @@
 ! use the PetscBagGetData() routine.
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
-
+#ifndef PROCESS_MODEL
 module Checkpoint_Header_module
   implicit none
   private
@@ -58,6 +58,7 @@ module Checkpoint_Header_module
     integer*8 :: checkpoint_activity_coefs
   end type checkpoint_header_type
 end module Checkpoint_Header_module
+#endif
 
 module Checkpoint_module
 
@@ -69,8 +70,10 @@ module Checkpoint_module
   
   private
 
+#ifndef PROCESS_MODEL
   public :: Checkpoint, Restart
-  
+#endif
+
   public :: OpenCheckpointFile, &
             CloseCheckpointFile, &
             CheckpointFlowProcessModel, &
@@ -98,6 +101,8 @@ End Subroutine
 End Interface PetscBagGetData
 
 contains
+
+#ifndef PROCESS_MODEL
 
 subroutine Checkpoint(realization, &
                       flow_time_steps,flow_cumulative_newton_iterations, &
@@ -849,6 +854,7 @@ subroutine CheckpointRegisterBagHeader(bag,header)
                            ierr)                            
 
 end subroutine CheckpointRegisterBagHeader
+#endif
 
 ! ************************************************************************** !
 !
