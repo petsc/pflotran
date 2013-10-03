@@ -529,8 +529,6 @@ end function DatasetCommonHDF5GetPointer
 ! ************************************************************************** !
 subroutine DatasetCommonHDF5Strip(this)
 
-  use Utility_module, only : DeallocateArray
-
   implicit none
   
   class(dataset_common_hdf5_type)  :: this

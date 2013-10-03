@@ -32,8 +32,8 @@ module Dataset_Base_class
   end type dataset_base_type
 
   ! dataset types
-  PetscInt, parameter :: DATASET_INTEGER = 1
-  PetscInt, parameter :: DATASET_REAL = 2
+  PetscInt, public, parameter :: DATASET_INTEGER = 1
+  PetscInt, public, parameter :: DATASET_REAL = 2
   
   public :: DatasetBaseCreate, &
             DatasetBaseInit, &

@@ -16,6 +16,11 @@ module Utility_module
     module procedure CrossProduct1
   end interface
   
+  interface reallocateRealArray
+    module procedure reallocateRealArray1D
+    module procedure reallocateRealArray2D
+  end interface
+  
   interface UtilityReadArray
     module procedure UtilityReadIntArray
     module procedure UtilityReadRealArray
@@ -239,12 +244,13 @@ end subroutine reallocateIntArray
 
 ! ************************************************************************** !
 !
-! reallocateRealArray: Reallocates a real array to a larger size and copies
+! reallocateRealArray2D: Reallocates a 2D real array to a larger size and 
+!                        copies values over.
 ! author: Glenn Hammond
-! date: 10/29/07
+! date: 10/29/07, 10/03/13
 !
 ! ************************************************************************** !
-subroutine reallocateRealArray(array,size)
+subroutine reallocateRealArray1D(array,size)
 
   implicit none
 
@@ -262,7 +268,36 @@ subroutine reallocateRealArray(array,size)
   size = 2*size
   deallocate(array2)
 
-end subroutine reallocateRealArray
+end subroutine reallocateRealArray1D
+
+! ************************************************************************** !
+!
+! reallocateRealArray2D: Reallocates a 2D real array to a larger size in last
+!                        dimension and copies values over.
+! author: Glenn Hammond
+! date: 10/03/13
+!
+! ************************************************************************** !
+subroutine reallocateRealArray2D(array,rank2_size)
+
+  implicit none
+
+  PetscReal, pointer :: array(:,:)
+  PetscInt :: rank1_size, rank2_size
+  
+  PetscReal, allocatable :: array2(:,:)
+  
+  rank1_size = size(array,1)
+  allocate(array2(rank1_size,rank2_size))
+  array2(:,1:rank2_size) = array(:,1:rank2_size)
+  deallocate(array)
+  allocate(array(rank1_size,2*rank2_size))
+  array = 0.d0
+  array(:,1:rank2_size) = array2(:,1:rank2_size)
+  rank2_size = 2*rank2_size
+  deallocate(array2)
+
+end subroutine reallocateRealArray2D
 
 !* Given an NxN matrix A, with physical dimension NP, this routine replaces it
 !* by the LU decomposition of a rowwise permutation of itself.
