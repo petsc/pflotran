@@ -607,8 +607,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
             call density(option%reference_temperature,option%reference_pressure,rho)
             v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
-            v_darcy = min(v_darcy,v_darcy_allowable)
-            dphi_dp_dn = 0.d0
+            if(v_darcy > v_darcy_allowable) then
+              dphi_dp_dn = 0.d0
+              v_darcy = v_darcy_allowable
+            endif
           endif
 #endif
           q = v_darcy * area
@@ -844,7 +846,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
             call density(option%reference_temperature,option%reference_pressure,rho)
             v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
-            v_darcy = min(v_darcy,v_darcy_allowable)
+            if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable
           endif
 #endif
        endif
