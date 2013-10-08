@@ -24,11 +24,6 @@ module Dataset_Base_class
     PetscInt :: buffer_slice_offset ! index of the first time slice in the buffer
     PetscInt :: buffer_nslice ! # of time slices stored in buffer
     class(dataset_base_type), pointer :: next
-!  contains
-!    procedure, public :: Init => DatasetBaseInit
-!    procedure, public :: InterpolateTime => DatasetBaseInterpolateTime
-!    procedure, public :: Reorder => DatasetBaseReorder
-!    procedure, public :: Strip => DatasetBaseStrip
   end type dataset_base_type
 
   ! dataset types
@@ -169,7 +164,7 @@ subroutine DatasetBaseInterpolateTime(this)
   
   if (.not.associated(this%rbuffer)) return
   
-  time_interpolation_method = INTERPOLATION_STEP
+  time_interpolation_method = this%time_storage%time_interpolation_method
   
   if (this%time_storage%cur_time_index >= &
       this%time_storage%max_time_index) then

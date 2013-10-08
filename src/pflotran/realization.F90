@@ -1576,8 +1576,8 @@ subroutine RealizationAddWaypointsToList(realization)
         sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
         !TODO(geh): check if this updated more than simply the flow_dataset (i.e. datum and gradient)
         !geh: followup - no, datum/gradient are not considered.  Should they be considered?
-        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
-                                          times)
+        call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
+                                final_time, times)
         if (size(times) > 1000) then
           option%io_buffer = 'For flow condition "' // &
             trim(cur_flow_condition%name) // &

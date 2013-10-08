@@ -11,15 +11,18 @@ module Dataset_Ascii_class
 #include "finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
-    PetscBool :: is_transient
-    PetscInt :: time_interpolation_method
-!  contains
-!    procedure, public :: Init => DatasetAsciiInit
-!    procedure, public :: Load => DatasetAsciiLoad
+    PetscInt :: array_rank
   end type dataset_ascii_type
+  
+  interface DatasetAsciiRead
+    module procedure DatasetAsciiOpenAndLoad
+    module procedure DatasetAsciiLoad
+  end interface
   
   public :: DatasetAsciiCreate, &
             DatasetAsciiInit, &
+            DatasetAsciiCast, &
+            DatasetAsciiRead, &
             DatasetAsciiDestroy
   
 contains
@@ -45,7 +48,6 @@ function DatasetAsciiCreate()
   DatasetAsciiCreate => dataset
     
 end function DatasetAsciiCreate
-
 
 ! ************************************************************************** !
 !
@@ -86,19 +88,44 @@ subroutine DatasetAsciiInit(this)
   class(dataset_ascii_type) :: this
   
   call DatasetBaseInit(this)
-  this%is_transient = PETSC_FALSE
-  this%time_interpolation_method = 0
+  this%array_rank = 0
     
 end subroutine DatasetAsciiInit
 
 ! ************************************************************************** !
 !
-! DatasetAsciiRead: Reads a text-based dataset from an ASCII file.
+! DatasetAsciiOpenandLoad: Opens a file and calls the load routine.
 ! author: Glenn Hammond
 ! date: 10/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetAsciiRead(this,input,option)
+subroutine DatasetAsciiOpenandLoad(this,filename,option)
+
+  use Input_module
+  use Option_module
+  
+  implicit none
+  
+  class(dataset_ascii_type) :: this
+  character(len=MAXSTRINGLENGTH) :: filename
+  type(option_type) :: option
+  
+  type(input_type), pointer :: input
+  
+  input => InputCreate(IUNIT_TEMP,filename,option)
+  call DatasetAsciiLoad(this,input,option)
+  call InputDestroy(input)
+
+end subroutine DatasetAsciiOpenandLoad
+
+! ************************************************************************** !
+!
+! DatasetAsciiLoad: Reads a text-based dataset from an ASCII file.
+! author: Glenn Hammond
+! date: 10/03/13
+!
+! ************************************************************************** !
+subroutine DatasetAsciiLoad(this,input,option)
 
   use Input_module
   use String_module
@@ -240,7 +267,20 @@ subroutine DatasetAsciiRead(this,input,option)
     offset = offset + data_count
   enddo
   
-end subroutine DatasetAsciiRead
+  if (this%array_rank > 0) then
+    if (this%array_rank /= data_count) then
+      write(word,*) this%array_rank
+      option%io_buffer = 'Inconsistency between dataset prescribed rank (' // &
+        trim(word) // ') and rank in file ('
+      write(word,*) data_count
+      option%io_buffer = trim(option%io_buffer) // ').'
+      call printErrMsg(option)
+    endif
+  else
+    this%array_rank = data_count
+  endif
+  
+end subroutine DatasetAsciiLoad
 
 ! ************************************************************************** !
 !

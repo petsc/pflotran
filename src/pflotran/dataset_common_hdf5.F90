@@ -15,7 +15,6 @@ module Dataset_Common_HDF5_class
     PetscBool :: realization_dependent
     PetscInt :: max_buffer_size
     PetscBool :: is_cell_indexed
-    PetscBool :: is_transient
   end type dataset_common_hdf5_type
 
   public :: DatasetCommonHDF5Create, &
@@ -76,7 +75,6 @@ subroutine DatasetCommonHDF5Init(this)
   this%realization_dependent = PETSC_FALSE
   this%max_buffer_size = 10
   this%is_cell_indexed = PETSC_FALSE
-  this%is_transient = PETSC_FALSE
     
 end subroutine DatasetCommonHDF5Init
 
@@ -99,7 +97,6 @@ subroutine DatasetCommonHDF5Copy(this, that)
   that%realization_dependent = this%realization_dependent
   that%max_buffer_size = this%max_buffer_size
   that%is_cell_indexed = this%is_cell_indexed
-  that%is_transient = this%is_transient
     
 end subroutine DatasetCommonHDF5Copy
 
@@ -419,9 +416,6 @@ function DatasetCommonHDF5Load(this,option)
 #endif
     ! if no times are read, this%time_storage will be null coming out of
     ! DatasetCommonHDF5ReadTimes()
-    if (associated(this%time_storage)) then
-      this%is_transient = PETSC_TRUE
-    endif
   endif
   
   if (associated(this%time_storage)) then

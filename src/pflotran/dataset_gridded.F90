@@ -15,9 +15,6 @@ module Dataset_Gridded_class
     PetscInt :: data_dim
     PetscReal, pointer :: origin(:)
     PetscReal, pointer :: discretization(:)
-!  contains
-!    procedure, public :: Init => DatasetGriddedInit
-!    procedure, public :: Load => DatasetGriddedLoad
   end type dataset_gridded_type
   
   PetscInt, parameter, public :: DIM_NULL = 0
