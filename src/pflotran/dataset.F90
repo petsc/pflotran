@@ -1,6 +1,7 @@
 module Dataset_module
  
   use Dataset_Base_class
+  use Dataset_Ascii_class
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_class
   use Dataset_Map_class
@@ -200,6 +201,7 @@ recursive subroutine DatasetDestroy(dataset)
   class(dataset_gridded_type), pointer :: dataset_xyz
   class(dataset_map_type), pointer :: dataset_map
   class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5
+  class(dataset_ascii_type), pointer :: dataset_ascii
   class(dataset_base_type), pointer :: dataset_base
 
   if (.not.associated(dataset)) return
@@ -209,6 +211,9 @@ recursive subroutine DatasetDestroy(dataset)
   endif
   
   select type (selector => dataset)
+    class is (dataset_ascii_type)
+      dataset_ascii => selector
+      call DatasetAsciiDestroy(dataset_ascii)
     class is (dataset_global_type)
       dataset_global => selector
       call DatasetGlobalDestroy(dataset_global)

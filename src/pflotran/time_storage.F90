@@ -18,6 +18,7 @@ module Time_Storage_module
     PetscReal :: time_shift    ! shift for cyclic data sets 
     PetscBool :: cur_time_index_changed
     PetscBool :: cur_time_fraction_changed
+    PetscInt :: time_interpolation_method
   end type time_storage_type
   
   public :: TimeStorageCreate, &
@@ -53,6 +54,7 @@ function TimeStorageCreate()
   time_storage%time_shift = 0.d0
   time_storage%cur_time_index_changed = PETSC_FALSE
   time_storage%cur_time_fraction_changed = PETSC_FALSE
+  time_storage%time_interpolation_method = INTERPOLATION_STEP
   
   TimeStorageCreate => time_storage
     
@@ -66,6 +68,7 @@ end function TimeStorageCreate
 !
 ! ************************************************************************** !
 subroutine TimeStorageVerify(default_time, time_storage, default_time_storage)
+
   implicit none
   
   PetscReal :: default_time

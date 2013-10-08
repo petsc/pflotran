@@ -200,30 +200,30 @@ subroutine CondControlAssignFlowInitCond(realization)
                 select case(initial_condition%flow_condition%iphase)
                   case(TWO_PHASE_STATE)
                     xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
+                      general%gas_pressure%dataset%rarray(1)
                     xx_p(ibegin+GENERAL_GAS_SATURATION_DOF) = &
-                      general%gas_saturation%flow_dataset%time_series%cur_value(1)
-                    temperature = general%temperature%flow_dataset%time_series%cur_value(1)
+                      general%gas_saturation%dataset%rarray(1)
+                    temperature = general%temperature%dataset%rarray(1)
                     call psat(temperature,p_sat,ierr)
                     ! p_a = p_g - p_s(T)
                     xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1) - &
+                      general%gas_pressure%dataset%rarray(1) - &
                       p_sat
                   case(LIQUID_STATE)
                     xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF) = &
-                      general%liquid_pressure%flow_dataset%time_series%cur_value(1)
+                      general%liquid_pressure%dataset%rarray(1)
                     xx_p(ibegin+GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = &
-                      general%mole_fraction%flow_dataset%time_series%cur_value(1)
+                      general%mole_fraction%dataset%rarray(1)
                     xx_p(ibegin+GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = &
-                      general%temperature%flow_dataset%time_series%cur_value(1)
+                      general%temperature%dataset%rarray(1)
                   case(GAS_STATE)
                     xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
+                      general%gas_pressure%dataset%rarray(1)
                     xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1) * &
-                      general%mole_fraction%flow_dataset%time_series%cur_value(1)
+                      general%gas_pressure%dataset%rarray(1) * &
+                      general%mole_fraction%dataset%rarray(1)
                     xx_p(ibegin+GENERAL_GAS_STATE_TEMPERATURE_DOF) = &
-                      general%temperature%flow_dataset%time_series%cur_value(1)
+                      general%temperature%dataset%rarray(1)
                 end select
                 iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
@@ -364,15 +364,14 @@ subroutine CondControlAssignFlowInitCond(realization)
               dataset_flag = PETSC_FALSE
               do idof = 1, option%nflowdof
                 dataset =>  initial_condition%flow_condition% &
-                                 sub_condition_ptr(idof)%ptr% &
-                                 flow_dataset%dataset
+                                 sub_condition_ptr(idof)%ptr%dataset
                 if (associated(dataset)) then
                   use_dataset = PETSC_TRUE
                   dataset_flag(idof) = PETSC_TRUE
                   call ConditionControlMapDatasetToVec(realization, &
                           initial_condition%flow_condition% &
-                            sub_condition_ptr(idof)%ptr% &
-                            flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                            sub_condition_ptr(idof)%ptr%dataset,idof, &
+                          field%flow_xx,GLOBAL)
                 endif
               enddo            
               if (.not.associated(initial_condition%flow_aux_real_var) .and. &
@@ -410,8 +409,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                     if (.not.dataset_flag(idof)) then
                       xx_p(ibegin+idof-1) = &
                         initial_condition%flow_condition% &
-                          sub_condition_ptr(idof)%ptr%flow_dataset% &
-                          time_series%cur_value(1)
+                          sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                     endif
                   enddo
                 endif
@@ -1177,11 +1175,11 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                       case (ONE_INTEGER)
                         xx_p(ibegin+idof-1) = &
                           initial_condition%flow_condition% &
-                          sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                          sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                       case (TWO_INTEGER)
                         temp = &
                           initial_condition%flow_condition% &
-                          sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                          sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                         pw = option%reference_pressure
                         
                         call wateos_noderiv(temp, pw, dw_kg, &

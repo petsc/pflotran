@@ -2295,7 +2295,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       endif
       
       call GeneralSrcSink(option,source_sink%flow_condition%general%rate% &
-                                  flow_dataset%time_series%cur_value(:), &
+                                  dataset%rarray(:), &
                         source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                         global_aux_vars(ghosted_id), &
@@ -2760,7 +2760,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       Jup = 0.d0
       call GeneralSrcSinkDerivative(option, &
                         source_sink%flow_condition%general%rate% &
-                                  flow_dataset%time_series%cur_value(:), &
+                                  dataset%rarray(:), &
                         source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(:,ghosted_id), &
                         global_aux_vars(ghosted_id), &

@@ -1622,7 +1622,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
       
     cur_connection_set => source_sink%connection_set
     
@@ -2225,7 +2225,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
 
     cur_connection_set => source_sink%connection_set
     

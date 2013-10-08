@@ -265,7 +265,7 @@ subroutine THSetupPatch(realization)
           realization%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
         TH_sec_heat_vars(local_id)%sec_temp = &
-        initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+        initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
       
       TH_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
@@ -998,7 +998,7 @@ subroutine THUpdateAuxVarsPatch(realization)
 
       if (associated(source_sink%flow_condition%temperature)) then
         if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
-          tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+          tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
         else
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
         endif
@@ -1007,7 +1007,7 @@ subroutine THUpdateAuxVarsPatch(realization)
       endif
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (HET_DIRICHLET)
-          tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+          tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
         case (DIRICHLET_BC)
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
         case (ENERGY_RATE_SS,HET_ENERGY_RATE_SS)
@@ -3313,7 +3313,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
-      qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
 
@@ -3346,7 +3346,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       esrc1 = 0.d0
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (ENERGY_RATE_SS)
-          esrc1 = source_sink%flow_condition%energy_rate%flow_dataset%time_series%cur_value(1)
+          esrc1 = source_sink%flow_condition%energy_rate%dataset%rarray(1)
         case (HET_ENERGY_RATE_SS)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
@@ -3851,7 +3851,7 @@ subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
-      qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
 

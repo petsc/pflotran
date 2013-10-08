@@ -19,9 +19,6 @@ module Dataset_Map_class
     PetscInt, pointer :: datatocell_ids(:)
     PetscInt, pointer :: cell_ids_local(:)
     PetscBool         :: first_time
-!  contains
-!    procedure, public :: Init => DatasetMapInit
-!    procedure, public :: Load => DatasetMapLoad
   end type dataset_map_type
   
   PetscInt, parameter :: MAX_NSLICE = 100
