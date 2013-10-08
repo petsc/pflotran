@@ -979,22 +979,22 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 select case(general%gas_pressure%itype)
                   case(DIRICHLET_BC)
                     coupler%flow_aux_real_var(GENERAL_GAS_PRESSURE_DOF,1:num_connections) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
+                      general%gas_pressure%dataset%rarray(1)
                     dof1 = PETSC_TRUE
                   case default
                 end select
                 select case(general%gas_saturation%itype)
                   case(DIRICHLET_BC)
                     coupler%flow_aux_real_var(GENERAL_GAS_SATURATION_DOF,1:num_connections) = &
-                      general%gas_saturation%flow_dataset%time_series%cur_value(1)
+                      general%gas_saturation%dataset%rarray(1)
                     dof2 = PETSC_TRUE
                 end select
                 select case(general%temperature%itype)
                   case(DIRICHLET_BC)
-                    temperature = general%temperature%flow_dataset%time_series%cur_value(1)
+                    temperature = general%temperature%dataset%rarray(1)
                     call psat(temperature,p_sat,ierr)
                     coupler%flow_aux_real_var(GENERAL_AIR_PRESSURE_DOF,1:num_connections) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1) - p_sat
+                      general%gas_pressure%dataset%rarray(1) - p_sat
                     dof3 = PETSC_TRUE
                 end select
               case(LIQUID_STATE)
@@ -1035,19 +1035,19 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   select case(general%liquid_pressure%itype)
                     case(DIRICHLET_BC)
                       coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
-                        general%liquid_pressure%flow_dataset%time_series%cur_value(1)
+                        general%liquid_pressure%dataset%rarray(1)
                       dof1 = PETSC_TRUE
                   end select
                   select case(general%mole_fraction%itype)
                     case(DIRICHLET_BC)
                       coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF,1:num_connections) = &
-                        general%mole_fraction%flow_dataset%time_series%cur_value(1)
+                        general%mole_fraction%dataset%rarray(1)
                       dof2 = PETSC_TRUE
                   end select
                   select case(general%temperature%itype)
                     case(DIRICHLET_BC)
                       coupler%flow_aux_real_var(GENERAL_LIQUID_STATE_TEMPERATURE_DOF,1:num_connections) = &
-                        general%temperature%flow_dataset%time_series%cur_value(1)
+                        general%temperature%dataset%rarray(1)
                       dof3 = PETSC_TRUE
                   end select
                 endif
@@ -1055,26 +1055,26 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 select case(general%gas_pressure%itype)
                   case(DIRICHLET_BC)
                     coupler%flow_aux_real_var(GENERAL_GAS_PRESSURE_DOF,1:num_connections) = &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
+                      general%gas_pressure%dataset%rarray(1)
                     dof1 = PETSC_TRUE
                 end select
                 select case(general%mole_fraction%itype)
                   case(DIRICHLET_BC)
                     coupler%flow_aux_real_var(GENERAL_AIR_PRESSURE_DOF,1:num_connections) = &
-                      general%mole_fraction%flow_dataset%time_series%cur_value(1) * &
-                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
+                      general%mole_fraction%dataset%rarray(1) * &
+                      general%gas_pressure%dataset%rarray(1)
                     dof2 = PETSC_TRUE
                 end select                
                 select case(general%temperature%itype)
                   case(DIRICHLET_BC)
                     coupler%flow_aux_real_var(GENERAL_GAS_STATE_TEMPERATURE_DOF,1:num_connections) = &
-                      general%temperature%flow_dataset%time_series%cur_value(1)
+                      general%temperature%dataset%rarray(1)
                     dof3 = PETSC_TRUE
                 end select
               case(ANY_STATE)
                 do iconn = 1, num_connections
                   coupler%flow_aux_real_var(1:3,iconn) = &
-                      general%temperature%flow_dataset%time_series%cur_value(1:3)
+                      general%temperature%dataset%rarray(1:3)
                 enddo
                 dof1 = PETSC_TRUE
                 dof2 = PETSC_TRUE
@@ -1092,7 +1092,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
                   coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
-                          flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                          flow_condition%pressure%dataset%rarray(1)
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
            !  case(SATURATION_BC)
@@ -1103,7 +1103,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                      (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
                      flow_condition%temperature%itype /= DIRICHLET_BC)) then
                     coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                            flow_condition%temperature%dataset%rarray(1)
                   endif
               end select
               select case(flow_condition%concentration%itype)
@@ -1112,19 +1112,19 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                      (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
                      flow_condition%concentration%itype /= DIRICHLET_BC)) then
                     coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
-                            flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                            flow_condition%concentration%dataset%rarray(1)
                   endif
               end select
             else
               select case(flow_condition%temperature%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
                   coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                            flow_condition%temperature%dataset%rarray(1)
               end select
               select case(flow_condition%concentration%itype)
                 case(DIRICHLET_BC,ZERO_GRADIENT_BC)
                    coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
-                            flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                            flow_condition%concentration%dataset%rarray(1)
               end select
             endif
             if (associated(flow_condition%rate)) then
@@ -1146,7 +1146,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
                   coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
-                          flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                          flow_condition%pressure%dataset%rarray(1)
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
                 case default
@@ -1162,11 +1162,11 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                        (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
                        flow_condition%temperature%itype /= DIRICHLET_BC)) then
                       coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                              flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                              flow_condition%temperature%dataset%rarray(1)
                     endif
                   case (HET_DIRICHLET)
                     call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                            flow_condition%temperature%flow_dataset, &
+                            flow_condition%temperature%dataset, &
                             num_connections,TH_TEMPERATURE_DOF,option)
                   case default
                     write(string,*),flow_condition%temperature%itype
@@ -1180,10 +1180,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 select case(flow_condition%temperature%itype)
                   case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
                     coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                              flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                              flow_condition%temperature%dataset%rarray(1)
                   case (HET_DIRICHLET)
                     call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                            flow_condition%temperature%flow_dataset, &
+                            flow_condition%temperature%dataset, &
                             num_connections,TH_TEMPERATURE_DOF,option)
                   case default
                     write(string,*),flow_condition%temperature%itype
@@ -1197,11 +1197,11 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(flow_condition%rate%itype)
                 case (HET_MASS_RATE_SS,HET_VOL_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                            flow_condition%rate%flow_dataset, &
+                            flow_condition%rate%dataset, &
                             num_connections,TH_PRESSURE_DOF,option)
                 case (MASS_RATE_SS)
                     coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
-                            flow_condition%rate%flow_dataset%time_series%cur_value(1)
+                            flow_condition%rate%dataset%rarray(1)
                 case default
                   write(string,*),flow_condition%rate%itype
                   option%io_buffer='For TH mode: flow_condition%rate%itype = ' // &
@@ -1213,10 +1213,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case (flow_condition%energy_rate%itype)
                 case (ENERGY_RATE_SS)
                   coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                            flow_condition%temperature%dataset%rarray(1)
                 case (HET_ENERGY_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                          flow_condition%energy_rate%flow_dataset, &
+                          flow_condition%energy_rate%dataset, &
                           num_connections,TH_TEMPERATURE_DOF,option)
               end select
             endif
@@ -1232,7 +1232,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
                   coupler%flow_aux_real_var(MIS_PRESSURE_DOF, &
                                             1:num_connections) = &
-                    flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                    flow_condition%pressure%dataset%rarray(1)
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
              !  case(SATURATION_BC)
@@ -1241,11 +1241,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%concentration)) then
               select case(flow_condition%concentration%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  if (associated(flow_condition%concentration%flow_dataset% &
-                                   time_series)) then
+                  if (associated(flow_condition%concentration%dataset)) then
                     coupler%flow_aux_real_var(MIS_CONCENTRATION_DOF, &
                                               1:num_connections) = &
-                      flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                      flow_condition%concentration%dataset%rarray(1)
                   endif
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
@@ -1262,15 +1261,13 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%pressure)) then
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  if (associated(flow_condition%pressure%flow_dataset% &
-                                 time_series)) then
+                  if (associated(flow_condition%pressure%dataset)) then
                     coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
                                               1:num_connections) = &
-                      flow_condition%pressure%flow_dataset%time_series% &
-                        cur_value(1)
+                      flow_condition%pressure%dataset%rarray(1)
                   else
                     select type(dataset => &
-                                flow_condition%pressure%flow_dataset%dataset)
+                                flow_condition%pressure%dataset)
                       class is(dataset_gridded_type)
                         call PatchUpdateCouplerFromDataset(coupler,option, &
                                                         patch%grid,dataset, &
@@ -1294,7 +1291,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   call PatchScaleSourceSink(patch,coupler,option)
                 case (HET_VOL_RATE_SS,HET_MASS_RATE_SS)
                   call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                          flow_condition%rate%flow_dataset, &
+                          flow_condition%rate%dataset, &
                           num_connections,RICHARDS_PRESSURE_DOF,option)
               end select
             endif
@@ -1504,8 +1501,8 @@ end subroutine PatchScaleSourceSink
 !!
 !! date: 10/03/2012
 ! ************************************************************************** !
-subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
-          sum_connection,isub_condition,option)
+subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
+                                          sum_connection,isub_condition,option)
 
   use Option_module
   use Field_module
@@ -1514,6 +1511,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
   use Condition_module
   use Grid_module
   use Dataset_Map_class
+  use Dataset_Base_class
 
   implicit none
 
@@ -1523,7 +1521,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
 
   type(patch_type) :: patch
   type(coupler_type) :: coupler
-  type(flow_condition_dataset_type) :: flow_dataset
+  class(dataset_base_type), pointer :: dataset_base
   PetscInt :: isub_condition
   type(option_type) :: option
 
@@ -1535,7 +1533,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
   PetscInt,pointer::cell_ids_nat(:)
   type(flow_sub_condition_type) :: flow_sub_condition
 
-  class(dataset_map_type), pointer :: dataset
+  class(dataset_map_type), pointer :: dataset_map
 
   grid => patch%grid
   
@@ -1561,37 +1559,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
 
   cur_connection_set => coupler%connection_set
 
-  if(associated(flow_dataset%dataset)) then
-
-!geh: commenting out the old approach in favor of new
-#if 0  
-    if(.not.associated(dataset%dataset_map)) then
-      !
-      ! Older scheme: Only works on a single proc run and assumes SS values are
-      ! prescribed in the dataset at each CV
-      !
-      if(option%mycommsize>1) then
-        option%io_buffer='PatchUpdateHetroCouplerAuxVars only implemented '// &
-          ' for single processor runs.'
-        call printErrMsg(option)
-      endif
-
-      if(size(dataset%rarray)/=cur_connection_set%num_connections) then
-        option%io_buffer='Length of array in dataset does not match no. of connection '// &
-          ' sets.'
-        call printErrMsg(option)
-      endif
-
-      do iconn=1,cur_connection_set%num_connections
-        coupler%flow_aux_real_var(isub_condition,iconn) = dataset%rarray(iconn)
-      enddo
-
-    else !if(.not.associated(dataset%dataset_map))
-#endif
-
-    select type(selector=>flow_dataset%dataset)
+  if (associated(dataset_base)) then
+    select type(selector=>dataset_base)
       class is(dataset_map_type)
-        dataset => selector
+        dataset_map => selector
       class default
         option%io_buffer = 'Incorrect class in PatchUpdateHetroCouplerAuxVars'
         call printErrMsg(option)
@@ -1601,7 +1572,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       !
     
       ! If called for the first time, create the map
-      if (dataset%first_time) then
+      if (dataset_map%first_time) then
         allocate(cell_ids_nat(cur_connection_set%num_connections))
         do iconn=1,cur_connection_set%num_connections
           sum_connection = sum_connection + 1
@@ -1610,10 +1581,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
           cell_ids_nat(iconn)=grid%nG2A(ghosted_id)
         enddo
 
-        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset,&
+        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset_map,&
                 cell_ids_nat,cur_connection_set%num_connections,option)
 
-        dataset%first_time = PETSC_FALSE
+        dataset_map%first_time = PETSC_FALSE
         deallocate(cell_ids_nat)
 
       endif
@@ -1621,7 +1592,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
       ! Save the data in the array
       do iconn=1,cur_connection_set%num_connections
         coupler%flow_aux_real_var(isub_condition,iconn) = &
-          dataset%rarray(dataset%datatocell_ids(iconn))
+          dataset_map%rarray(dataset_map%datatocell_ids(iconn))
       enddo
 
 !geh    endif !if(.not.associated(dataset%dataset_map))
@@ -1630,7 +1601,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,flow_dataset, &
 
     do iconn=1,cur_connection_set%num_connections
         coupler%flow_aux_real_var(isub_condition,iconn) = &
-          flow_dataset%time_series%cur_value(1)
+          dataset_map%rarray(1)
     enddo
   endif
   
@@ -1853,11 +1824,9 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       rt_auxvar => cur_constraint_coupler%rt_auxvar
       if (associated(cur_coupler%flow_condition)) then
         if (associated(cur_coupler%flow_condition%pressure)) then
-          if (associated(cur_coupler%flow_condition%pressure% &
-                         flow_dataset%time_series)) then
+          if (associated(cur_coupler%flow_condition%pressure%dataset)) then
             global_auxvar%pres = &
-              cur_coupler%flow_condition%pressure%flow_dataset% &
-                time_series%cur_value(1)
+              cur_coupler%flow_condition%pressure%dataset%rarray(1)
           else
             global_auxvar%pres = option%reference_pressure
           endif
@@ -1865,11 +1834,9 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
           global_auxvar%pres = option%reference_pressure
         endif
         if (associated(cur_coupler%flow_condition%temperature)) then
-          if (associated(cur_coupler%flow_condition%temperature% &
-                         flow_dataset%time_series)) then
+          if (associated(cur_coupler%flow_condition%temperature%dataset)) then
             global_auxvar%temp = &
-              cur_coupler%flow_condition%temperature%flow_dataset% &
-                time_series%cur_value(1)
+              cur_coupler%flow_condition%temperature%dataset%rarray(1)
           else
             global_auxvar%temp = option%reference_temperature
           endif

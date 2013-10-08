@@ -305,7 +305,7 @@ subroutine MphaseSetupPatch(realization)
           realization%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
         mphase_sec_heat_vars(ghosted_id)%sec_temp = &
-        initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+        initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
           
       mphase_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
@@ -2784,12 +2784,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-!   qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!   qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
     
 !   print *,'src/sink: ',tsrc1,csrc1,hsrc1,psrc
     
@@ -2803,10 +2803,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 !clu add
   select case(source_sink%flow_condition%itype(1))
     case(MASS_RATE_SS)
-      msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+      msrc => source_sink%flow_condition%rate%dataset%rarray
       nsrcpara= 2
     case(WELL_SS)
-      msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+      msrc => source_sink%flow_condition%well%dataset%rarray
       nsrcpara = 7 + option%nflowspec 
      
 !    print *,'src/sink: ',nsrcpara,msrc
@@ -3396,12 +3396,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
@@ -3411,10 +3411,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !clu add
      select case(source_sink%flow_condition%itype(1))
      case(MASS_RATE_SS)
-       msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+       msrc => source_sink%flow_condition%rate%dataset%rarray
        nsrcpara= 2
      case(WELL_SS)
-       msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+       msrc => source_sink%flow_condition%well%dataset%rarray
        nsrcpara = 7 + option%nflowspec 
      case default
        print *, 'mphase mode does not support source/sink type: ', source_sink%flow_condition%itype(1)

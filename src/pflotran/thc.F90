@@ -265,7 +265,7 @@ subroutine THCSetupPatch(realization)
           realization%material_property_array(1)%ptr%secondary_continuum_init_temp
       else
         thc_sec_heat_vars(local_id)%sec_temp = &
-        initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+        initial_condition%flow_condition%temperature%dataset%rarray(1)
       endif
       
       thc_sec_heat_vars(local_id)%sec_temp_update = PETSC_FALSE
@@ -1000,7 +1000,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
       istart = iend-option%nflowdof+1
       iphase = int(iphase_loc_p(ghosted_id))
 
-      tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+      tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
       xx = xx_loc_p(istart:iend)
       xx(2) = tsrc1
 
@@ -3403,10 +3403,10 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       enthalpy_flag = PETSC_FALSE
     endif
 
-    qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / FMWCO2
@@ -3936,10 +3936,10 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       enthalpy_flag = PETSC_FALSE
     endif
 
-    qsrc1 = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / FMWCO2

@@ -1717,6 +1717,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset_base, &
   use Logging_module
   use HDF5_Aux_module
   use Units_module
+  use Dataset_module
   use Dataset_Base_class
   use Dataset_Ascii_class
 #if defined(PETSC_HAVE_HDF5)
@@ -1856,7 +1857,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset_base, &
         filename = trim(filename) // trim(realization_word)
       endif
       input2 => InputCreate(IUNIT_TEMP,filename,option)
-      call DatasetAsciiLoad(dataset_ascii,input2,option)
+      call DatasetAsciiRead(dataset_ascii,input2,option)
       call InputDestroy(input2)
     endif
   else if (StringCompare(word,'dataset')) then
@@ -1868,7 +1869,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset_base, &
     dataset_base => DatasetBaseCreate()
     dataset_base%name = word
   else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
-    call DatasetAsciiLoad(dataset_ascii,input,option)
+    call DatasetAsciiRead(dataset_ascii,input,option)
   else
     input%buf = trim(string2)
     allocate(dataset_ascii%rarray(dataset_ascii%array_rank))
@@ -2392,6 +2393,7 @@ end subroutine FlowConditionUpdate
 subroutine FlowConditionUpdateDataset(option,time,dataset_base)
 
   use Option_module
+  use Dataset_Base_class
   use Dataset_Gridded_class
   use Dataset_Map_class
   use Dataset_Common_HDF5_class
@@ -2411,7 +2413,7 @@ subroutine FlowConditionUpdateDataset(option,time,dataset_base)
       class is(dataset_ascii_type)
         if (time < 1.d-40 .or. associated(dataset%time_storage)) then
           dataset_ascii => dataset
-          call DatasetBaseInterolateTimeLoad(dataset_ascii,option)
+          call DatasetBaseInterpolateTime(dataset_ascii)
         endif
       class is(dataset_common_hdf5_type)
         if ((time < 1.d-40 .or. &
@@ -2761,6 +2763,8 @@ end subroutine FlowConditionDestroyList
 ! ************************************************************************** !
 subroutine FlowConditionDestroy(condition)
 
+  use Dataset_module
+
   implicit none
   
   type(flow_condition_type), pointer :: condition
@@ -2841,6 +2845,8 @@ end subroutine FlowGeneralConditionDestroy
 !
 ! ************************************************************************** !
 subroutine FlowSubConditionDestroy(sub_condition)
+
+  use Dataset_module
 
   implicit none
   

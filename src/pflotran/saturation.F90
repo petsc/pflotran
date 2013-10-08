@@ -53,7 +53,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
   condition => coupler%flow_condition
 
   ! in this case, the saturation is stored within concentration dataset
-  saturation = condition%saturation%flow_dataset%time_series%cur_value(1)
+  saturation = condition%saturation%dataset%rarray(1)
 
   do iconn = 1, coupler%connection_set%num_connections
     local_id = coupler%connection_set%id_dn(iconn)
