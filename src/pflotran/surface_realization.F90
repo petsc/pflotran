@@ -658,58 +658,22 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
   cur_surf_flow_condition => surf_realization%surf_flow_conditions%first
   do
     if (.not.associated(cur_surf_flow_condition)) exit
-    !TODO(geh): could destroy the time_series here if dataset allocated
+    string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
+    ! find datum dataset
+    call DatasetFindInList(surf_realization%datasets, &
+                           cur_surf_flow_condition%datum, &
+                           string,option)
     select case(option%iflowmode)
       case(RICHARDS_MODE,TH_MODE)
         do i = 1, size(cur_surf_flow_condition%sub_condition_ptr)
-          ! check for dataset in flow_dataset
-          if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          flow_dataset%dataset)) then
-            dataset_name = cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          flow_dataset%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                                flow_dataset%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
-            cur_surf_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
-              dataset
-            !call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
-            !                 option)
-          endif
-          if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          datum%dataset)) then
-            dataset_name = cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          datum%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                                datum%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
-            cur_surf_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
-              dataset
-            !call DatasetXYZLoad(dataset,option)
-          endif
-          if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          gradient%dataset)) then
-            dataset_name = cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          gradient%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                                gradient%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
-            cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
-              dataset
-            !call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
-            !                 option)
-          endif
+           ! find dataset
+          call DatasetFindInList(surf_realization%datasets, &
+                 cur_surf_flow_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 string,option)
+          ! find gradient dataset
+          call DatasetFindInList(surf_realization%datasets, &
+                 cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient, &
+                 string,option)
         enddo
       case default
         option%io_buffer='SurfRealizProcessFlowConditions not implemented in this mode'
@@ -1434,6 +1398,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
 
   use Option_module
   use Waypoint_module
+  use Time_Storage_module  
 
   implicit none
   
@@ -1479,8 +1444,8 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
         sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
         !TODO(geh): check if this updated more than simply the flow_dataset (i.e. datum and gradient)
         !geh: followup - no, datum/gradient are not considered.  Should they be considered?
-        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
-                                          times)
+        call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
+                                final_time, times)        
         if (size(times) > 1000) then
           option%io_buffer = 'For flow condition "' // &
             trim(cur_flow_condition%name) // &

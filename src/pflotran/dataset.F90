@@ -18,6 +18,7 @@ module Dataset_module
   public :: DatasetRead, &
             DatasetProcessDatasets, &
             DatasetLoad, &
+            DatasetFindInList, &
             DatasetDestroy
 
 contains
@@ -183,6 +184,46 @@ recursive subroutine DatasetLoad(dataset, dm_wrapper, option)
   end select
   
 end subroutine DatasetLoad
+
+! ************************************************************************** !
+!
+! DatasetFindInList: Uses a dummy dataset with name to find the actual
+!                    dataset in a list of datasets
+! author: Glenn Hammond
+! date: 10/07/13
+!
+! ************************************************************************** !
+subroutine DatasetFindInList(list,dataset_base,error_string,option)
+
+  use Dataset_Base_class
+  use Dataset_Ascii_class
+  use Option_module
+
+  implicit none
+
+  class(dataset_base_type), pointer :: list
+  class(dataset_base_type), pointer :: dataset_base
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: dataset_name
+
+  ! check for dataset in flow_dataset
+  if (associated(dataset_base)) then
+    select type(dataset => dataset_base)
+      class is(dataset_ascii_type)
+        ! do nothing as the correct dataset already exists
+      class default
+        dataset_name = dataset%name
+        ! delete the dataset since it is solely a placeholder
+        call DatasetDestroy(dataset_base)
+        ! get dataset from list
+        dataset_base => &
+          DatasetBaseGetPointer(list,dataset_name,error_string,option)
+    end select
+  endif
+
+end subroutine DatasetFindInList
 
 ! ************************************************************************** !
 !

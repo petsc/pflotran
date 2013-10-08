@@ -1459,10 +1459,10 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-    qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    qsrc_flow = source_sink%flow_condition%rate%dataset%rarray(1)
       
     if(source_sink%flow_condition%rate%itype/=HET_ENERGY_RATE_SS) &
-      esrc = source_sink%flow_condition%energy_rate%flow_dataset%time_series%cur_value(1)
+      esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
 
     cur_connection_set => source_sink%connection_set
     
@@ -1487,7 +1487,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       esrc = 0.d0
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (ENERGY_RATE_SS)
-          esrc = source_sink%flow_condition%energy_rate%flow_dataset%time_series%cur_value(1)
+          esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
         case (HET_ENERGY_RATE_SS)
           esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
@@ -2030,7 +2030,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
       if (associated(source_sink%flow_condition%temperature)) then
         if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
-          tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+          tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
         else
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
         endif
