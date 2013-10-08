@@ -991,9 +991,7 @@ subroutine RealProcessFlowConditions(realization)
   type(flow_sub_condition_type), pointer :: cur_flow_sub_condition
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: i
-  class(dataset_base_type), pointer :: dataset_base
   
   option => realization%option
   
@@ -1001,69 +999,28 @@ subroutine RealProcessFlowConditions(realization)
   cur_flow_condition => realization%flow_conditions%first
   do
     if (.not.associated(cur_flow_condition)) exit
+    string = 'flow_condition ' // trim(cur_flow_condition%name)
     ! find datum dataset
-    call RealizationGetDatasetFromList(realization,cur_flow_condition%datum, &
-                                       cur_flow_condition%name)
+    call DatasetFindInList(realization%datasets,cur_flow_condition%datum, &
+                           string,option)
     select case(option%iflowmode)
       case(G_MODE)
       case(RICHARDS_MODE,MIS_MODE,TH_MODE)
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! find dataset
-          call RealizationGetDatasetFromList(realization, &
+          call DatasetFindInList(realization%datasets, &
                  cur_flow_condition%sub_condition_ptr(i)%ptr%dataset, &
-                 cur_flow_condition%name)
+                 string,option)
           ! find gradient dataset
-          call RealizationGetDatasetFromList(realization, &
+          call DatasetFindInList(realization%datasets, &
                  cur_flow_condition%sub_condition_ptr(i)%ptr%gradient, &
-                 cur_flow_condition%name)
+                 string,option)
         enddo
     end select
     cur_flow_condition => cur_flow_condition%next
   enddo
 
 end subroutine RealProcessFlowConditions
-
-! ************************************************************************** !
-!
-! RealizationGetDatasetFromList: Links a flow condition to appropriate dataset
-! author: Glenn Hammond
-! date: 10/07/13
-!
-! ************************************************************************** !
-subroutine RealizationGetDatasetFromList(realization,dataset_base, &
-                                         flow_condition_name)
-
-  use Dataset_module
-  use Dataset_Base_class
-  use Dataset_Ascii_class
-
-  implicit none
-
-  type(realization_type) :: realization
-  class(dataset_base_type), pointer :: dataset_base
-  character(len=MAXWORDLENGTH) :: flow_condition_name
-  
-  character(len=MAXWORDLENGTH) :: dataset_name
-  character(len=MAXSTRINGLENGTH) :: string
-
-  ! check for dataset in flow_dataset
-  if (associated(dataset_base)) then
-    select type(dataset => dataset_base)
-      class is(dataset_ascii_type)
-        ! do nothing
-      class default
-        dataset_name = dataset%name
-        ! delete the dataset since it is solely a placeholder
-        call DatasetDestroy(dataset_base)
-        ! get dataset from list
-        string = 'flow_condition ' // trim(flow_condition_name)
-        dataset_base => &
-          DatasetBaseGetPointer(realization%datasets,dataset_name, &
-                                string,realization%option)
-    end select
-  endif
-
-end subroutine RealizationGetDatasetFromList
 
 ! ************************************************************************** !
 !
