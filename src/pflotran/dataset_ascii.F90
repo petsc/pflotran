@@ -227,9 +227,6 @@ subroutine DatasetAsciiLoad(this,input,option)
   allocate(this%rbuffer(data_count*row_count))
   this%rbuffer = 0.d0 ! we copy after units conversion for efficiency sake
   
-  deallocate(temp_array)
-  nullify(temp_array)
-
   ! time units conversion
   if (len_trim(time_units) > 0) then
     conversion = UnitsConvertToInternal(time_units,option)
@@ -267,6 +264,9 @@ subroutine DatasetAsciiLoad(this,input,option)
     offset = offset + data_count
   enddo
   
+  deallocate(temp_array)
+  nullify(temp_array)
+
   if (this%array_rank > 0) then
     if (this%array_rank /= data_count) then
       write(word,*) this%array_rank

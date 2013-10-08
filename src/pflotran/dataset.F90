@@ -146,6 +146,27 @@ end subroutine DatasetProcessDatasets
 
 ! ************************************************************************** !
 !
+! DatasetVerify: Verifies that a dataset is intact and useable.
+! author: Glenn Hammond
+! date: 10/08/13
+!
+! ************************************************************************** !
+subroutine DatasetVerify(dataset,option)
+
+  implicit none
+
+  class(dataset_base_type), pointer :: dataset
+  type(option_type) :: option
+
+  if (.not.associated(dataset)) return
+
+  if (associated(dataset%time_storage)) then
+  endif 
+
+end subroutine DatasetVerify
+
+! ************************************************************************** !
+!
 ! DatasetLoad: Loads a dataset based on type
 ! author: Glenn Hammond
 ! date: 06/03/13

@@ -414,7 +414,11 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
 
   if (.not.associated(sub_condition)) return
   
-  if (.not.associated(sub_condition%dataset)) then
+  ! dataset is not optional
+  if (.not.(associated(sub_condition%dataset%rarray) .or. &
+            associated(sub_condition%dataset%rbuffer) .or. &
+            ! if a dataset name is read, instead of data at this point
+            len_trim(sub_condition%dataset%name) > 0)) then
     if (destroy_if_null) call FlowSubConditionDestroy(sub_condition)
     return
   endif
@@ -425,15 +429,24 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
     call printErrMsg(option)
   endif
   
+  ! allocate rarray if rbuffer is associated
+  if (associated(sub_condition%dataset%rbuffer) .and. &
+      .not.associated(sub_condition%dataset%rarray)) then
+    allocate(sub_condition%dataset%rarray(sub_condition%dataset%dims(1)))
+    sub_condition%dataset%rarray = 0.d0
+  endif
   if (associated(sub_condition%dataset%time_storage)) then
     sub_condition%dataset%time_storage%is_cyclic = default_is_cyclic
     sub_condition%dataset%time_storage%time_interpolation_method = &
        default_time_interpolation
   endif
-  if (associated(sub_condition%gradient%time_storage)) then
-    sub_condition%gradient%time_storage%is_cyclic = default_is_cyclic
-    sub_condition%gradient%time_storage%time_interpolation_method = &
-       default_time_interpolation
+  ! gradient is an optional dataset
+  if (associated(sub_condition%gradient)) then
+    if (associated(sub_condition%gradient%time_storage)) then
+      sub_condition%gradient%time_storage%is_cyclic = default_is_cyclic
+      sub_condition%gradient%time_storage%time_interpolation_method = &
+         default_time_interpolation
+    endif
   endif
 
 end subroutine FlowSubConditionVerify
@@ -836,11 +849,14 @@ subroutine FlowConditionRead(condition,input,option)
     condition%iphase = default_iphase    
   endif
   
-  ! update datum defaults
-  if (associated(condition%datum%time_storage)) then
-    condition%datum%time_storage%is_cyclic = default_is_cyclic
-    condition%datum%time_storage%time_interpolation_method = &
-       default_time_interpolation
+  ! datum is not required
+  if (associated(condition%datum)) then
+    ! update datum defaults
+    if (associated(condition%datum%time_storage)) then
+      condition%datum%time_storage%is_cyclic = default_is_cyclic
+      condition%datum%time_storage%time_interpolation_method = &
+         default_time_interpolation
+    endif
   endif
 
   ! check to ensure that a rate condition is not of type pressure   
