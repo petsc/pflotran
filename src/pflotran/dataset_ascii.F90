@@ -21,6 +21,7 @@ module Dataset_Ascii_class
   
   public :: DatasetAsciiCreate, &
             DatasetAsciiInit, &
+            DatasetAsciiVerify, &
             DatasetAsciiCast, &
             DatasetAsciiRead, &
             DatasetAsciiDestroy
@@ -282,6 +283,34 @@ subroutine DatasetAsciiLoad(this,input,option)
   
 end subroutine DatasetAsciiLoad
 
+! ************************************************************************** !
+!
+! DatasetAsciiVerify: Verifies that data structure is properly set up.
+! author: Glenn Hammond
+! date: 10/08/13
+!
+! ************************************************************************** !
+subroutine DatasetAsciiVerify(this,option)
+  
+  use Option_module
+  
+  implicit none
+  
+  class(dataset_ascii_type) :: this
+  type(option_type) :: option
+  
+  if (len_trim(this%name) < 1) then
+    this%name = 'Unknown Ascii Dataset'
+  endif
+  call DatasetBaseVerify(this,option)
+  if (this%array_rank /= this%dims(1)) then
+    option%io_buffer = '"array_rank" is not equal to "dims(1)" in dataset: ' &
+                       // trim(this%name)
+    call printErrMsg(option)
+  endif
+    
+end subroutine DatasetAsciiVerify
+  
 ! ************************************************************************** !
 !
 ! DatasetAsciiStrip: Strips allocated objects within Ascii dataset object

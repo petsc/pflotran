@@ -33,6 +33,7 @@ module Dataset_Base_class
   public :: DatasetBaseCreate, &
             DatasetBaseInit, &
             DatasetBaseCopy, &
+            DatasetBaseVerify, &
             DatasetBaseInterpolateTime, &
             DatasetBaseReorder, &
             DatasetBaseGetPointer, &
@@ -140,6 +141,65 @@ subroutine DatasetBaseCopy(this, that)
   nullify(this%next)
     
 end subroutine DatasetBaseCopy
+
+! ************************************************************************** !
+!
+! DatasetBaseVerify: Verifies that data structure is properly set up.
+! author: Glenn Hammond
+! date: 10/08/13
+!
+! ************************************************************************** !
+subroutine DatasetBaseVerify(this,option)
+  
+  use Option_module
+  
+  implicit none
+  
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+  
+  if (associated(this%time_storage) .or. associated(this%iarray) .or. &
+      associated(this%iarray) .or. associated(this%ibuffer) .or. &
+      associated(this%rarray) .or. associated(this%rbuffer)) then
+    if (len_trim(this%name) < 1) then
+      this%name = 'Unknown Dataset'
+    endif
+    if (this%data_type == 0) then
+      option%io_buffer = '"data_type" not defined in dataset: ' // &
+                         trim(this%name)
+      call printErrMsg(option)
+    endif
+    if (associated(this%ibuffer) .or. associated(this%rbuffer)) then
+      if (.not.associated(this%dims)) then
+        option%io_buffer = '"dims" not allocated in dataset: ' // &
+                           trim(this%name)
+        call printErrMsg(option)
+      endif
+      if (this%dims(1) == 0) then
+        option%io_buffer = '"dims" not defined in dataset: ' // &
+                           trim(this%name)
+        call printErrMsg(option)
+      endif
+      if (size(this%dims) /= this%rank) then
+        option%io_buffer = 'Size of "dims" not match "rank" in dataset: ' // &
+                            trim(this%name)
+        call printErrMsg(option)
+      endif
+    endif
+    if (associated(this%ibuffer) .and. .not.associated(this%iarray)) then
+      allocate(this%iarray(this%dims(1)))
+      this%iarray = 0
+    endif
+    if (associated(this%rbuffer) .and. .not.associated(this%rarray)) then
+      allocate(this%rarray(this%dims(1)))
+      this%rarray = 0.d0
+    endif
+  else if (len_trim(this%name) < 1) then
+    option%io_buffer = 'NULL dataset in input deck.'
+    call printErrMsg(option)
+  endif
+    
+end subroutine DatasetBaseVerify
 
 ! ************************************************************************** !
 !

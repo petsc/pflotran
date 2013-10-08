@@ -72,22 +72,34 @@ subroutine TimeStorageVerify(default_time, time_storage, default_time_storage)
   implicit none
   
   PetscReal :: default_time
-  type(time_storage_type) :: time_storage
-  type(time_storage_type) :: default_time_storage
+  type(time_storage_type), pointer :: time_storage
+  type(time_storage_type), pointer :: default_time_storage
   
   PetscInt :: array_size
   
-  if (default_time_storage%is_cyclic) time_storage%is_cyclic = PETSC_TRUE  
+  if (.not.associated(time_storage)) return
+  
+  if (associated(default_time_storage)) then
+    if (default_time_storage%is_cyclic) time_storage%is_cyclic = PETSC_TRUE
+  endif
+  
   time_storage%max_time_index = 1
   if (.not.associated(time_storage%times)) then
-    if (.not.associated(default_time_storage%times)) then
+    if (associated(default_time_storage)) then
+      if (.not.associated(default_time_storage%times)) then
+        array_size = 1
+        allocate(time_storage%times(array_size))
+        time_storage%times = default_time
+      else
+        array_size = size(default_time_storage%times,1)
+        allocate(time_storage%times(array_size))
+        time_storage%times(1:array_size) = &
+          default_time_storage%times(1:array_size)
+      endif
+    else
       array_size = 1
       allocate(time_storage%times(array_size))
       time_storage%times = default_time
-    else
-      array_size = size(default_time_storage%times,1)
-      allocate(time_storage%times(array_size))
-      time_storage%times(1:array_size) = default_time_storage%times(1:array_size)
     endif
   endif
   time_storage%max_time_index = size(time_storage%times,1) 

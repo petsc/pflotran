@@ -346,6 +346,7 @@ function FlowSubConditionCreate(ndof)
   dataset_ascii => DatasetAsciiCreate()
   call DatasetAsciiInit(dataset_ascii)
   dataset_ascii%array_rank = ndof
+  dataset_ascii%data_type = DATASET_REAL
   sub_condition%dataset => dataset_ascii
   nullify(dataset_ascii)
   
@@ -395,10 +396,11 @@ end function GetFlowSubCondFromArrayByName
 !
 ! ************************************************************************** !
 subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
-                                  sub_condition, default_is_cyclic, &
-                                  default_time_interpolation,destroy_if_null)
-
+                                  sub_condition, default_time_storage, &
+                                  destroy_if_null)
+  use Time_Storage_module
   use Option_module
+  use Dataset_module
 
   implicit none
   
@@ -406,14 +408,13 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   type(flow_condition_type) :: condition
   character(len=MAXWORDLENGTH) :: sub_condition_name
   type(flow_sub_condition_type), pointer :: sub_condition
-  PetscBool :: default_is_cyclic
-  PetscInt :: default_time_interpolation
+  type(time_storage_type), pointer :: default_time_storage
   PetscBool :: destroy_if_null
 
   PetscInt :: array_size
 
   if (.not.associated(sub_condition)) return
-  
+
   ! dataset is not optional
   if (.not.(associated(sub_condition%dataset%rarray) .or. &
             associated(sub_condition%dataset%rbuffer) .or. &
@@ -429,25 +430,8 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
     call printErrMsg(option)
   endif
   
-  ! allocate rarray if rbuffer is associated
-  if (associated(sub_condition%dataset%rbuffer) .and. &
-      .not.associated(sub_condition%dataset%rarray)) then
-    allocate(sub_condition%dataset%rarray(sub_condition%dataset%dims(1)))
-    sub_condition%dataset%rarray = 0.d0
-  endif
-  if (associated(sub_condition%dataset%time_storage)) then
-    sub_condition%dataset%time_storage%is_cyclic = default_is_cyclic
-    sub_condition%dataset%time_storage%time_interpolation_method = &
-       default_time_interpolation
-  endif
-  ! gradient is an optional dataset
-  if (associated(sub_condition%gradient)) then
-    if (associated(sub_condition%gradient%time_storage)) then
-      sub_condition%gradient%time_storage%is_cyclic = default_is_cyclic
-      sub_condition%gradient%time_storage%time_interpolation_method = &
-         default_time_interpolation
-    endif
-  endif
+  call DatasetVerify(sub_condition%dataset,default_time_storage,option)
+  call DatasetVerify(sub_condition%gradient,default_time_storage,option)
 
 end subroutine FlowSubConditionVerify
 
@@ -463,7 +447,9 @@ subroutine FlowConditionRead(condition,input,option)
   use Option_module
   use Input_module
   use String_module
-  use Logging_module  
+  use Logging_module
+  use Time_Storage_module
+  use Dataset_module
   
   implicit none
   
@@ -481,8 +467,7 @@ subroutine FlowConditionRead(condition,input,option)
   PetscReal :: default_time
   PetscInt :: default_iphase
   PetscInt :: idof
-  PetscBool :: default_is_cyclic
-  PetscInt :: default_time_interpolation
+  type(time_storage_type), pointer :: default_time_storage
   class(dataset_ascii_type), pointer :: dataset_ascii  
   
   PetscErrorCode :: ierr
@@ -492,8 +477,9 @@ subroutine FlowConditionRead(condition,input,option)
   default_time = 0.d0
   default_iphase = 0
 
-  default_is_cyclic = PETSC_FALSE
-  default_time_interpolation = INTERPOLATION_STEP
+  default_time_storage => TimeStorageCreate()
+  default_time_storage%is_cyclic = PETSC_FALSE
+  default_time_storage%time_interpolation_method = INTERPOLATION_STEP
   
   pressure => FlowSubConditionCreate(option%nphase)
   pressure%name = 'pressure'
@@ -575,7 +561,7 @@ subroutine FlowConditionRead(condition,input,option)
         enddo
       case('CYCLIC')
         ! by default, is_cyclic is set to PETSC_FALSE
-        default_is_cyclic = PETSC_TRUE
+        default_time_storage%is_cyclic = PETSC_TRUE
       case('SYNC_TIMESTEP_WITH_UPDATE')
         condition%sync_time_with_update = PETSC_TRUE
       case('INTERPOLATION')
@@ -584,9 +570,11 @@ subroutine FlowConditionRead(condition,input,option)
         call StringToLower(word)
         select case(word)
           case('step')
-            default_time_interpolation = INTERPOLATION_STEP
+            default_time_storage%time_interpolation_method = &
+              INTERPOLATION_STEP
           case('linear') 
-            default_time_interpolation = INTERPOLATION_LINEAR
+            default_time_storage%time_interpolation_method = &
+              INTERPOLATION_LINEAR
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
@@ -735,6 +723,7 @@ subroutine FlowConditionRead(condition,input,option)
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
         dataset_ascii%array_rank = 3
+        dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
         call FlowConditionReadValues(input,option,word,string, &
@@ -775,6 +764,7 @@ subroutine FlowConditionRead(condition,input,option)
           dataset_ascii => DatasetAsciiCreate()
           call DatasetAsciiInit(dataset_ascii)
           dataset_ascii%array_rank = 3
+          dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
           call FlowConditionReadValues(input,option,word,string, &
@@ -850,14 +840,7 @@ subroutine FlowConditionRead(condition,input,option)
   endif
   
   ! datum is not required
-  if (associated(condition%datum)) then
-    ! update datum defaults
-    if (associated(condition%datum%time_storage)) then
-      condition%datum%time_storage%is_cyclic = default_is_cyclic
-      condition%datum%time_storage%time_interpolation_method = &
-         default_time_interpolation
-    endif
-  endif
+  call DatasetVerify(condition%datum,default_time_storage,option)
 
   ! check to ensure that a rate condition is not of type pressure   
   if (associated(rate)) then
@@ -885,48 +868,48 @@ subroutine FlowConditionRead(condition,input,option)
   ! verify the datasets
   word = 'pressure/flux'
   call FlowSubConditionVerify(option,condition,word,pressure, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,rate, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'energy_rate'
   call FlowSubConditionVerify(option,condition,word,energy_rate, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'well'
   call FlowSubConditionVerify(option,condition,word,well, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,temperature, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'saturation'
   call FlowSubConditionVerify(option,condition,word,saturation, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
 
   word = 'concentration'
   call FlowSubConditionVerify(option,condition,word,concentration, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'enthalpy'
   call FlowSubConditionVerify(option,condition,word,enthalpy, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'displacement_x'
   call FlowSubConditionVerify(option,condition,word,displacement_x, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'displacement_y'
   call FlowSubConditionVerify(option,condition,word,displacement_y, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'displacement_z'
   call FlowSubConditionVerify(option,condition,word,displacement_z, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
 
   select case(option%iflowmode)
@@ -1184,6 +1167,8 @@ subroutine FlowConditionRead(condition,input,option)
       if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
 
   end select
+
+  call TimeStorageDestroy(default_time_storage)
   
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
@@ -1203,6 +1188,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   use Input_module
   use String_module
   use Logging_module
+  use Time_Storage_module
+  use Dataset_module
   
   use General_Aux_module
   
@@ -1222,7 +1209,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   class(dataset_base_type), pointer :: default_gradient
   PetscInt :: idof, i
   PetscBool :: default_is_cyclic
-  PetscInt :: default_time_interpolation
+  type(time_storage_type), pointer :: default_time_storage
   class(dataset_ascii_type), pointer :: dataset_ascii  
   PetscErrorCode :: ierr
 
@@ -1232,8 +1219,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   default_time = 0.d0
   default_iphase = 0
   
-  default_is_cyclic = PETSC_FALSE
-  default_time_interpolation = INTERPOLATION_STEP
+  default_time_storage => TimeStorageCreate()
+  default_time_storage%is_cyclic = PETSC_FALSE
+  default_time_storage%time_interpolation_method = INTERPOLATION_STEP
   
   select case(option%iflowmode)
     case(G_MODE)
@@ -1257,7 +1245,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
     
       case('CYCLIC')
         ! by default, is_cyclic is set to PETSC_FALSE
-        default_is_cyclic = PETSC_TRUE
+        default_time_storage%is_cyclic = PETSC_TRUE
       case('SYNC_TIMESTEP_WITH_UPDATE')
         condition%sync_time_with_update = PETSC_TRUE
       case('INTERPOLATION')
@@ -1266,9 +1254,11 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         call StringToLower(word)
         select case(word)
           case('step')
-            default_time_interpolation = INTERPOLATION_STEP
+            default_time_storage%time_interpolation_method = &
+              INTERPOLATION_STEP
           case('linear') 
-            default_time_interpolation = INTERPOLATION_LINEAR
+            default_time_storage%time_interpolation_method = &
+              INTERPOLATION_LINEAR
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
@@ -1377,12 +1367,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   
   enddo  
   
-  ! update datum defaults
-  if (associated(condition%datum%time_storage)) then
-    condition%datum%time_storage%is_cyclic = default_is_cyclic
-    condition%datum%time_storage%time_interpolation_method = &
-       default_time_interpolation
-  endif
+  ! datum is not required
+  call DatasetVerify(condition%datum,default_time_storage,option)
 
   ! need mole fraction and some sort of saturation
   if (associated(general%flux)) then
@@ -1457,32 +1443,32 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   ! verify the datasets
   word = 'liquid pressure'
   call FlowSubConditionVerify(option,condition,word,general%liquid_pressure, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'gas pressure'
   call FlowSubConditionVerify(option,condition,word,general%gas_pressure, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'gas saturation'
   call FlowSubConditionVerify(option,condition,word,general%gas_saturation, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'mole fraction'
   call FlowSubConditionVerify(option,condition,word,general%mole_fraction, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,general%temperature, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
   word = 'flux'
   call FlowSubConditionVerify(option,condition,word,general%flux, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
 
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,general%rate, &
-                              default_is_cyclic, default_time_interpolation, &
+                              default_time_storage, &
                               PETSC_TRUE)
 
   condition%num_sub_conditions = 0
@@ -1532,7 +1518,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   if (associated(general%rate)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => general%rate
-  endif  
+  endif
+  
+  call TimeStorageDestroy(default_time_storage)
     
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 

@@ -18,6 +18,7 @@ module Dataset_module
   public :: DatasetRead, &
             DatasetProcessDatasets, &
             DatasetLoad, &
+            DatasetVerify, &
             DatasetFindInList, &
             DatasetDestroy
 
@@ -151,18 +152,32 @@ end subroutine DatasetProcessDatasets
 ! date: 10/08/13
 !
 ! ************************************************************************** !
-subroutine DatasetVerify(dataset,option)
+subroutine DatasetVerify(dataset,default_time_storage,option)
+
+  use Time_Storage_module
+  use Option_module
 
   implicit none
 
   class(dataset_base_type), pointer :: dataset
+  type(time_storage_type), pointer :: default_time_storage
   type(option_type) :: option
+  
+  type(time_storage_type), pointer :: default
 
   if (.not.associated(dataset)) return
 
-  if (associated(dataset%time_storage)) then
-  endif 
-
+  call TimeStorageVerify(0.d0, dataset%time_storage, default_time_storage)
+  select type(dataset_ptr => dataset)
+    class is(dataset_ascii_type)
+      call DatasetAsciiVerify(dataset_ptr,option)
+    class is(dataset_base_type)
+      call DatasetBaseVerify(dataset_ptr,option)
+    class default
+      option%io_buffer = 'DatasetXXXVerify needed for unknown dataset type'
+      call printErrMsg(option)
+  end select
+  
 end subroutine DatasetVerify
 
 ! ************************************************************************** !
