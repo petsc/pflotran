@@ -799,7 +799,7 @@ subroutine RealizationProcessConditions(realization)
   
   type(realization_type) :: realization
 
-  call DatasetProcessDatasets(realization%datasets,realization%option)
+  call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -813,9 +813,8 @@ subroutine RealizationProcessConditions(realization)
                           realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%flow_mass_transfer_list, &
-                          realization%discretization, &
-                          realization%patch%grid, &
-                          realization%option)
+                            realization%patch%grid, &
+                            realization%option)
   endif
   if (associated(realization%rt_mass_transfer_list)) then
     call MassTransferInit(realization%rt_mass_transfer_list, &
@@ -823,9 +822,8 @@ subroutine RealizationProcessConditions(realization)
                           realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%rt_mass_transfer_list, &
-                          realization%discretization, &
-                          realization%patch%grid, &
-                          realization%option)
+                            realization%patch%grid, &
+                            realization%option)
   endif
 
 
@@ -1002,6 +1000,7 @@ subroutine RealProcessFlowConditions(realization)
     string = 'flow_condition ' // trim(cur_flow_condition%name)
     ! find datum dataset
     call DatasetFindInList(realization%datasets,cur_flow_condition%datum, &
+                           cur_flow_condition%default_time_storage, &
                            string,option)
     select case(option%iflowmode)
       case(G_MODE)
@@ -1010,10 +1009,12 @@ subroutine RealProcessFlowConditions(realization)
           ! find dataset
           call DatasetFindInList(realization%datasets, &
                  cur_flow_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 cur_flow_condition%default_time_storage, &
                  string,option)
           ! find gradient dataset
           call DatasetFindInList(realization%datasets, &
                  cur_flow_condition%sub_condition_ptr(i)%ptr%gradient, &
+                 cur_flow_condition%default_time_storage, &
                  string,option)
         enddo
     end select
@@ -1404,12 +1405,10 @@ subroutine RealizationUpdate(realization)
 !  call RealizationUpdateSrcSinks(realization)
 
   call MassTransferUpdate(realization%flow_mass_transfer_list, &
-                          realization%discretization, &
                           realization%patch%grid, &
                           realization%option)
 
   call MassTransferUpdate(realization%rt_mass_transfer_list, &
-                          realization%discretization, &
                           realization%patch%grid, &
                           realization%option)
 

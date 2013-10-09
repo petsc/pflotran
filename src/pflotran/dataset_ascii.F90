@@ -24,6 +24,7 @@ module Dataset_Ascii_class
             DatasetAsciiVerify, &
             DatasetAsciiCast, &
             DatasetAsciiRead, &
+            DatasetAsciiUpdate, &
             DatasetAsciiDestroy
   
 contains
@@ -288,6 +289,30 @@ subroutine DatasetAsciiLoad(this,input,option)
   endif
   
 end subroutine DatasetAsciiLoad
+
+! ************************************************************************** !
+!
+! DatasetAsciiUpdate: Updates an ascii dataset
+! author: Glenn Hammond
+! date: 10/08/13
+!
+! ************************************************************************** !
+subroutine DatasetAsciiUpdate(this,option)
+
+  use Option_module
+  use Time_Storage_module
+  
+  implicit none
+  
+  class(dataset_ascii_type) :: this
+  type(option_type) :: option
+  
+  if (.not. associated(this%time_storage)) return
+  
+  call TimeStorageUpdate(this%time_storage)
+  call DatasetBaseInterpolateTime(this)
+
+end subroutine DatasetAsciiUpdate
 
 ! ************************************************************************** !
 !

@@ -52,10 +52,17 @@ module Coupler_module
     type(coupler_ptr_type), pointer :: array(:)    
   end type coupler_list_type
   
-  public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
-            CouplerListComputeConnections, CouplerGetPtrFromList,&
-            CouplerAssignBCtoCells, CouplerGetNumBoundConnectionsInListMFD
+  public :: CouplerCreate, &
+            CouplerDestroy, &
+            CouplerInitList, &
+            CouplerAddToList, &
+            CouplerRead, &
+            CouplerDestroyList, &
+            CouplerGetNumConnectionsInList, &
+            CouplerListComputeConnections, &
+            CouplerGetPtrFromList, &
+            CouplerAssignBCtoCells, &
+            CouplerGetNumBoundConnectionsInListMFD
 
   
   interface CouplerCreate

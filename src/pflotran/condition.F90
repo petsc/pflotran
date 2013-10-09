@@ -5,6 +5,7 @@ module Condition_module
   use Global_Aux_module
   use Dataset_Base_class
   use Dataset_Ascii_class
+  use Time_Storage_module
   
   use Constraint_module
 !  use Surface_Complexation_Aux_module  
@@ -27,6 +28,7 @@ module Condition_module
     PetscInt, pointer :: itype(:)
     character(len=MAXWORDLENGTH) :: time_units
     character(len=MAXWORDLENGTH) :: length_units
+    type(time_storage_type), pointer :: default_time_storage
     class(dataset_base_type), pointer :: datum
     type(flow_sub_condition_type), pointer :: pressure
     type(flow_sub_condition_type), pointer :: saturation
@@ -157,6 +159,7 @@ function FlowConditionCreate(option)
   nullify(condition%itype)
   nullify(condition%next)
   nullify(condition%datum)
+  nullify(condition%default_time_storage)
   condition%sync_time_with_update = PETSC_FALSE
   condition%time_units = ''
   condition%length_units = ''
@@ -1168,7 +1171,7 @@ subroutine FlowConditionRead(condition,input,option)
 
   end select
 
-  call TimeStorageDestroy(default_time_storage)
+  condition%default_time_storage => default_time_storage
   
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
@@ -1520,7 +1523,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
     condition%sub_condition_ptr(i)%ptr => general%rate
   endif
   
-  call TimeStorageDestroy(default_time_storage)
+  condition%default_time_storage => default_time_storage
     
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
@@ -2351,6 +2354,7 @@ end subroutine FlowConditionDatasetPrint
 subroutine FlowConditionUpdate(condition_list,option,time)
 
   use Option_module
+  use Dataset_module
   
   implicit none
   
@@ -2366,17 +2370,14 @@ subroutine FlowConditionUpdate(condition_list,option,time)
   do
     if (.not.associated(condition)) exit
     
-    call FlowConditionUpdateDataset(option,time, &
-                                    condition%datum)
+    call DatasetUpdate(condition%datum,time,option)
     do isub_condition = 1, condition%num_sub_conditions
 
       sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
       
       if (associated(sub_condition)) then
-        call FlowConditionUpdateDataset(option,time, &
-                                        sub_condition%dataset)
-        call FlowConditionUpdateDataset(option,time, &
-                                        sub_condition%gradient)
+        call DatasetUpdate(sub_condition%dataset,time,option)
+        call DatasetUpdate(sub_condition%gradient,time,option)
       endif
       
     enddo
@@ -2386,60 +2387,6 @@ subroutine FlowConditionUpdate(condition_list,option,time)
   enddo
   
 end subroutine FlowConditionUpdate
-
-! ************************************************************************** !
-!
-! FlowConditionUpdateDataset: Updates a transient condition dataset
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
-subroutine FlowConditionUpdateDataset(option,time,dataset_base)
-
-  use Option_module
-  use Dataset_Base_class
-  use Dataset_Gridded_class
-  use Dataset_Map_class
-  use Dataset_Common_HDF5_class
-  use Time_Storage_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  PetscReal :: time
-  class(dataset_base_type), pointer :: dataset_base
-
-  class(dataset_gridded_type), pointer :: dataset_xyz
-  class(dataset_map_type), pointer :: dataset_map
-  class(dataset_ascii_type), pointer :: dataset_ascii
-  
-  if (associated(dataset_base)) then
-    select type(dataset=>dataset_base)
-      class is(dataset_ascii_type)
-        if (associated(dataset%time_storage)) then
-          dataset%time_storage%cur_time = time
-          call TimeStorageUpdate(dataset%time_storage)
-          dataset_ascii => dataset
-          call DatasetBaseInterpolateTime(dataset_ascii)
-          print *, dataset%time_storage%cur_time, dataset%rarray
-        endif
-      class is(dataset_common_hdf5_type)
-        if ((time < 1.d-40 .or. &
-             associated(dataset%time_storage)) .and. &
-            .not.dataset%is_cell_indexed) then
-          select type(common_hdf5_dataset=>dataset)
-            class is(dataset_gridded_type)
-              dataset_xyz => common_hdf5_dataset
-              call DatasetGriddedLoad(dataset_xyz,option)
-            class is(dataset_map_type)
-              dataset_map => common_hdf5_dataset
-              call DatasetMapLoad(dataset_map,option)
-          end select
-        endif
-    end select
-  endif
-  
-end subroutine FlowConditionUpdateDataset
 
 ! ************************************************************************** !
 !
@@ -2806,6 +2753,7 @@ subroutine FlowConditionDestroy(condition)
   nullify(condition%displacement_y)
   nullify(condition%displacement_z)
 
+  call TimeStorageDestroy(condition%default_time_storage)
   call FlowGeneralConditionDestroy(condition%general)
   
   nullify(condition%next)  
