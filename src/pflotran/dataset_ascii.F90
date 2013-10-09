@@ -166,21 +166,25 @@ subroutine DatasetAsciiLoad(this,input,option)
     ! check for units on first line
     if (row_count == 0) then
       string = input%buf
+      ierr = 0
       call InputReadWord(string,word,PETSC_TRUE,ierr)
+      call InputErrorMsg(input,option,'KEYWORD','CONDITION (LIST or FILE)')
       call StringToUpper(word)
       select case(word)
         case('TIME_UNITS')
           call InputReadWord(string,time_units,PETSC_TRUE,ierr)
           input%ierr = ierr
-          call InputErrorMsg(input,option,'TIME_UNITS','CONDITION FILE')
+          call InputErrorMsg(input,option,'TIME_UNITS', &
+                             'CONDITION (LIST or FILE)')
           call StringToLower(time_units) 
           cycle
         case('DATA_UNITS')
           ! it is possible to have more than one data unit. therefore, read the
           ! entire string
-          data_units = string
+          data_units = adjustl(string)
           if (len_trim(data_units) < 1) then
-            call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
+            call InputErrorMsg(input,option,'DATA_UNITS', &
+                               'CONDITION (LIST or FILE)')
           endif
           call StringToLower(data_units) 
           cycle
@@ -190,6 +194,7 @@ subroutine DatasetAsciiLoad(this,input,option)
           string = input%buf
           column_count = 0
           do
+            ierr = 0
             call InputReadWord(string,word,PETSC_TRUE,ierr)
             if (ierr /= 0) exit   
             column_count = column_count + 1
@@ -247,6 +252,7 @@ subroutine DatasetAsciiLoad(this,input,option)
         ! calculated for each column. if a unit does not exist, the input
         ! error below will be spawned.
         if (i > 1) force_units_for_all_data = PETSC_TRUE 
+        ierr = 0
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
@@ -303,10 +309,12 @@ subroutine DatasetAsciiVerify(this,option)
     this%name = 'Unknown Ascii Dataset'
   endif
   call DatasetBaseVerify(this,option)
-  if (this%array_rank /= this%dims(1)) then
-    option%io_buffer = '"array_rank" is not equal to "dims(1)" in dataset: ' &
-                       // trim(this%name)
-    call printErrMsg(option)
+  if (associated(this%rbuffer)) then
+    if (this%array_rank /= this%dims(1)) then
+      option%io_buffer = '"array_rank" is not equal to "dims(1)" in dataset: ' &
+                         // trim(this%name)
+      call printErrMsg(option)
+    endif
   endif
     
 end subroutine DatasetAsciiVerify

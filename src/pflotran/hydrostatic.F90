@@ -82,31 +82,44 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   temperature_at_datum = option%reference_temperature
   concentration_at_datum = 0.d0
   datum = 0.d0
+
+  pressure_gradient = 0.d0
+  temperature_gradient = 0.d0
+  piezometric_head_gradient = 0.d0
+  concentration_gradient = 0.d0
   
   select case(option%iflowmode)
     case(G_MODE)
       temperature_at_datum = &
         condition%general%temperature%dataset%rarray(1)
-      temperature_gradient(1:3) = &
-        condition%general%temperature%gradient%rarray(1:3)
+      if (associated(condition%general%temperature%gradient)) then
+        temperature_gradient(1:3) = &
+          condition%general%temperature%gradient%rarray(1:3)
+      endif
       concentration_at_datum = &
         condition%general%mole_fraction%dataset%rarray(1)
-      concentration_gradient(1:3) = &
+      if (associated(condition%general%mole_fraction%gradient)) then
+        concentration_gradient(1:3) = &
         condition%general%mole_fraction%gradient%rarray(1:3)
+      endif
       datum(1:3) = condition%datum%rarray(1:3)
       pressure_at_datum = &
         condition%general%liquid_pressure%dataset%rarray(1)    
       ! gradient is in m/m; needs conversion to Pa/m
-      piezometric_head_gradient(1:3) = &
-        condition%general%liquid_pressure%gradient%rarray(1:3)
+      if (associated(condition%general%liquid_pressure%gradient)) then
+        piezometric_head_gradient(1:3) = &
+          condition%general%liquid_pressure%gradient%rarray(1:3)
+      endif
     case default
       ! for now, just set it; in future need to account for a different temperature datum
       if (associated(condition%temperature)) then
         if (condition%temperature%itype == DIRICHLET_BC) then
           temperature_at_datum = &
             condition%temperature%dataset%rarray(1)
-          temperature_gradient(1:3) = &
-            condition%temperature%gradient%rarray(1:3)
+          if (associated(condition%temperature%gradient)) then
+            temperature_gradient(1:3) = &
+              condition%temperature%gradient%rarray(1:3)
+          endif
         endif
       endif
       if (associated(condition%concentration)) then
@@ -114,8 +127,10 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
             associated(condition%concentration%dataset)) then
             concentration_at_datum = &
               condition%concentration%dataset%rarray(1)
-            concentration_gradient(1:3) = &
-              condition%concentration%gradient%rarray(1:3)
+            if (associated(condition%concentration%gradient)) then
+              concentration_gradient(1:3) = &
+                condition%concentration%gradient%rarray(1:3)
+            endif
         else
           concentration_at_datum = -999.d0
           concentration_gradient = 0.d0
@@ -147,8 +162,10 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       pressure_at_datum = &
         condition%pressure%dataset%rarray(1)
       ! gradient is in m/m; needs conversion to Pa/m
-      piezometric_head_gradient(1:3) = &
-        condition%pressure%gradient%rarray(1:3)
+      if (associated(condition%pressure%gradient)) then
+        piezometric_head_gradient(1:3) = &
+          condition%pressure%gradient%rarray(1:3)
+      endif
   end select      
       
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 

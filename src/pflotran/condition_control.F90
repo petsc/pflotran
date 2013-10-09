@@ -278,21 +278,19 @@ subroutine CondControlAssignFlowInitCond(realization)
               dataset_flag = PETSC_FALSE
               do idof = 1, option%nflowdof
                 dataset =>  initial_condition%flow_condition% &
-                                 sub_condition_ptr(idof)%ptr% &
-                                 flow_dataset%dataset
-                if (associated(dataset)) then
-                  select type(dataset)
-                    class is(dataset_common_hdf5_type)
-                      if (dataset%is_cell_indexed) then
-                        use_dataset = PETSC_TRUE
-                        dataset_flag(idof) = PETSC_TRUE
-                        call ConditionControlMapDatasetToVec(realization, &
-                              initial_condition%flow_condition% &
-                              sub_condition_ptr(idof)%ptr% &
-                              flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                                 sub_condition_ptr(idof)%ptr%dataset
+                select type(dataset_ptr => dataset)
+                  class is(dataset_common_hdf5_type)
+                    if (dataset_ptr%is_cell_indexed) then
+                      use_dataset = PETSC_TRUE
+                      dataset_flag(idof) = PETSC_TRUE
+                      call ConditionControlMapDatasetToVec(realization, &
+                            initial_condition%flow_condition% &
+                            sub_condition_ptr(idof)%ptr%dataset, &
+                            idof,field%flow_xx,GLOBAL)
                     endif
-                  end select
-                endif
+                  class default
+                end select
               enddo
               if (.not.associated(initial_condition%flow_aux_real_var)) then
                 conn_id_ptr => initial_condition%region%cell_ids
@@ -306,8 +304,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                     if (.not.dataset_flag(idof)) then
                       xx_p(ibegin+idof-1) = &
                         initial_condition%flow_condition% &
-                          sub_condition_ptr(idof)%ptr%flow_dataset% &
-                          time_series%cur_value(1)
+                          sub_condition_ptr(idof)%ptr%rarray(1)
                     endif
                   enddo
                   xx_faces_p(ibegin:iend) = xx_p(ibegin:iend) ! for LP -formulation
@@ -365,14 +362,16 @@ subroutine CondControlAssignFlowInitCond(realization)
               do idof = 1, option%nflowdof
                 dataset =>  initial_condition%flow_condition% &
                                  sub_condition_ptr(idof)%ptr%dataset
-                if (associated(dataset)) then
-                  use_dataset = PETSC_TRUE
-                  dataset_flag(idof) = PETSC_TRUE
-                  call ConditionControlMapDatasetToVec(realization, &
-                          initial_condition%flow_condition% &
-                            sub_condition_ptr(idof)%ptr%dataset,idof, &
-                          field%flow_xx,GLOBAL)
-                endif
+                select type(dataset_ptr => dataset)
+                  class is(dataset_common_hdf5_type)
+                    use_dataset = PETSC_TRUE
+                    dataset_flag(idof) = PETSC_TRUE
+                    call ConditionControlMapDatasetToVec(realization, &
+                            initial_condition%flow_condition% &
+                              sub_condition_ptr(idof)%ptr%dataset,idof, &
+                            field%flow_xx,GLOBAL)
+                  class default
+                end select
               enddo            
               if (.not.associated(initial_condition%flow_aux_real_var) .and. &
                   .not.associated(initial_condition%flow_condition)) then
