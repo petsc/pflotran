@@ -315,6 +315,8 @@ subroutine DatasetAsciiVerify(this,option)
                          // trim(this%name)
       call printErrMsg(option)
     endif
+    ! set initial values
+    this%rarray(:) = this%rbuffer(1:this%array_rank)
   endif
     
 end subroutine DatasetAsciiVerify

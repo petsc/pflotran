@@ -54,7 +54,7 @@ function TimeStorageCreate()
   time_storage%time_shift = 0.d0
   time_storage%cur_time_index_changed = PETSC_FALSE
   time_storage%cur_time_fraction_changed = PETSC_FALSE
-  time_storage%time_interpolation_method = INTERPOLATION_STEP
+  time_storage%time_interpolation_method = INTERPOLATION_NULL
   
   TimeStorageCreate => time_storage
     
@@ -81,6 +81,10 @@ subroutine TimeStorageVerify(default_time, time_storage, default_time_storage)
   
   if (associated(default_time_storage)) then
     if (default_time_storage%is_cyclic) time_storage%is_cyclic = PETSC_TRUE
+    if (time_storage%time_interpolation_method == INTERPOLATION_NULL) then
+      time_storage%time_interpolation_method = &
+        default_time_storage%time_interpolation_method
+    endif
   endif
   
   time_storage%max_time_index = 1

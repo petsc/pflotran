@@ -2401,6 +2401,7 @@ subroutine FlowConditionUpdateDataset(option,time,dataset_base)
   use Dataset_Gridded_class
   use Dataset_Map_class
   use Dataset_Common_HDF5_class
+  use Time_Storage_module
   
   implicit none
   
@@ -2415,9 +2416,12 @@ subroutine FlowConditionUpdateDataset(option,time,dataset_base)
   if (associated(dataset_base)) then
     select type(dataset=>dataset_base)
       class is(dataset_ascii_type)
-        if (time < 1.d-40 .or. associated(dataset%time_storage)) then
+        if (associated(dataset%time_storage)) then
+          dataset%time_storage%cur_time = time
+          call TimeStorageUpdate(dataset%time_storage)
           dataset_ascii => dataset
           call DatasetBaseInterpolateTime(dataset_ascii)
+          print *, dataset%time_storage%cur_time, dataset%rarray
         endif
       class is(dataset_common_hdf5_type)
         if ((time < 1.d-40 .or. &
