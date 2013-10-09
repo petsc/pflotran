@@ -210,6 +210,8 @@ recursive subroutine DatasetUpdate(dataset,time,option)
 
   class(dataset_ascii_type), pointer :: dataset_ascii
 
+  if (.not.associated(dataset)) return
+
   if (associated(dataset%time_storage)) then
     dataset%time_storage%cur_time = time
   endif
