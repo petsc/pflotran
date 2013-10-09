@@ -19,6 +19,7 @@ module Time_Storage_module
     PetscBool :: cur_time_index_changed
     PetscBool :: cur_time_fraction_changed
     PetscInt :: time_interpolation_method
+    PetscBool :: force_update
   end type time_storage_type
   
   public :: TimeStorageCreate, &
@@ -55,6 +56,7 @@ function TimeStorageCreate()
   time_storage%cur_time_index_changed = PETSC_FALSE
   time_storage%cur_time_fraction_changed = PETSC_FALSE
   time_storage%time_interpolation_method = INTERPOLATION_NULL
+  time_storage%force_update = PETSC_FALSE
   
   TimeStorageCreate => time_storage
     
@@ -67,13 +69,17 @@ end function TimeStorageCreate
 ! date: 10/26/11, 05/03/13
 !
 ! ************************************************************************** !
-subroutine TimeStorageVerify(default_time, time_storage, default_time_storage)
+subroutine TimeStorageVerify(default_time, time_storage, &
+                             default_time_storage, option)
+
+  use Option_module
 
   implicit none
   
   PetscReal :: default_time
   type(time_storage_type), pointer :: time_storage
   type(time_storage_type), pointer :: default_time_storage
+  type(option_type) :: option
   
   PetscInt :: array_size
   
@@ -84,6 +90,10 @@ subroutine TimeStorageVerify(default_time, time_storage, default_time_storage)
     if (time_storage%time_interpolation_method == INTERPOLATION_NULL) then
       time_storage%time_interpolation_method = &
         default_time_storage%time_interpolation_method
+    endif
+    if (time_storage%time_interpolation_method == INTERPOLATION_NULL) then
+      option%io_buffer = 'Time interpolation method must be specified.'
+      call printErrMsg(option)
     endif
   endif
   
@@ -293,6 +303,12 @@ subroutine TimeStorageUpdate(time_storage)
       time_storage%cur_time_fraction_changed = PETSC_TRUE
       time_storage%cur_time_fraction = 1.d0
     endif
+  endif
+
+  if (time_storage%force_update) then
+    time_storage%cur_time_fraction_changed = PETSC_TRUE
+    time_storage%cur_time_index_changed = PETSC_TRUE
+    time_storage%force_update = PETSC_FALSE
   endif
 
 end subroutine TimeStorageUpdate

@@ -68,6 +68,8 @@ end function DatasetGriddedCreate
 !
 ! ************************************************************************** !
 subroutine DatasetGriddedInit(this)
+
+  use Dataset_Base_class
   
   implicit none
   

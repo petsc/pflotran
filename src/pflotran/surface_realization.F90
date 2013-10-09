@@ -662,6 +662,7 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
     ! find datum dataset
     call DatasetFindInList(surf_realization%datasets, &
                            cur_surf_flow_condition%datum, &
+                           cur_surf_flow_condition%default_time_storage, &
                            string,option)
     select case(option%iflowmode)
       case(RICHARDS_MODE,TH_MODE)
@@ -669,10 +670,12 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
            ! find dataset
           call DatasetFindInList(surf_realization%datasets, &
                  cur_surf_flow_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 cur_surf_flow_condition%default_time_storage, &
                  string,option)
           ! find gradient dataset
           call DatasetFindInList(surf_realization%datasets, &
                  cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient, &
+                 cur_surf_flow_condition%default_time_storage, &
                  string,option)
         enddo
       case default

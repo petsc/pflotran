@@ -276,13 +276,13 @@ properties_obj = \
 	${common_src}material.o 
 
 dataset_obj = \
+	${common_src}dataset_ascii.o \
 	${common_src}dataset_base.o \
 	${common_src}dataset_common_hdf5.o \
 	${common_src}dataset_global.o \
 	${common_src}dataset_map.o \
 	${common_src}dataset.o \
 	${common_src}dataset_gridded.o \
-	${common_src}time_series.o \
 	${common_src}time_storage.o 
 
 io_obj = \

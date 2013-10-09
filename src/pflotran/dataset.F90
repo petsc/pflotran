@@ -178,7 +178,7 @@ subroutine DatasetVerify(dataset,default_time_storage,option)
 
   if (.not.associated(dataset)) return
 
-  call TimeStorageVerify(0.d0, dataset%time_storage, default_time_storage)
+  call TimeStorageVerify(0.d0,dataset%time_storage,default_time_storage,option)
   select type(dataset_ptr => dataset)
     class is(dataset_ascii_type)
       call DatasetAsciiVerify(dataset_ptr,option)
@@ -295,6 +295,7 @@ subroutine DatasetFindInList(list,dataset_base,default_time_storage, &
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: dataset_name
+  PetscReal, parameter :: time = 0.d0
 
   ! check for dataset in flow_dataset
   if (associated(dataset_base)) then
@@ -312,6 +313,12 @@ subroutine DatasetFindInList(list,dataset_base,default_time_storage, &
         ! immediately
         call DatasetLoad(dataset_base,option)
         call DatasetVerify(dataset_base,default_time_storage,option)
+        ! must update after DatasetVerify since the time interpolation method
+        ! may not have been properly set during the load! Force the update.
+        if (associated(dataset_base%time_storage)) then
+          dataset_base%time_storage%force_update = PETSC_TRUE  
+        endif
+        call DatasetUpdate(dataset_base,time,option)
     end select
   endif
 

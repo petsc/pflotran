@@ -198,6 +198,12 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
                                     mass_transfer%dataset%hdf5_dataset_name, &
                                     mass_transfer%dataset%time_storage,option)
 #endif
+    ! if time interpolation methods not set in hdf5 file, set to default of STEP
+    if (mass_transfer%dataset%time_storage%time_interpolation_method == &
+        INTERPOLATION_NULL) then
+      mass_transfer%dataset%time_storage%time_interpolation_method = &
+        INTERPOLATION_STEP
+    endif
   endif 
   
   ! update the next one recursively
