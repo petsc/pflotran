@@ -871,6 +871,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
 
   use Option_module
   use Waypoint_module
+  use Time_Storage_module
 
   implicit none
   
@@ -915,8 +916,8 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
       do isub_condition = 1, cur_geomech_condition%num_sub_conditions
         sub_condition => cur_geomech_condition% &
                          sub_condition_ptr(isub_condition)%ptr
-        call GeomechConditionDatasetGetTimes(option,sub_condition,final_time, &
-                                          times)
+        call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
+                                final_time, times)
         if (size(times) > 1000) then
           option%io_buffer = 'For geomech condition "' // &
             trim(cur_geomech_condition%name) // &
