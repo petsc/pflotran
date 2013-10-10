@@ -175,6 +175,7 @@ subroutine GeomechSubConditionVerify(option, condition, sub_condition_name, &
                                      destroy_if_null)
 
   use Option_module
+  use Dataset_module
 
   implicit none
 
@@ -622,6 +623,7 @@ end subroutine GeomechConditionPrintSubCondition
 subroutine GeomechConditionUpdate(condition_list,option,time)
 
   use Option_module
+  use Dataset_module
   
   implicit none
   

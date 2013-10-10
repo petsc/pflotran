@@ -729,7 +729,7 @@ subroutine FlowConditionRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      condition%datum,word)
       case('GRADIENT','GRAD')
         do
@@ -770,56 +770,56 @@ subroutine FlowConditionRead(condition,input,option)
           dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
-          call FlowConditionReadValues(input,option,word,string, &
+          call ConditionReadValues(input,option,word,string, &
                                        sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      temperature%dataset, &
                                      temperature%units)
       case('ENTHALPY','H')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      enthalpy%dataset, &
                                      enthalpy%units)
       case('PRESSURE','PRES','PRESS')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      pressure%dataset, &
                                      pressure%units)
       case('RATE')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      rate%dataset, &
                                      rate%units)
       case('ENERGY_RATE')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      energy_rate%dataset, &
                                      energy_rate%units)
       case('WELL')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      well%dataset, &
                                      well%units)
       case('FLUX','VELOCITY','VEL')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      pressure%dataset, &
                                      pressure%units)
       case('CONC','CONCENTRATION')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      concentration%dataset, &
                                      concentration%units)
       case('SAT','SATURATION')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      saturation%dataset, &
                                      saturation%units)
       case('DISPLACEMENT_X')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      displacement_x%dataset, &
                                      displacement_x%units)
       case('DISPLACEMENT_Y')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      displacement_y%dataset, &
                                      displacement_y%units) 
       case('DISPLACEMENT_Z')
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      displacement_z%dataset, &
                                      displacement_z%units)
       case('CONDUCTANCE')
@@ -1318,7 +1318,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         dataset_ascii%array_rank = 3
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      condition%datum,word)
       case('GRADIENT')
         do
@@ -1341,7 +1341,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           dataset_ascii%array_rank = 3
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
-          call FlowConditionReadValues(input,option,word,string, &
+          call ConditionReadValues(input,option,word,string, &
                                        sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
@@ -1352,7 +1352,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
             sub_condition_ptr => FlowGeneralSubConditionPtr(word,general, &
                                                             option)
         end select
-        call FlowConditionReadValues(input,option,word,string, &
+        call ConditionReadValues(input,option,word,string, &
                                      sub_condition_ptr%dataset, &
                                      sub_condition_ptr%units)
         select case(word)
