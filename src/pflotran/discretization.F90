@@ -924,7 +924,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   select case(discretization%itype)
     case(STRUCTURED_GRID)
 #ifndef DMGET
-      call DMCreateMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
+      call DMSetMatType(dm_ptr%dm,mat_type,ierr)
+      call DMCreateMatrix(dm_ptr%dm,Jacobian,ierr)
 #else
       call DMGetMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
 #endif
@@ -957,7 +958,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
         case(NTRANDOF)
 #ifndef DMGET
-          call DMCreateMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
+          call DMSetMatType(dm_ptr%dm,mat_type,ierr)
+          call DMCreateMatrix(dm_ptr%dm,Jacobian,ierr)
 #else
           call DMGetMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
 #endif

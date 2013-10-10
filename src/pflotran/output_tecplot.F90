@@ -1677,6 +1677,8 @@ subroutine GetCellConnectionsTecplot(grid, vec)
             ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
         enddo
       case (TRI_TYPE)
+        ! from Tecplot 360 Data Format Guide
+        ! n1=vert1,n2=vert2,n3=n4=vert3
         offset = (local_id-1)*4
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
