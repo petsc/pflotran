@@ -765,7 +765,6 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
 
   use Dataset_Base_class
   use Dataset_module
-  
 
   implicit none
 
@@ -786,28 +785,16 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
   do
     if (.not.associated(cur_geomech_condition)) exit
       do i = 1, size(cur_geomech_condition%sub_condition_ptr)
-        ! check for dataset in dataset
-        if (associated(cur_geomech_condition%sub_condition_ptr(i)%ptr% &
-                        geomech_dataset%dataset)) then
-          dataset_name = cur_geomech_condition%sub_condition_ptr(i)%ptr% &
-                        geomech_dataset%dataset%name
-          ! delete the dataset since it is solely a placeholder
-          call DatasetDestroy(cur_geomech_condition%sub_condition_ptr(i)%ptr% &
-                              geomech_dataset%dataset)
-          ! get dataset from list
-          string = 'geomech_condition ' // trim(cur_geomech_condition%name)
-          dataset => &
-            DatasetBaseGetPointer(geomech_realization%geomech_datasets, &
-                                  dataset_name,string,option)
-          cur_geomech_condition%sub_condition_ptr(i)%ptr%geomech_dataset &
-            %dataset => dataset
-        endif
+        ! find dataset
+        call DatasetFindInList(geomech_realization%geomech_datasets, &
+                 cur_geomech_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 cur_geomech_condition%default_time_storage, &
+                 string,option)
       enddo
      cur_geomech_condition => cur_geomech_condition%next
   enddo
-
+  
 end subroutine GeomechRealizProcessGeomechConditions
-
 
 ! ************************************************************************** !
 !

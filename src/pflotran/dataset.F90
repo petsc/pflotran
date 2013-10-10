@@ -21,6 +21,7 @@ module Dataset_module
             DatasetVerify, &
             DatasetUpdate, &
             DatasetFindInList, &
+            DatasetIsTransient, &
             DatasetDestroy
 
 contains
@@ -323,6 +324,32 @@ subroutine DatasetFindInList(list,dataset_base,default_time_storage, &
   endif
 
 end subroutine DatasetFindInList
+
+! ************************************************************************** !
+!
+! DatasetIsTransient: Determines whether a dataset is transient
+! author: Glenn Hammond
+! date: 10/10/13
+!
+! ************************************************************************** !
+function DatasetIsTransient(dataset)
+
+  use Time_Storage_module
+
+  implicit none
+
+  class(dataset_base_type), pointer :: dataset
+  
+  PetscBool :: DatasetIsTransient
+
+  DatasetIsTransient = PETSC_FALSE
+  if (associated(dataset)) then
+    if (associated(dataset%time_storage)) then
+      DatasetIsTransient = PETSC_TRUE
+    endif
+  endif 
+  
+end function DatasetIsTransient
 
 ! ************************************************************************** !
 !

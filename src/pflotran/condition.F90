@@ -120,7 +120,8 @@ module Condition_module
             TranConstraintDestroyList, TranConstraintGetPtrFromList, &
             TranConditionRead, TranConstraintRead, &
             TranConditionUpdate, &
-            FlowConditionIsTransient
+            FlowConditionIsTransient, &
+            ConditionReadValues
     
 contains
 
@@ -324,6 +325,7 @@ end function FlowGeneralSubConditionPtr
 ! ************************************************************************** !
 function FlowSubConditionCreate(ndof)
 
+  use Dataset_Ascii_class
   use Option_module
   
   implicit none
@@ -413,8 +415,6 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   type(flow_sub_condition_type), pointer :: sub_condition
   type(time_storage_type), pointer :: default_time_storage
   PetscBool :: destroy_if_null
-
-  PetscInt :: array_size
 
   if (.not.associated(sub_condition)) return
 
@@ -1710,13 +1710,12 @@ end subroutine TranConditionRead
 
 ! ************************************************************************** !
 !
-! FlowConditionReadValues: Read the value(s) of a condition variable
+! ConditionReadValues: Read the value(s) of a condition variable
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine FlowConditionReadValues(input,option,keyword,string,dataset_base, &
-                                   units)
+subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
 
   use Input_module
   use String_module
@@ -1898,299 +1897,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset_base, &
   endif
   call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)    
 
-end subroutine FlowConditionReadValues
-
-#if 0
-! ************************************************************************** !
-!
-! FlowConditionReadValuesFromFile: Read values from a external file
-! author: Glenn Hammond
-! date: 10/31/07
-!
-! ************************************************************************** !
-subroutine FlowConditionReadValuesFromFile(input,flow_dataset,option)
-
-  use Input_module
-  use String_module
-  use Utility_module
-  use Option_module
-  use Units_module
-
-  implicit none
-  
-  type(input_type) :: input
-  type(flow_condition_dataset_type) :: flow_dataset
-  type(option_type) :: option
-
-  character(len=MAXWORDLENGTH) :: time_units, data_units
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
-                        temp_array3(:)
-  PetscReal :: temp_time
-  PetscReal :: conversion
-  PetscInt :: max_size
-  PetscInt :: temp_max_size
-  PetscInt :: count, i, status
-  PetscErrorCode :: ierr
-  
-  time_units = ''
-  data_units = ''
-  max_size = 1000
-  allocate(temp_times(max_size))
-  allocate(temp_array1(max_size))
-  temp_times = 0.d0
-  temp_array1 = 0.d0
-
-  if (flow_dataset%time_series%rank > 1) then
-    allocate(temp_array2(max_size))
-    temp_array2 = 0.d0
-  endif
-  
-  if (flow_dataset%time_series%rank > 2) then
-    allocate(temp_array3(max_size))
-    temp_array3 = 0.d0
-  endif
-
-  count = 0
-  ierr = 0
-  do
-    call InputReadFlotranString(input,option)
-    ! reach the end of file or close out block
-    if (InputError(input)) exit  ! check for end of file
-    if (InputCheckExit(input,option)) exit  ! check for end of list
-    ! check for units on first line
-    if (count == 0) then
-      string = input%buf
-      call InputReadWord(string,word,PETSC_TRUE,ierr)
-      call StringToUpper(word)
-      select case(word)
-        case('TIME_UNITS')
-          call InputReadWord(string,time_units,PETSC_TRUE,ierr)
-          input%ierr = ierr
-          call InputErrorMsg(input,option,'TIME_UNITS','CONDITION FILE')
-          call StringToLower(time_units) 
-          cycle
-        case('DATA_UNITS')
-          call InputReadWord(string,data_units,PETSC_TRUE,ierr)
-          input%ierr = ierr
-          call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-          call StringToLower(data_units) 
-          cycle
-      end select
-    endif
-    count = count + 1
-    call InputReadDouble(input,option,temp_times(count))
-    call InputErrorMsg(input,option,'time','CONDITION FILE')   
-    call InputReadDouble(input,option,temp_array1(count))
-    call InputErrorMsg(input,option,'array1','CONDITION FILE')
-    if (flow_dataset%time_series%rank > 1) then
-      call InputReadDouble(input,option,temp_array2(count))
-      call InputErrorMsg(input,option,'array2','CONDITION FILE') 
-    endif
-    if (flow_dataset%time_series%rank > 2) then
-      call InputReadDouble(input,option,temp_array3(count))
-      call InputErrorMsg(input,option,'array3','CONDITION FILE') 
-    endif
-    if (count+1 > max_size) then
-      temp_max_size = max_size
-      call reallocateRealArray(temp_times,max_size) 
-      ! careful.  reallocateRealArray double max_size every time.
-      i = temp_max_size
-      call reallocateRealArray(temp_array1,i) 
-      if (flow_dataset%time_series%rank > 1) then
-        i = temp_max_size
-        call reallocateRealArray(temp_array2,i)
-      endif
-      if (flow_dataset%time_series%rank > 2) then
-        i = temp_max_size
-        call reallocateRealArray(temp_array3,i)
-      endif
-    endif  
-  enddo
-  
-  if (associated(flow_dataset%time_series%times)) then
-    if (count /= size(flow_dataset%time_series%times,1) .and. &
-        OptionPrintToScreen(option)) then
-      print *, 'Number of times (', count, ') in ', trim(input%filename), &
-               ' does not match previous allocation: ', &
-               size(flow_dataset%time_series%times,1)
-      stop
-    endif
-    do i=1,count
-      if (dabs(flow_dataset%time_series%times(i)-temp_times(i)) > 1.d-8 .and. &
-          OptionPrintToScreen(option)) then
-        print *, 'Time (', temp_times(i), ') in ', trim(input%filename), &
-                 ' does not match previous allocation time: ', &
-                 flow_dataset%time_series%times(i), i
-        stop
-      endif
-    enddo
-  else
-    allocate(flow_dataset%time_series%times(count))
-  endif
-
-  if (associated(flow_dataset%time_series%values)) &
-    deallocate(flow_dataset%time_series%values)
-  allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,count))
-
-  flow_dataset%time_series%times(1:count) = temp_times(1:count)
-  flow_dataset%time_series%values(1,1:count) = temp_array1(1:count)
-  if (flow_dataset%time_series%rank > 1) &
-    flow_dataset%time_series%values(2,1:count) = temp_array2(1:count)
-  if (flow_dataset%time_series%rank > 2) &
-    flow_dataset%time_series%values(3,1:count) = temp_array3(1:count)
-  
-  deallocate(temp_times)
-  deallocate(temp_array1)
-  if (flow_dataset%time_series%rank > 1) deallocate(temp_array2)
-  if (flow_dataset%time_series%rank > 2) deallocate(temp_array3)
-
-  if (len_trim(time_units) > 0) then
-    ! Times
-    conversion = UnitsConvertToInternal(time_units,option)
-    flow_dataset%time_series%times(1:count) = conversion * &
-                                   flow_dataset%time_series%times(1:count)
-  endif
-  if (len_trim(data_units) > 0) then
-    ! Data
-    conversion = UnitsConvertToInternal(data_units,option)
-    flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count) = &
-      conversion * &
-      flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count)
-  endif
-  
-end subroutine FlowConditionReadValuesFromFile
-! ************************************************************************** !
-! 
-! FlowConditionReadValuesFromFile: Read values from a external file with 4 more columns
-! author: Chuan Lu
-! date: 5/31/11
-!
-! ************************************************************************** !
-subroutine FlowConditionReadValuesFromFile2(input,flow_dataset,option)
-
-  use Input_module
-  use String_module
-  use Utility_module
-  use Option_module
-  use Units_module
-
-  implicit none
-  
-  type(input_type) :: input
-  type(flow_condition_dataset_type) :: flow_dataset
-  type(option_type) :: option
-
-  character(len=MAXWORDLENGTH) :: time_units, data_units
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  PetscReal, pointer :: temp_times(:), temp_array(:,:)
-  PetscReal :: temp_time
-  PetscReal :: conversion
-  PetscInt :: max_size
-  PetscInt :: temp_max_size
-  PetscInt :: count, i, status
-  PetscErrorCode :: ierr
-  
-  time_units = ''
-  data_units = ''
-  max_size = 1000
-  allocate(temp_times(max_size))
-  allocate(temp_array(flow_dataset%time_series%rank, max_size)) 
-
-  count = 0
-  ierr = 0
-  do
-    call InputReadFlotranString(input,option)
-    ! reach the end of file or close out block
-    if (InputError(input)) exit  ! check for end of file
-    if (InputCheckExit(input,option)) exit  ! check for end of list
-    ! check for units on first line
-    if (count == 0) then
-      string = input%buf
-      call InputReadWord(string,word,PETSC_TRUE,ierr)
-      call StringToUpper(word)
-      select case(word)
-        case('TIME_UNITS')
-          call InputReadWord(string,time_units,PETSC_TRUE,ierr)
-          input%ierr = ierr
-          call InputErrorMsg(input,option,'TIME_UNITS','CONDITION FILE')
-          call StringToLower(time_units) 
-          cycle
-        case('DATA_UNITS')
-          call InputReadWord(string,data_units,PETSC_TRUE,ierr)
-          input%ierr = ierr
-          call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-          call StringToLower(data_units) 
-          cycle
-      end select
-    endif
-    count = count + 1
-    call InputReadDouble(input,option,temp_times(count))
-    call InputErrorMsg(input,option,'time','CONDITION FILE')   
-
-
-   do i =1, flow_dataset%time_series%rank
-      call InputReadDouble(input,option,temp_array(i,count))
-      call InputErrorMsg(input,option,'array:',' CONDITION FILE') 
-   enddo
-
- enddo
- if (count+1 > max_size) then
-   print *, 'Number of times (', count, ') in ', trim(input%filename), &
-          ' exceed 1000 '
-   stop
- endif 
-  
- if (associated(flow_dataset%time_series%times)) then
-   if (count /= size(flow_dataset%time_series%times,1) .and. &
-        OptionPrintToScreen(option)) then
-      print *, 'Number of times (', count, ') in ', trim(input%filename), &
-               ' does not match previous allocation: ', &
-               size(flow_dataset%time_series%times,1)
-      stop
-    endif
-    do i=1,count
-      if (dabs(flow_dataset%time_series%times(i)-temp_times(i)) > 1.d-8 .and. &
-          OptionPrintToScreen(option)) then
-        print *, 'Time (', temp_times(i), ') in ', trim(input%filename), &
-                 ' does not match previous allocation time: ', &
-                 flow_dataset%time_series%times(i), i
-        stop
-      endif
-    enddo
-  else
-    allocate(flow_dataset%time_series%times(count))
-  endif
-
-  if (associated(flow_dataset%time_series%values)) &
-    deallocate(flow_dataset%time_series%values)
-  allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,count))
-
-  flow_dataset%time_series%times(1:count) = temp_times(1:count)
-  flow_dataset%time_series%values(:,1:count) = temp_array(:,1:count)
-  
-    
-  deallocate(temp_times)
-  deallocate(temp_array)
-
-  if (len_trim(time_units) > 0) then
-    ! Times
-    conversion = UnitsConvertToInternal(time_units,option)
-    flow_dataset%time_series%times(1:count) = conversion * &
-      flow_dataset%time_series%times(1:count)
-  endif
-  if (len_trim(data_units) > 0) then
-    ! Data
-    conversion = UnitsConvertToInternal(data_units,option)
-    flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count) = &
-      conversion * &
-      flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count)
-  endif
-  
-end subroutine FlowConditionReadValuesFromFile2
-#endif
+end subroutine ConditionReadValues
 
 ! ************************************************************************** !
 !
@@ -2321,28 +2028,6 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
   endif
             
 end subroutine FlowConditionPrintSubCondition
- 
-! ************************************************************************** !
-!
-! FlowConditionDatasetPrint: Prints flow condition dataset info
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
-subroutine FlowConditionDatasetPrint(dataset,option)
-
-  use Option_module
-
-  implicit none
-  
-  class(dataset_base_type), pointer :: dataset
-  type(option_type) :: option
-  
-  if(associated(dataset)) then
-    !TODO(geh): setup
-  endif
-  
-end subroutine FlowConditionDatasetPrint
 
 ! ************************************************************************** !
 !
@@ -2598,6 +2283,8 @@ end function TranConditionGetPtrFromList
 ! ************************************************************************** !
 function FlowConditionIsTransient(condition)
 
+  use Dataset_module
+
   implicit none
   
   type(flow_condition_type) :: condition
@@ -2609,7 +2296,7 @@ function FlowConditionIsTransient(condition)
   !TODO(geh): add check for general condition
   
   ! pressure
-  if (FlowDatasetIsTransient(condition%datum) .or. &
+  if (DatasetIsTransient(condition%datum) .or. &
       FlowSubConditionIsTransient(condition%pressure) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
       FlowSubConditionIsTransient(condition%concentration) .or. &
@@ -2631,6 +2318,8 @@ end function FlowConditionIsTransient
 ! ************************************************************************** !
 function FlowSubConditionIsTransient(sub_condition)
 
+  use Dataset_module
+
   implicit none
   
   type(flow_sub_condition_type), pointer :: sub_condition
@@ -2640,38 +2329,13 @@ function FlowSubConditionIsTransient(sub_condition)
   FlowSubConditionIsTransient = PETSC_FALSE
 
   if (associated(sub_condition)) then
-    if (FlowDatasetIsTransient(sub_condition%dataset) .or. &
-        FlowDatasetIsTransient(sub_condition%gradient)) then
+    if (DatasetIsTransient(sub_condition%dataset) .or. &
+        DatasetIsTransient(sub_condition%gradient)) then
       FlowSubConditionIsTransient = PETSC_TRUE
     endif
   endif  
   
 end function FlowSubConditionIsTransient
-
-! ************************************************************************** !
-!
-! FlowDatasetIsTransient: Returns PETSC_TRUE
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-function FlowDatasetIsTransient(dataset)
-
-  implicit none
-  
-  class(dataset_base_type), pointer :: dataset
-  
-  PetscBool :: FlowDatasetIsTransient
-  
-  FlowDatasetIsTransient = PETSC_FALSE
-
-  if (associated(dataset)) then
-    if (associated(dataset%time_storage)) then
-      FlowDatasetIsTransient = PETSC_TRUE
-    endif
-  endif  
-  
-end function FlowDatasetIsTransient
 
 ! ************************************************************************** !
 !
@@ -2719,16 +2383,21 @@ end subroutine FlowConditionDestroyList
 subroutine FlowConditionDestroy(condition)
 
   use Dataset_module
-
+  use Dataset_Ascii_class
+  
   implicit none
   
   type(flow_condition_type), pointer :: condition
   
+  class(dataset_ascii_type), pointer :: dataset_ascii
   PetscInt :: i
   
   if (.not.associated(condition)) return
   
-  call DatasetDestroy(condition%datum)
+  ! if dataset_ascii_type, destroy.  Otherwise, they are in another list
+  dataset_ascii => DatasetAsciiCast(condition%datum)
+  ! dataset_ascii will be NULL if not dataset_ascii_type
+  call DatasetAsciiDestroy(dataset_ascii)
 
   if (associated(condition%sub_condition_ptr)) then
     do i=1,condition%num_sub_conditions
@@ -2803,15 +2472,22 @@ end subroutine FlowGeneralConditionDestroy
 subroutine FlowSubConditionDestroy(sub_condition)
 
   use Dataset_module
+  use Dataset_Ascii_class
 
   implicit none
   
   type(flow_sub_condition_type), pointer :: sub_condition
   
+  class(dataset_ascii_type), pointer :: dataset_ascii
+  
   if (.not.associated(sub_condition)) return
   
-  call DatasetDestroy(sub_condition%dataset)
-  call DatasetDestroy(sub_condition%gradient)
+  ! if dataset_ascii_type, destroy.  Otherwise, they are in another list
+  dataset_ascii => DatasetAsciiCast(sub_condition%dataset)
+  ! dataset_ascii will be NULL if not dataset_ascii_type
+  call DatasetAsciiDestroy(dataset_ascii)
+  dataset_ascii => DatasetAsciiCast(sub_condition%gradient)
+  call DatasetAsciiDestroy(dataset_ascii)
 
   deallocate(sub_condition)
   nullify(sub_condition)
