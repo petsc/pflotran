@@ -1510,6 +1510,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   use Connection_module
   use Condition_module
   use Grid_module
+  use Dataset_module
   use Dataset_Map_class
   use Dataset_Base_class
 
@@ -1564,7 +1565,10 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
       class is(dataset_map_type)
         dataset_map => selector
       class default
-        option%io_buffer = 'Incorrect class in PatchUpdateHetroCouplerAuxVars'
+        option%io_buffer = 'Incorrect dataset class (' // &
+          trim(DatasetGetClass(dataset_base)) // &
+          ') for coupler "' // trim(coupler%name) // &
+          '" in PatchUpdateHetroCouplerAuxVars.'
         call printErrMsg(option)
     end select
   

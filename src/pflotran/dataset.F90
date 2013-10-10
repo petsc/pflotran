@@ -22,6 +22,7 @@ module Dataset_module
             DatasetUpdate, &
             DatasetFindInList, &
             DatasetIsTransient, &
+            DatasetGetClass, &
             DatasetDestroy
 
 contains
@@ -350,6 +351,42 @@ function DatasetIsTransient(dataset)
   endif 
   
 end function DatasetIsTransient
+
+! ************************************************************************** !
+!
+! DatasetGetClass: Returns a string defining the class of dataset
+! author: Glenn Hammond
+! date: 10/10/13
+!
+! ************************************************************************** !
+function DatasetGetClass(dataset)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_base_type) :: dataset
+
+  character(len=MAXSTRINGLENGTH) :: DatasetGetClass
+  
+  select type (dataset)
+    class is (dataset_ascii_type)
+      DatasetGetClass = 'dataset_ascii_type'
+    class is (dataset_global_type)
+      DatasetGetClass = 'dataset_global_type'
+    class is (dataset_gridded_type)
+      DatasetGetClass = 'dataset_gridded_type'
+    class is (dataset_map_type)
+      DatasetGetClass = 'dataset_map_type'
+    class is (dataset_common_hdf5_type)
+      DatasetGetClass = 'dataset_hdf5_type'
+    class is (dataset_base_type)
+      DatasetGetClass = 'dataset_base_type'
+    class default
+      DatasetGetClass = 'dataset class unknown'
+  end select
+  
+end function DatasetGetClass
 
 ! ************************************************************************** !
 !
