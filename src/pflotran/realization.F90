@@ -1541,22 +1541,24 @@ subroutine RealizationAddWaypointsToList(realization)
         !geh: followup - no, datum/gradient are not considered.  Should they be considered?
         call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
                                 final_time, times)
-        if (size(times) > 1000) then
-          option%io_buffer = 'For flow condition "' // &
-            trim(cur_flow_condition%name) // &
-            '" dataset "' // trim(sub_condition%name) // &
-            '", the number of times is excessive for synchronization ' // &
-            'with waypoints.'
-          call printErrMsg(option)
+        if (associated(times)) then
+          if (size(times) > 1000) then
+            option%io_buffer = 'For flow condition "' // &
+              trim(cur_flow_condition%name) // &
+              '" dataset "' // trim(sub_condition%name) // &
+              '", the number of times is excessive for synchronization ' // &
+              'with waypoints.'
+            call printErrMsg(option)
+          endif
+          do itime = 1, size(times)
+            waypoint => WaypointCreate()
+            waypoint%time = times(itime)
+            waypoint%update_conditions = PETSC_TRUE
+            call WaypointInsertInList(waypoint,waypoint_list)
+          enddo
+          deallocate(times)
+          nullify(times)
         endif
-        do itime = 1, size(times)
-          waypoint => WaypointCreate()
-          waypoint%time = times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        enddo
-        deallocate(times)
-        nullify(times)
       enddo
     endif
     cur_flow_condition => cur_flow_condition%next

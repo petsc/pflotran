@@ -918,22 +918,24 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
                          sub_condition_ptr(isub_condition)%ptr
         call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
                                 final_time, times)
-        if (size(times) > 1000) then
-          option%io_buffer = 'For geomech condition "' // &
-            trim(cur_geomech_condition%name) // &
-            '" dataset "' // trim(sub_condition%name) // &
-            '", the number of times is excessive for synchronization ' // &
-            'with waypoints.'
-          call printErrMsg(option)
+        if (associated(times)) then
+          if (size(times) > 1000) then
+            option%io_buffer = 'For geomech condition "' // &
+              trim(cur_geomech_condition%name) // &
+              '" dataset "' // trim(sub_condition%name) // &
+              '", the number of times is excessive for synchronization ' // &
+              'with waypoints.'
+            call printErrMsg(option)
+          endif
+          do itime = 1, size(times)
+            waypoint => WaypointCreate()
+            waypoint%time = times(itime)
+            waypoint%update_conditions = PETSC_TRUE
+            call WaypointInsertInList(waypoint,waypoint_list)
+          enddo
+          deallocate(times)
+          nullify(times)
         endif
-        do itime = 1, size(times)
-          waypoint => WaypointCreate()
-          waypoint%time = times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        enddo
-        deallocate(times)
-        nullify(times)
       enddo
     endif
     cur_geomech_condition => cur_geomech_condition%next
