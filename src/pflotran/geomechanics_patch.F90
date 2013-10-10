@@ -484,8 +484,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
             case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_X_DOF, &
                                            1:num_verts) = &
-              geomech_condition%displacement_x%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%displacement_x%dataset%rarray(1)
           end select
         endif
         if (associated(geomech_condition%displacement_y)) then
@@ -493,8 +492,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
             case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Y_DOF, &
                                            1:num_verts) = &
-              geomech_condition%displacement_y%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%displacement_y%dataset%rarray(1)
           end select
         endif
         if (associated(geomech_condition%displacement_z)) then
@@ -502,8 +500,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
             case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
                                            1:num_verts) = &
-              geomech_condition%displacement_z%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%displacement_z%dataset%rarray(1)
            end select
         endif
         if (associated(geomech_condition%force_x)) then
@@ -511,8 +508,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
             case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
                                            1:num_verts) = &
-              geomech_condition%force_x%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%force_x%dataset%rarray(1)
             end select
         endif
         if (associated(geomech_condition%force_y)) then
@@ -520,8 +516,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
             case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
                                            1:num_verts) = &
-              geomech_condition%force_y%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%force_y%dataset%rarray(1)
              end select
         endif
         if (associated(geomech_condition%force_z)) then
@@ -529,8 +524,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
             case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
                                            1:num_verts) = &
-              geomech_condition%force_z%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%force_z%dataset%rarray(1)
           end select
         endif        
       endif
