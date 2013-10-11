@@ -378,7 +378,7 @@ end subroutine RegionAddToList
 ! ************************************************************************** !
 subroutine RegionRead(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   use Structured_Grid_module
@@ -516,7 +516,7 @@ end subroutine RegionRead
 ! ************************************************************************** !
 subroutine RegionReadFromFilename(region,option,filename)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   
@@ -542,7 +542,7 @@ end subroutine RegionReadFromFilename
 ! ************************************************************************** !
 subroutine RegionReadFromFileId(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   use Logging_module
@@ -852,7 +852,7 @@ end subroutine RegionReadFromFileId
 ! ************************************************************************** !
 subroutine RegionReadSideSet(sideset,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -1006,7 +1006,7 @@ end subroutine RegionReadSideSet
 ! ************************************************************************** !
 subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   

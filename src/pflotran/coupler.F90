@@ -217,7 +217,7 @@ end subroutine CouplerInitList
 ! ************************************************************************** !
 subroutine CouplerRead(coupler,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   

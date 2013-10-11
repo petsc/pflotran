@@ -75,7 +75,7 @@ end function UniformVelocityDatasetCreate
 subroutine UniformVelocityDatasetRead(dataset,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Logging_module
   use Units_module 
@@ -164,7 +164,7 @@ end subroutine UniformVelocityDatasetRead
 subroutine UniVelocityDatasetReadValues(input,option,keyword,string,dataset, &
                                         units)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   use Logging_module
@@ -253,7 +253,7 @@ end subroutine UniVelocityDatasetReadValues
 ! ************************************************************************** !
 subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
   use Option_module

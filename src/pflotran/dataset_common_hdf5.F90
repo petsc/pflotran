@@ -134,7 +134,7 @@ end function DatasetCommonHDF5Cast
 subroutine DatasetCommonHDF5Read(this,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -184,7 +184,7 @@ end subroutine DatasetCommonHDF5Read
 subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none

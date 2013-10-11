@@ -129,7 +129,7 @@ end function SaturationFunctionCreate
 subroutine SaturationFunctionRead(saturation_function,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none

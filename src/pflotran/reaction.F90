@@ -78,7 +78,7 @@ contains
 subroutine ReactionInit(reaction,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Reaction_Sandbox_module, only : RSandboxInit
   
   implicit none
@@ -113,7 +113,7 @@ subroutine ReactionReadPass1(reaction,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
                                TOTAL_MOLALITY, TOTAL_MOLARITY, &
@@ -776,7 +776,7 @@ subroutine ReactionReadPass2(reaction,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -882,7 +882,7 @@ end subroutine ReactionReadPass2
 ! ************************************************************************** !
 subroutine ReactionReadRedoxSpecies(reaction,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Option_module
   
@@ -940,7 +940,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      immobile_constraint, &
                                      option)
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
   use Constraint_module
@@ -1087,7 +1087,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Utility_module
   use Constraint_module
@@ -1798,7 +1798,7 @@ end subroutine ReactionEquilibrateConstraint
 subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Constraint_module
 
@@ -2490,7 +2490,7 @@ end subroutine ReactionPrintConstraint
 subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Constraint_module
 
@@ -2732,7 +2732,7 @@ end subroutine srfcmplx
 ! ************************************************************************** !
 subroutine ReactionReadOutput(reaction,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Option_module
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &

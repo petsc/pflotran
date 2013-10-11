@@ -25,7 +25,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 
   use Option_module
   use Hydrogeophysics_Wrapper_module
-  use Input_module
+  use Input_Aux_module
   use Simulation_Base_class 
   use Discretization_module
   use String_module
@@ -336,7 +336,7 @@ end subroutine HydrogeophysicsInitPostPetsc
 subroutine HydrogeoInitCommandLineSettings(option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   

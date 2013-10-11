@@ -5,7 +5,7 @@ module Realization_Base_class
 
   use Discretization_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Debug_module
   use Output_Aux_module
   use Field_module

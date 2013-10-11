@@ -303,7 +303,7 @@ end subroutine SolverCreateTS
 ! ************************************************************************** !
 subroutine SolverReadLinear(solver,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -623,7 +623,7 @@ end subroutine SolverReadLinear
 ! ************************************************************************** !
 subroutine SolverReadNewton(solver,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   

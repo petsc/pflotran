@@ -4,7 +4,7 @@ module Realization_class
 
   use Option_module
   use Output_Aux_module
-  use Input_module
+  use Input_Aux_module
   use Region_module
   use Condition_module
   use Constraint_module

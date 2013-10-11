@@ -7,7 +7,7 @@ module Surface_Realization_class
   use Condition_module
   use Debug_module
   use Discretization_module
-  use Input_module
+  use Input_Aux_module
   use Level_module
   use Option_module
   use Patch_module

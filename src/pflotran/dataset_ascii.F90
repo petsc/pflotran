@@ -69,6 +69,7 @@ function DatasetAsciiCast(this)
   class(dataset_ascii_type), pointer :: DatasetAsciiCast
   
   nullify(DatasetAsciiCast)
+  if (.not.associated(this)) return
   select type (this)
     class is (dataset_ascii_type)
       DatasetAsciiCast => this
@@ -103,7 +104,7 @@ end subroutine DatasetAsciiInit
 ! ************************************************************************** !
 subroutine DatasetAsciiOpenandLoad(this,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   
   implicit none
@@ -129,7 +130,7 @@ end subroutine DatasetAsciiOpenandLoad
 ! ************************************************************************** !
 subroutine DatasetAsciiLoad(this,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module, only : reallocateRealArray
   use Option_module

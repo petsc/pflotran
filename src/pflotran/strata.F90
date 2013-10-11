@@ -162,7 +162,7 @@ end subroutine StrataInitList
 ! ************************************************************************** !
 subroutine StrataRead(strata,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   

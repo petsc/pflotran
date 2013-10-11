@@ -123,7 +123,7 @@ end function ObservationCreateFromObservation
 ! ************************************************************************** !
 subroutine ObservationRead(observation,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   

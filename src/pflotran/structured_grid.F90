@@ -334,7 +334,7 @@ end subroutine StructGridCreateVecFromDM
 subroutine StructGridReadDXYZ(structured_grid,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   
@@ -384,7 +384,7 @@ end subroutine StructGridReadDXYZ
 ! ************************************************************************** !
 subroutine StructGridReadArray(a,n,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   
   implicit none
@@ -447,7 +447,7 @@ end subroutine StructGridReadArray
 ! ************************************************************************** !
 subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   

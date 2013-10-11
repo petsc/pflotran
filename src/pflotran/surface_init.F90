@@ -37,7 +37,7 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
   use Option_module
   use Discretization_module
   use Grid_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Patch_module
   use Level_module
@@ -111,7 +111,7 @@ end subroutine SurfaceInitReadRequiredCards
 subroutine SurfaceInit(surf_realization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Surface_Material_module
   use Surface_Realization_class
@@ -202,7 +202,7 @@ end subroutine SurfaceInit
 subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Surface_Material_module
   use Surface_Realization_class

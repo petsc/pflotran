@@ -1705,7 +1705,7 @@ end subroutine OutputSurfaceAvegVars
 subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Variables_module
 

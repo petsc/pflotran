@@ -102,7 +102,7 @@ subroutine CLM_CN_Read(this,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   use Units_module, only : UnitsConvertToInternal
   

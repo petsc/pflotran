@@ -30,7 +30,7 @@ contains
 subroutine DatabaseRead(reaction,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   
   use Surface_Complexation_Aux_module
@@ -755,7 +755,7 @@ subroutine BasisInit(reaction,option)
   use Option_module
   use String_module
   use Utility_module
-  use Input_module
+  use Input_Aux_module
   
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module

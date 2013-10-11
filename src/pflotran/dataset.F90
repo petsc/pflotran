@@ -36,7 +36,7 @@ contains
 ! ************************************************************************** !
 subroutine DatasetRead(input,dataset,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   

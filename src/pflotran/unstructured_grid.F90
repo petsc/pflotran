@@ -63,7 +63,7 @@ contains
 ! ************************************************************************** !
 subroutine UGridRead(unstructured_grid,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -292,7 +292,7 @@ end subroutine UGridRead
 #ifdef SURFACE_FLOW
 subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -590,7 +590,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
 
   implicit none
@@ -870,7 +870,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
 
   implicit none
@@ -1149,7 +1149,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use HDF5_Aux_module
 

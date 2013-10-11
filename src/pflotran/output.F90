@@ -687,7 +687,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
   use Patch_module
   use Level_module
   use Grid_module
-  use Input_module
+  use Input_Aux_module
 
   class(realization_base_type) :: realization_base
   PetscInt :: istep

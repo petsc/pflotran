@@ -95,7 +95,7 @@ subroutine RSandboxRead1(input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -118,7 +118,7 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -180,7 +180,7 @@ subroutine RSandboxSkipInput(input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none

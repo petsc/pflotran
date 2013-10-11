@@ -25,7 +25,7 @@ contains
 subroutine SurfSubsurfaceInitialize(simulation_base,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Timestepper_Base_class
   use Simulation_Base_class
   
@@ -780,7 +780,7 @@ end subroutine SurfSubsurfCreateSurfVecs
 subroutine SurfSubsurfInitCommandLineSettings(option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   

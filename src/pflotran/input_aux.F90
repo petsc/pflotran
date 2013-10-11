@@ -1,4 +1,4 @@
-module Input_module
+module Input_Aux_module
 
   use Option_module
 
@@ -1714,4 +1714,4 @@ subroutine InputDestroy(input)
 end subroutine InputDestroy
 #endif
 
-end module Input_module
+end module Input_Aux_module

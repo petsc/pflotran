@@ -68,7 +68,7 @@ end function GeometryCreatePolygonalVolume
 ! ************************************************************************** !
 subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
 
   implicit none

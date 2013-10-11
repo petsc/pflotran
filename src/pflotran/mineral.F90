@@ -36,7 +36,7 @@ subroutine MineralRead(mineral,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -81,7 +81,7 @@ end subroutine MineralRead
 ! ************************************************************************** !
 subroutine MineralReadKinetics(mineral,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Option_module
   use Units_module
@@ -400,7 +400,7 @@ end subroutine MineralReadKinetics
 subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
                                    option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Option_module
   use Database_Aux_module
@@ -465,7 +465,7 @@ end subroutine MineralReadFromDatabase
 subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module  
   

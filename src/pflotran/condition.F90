@@ -369,7 +369,7 @@ end function FlowSubConditionCreate
 ! ************************************************************************** !
 function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   
   implicit none
@@ -448,7 +448,7 @@ end subroutine FlowSubConditionVerify
 subroutine FlowConditionRead(condition,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Logging_module
   use Time_Storage_module
@@ -1188,7 +1188,7 @@ end subroutine FlowConditionRead
 subroutine FlowConditionGeneralRead(condition,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Logging_module
   use Time_Storage_module
@@ -1539,7 +1539,7 @@ end subroutine FlowConditionGeneralRead
 subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Logging_module  
   use Units_module
@@ -1717,7 +1717,7 @@ end subroutine TranConditionRead
 ! ************************************************************************** !
 subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   use Logging_module

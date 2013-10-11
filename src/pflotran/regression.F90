@@ -97,7 +97,7 @@ end function RegressionVariableCreate
 subroutine RegressionRead(regression,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
 

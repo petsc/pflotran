@@ -49,7 +49,7 @@ subroutine Init(simulation)
   use Logging_module  
   use Database_module
   use Database_hpt_module
-  use Input_module
+  use Input_Aux_module
   use Condition_Control_module
   
   use Flash2_module
@@ -1229,7 +1229,7 @@ end subroutine Init
 subroutine InitReadInputFilenames(option,filenames)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
 
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
@@ -1298,7 +1298,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use Option_module
   use Discretization_module
   use Grid_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Patch_module
   use Level_module
@@ -1472,7 +1472,7 @@ subroutine InitReadInput(simulation)
   use Reaction_module
   use Reaction_Aux_module
   use Discretization_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Units_module
   use Uniform_Velocity_module
@@ -3241,7 +3241,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   use Patch_module
   use Discretization_module
   use Logging_module
-  use Input_module
+  use Input_Aux_module
 
   use HDF5_module
   
@@ -3329,7 +3329,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   use Patch_module
   use Discretization_module
   use Logging_module
-  use Input_module
+  use Input_Aux_module
   use Material_module
   use HDF5_module
   

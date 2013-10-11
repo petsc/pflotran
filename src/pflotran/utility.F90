@@ -827,7 +827,7 @@ end function InverseErf
 ! ************************************************************************** !
 subroutine UtilityReadIntArray(array,array_size,comment,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -978,7 +978,7 @@ end subroutine UtilityReadIntArray
 ! ************************************************************************** !
 subroutine UtilityReadRealArray(array,array_size,comment,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
