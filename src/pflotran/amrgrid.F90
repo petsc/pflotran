@@ -545,7 +545,7 @@ end subroutine AMRGridComputeGeometryInformation
 
 subroutine AMRGridReadDXYZ(amrgrid, input, option)
   use Option_module
-  use Input_module
+  use Input_Aux_module
 
   implicit none
 
@@ -621,7 +621,7 @@ end subroutine AMRGridReadDXYZ
 ! ************************************************************************** !
 subroutine AMRGridReadDXDYDZ(array,ndim,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   

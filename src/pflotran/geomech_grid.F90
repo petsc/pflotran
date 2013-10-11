@@ -1037,7 +1037,7 @@ end subroutine GeomechGridCopyVecToIntegerArray
 ! ************************************************************************** !
 subroutine GeomechSubsurfMapFromFilename(grid,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   
@@ -1063,7 +1063,7 @@ end subroutine GeomechSubsurfMapFromFilename
 ! ************************************************************************** !
 subroutine GeomechSubsurfMapFromFileId(grid,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   use Logging_module

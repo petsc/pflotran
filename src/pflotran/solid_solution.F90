@@ -29,7 +29,7 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -181,7 +181,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   use Mineral_module
   

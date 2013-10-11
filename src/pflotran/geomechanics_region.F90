@@ -199,7 +199,7 @@ end subroutine GeomechRegionAddToList
 ! ************************************************************************** !
 subroutine GeomechRegionRead(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -265,7 +265,7 @@ end subroutine GeomechRegionRead
 ! ************************************************************************** !
 subroutine GeomechRegionReadFromFilename(region,option,filename)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   
@@ -291,7 +291,7 @@ end subroutine GeomechRegionReadFromFilename
 ! ************************************************************************** !
 subroutine GeomechRegionReadFromFileId(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   use Logging_module

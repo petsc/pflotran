@@ -76,7 +76,7 @@ subroutine ExampleRead(this,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Units_module, only : UnitsConvertToInternal
   
   implicit none

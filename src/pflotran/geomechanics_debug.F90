@@ -67,7 +67,7 @@ end function GeomechDebugCreate
 subroutine GeomechDebugRead(debug,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
     

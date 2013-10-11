@@ -217,7 +217,7 @@ end subroutine GeomechSubConditionVerify
 subroutine GeomechConditionRead(condition,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Logging_module 
   use Condition_module

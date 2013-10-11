@@ -104,7 +104,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   use Reaction_Aux_module
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Database_Aux_module
   use Immobile_Aux_module
   
@@ -238,7 +238,7 @@ subroutine CLM_CN_Read(this,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none

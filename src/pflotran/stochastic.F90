@@ -26,7 +26,7 @@ subroutine StochasticInit(stochastic,option)
 
   use Simulation_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
 
@@ -141,7 +141,7 @@ end subroutine StochasticInit
 subroutine StochasticReadCardFromInput(stochastic,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Stochastic_Aux_module
 
   implicit none

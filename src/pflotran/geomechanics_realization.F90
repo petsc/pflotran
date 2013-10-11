@@ -9,7 +9,7 @@ module Geomechanics_Realization_module
   use Geomechanics_Debug_module
   use Geomechanics_Region_module
   use Geomechanics_Condition_module
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Output_Aux_module
   use Waypoint_module

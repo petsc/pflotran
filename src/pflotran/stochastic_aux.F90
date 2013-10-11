@@ -57,7 +57,7 @@ end function StochasticCreate
 subroutine StochasticRead(stochastic,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
     

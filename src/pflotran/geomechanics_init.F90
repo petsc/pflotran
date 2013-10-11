@@ -36,7 +36,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Patch_module
   use Option_module
@@ -80,7 +80,7 @@ end subroutine GeomechicsInitReadRequiredCards
 subroutine GeomechanicsInit(geomech_realization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -174,7 +174,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                                      input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
