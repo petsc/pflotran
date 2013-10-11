@@ -29,7 +29,7 @@ module Realization_Base_class
     type(option_type), pointer :: option
     type(input_type), pointer :: input
     type(field_type), pointer :: field
-    type(flow_debug_type), pointer :: debug
+    type(debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
     type(mass_transfer_type), pointer :: flow_mass_transfer_list
     type(mass_transfer_type), pointer :: rt_mass_transfer_list
@@ -68,7 +68,7 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%input)
   realization_base%discretization => DiscretizationCreate()
   realization_base%field => FieldCreate()
-  realization_base%debug => DebugCreateFlow()
+  realization_base%debug => DebugCreate()
   realization_base%output_option => OutputOptionCreate()
 
   realization_base%level_list => LevelCreateList()

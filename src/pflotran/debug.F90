@@ -8,7 +8,7 @@ module Debug_module
   
 #include "finclude/petscsys.h"
 
-  type, public :: flow_debug_type
+  type, public :: debug_type
     PetscBool :: vecview_residual
     PetscBool :: vecview_solution
     PetscBool :: matview_Jacobian
@@ -20,41 +20,26 @@ module Debug_module
     PetscBool :: print_couplers
     character(len=MAXSTRINGLENGTH) :: coupler_string
     PetscBool :: print_waypoints
-  end type flow_debug_type
-  
-  type, public :: tran_debug_type
-    PetscBool :: vecview_residual
-    PetscBool :: vecview_solution
-    PetscBool :: matview_Jacobian
-    PetscBool :: matview_Jacobian_detailed
-    PetscBool :: norm_Jacobian
-    PetscBool :: print_couplers 
-    PetscBool :: print_waypoints   
-  end type tran_debug_type
+  end type debug_type
 
-  interface DebugRead
-    module procedure DebugReadFlow
-  end interface DebugRead
-  
-  
-  public :: DebugCreateFlow, DebugCreateTran, DebugRead
+  public :: DebugCreate, DebugRead
   
 contains
 
 ! ************************************************************************** !
 !
-! DebugCreateFlow: Create object that stores debugging options for PFLOW
+! DebugCreate: Create object that stores debugging options for PFLOW
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-function DebugCreateFlow()
+function DebugCreate()
 
   implicit none
   
-  type(flow_debug_type), pointer :: DebugCreateFlow
+  type(debug_type), pointer :: DebugCreate
   
-  type(flow_debug_type), pointer :: debug
+  type(debug_type), pointer :: debug
   
   allocate(debug)
   
@@ -70,54 +55,25 @@ function DebugCreateFlow()
   debug%coupler_string = ''
   debug%print_waypoints = PETSC_FALSE
 
-  DebugCreateFlow => debug
+  DebugCreate => debug
 
-end function DebugCreateFlow
+end function DebugCreate
 
 ! ************************************************************************** !
 !
-! DebugCreateTran: Create object that stores debugging options for PFLOW
+! DebugRead: Reads debugging data from the input file
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-function DebugCreateTran()
-
-  implicit none
-  
-  type(tran_debug_type), pointer :: DebugCreateTran
-  
-  type(tran_debug_type), pointer :: debug
-  
-  allocate(debug)
-  debug%vecview_residual = PETSC_FALSE
-  debug%vecview_solution = PETSC_FALSE
-  debug%matview_Jacobian = PETSC_FALSE
-  debug%matview_Jacobian_detailed = PETSC_FALSE
-  debug%norm_Jacobian = PETSC_FALSE
-  
-  debug%print_couplers = PETSC_FALSE
-  debug%print_waypoints = PETSC_FALSE
-
-  DebugCreateTran => debug
-
-end function DebugCreateTran
-
-! ************************************************************************** !
-!
-! DebugReadFlow: Reads debugging data from the input file
-! author: Glenn Hammond
-! date: 12/21/07
-!
-! ************************************************************************** !
-subroutine DebugReadFlow(debug,input,option)
+subroutine DebugRead(debug,input,option)
 
   use Option_module
   use Input_Aux_module
   
   implicit none
     
-  type(flow_debug_type) :: debug
+  type(debug_type) :: debug
   type(input_type) :: input
   type(option_type) :: option
   
@@ -160,6 +116,6 @@ subroutine DebugReadFlow(debug,input,option)
   
   enddo  
 
-end subroutine DebugReadFlow
+end subroutine DebugRead
 
 end module Debug_module

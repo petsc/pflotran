@@ -697,7 +697,7 @@ subroutine OutputPrintCouplers(realization_base,istep)
   type(level_type), pointer :: cur_level
   type(field_type), pointer :: field
   type(coupler_type), pointer :: coupler
-  type(flow_debug_type), pointer :: flow_debug
+  type(debug_type), pointer :: flow_debug
   type(grid_type), pointer :: grid
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: string, coupler_string

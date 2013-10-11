@@ -110,7 +110,7 @@ function SurfRealizCreate(option)
   nullify(surf_realization%input)
 
   surf_realization%surf_field => SurfaceFieldCreate()
-  surf_realization%debug => DebugCreateFlow()
+  surf_realization%debug => DebugCreate()
   surf_realization%output_option => OutputOptionCreate()
   surf_realization%level_list => LevelCreateList()
 

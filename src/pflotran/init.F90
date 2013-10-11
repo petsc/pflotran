@@ -110,7 +110,7 @@ subroutine Init(simulation)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(flow_debug_type), pointer :: debug
+  type(debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   type(input_type), pointer :: input
   type(output_variable_type), pointer :: output_variable
