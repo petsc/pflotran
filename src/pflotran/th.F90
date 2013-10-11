@@ -79,25 +79,18 @@ end subroutine THTimeCut
 subroutine THSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call THSetPlotVariables(realization)
@@ -609,28 +602,21 @@ end subroutine THCheckUpdatePost
 subroutine THComputeMassBalance(realization, mass_balance)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
    
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   mass_balance = 0.d0
 
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THComputeMassBalancePatch(realization, mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THComputeMassBalancePatch(realization, mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine THComputeMassBalance    
@@ -804,25 +790,18 @@ end subroutine THUpdateMassBalancePatch
 subroutine THUpdateAuxVars(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THUpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THUpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine THUpdateAuxVars
@@ -1082,7 +1061,6 @@ subroutine THUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   
   implicit none
@@ -1090,7 +1068,6 @@ subroutine THUpdateSolution(realization)
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -1099,17 +1076,12 @@ subroutine THUpdateSolution(realization)
     
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THUpdateSolutionPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine THUpdateSolution
@@ -1147,25 +1119,18 @@ end subroutine THUpdateSolutionPatch
 subroutine THUpdateFixedAccumulation(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine THUpdateFixedAccumulation
@@ -3041,7 +3006,6 @@ end subroutine THBCFlux
 subroutine THResidual(snes,xx,r,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -3057,7 +3021,6 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
@@ -3076,36 +3039,13 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  ! Compute internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THResidualPatch(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
-
-#if 0
-  ! Now make a second pass and compute everything that isn't an internal
-  ! or boundary flux term
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-#endif
 
 end subroutine THResidual
 
@@ -3608,7 +3548,6 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
 
@@ -3624,7 +3563,6 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type),  pointer :: option
@@ -3642,19 +3580,14 @@ subroutine THJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call THJacobianPatch(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call THJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
-
+  
   if (realization%debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'THjacobian.out', &
                               viewer,ierr)
@@ -4289,7 +4222,6 @@ end subroutine THMaxChange
 subroutine THResidualToMass(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -4302,7 +4234,6 @@ subroutine THResidualToMass(realization)
   type(realization_type) :: realization
   
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -4317,33 +4248,28 @@ subroutine THResidualToMass(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
+    if (.not.associated(cur_patch)) exit
 
-      grid => cur_patch%grid
-      aux_vars => cur_patch%aux%TH%aux_vars
+    grid => cur_patch%grid
+    aux_vars => cur_patch%aux%TH%aux_vars
 
-      call VecGetArrayF90(field%flow_ts_mass_balance,mass_balance_p, ierr)
+    call VecGetArrayF90(field%flow_ts_mass_balance,mass_balance_p, ierr)
   
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        if (cur_patch%imat(ghosted_id) <= 0) cycle
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (cur_patch%imat(ghosted_id) <= 0) cycle
         
-        istart = (ghosted_id-1)*option%nflowdof+1
-        mass_balance_p(istart) = mass_balance_p(istart)/ &
-                                 global_aux_vars(ghosted_id)%den(1)* &
-                                 global_aux_vars(ghosted_id)%den_kg(1)
-      enddo
-
-      call VecRestoreArrayF90(field%flow_ts_mass_balance,mass_balance_p, ierr)
-
-      cur_patch => cur_patch%next
+      istart = (ghosted_id-1)*option%nflowdof+1
+      mass_balance_p(istart) = mass_balance_p(istart)/ &
+                                global_aux_vars(ghosted_id)%den(1)* &
+                                global_aux_vars(ghosted_id)%den_kg(1)
     enddo
-    cur_level => cur_level%next
+
+    call VecRestoreArrayF90(field%flow_ts_mass_balance,mass_balance_p, ierr)
+
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine THResidualToMass

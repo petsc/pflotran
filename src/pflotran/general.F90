@@ -48,7 +48,6 @@ subroutine GeneralTimeCut(realization)
   use Realization_class
   use Option_module
   use Field_module
-  use Level_module
   use Patch_module
  
   implicit none
@@ -56,7 +55,6 @@ subroutine GeneralTimeCut(realization)
   type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   
@@ -69,19 +67,13 @@ subroutine GeneralTimeCut(realization)
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
   call GeneralInitializeTimestep(realization)  
   
-  ! loop over patches
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralTimeCutPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo  
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralTimeCutPatch(realization)
+    cur_patch => cur_patch%next
+  enddo
  
 end subroutine GeneralTimeCut
 
@@ -139,25 +131,18 @@ end subroutine GeneralTimeCutPatch
 subroutine GeneralSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
   
   call GeneralSetPlotVariables(realization)  
@@ -291,28 +276,21 @@ end subroutine GeneralSetupPatch
 subroutine GeneralComputeMassBalance(realization,mass_balance)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   mass_balance = 0.d0
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralComputeMassBalancePatch(realization,mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralComputeMassBalance
@@ -457,26 +435,19 @@ end subroutine GeneralUpdateMassBalancePatch
 subroutine GeneralUpdateAuxVars(realization,update_state)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscBool :: update_state
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch             
-      call GeneralUpdateAuxVarsPatch(realization,update_state)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch             
+    call GeneralUpdateAuxVarsPatch(realization,update_state)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralUpdateAuxVars
@@ -646,7 +617,6 @@ subroutine GeneralUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   use Discretization_module
   
@@ -655,7 +625,6 @@ subroutine GeneralUpdateSolution(realization)
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   
@@ -663,17 +632,12 @@ subroutine GeneralUpdateSolution(realization)
   
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralUpdateSolutionPatch(realization)
+    cur_patch => cur_patch%next
   enddo
   
   ! update ghosted iphase_loc values (must come after 
@@ -748,25 +712,18 @@ end subroutine GeneralUpdateSolutionPatch
 subroutine GeneralUpdateFixedAccum(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralUpdateFixedAccum
@@ -1875,7 +1832,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   use Realization_class
   use Field_module
   use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
 
@@ -1890,7 +1846,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
@@ -2330,7 +2285,6 @@ end subroutine GeneralResidualPatch2
 subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -2347,7 +2301,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
@@ -3342,27 +3295,20 @@ end subroutine GeneralSetPlotVariables
 subroutine GeneralDestroy(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   implicit none
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralDestroyPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralDestroyPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralDestroy

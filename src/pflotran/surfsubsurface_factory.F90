@@ -216,7 +216,6 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Surface_Realization_class
@@ -236,7 +235,6 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   type(option_type),pointer            :: option
   type(unstructured_grid_type),pointer :: subsurf_grid
   type(unstructured_grid_type),pointer :: surf_grid
-  type(level_type),pointer             :: cur_level
   type(patch_type),pointer             :: cur_patch
   type(region_type),pointer            :: cur_region,top_region
   type(region_type),pointer            :: patch_region
@@ -275,25 +273,20 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   surf_grid    => surf_realization%discretization%grid%unstructured_grid
 
   ! localize the regions on each patch
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_region => cur_patch%regions%first
-        do
-          if (.not.associated(cur_region)) exit
-          if (StringCompare(cur_region%name,'top')) then
-            found = PETSC_TRUE
-            top_region => cur_region
-            exit
-          endif
-          cur_region => cur_region%next
-        enddo
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    cur_region => cur_patch%regions%first
+      do
+        if (.not.associated(cur_region)) exit
+        if (StringCompare(cur_region%name,'top')) then
+          found = PETSC_TRUE
+          top_region => cur_region
+          exit
+        endif
+        cur_region => cur_region%next
+      enddo
+    cur_patch => cur_patch%next
   enddo
 
   if (found.eqv.PETSC_FALSE) then

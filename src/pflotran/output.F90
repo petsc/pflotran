@@ -685,7 +685,6 @@ subroutine OutputPrintCouplers(realization_base,istep)
   use Debug_module
   use Field_module
   use Patch_module
-  use Level_module
   use Grid_module
   use Input_Aux_module
 
@@ -694,7 +693,6 @@ subroutine OutputPrintCouplers(realization_base,istep)
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: cur_patch
-  type(level_type), pointer :: cur_level
   type(field_type), pointer :: field
   type(coupler_type), pointer :: coupler
   type(debug_type), pointer :: flow_debug
@@ -732,28 +730,23 @@ subroutine OutputPrintCouplers(realization_base,istep)
         call printErrMsg(option)
     end select
     
-    cur_level => realization_base%level_list%first
-    do 
-      if (.not.associated(cur_level)) exit
-      cur_patch => cur_level%patch_list%first
-      do
-        if (.not.associated(cur_patch)) exit
-        grid => cur_patch%grid
-        coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
-        call VecZeroEntries(field%work,ierr)
-        call VecGetArrayF90(field%work,vec_ptr,ierr)
-        if (associated(coupler)) then
-          cur_connection_set => coupler%connection_set
-          do iconn = 1, cur_connection_set%num_connections
-            local_id = cur_connection_set%id_dn(iconn)
-            if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
-            vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvar,iconn)
-          enddo
-        endif
-        call VecRestoreArrayF90(field%work,vec_ptr,ierr)
-        cur_patch => cur_patch%next
-      enddo
-      cur_level => cur_level%next
+    cur_patch => realization_base%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
+      call VecZeroEntries(field%work,ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      if (associated(coupler)) then
+        cur_connection_set => coupler%connection_set
+        do iconn = 1, cur_connection_set%num_connections
+          local_id = cur_connection_set%id_dn(iconn)
+          if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+          vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvar,iconn)
+        enddo
+      endif
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      cur_patch => cur_patch%next
     enddo
 
     if (istep > 0) then

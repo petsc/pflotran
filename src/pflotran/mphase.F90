@@ -134,26 +134,18 @@ end subroutine init_span_wanger
 subroutine MphaseSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
    
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
- 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call MphaseSetPlotVariables(realization)
@@ -386,30 +378,23 @@ end subroutine MphaseSetupPatch
 subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_trapped(realization%option%nphase)
 
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   mass_balance = 0.d0
   mass_trapped = 0.d0
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MphaseComputeMassBalance
@@ -635,31 +620,24 @@ end subroutine MphaseUpdateMassBalancePatch
 function MphaseInitGuessCheck(realization)
  
   use Realization_class
-  use Level_module
   use Patch_module
   use Option_module
   
   PetscInt ::  MphaseInitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr    
 
   option => realization%option
-  cur_level => realization%level_list%first
   ipass = 1
+  cur_patch => realization%patch_list%first
   do while(ipass > 0)
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do while(ipass > 0)
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ipass = MphaseInitGuessCheckPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    ipass = MphaseInitGuessCheckPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call MPI_Barrier(option%mycomm,ierr)
@@ -791,13 +769,11 @@ end subroutine MPhaseUpdateReasonPatch
 subroutine MPhaseUpdateReason(reason, realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   implicit none
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
@@ -805,23 +781,17 @@ subroutine MPhaseUpdateReason(reason, realization)
   PetscErrorCode :: ierr
 
   re = 1
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MPhaseUpdateReasonPatch(re, realization)
-        if(re<=0)then
-           nullify(cur_level)
-           exit 
-        endif
-        cur_patch => cur_patch%next
-     enddo
-    if (.not.associated(cur_level)) exit 
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MPhaseUpdateReasonPatch(re, realization)
+    if (re<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
   enddo
+
 
   call MPI_Barrier(realization%option%mycomm,ierr)
   
@@ -909,25 +879,18 @@ end subroutine MPhaseUpdateReason
 subroutine MphaseUpdateAuxVars(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseUpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseUpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MphaseUpdateAuxVars
@@ -1189,7 +1152,6 @@ subroutine MphaseUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   
   implicit none
@@ -1197,7 +1159,6 @@ subroutine MphaseUpdateSolution(realization)
   type(realization_type) :: realization
   
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   PetscErrorCode :: ierr
@@ -1208,17 +1169,12 @@ subroutine MphaseUpdateSolution(realization)
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
   call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do 
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseUpdateSolutionPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 ! make room for hysteric s-Pc-kr
@@ -1259,25 +1215,18 @@ end subroutine MphaseUpdateSolutionPatch
 subroutine MphaseUpdateFixedAccumulation(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MphaseUpdateFixedAccumulation
@@ -2065,7 +2014,6 @@ end subroutine MphaseBCFlux
 subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -2084,7 +2032,6 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange, i  
 
@@ -2108,24 +2055,19 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
 
   ! Variable switching-------------------------------------------------
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
-      call MPI_Allreduce(ichange,i,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                         MPI_MIN,option%mycomm,ierr)
-      ichange = i 
-      if (ichange < 0) then
-        call SNESSetFunctionDomainError(snes,ierr) 
-        return
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
+    call MPI_Allreduce(ichange,i,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                        MPI_MIN,option%mycomm,ierr)
+    ichange = i 
+    if (ichange < 0) then
+      call SNESSetFunctionDomainError(snes,ierr) 
+      return
+    endif
+    cur_patch => cur_patch%next
   enddo
 ! end switching ------------------------------------------------------
 
@@ -2140,17 +2082,12 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseResidualPatch(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MphaseResidual
@@ -3141,7 +3078,6 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
 
@@ -3157,7 +3093,6 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
@@ -3175,17 +3110,12 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseJacobianPatch(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
   if (realization%debug%matview_Jacobian) then
@@ -3924,7 +3854,6 @@ end subroutine MphaseCreateZeroArray
 subroutine MphaseMaxChange(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Field_module
   use Option_module
@@ -3936,7 +3865,6 @@ subroutine MphaseMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dcmax, dsmax, max_c, max_S  
   PetscErrorCode :: ierr 
@@ -3944,7 +3872,6 @@ subroutine MphaseMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
   option%dpmax=0.D0
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
@@ -3956,18 +3883,14 @@ subroutine MphaseMaxChange(realization)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
   call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
 
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MphaseMaxChangePatch(realization, max_c, max_s)
-      if(dcmax <max_c)  dcmax =max_c
-      if(dsmax <max_s)  dsmax =max_s
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MphaseMaxChangePatch(realization, max_c, max_s)
+    if(dcmax <max_c)  dcmax =max_c
+    if(dsmax <max_s)  dsmax =max_s
+    cur_patch => cur_patch%next
   enddo
 
   if(option%mycommsize >1)then

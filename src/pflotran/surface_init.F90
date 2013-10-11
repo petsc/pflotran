@@ -40,7 +40,6 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
   use Input_Aux_module
   use String_module
   use Patch_module
-  use Level_module
 
   use Surface_Realization_class
   use Surface_Auxiliary_module
@@ -53,7 +52,6 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
   character(len=MAXSTRINGLENGTH) :: string
   
   type(patch_type), pointer   :: patch
-  type(level_type), pointer   :: level
   type(grid_type), pointer    :: grid
   type(option_type), pointer  :: option
   type(input_type), pointer   :: input
@@ -88,12 +86,10 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
       patch => PatchCreate()
       patch%grid => discretization%grid
       patch%surf_or_subsurf_flag = SURFACE
-      if (.not.associated(surf_realization%level_list)) then
-        surf_realization%level_list => LevelCreateList()
+      if (.not.associated(surf_realization%patch_list)) then
+        surf_realization%patch_list => PatchCreateList()
       endif
-      level => LevelCreate()
-      call LevelAddToList(level,surf_realization%level_list)
-      call PatchAddToList(patch,level%patch_list)
+      call PatchAddToList(patch,surf_realization%patch_list)
       surf_realization%patch => patch
   end select
     
@@ -814,7 +810,6 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   use Grid_module
   use Field_module
   use Patch_module
-  use Level_module
   use Surface_Field_module
   use Surface_Material_module
   
@@ -839,7 +834,6 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   type(surface_field_type), pointer :: surf_field
   type(strata_type), pointer :: strata
   type(patch_type), pointer :: patch  
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   type(surface_material_property_type), pointer :: surf_material_property
@@ -852,72 +846,62 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   surf_field => surf_realization%surf_field
 
   ! loop over all patches and allocation material id arrays
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      if (.not.associated(cur_patch%imat)) then
-        allocate(cur_patch%imat(cur_patch%grid%ngmax))
-        ! initialize to "unset"
-        cur_patch%imat = -999
-        ! also allocate saturation function id
-        allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
-        cur_patch%sat_func_id = -999
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    if (.not.associated(cur_patch%imat)) then
+      allocate(cur_patch%imat(cur_patch%grid%ngmax))
+      ! initialize to "unset"
+      cur_patch%imat = -999
+      ! also allocate saturation function id
+      allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
+      cur_patch%sat_func_id = -999
+    endif
+    cur_patch => cur_patch%next
   enddo
 
   ! if material ids are set based on region, as opposed to being read in
   ! we must communicate the ghosted ids.  This flag toggles this operation.
   update_ghosted_material_ids = PETSC_FALSE
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
+    strata => cur_patch%strata%first
     do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-      strata => cur_patch%strata%first
-      do
-        if (.not.associated(strata)) exit
-        ! Read in cell by cell material ids if they exist
-        if (.not.associated(strata%region) .and. strata%active) then
-          option%io_buffer = 'Reading of material prop from file for' // &
-            ' surface flow is not implemented.'
-          call printErrMsgByRank(option)
-          !call readMaterialsFromFile(realization,strata%realization_dependent, &
-          !                           strata%material_property_filename)
-        ! Otherwise, set based on region
-        else if (strata%active) then
-          update_ghosted_material_ids = PETSC_TRUE
-          region => strata%region
-          surf_material_property => strata%surf_material_property
-          if (associated(region)) then
-            istart = 1
-            iend = region%num_cells
-          else
-            istart = 1
-            iend = grid%nlmax
-          endif
-          do icell=istart, iend
-            if (associated(region)) then
-              local_id = region%cell_ids(icell)
-            else
-              local_id = icell
-            endif
-            ghosted_id = grid%nL2G(local_id)
-            cur_patch%imat(ghosted_id) = surf_material_property%id
-          enddo
+      if (.not.associated(strata)) exit
+      ! Read in cell by cell material ids if they exist
+      if (.not.associated(strata%region) .and. strata%active) then
+        option%io_buffer = 'Reading of material prop from file for' // &
+          ' surface flow is not implemented.'
+        call printErrMsgByRank(option)
+        !call readMaterialsFromFile(realization,strata%realization_dependent, &
+        !                           strata%material_property_filename)
+      ! Otherwise, set based on region
+      else if (strata%active) then
+        update_ghosted_material_ids = PETSC_TRUE
+        region => strata%region
+        surf_material_property => strata%surf_material_property
+        if (associated(region)) then
+          istart = 1
+          iend = region%num_cells
+        else
+          istart = 1
+          iend = grid%nlmax
         endif
-        strata => strata%next
-      enddo
-      cur_patch => cur_patch%next
+        do icell=istart, iend
+          if (associated(region)) then
+            local_id = region%cell_ids(icell)
+          else
+            local_id = icell
+          endif
+          ghosted_id = grid%nL2G(local_id)
+          cur_patch%imat(ghosted_id) = surf_material_property%id
+        enddo
+      endif
+      strata => strata%next
     enddo
-    cur_level => cur_level%next
+    cur_patch => cur_patch%next
   enddo
 
   if (update_ghosted_material_ids) then
@@ -928,57 +912,52 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   ! set cell by cell material properties
   ! create null material property for inactive cells
   null_surf_material_property => SurfaceMaterialPropertyCreate()
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
+    if (.not.associated(cur_patch)) exit
 
-      call VecGetArrayF90(surf_field%mannings0,man0_p,ierr)
+    call VecGetArrayF90(surf_field%mannings0,man0_p,ierr)
 
-      do local_id = 1, grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        surf_material_id = cur_patch%imat(ghosted_id)
-        if (surf_material_id == 0) then ! accomodate inactive cells
-          surf_material_property = null_surf_material_property
-        else if ( surf_material_id > 0 .and. &
-                  surf_material_id <= &
-                  size(surf_realization%surf_material_property_array)) then
-          surf_material_property => &
-            surf_realization%surf_material_property_array(surf_material_id)%ptr
-          if (.not.associated(surf_material_property)) then
-            write(dataset_name,*) surf_material_id
-            option%io_buffer = 'No material property for surface material id ' // &
-                               trim(adjustl(dataset_name)) &
-                               //  ' defined in input file.'
-            call printErrMsgByRank(option)
-          endif
-        else if (surf_material_id < -998) then 
-          write(dataset_name,*) grid%nG2A(ghosted_id)
-          option%io_buffer = 'Uninitialized surface material id in patch at cell ' // &
-                             trim(adjustl(dataset_name))
-          call printErrMsgByRank(option)
-        else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
-          write(option%io_buffer,*) surf_material_id
-          option%io_buffer = 'Unmatched surface material id in patch:' // &
-            adjustl(trim(option%io_buffer))
-          call printErrMsgByRank(option)
-        else
-          option%io_buffer = 'Something messed up with surface material ids. ' // &
-            ' Possibly material ids not assigned to all grid cells. ' // &
-            ' Contact Glenn!'
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      surf_material_id = cur_patch%imat(ghosted_id)
+      if (surf_material_id == 0) then ! accomodate inactive cells
+        surf_material_property = null_surf_material_property
+      else if ( surf_material_id > 0 .and. &
+                surf_material_id <= &
+                size(surf_realization%surf_material_property_array)) then
+        surf_material_property => &
+          surf_realization%surf_material_property_array(surf_material_id)%ptr
+        if (.not.associated(surf_material_property)) then
+          write(dataset_name,*) surf_material_id
+          option%io_buffer = 'No material property for surface material id ' // &
+                              trim(adjustl(dataset_name)) &
+                              //  ' defined in input file.'
           call printErrMsgByRank(option)
         endif
-        man0_p(local_id) = surf_material_property%mannings
-      enddo ! local_id - loop
+      else if (surf_material_id < -998) then 
+        write(dataset_name,*) grid%nG2A(ghosted_id)
+        option%io_buffer = 'Uninitialized surface material id in patch at cell ' // &
+                            trim(adjustl(dataset_name))
+        call printErrMsgByRank(option)
+      else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
+        write(option%io_buffer,*) surf_material_id
+        option%io_buffer = 'Unmatched surface material id in patch:' // &
+          adjustl(trim(option%io_buffer))
+        call printErrMsgByRank(option)
+      else
+        option%io_buffer = 'Something messed up with surface material ids. ' // &
+          ' Possibly material ids not assigned to all grid cells. ' // &
+          ' Contact Glenn!'
+        call printErrMsgByRank(option)
+      endif
+      man0_p(local_id) = surf_material_property%mannings
+    enddo ! local_id - loop
 
-      call VecRestoreArrayF90(surf_field%mannings0,man0_p,ierr)
+    call VecRestoreArrayF90(surf_field%mannings0,man0_p,ierr)
       
-      cur_patch => cur_patch%next
-    enddo ! looping over patches
-    cur_level => cur_level%next
-  enddo ! looping over levels
+    cur_patch => cur_patch%next
+  enddo ! looping over patches
   
   call SurfaceMaterialPropertyDestroy(null_surf_material_property)
   nullify(null_surf_material_property)

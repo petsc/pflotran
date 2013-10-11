@@ -8,7 +8,6 @@ module Surface_Realization_class
   use Debug_module
   use Discretization_module
   use Input_Aux_module
-  use Level_module
   use Option_module
   use Patch_module
   use Region_module
@@ -112,7 +111,7 @@ function SurfRealizCreate(option)
   surf_realization%surf_field => SurfaceFieldCreate()
   surf_realization%debug => DebugCreate()
   surf_realization%output_option => OutputOptionCreate()
-  surf_realization%level_list => LevelCreateList()
+  surf_realization%patch_list => PatchCreateList()
 
   nullify(surf_realization%surf_material_properties)
 
@@ -145,39 +144,33 @@ end function SurfRealizCreate
 !!
 !! date: 02/10/12
 ! ************************************************************************** !
-subroutine SurfRealizAddCoupler(surf_relation,coupler)
+subroutine SurfRealizAddCoupler(surf_realization,coupler)
 
   use Coupler_module
 
   implicit none
   
-  type(surface_realization_type) :: surf_relation
+  type(surface_realization_type) :: surf_realization
   type(coupler_type), pointer    :: coupler
   
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
   type(coupler_type), pointer    :: new_coupler
   
-  cur_level => surf_relation%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      ! only add to flow list for now, since they will be split out later
-      new_coupler => CouplerCreate(coupler)
-      select case(coupler%itype)
-        case(BOUNDARY_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
-        case(INITIAL_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
-        case(SRC_SINK_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
-      end select
-      nullify(new_coupler)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    ! only add to flow list for now, since they will be split out later
+    new_coupler => CouplerCreate(coupler)
+    select case(coupler%itype)
+      case(BOUNDARY_COUPLER_TYPE)
+        call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
+      case(INITIAL_COUPLER_TYPE)
+        call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
+      case(SRC_SINK_COUPLER_TYPE)
+        call CouplerAddToList(new_coupler,cur_patch%source_sinks)
+    end select
+    nullify(new_coupler)
+    cur_patch => cur_patch%next
   enddo
 
   call CouplerDestroy(coupler)
@@ -200,21 +193,15 @@ subroutine SurfRealizProcessCouplers(surf_realization)
   implicit none
   
   type(surface_realization_type) :: surf_realization
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
   
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchProcessCouplers(cur_patch,surf_realization%surf_flow_conditions, &
-                                surf_realization%surf_transport_conditions, &
-                                surf_realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchProcessCouplers(cur_patch,surf_realization%surf_flow_conditions, &
+                              surf_realization%surf_transport_conditions, &
+                              surf_realization%option)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfRealizProcessCouplers
@@ -240,7 +227,6 @@ subroutine SurfRealizProcessMatProp(surf_realization)
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
 
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   option => surf_realization%option
@@ -252,21 +238,16 @@ subroutine SurfRealizProcessMatProp(surf_realization)
                                 option)
   ! set up mirrored pointer arrays within patches to saturation functions
   ! and material properties
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_patch%surf_material_properties => surf_realization%surf_material_properties
-      call SurfaceMaterialPropConvertListToArray( &
-                                      cur_patch%surf_material_properties, &
-                                      cur_patch%surf_material_property_array, &
-                                      option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo 
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    cur_patch%surf_material_properties => surf_realization%surf_material_properties
+    call SurfaceMaterialPropConvertListToArray( &
+                                    cur_patch%surf_material_properties, &
+                                    cur_patch%surf_material_property_array, &
+                                    option)
+    cur_patch => cur_patch%next
+  enddo
   
 end subroutine SurfRealizProcessMatProp
 
@@ -291,7 +272,6 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
   
   type(surface_realization_type) :: surf_realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type (region_type), pointer :: cur_region
   type(option_type), pointer :: option
@@ -300,19 +280,14 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
   option => surf_realization%option
 
   ! localize the regions on each patch
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchLocalizeRegions(cur_patch,surf_realization%surf_regions, &
-                                surf_realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchLocalizeRegions(cur_patch,surf_realization%surf_regions, &
+                              surf_realization%option)
+    cur_patch => cur_patch%next
   enddo
-
+ 
 end subroutine SurfRealizLocalizeRegions
 
 
@@ -333,22 +308,16 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
   type(surface_realization_type) :: surf_realization
   type(strata_type), pointer     :: strata
   
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
   type(strata_type), pointer     :: new_strata
   
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      new_strata => StrataCreate(strata)
-      call StrataAddToList(new_strata,cur_patch%strata)
-      nullify(new_strata)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    new_strata => StrataCreate(strata)
+    call StrataAddToList(new_strata,cur_patch%strata)
+    nullify(new_strata)
+    cur_patch => cur_patch%next
   enddo
   
   call StrataDestroy(strata)
@@ -522,19 +491,13 @@ subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
   
   type(surface_realization_type) :: surf_realization
 
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
 
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_patch%surf_field => surf_realization%surf_field
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    cur_patch%surf_field => surf_realization%surf_field
+    cur_patch => cur_patch%next
   enddo
   
 end subroutine SurfRealizPassFieldPtrToPatches
@@ -581,48 +544,37 @@ subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
   type(surface_realization_type) :: surf_realization
   PetscInt                       :: array_id
   
-  type(level_type), pointer         :: cur_level
   type(patch_type), pointer         :: cur_patch
   type(grid_type), pointer          :: grid
   type(surface_field_type), pointer :: surf_field
 
   surf_field => surf_realization%surf_field
 
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-      select case(array_id)
-        case(MATERIAL_ID_ARRAY)
-          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,surf_field%work_loc, &
-                                         grid%ngmax)
-      end select
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
+    select case(array_id)
+      case(MATERIAL_ID_ARRAY)
+        call GridCopyIntegerArrayToVec(grid, cur_patch%imat,surf_field%work_loc, &
+                                        grid%ngmax)
+    end select
+    cur_patch => cur_patch%next
   enddo
   call DiscretizationLocalToLocal(surf_realization%discretization, &
                                   surf_field%work_loc, &
                                   surf_field%work_loc,ONEDOF)
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
+    if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
 
-      select case(array_id)
-        case(MATERIAL_ID_ARRAY)
-          call GridCopyVecToIntegerArray(grid, cur_patch%imat,surf_field%work_loc, &
-                                         grid%ngmax)
-      end select
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    select case(array_id)
+      case(MATERIAL_ID_ARRAY)
+        call GridCopyVecToIntegerArray(grid, cur_patch%imat,surf_field%work_loc, &
+                                        grid%ngmax)
+    end select
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfRealizLocalToLocalWithArray
@@ -703,24 +655,18 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
   
   type(surface_realization_type) :: surf_realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   call FlowConditionUpdate(surf_realization%surf_flow_conditions, &
                            surf_realization%option, &
                            surf_realization%option%time)
 
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchInitAllCouplerAuxVars(cur_patch, &
-                                      surf_realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchInitAllCouplerAuxVars(cur_patch, &
+                                    surf_realization%option)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfRealizInitAllCouplerAuxVars
@@ -771,7 +717,6 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
 
@@ -788,7 +733,6 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   type(option_type), pointer           :: option
   type(unstructured_grid_type),pointer :: subsurf_grid
   type(unstructured_grid_type),pointer :: surf_grid
-  type(level_type), pointer            :: cur_level
   type(patch_type), pointer            :: cur_patch 
   type(region_type), pointer           :: cur_region, top_region
   type(region_type), pointer           :: patch_region
@@ -828,25 +772,20 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   surf_grid    => surf_realization%discretization%grid%unstructured_grid
 
   ! localize the regions on each patch
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_region => cur_patch%regions%first
-        do
-          if (.not.associated(cur_region)) exit
-          if (StringCompare(cur_region%name,'top')) then
-            found = PETSC_TRUE
-            top_region => cur_region
-            exit
-          endif
-          cur_region => cur_region%next
-        enddo
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    cur_region => cur_patch%regions%first
+      do
+        if (.not.associated(cur_region)) exit
+        if (StringCompare(cur_region%name,'top')) then
+          found = PETSC_TRUE
+          top_region => cur_region
+          exit
+        endif
+        cur_region => cur_region%next
+      enddo
+    cur_patch => cur_patch%next
   enddo
 
   if(found.eqv.PETSC_FALSE) then
@@ -1317,7 +1256,7 @@ subroutine SurfRealizDestroy(surf_realization)
   
   call FlowConditionDestroyList(surf_realization%surf_flow_conditions)
   
-  call LevelDestroyList(surf_realization%level_list)
+  call PatchDestroyList(surf_realization%patch_list)
   
   if(associated(surf_realization%debug)) deallocate(surf_realization%debug)
   nullify(surf_realization%debug)

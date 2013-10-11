@@ -22,7 +22,6 @@ module Realization_class
   
   use Reaction_Aux_module
   
-  use Level_module
   use Patch_module
   
   use PFLOTRAN_Constants_module
@@ -567,7 +566,6 @@ subroutine RealizationAddCoupler(realization,coupler)
   type(realization_type) :: realization
   type(coupler_type), pointer :: coupler
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: patch
   
   type(coupler_type), pointer :: new_coupler
@@ -1171,21 +1169,15 @@ subroutine RealizationInitConstraints(realization)
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchInitConstraints(cur_patch,realization%reaction, &
-                                realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo            
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchInitConstraints(cur_patch,realization%reaction, &
+                              realization%option)
+    cur_patch => cur_patch%next
+  enddo
  
 end subroutine RealizationInitConstraints
 
@@ -1204,7 +1196,6 @@ subroutine RealizationPrintCouplers(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(coupler_type), pointer :: cur_coupler
   type(option_type), pointer :: option
@@ -1215,39 +1206,34 @@ subroutine RealizationPrintCouplers(realization)
  
   if (.not.OptionPrintToFile(option)) return
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+
+    cur_coupler => cur_patch%initial_conditions%first
     do
-      if (.not.associated(cur_patch)) exit
-
-      cur_coupler => cur_patch%initial_conditions%first
-      do
-        if (.not.associated(cur_coupler)) exit
-        call RealizationPrintCoupler(cur_coupler,reaction,option)    
-        cur_coupler => cur_coupler%next
-      enddo
-     
-      cur_coupler => cur_patch%boundary_conditions%first
-      do
-        if (.not.associated(cur_coupler)) exit
-        call RealizationPrintCoupler(cur_coupler,reaction,option)    
-        cur_coupler => cur_coupler%next
-      enddo
-     
-      cur_coupler => cur_patch%source_sinks%first
-      do
-        if (.not.associated(cur_coupler)) exit
-        call RealizationPrintCoupler(cur_coupler,reaction,option)    
-        cur_coupler => cur_coupler%next
-      enddo
-
-      cur_patch => cur_patch%next
+      if (.not.associated(cur_coupler)) exit
+      call RealizationPrintCoupler(cur_coupler,reaction,option)    
+      cur_coupler => cur_coupler%next
     enddo
-    cur_level => cur_level%next
-  enddo            
- 
+     
+    cur_coupler => cur_patch%boundary_conditions%first
+    do
+      if (.not.associated(cur_coupler)) exit
+      call RealizationPrintCoupler(cur_coupler,reaction,option)    
+      cur_coupler => cur_coupler%next
+    enddo
+     
+    cur_coupler => cur_patch%source_sinks%first
+    do
+      if (.not.associated(cur_coupler)) exit
+      call RealizationPrintCoupler(cur_coupler,reaction,option)    
+      cur_coupler => cur_coupler%next
+    enddo
+
+    cur_patch => cur_patch%next
+  enddo
+    
 end subroutine RealizationPrintCouplers
 
 ! ************************************************************************** !
@@ -1679,7 +1665,6 @@ subroutine RealizationUpdateProperties(realization)
   type(realization_type) :: realization
   
   type(option_type), pointer :: option  
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: min_value  
   PetscInt :: ivalue
@@ -2470,7 +2455,7 @@ subroutine RealizationDestroy(realization)
   call TranConditionDestroyList(realization%transport_conditions)
   call TranConstraintDestroyList(realization%transport_constraints)
 
-  call LevelDestroyList(realization%level_list)
+  call PatchDestroyList(realization%patch_list)
 
   if (associated(realization%debug)) deallocate(realization%debug)
   nullify(realization%debug)

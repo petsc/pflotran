@@ -187,7 +187,6 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -337,7 +336,6 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -455,7 +453,6 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -561,7 +558,6 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -902,7 +898,6 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module

@@ -1,6 +1,5 @@
 module Realization_Base_class
 
-  use Level_module
   use Patch_module
 
   use Discretization_module
@@ -23,7 +22,7 @@ module Realization_Base_class
 
     PetscInt :: id
     type(discretization_type), pointer :: discretization
-    type(level_list_type), pointer :: level_list
+    type(patch_list_type), pointer :: patch_list
     type(patch_type), pointer :: patch
 
     type(option_type), pointer :: option
@@ -71,7 +70,7 @@ subroutine RealizationBaseInit(realization_base,option)
   realization_base%debug => DebugCreate()
   realization_base%output_option => OutputOptionCreate()
 
-  realization_base%level_list => LevelCreateList()
+  realization_base%patch_list => PatchCreateList()
 
   nullify(realization_base%reaction)
 

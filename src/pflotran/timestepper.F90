@@ -2970,7 +2970,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   use Solver_module
   use Field_module
   use Grid_module
-  use Level_module
   use Patch_module
   use Global_module  
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
@@ -3011,7 +3010,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
   type(patch_type), pointer :: cur_patch
-  type(level_type), pointer :: cur_level
 
   option => realization%option
   discretization => realization%discretization
@@ -3240,7 +3238,6 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   use Solver_module
   use Field_module
   use Grid_module
-  use Level_module
   use Patch_module
   use Global_module  
 
@@ -3745,7 +3742,6 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   use Field_module
   
   use Patch_module
-  use Level_module
   use Grid_module
     
   use Global_module, only : GlobalUpdateDenAndSat
@@ -3775,7 +3771,6 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
   type(patch_type), pointer :: cur_patch
-  type(level_type), pointer :: cur_level
 
   option => realization%option
   discretization => realization%discretization
