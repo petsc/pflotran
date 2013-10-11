@@ -1513,6 +1513,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   use Dataset_module
   use Dataset_Map_class
   use Dataset_Base_class
+  use Dataset_Ascii_class
 
   implicit none
 
@@ -1535,6 +1536,7 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   type(flow_sub_condition_type) :: flow_sub_condition
 
   class(dataset_map_type), pointer :: dataset_map
+  class(dataset_ascii_type), pointer :: dataset_ascii
 
   grid => patch%grid
   
@@ -1544,37 +1546,18 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
     call printErrMsg(option)
   endif
   
-  !flow_sub_condition =>
-
   if(option%iflowmode/=RICHARDS_MODE.and.option%iflowmode/=TH_MODE) then
     option%io_buffer='PatchUpdateHetroCouplerAuxVars only implemented '// &
       ' for RICHARDS or TH mode.'
     call printErrMsg(option)
   endif
 
-!  if(.not.associated(coupler%flow_condition%rate)) then
-!    option%io_buffer='PatchUpdateHetroCouplerAuxVars only implemented '// &
-!      ' for RATE flow condition.'
-!    call printErrMsg(option)
-!  endif
-
   cur_connection_set => coupler%connection_set
 
-  if (associated(dataset_base)) then
-    select type(selector=>dataset_base)
-      class is(dataset_map_type)
-        dataset_map => selector
-      class default
-        option%io_buffer = 'Incorrect dataset class (' // &
-          trim(DatasetGetClass(dataset_base)) // &
-          ') for coupler "' // trim(coupler%name) // &
-          '" in PatchUpdateHetroCouplerAuxVars.'
-        call printErrMsg(option)
-    end select
-  
-      ! New scheme: Mapping data is provided in HDF file
-      !
-    
+  select type(selector=>dataset_base)
+    class is(dataset_map_type)
+      dataset_map => selector
+
       ! If called for the first time, create the map
       if (dataset_map%first_time) then
         allocate(cell_ids_nat(cur_connection_set%num_connections))
@@ -1599,15 +1582,21 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
           dataset_map%rarray(dataset_map%datatocell_ids(iconn))
       enddo
 
-!geh    endif !if(.not.associated(dataset%dataset_map))
+    class is(dataset_ascii_type)
+      dataset_ascii => selector
 
-  else ! if(associated(dataset)) 
+      do iconn=1,cur_connection_set%num_connections
+          coupler%flow_aux_real_var(isub_condition,iconn) = &
+            dataset_ascii%rarray(1)
+      enddo
 
-    do iconn=1,cur_connection_set%num_connections
-        coupler%flow_aux_real_var(isub_condition,iconn) = &
-          dataset_map%rarray(1)
-    enddo
-  endif
+    class default
+      option%io_buffer = 'Incorrect dataset class (' // &
+        trim(DatasetGetClass(dataset_base)) // &
+        ') for coupler "' // trim(coupler%name) // &
+        '" in PatchUpdateHetroCouplerAuxVars.'
+      call printErrMsg(option)
+  end select
   
 end subroutine PatchUpdateHetroCouplerAuxVars
 
