@@ -1316,6 +1316,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
         dataset_ascii%array_rank = 3
+        dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
         call ConditionReadValues(input,option,word,string, &
@@ -1339,6 +1340,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           dataset_ascii => DatasetAsciiCreate()
           call DatasetAsciiInit(dataset_ascii)
           dataset_ascii%array_rank = 3
+          dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
           call ConditionReadValues(input,option,word,string, &

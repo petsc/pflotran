@@ -9,10 +9,14 @@ module General_Aux_module
 #include "finclude/petscsys.h"
 
   ! thermodynamic state of fluid ids
+  PetscInt, parameter, public :: NULL_STATE = 0
   PetscInt, parameter, public :: LIQUID_STATE = 1
   PetscInt, parameter, public :: GAS_STATE = 2
   PetscInt, parameter, public :: TWO_PHASE_STATE = 3
   PetscInt, parameter, public :: ANY_STATE = 4
+  
+  PetscInt, parameter, public :: PREV_TS = 1
+  PetscInt, parameter, public :: PREV_IT = 2
 
   PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
@@ -32,6 +36,7 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_FLUX_DOF = 4
 
   type, public :: general_auxvar_type
+    PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
     PetscReal, pointer :: den(:)    ! (iphase)
@@ -146,6 +151,7 @@ subroutine GeneralAuxVarInit(aux_var,option)
   type(general_auxvar_type) :: aux_var
   type(option_type) :: option
 
+  aux_var%istate_store = NULL_STATE
   allocate(aux_var%pres(option%nphase+THREE_INTEGER))
   aux_var%pres = 0.d0
   allocate(aux_var%sat(option%nphase))
@@ -185,6 +191,7 @@ subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
   type(general_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
+  aux_var2%istate_store = aux_var%istate_store
   aux_var2%pres = aux_var%pres
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
@@ -435,6 +442,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 
   flag = PETSC_FALSE
   
+  gen_aux_var%istate_store(PREV_IT) = global_aux_var%istate
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
       call psat(gen_aux_var%temp,P_sat,ierr)

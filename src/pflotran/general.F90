@@ -696,6 +696,7 @@ subroutine GeneralUpdateSolutionPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     iphas_loc_p(ghosted_id) = global_aux_vars(ghosted_id)%istate
+    gen_aux_vars%istate_store(PREV_TS) = global_aux_vars(ghosted_id)%istate
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
 

@@ -133,6 +133,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Subsurface_class  
   use Simulation_Base_class
+  use Process_Model_General_class
   use Process_Model_Mphase_class
   use Process_Model_Richards_class
   use Process_Model_RT_class
@@ -173,6 +174,8 @@ subroutine HijackSimulation(simulation_old,simulation)
   ! Create Subsurface-flow ProcessModel & ProcessModelCoupler
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
+      case(G_MODE)
+        cur_process_model => PMGeneralCreate()
       case(MPH_MODE)
         cur_process_model => PMMphaseCreate()
       case(RICHARDS_MODE)
@@ -241,6 +244,10 @@ subroutine HijackSimulation(simulation_old,simulation)
       do
         if (.not.associated(cur_process_model)) exit
         select type(cur_process_model)
+          class is (pm_general_type)
+            call cur_process_model%PMGeneralSetRealization(realization)
+            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_mphase_type)
             call cur_process_model%PMMphaseSetRealization(realization)
             call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
