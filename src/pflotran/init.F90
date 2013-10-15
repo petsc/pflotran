@@ -1183,10 +1183,16 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    if (option%geomech_subsurf_coupling /= 0) &
+    if (option%geomech_subsurf_coupling /= 0) then
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
+      call GeomechCreateSubsurfStressStrainVec(simulation%realization, &
+                                               simulation%geomech_realization)
+
       call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
                                               simulation%geomech_realization, &
                                               option)
+    endif
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)
@@ -1207,9 +1213,6 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
-    if (option%geomech_subsurf_coupling /= 0) &
-      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
-                                          simulation%geomech_realization)
   endif
 #endif
 
