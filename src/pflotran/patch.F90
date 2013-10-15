@@ -1313,8 +1313,7 @@ end subroutine PatchUpdateCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in list
+! PatchUpdateCouplerFromDataset: Updates auxiliary variables from dataset.
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
