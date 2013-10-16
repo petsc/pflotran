@@ -171,11 +171,11 @@ subroutine MineralReadKinetics(mineral,input,option)
                                  error_string)
             case('AFFINITY_POWER')
 !             reads exponent on affinity term
-              call InputReadDouble(input,option,tstrxn%affinity_factor_sigma)
+              call InputReadDouble(input,option,tstrxn%affinity_factor_beta)
               call InputErrorMsg(input,option,'affinity power',error_string)
             case('TEMPKINS_CONSTANT')
 !             reads exponent on affinity term
-              call InputReadDouble(input,option,tstrxn%affinity_factor_beta)
+              call InputReadDouble(input,option,tstrxn%affinity_factor_sigma)
               call InputErrorMsg(input,option,"Tempkin's constant", &
                                  error_string)
             case('SURFACE_AREA_POROSITY_POWER')
