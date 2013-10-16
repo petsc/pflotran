@@ -299,7 +299,7 @@ subroutine GeomechConditionRead(condition,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -339,7 +339,7 @@ subroutine GeomechConditionRead(condition,input,option)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          

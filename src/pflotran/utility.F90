@@ -909,7 +909,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
     endif
     
     if (continuation_flag) then
-      call InputReadFlotranString(input2,option)
+      call InputReadPflotranString(input2,option)
       call InputReadStringErrorMsg(input2,option,comment)
     endif
 
@@ -1060,7 +1060,7 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
     endif
     
     if (continuation_flag) then
-      call InputReadFlotranString(input2,option)
+      call InputReadPflotranString(input2,option)
       call InputReadStringErrorMsg(input2,option,comment)
     endif
 

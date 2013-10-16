@@ -1256,7 +1256,7 @@ subroutine InitReadInputFilenames(option,filenames)
     
   filename_count = 0     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
     call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
@@ -1274,7 +1274,7 @@ subroutine InitReadInputFilenames(option,filenames)
   
   filename_count = 0     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
     call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
@@ -1596,7 +1596,7 @@ subroutine InitReadInput(simulation)
   rewind(input%fid)  
       
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
 
     call InputReadWord(input,option,word,PETSC_FALSE)
@@ -2163,7 +2163,7 @@ subroutine InitReadInput(simulation)
         aveg_mass_flowrate = PETSC_FALSE
         aveg_energy_flowrate = PETSC_FALSE
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2205,7 +2205,7 @@ subroutine InitReadInput(simulation)
                   endif
                 enddo
                 if (.not.continuation_flag) exit
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
               enddo
             case('OUTPUT_FILE')
@@ -2508,7 +2508,7 @@ subroutine InitReadInput(simulation)
 !.....................
       case ('TIME')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -3266,7 +3266,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP,filename,option)
     do
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       if (InputError(input)) exit
       call InputReadInt(input,option,natural_id)
       call InputErrorMsg(input,option,'natural id','STRATA')
@@ -3455,7 +3455,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
     input => InputCreate(IUNIT_TEMP, &
                 material_property%permeability_dataset%filename,option)
     do
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       if (InputError(input)) exit
       call InputReadInt(input,option,natural_id)
       call InputErrorMsg(input,option,'natural id','STRATA')

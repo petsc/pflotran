@@ -126,7 +126,7 @@ subroutine CLM_CN_Read(this,input,option)
   nullify(prev_reaction)
   
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
@@ -138,7 +138,7 @@ subroutine CLM_CN_Read(this,input,option)
     select case(trim(word))
       case('POOLS')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
 
@@ -181,7 +181,7 @@ subroutine CLM_CN_Read(this,input,option)
         rate_constant = 0.d0
         
         do 
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
 

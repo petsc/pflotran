@@ -528,7 +528,7 @@ subroutine FlowConditionRead(condition,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -582,7 +582,7 @@ subroutine FlowConditionRead(condition,input,option)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -734,7 +734,7 @@ subroutine FlowConditionRead(condition,input,option)
                                      condition%datum,word)
       case('GRADIENT','GRAD')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -1237,7 +1237,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -1266,7 +1266,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -1323,7 +1323,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                                      condition%datum,word)
       case('GRADIENT')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -1578,7 +1578,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -1623,7 +1623,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
         end select          
       case('CONSTRAINT_LIST')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONSTRAINT')
               
           if (InputCheckExit(input,option)) exit  

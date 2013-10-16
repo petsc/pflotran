@@ -258,7 +258,7 @@ subroutine CLM_CN_Read(this,input,option)
   character(len=MAXSTRINGLENGTH) :: strings(100)
 
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
@@ -270,7 +270,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('REACTIONS')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -280,7 +280,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('LITTER_NAMES')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -295,7 +295,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('SOM_NAMES')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -309,7 +309,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('LITTER_COEFFICIENTS')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -326,7 +326,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('SOM_COEFFICIENTS')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1

@@ -161,7 +161,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   row_count = 0
   ierr = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! reach the end of file or close out block
     if (InputError(input)) exit  ! check for end of file
     if (InputCheckExit(input,option)) exit  ! check for end of list

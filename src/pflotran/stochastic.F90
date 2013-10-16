@@ -65,7 +65,7 @@ subroutine StochasticInit(stochastic,option)
     string = &
       '# of realization ids read from file may be too few in StochasticInit()'
     do i = 1, stochastic%num_realizations
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,string)
       call InputReadInt(input,option,realization_ids_from_file(i))
       call InputErrorMsg(input,option,'realization id', &
