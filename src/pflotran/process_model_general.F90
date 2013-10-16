@@ -684,10 +684,10 @@ subroutine PMGeneralMaxChange(this)
         case(TWO_PHASE_STATE)
           dP_gas_max = max(dP_gas_max, &
                            vec_ptr(offset+GENERAL_GAS_PRESSURE_DOF))
+          dP_air_max = max(dP_air_max, &
+                           vec_ptr(offset+GENERAL_AIR_PRESSURE_DOF))
           dS_gas_max = max(dS_gas_max, &
                            vec_ptr(offset+GENERAL_GAS_SATURATION_DOF))
-          dT_max = max(dT_max, &
-                       vec_ptr(offset+GENERAL_2PHASE_STATE_TEMPERATURE_DOF))
       end select
     endif
   enddo
