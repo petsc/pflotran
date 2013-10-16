@@ -830,9 +830,9 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
                   coupler%flow_aux_real_var = 0.d0
                 case default
-                  write(string,*),coupler%flow_condition%rate%itype
-                  option%io_buffer='Source/Sink of rate%itype = ' // &
-                    trim(adjustl(string)) // ', not implemented in this mode.'
+                  string = GetSubConditionName(coupler%flow_condition%rate%itype)
+                  option%io_buffer='Source/Sink of rate%itype = "' // &
+                    trim(adjustl(string)) // '", not implemented in this mode.'
                   call printErrMsg(option)
               end select
           end select
@@ -1619,10 +1619,15 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                 flow_condition%pressure%dataset%rarray(1)
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+      case(HET_DIRICHLET)
+        call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
+                flow_condition%temperature%dataset, &
+                num_connections,TH_PRESSURE_DOF,option)
       case default
-        write(string,*),flow_condition%pressure%itype
-        option%io_buffer='For TH mode: flow_condition%pressure%itype = ' // &
-          trim(adjustl(string)) // ', not implemented.'
+        string = GetSubConditionName(flow_condition%pressure%itype)
+        option%io_buffer='For TH mode: flow_condition%pressure%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
+          write(*,*), trim(string)
         call printErrMsg(option)
     end select
     if(associated(flow_condition%temperature)) then
@@ -1639,9 +1644,9 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   flow_condition%temperature%dataset, &
                   num_connections,TH_TEMPERATURE_DOF,option)
         case default
-          write(string,*),flow_condition%temperature%itype
-          option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
-            trim(adjustl(string)) // ', not implemented.'
+          string = GetSubConditionName(flow_condition%temperature%itype)
+          option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
+            trim(adjustl(string)) // '", not implemented.'
           call printErrMsg(option)
       end select
     endif
@@ -1657,8 +1662,9 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   num_connections,TH_TEMPERATURE_DOF,option)
         case default
           write(string,*),flow_condition%temperature%itype
-          option%io_buffer='For TH mode: flow_condition%temperature%itype = ' // &
-            trim(adjustl(string)) // ', not implemented.'
+          string = GetSubConditionName(flow_condition%temperature%itype)
+          option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
+            trim(adjustl(string)) // '", not implemented.'
           call printErrMsg(option)
       end select
     endif
@@ -1674,8 +1680,9 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   flow_condition%rate%dataset%rarray(1)
       case default
         write(string,*),flow_condition%rate%itype
-        option%io_buffer='For TH mode: flow_condition%rate%itype = ' // &
-          trim(adjustl(string)) // ', not implemented.'
+        string = GetSubConditionName(flow_condition%rate%itype)
+        option%io_buffer='For TH mode: flow_condition%rate%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
         call printErrMsg(option)
     end select
   endif
