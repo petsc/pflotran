@@ -930,37 +930,16 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   
   type(coupler_type), pointer :: coupler
   type(flow_condition_type), pointer :: flow_condition
-  type(tran_condition_type), pointer :: tran_condition
-  type(flow_general_condition_type), pointer :: general
-  class(dataset_common_hdf5_type), pointer :: dataset
-  PetscBool :: update
-  PetscBool :: dof1, dof2, dof3
-  PetscReal :: temperature, p_sat
-  PetscReal :: x(option%nflowdof)
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  PetscErrorCode :: ierr
-  
-  PetscInt :: idof, num_connections,sum_connection
-  PetscInt :: iconn, local_id, ghosted_id
-  
 
   if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
-  sum_connection=0
-  
+
   do
     if (.not.associated(coupler)) exit
     
     ! FLOW
     if (associated(coupler%flow_aux_real_var)) then
-
-      num_connections = coupler%connection_set%num_connections
-#ifdef DASVYAT      
-      if (option%mimetic) then
-        num_connections = coupler%numfaces_set
-      end if
-#endif
 
       flow_condition => coupler%flow_condition
       if (force_update_flag .or. FlowConditionIsTransient(flow_condition)) then
@@ -983,7 +962,6 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             call PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
         end select
       endif
-      sum_connection=sum_connection+num_connections
     endif
       
     ! TRANSPORT
