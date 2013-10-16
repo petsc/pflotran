@@ -1767,12 +1767,15 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
       if (global_aux_var%istate == LIQUID_STATE .or. &
           global_aux_var%istate == TWO_PHASE_STATE) then
-        res(option%energy_id) = qsrc_mol(ONE_INTEGER) * &
-          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(1) / &
-                                        gen_aux_var%den(1) * 1.d-6)
-      else if (global_aux_var%istate == GAS_STATE .or. &
-               global_aux_var%istate == TWO_PHASE_STATE) then
-        res(option%energy_id) = qsrc_mol(TWO_INTEGER) * &
+        res(option%energy_id) = res(option%energy_id) + &
+          qsrc_mol(ONE_INTEGER) * &
+          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(ONE_INTEGER) / &
+                                        gen_aux_var%den(ONE_INTEGER) * 1.d-6)
+      endif
+      if (global_aux_var%istate == GAS_STATE .or. &
+          global_aux_var%istate == TWO_PHASE_STATE) then
+        res(option%energy_id) = res(option%energy_id) + &
+          qsrc_mol(TWO_INTEGER) * &
           (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
                                         gen_aux_var%den(TWO_INTEGER) * 1.d-6)
       endif
