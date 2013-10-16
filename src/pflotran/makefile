@@ -199,6 +199,7 @@ mode_aux_obj = \
 	${common_src}miscible_aux.o \
 	${common_src}mphase_aux.o \
         ${common_src}process_model_base.o \
+        ${common_src}process_model_general.o \
         ${common_src}process_model_mphase.o \
         ${common_src}process_model_richards.o \
         ${common_src}process_model_rt.o \
@@ -657,6 +658,11 @@ pmc_surface.o : option.o output.o output_surface.o pflotran_constants.o \
                 utility.o water_eos.o
 process_model_base.o : option.o output_aux.o pflotran_constants.o \
                        realization_base.o
+process_model_general.o : checkpoint.o communicator_base.o condition.o \
+                           discretization.o general.o global.o grid.o option.o \
+                           pflotran_constants.o process_model_base.o \
+                           realization.o structured_communicator.o \
+                           unstructured_communicator.o
 process_model_mphase.o : checkpoint.o communicator_base.o condition.o \
                          discretization.o global.o grid.o mphase.o option.o \
                          pflotran_constants.o process_model_base.o \
@@ -814,6 +820,7 @@ structured_grid.o : connection.o input_aux.o option.o pflotran_constants.o \
 subsurface_factory.o : condition_control.o init.o input_aux.o option.o output.o \
                        output_aux.o pflotran_constants.o pmc_base.o \
                        pmc_subsurface.o process_model_base.o \
+                       process_model_general.o \
                        process_model_mphase.o process_model_richards.o \
                        process_model_rt.o process_model_th.o \
                        process_model_thc.o process_model_top.o \
