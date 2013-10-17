@@ -592,7 +592,8 @@ subroutine InputReadPflotranStringSlave(input, option)
 
     if (InputError(input)) exit
 
-    if (input%buf(1:1) == ':' .or. input%buf(1:1) == '!') cycle
+    if (input%buf(1:1) == ':' .or. input%buf(1:1) == '!' .or. &
+        input%buf(1:1) == '#' ) cycle
 
     tempstring = input%buf
     call InputReadWord(tempstring,word,PETSC_TRUE,input%ierr)
@@ -628,7 +629,8 @@ subroutine InputReadPflotranStringSlave(input, option)
       input%buf(i:i) = ' '
     enddo
     do i=1,len_trim(tempstring)
-      if (tempstring(i:i) /= ':' .and. tempstring(i:i) /= '!') then
+      if (tempstring(i:i) /= ':' .and. tempstring(i:i) /= '!' .and. &
+          tempstring(i:i) /= '#' ) then
         input%buf(i:i) = tempstring(i:i)
       else
         exit
