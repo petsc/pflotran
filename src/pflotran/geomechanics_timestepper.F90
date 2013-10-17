@@ -188,10 +188,8 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then 
-        call GeomechUpdateFromSubsurf(realization,geomech_realization)
-        call GeomechStoreInitialPressTemp(geomech_realization)
-      endif
+      call GeomechUpdateFromSubsurf(realization,geomech_realization)
+      call GeomechStoreInitialPressTemp(geomech_realization)
       call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                           failure)
       call GeomechUpdateSolution(geomech_realization)
@@ -199,6 +197,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
       call GeomechForceUpdateAuxVars(geomech_realization)
       if (option%geomech_subsurf_coupling == TWO_WAY_COUPLED) then 
         call GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
+        call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
       endif
     endif
 #endif  
@@ -514,21 +513,26 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
-      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then ! call geomech only at plot times
-        if (geomech_plot_flag) then
+      select case (option%geomech_subsurf_coupling)
+        case (ONE_WAY_COUPLED) ! call geomech only at plot times
+          if (geomech_plot_flag) then
+            call GeomechUpdateFromSubsurf(realization,geomech_realization)
+            call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                                failure)
+            call GeomechUpdateSolution(geomech_realization)
+          endif
+        case (TWO_WAY_COUPLED)
           call GeomechUpdateFromSubsurf(realization,geomech_realization)
           call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                               failure)
-          call GeomechUpdateSolution(geomech_realization)
-        endif
-      else
-        call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
-                                          failure)
-        call GeomechUpdateSolution(geomech_realization)
-        if (option%geomech_subsurf_coupling == TWO_WAY_COUPLED) then
+          call GeomechUpdateSolution(geomech_realization)  
           call GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
-        endif
-      endif
+          call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
+        case default
+          call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                              failure)
+          call GeomechUpdateSolution(geomech_realization)
+      end select
       call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
                               transient_plot_flag)
     endif

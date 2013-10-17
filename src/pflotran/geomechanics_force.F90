@@ -35,7 +35,8 @@ module Geomechanics_Force_module
             GeomechCreateSubsurfStressStrainVec, &
             GeomechUpdateSolution, &
             GeomechStoreInitialPressTemp, &
-            GeomechStoreInitialDisp
+            GeomechStoreInitialDisp, &
+            GeomechUpdateSubsurfPorosity
  
 contains
 
@@ -1631,6 +1632,7 @@ end subroutine GeomechUpdateFromSubsurf
 subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
 
   use Realization_class
+  use Discretization_module
   use Grid_module
   use Field_module
   use Geomechanics_Realization_module
@@ -1680,7 +1682,17 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   call VecScatterEnd(dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
                        geomech_field%stress, &
                        geomech_field%stress_subsurf, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr)             
+                       INSERT_VALUES,SCATTER_FORWARD,ierr) 
+                       
+  ! Scatter from global to local vectors
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   geomech_field%strain_subsurf, &
+                                   geomech_field%strain_subsurf_loc, &
+                                   NGEODOF)
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   geomech_field%stress_subsurf, &
+                                   geomech_field%stress_subsurf_loc, &
+                                   NGEODOF)
  
 end subroutine GeomechUpdateSubsurfFromGeomech
 
@@ -1786,6 +1798,20 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
                    grid%nlmax*SIX_INTEGER,PETSC_DECIDE,ierr)
   call VecSetBlockSize(geomech_field%stress_subsurf,SIX_INTEGER,ierr)
   call VecSetFromOptions(geomech_field%stress_subsurf,ierr)
+  
+  ! strain_loc
+  call VecCreate(PETSC_COMM_SELF,geomech_field%strain_subsurf_loc,ierr)
+  call VecSetSizes(geomech_field%strain_subsurf_loc, &
+                   grid%ngmax*SIX_INTEGER,PETSC_DECIDE,ierr)  
+  call VecSetBlockSize(geomech_field%strain_subsurf_loc,SIX_INTEGER,ierr)
+  call VecSetFromOptions(geomech_field%strain_subsurf_loc,ierr)
+  
+  ! stress_loc 
+  call VecCreate(PETSC_COMM_SELF,geomech_field%stress_subsurf_loc,ierr)
+  call VecSetSizes(geomech_field%stress_subsurf_loc, &
+                   grid%ngmax*SIX_INTEGER,PETSC_DECIDE,ierr)  
+  call VecSetBlockSize(geomech_field%stress_subsurf_loc,SIX_INTEGER,ierr)
+  call VecSetFromOptions(geomech_field%stress_subsurf_loc,ierr)
   
 end subroutine GeomechCreateSubsurfStressStrainVec
 
@@ -2189,7 +2215,6 @@ subroutine GeomechStoreInitialDisp(realization)
    
 end subroutine GeomechStoreInitialDisp
 
-#if 0
 ! ************************************************************************** !
 !
 ! GeomechUpdateSubsurfPorosity: Updates the porosity in the subsurface based 
@@ -2201,9 +2226,13 @@ end subroutine GeomechStoreInitialDisp
 subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
 
   use Realization_class
-  use Geomechanics_Realization_module
   use Option_module
   use Patch_module
+  use Field_module
+  use Grid_module
+  use Discretization_module
+  use Geomechanics_Field_module
+  use Geomechanics_Realization_module
 
   implicit none
   
@@ -2212,13 +2241,19 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
+  type(geomech_field_type), pointer :: geomech_field
+  type(grid_type), pointer :: grid
 
   PetscReal :: trace_epsilon
+  PetscReal, pointer :: por0_loc_p(:), por_loc_p(:), strain_loc_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscErrorCode :: ierr
 
   option => realization%option
   field => realization%field
+  patch => realization%patch
   grid => patch%grid
-  material_property_array => realization%material_property_array
+  geomech_field => geomech_realization%geomech_field
 
   if (.not.associated(patch%imat)) then
     option%io_buffer = 'Materials IDs not present in run.  Material ' // &
@@ -2228,33 +2263,25 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   
   call VecGetArrayF90(field%porosity0,por0_loc_p,ierr)
   call VecGetArrayF90(field%porosity_loc,por_loc_p,ierr)
+  call VecGetArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    p_min = material_property_array(patch%imat(ghosted_id))%ptr%min_pressure
-    p_max = material_property_array(patch%imat(ghosted_id))%ptr%max_pressure
-    permfactor_max = material_property_array(patch%imat(ghosted_id))%ptr% &
-                     max_permfactor
-    if (xx_loc_p(local_id) < p_min) then
-      scale = 1
-    else 
-      if (xx_loc_p(local_id) < p_max) then
-        scale = (xx_loc_p(local_id) - p_min)/ &
-                (p_max - p_min)*(permfactor_max - 1.d0) + 1.d0
-      else
-        scale = permfactor_max
-      endif
-    endif
-    por_loc_p(ghosted_id) = por0_loc_p/(1.0 + (1.0 - por0_loc_p)*trace_epsilon)
+    trace_epsilon = strain_loc_p((ghosted_id-1)*SIX_INTEGER+ONE_INTEGER) + &
+                    strain_loc_p((ghosted_id-1)*SIX_INTEGER+TWO_INTEGER) + &
+                    strain_loc_p((ghosted_id-1)*SIX_INTEGER+THREE_INTEGER)
+    por_loc_p(ghosted_id) = por0_loc_p(ghosted_id)/ &
+                            (1.d0 + (1.d0 - por0_loc_p(ghosted_id))*trace_epsilon)
   enddo
   
-  call VecRestoreArray90(field%porosity0,por0_loc_p,ierr)
-  call VecRestoreArray90(field%porosity_loc,por_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity0,por0_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,por_loc_p,ierr)
+  call VecRestoreArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+  call DiscretizationLocalToLocal(realization%discretization,field%porosity_loc, &
                                   field%porosity_loc,ONEDOF)
 
-#endif
+end subroutine GeomechUpdateSubsurfPorosity
 
 end module Geomechanics_Force_module
 
