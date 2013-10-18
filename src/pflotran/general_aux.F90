@@ -450,7 +450,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i)') &
+        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
           ghosted_id
 #endif      
         global_aux_var%istate = TWO_PHASE_STATE
@@ -470,7 +470,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i)') &
+        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
           ghosted_id
 #endif      
         global_aux_var%istate = TWO_PHASE_STATE
@@ -483,7 +483,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i)') &
+        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
           ghosted_id
 #endif      
         ! convert to liquid state
@@ -499,7 +499,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Gas at Cell '',i)') &
+        write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
           ghosted_id
 #endif      
         ! convert to gas state
