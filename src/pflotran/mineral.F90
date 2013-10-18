@@ -49,7 +49,7 @@ subroutine MineralRead(mineral,input,option)
            
   nullify(prev_mineral)
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
           
@@ -119,7 +119,7 @@ subroutine MineralReadKinetics(mineral,input,option)
   icount = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
 
@@ -137,7 +137,7 @@ subroutine MineralReadKinetics(mineral,input,option)
         ! initialize to -999 to ensure that it is set
         tstrxn%rate = -999.d0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -171,11 +171,11 @@ subroutine MineralReadKinetics(mineral,input,option)
                                  error_string)
             case('AFFINITY_POWER')
 !             reads exponent on affinity term
-              call InputReadDouble(input,option,tstrxn%affinity_factor_sigma)
+              call InputReadDouble(input,option,tstrxn%affinity_factor_beta)
               call InputErrorMsg(input,option,'affinity power',error_string)
             case('TEMPKINS_CONSTANT')
 !             reads exponent on affinity term
-              call InputReadDouble(input,option,tstrxn%affinity_factor_beta)
+              call InputReadDouble(input,option,tstrxn%affinity_factor_sigma)
               call InputErrorMsg(input,option,"Tempkin's constant", &
                                  error_string)
             case('SURFACE_AREA_POROSITY_POWER')
@@ -216,7 +216,7 @@ subroutine MineralReadKinetics(mineral,input,option)
               prefactor%rate = -999.d0
               prefactor%activation_energy = -999.d0
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 call InputReadStringErrorMsg(input,option,card)
                 if (InputCheckExit(input,option)) exit
                 call InputReadWord(input,option,word,PETSC_TRUE)
@@ -249,7 +249,7 @@ subroutine MineralReadKinetics(mineral,input,option)
                     call InputReadWord(input,option,prefactor_species%name,PETSC_TRUE)
                     call InputErrorMsg(input,option,'name',error_string)
                     do
-                      call InputReadFlotranString(input,option)
+                      call InputReadPflotranString(input,option)
                       call InputReadStringErrorMsg(input,option,card)
                       if (InputCheckExit(input,option)) exit
                       call InputReadWord(input,option,word,PETSC_TRUE)

@@ -1108,7 +1108,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   cell_ids_flow = 0
   
   count = 0
-  call InputReadFlotranString(input, option)
+  call InputReadPflotranString(input, option)
   do 
     call InputReadInt(input, option, temp_int)
     if (InputError(input)) exit
@@ -1123,7 +1123,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (InputError(input)) exit

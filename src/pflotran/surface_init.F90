@@ -138,7 +138,7 @@ subroutine SurfaceInit(surf_realization,input,option)
   ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
 
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   call InputReadWord(input,option,word,PETSC_TRUE)
   call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
   call StringToUpper(word)
@@ -274,7 +274,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   if (associated(patch)) grid => patch%grid
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -376,7 +376,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
       !.........................................................................
       case ('SURF_SUBSURFACE_COUPLING')
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         if (InputCheckExit(input,option)) exit
         call InputReadWord(input,option,word,PETSC_TRUE)
         call StringToUpper(word)
@@ -408,7 +408,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         aveg_mass_flowrate = PETSC_FALSE
         aveg_energy_flowrate = PETSC_FALSE
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -447,7 +447,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                   endif
                 enddo
                 if (.not.continuation_flag) exit
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
               enddo
             case('OUTPUT_FILE')
@@ -726,7 +726,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
       !.........................................................................
       case ('SURF_TIME')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)

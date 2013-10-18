@@ -1,16 +1,16 @@
-:Description: 3D test problem for variably saturated flow and tracer transport
+!Description: 3D test problem for variably saturated flow and tracer transport
 
-:=========================== flow mode ========================================
+#=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
+#=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
     Tracer
   /
 /
 
-:=========================== solver options ===================================
+#=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 8
 /
@@ -31,7 +31,7 @@ LINEAR_SOLVER TRANSPORT
   PC_TYPE LU
 /
 
-:=========================== discretization ===================================
+#=========================== discretization ===================================
 GRID
   TYPE structured
   ORIGIN 0.d0 0.d0 0.d0
@@ -43,12 +43,12 @@ GRID
   /
 END
 
-:=========================== fluid properties =================================
+#=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
 /
 
-:=========================== material properties ==============================
+#=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
@@ -97,7 +97,7 @@ MATERIAL_PROPERTY soil4
   /
 /
 
-:=========================== saturation functions =============================
+#=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.115
@@ -126,7 +126,7 @@ SATURATION_FUNCTION sf4
   ALPHA 5.1054d-5
 /
 
-:=========================== output options ===================================
+#=========================== output options ===================================
 OUTPUT
   TIMES d 0.001 0.01 0.1 1. 10. 
 !  FORMAT TECPLOT BLOCK
@@ -135,14 +135,14 @@ OUTPUT
   VELOCITIES
 /
 
-:=========================== times ============================================
+#=========================== times ============================================
 TIME
   FINAL_TIME 100.d0 d
   INITIAL_TIMESTEP_SIZE 1.d-6 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
 /
 
-:=========================== regions ==========================================
+#=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
@@ -202,7 +202,7 @@ REGION well
   BLOCK 4 4 2 3 3 3 
 END
 
-:=========================== flow conditions ==================================
+#=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
@@ -226,7 +226,7 @@ FLOW_CONDITION injection_well
   RATE 2.77777778d-4  ! 1 m^3/hr
 /
 
-:=========================== transport conditions =============================
+#=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE dirichlet_zero_gradient
   CONSTRAINT_LIST
@@ -241,7 +241,7 @@ TRANSPORT_CONDITION well_concentration
   /
 /
 
-:=========================== constraints ======================================
+#=========================== constraints ======================================
 CONSTRAINT source
   CONCENTRATIONS
     Tracer 1.d0 T
@@ -254,50 +254,50 @@ CONSTRAINT initial
   /
 END
 
-:=========================== condition couplers ===============================
-: initial condition
+#=========================== condition couplers ===============================
+# initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION all
 END
 
-: west boundary condition
+# west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION west
 END
 
-: east boundary condition
+# east boundary condition
 BOUNDARY_CONDITION east
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION east
 END
 
-: north boundary condition
+# north boundary condition
 BOUNDARY_CONDITION north
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION north
 END
 
-: south boundary condition
+# south boundary condition
 BOUNDARY_CONDITION south
   FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION south
 END
 
-: well source/sink
+# well source/sink
 SOURCE_SINK well
   FLOW_CONDITION injection_well
   TRANSPORT_CONDITION well_concentration
   REGION well
 END
 
-:=========================== stratigraphy couplers ============================
+#=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL ./543.h5
 END

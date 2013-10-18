@@ -214,7 +214,7 @@ subroutine GeomechRegionRead(region,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     
@@ -228,7 +228,7 @@ subroutine GeomechRegionRead(region,input,option)
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
         if (InputError(input)) then
           input%ierr = 0
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'GEOMECHANICS_REGION')
           call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x)
         endif
@@ -333,7 +333,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   vertex_ids = 0
   
   count = 0
-  call InputReadFlotranString(input, option)
+  call InputReadPflotranString(input, option)
   do 
     call InputReadInt(input, option, temp_int)
     if (InputError(input)) exit
@@ -350,7 +350,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (.not.InputError(input)) then

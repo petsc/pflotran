@@ -148,7 +148,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
   ! look through the input file
   rewind(input%fid)        
   do
-    call InputReadFlotranString(input, option)
+    call InputReadPflotranString(input, option)
     if (InputError(input)) exit
 
     call InputReadWord(input, option, word, PETSC_FALSE)

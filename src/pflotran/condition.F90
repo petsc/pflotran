@@ -121,7 +121,8 @@ module Condition_module
             TranConditionRead, TranConstraintRead, &
             TranConditionUpdate, &
             FlowConditionIsTransient, &
-            ConditionReadValues
+            ConditionReadValues, &
+            GetSubConditionName
     
 contains
 
@@ -527,7 +528,7 @@ subroutine FlowConditionRead(condition,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -581,7 +582,7 @@ subroutine FlowConditionRead(condition,input,option)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -733,7 +734,7 @@ subroutine FlowConditionRead(condition,input,option)
                                      condition%datum,word)
       case('GRADIENT','GRAD')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -1236,7 +1237,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -1265,7 +1266,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -1323,7 +1324,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                                      condition%datum,word)
       case('GRADIENT')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONDITION')
           
           if (InputCheckExit(input,option)) exit          
@@ -1579,7 +1580,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONDITION')
           
     if (InputCheckExit(input,option)) exit  
@@ -1624,7 +1625,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
         end select          
       case('CONSTRAINT_LIST')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONSTRAINT')
               
           if (InputCheckExit(input,option)) exit  
@@ -1968,7 +1969,46 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
   character(len=MAXSTRINGLENGTH) :: string
   
   write(option%fid_out,'(/,4x,''Sub Condition: '',a)') trim(subcondition%name)
-  select case(subcondition%itype)
+  string = GetSubConditionName(subcondition%itype)
+
+  105 format(6x,'Type: ',a)  
+  write(option%fid_out,105) trim(string)
+  
+  110 format(6x,a)  
+  
+  write(option%fid_out,110) 'Gradient:'
+  if (associated(subcondition%gradient)) then
+!geh    call DatasetPrint(subcondition%gradient,option)
+    option%io_buffer = 'TODO(geh): add DatasetPrint()'
+    call printMsg(option)
+  endif
+
+  write(option%fid_out,110) 'Dataset:'
+  if (associated(subcondition%dataset)) then
+!geh    call DatasetPrint(subcondition%dataset,option)
+    option%io_buffer = 'TODO(geh): add DatasetPrint()'
+    call printMsg(option)
+  endif
+            
+end subroutine FlowConditionPrintSubCondition
+
+! ************************************************************************** !
+!
+! SubConditionName: Return name of subcondition
+! author: Gautam Bisht
+! date: 10/16/13
+!
+! ************************************************************************** !
+function GetSubConditionName(subcon_itype)
+
+  implicit none
+
+  PetscInt :: subcon_itype
+
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: GetSubConditionName
+
+  select case(subcon_itype)
     case(DIRICHLET_BC)
       string = 'dirichlet'
     case(NEUMANN_BC)
@@ -2010,26 +2050,10 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     case(HET_SURF_SEEPAGE_BC)
       string = 'heterogeneous surface seepage'
   end select
-  105 format(6x,'Type: ',a)  
-  write(option%fid_out,105) trim(string)
-  
-  110 format(6x,a)  
-  
-  write(option%fid_out,110) 'Gradient:'
-  if (associated(subcondition%gradient)) then
-!geh    call DatasetPrint(subcondition%gradient,option)
-    option%io_buffer = 'TODO(geh): add DatasetPrint()'
-    call printMsg(option)
-  endif
 
-  write(option%fid_out,110) 'Dataset:'
-  if (associated(subcondition%dataset)) then
-!geh    call DatasetPrint(subcondition%dataset,option)
-    option%io_buffer = 'TODO(geh): add DatasetPrint()'
-    call printMsg(option)
-  endif
-            
-end subroutine FlowConditionPrintSubCondition
+  GetSubConditionName = trim(string)
+
+end function GetSubConditionName
 
 ! ************************************************************************** !
 !

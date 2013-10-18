@@ -189,7 +189,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -283,7 +283,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
       case('PERMEABILITY')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,PERMEABILITY')
           
@@ -372,7 +372,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       ! The perm increase could be due to pressure or other variable
       ! Added by Satish Karra, LANL, 1/8/12
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,PERM_FACTOR')
           
@@ -426,7 +426,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
           call printErrMsg(option)
       case('SECONDARY_CONTINUUM')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,SECONDARY_CONTINUUM')
           

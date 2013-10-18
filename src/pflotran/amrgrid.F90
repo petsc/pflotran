@@ -640,7 +640,7 @@ subroutine AMRGridReadDXDYDZ(array,ndim,input,option)
 
   do i=1,ndim
 
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,'DXYZ')
       call InputReadWord(input,option,word,PETSC_TRUE)
       if (InputError(input)) exit

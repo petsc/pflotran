@@ -644,7 +644,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: press_up, press_dn
   PetscReal :: k_eff_dn, k_eff_up
   PetscReal :: Dk_eff
-  PetscReal :: Ke_up, Ke_fr
+  PetscReal :: Ke_up, Ke_fr, Ke_fr_up
   PetscReal :: dtemp
   PetscReal :: Cwi
   PetscReal :: temp_half
@@ -813,7 +813,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           k_eff_up = ckdry_p(local_id) + &
                       (ckwet_p(local_id) - ckdry_p(local_id))*Ke_up
 #ifdef ICE
-          Ke_fr_up = (sat_ice(local_id) + epsilon)**th_alpha_fr_p(local_id)
+          Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
           k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
                      ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
 #endif

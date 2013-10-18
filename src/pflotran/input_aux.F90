@@ -20,11 +20,6 @@ module Input_Aux_module
     PetscBool :: broadcast_read
   end type input_type
 
-  interface InputReadFlotranString
-!    module procedure InputReadFlotranString1
-    module procedure InputReadFlotranString2
-  end interface
-  
   interface InputReadWord
     module procedure InputReadWord1
     module procedure InputReadWord2
@@ -89,7 +84,7 @@ module Input_Aux_module
     module procedure InputFindStringInFile2
   end interface
   
-  public :: InputCreate, InputDestroy, InputReadFlotranString, &
+  public :: InputCreate, InputDestroy, InputReadPflotranString, &
             InputReadWord, InputReadDouble, InputReadInt, InputCheckExit, &
             InputReadNDoubles, &
             InputSkipToEND, InputFindStringInFile, InputErrorMsg, &
@@ -526,54 +521,15 @@ subroutine InputReadNDoubles2(string, option, double, n, ierr)
 
 end subroutine InputReadNDoubles2
 
-#if 0
 ! ************************************************************************** !
 !
-! InputReadFlotranString: Reads a string (strlen characters long) from a 
-!                           file while avoiding commented or skipped lines.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
-subroutine InputReadFlotranString1(option, fid, string, ierr)
-
- 
-  implicit none
-
-  type(option_type) :: option
-  PetscInt :: fid
-  character(len=MAXSTRINGLENGTH) :: string
-  PetscErrorCode :: ierr
-  PetscInt :: flag = 0
-
-  if (option%broadcast_read) then
-    if (option%myrank == option%io_rank) then
-      call fiReadFlotranString(fid, string, ierr)
-    endif
-    flag = ierr
-    call MPI_Bcast(flag,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
-                   option%mycomm,ierr2)
-    if (flag == 0) then  
-      call MPI_Bcast(string,MAXSTRINGLENGTH_MPI,MPI_CHARACTER, &
-                     option%io_rank,option%mycomm,ierr)      
-    endif
-  else
-    call fiReadFlotranString(fid, string, ierr)
-  endif
-
-end subroutine InputReadFlotranString1
-#endif
-
-#if 1
-! ************************************************************************** !
-!
-! InputReadFlotranString2: Reads a string (strlen characters long) from a 
+! InputReadPflotranString: Reads a string (strlen characters long) from a 
 !                          file while avoiding commented or skipped lines.
 ! author: Glenn Hammond
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-subroutine InputReadFlotranString2(input, option)
+subroutine InputReadPflotranString(input, option)
 
   implicit none
 
@@ -585,7 +541,7 @@ subroutine InputReadFlotranString2(input, option)
 
   if (input%broadcast_read) then
     if (option%myrank == option%io_rank) then
-      call InputReadFlotranStringSlave(input, option)
+      call InputReadPflotranStringSlave(input, option)
     endif
     flag = input%ierr
     call MPI_Bcast(flag,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
@@ -596,20 +552,20 @@ subroutine InputReadFlotranString2(input, option)
                      option%io_rank,option%mycomm,ierr)      
     endif
   else
-    call InputReadFlotranStringSlave(input, option)
+    call InputReadPflotranStringSlave(input, option)
   endif
 
-end subroutine InputReadFlotranString2
+end subroutine InputReadPflotranString
 
 ! ************************************************************************** !
 !
-! InputReadFlotranStringSlave: Reads a string (strlen characters long) from a 
+! InputReadPflotranStringSlave: Reads a string (strlen characters long) from a 
 !                              file while avoiding commented or skipped lines.
 ! author: Glenn Hammond
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-subroutine InputReadFlotranStringSlave(input, option)
+subroutine InputReadPflotranStringSlave(input, option)
 
   use String_module
   
@@ -636,7 +592,8 @@ subroutine InputReadFlotranStringSlave(input, option)
 
     if (InputError(input)) exit
 
-    if (input%buf(1:1) == ':' .or. input%buf(1:1) == '!') cycle
+    if (input%buf(1:1) == ':' .or. input%buf(1:1) == '!' .or. &
+        input%buf(1:1) == '#' ) cycle
 
     tempstring = input%buf
     call InputReadWord(tempstring,word,PETSC_TRUE,input%ierr)
@@ -647,7 +604,7 @@ subroutine InputReadFlotranStringSlave(input, option)
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
         if (InputError(input)) then
           option%io_buffer = 'End of file reached in ' // &
-              'InputReadFlotranStringSlave.  SKIP encountered ' // &
+              'InputReadPflotranStringSlave.  SKIP encountered ' // &
               'without a matching NOSKIP.'
           call printErrMsg(option)              
         endif
@@ -672,7 +629,8 @@ subroutine InputReadFlotranStringSlave(input, option)
       input%buf(i:i) = ' '
     enddo
     do i=1,len_trim(tempstring)
-      if (tempstring(i:i) /= ':' .and. tempstring(i:i) /= '!') then
+      if (tempstring(i:i) /= ':' .and. tempstring(i:i) /= '!' .and. &
+          tempstring(i:i) /= '#' ) then
         input%buf(i:i) = tempstring(i:i)
       else
         exit
@@ -680,7 +638,7 @@ subroutine InputReadFlotranStringSlave(input, option)
     enddo
   endif
 
-end subroutine InputReadFlotranStringSlave
+end subroutine InputReadPflotranStringSlave
 
 ! ************************************************************************** !
 !
@@ -703,64 +661,7 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
 
   if (InputError(input)) return
   
-  
   call InputReadWord2(input%buf, word, return_blank_error, input%ierr)
-  
-!TODO(geh): remove after 3/4/13; remove the unused variables above too.
-#if 0  
-  tab = achar(9)
-  backslash = achar(92)
-
-  ! Initialize character string to blank.  len_trim(word) is not
-  ! defined if word is allocated but not initialized.  This works on
-  ! most compilers, but may not work on some?  Holler if it
-  ! errors... - etc
-  word = ''
-  ! lenword = len_trim(word)
-  ! do i=1,lenword
-  !   word(i:i) = ' '
-  ! enddo
-
-  input%ierr = len_trim(input%buf)
-  
-  if (.not.InputError(input)) then
-    if (return_blank_error) then
-      input%ierr = 1
-    else
-      input%ierr = 0
-    endif
-    return
-  else
-    input%ierr = 0
-
-    ! Remove leading blanks and tabs
-    i=1
-    do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == ',' .or. &
-             input%buf(i:i) == tab) 
-      i=i+1
-    enddo
-
-    begins=i
-
-    ! Count # of continuous characters (no blanks, commas, etc. in between)
-    do while (input%buf(i:i) /= ' ' .and. input%buf(i:i) /= ',' .and. &
-              input%buf(i:i) /= tab .and. &
-              (i == begins .or. input%buf(i:i) /= backslash))
-      i=i+1
-    enddo
-
-    ends=i-1
-
-    ! Avoid copying beyond the end of the word (32 characters).
-    if (ends-begins > (MAXWORDLENGTH-1)) ends = begins + (MAXWORDLENGTH-1)
-
-    ! Copy (ends-begins) characters to 'word'
-    word = input%buf(begins:ends)
-    ! Remove chars from string
-    input%buf = input%buf(ends+1:)
-
-  endif
-#endif
 
 end subroutine InputReadWord1
 
@@ -866,58 +767,6 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 
   call InputReadNChars2(input%buf, chars, n, return_blank_error, input%ierr)
   
-!TODO(geh): remove after 3/4/13; remove the unused variables above too.
-#if 0 
-
-  tab = achar(9)
-  backslash = achar(92)
-  
-  ! Initialize character string to blank.
-  do i=1,n
-    chars(i:i) = ' '
-  enddo
-
-  input%ierr = len_trim(input%buf)
-  if (.not.InputError(input)) then
-    if (return_blank_error) then
-      input%ierr = 1
-    else
-      input%ierr = 0
-    endif
-    return
-  else
-    input%ierr = 0
-
-    ! Remove leading blanks and tabs
-    i=1
-    do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == tab) 
-      i=i+1
-    enddo
-
-    begins=i
-
-    ! Count # of continuous characters (no blanks, commas, etc. in between)
-    do while (input%buf(i:i) /= ' ' .and. input%buf(i:i) /= ',' .and. &
-              input%buf(i:i) /= tab .and. &
-              (i == begins .or. input%buf(i:i) /= backslash))
-      i=i+1
-    enddo
-
-    ends=i-1
-
-    if (ends-begins+1 > n) then ! string read is too large for 'chars'
-      input%ierr = 1
-      return
-    endif
-
-    ! Copy (ends-begins) characters to 'chars'
-    chars = input%buf(begins:ends)
-    ! Remove chars from string
-    input%buf = input%buf(ends+1:)
-
-  endif
-#endif
-
 end subroutine InputReadNChars1
 
 ! ************************************************************************** !
@@ -1025,11 +874,6 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
     word(i:i) = ' '
   enddo
   
-!  if(len_trim(word) == 0) then
-!    call InputReadFlotranString(input,option)
-!    call InputReadStringErrorMsg(input,option,'trdatbse')
-!  endif
-
   if (len_trim(input%buf) == 0) then
     if (return_blank_error) then
       input%ierr = 1
@@ -1202,7 +1046,7 @@ subroutine InputFindStringInFile2(input, option, string, print_warning)
   length1 = len_trim(string)
 
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     call InputReadWord(input,option,word,PETSC_TRUE)
     if (InputError(input)) exit
@@ -1220,7 +1064,7 @@ subroutine InputFindStringInFile2(input, option, string, print_warning)
     input%ierr = 0
     rewind(input%fid)
     do 
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       if (InputError(input)) exit
       call InputReadWord(input,option,word,PETSC_TRUE)
       if (InputError(input)) exit
@@ -1256,7 +1100,7 @@ subroutine InputSkipToEND(input,option,string)
   character(len=*) :: string
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     input%err_buf = 'End of file found before end of card ' // trim(string)
     call InputReadStringErrorMsg(input,option)
     if (InputCheckExit(input,option)) exit
@@ -1663,7 +1507,7 @@ subroutine InputReadFilenames(option,filenames)
     
   filename_count = 0     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
     call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
@@ -1681,7 +1525,7 @@ subroutine InputReadFilenames(option,filenames)
   
   filename_count = 0     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
     call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_FALSE)
@@ -1712,6 +1556,5 @@ subroutine InputDestroy(input)
   nullify(input)
   
 end subroutine InputDestroy
-#endif
 
 end module Input_Aux_module
