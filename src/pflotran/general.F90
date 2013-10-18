@@ -1725,6 +1725,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                           gen_aux_var,global_aux_var,scale,res)
 
   use Option_module
+  use Water_EOS_module
+  use Gas_EOS_module
 
   implicit none
 
@@ -1738,7 +1740,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: qsrc_mol(option%nphase)
-  PetscInt :: icomp
+  PetscReal :: den, den_kg, enthalpy, internal_energy
+  PetscInt :: icomp, ierr
   
 
   fmw_phase(option%liquid_phase) = FMWH2O
@@ -1763,21 +1766,32 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       res(ONE_INTEGER) = res(ONE_INTEGER) + qsrc_mol(icomp)
     endif
   enddo
+  ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-      if (global_aux_var%istate == LIQUID_STATE .or. &
-          global_aux_var%istate == TWO_PHASE_STATE) then
+!      if (global_aux_var%istate == LIQUID_STATE .or. &
+!          global_aux_var%istate == TWO_PHASE_STATE) then
+      if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
+        call wateos_noderiv(gen_aux_var%temp, &
+                            gen_aux_var%pres(option%liquid_phase), &
+                            den_kg,den,enthalpy,option%scale,ierr)
+        ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
-          qsrc_mol(ONE_INTEGER) * &
-          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(ONE_INTEGER) / &
-                                        gen_aux_var%den(ONE_INTEGER) * 1.d-6)
+                                qsrc_mol(ONE_INTEGER) * enthalpy
+!          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(ONE_INTEGER) / &
+!                                        gen_aux_var%den(ONE_INTEGER) * 1.d-6)
       endif
-      if (global_aux_var%istate == GAS_STATE .or. &
-          global_aux_var%istate == TWO_PHASE_STATE) then
+!      if (global_aux_var%istate == GAS_STATE .or. &
+!          global_aux_var%istate == TWO_PHASE_STATE) then
+      if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
+        call ideal_gaseos_noderiv(gen_aux_var%pres(option%air_pressure_id), &
+                                  gen_aux_var%temp, &
+                                  option%scale,den,enthalpy,internal_energy)
+        ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
-          qsrc_mol(TWO_INTEGER) * &
-          (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
-                                        gen_aux_var%den(TWO_INTEGER) * 1.d-6)
+          qsrc_mol(TWO_INTEGER) * enthalpy
+!          (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
+!                                        gen_aux_var%den(TWO_INTEGER) * 1.d-6)
       endif
     else
       res(option%energy_id) = qsrc(THREE_INTEGER)
