@@ -194,7 +194,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CONSTRAINT')
         
     if (InputCheckExit(input,option)) exit  
@@ -212,7 +212,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         block_string = 'CONSTRAINT, CONCENTRATIONS'
         icomp = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,block_string)
           
           if (InputCheckExit(input,option)) exit  
@@ -331,7 +331,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         block_string = 'CONSTRAINT, MINERALS'
         imnrl = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,block_string)
           
           if (InputCheckExit(input,option)) exit          
@@ -422,7 +422,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         block_string = 'CONSTRAINT, SURFACE_COMPLEXES'
         isrfcplx = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,block_string)
           
           if (InputCheckExit(input,option)) exit          
@@ -468,7 +468,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         block_string = 'CONSTRAINT, COLLOIDS'
         icomp = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,block_string)
           
           if (InputCheckExit(input,option)) exit          
@@ -524,7 +524,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         block_string = 'CONSTRAINT, IMMOBILE'
         iimmobile = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,block_string)
           
           if (InputCheckExit(input,option)) exit          

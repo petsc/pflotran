@@ -120,7 +120,7 @@ subroutine DatabaseRead(reaction,option)
   input => InputCreate(IUNIT_TEMP,reaction%database_filename,option)
 
   ! read temperatures
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   ! remove comment
   call InputReadQuotedWord(input,option,name,PETSC_TRUE)
   call InputReadInt(input,option,reaction%num_dbase_temperatures)
@@ -136,7 +136,7 @@ subroutine DatabaseRead(reaction,option)
   num_nulls = 0
   null_name = 'null'
   do ! loop over every entry in the database
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'DATABASE')
 
     call InputReadQuotedWord(input,option,name,PETSC_TRUE)

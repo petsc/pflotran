@@ -91,7 +91,7 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
   character(len=MAXSTRINGLENGTH) :: string
   
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if(InputCheckExit(input,option)) exit
   

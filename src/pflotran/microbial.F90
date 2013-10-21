@@ -48,7 +48,7 @@ subroutine MicrobialRead(microbial,input,option)
   nullify(prev_inhibition)
   nullify(microbial_biomass)
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 

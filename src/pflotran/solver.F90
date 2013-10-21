@@ -327,7 +327,7 @@ subroutine SolverReadLinear(solver,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -393,7 +393,7 @@ subroutine SolverReadLinear(solver,input,option)
 
       case('HYPRE_OPTIONS')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
           call InputReadWord(input,option,keyword,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','LINEAR SOLVER, HYPRE options')   
@@ -638,7 +638,7 @@ subroutine SolverReadNewton(solver,input,option)
   input%ierr = 0
   do
 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 

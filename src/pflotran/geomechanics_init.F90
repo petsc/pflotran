@@ -108,7 +108,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   word = ''
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,card)
     if (InputCheckExit(input,option)) exit
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -233,7 +233,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
     geomech_realization%geomech_patch%geomech_grid
     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -341,7 +341,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             call printErrMsg(option)
         end select
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -357,7 +357,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
       !.........................................................................
       case ('GEOMECHANICS_OUTPUT')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -396,7 +396,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                   endif
                 enddo
                 if (.not.continuation_flag) exit
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
               enddo
             case('OUTPUT_FILE')

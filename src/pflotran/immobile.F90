@@ -40,7 +40,7 @@ subroutine ImmobileRead(immobile,input,option)
            
   nullify(prev_immobile_species)
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
           

@@ -104,7 +104,7 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'VELOCITY_DATASET')
           
     if (InputCheckExit(input,option)) exit  
@@ -291,7 +291,7 @@ subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
   
   count = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     count = count + 1

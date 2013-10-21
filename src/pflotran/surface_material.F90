@@ -83,7 +83,7 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
   character(len=MAXSTRINGLENGTH) :: string
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if(InputCheckExit(input,option)) exit
   

@@ -119,7 +119,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
 
   hint = 'Unstructured Grid'
 
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   string = 'unstructured grid'
   call InputReadStringErrorMsg(input,option,hint)  
 
@@ -155,7 +155,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
         ! read in the vertices defining the grid cell
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'element type',hint)
@@ -238,7 +238,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do ivertex = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         do idir = 1, 3
           call InputReadDouble(input,option,temp_real_array(idir,ivertex))
@@ -349,7 +349,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 
   hint = 'Unstructured Grid'
 
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   string = 'unstructured grid'
   call InputReadStringErrorMsg(input,option,hint)  
 
@@ -383,7 +383,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     num_to_read = unstructured_grid%nmax
     do icell = 1, num_to_read
       ! read in the vertices defining the grid cell
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,hint)  
       call InputReadWord(input,option,word,PETSC_TRUE)
       call InputErrorMsg(input,option,'element type',hint)
@@ -428,7 +428,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do ivertex = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         do idir = 1, 3
           call InputReadDouble(input,option,temp_real_array(idir,ivertex))
@@ -472,7 +472,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 
 
   input => InputCreate(fileid,surf_filename,option)
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   string = 'unstructured sideset'
   call InputReadStringErrorMsg(input,option,hint)  
 
@@ -506,7 +506,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 
       do icell = 1, num_to_read
         ! read in the vertices defining the cell face
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'element type',hint)

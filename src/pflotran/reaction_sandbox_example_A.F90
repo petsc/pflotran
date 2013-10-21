@@ -85,7 +85,7 @@ subroutine ExampleRead(this,input,option)
   character(len=MAXWORDLENGTH) :: word
   
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
