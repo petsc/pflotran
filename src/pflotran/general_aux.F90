@@ -297,6 +297,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(gid) = 0.d0
 
       call psat(gen_aux_var%temp,P_sat,ierr)
+      !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
+      !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
       call Henry_air_noderiv(dummy,gen_aux_var%temp, &
                              P_sat,K_H_tilde)
       gen_aux_var%pres(gid) = gen_aux_var%pres(lid)
@@ -334,7 +336,9 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                                        gen_aux_var%sat(lid), &
                                        saturation_function,option)      
 
-      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cpid)
+      !geh: liquid pressure cannot go negative
+      gen_aux_var%pres(lid) = max(gen_aux_var%pres(gid) - &
+                                  gen_aux_var%pres(cpid),1.d-10)
 
       call Henry_air_noderiv(dummy,gen_aux_var%temp, &
                              P_sat,K_H_tilde)
