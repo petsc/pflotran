@@ -34,6 +34,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Structured_Grid_module
   use Utility_module, only : DotProduct
   use Dataset_Gridded_class
+  use Dataset_Ascii_class
   
   use General_Aux_module
   
@@ -80,75 +81,91 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   delta_z = min((grid%z_max_global-grid%z_min_global)/500,1.d0)
   temperature_at_datum = option%reference_temperature
   concentration_at_datum = 0.d0
+  datum = 0.d0
+
+  pressure_gradient = 0.d0
+  temperature_gradient = 0.d0
+  piezometric_head_gradient = 0.d0
+  concentration_gradient = 0.d0
   
   select case(option%iflowmode)
     case(G_MODE)
       temperature_at_datum = &
-        condition%general%temperature%flow_dataset%time_series%cur_value(1)
-      temperature_gradient(1:3) = &
-        condition%general%temperature%gradient%time_series%cur_value(1:3)
+        condition%general%temperature%dataset%rarray(1)
+      if (associated(condition%general%temperature%gradient)) then
+        temperature_gradient(1:3) = &
+          condition%general%temperature%gradient%rarray(1:3)
+      endif
       concentration_at_datum = &
-        condition%general%mole_fraction%flow_dataset%time_series%cur_value(1)
-      concentration_gradient(1:3) = &
-        condition%general%mole_fraction%gradient%time_series%cur_value(1:3)
-      datum(1:3) = &
-        condition%general%liquid_pressure%datum%time_series%cur_value(1:3)
+        condition%general%mole_fraction%dataset%rarray(1)
+      if (associated(condition%general%mole_fraction%gradient)) then
+        concentration_gradient(1:3) = &
+        condition%general%mole_fraction%gradient%rarray(1:3)
+      endif
+      datum(1:3) = condition%datum%rarray(1:3)
       pressure_at_datum = &
-        condition%general%liquid_pressure%flow_dataset%time_series%cur_value(1)    
+        condition%general%liquid_pressure%dataset%rarray(1)    
       ! gradient is in m/m; needs conversion to Pa/m
-      piezometric_head_gradient(1:3) = &
-        condition%general%liquid_pressure%gradient%time_series%cur_value(1:3)
+      if (associated(condition%general%liquid_pressure%gradient)) then
+        piezometric_head_gradient(1:3) = &
+          condition%general%liquid_pressure%gradient%rarray(1:3)
+      endif
     case default
       ! for now, just set it; in future need to account for a different temperature datum
       if (associated(condition%temperature)) then
         if (condition%temperature%itype == DIRICHLET_BC) then
           temperature_at_datum = &
-            condition%temperature%flow_dataset%time_series%cur_value(1)
-          temperature_gradient(1:3) = &
-            condition%temperature%gradient%time_series%cur_value(1:3)
+            condition%temperature%dataset%rarray(1)
+          if (associated(condition%temperature%gradient)) then
+            temperature_gradient(1:3) = &
+              condition%temperature%gradient%rarray(1:3)
+          endif
         endif
       endif
       if (associated(condition%concentration)) then
         if (condition%concentration%itype == DIRICHLET_BC .and. &
-            associated(condition%concentration%flow_dataset%time_series)) then
+            associated(condition%concentration%dataset)) then
             concentration_at_datum = &
-              condition%concentration%flow_dataset%time_series%cur_value(1)
-            concentration_gradient(1:3) = &
-              condition%concentration%gradient%time_series%cur_value(1:3)
+              condition%concentration%dataset%rarray(1)
+            if (associated(condition%concentration%gradient)) then
+              concentration_gradient(1:3) = &
+                condition%concentration%gradient%rarray(1:3)
+            endif
         else
           concentration_at_datum = -999.d0
           concentration_gradient = 0.d0
         endif
       endif
 
-      if (associated(condition%pressure%datum%time_series)) then
-        datum(1:3) = &
-          condition%pressure%datum%time_series%cur_value(1:3)
+      if (associated(condition%datum)) then
         nullify(datum_dataset)
-      else
-        select type(dataset=>condition%pressure%datum%dataset)
+        select type(dataset=>condition%datum)
+          class is (dataset_ascii_type)
+            datum = dataset%rarray(1:3)
           class is (dataset_gridded_type)
             datum_dataset => dataset
+            !TODO(geh): move this to FlowSubConditionUpdateDataset()
+            !call DatasetLoad(datum_dataset,option)
+            ! set datum here equal to estimated mid value of dataset
+            datum(1:3) = -999.d0
+            datum_dataset_rmax = maxval(datum_dataset%rarray)
+            datum_dataset_rmin = minval(datum_dataset%rarray)
+            datum(3) = 0.5d0*(datum_dataset_rmax+datum_dataset_rmin)
+            ! round the number to the nearest whole number
+            datum(3) = int(datum(3))
           class default
             option%io_buffer = &
               'Incorrect dataset type in HydrostaticUpdateCoupler'
             call printErrMsg(option)
         end select
-        !TODO(geh): move this to FlowSubConditionUpdateDataset()
-        !call DatasetLoad(datum_dataset,option)
-        ! set datum here equal to estimated mid value of dataset
-        datum(1:3) = -999.d0
-        datum_dataset_rmax = maxval(datum_dataset%rarray)
-        datum_dataset_rmin = minval(datum_dataset%rarray)
-        datum(3) = 0.5d0*(datum_dataset_rmax+datum_dataset_rmin)
-        ! round the number to the nearest whole number
-        datum(3) = int(datum(3))
       endif
       pressure_at_datum = &
-        condition%pressure%flow_dataset%time_series%cur_value(1)
+        condition%pressure%dataset%rarray(1)
       ! gradient is in m/m; needs conversion to Pa/m
-      piezometric_head_gradient(1:3) = &
-        condition%pressure%gradient%time_series%cur_value(1:3)
+      if (associated(condition%pressure%gradient)) then
+        piezometric_head_gradient(1:3) = &
+          condition%pressure%gradient%rarray(1:3)
+      endif
   end select      
       
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
@@ -379,8 +396,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
           coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
         else if (condition%pressure%itype == CONDUCTANCE_BC) then
           coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
-          coupler%flow_aux_real_var(2,iconn) = &
-            condition%pressure%flow_dataset%time_series%lame_aux_variable_remove_me
+          coupler%flow_aux_real_var(2,iconn) = condition%pressure%aux_real(1)
         else
           coupler%flow_aux_real_var(1,iconn) = pressure
         endif
@@ -478,8 +494,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
       else if (condition%pressure%itype == CONDUCTANCE_BC) then
         coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
-        coupler%flow_aux_real_var(2,num_faces + iconn) = &
-          condition%pressure%flow_dataset%time_series%lame_aux_variable_remove_me
+        coupler%flow_aux_real_var(2,num_faces + iconn) = condition%pressure%aux_real(1)
       else
         coupler%flow_aux_real_var(1,num_faces + iconn) = pressure
       endif

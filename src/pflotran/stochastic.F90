@@ -26,7 +26,7 @@ subroutine StochasticInit(stochastic,option)
 
   use Simulation_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
 
@@ -65,7 +65,7 @@ subroutine StochasticInit(stochastic,option)
     string = &
       '# of realization ids read from file may be too few in StochasticInit()'
     do i = 1, stochastic%num_realizations
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,string)
       call InputReadInt(input,option,realization_ids_from_file(i))
       call InputErrorMsg(input,option,'realization id', &
@@ -141,7 +141,7 @@ end subroutine StochasticInit
 subroutine StochasticReadCardFromInput(stochastic,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Stochastic_Aux_module
 
   implicit none

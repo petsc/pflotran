@@ -1,11 +1,10 @@
 module Realization_Base_class
 
-  use Level_module
   use Patch_module
 
   use Discretization_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Debug_module
   use Output_Aux_module
   use Field_module
@@ -23,13 +22,13 @@ module Realization_Base_class
 
     PetscInt :: id
     type(discretization_type), pointer :: discretization
-    type(level_list_type), pointer :: level_list
+    type(patch_list_type), pointer :: patch_list
     type(patch_type), pointer :: patch
 
     type(option_type), pointer :: option
     type(input_type), pointer :: input
     type(field_type), pointer :: field
-    type(flow_debug_type), pointer :: debug
+    type(debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
     type(mass_transfer_type), pointer :: flow_mass_transfer_list
     type(mass_transfer_type), pointer :: rt_mass_transfer_list
@@ -68,10 +67,10 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%input)
   realization_base%discretization => DiscretizationCreate()
   realization_base%field => FieldCreate()
-  realization_base%debug => DebugCreateFlow()
+  realization_base%debug => DebugCreate()
   realization_base%output_option => OutputOptionCreate()
 
-  realization_base%level_list => LevelCreateList()
+  realization_base%patch_list => PatchCreateList()
 
   nullify(realization_base%reaction)
 

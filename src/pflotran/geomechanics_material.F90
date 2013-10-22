@@ -78,7 +78,7 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
                                             input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   
   implicit none
@@ -91,7 +91,7 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
   character(len=MAXSTRINGLENGTH) :: string
   
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if(InputCheckExit(input,option)) exit
   

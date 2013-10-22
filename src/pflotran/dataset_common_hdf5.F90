@@ -15,7 +15,6 @@ module Dataset_Common_HDF5_class
     PetscBool :: realization_dependent
     PetscInt :: max_buffer_size
     PetscBool :: is_cell_indexed
-    PetscBool :: is_transient
   end type dataset_common_hdf5_type
 
   public :: DatasetCommonHDF5Create, &
@@ -76,7 +75,7 @@ subroutine DatasetCommonHDF5Init(this)
   this%realization_dependent = PETSC_FALSE
   this%max_buffer_size = 10
   this%is_cell_indexed = PETSC_FALSE
-  this%is_transient = PETSC_FALSE
+  this%data_type = DATASET_REAL
     
 end subroutine DatasetCommonHDF5Init
 
@@ -99,7 +98,6 @@ subroutine DatasetCommonHDF5Copy(this, that)
   that%realization_dependent = this%realization_dependent
   that%max_buffer_size = this%max_buffer_size
   that%is_cell_indexed = this%is_cell_indexed
-  that%is_transient = this%is_transient
     
 end subroutine DatasetCommonHDF5Copy
 
@@ -136,7 +134,7 @@ end function DatasetCommonHDF5Cast
 subroutine DatasetCommonHDF5Read(this,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -151,7 +149,7 @@ subroutine DatasetCommonHDF5Read(this,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -186,7 +184,7 @@ end subroutine DatasetCommonHDF5Read
 subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -419,9 +417,6 @@ function DatasetCommonHDF5Load(this,option)
 #endif
     ! if no times are read, this%time_storage will be null coming out of
     ! DatasetCommonHDF5ReadTimes()
-    if (associated(this%time_storage)) then
-      this%is_transient = PETSC_TRUE
-    endif
   endif
   
   if (associated(this%time_storage)) then
@@ -528,8 +523,6 @@ end function DatasetCommonHDF5GetPointer
 !
 ! ************************************************************************** !
 subroutine DatasetCommonHDF5Strip(this)
-
-  use Utility_module, only : DeallocateArray
 
   implicit none
   

@@ -27,7 +27,7 @@ contains
 subroutine SubsurfaceInitialize(simulation_base,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Simulation_Base_class
   
   implicit none
@@ -92,7 +92,7 @@ end subroutine SubsurfaceInitializePostPetsc
 subroutine SubsurfInitCommandLineSettings(option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   

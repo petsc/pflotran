@@ -2156,7 +2156,7 @@ end subroutine GeomechUpdateSolution
 ! ************************************************************************** !
 subroutine geomechupdatesolutionpatch(realization)
 
-  use geomechanics_realization_module
+  use Geomechanics_Realization_module
     
   implicit none 
   
@@ -2176,7 +2176,7 @@ end subroutine geomechupdatesolutionpatch
 ! ************************************************************************** !
 subroutine GeomechStoreInitialPressTemp(realization)
 
-  use geomechanics_realization_module
+  use Geomechanics_Realization_module
     
   implicit none 
   

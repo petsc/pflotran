@@ -40,7 +40,7 @@
 program pflotran
   
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Stochastic_module
   use Stochastic_Aux_module
   use Simulation_module

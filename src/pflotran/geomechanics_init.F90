@@ -36,7 +36,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Patch_module
   use Option_module
@@ -80,7 +80,7 @@ end subroutine GeomechicsInitReadRequiredCards
 subroutine GeomechanicsInit(geomech_realization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -108,7 +108,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   word = ''
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,card)
     if (InputCheckExit(input,option)) exit
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -174,7 +174,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                                      input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
@@ -233,7 +233,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
     geomech_realization%geomech_patch%geomech_grid
     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -343,7 +343,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             call printErrMsg(option)
         end select
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -359,7 +359,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
       !.........................................................................
       case ('GEOMECHANICS_OUTPUT')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -398,7 +398,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                   endif
                 enddo
                 if (.not.continuation_flag) exit
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
               enddo
             case('OUTPUT_FILE')

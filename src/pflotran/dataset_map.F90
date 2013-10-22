@@ -19,9 +19,6 @@ module Dataset_Map_class
     PetscInt, pointer :: datatocell_ids(:)
     PetscInt, pointer :: cell_ids_local(:)
     PetscBool         :: first_time
-!  contains
-!    procedure, public :: Init => DatasetMapInit
-!    procedure, public :: Load => DatasetMapLoad
   end type dataset_map_type
   
   PetscInt, parameter :: MAX_NSLICE = 100
@@ -116,7 +113,7 @@ end function DatasetMapCast
 subroutine DatasetMapRead(this,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -131,7 +128,7 @@ subroutine DatasetMapRead(this,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 

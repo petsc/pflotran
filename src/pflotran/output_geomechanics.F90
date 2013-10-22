@@ -1495,6 +1495,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 
 end subroutine OutputHDF5UGridXDMFGeomech
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! WriteHDF5CoordinatesXDMFGeomech: Writes the geomech coordinates in HDF5 file
@@ -1823,6 +1824,8 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 !if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesXDMFGeomech
+#endif
+! defined(PETSC_HAVE_HDF5)
 
 end module Output_Geomechanics_module
 

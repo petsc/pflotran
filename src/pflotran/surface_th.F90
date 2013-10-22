@@ -187,7 +187,6 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -337,7 +336,6 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -455,7 +453,6 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -561,7 +558,6 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -648,7 +644,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: press_up, press_dn
   PetscReal :: k_eff_dn, k_eff_up
   PetscReal :: Dk_eff
-  PetscReal :: Ke_up, Ke_fr
+  PetscReal :: Ke_up, Ke_fr, Ke_fr_up
   PetscReal :: dtemp
   PetscReal :: Cwi
   PetscReal :: temp_half
@@ -817,7 +813,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           k_eff_up = ckdry_p(local_id) + &
                       (ckwet_p(local_id) - ckdry_p(local_id))*Ke_up
 #ifdef ICE
-          Ke_fr_up = (sat_ice(local_id) + epsilon)**th_alpha_fr_p(local_id)
+          Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
           k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
                      ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
 #endif
@@ -902,7 +898,6 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -1459,10 +1454,10 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-    qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    qsrc_flow = source_sink%flow_condition%rate%dataset%rarray(1)
       
     if(source_sink%flow_condition%rate%itype/=HET_ENERGY_RATE_SS) &
-      esrc = source_sink%flow_condition%energy_rate%flow_dataset%time_series%cur_value(1)
+      esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
 
     cur_connection_set => source_sink%connection_set
     
@@ -1487,7 +1482,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       esrc = 0.d0
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (ENERGY_RATE_SS)
-          esrc = source_sink%flow_condition%energy_rate%flow_dataset%time_series%cur_value(1)
+          esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
         case (HET_ENERGY_RATE_SS)
           esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
@@ -2030,7 +2025,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
       if (associated(source_sink%flow_condition%temperature)) then
         if(source_sink%flow_condition%temperature%itype/=HET_DIRICHLET) then
-          tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+          tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
         else
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
         endif

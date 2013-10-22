@@ -1,6 +1,7 @@
 module Dataset_Global_class
  
   use Dataset_Common_HDF5_class
+  use DM_Kludge_module
   
   use PFLOTRAN_Constants_module
 
@@ -13,9 +14,7 @@ module Dataset_Global_class
   type, public, extends(dataset_common_hdf5_type) :: dataset_global_type
     PetscInt :: local_size    ! local number of entries on this process
     PetscInt :: global_size   ! global number of entries
-!  contains
-!    procedure, public :: Init => DatasetGlobalInit
-!    procedure, public :: Load => DatasetGlobalLoad
+    type(dm_ptr_type), pointer :: dm_wrapper ! pointer 
   end type dataset_global_type
   
   public :: DatasetGlobalCreate, &
@@ -48,6 +47,25 @@ function DatasetGlobalCreate()
     
 end function DatasetGlobalCreate
 
+! ************************************************************************** !
+!
+! DatasetGlobalInit: Initializes members of global dataset class
+! author: Glenn Hammond
+! date: 05/03/13
+!
+! ************************************************************************** !
+subroutine DatasetGlobalInit(this)
+  
+  implicit none
+  
+  class(dataset_global_type) :: this
+  
+  call DatasetCommonHDF5Init(this)
+  this%local_size = 0
+  this%global_size = 0
+  nullify(this%dm_wrapper)
+    
+end subroutine DatasetGlobalInit
 
 ! ************************************************************************** !
 !
@@ -76,45 +94,30 @@ end function DatasetGlobalCast
 
 ! ************************************************************************** !
 !
-! DatasetGlobalInit: Initializes members of global dataset class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
-subroutine DatasetGlobalInit(this)
-  
-  implicit none
-  
-  class(dataset_global_type) :: this
-  
-  call DatasetCommonHDF5Init(this)
-  this%local_size = 0
-  this%global_size = 0
-    
-end subroutine DatasetGlobalInit
-
-! ************************************************************************** !
-!
 ! DatasetGlobalLoad: Load new data into dataset buffer
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalLoad(this,dm_wrapper,option)
+subroutine DatasetGlobalLoad(this,option)
   
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
 #endif
   use Option_module
   use Time_Storage_module
-  use DM_Kludge_module
   use Dataset_Base_class  
 
   implicit none
   
   class(dataset_global_type) :: this
-  type(dm_ptr_type) :: dm_wrapper
   type(option_type) :: option
+  
+  if (.not.associated(this%dm_wrapper)) then
+    option%io_buffer = 'dm_wrapper not associated in Global Dataset: ' // &
+      trim(this%name)
+    call printErrMsg(option)
+  endif
   
   if (DatasetCommonHDF5Load(this,option)) then
     if (.not.associated(this%rarray)) then
@@ -132,7 +135,7 @@ subroutine DatasetGlobalLoad(this,dm_wrapper,option)
       this%rbuffer = 0.d0
     endif
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetGlobalReadData(this,dm_wrapper,option,H5T_NATIVE_DOUBLE)
+    call DatasetGlobalReadData(this,option,H5T_NATIVE_DOUBLE)
 #endif  
     ! no need to reorder since it is 1D in the h5 file.
   endif
@@ -148,12 +151,11 @@ end subroutine DatasetGlobalLoad
 ! date: 01/12/08
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
+subroutine DatasetGlobalReadData(this,option,data_type)
                          
   use hdf5
   use Logging_module
   use Option_module
-  use DM_Kludge_module
   
   implicit none
 
@@ -167,7 +169,6 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
 ! Default HDF5 Mechanism 
  
   class(dataset_global_type) :: this
-  type(dm_ptr_type) :: dm_wrapper
   type(option_type) :: option
   integer(HID_T) :: data_type 
   
@@ -195,9 +196,9 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
   
   call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
 
-  if (dm_wrapper%dm /= 0) then
-    call DMCreateGlobalVector(dm_wrapper%dm,global_vec,ierr)
-    call DMDACreateNaturalVector(dm_wrapper%dm,natural_vec,ierr)
+  if (this%dm_wrapper%dm /= 0) then
+    call DMCreateGlobalVector(this%dm_wrapper%dm,global_vec,ierr)
+    call DMDACreateNaturalVector(this%dm_wrapper%dm,natural_vec,ierr)
   else
     option%io_buffer = 'ugdm not yet supported in DatasetGlobalReadData()'
     call printErrMsg(option)
@@ -356,10 +357,10 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
     !call VecView(natural_vec,viewer,ierr)
     !call PetscViewerDestroy(viewer,ierr)
 
-    call DMDANaturalToGlobalBegin(dm_wrapper%dm,natural_vec,INSERT_VALUES, &
-                                  global_vec,ierr)
-    call DMDANaturalToGlobalEnd(dm_wrapper%dm,natural_vec,INSERT_VALUES, &
-                                global_vec,ierr)
+    call DMDANaturalToGlobalBegin(this%dm_wrapper%dm,natural_vec, &
+                                  INSERT_VALUES,global_vec,ierr)
+    call DMDANaturalToGlobalEnd(this%dm_wrapper%dm,natural_vec, &
+                                INSERT_VALUES,global_vec,ierr)
     call VecGetArrayF90(global_vec,vec_ptr,ierr)
     this%rbuffer(istart+1:istart+this%local_size) = vec_ptr(:)
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
@@ -374,8 +375,6 @@ subroutine DatasetGlobalReadData(this,dm_wrapper,option,data_type)
 
     istart = istart + this%local_size
   enddo
-
-
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -402,6 +401,7 @@ subroutine DatasetGlobalStrip(this)
   class(dataset_global_type)  :: this
   
   call DatasetCommonHDF5Strip(this)
+  nullify(this%dm_wrapper) ! do not deallocate, as this is solely a pointer
   
 end subroutine DatasetGlobalStrip
 

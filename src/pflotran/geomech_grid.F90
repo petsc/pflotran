@@ -1037,7 +1037,7 @@ end subroutine GeomechGridCopyVecToIntegerArray
 ! ************************************************************************** !
 subroutine GeomechSubsurfMapFromFilename(grid,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   
@@ -1063,7 +1063,7 @@ end subroutine GeomechSubsurfMapFromFilename
 ! ************************************************************************** !
 subroutine GeomechSubsurfMapFromFileId(grid,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   use Logging_module
@@ -1108,7 +1108,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   cell_ids_flow = 0
   
   count = 0
-  call InputReadFlotranString(input, option)
+  call InputReadPflotranString(input, option)
   do 
     call InputReadInt(input, option, temp_int)
     if (InputError(input)) exit
@@ -1123,7 +1123,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (InputError(input)) exit

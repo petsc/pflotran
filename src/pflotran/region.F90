@@ -378,7 +378,7 @@ end subroutine RegionAddToList
 ! ************************************************************************** !
 subroutine RegionRead(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   use Structured_Grid_module
@@ -394,7 +394,7 @@ subroutine RegionRead(region,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     
@@ -408,7 +408,7 @@ subroutine RegionRead(region,input,option)
         call InputReadInt(input,option,region%i1) 
         if (InputError(input)) then
           input%ierr = 0
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'REGION')
           call InputReadInt(input,option,region%i1) 
         endif
@@ -428,7 +428,7 @@ subroutine RegionRead(region,input,option)
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
         if (InputError(input)) then
           input%ierr = 0
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'REGION')
           call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x)
         endif
@@ -516,7 +516,7 @@ end subroutine RegionRead
 ! ************************************************************************** !
 subroutine RegionReadFromFilename(region,option,filename)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   
@@ -542,7 +542,7 @@ end subroutine RegionReadFromFilename
 ! ************************************************************************** !
 subroutine RegionReadFromFileId(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   use Logging_module
@@ -613,7 +613,7 @@ subroutine RegionReadFromFileId(region,input,option)
   continuation_flag = PETSC_TRUE
   do
     if (.not.continuation_flag) exit
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     continuation_flag = PETSC_FALSE
     if (index(input%buf,backslash) > 0) &
@@ -639,7 +639,7 @@ subroutine RegionReadFromFileId(region,input,option)
   !  3) Contains vertex ids that make up the face: MORE than two entries per
   !     line
   count = 0
-  call InputReadFlotranString(input, option)
+  call InputReadPflotranString(input, option)
   do 
     call InputReadInt(input, option, temp_int)
     if (InputError(input)) exit
@@ -657,7 +657,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (.not.InputError(input)) then
@@ -697,7 +697,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (InputError(input)) exit
@@ -749,7 +749,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       if (InputError(input)) exit
       call InputReadInt(input,option,temp_int)
       if (InputError(input)) exit
@@ -815,7 +815,7 @@ subroutine RegionReadFromFileId(region,input,option)
 #if 0  
   count = 1
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     call InputReadInt(input,option,temp_int)
     if (.not.InputError(input)) then
@@ -852,7 +852,7 @@ end subroutine RegionReadFromFileId
 ! ************************************************************************** !
 subroutine RegionReadSideSet(sideset,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -896,7 +896,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
 
   hint = 'Unstructured Sideset'
 
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   string = 'unstructured sideset'
   call InputReadStringErrorMsg(input,option,hint)  
 
@@ -929,7 +929,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
 
       do iface = 1, num_to_read
         ! read in the vertices defining the cell face
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'face type',hint)
@@ -1006,7 +1006,7 @@ end subroutine RegionReadSideSet
 ! ************************************************************************** !
 subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -1049,7 +1049,7 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 ! -----------------------------------------------------------------
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
 
     call InputReadWord(input,option,word,PETSC_FALSE)
@@ -1073,7 +1073,7 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
           explicit_faceset%face_centroids(iconn)%z = 0.d0
         enddo
         do iconn = 1, num_connections
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,hint)  
           call InputReadInt(input,option,cell_ids(iconn))
           call InputErrorMsg(input,option,'cell id',hint)

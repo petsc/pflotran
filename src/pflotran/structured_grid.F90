@@ -334,7 +334,7 @@ end subroutine StructGridCreateVecFromDM
 subroutine StructGridReadDXYZ(structured_grid,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   
@@ -384,7 +384,7 @@ end subroutine StructGridReadDXYZ
 ! ************************************************************************** !
 subroutine StructGridReadArray(a,n,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   
   implicit none
@@ -408,7 +408,7 @@ subroutine StructGridReadArray(a,n,input,option)
     i1 = i2+1
     i2 = i2+nvalue
     if (i2.gt.n) i2 = n
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'DXYZ')
     do i = i1, i2
       call InputReadDouble(input,option,a(i))
@@ -447,7 +447,7 @@ end subroutine StructGridReadArray
 ! ************************************************************************** !
 subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -486,7 +486,7 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
       exit
     endif
     
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'DXYZ')
 
     continuation_flag = PETSC_FALSE

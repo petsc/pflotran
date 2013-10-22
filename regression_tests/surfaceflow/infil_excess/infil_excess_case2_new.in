@@ -1,4 +1,4 @@
-:Description: 
+:Description: Surface-Subsurface flow with process-model approach
 
 :=========================== flow mode ========================================
 MODE RICHARDS
@@ -126,10 +126,10 @@ SURF_TIME
 END
 
 :=========================== output ==========================================
-:SURF_OUTPUT
-:  PERIODIC TIME 60 s
-:  HYDROGRAPH
-:END
+SURF_OUTPUT
+  PERIODIC TIME 60 s
+  HYDROGRAPH
+END
 
 :=========================== regions ==========================================
 SURF_REGION surf_all
@@ -173,13 +173,6 @@ SURF_FLOW_CONDITION outflow
   PRESSURE 101325.d0
 END
 
-SURF_FLOW_CONDITION from_subsurface
-  TYPE
-    RATE heterogeneous_volumetric_rate
-  /
-  RATE 0d-6
-END
-
 :=========================== condition couplers ===============================
 : source condition
 SURF_SOURCE_SINK rain_on_top_surface
@@ -197,12 +190,6 @@ SURF_BOUNDARY_CONDITION surf_east_bc
   SURF_FLOW_CONDITION outflow
   SURF_REGION surf_east
 END
-
-SURF_SOURCE_SINK from_subsurface_ss
-  SURF_FLOW_CONDITION from_subsurface
-  REGION surf_all
-END
-
 
 :=========================== stratigraphy couplers ============================
 STRATA

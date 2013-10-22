@@ -75,7 +75,7 @@ end function UniformVelocityDatasetCreate
 subroutine UniformVelocityDatasetRead(dataset,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Logging_module
   use Units_module 
@@ -104,7 +104,7 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'VELOCITY_DATASET')
           
     if (InputCheckExit(input,option)) exit  
@@ -164,7 +164,7 @@ end subroutine UniformVelocityDatasetRead
 subroutine UniVelocityDatasetReadValues(input,option,keyword,string,dataset, &
                                         units)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   use Logging_module
@@ -253,7 +253,7 @@ end subroutine UniVelocityDatasetReadValues
 ! ************************************************************************** !
 subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
   use Option_module
@@ -291,7 +291,7 @@ subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
   
   count = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     count = count + 1

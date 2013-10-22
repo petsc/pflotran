@@ -160,7 +160,7 @@ end function DiscretizationCreate
 subroutine DiscretizationReadRequiredCards(discretization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -192,7 +192,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
 
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (input%ierr /= 0) exit
 
     if (InputCheckExit(input,option)) exit
@@ -373,7 +373,7 @@ end subroutine DiscretizationReadRequiredCards
 subroutine DiscretizationRead(discretization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -403,7 +403,7 @@ subroutine DiscretizationRead(discretization,input,option)
 
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (input%ierr /= 0) exit
 
     if (InputCheckExit(input,option)) exit
@@ -421,7 +421,7 @@ subroutine DiscretizationRead(discretization,input,option)
           case default
             call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
         end select
-        call InputReadFlotranString(input,option) ! read END card
+        call InputReadPflotranString(input,option) ! read END card
         call InputReadStringErrorMsg(input,option,'DISCRETIZATION,DXYZ,END')
         if (.not.(InputCheckExit(input,option))) then
           option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
@@ -434,7 +434,7 @@ subroutine DiscretizationRead(discretization,input,option)
             grid => discretization%grid
 
             ! read first line and we will split off the legacy approach vs. new
-            call InputReadFlotranString(input,option)
+            call InputReadPflotranString(input,option)
             call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or Min Coordinate')
             string = input%buf
 
@@ -450,7 +450,7 @@ subroutine DiscretizationRead(discretization,input,option)
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
                   grid%structured_grid%itype == SPHERICAL_GRID) then
-!geh                  call InputReadFlotranString(input,option) ! x-direction
+!geh                  call InputReadPflotranString(input,option) ! x-direction
 !geh                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
                 call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
                 call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
@@ -458,7 +458,7 @@ subroutine DiscretizationRead(discretization,input,option)
                 call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                call InputReadFlotranString(input,option) ! y-direction
+                call InputReadPflotranString(input,option) ! y-direction
                 call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
                 call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
                 call InputErrorMsg(input,option,'Lower Y','BOUNDS')
@@ -470,7 +470,7 @@ subroutine DiscretizationRead(discretization,input,option)
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                call InputReadFlotranString(input,option) ! z-direction
+                call InputReadPflotranString(input,option) ! z-direction
                 call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
                 call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
                 call InputErrorMsg(input,option,'Lower Z','BOUNDS')
@@ -493,7 +493,7 @@ subroutine DiscretizationRead(discretization,input,option)
                                      grid%structured_grid%bounds(:,LOWER), &
                                      i)
               call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
-              call InputReadFlotranString(input,option)
+              call InputReadPflotranString(input,option)
               call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,MAX COORDINATE')
               call InputReadNDoubles(input,option, &
                                      grid%structured_grid%bounds(:,UPPER), &
@@ -508,7 +508,7 @@ subroutine DiscretizationRead(discretization,input,option)
                 grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
               endif
             endif
-            call InputReadFlotranString(input,option)
+            call InputReadPflotranString(input,option)
             call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,END')
             if (.not.(InputCheckExit(input,option))) then
               if (OptionPrintToScreen(option)) then

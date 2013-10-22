@@ -73,7 +73,7 @@ subroutine ExampleRead(this,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Units_module, only : UnitsConvertToInternal
   
   implicit none
@@ -86,7 +86,7 @@ subroutine ExampleRead(this,input,option)
   character(len=MAXWORDLENGTH) :: word
   
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 

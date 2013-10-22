@@ -47,7 +47,7 @@ module Reaction_Sandbox_Base_class
     subroutine Base_Read(this,input,option)
     
       use Option_module
-      use Input_module
+      use Input_Aux_module
   
       import reaction_sandbox_base_type
     
@@ -62,7 +62,7 @@ module Reaction_Sandbox_Base_class
     subroutine Base_SkipBlock(this,input,option)
     
       use Option_module
-      use Input_module
+      use Input_Aux_module
   
       import reaction_sandbox_base_type
     
@@ -132,7 +132,7 @@ contains
   subroutine Base_Read(this,input,option)
     
     use Option_module
-    use Input_module
+    use Input_Aux_module
   
     implicit none
   
@@ -146,7 +146,7 @@ contains
   subroutine Base_SkipBlock(this,input,option)
     
     use Option_module
-    use Input_module
+    use Input_Aux_module
   
     implicit none
   

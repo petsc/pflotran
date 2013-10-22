@@ -9,7 +9,7 @@ module Geomechanics_Realization_module
   use Geomechanics_Debug_module
   use Geomechanics_Region_module
   use Geomechanics_Condition_module
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Output_Aux_module
   use Waypoint_module
@@ -832,7 +832,6 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
 
   use Dataset_Base_class
   use Dataset_module
-  
 
   implicit none
 
@@ -853,28 +852,16 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
   do
     if (.not.associated(cur_geomech_condition)) exit
       do i = 1, size(cur_geomech_condition%sub_condition_ptr)
-        ! check for dataset in dataset
-        if (associated(cur_geomech_condition%sub_condition_ptr(i)%ptr% &
-                        geomech_dataset%dataset)) then
-          dataset_name = cur_geomech_condition%sub_condition_ptr(i)%ptr% &
-                        geomech_dataset%dataset%name
-          ! delete the dataset since it is solely a placeholder
-          call DatasetDestroy(cur_geomech_condition%sub_condition_ptr(i)%ptr% &
-                              geomech_dataset%dataset)
-          ! get dataset from list
-          string = 'geomech_condition ' // trim(cur_geomech_condition%name)
-          dataset => &
-            DatasetBaseGetPointer(geomech_realization%geomech_datasets, &
-                                  dataset_name,string,option)
-          cur_geomech_condition%sub_condition_ptr(i)%ptr%geomech_dataset &
-            %dataset => dataset
-        endif
+        ! find dataset
+        call DatasetFindInList(geomech_realization%geomech_datasets, &
+                 cur_geomech_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 cur_geomech_condition%default_time_storage, &
+                 string,option)
       enddo
      cur_geomech_condition => cur_geomech_condition%next
   enddo
-
+  
 end subroutine GeomechRealizProcessGeomechConditions
-
 
 ! ************************************************************************** !
 !
@@ -951,6 +938,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
 
   use Option_module
   use Waypoint_module
+  use Time_Storage_module
 
   implicit none
   
@@ -995,24 +983,26 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
       do isub_condition = 1, cur_geomech_condition%num_sub_conditions
         sub_condition => cur_geomech_condition% &
                          sub_condition_ptr(isub_condition)%ptr
-        call GeomechConditionDatasetGetTimes(option,sub_condition,final_time, &
-                                          times)
-        if (size(times) > 1000) then
-          option%io_buffer = 'For geomech condition "' // &
-            trim(cur_geomech_condition%name) // &
-            '" dataset "' // trim(sub_condition%name) // &
-            '", the number of times is excessive for synchronization ' // &
-            'with waypoints.'
-          call printErrMsg(option)
+        call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
+                                final_time, times)
+        if (associated(times)) then
+          if (size(times) > 1000) then
+            option%io_buffer = 'For geomech condition "' // &
+              trim(cur_geomech_condition%name) // &
+              '" dataset "' // trim(sub_condition%name) // &
+              '", the number of times is excessive for synchronization ' // &
+              'with waypoints.'
+            call printErrMsg(option)
+          endif
+          do itime = 1, size(times)
+            waypoint => WaypointCreate()
+            waypoint%time = times(itime)
+            waypoint%update_conditions = PETSC_TRUE
+            call WaypointInsertInList(waypoint,waypoint_list)
+          enddo
+          deallocate(times)
+          nullify(times)
         endif
-        do itime = 1, size(times)
-          waypoint => WaypointCreate()
-          waypoint%time = times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        enddo
-        deallocate(times)
-        nullify(times)
       enddo
     endif
     cur_geomech_condition => cur_geomech_condition%next

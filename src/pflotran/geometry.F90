@@ -68,7 +68,7 @@ end function GeometryCreatePolygonalVolume
 ! ************************************************************************** !
 subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
 
   implicit none
@@ -84,7 +84,7 @@ subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 
   icount = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'REGION')
     if (InputCheckExit(input,option)) exit              
     icount = icount + 1

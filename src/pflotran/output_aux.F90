@@ -573,7 +573,7 @@ end function OutputVariableToCategoryString
 subroutine OutputVariableRead(input,option,output_variable_list)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Variables_module
 
@@ -587,7 +587,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
   character(len=MAXWORDLENGTH) :: name, units
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     

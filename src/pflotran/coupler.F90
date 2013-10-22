@@ -52,10 +52,17 @@ module Coupler_module
     type(coupler_ptr_type), pointer :: array(:)    
   end type coupler_list_type
   
-  public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
-            CouplerListComputeConnections, CouplerGetPtrFromList,&
-            CouplerAssignBCtoCells, CouplerGetNumBoundConnectionsInListMFD
+  public :: CouplerCreate, &
+            CouplerDestroy, &
+            CouplerInitList, &
+            CouplerAddToList, &
+            CouplerRead, &
+            CouplerDestroyList, &
+            CouplerGetNumConnectionsInList, &
+            CouplerListComputeConnections, &
+            CouplerGetPtrFromList, &
+            CouplerAssignBCtoCells, &
+            CouplerGetNumBoundConnectionsInListMFD
 
   
   interface CouplerCreate
@@ -210,7 +217,7 @@ end subroutine CouplerInitList
 ! ************************************************************************** !
 subroutine CouplerRead(coupler,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -225,7 +232,7 @@ subroutine CouplerRead(coupler,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     

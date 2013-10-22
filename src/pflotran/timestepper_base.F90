@@ -161,7 +161,7 @@ end subroutine TimestepperBaseInit
 subroutine TimestepperBaseRead(this,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
 
@@ -185,7 +185,7 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   
