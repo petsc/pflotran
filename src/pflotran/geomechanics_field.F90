@@ -34,6 +34,9 @@ module Geomechanics_Field_module
     Vec :: stress_subsurf  ! Stores stresses after scattering from geomech to subsurf
     Vec :: strain_subsurf_loc
     Vec :: stress_subsurf_loc
+    
+    Vec :: porosity_init_loc
+    
     ! Solution vectors (xx = current iterate)
     Vec :: disp_xx, disp_xx_loc
     Vec :: disp_xx_init_loc
@@ -88,6 +91,8 @@ function GeomechFieldCreate()
   geomech_field%stress_subsurf = 0
   geomech_field%strain_subsurf_loc = 0
   geomech_field%stress_subsurf_loc = 0
+  
+  geomech_field%porosity_init_loc = 0
 
   GeomechFieldCreate => geomech_field
 
@@ -136,6 +141,8 @@ subroutine GeomechFieldDestroy(geomech_field)
   if (geomech_field%stress_subsurf /= 0) call VecDestroy(geomech_field%stress_subsurf,ierr)
   if (geomech_field%strain_subsurf_loc /= 0) call VecDestroy(geomech_field%strain_subsurf_loc,ierr)
   if (geomech_field%stress_subsurf_loc /= 0) call VecDestroy(geomech_field%stress_subsurf_loc,ierr)
+
+  if (geomech_field%porosity_init_loc /= 0) call VecDestroy(geomech_field%porosity_init_loc,ierr)
 
 end subroutine GeomechFieldDestroy
 

@@ -196,6 +196,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
       call GeomechStoreInitialDisp(geomech_realization)
       call GeomechForceUpdateAuxVars(geomech_realization)
       if (option%geomech_subsurf_coupling == TWO_WAY_COUPLED) then 
+        call GeomechStoreInitialPorosity(realization,geomech_realization)
         call GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
         call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
       endif

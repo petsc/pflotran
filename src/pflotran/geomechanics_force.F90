@@ -36,6 +36,7 @@ module Geomechanics_Force_module
             GeomechUpdateSolution, &
             GeomechStoreInitialPressTemp, &
             GeomechStoreInitialDisp, &
+            GeomechStoreInitialPorosity, &
             GeomechUpdateSubsurfPorosity
  
 contains
@@ -2194,6 +2195,35 @@ end subroutine GeomechStoreInitialPressTemp
 
 ! ************************************************************************** !
 !
+! GeomechStoreInitialPorosity: Stores initial porosity from
+!                              subsurface 
+! Author: Satish Karra, LANL 
+! Date: 10/22/13
+!
+! ************************************************************************** !
+subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
+
+  use Geomechanics_Realization_module
+  use Realization_class
+  use Discretization_module
+    
+  implicit none 
+  
+  type(geomech_realization_type) :: geomech_realization
+  type(realization_type) :: realization
+  type(discretization_type) :: discretization
+
+  PetscErrorCode :: ierr
+
+  call DiscretizationDuplicateVector(discretization, &
+                                     realization%field%porosity_loc, &
+                                     geomech_realization%geomech_field% &
+                                     porosity_init_loc)
+   
+end subroutine GeomechStoreInitialPorosity
+
+! ************************************************************************** !
+!
 ! GeomechStoreInitialDisp: Stores initial displacement for calculating
 !                          relative displacements 
 ! Author: Satish Karra, LANL 
@@ -2246,7 +2276,7 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
 
   PetscReal :: trace_epsilon
   PetscReal, pointer :: por0_loc_p(:), por_loc_p(:), strain_loc_p(:)
-  PetscInt :: local_id, ghosted_id
+  PetscInt :: ghosted_id
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -2261,12 +2291,11 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
     call printErrMsg(option)
   endif
   
-  call VecGetArrayF90(field%porosity0,por0_loc_p,ierr)
+  call VecGetArrayF90(geomech_field%porosity_init_loc,por0_loc_p,ierr)
   call VecGetArrayF90(field%porosity_loc,por_loc_p,ierr)
   call VecGetArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
   
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
+  do ghosted_id = 1, grid%ngmax
     trace_epsilon = strain_loc_p((ghosted_id-1)*SIX_INTEGER+ONE_INTEGER) + &
                     strain_loc_p((ghosted_id-1)*SIX_INTEGER+TWO_INTEGER) + &
                     strain_loc_p((ghosted_id-1)*SIX_INTEGER+THREE_INTEGER)
@@ -2274,7 +2303,7 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
                             (1.d0 + (1.d0 - por0_loc_p(ghosted_id))*trace_epsilon)
   enddo
   
-  call VecRestoreArrayF90(field%porosity0,por0_loc_p,ierr)
+  call VecRestoreArrayF90(geomech_field%porosity_init_loc,por0_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc,por_loc_p,ierr)
   call VecRestoreArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
 
