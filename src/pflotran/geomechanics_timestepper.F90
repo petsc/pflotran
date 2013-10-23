@@ -195,7 +195,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
       call GeomechUpdateSolution(geomech_realization)
       call GeomechStoreInitialDisp(geomech_realization)
       call GeomechForceUpdateAuxVars(geomech_realization)
-      if (option%geomech_subsurf_coupling == TWO_WAY_COUPLED) then 
+      if (option%geomech_subsurf_coupling == GEOMECH_TWO_WAY_COUPLED) then 
         call GeomechStoreInitialPorosity(realization,geomech_realization)
         call GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
         call GeomechUpdateSubsurfPorosity(realization,geomech_realization)
@@ -515,14 +515,14 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 #ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
       select case (option%geomech_subsurf_coupling)
-        case (ONE_WAY_COUPLED) ! call geomech only at plot times
+        case (GEOMECH_ONE_WAY_COUPLED) ! call geomech only at plot times
           if (geomech_plot_flag) then
             call GeomechUpdateFromSubsurf(realization,geomech_realization)
             call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                                 failure)
             call GeomechUpdateSolution(geomech_realization)
           endif
-        case (TWO_WAY_COUPLED)
+        case (GEOMECH_TWO_WAY_COUPLED)
           call GeomechUpdateFromSubsurf(realization,geomech_realization)
           call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
                                               failure)

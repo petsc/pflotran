@@ -334,9 +334,9 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call StringToUpper(word)
         select case (word)
           case ('ONE_WAY_COUPLED')      
-            option%geomech_subsurf_coupling = ONE_WAY_COUPLED 
+            option%geomech_subsurf_coupling = GEOMECH_ONE_WAY_COUPLED 
           case ('TWO_WAY_COUPLED')      
-            option%geomech_subsurf_coupling = TWO_WAY_COUPLED 
+            option%geomech_subsurf_coupling = GEOMECH_TWO_WAY_COUPLED 
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
                                ' not recognized in GEOMECHANICS_SUBSURFACE_COUPLING.'
