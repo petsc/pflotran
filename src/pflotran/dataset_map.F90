@@ -558,18 +558,14 @@ subroutine DatasetMapPrint(this,option)
 
   implicit none
   
-  class(dataset_map_type) :: this
+  class(dataset_map_type), target :: this
   type(option_type) :: option
   
-    character(len=MAXSTRINGLENGTH) :: h5_dataset_map_name
-    character(len=MAXSTRINGLENGTH) :: map_filename
-    PetscInt, pointer :: mapping(:,:)
-    PetscInt          :: map_dims_global(2)
-    PetscInt          :: map_dims_local(2)
-    PetscInt, pointer :: datatocell_ids(:)
-    PetscInt, pointer :: cell_ids_local(:)
-    PetscBool         :: first_time  
-  
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
+
   if (len_trim(this%h5_dataset_map_name) > 0) then
     write(option%fid_out,'(10x,''HDF5 Dataset Map Name: '',a)') &
       trim(this%h5_dataset_map_name)

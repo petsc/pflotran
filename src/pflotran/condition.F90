@@ -1979,7 +1979,7 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     call DatasetPrint(subcondition%gradient,option)
   endif
 
-  write(option%fid_out,110) 'Dataset:'
+  write(option%fid_out,110) 'Data:'
   if (associated(subcondition%dataset)) then
     call DatasetPrint(subcondition%dataset,option)
   endif

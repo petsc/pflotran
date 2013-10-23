@@ -333,7 +333,7 @@ subroutine DatasetAsciiVerify(this,option)
   type(option_type) :: option
   
   if (len_trim(this%name) < 1) then
-    this%name = 'Unknown Ascii Dataset'
+    this%name = 'Unnamed Ascii Dataset'
   endif
   call DatasetBaseVerify(this,option)
   if (associated(this%rbuffer)) then

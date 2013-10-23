@@ -369,31 +369,11 @@ subroutine DatasetPrint(this,option)
   
   class(dataset_base_type) :: this
   type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-    
-  write(option%fid_out,'(/,8x,''Dataset: '',a)') trim(this%name)
+
+  write(option%fid_out,'(8x,''Dataset: '',a)') trim(this%name)
   write(option%fid_out,'(10x,''Type: '',a)') trim(DatasetGetClass(this))
-  if (len_trim(this%filename) > 0) then
-    write(option%fid_out,'(10x,''Filename: '',a)') trim(this%filename)
-  endif
-  if (associated(this%time_storage)) then
-    write(option%fid_out,'(10x,''Is transient?: yes'')')
-    write(option%fid_out,'(10x,''Number of times: '',i6)') &
-      this%time_storage%max_time_index
-    if (this%time_storage%is_cyclic) then
-      write(option%fid_out,'(10x,''Is cyclic?: yes'')')
-    else
-      write(option%fid_out,'(10x,''Is cyclic?: no'')')
-    endif
-  else
-    write(option%fid_out,'(10x,''Transient: no'')')
-  endif
-  write(option%fid_out,'(10x,''Rank: '',i2)') this%rank
-  if (associated(this%dims)) then
-    write(option%fid_out,'(10x,''Dims: '',10i4)') this%dims
-  endif
-  write(option%fid_out,'(10x,''Buffer Size: '',i2)') this%buffer_nslice
+
+  call DatasetBasePrint(this,option)
   
   select type (d=>this)
     class is (dataset_ascii_type)

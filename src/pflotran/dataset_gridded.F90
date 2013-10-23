@@ -699,18 +699,23 @@ subroutine DatasetGriddedPrint(this,option)
 
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_type), target :: this
   type(option_type) :: option
+
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
   
   write(option%fid_out,'(10x,''Grid Dimension: '',a)') &
     trim(DatasetGriddedGetDimensionString(this))
   if (this%is_cell_centered) then
-    write(option%fid_out,'(10x,''Is Cell Centered: yes'')') 
+    write(option%fid_out,'(10x,''Is cell-centered?: yes'')') 
   else
-    write(option%fid_out,'(10x,''Is Cell Centered: no'')')
+    write(option%fid_out,'(10x,''Is cell-centered?: no'')')
   endif
-  write(option%fid_out,'(10x,''Origin: '',3es16.8)') this%origin(:)
-  write(option%fid_out,'(10x,''Discretization: '',3es16.8)') &
+  write(option%fid_out,'(10x,''Origin: '',3es12.4)') this%origin(:)
+  write(option%fid_out,'(10x,''Discretization: '',3es12.4)') &
     this%discretization(:)
   
 end subroutine DatasetGriddedPrint

@@ -399,9 +399,14 @@ subroutine DatasetGlobalPrint(this,option)
 
   implicit none
   
-  class(dataset_global_type) :: this
+  class(dataset_global_type), target :: this
   type(option_type) :: option
   
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
+
   ! no need to print local_size as it varies by process
   write(option%fid_out,'(10x,''Global Size: '',i2)') this%global_size
   
