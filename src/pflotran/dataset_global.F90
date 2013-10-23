@@ -21,6 +21,7 @@ module Dataset_Global_class
             DatasetGlobalInit, &
             DatasetGlobalCast, &
             DatasetGlobalLoad, &
+            DatasetGlobalPrint, &
             DatasetGlobalDestroy
   
 contains
@@ -384,6 +385,27 @@ subroutine DatasetGlobalReadData(this,option,data_type)
 
 end subroutine DatasetGlobalReadData
 #endif
+
+! ************************************************************************** !
+!
+! DatasetGlobalPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetGlobalPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_global_type) :: this
+  type(option_type) :: option
+  
+  ! no need to print local_size as it varies by process
+  write(option%fid_out,'(10x,''Global Size: '',i2)') this%global_size
+  
+end subroutine DatasetGlobalPrint
 
 ! ************************************************************************** !
 !

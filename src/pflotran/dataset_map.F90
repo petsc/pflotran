@@ -28,6 +28,7 @@ module Dataset_Map_class
             DatasetMapCast, &
             DatasetMapRead, &
             DatasetMapLoad, &
+            DatasetMapPrint, &
             DatasetMapDestroy
   
 contains
@@ -543,6 +544,44 @@ subroutine DatasetMapReadMap(this,option)
   
 end subroutine DatasetMapReadMap
 #endif
+
+! ************************************************************************** !
+!
+! DatasetMapPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetMapPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_map_type) :: this
+  type(option_type) :: option
+  
+    character(len=MAXSTRINGLENGTH) :: h5_dataset_map_name
+    character(len=MAXSTRINGLENGTH) :: map_filename
+    PetscInt, pointer :: mapping(:,:)
+    PetscInt          :: map_dims_global(2)
+    PetscInt          :: map_dims_local(2)
+    PetscInt, pointer :: datatocell_ids(:)
+    PetscInt, pointer :: cell_ids_local(:)
+    PetscBool         :: first_time  
+  
+  if (len_trim(this%h5_dataset_map_name) > 0) then
+    write(option%fid_out,'(10x,''HDF5 Dataset Map Name: '',a)') &
+      trim(this%h5_dataset_map_name)
+  endif
+  if (len_trim(this%map_filename) > 0) then
+    write(option%fid_out,'(10x,''Map Filename: '',a)') &
+      trim(this%map_filename)
+  endif
+  write(option%fid_out,'(10x,''Global Dimensions: '',2i8)') &
+    this%map_dims_global(:)
+  
+end subroutine DatasetMapPrint
 
 ! ************************************************************************** !
 !

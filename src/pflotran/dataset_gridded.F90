@@ -33,6 +33,7 @@ module Dataset_Gridded_class
             DatasetGriddedCast, &
             DatasetGriddedLoad, &
             DatasetGriddedInterpolateReal, &
+            DatasetGriddedPrint, &
             DatasetGriddedStrip, &
             DatasetGriddedDestroy
   
@@ -216,7 +217,7 @@ subroutine DatasetGriddedReadData(this,option)
       call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
       ! set dimensionality of dataset
-      call DatasetSetDimension(this,word)
+      call DatasetGriddedSetDimension(this,word)
     else
       option%io_buffer = &
         'Dimension attribute must be included in hdf5 dataset file.'
@@ -225,7 +226,7 @@ subroutine DatasetGriddedReadData(this,option)
     attribute_name = "Discretization"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
-      attribute_dim(1) = DatasetGetNDimensions(this)
+      attribute_dim(1) = DatasetGriddedGetNDimensions(this)
       allocate(this%discretization(attribute_dim(1)))
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       call h5aread_f(attribute_id,H5T_NATIVE_DOUBLE,this%discretization, &
@@ -239,7 +240,7 @@ subroutine DatasetGriddedReadData(this,option)
     attribute_name = "Origin"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
-      attribute_dim(1) = DatasetGetNDimensions(this)
+      attribute_dim(1) = DatasetGriddedGetNDimensions(this)
       allocate(this%origin(attribute_dim(1)))
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       call h5aread_f(attribute_id,H5T_NATIVE_DOUBLE,this%origin, &
@@ -253,7 +254,7 @@ subroutine DatasetGriddedReadData(this,option)
     endif
   endif ! this%data_dim == DIM_NULL
   
-  num_spatial_dims = DatasetGetNDimensions(this)
+  num_spatial_dims = DatasetGriddedGetNDimensions(this)
   time_dim = -1
   num_times = 1
   if (associated(this%time_storage)) then
@@ -407,12 +408,12 @@ end subroutine DatasetGriddedReadData
 
 ! ************************************************************************** !
 !
-! DatasetSetDimension: Sets the dimension of the dataset
+! DatasetGriddedSetDimension: Sets the dimension of the dataset
 ! author: Glenn Hammond
 ! date: 10/24/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetSetDimension(this,word)
+subroutine DatasetGriddedSetDimension(this,word)
 
   use String_module
 
@@ -439,35 +440,69 @@ subroutine DatasetSetDimension(this,word)
       this%data_dim = DIM_XYZ
   end select
       
-end subroutine DatasetSetDimension
+end subroutine DatasetGriddedSetDimension
 
 ! ************************************************************************** !
 !
-! DatasetGetNDimensions: Returns the number of dimensions
+! DatasetGriddedGetDimensionString: Returns a string describing dimension
 ! author: Glenn Hammond
-! date: 10/24/11, 05/29/13
+! date: 10/24/11, 05/29/13, 10/22/13
 !
 ! ************************************************************************** !
-function DatasetGetNDimensions(this)
+function DatasetGriddedGetDimensionString(this)
 
   implicit none
   
   class(dataset_gridded_type) :: this
   
-  PetscInt :: DatasetGetNDimensions
+  character(len=MAXWORDLENGTH) :: DatasetGriddedGetDimensionString
+
+  select case(this%data_dim)
+    case(DIM_X)
+      DatasetGriddedGetDimensionString = 'X'
+    case(DIM_Y)
+      DatasetGriddedGetDimensionString = 'Y'
+    case(DIM_Z)
+      DatasetGriddedGetDimensionString = 'Z'
+    case(DIM_XY)
+      DatasetGriddedGetDimensionString = 'XY'
+    case(DIM_XZ)
+      DatasetGriddedGetDimensionString = 'XZ'
+    case(DIM_YZ)
+      DatasetGriddedGetDimensionString = 'YZ'
+    case(DIM_XYZ)
+      DatasetGriddedGetDimensionString = 'XYZ'
+  end select
+      
+end function DatasetGriddedGetDimensionString
+
+! ************************************************************************** !
+!
+! DatasetGriddedGetNDimensions: Returns the number of dimensions
+! author: Glenn Hammond
+! date: 10/24/11, 05/29/13
+!
+! ************************************************************************** !
+function DatasetGriddedGetNDimensions(this)
+
+  implicit none
+  
+  class(dataset_gridded_type) :: this
+  
+  PetscInt :: DatasetGriddedGetNDimensions
 
   select case(this%data_dim)
     case(DIM_X,DIM_Y,DIM_Z)
-      DatasetGetNDimensions = ONE_INTEGER
+      DatasetGriddedGetNDimensions = ONE_INTEGER
     case(DIM_XY,DIM_XZ,DIM_YZ)
-      DatasetGetNDimensions = TWO_INTEGER
+      DatasetGriddedGetNDimensions = TWO_INTEGER
     case(DIM_XYZ)
-      DatasetGetNDimensions = THREE_INTEGER
+      DatasetGriddedGetNDimensions = THREE_INTEGER
     case default
-      DatasetGetNDimensions = ZERO_INTEGER
+      DatasetGriddedGetNDimensions = ZERO_INTEGER
   end select
       
-end function DatasetGetNDimensions
+end function DatasetGriddedGetNDimensions
 
 ! ************************************************************************** !
 !
@@ -650,6 +685,35 @@ subroutine DatasetGriddedGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   endif
   
 end subroutine DatasetGriddedGetIndices
+
+! ************************************************************************** !
+!
+! DatasetGriddedPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetGriddedPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_gridded_type) :: this
+  type(option_type) :: option
+  
+  write(option%fid_out,'(10x,''Grid Dimension: '',a)') &
+    trim(DatasetGriddedGetDimensionString(this))
+  if (this%is_cell_centered) then
+    write(option%fid_out,'(10x,''Is Cell Centered: yes'')') 
+  else
+    write(option%fid_out,'(10x,''Is Cell Centered: no'')')
+  endif
+  write(option%fid_out,'(10x,''Origin: '',3es16.8)') this%origin(:)
+  write(option%fid_out,'(10x,''Discretization: '',3es16.8)') &
+    this%discretization(:)
+  
+end subroutine DatasetGriddedPrint
 
 ! ************************************************************************** !
 !

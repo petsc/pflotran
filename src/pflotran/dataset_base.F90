@@ -364,29 +364,6 @@ end subroutine DatasetBaseReorder
 
 ! ************************************************************************** !
 !
-! DatasetBasePrintMe: Prints dataset info
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-subroutine DatasetBasePrintMe(this,option)
-
-  use Option_module
-
-  implicit none
-  
-  class(dataset_base_type) :: this
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-
-  option%io_buffer = 'TODO(geh): add DatasetPrint()'
-  call printMsg(option)
-            
-end subroutine DatasetBasePrintMe
-
-! ************************************************************************** !
-!
 ! DatasetBaseGetTimes: Fills an array of times based on a dataset
 ! author: Glenn Hammond
 ! date: 10/26/11

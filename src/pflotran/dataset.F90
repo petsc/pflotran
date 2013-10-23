@@ -23,6 +23,7 @@ module Dataset_module
             DatasetFindInList, &
             DatasetIsTransient, &
             DatasetGetClass, &
+            DatasetPrint, &
             DatasetDestroy
 
 contains
@@ -351,6 +352,66 @@ function DatasetIsTransient(dataset)
   endif 
   
 end function DatasetIsTransient
+
+
+! ************************************************************************** !
+!
+! DatasetPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+    
+  write(option%fid_out,'(/,8x,''Dataset: '',a)') trim(this%name)
+  write(option%fid_out,'(10x,''Type: '',a)') trim(DatasetGetClass(this))
+  if (len_trim(this%filename) > 0) then
+    write(option%fid_out,'(10x,''Filename: '',a)') trim(this%filename)
+  endif
+  if (associated(this%time_storage)) then
+    write(option%fid_out,'(10x,''Is transient?: yes'')')
+    write(option%fid_out,'(10x,''Number of times: '',i6)') &
+      this%time_storage%max_time_index
+    if (this%time_storage%is_cyclic) then
+      write(option%fid_out,'(10x,''Is cyclic?: yes'')')
+    else
+      write(option%fid_out,'(10x,''Is cyclic?: no'')')
+    endif
+  else
+    write(option%fid_out,'(10x,''Transient: no'')')
+  endif
+  write(option%fid_out,'(10x,''Rank: '',i2)') this%rank
+  if (associated(this%dims)) then
+    write(option%fid_out,'(10x,''Dims: '',10i4)') this%dims
+  endif
+  write(option%fid_out,'(10x,''Buffer Size: '',i2)') this%buffer_nslice
+  
+  select type (d=>this)
+    class is (dataset_ascii_type)
+      call DatasetAsciiPrint(d,option)
+    class is (dataset_global_type)
+      call DatasetGlobalPrint(d,option)
+    class is (dataset_gridded_type)
+      call DatasetGriddedPrint(d,option)
+    class is (dataset_map_type)
+      call DatasetMapPrint(d,option)
+    class is (dataset_common_hdf5_type)
+      call DatasetCommonHDF5Print(d,option)
+    class default
+      option%io_buffer = 'Unknown dataset type for dataset "' // &
+        trim(this%name) // '" in DatasetPrint()'
+  end select
+            
+end subroutine DatasetPrint
 
 ! ************************************************************************** !
 !
