@@ -252,7 +252,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       pressure0 = pressure
     enddo
 
-    ! compute pressures above datum, if any
+    ! compute pressures below datum, if any
     pressure0 = pressure_array(idatum)
     select case(option%iflowmode)
       case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)

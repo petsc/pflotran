@@ -344,7 +344,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                              P_sat,K_H_tilde)
       gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / K_H_tilde
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
-      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
+      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / &
+                                   gen_aux_var%pres(gid)
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
 
   end select
