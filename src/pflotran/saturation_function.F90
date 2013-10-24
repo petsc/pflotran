@@ -1211,6 +1211,8 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
       call printErrMsg(option)
   end select
 
+  capillary_pressure = min(capillary_pressure,saturation_function%pcwmax)
+
 end subroutine SatFuncGetCapillaryPressure
 
 ! ************************************************************************** !

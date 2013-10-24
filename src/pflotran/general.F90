@@ -517,7 +517,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                        global_aux_vars(ghosted_id), &
-                       patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                       patch%saturation_function_array( &
+                         patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
@@ -544,19 +545,16 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-! right now, hardware to Dirichlet or Hydrostatic
-#if 0      
       do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            option%io_buffer = 'NEUMANN_BC and ZERO_GRADIENT_BC not yet ' // &
+              'supported in GeneralUpdateAuxVarsPatch()'
+            call printErrMsg(option)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
-      enddo
-#endif
-      do idof = 1, option%nflowdof
-        xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
       enddo
 
       ! set this based on data given 
@@ -566,12 +564,14 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       ! the aux var as update state updates if the state changes
       call GeneralAuxVarUpdateState(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                         patch%saturation_function_array( &
+                           patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          ghosted_id,option)
       call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                         patch%saturation_function_array( &
+                           patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          option)
     enddo
@@ -1150,6 +1150,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
+  PetscInt :: istate_up, istate_dn
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)
   PetscReal :: den
@@ -1187,7 +1188,14 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
 #ifdef DEBUG_GENERAL_LOCAL
   flux = 0.d0
 #endif
+
+  istate_up = global_aux_var_up%istate
+  istate_dn = global_aux_var_dn%istate
+
   do iphase = 1, option%nphase
+ 
+!    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
+!              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
     
     ! using residual saturation cannot be correct! - geh
     if (gen_aux_var_up%sat(iphase) > sir_up .or. &
@@ -1262,7 +1270,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   flux = 0.d0
 #endif  
 
-#if 0
+#if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
@@ -1318,7 +1326,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   flux = 0.d0
 #endif  
     
-#if 0
+#if 1
   ! add heat conduction flux
   k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
              general_parameter%thermal_conductivity(option%liquid_phase) + &
@@ -1454,6 +1462,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
 
+  PetscInt :: istate_up, istate_dn
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave
@@ -1478,7 +1487,13 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   Res = 0.d0
   v_darcy = 0.d0
   
+  istate_up = global_aux_var_up%istate
+  istate_dn = global_aux_var_dn%istate
+
   do iphase = 1, option%nphase
+ 
+!    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
+!              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
   
 #if 0  
     select case(iphase)
@@ -2928,6 +2943,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   call VecGetArrayF90(dX,dX_p,ierr)
   call VecGetArrayF90(X,X_p,ierr)
 
+#if 0
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     print *, '-----------------------------------------'
@@ -2937,6 +2953,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
     print *, -1.d0*dX_p
     print *, '-----------------------------------------'  
   enddo
+#endif
 
   call VecRestoreArrayF90(dX,dX_p,ierr)
   call VecRestoreArrayF90(X,X_p,ierr)

@@ -1525,6 +1525,12 @@ subroutine FlowConditionGeneralRead(condition,input,option)
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => general%rate
   endif
+
+  ! set condition types
+  allocate(condition%itype(condition%num_sub_conditions))
+  do idof = 1, condition%num_sub_conditions
+    condition%itype(idof) = condition%sub_condition_ptr(idof)%ptr%itype
+  enddo
   
   condition%default_time_storage => default_time_storage
     
