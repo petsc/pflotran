@@ -976,7 +976,7 @@ end subroutine PatchUpdateCouplerAuxVars
 ! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
 !                             with a coupler for G_MODE
 ! author: Glenn Hammond
-! date: 11/26/07
+! date: 11/26/13
 !
 ! ************************************************************************** !
 subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
@@ -1125,13 +1125,17 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof3 = PETSC_TRUE
       end select
     case(ANY_STATE)
-      do iconn = 1, num_connections
-        coupler%flow_aux_real_var(1:3,iconn) = &
-            general%temperature%dataset%rarray(1:3)
-      enddo
-      dof1 = PETSC_TRUE
-      dof2 = PETSC_TRUE
-      dof3 = PETSC_TRUE
+      if (associated(general%flux)) then
+        
+      else
+        do iconn = 1, num_connections
+          coupler%flow_aux_real_var(1:3,iconn) = &
+              general%temperature%dataset%rarray(1:3)
+        enddo
+        dof1 = PETSC_TRUE
+        dof2 = PETSC_TRUE
+        dof3 = PETSC_TRUE
+      endif
   end select  
   !geh: is this really correct, or should it be .or.
   if (.not.dof1 .or. .not.dof2 .or. .not.dof3) then
@@ -1142,8 +1146,8 @@ end subroutine PatchUpdateCouplerAuxVarsG
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for MPH_MODE
+! PatchUpdateCouplerAuxVarsMPH: Updates flow auxiliary variables associated
+!                               with a coupler for MPH_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
@@ -1247,8 +1251,8 @@ end subroutine PatchUpdateCouplerAuxVarsMPH
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for IMS_MODE
+! PatchUpdateCouplerAuxVarsIMS: Updates flow auxiliary variables associated
+!                               with a coupler for IMS_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
@@ -1352,8 +1356,8 @@ end subroutine PatchUpdateCouplerAuxVarsIMS
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for FLASH2_MODE
+! PatchUpdateCouplerAuxVarsFLASH2: Updates flow auxiliary variables associated
+!                                  with a coupler for FLASH2_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
@@ -1457,8 +1461,8 @@ end subroutine PatchUpdateCouplerAuxVarsFLASH2
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for THC_MODE
+! PatchUpdateCouplerAuxVarsTHC: Updates flow auxiliary variables associated
+!                               with a coupler for THC_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
@@ -1562,8 +1566,8 @@ end subroutine PatchUpdateCouplerAuxVarsTHC
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for TH_MODE
+! PatchUpdateCouplerAuxVarsTH: Updates flow auxiliary variables associated
+!                              with a coupler for TH_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
@@ -1707,8 +1711,8 @@ end subroutine PatchUpdateCouplerAuxVarsTH
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for MIS_MODE
+! PatchUpdateCouplerAuxVarsMIS: Updates flow auxiliary variables associated
+!                               with a coupler for MIS_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
@@ -1788,7 +1792,7 @@ end subroutine PatchUpdateCouplerAuxVarsMIS
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
+! PatchUpdateCouplerAuxVarsRich: Updates flow auxiliary variables associated
 !                             with a coupler for RICHARDS_MODE
 ! author: Glenn Hammond
 ! date: 11/26/07
