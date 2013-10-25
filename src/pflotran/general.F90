@@ -1495,15 +1495,12 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
 !    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
 !              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
   
-#if 0  
     select case(iphase)
       case(LIQUID_PHASE)
         bc_type = ibndtype(GENERAL_LIQUID_PRESSURE_DOF)
       case(GAS_PHASE)
         bc_type = ibndtype(GENERAL_GAS_PRESSURE_DOF)
     end select
-#endif
-    bc_type = DIRICHLET_BC
 
     select case(bc_type)
       ! figure out the direction of flow
