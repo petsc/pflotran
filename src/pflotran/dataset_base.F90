@@ -38,6 +38,7 @@ module Dataset_Base_class
             DatasetBaseReorder, &
             DatasetBaseGetPointer, &
             DatasetBaseAddToList, &
+            DatasetBasePrint, &
             DatasetBaseStrip, &
             DatasetBaseDestroy
 contains
@@ -364,29 +365,6 @@ end subroutine DatasetBaseReorder
 
 ! ************************************************************************** !
 !
-! DatasetBasePrintMe: Prints dataset info
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-subroutine DatasetBasePrintMe(this,option)
-
-  use Option_module
-
-  implicit none
-  
-  class(dataset_base_type) :: this
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-
-  option%io_buffer = 'TODO(geh): add DatasetPrint()'
-  call printMsg(option)
-            
-end subroutine DatasetBasePrintMe
-
-! ************************************************************************** !
-!
 ! DatasetBaseGetTimes: Fills an array of times based on a dataset
 ! author: Glenn Hammond
 ! date: 10/26/11
@@ -482,6 +460,48 @@ function DatasetBaseGetPointer(dataset_list, dataset_name, debug_string, &
   endif
 
 end function DatasetBaseGetPointer
+
+! ************************************************************************** !
+!
+! DatasetBasePrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetBasePrint(this,option)
+
+  use Option_module
+
+  implicit none
+
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+
+  if (len_trim(this%filename) > 0) then
+    write(option%fid_out,'(10x,''Filename: '',a)') trim(this%filename)
+  endif
+  if (associated(this%time_storage)) then
+    write(option%fid_out,'(10x,''Is transient?: yes'')')
+    write(option%fid_out,'(10x,''Number of times: '',i6)') &
+      this%time_storage%max_time_index
+    if (this%time_storage%is_cyclic) then
+      write(option%fid_out,'(10x,''Is cyclic?: yes'')')
+    else
+      write(option%fid_out,'(10x,''Is cyclic?: no'')')
+    endif
+  else
+    write(option%fid_out,'(10x,''Transient: no'')')
+  endif
+  if (associated(this%rbuffer)) then
+    write(option%fid_out,'(10x,''Buffer:'')')
+    write(option%fid_out,'(12x,''Rank: '',i2)') this%rank
+    if (associated(this%dims)) then
+      write(option%fid_out,'(12x,''Dims: '',10i4)') this%dims
+    endif
+    write(option%fid_out,'(12x,''Buffer Slice Size: '',i2)') this%buffer_nslice
+  endif
+
+end subroutine DatasetBasePrint
 
 ! ************************************************************************** !
 !

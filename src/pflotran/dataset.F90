@@ -23,6 +23,7 @@ module Dataset_module
             DatasetFindInList, &
             DatasetIsTransient, &
             DatasetGetClass, &
+            DatasetPrint, &
             DatasetDestroy
 
 contains
@@ -351,6 +352,46 @@ function DatasetIsTransient(dataset)
   endif 
   
 end function DatasetIsTransient
+
+
+! ************************************************************************** !
+!
+! DatasetPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+
+  write(option%fid_out,'(8x,''Dataset: '',a)') trim(this%name)
+  write(option%fid_out,'(10x,''Type: '',a)') trim(DatasetGetClass(this))
+
+  call DatasetBasePrint(this,option)
+  
+  select type (d=>this)
+    class is (dataset_ascii_type)
+      call DatasetAsciiPrint(d,option)
+    class is (dataset_global_type)
+      call DatasetGlobalPrint(d,option)
+    class is (dataset_gridded_type)
+      call DatasetGriddedPrint(d,option)
+    class is (dataset_map_type)
+      call DatasetMapPrint(d,option)
+    class is (dataset_common_hdf5_type)
+      call DatasetCommonHDF5Print(d,option)
+    class default
+      option%io_buffer = 'Unknown dataset type for dataset "' // &
+        trim(this%name) // '" in DatasetPrint()'
+  end select
+            
+end subroutine DatasetPrint
 
 ! ************************************************************************** !
 !

@@ -1918,6 +1918,7 @@ end subroutine ConditionReadValues
 subroutine FlowConditionPrint(condition,option)
 
   use Option_module
+  use Dataset_module
 
   implicit none
   
@@ -1943,9 +1944,7 @@ subroutine FlowConditionPrint(condition,option)
 100 format(6x,a)  
   write(option%fid_out,100) 'Datum:'
   if (associated(condition%datum)) then
-!geh    call DatasetPrint(condition%datum,option)
-    option%io_buffer = 'TODO(geh): add DatasetPrint()'
-    call printMsg(option)
+    call DatasetPrint(condition%datum,option)
   endif
   
   do i=1, condition%num_sub_conditions
@@ -1966,6 +1965,7 @@ end subroutine FlowConditionPrint
 subroutine FlowConditionPrintSubCondition(subcondition,option)
 
   use Option_module
+  use Dataset_module
 
   implicit none
   
@@ -1984,16 +1984,12 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
   
   write(option%fid_out,110) 'Gradient:'
   if (associated(subcondition%gradient)) then
-!geh    call DatasetPrint(subcondition%gradient,option)
-    option%io_buffer = 'TODO(geh): add DatasetPrint()'
-    call printMsg(option)
+    call DatasetPrint(subcondition%gradient,option)
   endif
 
-  write(option%fid_out,110) 'Dataset:'
+  write(option%fid_out,110) 'Data:'
   if (associated(subcondition%dataset)) then
-!geh    call DatasetPrint(subcondition%dataset,option)
-    option%io_buffer = 'TODO(geh): add DatasetPrint()'
-    call printMsg(option)
+    call DatasetPrint(subcondition%dataset,option)
   endif
             
 end subroutine FlowConditionPrintSubCondition
