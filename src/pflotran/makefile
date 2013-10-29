@@ -21,7 +21,8 @@ ifdef uo2
 endif
 
 ifdef glenn
-  MYFLAGS += -DXINGYUAN_BC
+#  MYFLAGS += -DXINGYUAN_BC
+  MYFLAGS += -DYE_FLUX
 endif
 
 ifdef solid_solution
