@@ -322,6 +322,12 @@ subroutine MphaseSetupPatch(realization)
   allocate(mphase%res_old_AR(grid%nlmax,option%nflowdof))
   allocate(mphase%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
+
+#ifdef YE_FLUX
+  allocate(patch%internal_fluxes(3,1,ConnectionGetNumberInList(patch%grid%&
+           internal_connection_set_list)))
+  patch%internal_fluxes = 0.d0
+#endif
            
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -2994,6 +3000,11 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         istart = iend-option%nflowdof+1
         r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
+
+#ifdef YE_FLUX
+      patch%internal_fluxes(1:option%nflowdof,1,sum_connection) = &
+                                                     Res(1:option%nflowdof)
+#endif
 
     enddo
     cur_connection_set => cur_connection_set%next
