@@ -337,7 +337,6 @@ surface_obj = \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_checkpoint.o \
-	${common_src}surface_flow_aux.o \
 	${common_src}surface_init.o \
 	${common_src}surface_global_aux.o \
 	${common_src}surface_global.o \
@@ -851,7 +850,6 @@ surface_flow.o : condition.o connection.o coupler.o debug.o discretization.o \
                  surface_global_aux.o surface_material.o surface_realization.o \
                  unstructured_cell.o unstructured_grid.o \
                  unstructured_grid_aux.o variables.o water_eos.o
-surface_flow_aux.o : pflotran_constants.o
 surface_global.o : connection.o coupler.o discretization.o grid.o \
                    option.o patch.o pflotran_constants.o surface_field.o \
                    surface_global_aux.o surface_realization.o variables.o
