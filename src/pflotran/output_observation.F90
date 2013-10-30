@@ -1554,7 +1554,8 @@ subroutine OutputMassBalance(realization_base)
   PetscReal :: sum_mol_global(realization_base%option%ntrandof,realization_base%option%nphase)
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
-
+  PetscReal :: sum_mol_ye(3), sum_mol_global_ye(3)
+  
   PetscMPIInt :: int_mpi
   PetscBool :: bcs_done
   PetscErrorCode :: ierr
@@ -2278,7 +2279,7 @@ subroutine OutputMassBalance(realization_base)
 
     if (option%nflowdof > 0) then
       ! really summation of moles, but we are hijacking the variable
-      sum_kg = 0.d0
+      sum_mol_ye = 0.d0
       if (k-1 >= grid%structured_grid%lzs .and. &
           k-1 < grid%structured_grid%lze) then
         offset = (grid%structured_grid%ngx-1)*grid%structured_grid%nlyz + &
@@ -2292,22 +2293,22 @@ subroutine OutputMassBalance(realization_base)
                              (grid%structured_grid%ngz-1) + &
                              k-grid%structured_grid%lzs+1
 !gehprint *, option%myrank, grid%nG2A(grid%internal_connection_set_list%first%id_up(iconn)), &
-!gehpatch%internal_fluxes(1:option%nflowdof,1,iconn), 'sum_kg_by_conn'
-            sum_kg(1:option%nflowdof,1) = sum_kg(1:option%nflowdof,1) + &
+!gehpatch%internal_fluxes(1:option%nflowdof,1,iconn), 'sum_mol_by_conn'
+            sum_mol_ye(1:option%nflowdof) = sum_mol_ye(1:option%nflowdof) + &
                              patch%internal_fluxes(1:option%nflowdof,1,iconn)
           enddo
         enddo
       endif
 !geh      int_mpi = option%nphase
       int_mpi = option%nflowdof
-!gehprint *, option%myrank, sum_kg(1,1), 'sum_kg'
-      call MPI_Reduce(sum_kg,sum_kg_global, &
+!gehprint *, option%myrank, sum_mol_ye(1,1), 'sum_mol_ye'
+      call MPI_Reduce(sum_mol_ye,sum_mol_global_ye, &
                       int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global(1:option%nflowdof,1)
+        write(fid,110,advance="no") -sum_mol_global_ye(1:option%nflowdof)
       endif
     endif
     
