@@ -2293,7 +2293,7 @@ subroutine OutputMassBalance(realization_base)
                              k-grid%structured_grid%lzs+1
 !gehprint *, option%myrank, grid%nG2A(grid%internal_connection_set_list%first%id_up(iconn)), &
 !gehpatch%internal_fluxes(1:option%nflowdof,1,iconn), 'sum_kg_by_conn'
-            sum_kg(option%nflowdof:,1) = sum_kg(1:option%nflowdof,1) + &
+            sum_kg(1:option%nflowdof,1) = sum_kg(1:option%nflowdof,1) + &
                              patch%internal_fluxes(1:option%nflowdof,1,iconn)
           enddo
         enddo
