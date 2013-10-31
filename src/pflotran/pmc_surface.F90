@@ -292,6 +292,7 @@ subroutine PMCSurfaceGetAuxData(this)
 
   use Surface_Flow_module
   use Surface_TH_module
+  use Surface_TH_module
   use Option_module
 
   implicit none
@@ -333,10 +334,23 @@ subroutine PMCSurfaceGetAuxData(this)
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
             call SurfaceFlowUpdateSurfStateNew(pmc%surf_realization)
           case (TH_MODE)
-            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
-                                           pmc%surf_realization)
-            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
-            call printErrMsg(this%option)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 pmc%surf_realization%surf_field%press_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               pmc%surf_realization%surf_field%press_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_temp_top_bc, &
+                                 pmc%surf_realization%surf_field%temp_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_temp_top_bc, &
+                               pmc%surf_realization%surf_field%temp_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call SurfaceTHUpdateSurfStateNew(pmc%surf_realization)
         end select
     end select
   endif
@@ -353,9 +367,14 @@ end subroutine PMCSurfaceGetAuxData
 ! ************************************************************************** !
 subroutine PMCSurfaceSetAuxData(this)
 
+  use Grid_module
+  use Option_module
+  use Patch_module
+  use Surface_Global_Aux_module
   use Surface_Flow_module
   use Surface_TH_module
-  use Option_module
+  use Surface_TH_Aux_module
+  use Surface_Realization_class
 
   implicit none
   
@@ -364,7 +383,21 @@ subroutine PMCSurfaceSetAuxData(this)
 
   class(pmc_surface_type) :: this
 
+  type(grid_type), pointer :: surf_grid
+  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(patch_type), pointer :: surf_patch
+  class(surface_realization_type), pointer :: surf_realization
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iend
+  PetscInt :: istart
+
   PetscReal :: dt
+  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: surf_head_p(:)
+  PetscReal, pointer :: surf_temp_p(:)
   PetscErrorCode :: ierr
 
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -392,18 +425,48 @@ subroutine PMCSurfaceSetAuxData(this)
     end select
   endif
 
+
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
     select type(pmc => this)
       class is(pmc_surface_type)
+
         select case(this%option%iflowmode)
+
           case (RICHARDS_MODE)
             call VecCopy(pmc%surf_realization%surf_field%flow_xx, &
                          pmc%sim_aux%surf_head, ierr)
           case (TH_MODE)
-            call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
-                                            pmc%surf_realization,dt)
-            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
-            call printErrMsg(this%option)
+
+            surf_realization => pmc%surf_realization
+            surf_patch => surf_realization%patch
+            surf_grid => surf_patch%grid
+            surf_global_aux_vars => surf_patch%surf_aux%SurfaceGlobal%aux_vars
+            surf_aux_vars => surf_patch%surf_aux%SurfaceTH%aux_vars
+
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
+                                xx_loc_p,ierr)
+            call VecGetArrayF90(pmc%sim_aux%surf_head, surf_head_p, ierr)
+            call VecGetArrayF90(pmc%sim_aux%surf_temp, surf_temp_p, ierr)
+
+            do ghosted_id = 1, surf_grid%ngmax
+              local_id = surf_grid%nG2L(ghosted_id)
+              if (local_id < 1) cycle
+              iend = local_id*this%option%nflowdof
+              istart = iend - this%option%nflowdof+1
+              if (xx_loc_p(istart) < 1.d-15) then
+                surf_head_p(local_id) = 0.d0
+                surf_temp_p(local_id) = 0.d0
+              else
+                surf_head_p(local_id) = xx_loc_p(istart)
+                surf_temp_p(local_id) = surf_global_aux_vars(ghosted_id)%temp(1)
+              endif
+            enddo
+
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
+                                    xx_loc_p,ierr)
+            call VecRestoreArrayF90(pmc%sim_aux%surf_head, surf_head_p,ierr)
+            call VecRestoreArrayF90(pmc%sim_aux%surf_temp, surf_temp_p,ierr)
+
         end select
     end select
   endif

@@ -1623,6 +1623,9 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%temperature%dataset, &
                 num_connections,TH_PRESSURE_DOF,option)
+      case(HET_SURF_SEEPAGE_BC)
+        ! Do nothing, since this BC type is only used for coupling of
+        ! surface-subsurface model
       case default
         string = GetSubConditionName(flow_condition%pressure%itype)
         option%io_buffer='For TH mode: flow_condition%pressure%itype = "' // &
@@ -1695,6 +1698,12 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%energy_rate%dataset, &
                 num_connections,TH_TEMPERATURE_DOF,option)
+      case default
+        string = GetSubConditionName(flow_condition%energy_rate%itype)
+        option%io_buffer='For TH mode: flow_condition%energy_rate%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
+          write(*,*), trim(string)
+        call printErrMsg(option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
