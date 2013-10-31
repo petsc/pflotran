@@ -131,12 +131,8 @@ subroutine PMSurfaceTHPreSolve(this)
   class(pm_surface_th_type) :: this
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
+    write(*,'(/,2("=")," SURFACE TH FLOW ",62("="))')
   endif
-
-  call VecView(this%surf_realization%surf_field%flow_xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-  !call printErrMsg(this%option,'PreSolve')
-  
 
 end subroutine PMSurfaceTHPreSolve
 
@@ -237,6 +233,8 @@ subroutine PMSurfaceTHUpdateSolution(this)
   call FlowConditionUpdate(this%surf_realization%surf_flow_conditions, &
                            this%surf_realization%option, &
                            this%surf_realization%option%time)
+
+  call SurfRealizAllCouplerAuxVars(this%surf_realization,force_update_flag)
 
   call SurfaceTHUpdateSolution(this%surf_realization)
 
@@ -374,11 +372,9 @@ subroutine PMSurfaceTHPostSolve(this)
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
-
   ! First, update the solution vector
   call DiscretizationGlobalToLocal(this%surf_realization%discretization, &
           surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
-  call VecView(surf_field%flow_xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   ! Update aux vars
   call SurfaceTHUpdateTemperature(this%surf_realization)
