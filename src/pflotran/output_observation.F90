@@ -2275,7 +2275,7 @@ subroutine OutputMassBalance(realization_base)
 
     !TODO(ye): The flux will be calculated at the plane intersecting the top
     !          of the kth cell in the z-direction.  You need to update this.
-    k = 60
+    k = 50
 
     if (option%nflowdof > 0) then
       ! really summation of moles, but we are hijacking the variable
