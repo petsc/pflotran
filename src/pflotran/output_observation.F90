@@ -2275,7 +2275,7 @@ subroutine OutputMassBalance(realization_base)
 
     !TODO(ye): The flux will be calculated at the plane intersecting the top
     !          of the kth cell in the z-direction.  You need to update this.
-    k = 50
+    k = 60
 
     if (option%nflowdof > 0) then
       ! really summation of moles, but we are hijacking the variable
@@ -2308,7 +2308,11 @@ subroutine OutputMassBalance(realization_base)
                           
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_mol_global_ye(1:option%nflowdof)
+        ! for mphase use:
+        write(fid,110,advance="no") -sum_mol_global_ye(1:option%nflowdof)/option%flow_dt
+
+!     for Richards eqn. use:
+!       write(fid,110,advance="no") -sum_mol_global_ye(1:option%nflowdof)
       endif
     endif
     
