@@ -2592,9 +2592,6 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
       duh_dt_dn = aux_var_up%dh_dt
     endif
-    if (ibndtype(TH_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
-      duxmol_dxmol_dn = 1.d0
-    endif
   else
     uh = aux_var_dn%h
     duh_dp_dn = aux_var_dn%dh_dp
@@ -2613,26 +2610,6 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
   Jdn(option%nflowdof,2) =  &
      ((dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn)
 
-  ! Diffusion term   
-  select case(ibndtype(TH_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
-
-      diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
-      ddiff_dp_dn = diffdp * (aux_var_dn%dsat_dp*global_aux_var_dn%den(1)+ &
-                                global_aux_var_dn%sat(1)*aux_var_dn%dden_dp)
-      ddiff_dt_dn = diffdp * global_aux_var_dn%sat(1)*aux_var_dn%dden_dt
-
-#ifdef ICE
-#ifdef REMOVE_SATURATION
-      diff = diffdp * global_aux_var_dn%den(1)
-      
-      ddiff_dp_dn = diffdp * aux_var_dn%dden_dp
-      ddiff_dt_dn = diffdp * aux_var_dn%dden_dt
-
-#endif
-#endif
-  end select
-   
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
@@ -2742,8 +2719,7 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
                   area,dist_gravity,option,v_darcy,Diff_dn, &
                   res)
     if (ibndtype(TH_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
-        ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
-        ibndtype(TH_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+        ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC ) then
       x_pert_up = x_up
     endif
 
@@ -2938,12 +2914,6 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
     fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
   enddo
   fluxe = fluxe + q*density_ave*uh
-
-  ! Diffusion term   
-  select case(ibndtype(TH_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
-      diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
-  end select
 
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))

@@ -1539,6 +1539,7 @@ subroutine OutputMassBalance(realization_base)
   PetscInt :: fid = 86
   PetscInt :: ios
   PetscInt :: i,icol
+  PetscInt :: k, j
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iconn
@@ -1553,7 +1554,8 @@ subroutine OutputMassBalance(realization_base)
   PetscReal :: sum_mol_global(realization_base%option%ntrandof,realization_base%option%nphase)
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
-
+  PetscReal :: sum_mol_ye(3), sum_mol_global_ye(3)
+  
   PetscMPIInt :: int_mpi
   PetscBool :: bcs_done
   PetscErrorCode :: ierr
@@ -1758,13 +1760,17 @@ subroutine OutputMassBalance(realization_base)
       
       enddo
       
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
-      do offset = 1, 4
-        write(word,'(i6)') offset*100
+#ifdef YE_FLUX
+!geh      do offset = 1, 4
+!geh        write(word,'(i6)') offset*100
         select case(option%iflowmode)
+          case(MPH_MODE)
+            write(fid,'(a)',advance="no") ',"' // &
+              'Plane Water Flux [mol/s]","Plane CO2 Flux [mol/s]",' // &
+              '"Plane Energy Flux [MJ/s]"'
           case(RICHARDS_MODE)
             write(fid,'(a)',advance="no") ',"' // &
-              trim(adjustl(word)) // 'm Water Mass [kg]"'
+              'Plane Water Flux [mol/s]"'
           case(TH_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               trim(adjustl(word)) // 'm Water Mass [kg]"'
@@ -1782,7 +1788,7 @@ subroutine OutputMassBalance(realization_base)
             endif
           enddo
         endif
-      enddo
+!geh      enddo
 #endif      
       write(fid,'(a)') '' 
     else
@@ -2262,23 +2268,51 @@ subroutine OutputMassBalance(realization_base)
   
   enddo
 
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
+#ifdef YE_FLUX
 
-  do offset = 1, 4
-    iconn = offset*20-1
+!geh  do offset = 1, 4
+!geh    iconn = offset*20-1
+
+    !TODO(ye): The flux will be calculated at the plane intersecting the top
+    !          of the kth cell in the z-direction.  You need to update this.
+    k = 50
 
     if (option%nflowdof > 0) then
-      sum_kg = 0.d0
-      sum_kg = sum_kg + patch%aux%Global%aux_vars(iconn)%mass_balance
-
-      int_mpi = option%nphase
-      call MPI_Reduce(sum_kg,sum_kg_global, &
+      ! really summation of moles, but we are hijacking the variable
+      sum_mol_ye = 0.d0
+      if (k-1 >= grid%structured_grid%lzs .and. &
+          k-1 < grid%structured_grid%lze) then
+        offset = (grid%structured_grid%ngx-1)*grid%structured_grid%nlyz + &
+                 (grid%structured_grid%ngy-1)*grid%structured_grid%nlxz
+        do j = grid%structured_grid%lys, grid%structured_grid%lye-1
+          do i = grid%structured_grid%lxs, grid%structured_grid%lxe-1
+            iconn = offset + (i-grid%structured_grid%lxs)* &
+                             (grid%structured_grid%ngz-1) + &
+                             (j-grid%structured_grid%lys)* &
+                             grid%structured_grid%nlx* &
+                             (grid%structured_grid%ngz-1) + &
+                             k-grid%structured_grid%lzs+1
+!gehprint *, option%myrank, grid%nG2A(grid%internal_connection_set_list%first%id_up(iconn)), &
+!gehpatch%internal_fluxes(1:option%nflowdof,1,iconn), 'sum_mol_by_conn'
+            sum_mol_ye(1:option%nflowdof) = sum_mol_ye(1:option%nflowdof) + &
+                             patch%internal_fluxes(1:option%nflowdof,1,iconn)
+          enddo
+        enddo
+      endif
+!geh      int_mpi = option%nphase
+      int_mpi = option%nflowdof
+!gehprint *, option%myrank, sum_mol_ye(1,1), 'sum_mol_ye'
+      call MPI_Reduce(sum_mol_ye,sum_mol_global_ye, &
                       int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global
+        ! for mphase use:
+        write(fid,110,advance="no") -sum_mol_global_ye(1:option%nflowdof)/option%flow_dt
+
+!     for Richards eqn. use:
+!       write(fid,110,advance="no") -sum_mol_global_ye(1:option%nflowdof)
       endif
     endif
     
@@ -2303,7 +2337,7 @@ subroutine OutputMassBalance(realization_base)
         enddo
       endif
     endif
-  enddo
+!geh  enddo
 #endif
   
   if (option%myrank == option%io_rank) then

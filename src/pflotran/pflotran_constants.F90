@@ -157,19 +157,14 @@ module PFLOTRAN_Constants_module
   
   ! dofs for each mode
   PetscInt, parameter, public :: THC_PRESSURE_DOF = 1
-  !PetscInt, parameter, public :: THC_MASS_RATE_DOF = 2
-  PetscInt, parameter, public :: THC_MASS_RATE_DOF = 4
   PetscInt, parameter, public :: THC_TEMPERATURE_DOF = 2
-  !PetscInt, parameter, public :: THC_CONCENTRATION_DOF = 4
   PetscInt, parameter, public :: THC_CONCENTRATION_DOF = 3
+  PetscInt, parameter, public :: THC_MASS_RATE_DOF = 4
   PetscInt, parameter, public :: THC_ENTHALPY_DOF = 5
   
   PetscInt, parameter, public :: TH_PRESSURE_DOF = 1
-  PetscInt, parameter, public :: TH_MASS_RATE_DOF = 4
   PetscInt, parameter, public :: TH_TEMPERATURE_DOF = 2
-  PetscInt, parameter, public :: TH_CONCENTRATION_DOF = 3
-  PetscInt, parameter, public :: TH_ENTHALPY_DOF = 5
-    
+
   PetscInt, parameter, public :: MPH_PRESSURE_DOF = 1
   PetscInt, parameter, public :: MPH_TEMPERATURE_DOF = 2
   PetscInt, parameter, public :: MPH_CONCENTRATION_DOF = 3
@@ -221,11 +216,9 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: PRINT_SEC_CONC =           1
   PetscInt, parameter, public :: PRINT_SEC_MIN_VOLFRAC =    2
   
-  
   PetscInt, parameter, public :: PROCEED = 0
   PetscInt, parameter, public :: DONE = 1
   PetscInt, parameter, public :: FAIL = 2
-
 
   ! Grid type
   PetscInt, parameter, public :: NULL_GRID = 0

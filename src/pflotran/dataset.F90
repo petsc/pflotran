@@ -23,6 +23,7 @@ module Dataset_module
             DatasetFindInList, &
             DatasetIsTransient, &
             DatasetGetClass, &
+            DatasetPrint, &
             DatasetDestroy
 
 contains
@@ -250,6 +251,7 @@ recursive subroutine DatasetLoad(dataset,option)
   class(dataset_global_type), pointer :: dataset_global
   class(dataset_gridded_type), pointer :: dataset_gridded
   class(dataset_map_type), pointer :: dataset_map
+  class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5
   class(dataset_base_type), pointer :: dataset_base
 
   select type (selector => dataset)
@@ -262,6 +264,16 @@ recursive subroutine DatasetLoad(dataset,option)
     class is (dataset_map_type)
       dataset_map => selector
       call DatasetMapLoad(dataset_map,option)
+    class is (dataset_common_hdf5_type)
+      dataset_common_hdf5 => selector
+      if (dataset_common_hdf5%is_cell_indexed) then
+        option%io_buffer = 'Cell Indexed datasets opened later.'
+        call printMsg(option)
+      else
+        option%io_buffer = 'Unrecognized dataset that extends ' // &
+          'dataset_common_hdf5 in DatasetLoad.'
+        call printErrMsg(option)
+      endif
     class is (dataset_ascii_type)
       ! do nothing.  dataset should already be in memory at this point
     class is (dataset_base_type)
@@ -351,6 +363,46 @@ function DatasetIsTransient(dataset)
   endif 
   
 end function DatasetIsTransient
+
+
+! ************************************************************************** !
+!
+! DatasetPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+
+  write(option%fid_out,'(8x,''Dataset: '',a)') trim(this%name)
+  write(option%fid_out,'(10x,''Type: '',a)') trim(DatasetGetClass(this))
+
+  call DatasetBasePrint(this,option)
+  
+  select type (d=>this)
+    class is (dataset_ascii_type)
+      call DatasetAsciiPrint(d,option)
+    class is (dataset_global_type)
+      call DatasetGlobalPrint(d,option)
+    class is (dataset_gridded_type)
+      call DatasetGriddedPrint(d,option)
+    class is (dataset_map_type)
+      call DatasetMapPrint(d,option)
+    class is (dataset_common_hdf5_type)
+      call DatasetCommonHDF5Print(d,option)
+    class default
+      option%io_buffer = 'Unknown dataset type for dataset "' // &
+        trim(this%name) // '" in DatasetPrint()'
+  end select
+            
+end subroutine DatasetPrint
 
 ! ************************************************************************** !
 !

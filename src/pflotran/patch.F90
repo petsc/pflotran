@@ -1510,7 +1510,7 @@ subroutine PatchUpdateCouplerAuxVarsTHC(patch,coupler,option)
                 flow_condition%iphase
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
+        coupler%flow_aux_real_var(THC_PRESSURE_DOF,1:num_connections) = &
                 flow_condition%pressure%dataset%rarray(1)
       case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
@@ -1521,7 +1521,7 @@ subroutine PatchUpdateCouplerAuxVarsTHC(patch,coupler,option)
         if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
            (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
            flow_condition%temperature%itype /= DIRICHLET_BC)) then
-          coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+          coupler%flow_aux_real_var(THC_TEMPERATURE_DOF,1:num_connections) = &
                   flow_condition%temperature%dataset%rarray(1)
         endif
     end select
@@ -1530,19 +1530,19 @@ subroutine PatchUpdateCouplerAuxVarsTHC(patch,coupler,option)
         if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
            (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
            flow_condition%concentration%itype /= DIRICHLET_BC)) then
-          coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+          coupler%flow_aux_real_var(THC_CONCENTRATION_DOF,1:num_connections) = &
                   flow_condition%concentration%dataset%rarray(1)
         endif
     end select
   else
     select case(flow_condition%temperature%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-        coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+        coupler%flow_aux_real_var(THC_TEMPERATURE_DOF,1:num_connections) = &
                   flow_condition%temperature%dataset%rarray(1)
     end select
     select case(flow_condition%concentration%itype)
       case(DIRICHLET_BC,ZERO_GRADIENT_BC)
-         coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+         coupler%flow_aux_real_var(THC_CONCENTRATION_DOF,1:num_connections) = &
                   flow_condition%concentration%dataset%rarray(1)
     end select
   endif

@@ -1002,7 +1002,7 @@ subroutine RealProcessFlowConditions(realization)
                            string,option)
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE,MIS_MODE,TH_MODE)
+      case default
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! find dataset
           call DatasetFindInList(realization%datasets, &
