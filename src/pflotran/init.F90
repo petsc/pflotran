@@ -995,6 +995,15 @@ subroutine Init(simulation)
            realization%output_option%output_variable_list,output_variable)
   endif
 
+  if (realization%output_option%print_volume) then
+    output_variable => OutputVariableCreate('Volume',OUTPUT_DISCRETE,'', &
+                                            VOLUME)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 0 ! integer
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list,output_variable)
+  endif
+
   ! write material ids
   output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
                                           MATERIAL_ID)
@@ -2435,6 +2444,8 @@ subroutine InitReadInput(simulation)
               call OutputVariableRead(input,option,output_option%output_variable_list)
             case('AVERAGE_VARIABLES')
               call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
+            case('VOLUME')
+              output_option%print_volume = PETSC_TRUE
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'

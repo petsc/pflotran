@@ -3492,6 +3492,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
+    case(VOLUME)
+      call VecGetArrayF90(field%volume,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(local_id)
+      enddo
+      call VecRestoreArrayF90(field%volume,vec_ptr2,ierr)
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
