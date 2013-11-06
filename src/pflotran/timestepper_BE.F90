@@ -385,14 +385,12 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
       this%cumulative_linear_iterations,icut, &
       this%cumulative_time_step_cuts
 
-#if 0    
-    if (associated(discretization%grid)) then
-       scaled_fnorm = fnorm/discretization%grid%nmax 
+    if (associated(process_model%realization_base%discretization%grid)) then
+       scaled_fnorm = fnorm/process_model%realization_base% &
+                        discretization%grid%nmax 
     else
        scaled_fnorm = fnorm
     endif
-#endif
-    scaled_fnorm = fnorm
 
     print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
