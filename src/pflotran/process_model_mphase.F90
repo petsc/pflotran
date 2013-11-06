@@ -263,11 +263,16 @@ subroutine PMMphaseFinalizeTimestep(this)
   
   call MphaseMaxChange(this%realization)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
+          this%option%dsmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
+      this%option%dsmax
   endif  
   
 end subroutine PMMphaseFinalizeTimestep
@@ -317,6 +322,9 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: fac
   PetscReal :: ut
   PetscReal :: up
+  PetscReal :: utmp
+  PetscReal :: uc
+  PetscReal :: uus
   PetscReal :: dtt
   PetscReal :: dt_p
   PetscReal :: dt_tfac
@@ -333,7 +341,10 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
       ut = 0.d0
     else
       up = this%option%dpmxe/(this%option%dpmax+0.1)
-      ut = up
+      utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
+      uc = this%option%dcmxe/(this%option%dcmax+1.d-6)
+      uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
+      ut = min(up,utmp,uc,uus)
     endif
     dtt = fac * dt * (1.d0 + ut)
   else
