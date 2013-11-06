@@ -831,8 +831,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
                   coupler%flow_aux_real_var = 0.d0
                 case(MPH_MODE)
-                  allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
-                  coupler%flow_aux_real_var = 0.d0
+                  ! do nothing
                 case default
                   string = GetSubConditionName(coupler%flow_condition%rate%itype)
                   option%io_buffer='Source/Sink of rate%itype = "' // &
