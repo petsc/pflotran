@@ -148,16 +148,15 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
    nullify(subsurf_simulation%process_model_coupler_list)
 
-  ! sim_aux: Create PETSc Vectors
-  call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
-                                    vec_subsurf_pres, vec_subsurf_pres_top_bc)
-  call SimAuxCopySubsurfVec(simulation%sim_aux, vec_subsurf_pres)
-  call SimAuxCopySubsurfTopBCVec(simulation%sim_aux, vec_subsurf_pres_top_bc)
-  call VecDestroy(vec_subsurf_pres, ierr)
-  call VecDestroy(vec_subsurf_pres_top_bc, ierr)
+  ! sim_aux: Create PETSc Vectors and VectorScatters
+  if(option%nsurfflowdof>0) then
 
-  ! sim_aux: Create PETSc VectorScatters
-  if(option%nsurfflowdof>0) &
+    call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
+                                      vec_subsurf_pres, vec_subsurf_pres_top_bc)
+    call SimAuxCopySubsurfVec(simulation%sim_aux, vec_subsurf_pres)
+    call SimAuxCopySubsurfTopBCVec(simulation%sim_aux, vec_subsurf_pres_top_bc)
+    call VecDestroy(vec_subsurf_pres, ierr)
+    call VecDestroy(vec_subsurf_pres_top_bc, ierr)
 
     call SurfSubsurfCreateSurfVecs(simulation_old%surf_realization, option, &
                                    vec_surf_head)
@@ -170,6 +169,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     call SimAuxCopyVecScatter(simulation%sim_aux, vscat_subsurf_to_surf, SUBSURF_TO_SURF)
     call VecScatterDestroy(vscat_surf_to_subsurf, ierr)
     call VecScatterDestroy(vscat_surf_to_subsurf, ierr)
+  endif
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux
