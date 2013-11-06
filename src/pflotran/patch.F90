@@ -821,6 +821,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
 
           select case(coupler%flow_condition%rate%itype)
             case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS, &
+                 VOLUMETRIC_RATE_SS,MASS_RATE_SS, &
                  HET_VOL_RATE_SS,HET_MASS_RATE_SS)
               select case(option%iflowmode)
                 case(RICHARDS_MODE)
@@ -835,6 +836,11 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                     trim(adjustl(string)) // '", not implemented in this mode.'
                   call printErrMsg(option)
               end select
+            case default
+              string = GetSubConditionName(coupler%flow_condition%rate%itype)
+              option%io_buffer='Unknown source/sink of rate%itype = "' // &
+                trim(adjustl(string))
+              call printErrMsg(option)
           end select
         endif ! associated(coupler%flow_condition%rate)
       endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
