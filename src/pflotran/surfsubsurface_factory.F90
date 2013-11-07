@@ -140,6 +140,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       ! Only subsurface flow active
       simulation%process_model_coupler_list => &
            subsurf_simulation%process_model_coupler_list
+      simulation%process_model_coupler_list%is_master = PETSC_TRUE
       ! call printErrMsg(option,'Only subsurface-flow is active. ' // &
       !        'Check inputfile or switch -simulation_mode subsurface')
       nullify(simulation%surf_realization)
