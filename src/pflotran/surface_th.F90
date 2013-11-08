@@ -2358,9 +2358,8 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
     ibeg = iend - 1
 
     ! Compute density
-    call density(surftemp_p(count),option%reference_pressure,den)
-
     count = count + 1
+    call density(surftemp_p(count),option%reference_pressure,den)
     xx_p(ibeg) = (surfpress_p(count)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
     if(xx_p(ibeg)<1.d-15) then

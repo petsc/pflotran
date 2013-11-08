@@ -1686,7 +1686,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                   flow_condition%rate%dataset, &
                   num_connections,TH_PRESSURE_DOF,option)
-      case (MASS_RATE_SS)
+      case (MASS_RATE_SS,VOLUMETRIC_RATE_SS)
           coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
                   flow_condition%rate%dataset%rarray(1)
       case default
@@ -1701,7 +1701,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     select case (flow_condition%energy_rate%itype)
       case (ENERGY_RATE_SS)
         coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                  flow_condition%temperature%dataset%rarray(1)
+                  flow_condition%energy_rate%dataset%rarray(1)
       case (HET_ENERGY_RATE_SS)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%energy_rate%dataset, &
