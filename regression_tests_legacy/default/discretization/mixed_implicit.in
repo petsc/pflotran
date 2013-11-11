@@ -60,6 +60,7 @@ END
 :=========================== output options ===================================
 OUTPUT
   FORMAT TECPLOT BLOCK
+  FORMAT HDF5
   VELOCITIES
 END
 
