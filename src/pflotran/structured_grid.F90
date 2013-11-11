@@ -1710,7 +1710,7 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: volume_p(:)
-  PetscReal :: r_up, r_down
+  PetscReal :: r1, r2
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)
@@ -1726,16 +1726,16 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
     case(CYLINDRICAL_GRID)
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
-        volume_p(local_id) = 2.d0 * pi * radius(ghosted_id) * structured_grid%dx(ghosted_id) * &
-                                structured_grid%dz(ghosted_id)
+        r1 = radius(ghosted_id) - 0.5d0 * structured_grid%dx(ghosted_id)
+        r2 = r1 + structured_grid%dx(ghosted_id)
+        volume_p(local_id) = pi * (r2*r2 - r1*r1) * structured_grid%dz(ghosted_id)
       enddo
     case(SPHERICAL_GRID)
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
-        r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
-        r_down = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
-        volume_p(local_id) = 4.d0/3.d0 * pi * structured_grid%dx(ghosted_id) &
-        * (r_up*r_up + r_up*r_down + r_down*r_down)
+        r1 = radius(ghosted_id) - 0.5d0 * structured_grid%dx(ghosted_id)
+        r2 = r1 + structured_grid%dx(ghosted_id)
+        volume_p(local_id) = 4.d0/3.d0 * pi * (r2*r2*r2 - r1*r1*r1)
       enddo
   end select
   
