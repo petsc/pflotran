@@ -175,3 +175,7 @@ clean-tests :
 	-rm -f mfd/mfd.h5
 	-rm -f scco2/scco2.h5
 	-rm -f scco2/scco2-mas.dat
+	-rm -f default/543/543_flow_and_tracer-np8.h5
+	-rm -f default/543/543_flow_and_tracer.h5
+	-rm -f default/discretization/mixed_implicit-np4.h5
+	-rm -f default/discretization/mixed_implicit.h5
