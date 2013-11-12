@@ -485,6 +485,7 @@ end subroutine PMCSurfaceSetAuxData
 subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 
   use Surface_Flow_module
+  use Surface_TH_Aux_module
   use Surface_TH_module
   use Option_module
   use Water_EOS_module
@@ -499,10 +500,13 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: count
-  PetscReal, pointer      :: hw_p(:)           ! head [m]
+  PetscReal, pointer      :: xx_p(:)
   PetscReal, pointer      :: surfpress_p(:)
+  PetscReal, pointer      :: surftemp_p(:)
+  PetscInt :: istart, iend
   PetscReal :: den
   PetscErrorCode :: ierr
+  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
 
   print *, 'PMCSurfaceGetAuxDataAfterRestart()'
   if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
@@ -523,7 +527,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 
             call density(this%option%reference_temperature,this%option%reference_pressure,den)
 
-            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, hw_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
             count = 0
             do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
@@ -532,10 +536,10 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
               if(local_id <= 0) cycle
 
               count = count + 1
-              surfpress_p(count) = hw_p(ghosted_id)*den*abs(this%option%gravity(3)) + &
+              surfpress_p(count) = xx_p(ghosted_id)*den*abs(this%option%gravity(3)) + &
                                    this%option%reference_pressure
             enddo
-            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, hw_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
 
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
@@ -548,10 +552,54 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
                                INSERT_VALUES,SCATTER_REVERSE,ierr)
 
           case (TH_MODE)
-            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
-                                           pmc%surf_realization)
-            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
-            call printErrMsg(this%option)
+
+            ! NOTE(GB:) This is strictly not correct since density should be
+            ! computed based on surface-water temperature (not on
+            ! reference-temperature). Presently, SurfaceCheckpointProcessModel()
+            ! does not output surface-water temperature for TH-Mode and the
+            ! subroutine needs to be modified in future.
+            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+
+            surf_aux_vars => pmc%surf_realization%patch%surf_aux%SurfaceTH%aux_vars
+
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%temp_subsurf, surftemp_p, ierr)
+
+            count = 0
+            do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
+
+              local_id = pmc%surf_realization%discretization%grid%nG2L(ghosted_id)
+              if(local_id <= 0) cycle
+
+              count = count + 1
+              iend = ghosted_id*this%option%nflowdof
+              istart = iend - this%option%nflowdof+1
+              surfpress_p(count) = xx_p(istart)*den*abs(this%option%gravity(3)) + &
+                                   this%option%reference_pressure
+              surftemp_p = xx_p(iend)/xx_p(istart)/den/ &
+                      surf_aux_vars(ghosted_id)%Cwi - 273.15d0
+            enddo
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%temp_subsurf, surftemp_p, ierr)
+
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 pmc%surf_realization%surf_field%press_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               pmc%surf_realization%surf_field%press_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_temp_top_bc, &
+                                 pmc%surf_realization%surf_field%temp_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_temp_top_bc, &
+                               pmc%surf_realization%surf_field%temp_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
         end select
     end select
   endif
