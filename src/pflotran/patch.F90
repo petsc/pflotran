@@ -3733,7 +3733,11 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_MOLE_FRACTION)
-            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
+            if (patch%aux%Global%aux_vars(ghosted_id)%sat(1) > 0.d0) then
+              value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
+            else
+              value = 0.d0
+            endif
           case(LIQUID_ENERGY)
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
           case(LIQUID_DENSITY)
@@ -3745,7 +3749,11 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(2)
           case(GAS_MOLE_FRACTION)
-            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar)
+            if (patch%aux%Global%aux_vars(ghosted_id)%sat(2) < 1.d0) then
+              value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar)
+            else
+              value = 0.d0
+            endif
           case(GAS_ENERGY)
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
           case(GAS_DENSITY) 
