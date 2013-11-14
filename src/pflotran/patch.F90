@@ -3749,7 +3749,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(GAS_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(2)
           case(GAS_MOLE_FRACTION)
-            if (patch%aux%Global%aux_vars(ghosted_id)%sat(2) < 1.d0) then
+            if (patch%aux%Global%aux_vars(ghosted_id)%sat(2) > 0.d0) then
               value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar)
             else
               value = 0.d0
