@@ -2140,8 +2140,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: k1, k2, z1, z2, xg, vmco2, vmh2o, sg, sgg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
-! PetscReal :: yh2o_in_co2 = 1.d-2
-  PetscReal :: yh2o_in_co2 = 0.d0
+  PetscReal :: yh2o_in_co2 = 1.d-2
+! PetscReal :: yh2o_in_co2 = 0.d0
   PetscReal :: wat_sat_x, co2_sat_x
   PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
@@ -2288,7 +2288,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
 
 !         if(xmol(4)+ wat_sat_x > 1.05d0) then
-          if(xmol(2) > xco2eq) then
+!         if(xmol(2) > xco2eq) then
+          if(xmol(2) >= xco2eq) then
 
         !   Rachford-Rice initial guess: 1=H2O, 2=CO2
             k1 = wat_sat_x !sat_pressure*1.D5/p
@@ -2328,8 +2329,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
         case(2) ! gas
           
-          if (xmol(3) > wat_sat_x * 1.05d0) then
-        
+!         if (xmol(3) > wat_sat_x * 1.05d0) then
+          if (xmol(3) > wat_sat_x * 1.001d0) then
+
 !           print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
@@ -2358,8 +2360,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           xmol(4) = 1.D0-tmp          
 
 !         if(satu(2) >= 1.D0) then
-          if(satu(2) >= 1.01D0) then
-          
+!         if(satu(2) >= 1.01D0) then
+          if(satu(2) >= 1.001D0) then
+
             write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
        &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1pe11.4)') &
             option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3)
