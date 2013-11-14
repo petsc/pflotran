@@ -164,9 +164,11 @@ subroutine SurfaceInit(surf_realization,input,option)
           un_str_sfgrid => UGridCreate()
           un_str_sfgrid%grid_type = TWO_DIM_GRID
           if (index(discretization%filename,'.h5') > 0) then
+#if defined(PETSC_HAVE_HDF5)
             call UGridReadHDF5SurfGrid( un_str_sfgrid, &
                                         discretization%filename, &
                                         option)
+#endif
           else
             call UGridReadSurfGrid(un_str_sfgrid, &
                                    surf_realization%subsurf_filename, &
