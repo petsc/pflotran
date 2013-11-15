@@ -2203,6 +2203,9 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   PetscReal :: xxbc(surf_realization%option%nflowdof)
   PetscReal :: xxss(surf_realization%option%nflowdof)
   PetscReal :: temp
+  PetscInt :: iter
+  PetscInt :: niter
+  PetscReal :: den
   PetscErrorCode :: ierr
 
   option => surf_realization%option
@@ -2216,6 +2219,11 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
   surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
 
+  ! Number of iterations to solve for T^{t+1}
+  ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
+  ! niter = max(m)
+  niter = 20
+
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p,ierr)
 
   ! Update internal aux vars
@@ -2227,10 +2235,14 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       if(xx_loc_p(istart)<1.d-15) then
         temp = 0.d0
       else
-        ! T^{t+1} = (rho Cwi hw T)^{t+1} / (rho Cw)^{t} (hw)^{t+1}
-        temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
-                surf_global_aux_vars(ghosted_id)%den_kg(1)/ &
-                surf_aux_vars(ghosted_id)%Cwi - 273.15d0
+        ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
+        do iter = 1,niter
+          temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
+                  surf_global_aux_vars(local_id)%den_kg(1)/ &
+                  surf_aux_vars(local_id)%Cwi - 273.15d0
+          call density(temp,option%reference_pressure,den)
+          surf_global_aux_vars(local_id)%den_kg(1) = den
+        enddo
       endif
       surf_global_aux_vars(ghosted_id)%temp(1) = temp
     endif
