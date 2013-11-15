@@ -1178,18 +1178,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                 endif
                 xx_p(ibegin:iend) = &
                       initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-                xx_p(ibegin) = 0.0d0
-
-                !if (option%iflowmode==TH_MODE) then
-                !  !TODO(gb): Correct the initialization of surface flow condition
-                !  temp = xx_p(iend)
-                !  call wateos_noderiv(temp, pw, dw_kg, &
-                !                      dw_mol, hw, option%scale, ierr)
-                !  ! [rho*h*T*Cw]
-                !  xx_p(iend) = dw_kg*xx_p(ibegin)* &
-                !                        (temp + 273.15d0)* &
-                !                        surf_th_aux_vars(ghosted_id)%Cw
-                !endif
+                xx_p(ibegin:iend) = 0.0d0
               enddo
             endif
           initial_condition => initial_condition%next
