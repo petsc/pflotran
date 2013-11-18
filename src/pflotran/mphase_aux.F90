@@ -298,8 +298,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   t = aux_var%temp
   
   select case(iphase)
-!******* Only aqueous phase exist ***********  
     case(1)
+!******* aqueous phase exists ***********
       aux_var%xmol(2) = x(3)
 !      if(aux_var%xmol(2) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(aux_var%xmol(2) > 1.D0) print *,'tran:',iphase, x(1:3)
@@ -309,8 +309,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%sat(2) = 0.D0
       kr(1)= 1.D0
       kr(2)= 0.D0
-!******* Only gas phase exist ***********  
     case(2)
+!******* gas phase exists ***********
       aux_var%xmol(4)=x(3)
 !      if(aux_var%xmol(4) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(aux_var%xmol(4) > 1.D0) print *,'tran:',iphase, x(1:3)
@@ -321,6 +321,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       kr(1)= 0.D0
       kr(2)= 1.D0
     case(3)    
+!******* 2-phase phase exists ***********
       aux_var%sat(2) = x(3)
       if(aux_var%sat(2) < 0.D0)then
 !        print *,'tran:',iphase, x(1:3)
@@ -329,7 +330,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !      if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
       aux_var%sat(1) = 1.D0 - aux_var%sat(2)
       aux_var%pc(:) = 0.D0
-      temp = 1D-2
+      temp = 1.D-2
       aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
       aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
