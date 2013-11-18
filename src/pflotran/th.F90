@@ -3282,7 +3282,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         case (HET_ENERGY_RATE_SS)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
-      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1
+      ! convert J/s --> MJ/s
+      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
