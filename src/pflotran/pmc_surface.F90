@@ -358,7 +358,8 @@ subroutine PMCSurfaceGetAuxData(this)
 end subroutine PMCSurfaceGetAuxData
 
 ! ************************************************************************** !
-!> This routine
+!> This routine extracts data from surface flow model and stores it sim-aux,
+!! which will be required by the subsurface flow model.
 !!
 !> @author
 !! Gautam Bisht, LBNL
@@ -367,6 +368,8 @@ end subroutine PMCSurfaceGetAuxData
 ! ************************************************************************** !
 subroutine PMCSurfaceSetAuxData(this)
 
+  use Connection_module
+  use Coupler_module
   use Grid_module
   use Option_module
   use Patch_module
@@ -375,6 +378,7 @@ subroutine PMCSurfaceSetAuxData(this)
   use Surface_TH_module
   use Surface_TH_Aux_module
   use Surface_Realization_class
+  use String_module
 
   implicit none
   
@@ -387,17 +391,23 @@ subroutine PMCSurfaceSetAuxData(this)
   type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
   type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
   type(patch_type), pointer :: surf_patch
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_type), pointer :: cur_connection_set
   class(surface_realization_type), pointer :: surf_realization
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iend
   PetscInt :: istart
+  PetscInt :: iconn
 
   PetscReal :: dt
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: surf_head_p(:)
   PetscReal, pointer :: surf_temp_p(:)
+  PetscReal, pointer :: surf_hflux_p(:)
+  PetscBool :: found
+  PetscReal :: esrc
   PetscErrorCode :: ierr
 
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -447,6 +457,8 @@ subroutine PMCSurfaceSetAuxData(this)
                                 xx_loc_p,ierr)
             call VecGetArrayF90(pmc%sim_aux%surf_head, surf_head_p, ierr)
             call VecGetArrayF90(pmc%sim_aux%surf_temp, surf_temp_p, ierr)
+            call VecGetArrayF90(pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                                surf_hflux_p, ierr)
 
             do ghosted_id = 1, surf_grid%ngmax
               local_id = surf_grid%nG2L(ghosted_id)
@@ -462,11 +474,59 @@ subroutine PMCSurfaceSetAuxData(this)
               endif
             enddo
 
+            found = PETSC_FALSE
+            source_sink => surf_patch%source_sinks%first
+            do
+              if (.not.associated(source_sink)) exit
+
+              if (associated(source_sink%flow_aux_real_var)) then
+                cur_connection_set => source_sink%connection_set
+
+                if (StringCompare(source_sink%name,'atm_energy_ss')) then
+
+                  do iconn = 1, cur_connection_set%num_connections
+
+                    local_id = cur_connection_set%id_dn(iconn)
+                    select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
+                      case (ENERGY_RATE_SS)
+                        esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
+                      case (HET_ENERGY_RATE_SS)
+                        esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+                      case default
+                        this%option%io_buffer = 'atm_energy_ss does not have '// &
+                          'a temperature condition that is either a ' // &
+                          ' ENERGY_RATE_SS or HET_ENERGY_RATE_SS'
+                    end select
+
+                    ! Only when no standing water is present, the atmospheric
+                    ! energy flux is applied directly on subsurface domain.
+                    if (surf_head_p(local_id) == 0.d0) then
+                      surf_hflux_p(local_id) = 0.d0
+                    else
+                      surf_hflux_p(local_id) = esrc
+                    endif
+
+                  enddo
+
+                  found = PETSC_TRUE
+
+                endif ! StringCompare()
+              endif ! associate()
+
+              source_sink => source_sink%next
+            enddo
+
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
                                     xx_loc_p,ierr)
             call VecRestoreArrayF90(pmc%sim_aux%surf_head, surf_head_p,ierr)
             call VecRestoreArrayF90(pmc%sim_aux%surf_temp, surf_temp_p,ierr)
+            call VecRestoreArrayF90(pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                                surf_hflux_p, ierr)
 
+            if (.not.(found)) then
+              this%option%io_buffer = 'atm_energy_ss not found in surface-flow model'
+              call printErrMsg(this%option)
+            endif
         end select
     end select
   endif

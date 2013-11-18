@@ -263,6 +263,15 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                pmc%sim_aux%subsurf_temp_top_bc, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
 
+            call VecScatterBegin(pmc%sim_aux%surf_to_subsurf, &
+                                 pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                                 pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%surf_to_subsurf, &
+                               pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                               pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+
             coupler_list => patch%boundary_conditions
             coupler => coupler_list%first
             do
@@ -301,6 +310,22 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                       temp_p,ierr)
                 endif
               endif
+
+              if(StringCompare(coupler%name,'from_atm_subsurface_bc')) then
+                coupler_found = PETSC_TRUE
+
+                call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                    mflux_p,ierr)
+
+                do iconn = 1,coupler%connection_set%num_connections
+                  coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
+                    mflux_p(iconn)
+                enddo
+
+                call VecRestoreArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                    mflux_p,ierr)
+              endif
+
               coupler => coupler%next
             enddo
 
