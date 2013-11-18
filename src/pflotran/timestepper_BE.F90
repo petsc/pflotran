@@ -278,10 +278,12 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   option => process_model%option
   
 !geh: for debugging
-!  write(process_model%option%io_buffer,'(es12.5)') this%dt
-!  process_model%option%io_buffer = 'StepperStepDT(' // &
-!    trim(adjustl(process_model%option%io_buffer)) // ')'
-!  call printMsg(process_model%option)  
+#ifdef DEBUG
+  write(process_model%option%io_buffer,'(es12.5)') this%dt
+  process_model%option%io_buffer = 'StepperStepDT(' // &
+    trim(adjustl(process_model%option%io_buffer)) // ')'
+  call printMsg(process_model%option)  
+#endif
 
   tconv = process_model%output_option%tconv
   tunit = process_model%output_option%tunit
@@ -638,7 +640,9 @@ recursive subroutine TimestepperBEFinalizeRun(this,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   
-  call printMsg(option,'TSBE%FinalizeRun()')
+#ifdef DEBUG
+  call printMsg(option,'TimestepperBEFinalizeRun()')
+#endif
   
   if (OptionPrintToScreen(option)) then
     write(*,'(/," TS BE steps = ",i6," newton = ",i8," linear = ",i10, &

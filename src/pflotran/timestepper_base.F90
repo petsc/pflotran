@@ -323,8 +323,10 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   type(waypoint_type), pointer :: cur_waypoint
 
 !geh: for debugging
-!  option%io_buffer = 'StepperSetTargetTime()'
-!  call printMsg(option)
+#ifdef DEBUG
+  option%io_buffer = 'TimestepperBaseSetTargetTime()'
+  call printMsg(option)
+#endif
   
   if (this%time_step_cut_flag) then
     this%time_step_cut_flag = PETSC_FALSE
@@ -362,9 +364,9 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   target_time = this%target_time + dt
 
   !TODO(geh): move to process model initialization stage
-  ! For the case where the second waypoint is a printout after the first time step
-  ! we must increment the waypoint beyond the first (time=0.) waypoint.  Otherwise
-  ! the second time step will be zero. - geh
+  ! For the case where the second waypoint is a printout after the first time 
+  ! step, we must increment the waypoint beyond the first (time=0.) waypoint.  
+  ! Otherwise the second time step will be zero. - geh
   if (cur_waypoint%time < 1.d-40) then
     cur_waypoint => cur_waypoint%next
   endif
@@ -696,7 +698,9 @@ recursive subroutine TimestepperBaseFinalizeRun(this,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   
-  call printMsg(option,'TSBE%FinalizeRun()')
+#ifdef DEBUG
+  call printMsg(option,'TimestepperBaseFinalizeRun()')
+#endif
   
   if (OptionPrintToScreen(option)) then
     write(*,'(/," TS Base steps = ",i6," cuts = ",i6)') &
