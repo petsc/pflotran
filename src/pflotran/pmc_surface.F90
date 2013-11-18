@@ -501,9 +501,9 @@ subroutine PMCSurfaceSetAuxData(this)
                     ! Only when no standing water is present, the atmospheric
                     ! energy flux is applied directly on subsurface domain.
                     if (surf_head_p(local_id) == 0.d0) then
-                      surf_hflux_p(local_id) = 0.d0
-                    else
                       surf_hflux_p(local_id) = esrc
+                    else
+                      surf_hflux_p(local_id) = 0.d0
                     endif
 
                   enddo
