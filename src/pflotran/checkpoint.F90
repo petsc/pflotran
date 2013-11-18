@@ -399,7 +399,7 @@ subroutine Checkpoint(realization, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(filename)
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a32)') trim(filename)
   call printMsg(option)
 
   call PetscTime(tend,ierr) 
