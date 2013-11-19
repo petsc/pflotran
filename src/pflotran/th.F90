@@ -4856,7 +4856,7 @@ subroutine THUpdateSurfaceBC(realization)
           boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn)
         call density(surftemp_old,option%reference_pressure,den)
 
-        head_old = surfpress_old/den/abs(option%gravity(3)) ! [m]
+        head_old = (surfpress_old - option%reference_pressure)/den/abs(option%gravity(3)) ! [m]
         head_new = head_old - &
           patch%boundary_velocities(1,sum_connection)*option%flow_dt ! [m]
 
