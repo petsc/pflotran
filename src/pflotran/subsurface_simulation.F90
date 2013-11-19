@@ -58,7 +58,9 @@ function SubsurfaceSimulationCreate(option)
 
   class(subsurface_simulation_type), pointer :: SubsurfaceSimulationCreate
   
+#ifdef DEBUG
   print *, 'SimulationCreate'
+#endif
   
   allocate(SubsurfaceSimulationCreate)
   call SubsurfaceSimulationCreate%Init(option)
@@ -108,7 +110,9 @@ subroutine SubsurfaceInitializeRun(this)
   PetscInt :: depth
   PetscErrorCode :: ierr
   
+#ifdef DEBUG
   call printMsg(this%option,'Simulation%InitializeRun()')
+#endif
 
   call this%process_model_coupler_list%InitializeRun()
 
@@ -134,7 +138,9 @@ subroutine SubsurfaceFinalizeRun(this)
   class(stepper_BE_type), pointer :: flow_stepper
   class(stepper_BE_type), pointer :: tran_stepper
 
+#ifdef DEBUG
   call printMsg(this%option,'SubsurfaceFinalizeRun()')
+#endif
   
   call SimulationBaseFinalizeRun(this)
   
@@ -171,7 +177,9 @@ subroutine SubsurfaceSimulationStrip(this)
   
   class(subsurface_simulation_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'SubsurfaceSimulationStrip()')
+#endif
   
   call SimulationBaseStrip(this)
   call RegressionDestroy(this%regression)
@@ -191,7 +199,9 @@ subroutine SubsurfaceSimulationDestroy(simulation)
   
   class(subsurface_simulation_type), pointer :: simulation
   
+#ifdef DEBUG
   call printMsg(simulation%option,'SimulationDestroy()')
+#endif
   
   if (.not.associated(simulation)) return
   

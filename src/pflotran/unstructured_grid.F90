@@ -36,7 +36,9 @@ module Unstructured_Grid_module
 #endif
 #ifdef SURFACE_FLOW
             UGridReadSurfGrid, &
+#if defined(PETSC_HAVE_HDF5)
             UGridReadHDF5SurfGrid, &
+#endif
 #endif
             UGridDecompose, &
             UGridComputeInternConnect, &
