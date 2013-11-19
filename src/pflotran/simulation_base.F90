@@ -105,7 +105,9 @@ subroutine InitializeRun(this)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  call printMsg(this%option,'Simulation%InitializeRun()')
+#ifdef DEBUG
+  call printMsg(this%option,'SimulationBaseInitializeRun()')
+#endif
   
   call this%process_model_coupler_list%InitializeRun()  
 
@@ -145,7 +147,9 @@ subroutine ExecuteRun(this)
   
   PetscReal :: final_time
   
-  call printMsg(this%option,'Simulation%ExecuteRun()')
+#ifdef DEBUG
+  call printMsg(this%option,'SimulationBaseExecuteRun()')
+#endif
 
   final_time = SimulationGetFinalWaypointTime(this)
   call this%RunToTime(final_time)
@@ -203,7 +207,9 @@ subroutine RunToTime(this,target_time)
   class(pmc_base_type), pointer :: cur_process_model_coupler
   PetscViewer :: viewer
   
-  call printMsg(this%option,'RunToTime()')
+#ifdef DEBUG
+  call printMsg(this%option,'SimulationBaseRunToTime()')
+#endif
   
   call this%process_model_coupler_list%RunToTime(target_time,this%stop_flag)
   if (this%option%checkpoint_flag) then
@@ -231,7 +237,9 @@ subroutine SimulationBaseFinalizeRun(this)
   
   class(pmc_base_type), pointer :: cur_process_model_coupler
 
+#ifdef DEBUG
   call printMsg(this%option,'SimulationBaseFinalizeRun()')
+#endif
   
   call this%process_model_coupler_list%FinalizeRun()
   
@@ -292,7 +300,9 @@ subroutine SimulationBaseStrip(this)
   
   class(simulation_base_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'SimulationBaseStrip()')
+#endif
   call SimAuxDestroy(this%sim_aux)
   
 end subroutine SimulationBaseStrip
@@ -310,7 +320,9 @@ subroutine SimulationBaseDestroy(simulation)
   
   class(simulation_base_type), pointer :: simulation
   
+#ifdef DEBUG
   call printMsg(simulation%option,'SimulationDestroy()')
+#endif
   
   if (.not.associated(simulation)) return
   

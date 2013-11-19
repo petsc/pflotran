@@ -39,7 +39,9 @@ function PMCSubsurfaceCreate()
   
   class(pmc_subsurface_type), pointer :: pmc
 
+#ifdef DEBUG
   print *, 'PMCSubsurface%Create()'
+#endif
   
   allocate(pmc)
   call pmc%Init()
@@ -61,7 +63,9 @@ subroutine PMCSubsurfaceInit(this)
   
   class(pmc_subsurface_type) :: this
   
+#ifdef DEBUG
   print *, 'PMCSubsurface%Init()'
+#endif
   
   call PMCBaseInit(this)
   this%name = 'PMCSubsurface'
@@ -150,7 +154,9 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   PetscReal, pointer                   :: temp_p(:)
   PetscErrorCode                       :: ierr
 
-!  print *, 'PMCSubsurfaceGetAuxData()'
+#ifdef DEBUG
+  print *, 'PMCSubsurfaceGetAuxData()'
+#endif
 
 #ifdef SURFACE_FLOW
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -395,7 +401,9 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   PetscReal, pointer                   :: head_p(:)
   PetscErrorCode                       :: ierr
 
-!  print *, 'PMCSubsurfaceSetAuxData()'
+#ifdef DEBUG
+  print *, 'PMCSubsurfaceSetAuxData()'
+#endif
 
   if (associated(this%sim_aux)) then
 
@@ -535,7 +543,9 @@ recursive subroutine PMCSubsurfaceFinalizeRun(this)
   
   class(pmc_subsurface_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCSubsurface%FinalizeRun()')
+#endif
   
   nullify(this%realization)
   
@@ -557,7 +567,9 @@ recursive subroutine Destroy(this)
   
   class(pmc_subsurface_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCSubsurface%Destroy()')
+#endif
   
   if (associated(this%next)) then
     call this%next%Destroy()

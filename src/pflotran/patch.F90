@@ -757,95 +757,96 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
       num_connections = coupler%connection_set%num_connections
       
       ! FLOW
-      if (associated(coupler%flow_condition) .and. &
-          (coupler%itype == INITIAL_COUPLER_TYPE .or. &
-           coupler%itype == BOUNDARY_COUPLER_TYPE)) then
+      if (associated(coupler%flow_condition)) then
+        if (coupler%itype == INITIAL_COUPLER_TYPE .or. &
+            coupler%itype == BOUNDARY_COUPLER_TYPE) then
 
-        if (associated(coupler%flow_condition%pressure) .or. &
-            associated(coupler%flow_condition%concentration) .or. &
-            associated(coupler%flow_condition%saturation) .or. &
-            associated(coupler%flow_condition%rate) .or. &
-            associated(coupler%flow_condition%temperature) .or. &
-            associated(coupler%flow_condition%general)) then
+          if (associated(coupler%flow_condition%pressure) .or. &
+              associated(coupler%flow_condition%concentration) .or. &
+              associated(coupler%flow_condition%saturation) .or. &
+              associated(coupler%flow_condition%rate) .or. &
+              associated(coupler%flow_condition%temperature) .or. &
+              associated(coupler%flow_condition%general)) then
 
-          ! allocate arrays that match the number of connections
-          select case(option%iflowmode)
+            ! allocate arrays that match the number of connections
+            select case(option%iflowmode)
 
-            case(RICHARDS_MODE)
-!geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              if (option%mimetic) then
-                 if (coupler%itype == INITIAL_COUPLER_TYPE) then 
-                     num_connections = coupler%numfaces_set + coupler%region%num_cells
-                 else 
-                     num_connections = coupler%numfaces_set
-                 end if
-              end if
-              allocate(coupler%flow_aux_real_var(2,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
+              case(RICHARDS_MODE)
+  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                if (option%mimetic) then
+                   if (coupler%itype == INITIAL_COUPLER_TYPE) then 
+                       num_connections = coupler%numfaces_set + coupler%region%num_cells
+                   else 
+                       num_connections = coupler%numfaces_set
+                   end if
+                end if
+                allocate(coupler%flow_aux_real_var(2,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
 
-            case(TH_MODE)
-              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
+              case(TH_MODE)
+                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
 
-            case(THC_MODE)
-              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
+              case(THC_MODE)
+                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
               
-            case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
-!geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
+              case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
+  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
                 
-            case(G_MODE)
-              allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
-              allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
+              case(G_MODE)
+                allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
+                allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
                 
-            case default
-          end select
+              case default
+            end select
       
-        endif ! associated(coupler%flow_condition%pressure)
+          endif ! associated(coupler%flow_condition%pressure)
       
-      else if (coupler%itype == SRC_SINK_COUPLER_TYPE) then
+        else if (coupler%itype == SRC_SINK_COUPLER_TYPE) then
 
-        if (associated(coupler%flow_condition%rate)) then
+          if (associated(coupler%flow_condition%rate)) then
 
-          select case(coupler%flow_condition%rate%itype)
-            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS, &
-                 VOLUMETRIC_RATE_SS,MASS_RATE_SS, &
-                 HET_VOL_RATE_SS,HET_MASS_RATE_SS)
-              select case(option%iflowmode)
-                case(RICHARDS_MODE)
-                  allocate(coupler%flow_aux_real_var(1,num_connections))
-                  coupler%flow_aux_real_var = 0.d0
-                case(TH_MODE)
-                  allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
-                  coupler%flow_aux_real_var = 0.d0
-                case(MPH_MODE)
-                  ! do nothing
-                case default
-                  string = GetSubConditionName(coupler%flow_condition%rate%itype)
-                  option%io_buffer='Source/Sink of rate%itype = "' // &
-                    trim(adjustl(string)) // '", not implemented in this mode.'
-                  call printErrMsg(option)
-              end select
-            case default
-              string = GetSubConditionName(coupler%flow_condition%rate%itype)
-              option%io_buffer='Unknown source/sink of rate%itype = "' // &
-                trim(adjustl(string))
-              call printErrMsg(option)
-          end select
-        endif ! associated(coupler%flow_condition%rate)
-      endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
+            select case(coupler%flow_condition%rate%itype)
+              case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS, &
+                   VOLUMETRIC_RATE_SS,MASS_RATE_SS, &
+                   HET_VOL_RATE_SS,HET_MASS_RATE_SS)
+                select case(option%iflowmode)
+                  case(RICHARDS_MODE)
+                    allocate(coupler%flow_aux_real_var(1,num_connections))
+                    coupler%flow_aux_real_var = 0.d0
+                  case(TH_MODE)
+                    allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
+                    coupler%flow_aux_real_var = 0.d0
+                  case(MPH_MODE)
+                    ! do nothing
+                  case default
+                    string = GetSubConditionName(coupler%flow_condition%rate%itype)
+                    option%io_buffer='Source/Sink of rate%itype = "' // &
+                      trim(adjustl(string)) // '", not implemented in this mode.'
+                    call printErrMsg(option)
+                end select
+              case default
+                string = GetSubConditionName(coupler%flow_condition%rate%itype)
+                option%io_buffer='Unknown source/sink of rate%itype = "' // &
+                  trim(adjustl(string))
+                call printErrMsg(option)
+            end select
+          endif ! associated(coupler%flow_condition%rate)
+        endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
+      endif ! associated(coupler%flow_condition)
     endif ! associated(coupler%connection_set)
 
     ! TRANSPORT   
