@@ -50,7 +50,6 @@ END
 :=========================== times ============================================
 TIME
   FINAL_TIME 18000.d0 s
-  :FINAL_TIME 60.d0 s
   INITIAL_TIMESTEP_SIZE 60.0 s
   MAXIMUM_TIMESTEP_SIZE 60.0 s        ! produces CFL ~<= 1.
 END
@@ -89,16 +88,16 @@ FLOW_CONDITION from_surface
     TEMPERATURE heterogeneous_dirichlet
   /
   PRESSURE 101325.d0
-  TEMPERATURE 5.d0
+  TEMPERATURE 0.d0
 /
 
 FLOW_CONDITION from_atm_subsurface
   TYPE
-    RATE mass_rate
-    ENERGY_RATE energy_rate
+    PRESSURE neumann
+    TEMPERATURE neumann
   /
-  RATE 0.d0
-  ENERGY_RATE 0.d0
+  FLUX 0.d0
+  TEMPERATURE 0.d0
 /
 
 :=========================== condition couplers ===============================
@@ -113,7 +112,7 @@ BOUNDARY_CONDITION from_surface_bc
   REGION top
 /
 
-SOURCE_SINK from_atm_subsurface_ss
+BOUNDARY_CONDITION from_atm_subsurface_bc
   FLOW_CONDITION from_atm_subsurface
   REGION top
 /
@@ -136,8 +135,7 @@ END
 SURF_FLOW_FORMULATION diffusive
 
 SURF_SUBSURFACE_COUPLING
-  seq_coupled_new
-:  decoupled
+  decoupled
 END
 
 SURF_MATERIAL_PROPERTY surf1
@@ -221,12 +219,10 @@ SURF_SOURCE_SINK atm_rain_ss
   SURF_REGION surf_all
 /
 
-skip
 SURF_SOURCE_SINK atm_energy_ss
   SURF_FLOW_CONDITION atm_energy_forcing
   SURF_REGION surf_all
 /
-noskip
 
 : initial condition
 SURF_INITIAL_CONDITION surf_initial_coupler
