@@ -2232,8 +2232,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
     if(local_id>0) then
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
-      if(xx_loc_p(istart)<1.d-15) then
-        temp = 0.d0
+      if (xx_loc_p(istart) < 1.d-15) then
+        temp = option%reference_temperature
       else
         ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
         do iter = 1,niter
@@ -2376,7 +2376,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
                         (abs(option%gravity(3)))/den
     if(xx_p(ibeg)<1.d-15) then
       xx_p(ibeg) = 0.d0
-      xx_p(iend) = 0.d0
+      xx_p(iend) = option%reference_temperature
     else
       Cwi = surf_aux_vars(ghosted_id)%Cwi
       temp_K = surftemp_p(count) + 273.15d0

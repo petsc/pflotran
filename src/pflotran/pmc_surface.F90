@@ -467,7 +467,7 @@ subroutine PMCSurfaceSetAuxData(this)
               istart = iend - this%option%nflowdof+1
               if (xx_loc_p(istart) < 1.d-15) then
                 surf_head_p(local_id) = 0.d0
-                surf_temp_p(local_id) = 0.d0
+                surf_temp_p(local_id) = this%option%reference_temperature
               else
                 surf_head_p(local_id) = xx_loc_p(istart)
                 surf_temp_p(local_id) = surf_global_aux_vars(ghosted_id)%temp(1)

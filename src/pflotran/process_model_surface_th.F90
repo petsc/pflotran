@@ -369,7 +369,7 @@ subroutine PMSurfaceTHPostSolve(this)
     istart = iend - this%option%nflowdof + 1
     if(xx_p(istart) < 1.d-15) then
       xx_p(istart) = 0.d0
-      xx_p(iend) = 0.d0
+      xx_p(iend) = this%option%reference_temperature
     endif
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
