@@ -24,6 +24,10 @@ ifdef BACKTRACE
 	TEST_OPTIONS += --backtrace
 endif
 
+ifdef TIMEOUT
+	TEST_OPTIONS += --timeout $(TIMEOUT)
+endif
+
 ifneq ($(strip $(MPIEXEC)),)
 	TEST_OPTIONS += --mpiexec $(MPIEXEC)
 endif
