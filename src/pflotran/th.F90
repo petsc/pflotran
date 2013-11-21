@@ -4862,24 +4862,31 @@ subroutine THUpdateSurfaceBC(realization)
 
         if (head_new <= 0.d0) then
           surfpress_new = option%reference_pressure
-          surftemp_new = 0.d0
+          surftemp_new = option%reference_temperature
         else
-          call density(surftemp_old,option%reference_pressure,den)
-          energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
-          energy_new = energy_old - eflux*option%flow_dt/area
-          ! Perform iteration to get updated temperature for surface-water
-          do iter = 1,niter
-            surftemp_new = energy_new/(den*Cwi*head_new) - 273.15d0
-            call density(surftemp_new,option%reference_pressure,den)
-          enddo
+          ! GB: Do not update temperature of BC because eflux needs to be split
+          !     into heat flux associated with:
+          !     - bulk movement of water, and
+          !     - conduction term.
+          !     To update temperature, heat loss associated with conduction
+          !     is required.
+          !
+          !call density(surftemp_old,option%reference_pressure,den)
+          !energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
+          !energy_new = energy_old - eflux*option%flow_dt/area
+          !! Perform iteration to get updated temperature for surface-water
+          !do iter = 1,niter
+          !  surftemp_new = energy_new/(den*Cwi*head_new) - 273.15d0
+          !  call density(surftemp_new,option%reference_pressure,den)
+          !enddo
           surfpress_new = head_new*(abs(option%gravity(3)))*den + &
             option%reference_pressure
         endif
 
         boundary_condition%flow_aux_real_var(TH_PRESSURE_DOF,iconn) = &
           surfpress_new
-        boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
-          surftemp_new
+        !boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
+        !  surftemp_new
       enddo
 
     else
