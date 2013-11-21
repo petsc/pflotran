@@ -37,8 +37,14 @@ GRID
   ORIGIN 0.d0 0.d0 0.d0
   NXYZ 5 4 3
   DXYZ
-    10. 11. 12. 13. 14.
+   ! Five values for 'dx'. Note: Backslash for line continuation
+    10. 11. 12. \
+    13. 14.
+
+    ! Four values for 'dy'
     13. 12. 11. 10.
+
+    ! Three values for 'dz'
     15. 20. 25.
   /
 END
