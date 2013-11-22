@@ -276,11 +276,13 @@ subroutine PMTHFinalizeTimestep(this)
   
   call THMaxChange(this%realization)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax
   endif  
   
 end subroutine PMTHFinalizeTimestep
