@@ -1471,8 +1471,22 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
     case(MASS_RATE_SS)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
-      if (msrc(1) /= 0.d0) then ! H2O injection
+      if (msrc(1) > 0.d0) then ! H2O injection
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
+          option%scale,ierr)
+!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
+        Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
+        Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
+        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + &
+          msrc(1)*enth_src_h2o*option%flow_dt
+          
+!       print *,'soure/sink: ',msrc,csrc,enth_src_h2o,option%flow_dt,option%nflowdof
+
+        ! store volumetric rate for ss_fluid_fluxes()
+        qsrc_phase(1) = msrc(1)/dw_mol
+      elseif (msrc(1) < 0.d0) then ! H2O extraction
+        call wateos_noderiv(aux_var%temp,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
