@@ -4443,13 +4443,13 @@ subroutine THSetPlotVariables(realization)
                                ICE_SATURATION)
 
   name = 'Ice Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
                                ICE_DENSITY)
 #endif
 
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
 
@@ -4459,7 +4459,7 @@ subroutine THSetPlotVariables(realization)
 !                              GAS_DENSITY)
 
   name = 'Liquid Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_ENERGY)
 
@@ -4469,7 +4469,7 @@ subroutine THSetPlotVariables(realization)
 !                              GAS_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
@@ -4479,7 +4479,7 @@ subroutine THSetPlotVariables(realization)
 !                              GAS_VISCOSITY)
 
   name = 'Liquid Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_MOBILITY)
 

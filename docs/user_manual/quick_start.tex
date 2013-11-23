@@ -27,7 +27,7 @@ For MacOSX 10.8.2 the latest Fortran compiler binaries (gcc/gfortran 4.8 at the 
 \subsection{Installing PFLOTRAN}
 
 \begin{description}
-\item[Step 1: Installing PETSc] The first step is to download the developer version of PETSc, \href{http://www.mcs.anl.gov/petsc/developers/index.html}{petsc-dev}. To do this follow the directions at the PETSc Developer web site. The recommended approach is to use \href{http://mercurial.selenic.com/}{Mercurial}---also needed to obtain the PFLOTRAN source code. Mercurial(hg) is the version control system used by both PETSc and PFLOTRAN. Often one can find executables for particular platforms and there is no need to compile the application from scratch. On a UNIX system you can check to see if Mercurial is already installed by issuing the command: {\footnotesize\tt which hg}.
+\item[Step 1: Installing PETSc] The first step is to download the developer version of PETSc, \href{http://www.mcs.anl.gov/petsc/developers/index.html}{petsc-dev}. To do this follow the directions at the PETSc Developer web site. The recommended approach is to use {\tt git}.
 
 To compile PETSc it is first necessary to configure the makefile. To this end define the environmental variables {\footnotesize\tt PETSC\_DIR} and {\footnotesize\tt PETSC\_ARCH} pointing to the directory where petsc-dev is installed and an identifying name for the installation, respectively. E.g. if using the t-shell on MacOSX 10.8.2 and gcc-4.8 enter into the .tcshrc file:
 
@@ -89,7 +89,9 @@ Solvers & Iterative (GMRES)/Direct & ---\\
 \end{tabular}
 \end{table}
 
-\item[Step 2: Downloading PFLOTRAN] PFLOTRAN can be downloaded from bitbucket.org using Mercurial (hg):
+\item[Step 2: Downloading PFLOTRAN] To obtain the latest version of the PFLOTRAN source code use \href{http://mercurial.selenic.com/}{Mercurial}. Mercurial (hg) is the version control system used by both PETSc and PFLOTRAN. Often one can find executables for particular platforms and there is no need to compile the application from scratch. On a UNIX system you can check to see if Mercurial is already installed by issuing the command: {\footnotesize\tt which hg}.
+
+PFLOTRAN can be downloaded from bitbucket.org by issuing the command line:
 
 {\footnotesize\tt hg clone https://bitbucket.org/pflotran/pflotran-dev}.
 
