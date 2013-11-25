@@ -29,8 +29,7 @@ module PFLOTRAN_Constants_module
   
   ! formula weights
   PetscReal, parameter, public :: FMWNACL = 58.44277d0
-!  PetscReal, parameter, public :: FMWH2O = 18.01534d0  ! kg/kmol h2o
-  PetscReal, parameter, public :: FMWH2O = 18.0153400018d0  ! kg/kmol h2o
+  PetscReal, parameter, public :: FMWH2O = 18.01534d0  ! kg/kmol h2o
   PetscReal, parameter, public :: FMWCO2 = 44.0098d0
   PetscReal, parameter, public :: FMWAIR = 28.96d0
   PetscReal, parameter, public :: FMWGLYC = 76.09d0 ! propylene glycol (C3H8O2)
