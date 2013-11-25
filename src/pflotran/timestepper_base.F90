@@ -295,7 +295,8 @@ end subroutine TimestepperBaseUpdateDT
 ! ************************************************************************** !
 subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
                                         stop_flag,plot_flag, &
-                                        transient_plot_flag)
+                                        transient_plot_flag, &
+                                        checkpoint_flag)
 
   use Option_module
   
@@ -307,6 +308,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   PetscInt :: stop_flag
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
   
   PetscReal :: target_time
   PetscReal :: dt
@@ -397,6 +399,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
           if (force_to_match_waypoint) revert_due_to_waypoint = PETSC_TRUE
           if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
           if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+          if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
         endif
         if (equal_to_or_exceeds_sync_time) then
           ! If the time step was cut to match the sync time, we want to set

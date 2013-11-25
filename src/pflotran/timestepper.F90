@@ -648,6 +648,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: flow_to_tran_ts_ratio
   PetscReal :: tmp
+  PetscBool :: checkpoint_flag
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -663,6 +664,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
   failure = PETSC_FALSE
   run_flow_as_steady_state = PETSC_FALSE
   step_to_steady_state = PETSC_FALSE
+  checkpoint_flag = PETSC_FALSE
+
   if (associated(flow_stepper)) then
     run_flow_as_steady_state = flow_stepper%run_as_steady_state
   endif
@@ -699,7 +702,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
         ! Update model coupling time
         call StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
         call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
-                            option,plot_flag,transient_plot_flag,surf_plot_flag)
+                            option,plot_flag,transient_plot_flag,surf_plot_flag, &
+                            checkpoint_flag)
         surf_plot_flag = plot_flag
 
         ! Update subsurface pressure of top soil layer for surface flow model
@@ -745,7 +749,8 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
           ! Set new target time for surface model
           call StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
           call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
-                                          option,plot_flag,transient_plot_flag)
+                                          option,plot_flag,transient_plot_flag, &
+                                          checkpoint_flag)
         enddo
       endif
 
@@ -810,7 +815,7 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
     call StepperSetTargetTimes(flow_stepper,tran_stepper, &
                                option,plot_flag, &
-                               transient_plot_flag)
+                               transient_plot_flag,checkpoint_flag)
 
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
@@ -976,8 +981,17 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
       endif
     endif
 
-    if (option%checkpoint_flag .and. &
-        mod(master_stepper%steps,option%checkpoint_frequency) == 0) then
+    if (.not.checkpoint_flag) then
+      if (option%checkpoint_flag) then
+        if (option%checkpoint_frequency > 0) then
+          if (mod(master_stepper%steps,option%checkpoint_frequency) == 0) then
+            checkpoint_flag = PETSC_TRUE
+          endif
+        endif
+      endif
+    endif
+
+    if (checkpoint_flag) then
       call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
                              master_stepper%steps)  
 #ifdef SURFACE_FLOW
@@ -1554,7 +1568,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
                                  surf_flow_stepper, &
 #endif
                                  option,plot_flag, &
-                                 transient_plot_flag)
+                                 transient_plot_flag, &
+                                 checkpoint_flag)
 
   use Option_module
   
@@ -1567,6 +1582,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer :: surf_flow_stepper
 #endif
+  PetscBool :: checkpoint_flag
   
   PetscReal :: target_time
   PetscReal :: dt
@@ -1577,6 +1593,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   PetscReal :: tolerance
   type(waypoint_type), pointer :: cur_waypoint
 
+  checkpoint_flag = PETSC_FALSE
   ! target time will always be dictated by the flow solver, if present
   ! this does not mean that the transport solver cannot take smaller steps
   
@@ -1670,6 +1687,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
     if (target_time + tolerance*dt >= cur_waypoint%time .and. &
         (cur_waypoint%update_conditions .or. &
          cur_waypoint%print_output .or. &
+         cur_waypoint%print_checkpoint .or. &
          cur_waypoint%print_tr_output .or. &
          cur_waypoint%final)) then
       ! decrement by time step size
@@ -1683,6 +1701,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
         target_time = cur_waypoint%time
         if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
         if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
         option%match_waypoint = PETSC_TRUE
         cur_waypoint => cur_waypoint%next
       endif
@@ -1748,7 +1767,7 @@ end subroutine StepperSetTargetTimes
 #ifdef SURFACE_FLOW
 subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                  option,surf_plot_flag, &
-                                 transient_plot_flag)
+                                 transient_plot_flag,checkpoint_flag)
 
   use Option_module
 
@@ -1758,6 +1777,7 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
   type(option_type) :: option
   PetscBool :: surf_plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
 
   PetscReal :: target_time
   PetscReal :: dt
@@ -1768,6 +1788,7 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
   cur_waypoint => surf_flow_stepper%cur_waypoint
 
   surf_plot_flag = PETSC_FALSE
+  checkpoint_flag = PETSC_FALSE
 
   dt = option%surf_flow_dt
   target_time = surf_flow_stepper%target_time + option%surf_flow_dt
@@ -1792,6 +1813,7 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
 
     target_time = cur_waypoint%time
     if (cur_waypoint%print_output) surf_plot_flag = PETSC_TRUE
+    if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
     option%match_waypoint = PETSC_TRUE
     cur_waypoint => cur_waypoint%next
   endif
@@ -1814,7 +1836,7 @@ end subroutine StepperSetSurfaceFlowTargetTimes
 #ifdef SURFACE_FLOW
 subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                                         option,plot_flag,transient_plot_flag, &
-                                        surf_plot_flag)
+                                        surf_plot_flag,checkpoint_flag)
 
   use Option_module
 
@@ -1827,6 +1849,7 @@ subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
   PetscBool :: surf_plot_flag
+  PetscBool :: checkpoint_flag
 
   if(option%surf_subsurf_coupling_flow_dt>0.d0) then
     ! Case-I: Coupling time is specified in the input deck, so use it
@@ -1835,7 +1858,7 @@ subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_
 
     ! Set new target time for surface model
     call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
-              surf_plot_flag,transient_plot_flag)
+              surf_plot_flag,transient_plot_flag,checkpoint_flag)
 
     if (option%subsurf_surf_coupling==SEQ_COUPLED) then
       ! Set new target time for subsurface model
@@ -1865,14 +1888,14 @@ subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_
 
       ! Set new target time for surface model
       call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
-                surf_plot_flag,transient_plot_flag)
+                surf_plot_flag,transient_plot_flag,checkpoint_flag)
 
     else
       ! Case-III: Coupling time not explicitly specified in the input deck, with
       !          only surface simulation 
       ! Set new target time for surface model
       call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
-                surf_plot_flag,transient_plot_flag)
+                surf_plot_flag,transient_plot_flag,checkpoint_flag)
 
       option%surf_subsurf_coupling_time=surf_flow_stepper%target_time
 

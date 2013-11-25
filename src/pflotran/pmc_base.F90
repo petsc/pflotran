@@ -227,6 +227,7 @@ class(pmc_base_type), target :: this
   PetscBool :: failure
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
   class(pm_base_type), pointer :: cur_pm
   PetscViewer :: viewer
   PetscErrorCode :: ierr
@@ -245,10 +246,11 @@ class(pmc_base_type), target :: this
     call SetOutputFlags(this)
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
+    checkpoint_flag = PETSC_FALSE
     
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
-                                        transient_plot_flag)
+                                        transient_plot_flag,checkpoint_flag)
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
     if (local_stop_flag > 1) exit ! failure
@@ -294,10 +296,18 @@ class(pmc_base_type), target :: this
                        transient_plot_flag)
     endif
     
-    if (this%is_master .and. &
-        this%option%checkpoint_flag .and. &
-        mod(this%timestepper%steps, &
-        this%option%checkpoint_frequency) == 0) then
+    if (this%is_master) then
+      if (checkpoint_flag) exit
+      if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
+        if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
+           checkpoint_flag = PETSC_TRUE
+        endif
+      endif
+    else
+      checkpoint_flag = PETSC_FALSE
+    endif
+
+    if (checkpoint_flag) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
       ! Set data needed by process-model
