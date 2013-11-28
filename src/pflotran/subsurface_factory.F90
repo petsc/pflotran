@@ -134,6 +134,7 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PMC_Subsurface_class  
   use Simulation_Base_class
   use Process_Model_Mphase_class
+  use Process_Model_Miscible_class
   use Process_Model_Richards_class
   use Process_Model_RT_class
   use Process_Model_TH_class
@@ -175,6 +176,8 @@ subroutine HijackSimulation(simulation_old,simulation)
     select case(option%iflowmode)
       case(MPH_MODE)
         cur_process_model => PMMphaseCreate()
+      case(MIS_MODE)
+        cur_process_model => PMMiscibleCreate()
       case(RICHARDS_MODE)
         cur_process_model => PMRichardsCreate()
       case(TH_MODE)
@@ -243,6 +246,10 @@ subroutine HijackSimulation(simulation_old,simulation)
         select type(cur_process_model)
           class is (pm_mphase_type)
             call cur_process_model%PMMphaseSetRealization(realization)
+            call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
+            flow_process_model_coupler%timestepper%dt = option%flow_dt
+          class is (pm_miscible_type)
+            call cur_process_model%PMMiscibleSetRealization(realization)
             call cur_process_model_coupler%SetTimestepper(flow_process_model_coupler%timestepper)
             flow_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_richards_type)
