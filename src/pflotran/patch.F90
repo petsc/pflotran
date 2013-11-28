@@ -830,7 +830,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   case(TH_MODE)
                     allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
                     coupler%flow_aux_real_var = 0.d0
-                  case(MPH_MODE)
+                  case(MPH_MODE,FLASH2_MODE,MIS_MODE,IMS_MODE)
                     ! do nothing
                   case default
                     string = GetSubConditionName(coupler%flow_condition%rate%itype)

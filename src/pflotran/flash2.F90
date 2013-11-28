@@ -50,7 +50,7 @@ module Flash2_module
          Flash2Setup,Flash2UpdateReason,&
          Flash2MaxChange, Flash2UpdateSolution, &
          Flash2GetTecplotHeader, Flash2InitializeTimestep, &
-         Flash2UpdateAuxVars
+         Flash2UpdateAuxVars, Flash2Destroy
 
 contains
 
@@ -4806,13 +4806,13 @@ end subroutine Flash2SetPlotVariables
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine Flash2Destroy(patch)
+subroutine Flash2Destroy(realization)
 
-  use Patch_module
+  use Realization_class
 
   implicit none
   
-  type(patch_type) :: patch
+  type(realization_type) :: realization
   
   ! need to free array in aux vars
   !call Flash2AuxDestroy(patch%aux%Flash2)
