@@ -49,7 +49,8 @@ module Immis_module
          ImmisMaxChange,ImmisUpdateSolution, &
          ImmisGetTecplotHeader,ImmisInitializeTimestep, &
          ImmisUpdateAuxVars, &
-         ImmisComputeMassBalance
+         ImmisComputeMassBalance, &
+         ImmisDestroy
 
 contains
 
@@ -3104,13 +3105,13 @@ end subroutine ImmisSetPlotVariables
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine ImmisDestroy(patch)
+subroutine ImmisDestroy(realization)
 
-  use Patch_module
+  use Realization_class
 
   implicit none
   
-  type(patch_type) :: patch
+  type(realization_type) :: realization
   
   ! need to free array in aux vars
   !call ImmisAuxDestroy(patch%aux%Immis)
