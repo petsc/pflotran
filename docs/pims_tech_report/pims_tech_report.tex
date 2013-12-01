@@ -165,14 +165,6 @@
 \newcommand{\srf}{{\rm srf}}
 \def\dbar{{\mkern2mu\mathchar'26\mkern-11mu\mathrm{d}}}
 
-\newcounter{saveeqn}%
-\newcommand{\alpheqn}{\setcounter{saveeqn}{\value{equation}}%
-\stepcounter{saveeqn}\setcounter{equation}{0}%
-\renewcommand{\theequation}
-      {\mbox{\arabic{saveeqn}\alph{equation}}}}%
-\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
-\renewcommand{\theequation}{\arabic{equation}}}%
-
 \renewcommand{\contentsname}{TABLE OF CONTENTS}
 \renewcommand{\listfigurename}{{LIST OF FIGURES}}
 \renewcommand{\listtablename}{{LIST OF TABLES}}
@@ -198,6 +190,10 @@
 \begin{document}
 %begin title page
 
+\noindent
+{\Large\bf PIMS \& PMIS Technical Report}
+
+\begin{comment}
 
 \noindent
 {\large\sffamily LA-UR-??-????}
@@ -249,16 +245,16 @@
 \scriptsize
 Los Alamos National Laboratory, an affirmative action/equal opportunity employer, is operated by the Los Alamos National Security, LLC, for the National Nuclear Security Administration of the U.S. Department of Energy under contract DE-AC52-06NA25396. By acceptance of this article, the publisher recognizes that the U.S. Government retains a nonexclusive, royalty-free license to publish or reproduce the published form of this contribution, or to allow others to do so, for U.S. Government purposes. Los Alamos National Laboratory requests that the publisher identify this article as work performed under the auspices of the U.S. Department of Energy. Los Alamos National Laboratory strongly supports academic freedom and a researcher's right to publish; as an institution, however, the Laboratory does not endorse the viewpoint of a publication or guarantee its technical correctness.
 
-\normalsize
+\end{comment}
 
-\clearpage
+\normalsize
 
 \tableofcontents
 %\clearpage
 
-\listoffigures
+%\listoffigures
 
-\listoftables
+%\listoftables
 
 \clearpage
 
@@ -273,19 +269,22 @@ The governing equations solved by PIMS are given by
 \EQ\label{mass}
 \frac{\p}{\p t}\big(\varphi\rho_\a^{} s_\a^{}\big) + \bnabla\cdot \big(\rho_\a^{} \bq_\a \big) \eq Q_\a,
 \EN
-where the subscript $\a$ denotes an immiscible phase, and for PMIS
+where the subscript $\a$ denotes an immiscible phase,. 
+
+For PMIS
 \EQ\label{massmis}
 \frac{\p}{\p t}\big(\varphi\rho x_i^{}\big) + \bnabla\cdot \big(\rho \bq x_i \big) \eq Q_i,
 \EN
 for the $i$th component in a single phase system.
-In these equations $\varphi$ is porosity, $s_\a$, $\rho_\a$ refer to the $\a$th phase saturation and density, respectively, $\bq_\a$ is the Darcy velocity of the $\a$th phase given by
+
+In these equations $\varphi$ denotes porosity, $s_\a$, $\rho_\a$ refer to the $\a$th phase saturation and density, respectively, $\bq_\a$ is the Darcy velocity of the $\a$th phase given by
 \EQ
 \bq_\a \eq -\frac{kk_\a}{\mu_\a} \big(\bnabla p-\rho_\a g \hat\bz\big), 
 \EN
 with permeability $k$, relative permeability $k_\a$, fluid viscosity $\mu_\a$, and $Q_\a$ is the source/sink term.  
-The selection of primary variables are pressure $p$ and $n\!-\!1$ independent phase saturation variables $s_\a, \a=1,...,n\!-\!1$ with
+The selection of primary variables are pressure $p$ and $N_p\!-\!1$ independent phase saturation variables $s_\a, \a=1,...,N_p\!-\!1$ with
 \EQ
-\sum_{\a=1}^n s_\a = 1.
+\sum_{\a=1}^{N_p} s_\a = 1.
 \EN
 The mass conservation equations are coupled to the energy balance equation given by
 \EQ
@@ -294,7 +293,7 @@ The mass conservation equations are coupled to the energy balance equation given
 where $U_\a$, $H_\a$ denote the internal energy and enthalpy of the $\a$th fluid phase, $\kappa$ denotes the thermal conductivity of the bulk porous medium, $\rho_r$, $C_r$ denote the rock density and heat capacity, and $T$ refers to the temperature.
 %, if incompressibility of all phases or one of them is assumed. In this case, the reference pressure has to be specified as a boundary condition.
 %The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
-Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{n-1}$).
+Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{N_p-1}$).
 
 \subsection*{Initial \& Boundary Conditions}
 \addcontentsline{toc}{subsection}{\protect\numberline{}{\bf Initial \& Boundary Conditions}} 
@@ -305,30 +304,38 @@ Boundary conditions involve specifying Dirichlet, Neumann or zero gradient condi
 
 \section{Global Mass Conservation}
 
-Compared to the MPHASE mode in PFLOTRAN, PIMS conserves mass instead of molar numbers. Global mass conservation implies the equation
+Global mass conservation implies the equation
 \EQ
-\frac{dM_i}{dt} \eq \int_V Q_idV - \int_{\p V} \rho_i \bq_i \cdot \bdS
+\frac{dM_\a}{dt} \eq \int_V Q_\a dV - \int_{\p V} \rho_\a \bq_\a \cdot \bdS
 \EN
-where the total mass of the $i$th phase is defined as
+where the total mass of the $\a$th phase is defined as
 \EQ
-M_i \eq \int_V \varphi \rho_i s_i dV.
+M_\a \eq \int_V \varphi \rho_\a s_\a dV.
 \EN
+Integrating over time gives
 \BA
-\int_0^t \frac{dM_i}{dt}dt &\eq M_i(t)-M_i^0,\\
-&\eq \int_0^t dt \int_V Q_idV - \int_0^t dt \int_{\p V} \rho_i \bq_i \cdot \bdS
+\int_0^t \frac{dM_\a}{dt}dt &\eq M_\a(t)-M_\a^0,\\
+&\eq \int_0^t dt \int_V Q_idV - \int_0^t dt \int_{\p V} \rho_\a \bq_\a \cdot \bdS
 \EA
+Over a time step $\Delta t$
 \EQ
-M_i(t+\Delta t) = M_i(t) + \Delta t \int_V Q_i dV - \Delta t \int_{\p V} \rho_i \bq_i \cdot \bdS.
+M_\a(t+\Delta t) \eq M_\a(t) + \Delta t \int_V Q_\a dV - \Delta t \int_{\p V} \rho_\a \bq_\a \cdot \bdS.
 \EN
 
 \section{PETSc Solver}
-PIMS is using PETSc SNES nonlinear solver. 
-Note: the pre-conditioner option \break {\tt -pc\_factor\_nonzeros\_along\_diagonal} is needed to reduce the chance of getting zero pivot errors. Since for an incompressible fluid, if the phase saturation is lower than its residual, the mass balance equation for that phase is independent of pressure and its adjacent nodes' saturation. 
+PIMS is based on the PETSc SNES nonlinear solver. 
+Note: the pre-conditioner option \break {\tt -pc\_factor\_nonzeros\_along\_diagonal} is needed to reduce the chance of getting zero pivot errors. This is because for an incompressible fluid, if the phase saturation is lower than its residual saturation, the flux term is absent and the mass balance equation for that phase is independent of pressure and its adjacent nodes' saturation. 
 
 
 
 \section{Numerical Implementation}
 
+Residual:
+\EQ
+R_{\a n} \eq \Big[(\varphi s_\a\rho_\a)_n^{k+1} - (\varphi s_\a\rho_\a)_n^k\Big] V_n + \Delta t \sum_{n'} \rho_{\a nn'} q_{\a nn'} A_{nn'} - \Delta t \, Q_\a V_n.
+\EN
+
+\noindent
 Newton-Raphson equations:
 \EQ
 \left[
@@ -354,11 +361,5 @@ R_{\rm E}
 \end{array}
 \right]
 \EN
-
-Residual:
-\EQ
-R_i \eq \Big[(\varphi s_i\rho_i)_n^{k+1} - (\varphi s_i\rho_i)_n^k\Big] V_n + \Delta t \sum_{n'} \rho_{inn'} q_{inn'} A_{nn'} - \Delta t Q_i V_n,
-\EN
-
 
 \end{document}
