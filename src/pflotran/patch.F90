@@ -4110,6 +4110,11 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
       call VecRestoreArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
+    case(VOLUME)
+      call VecGetArrayF90(field%volume,vec_ptr2,ierr)
+      local_id = grid%nG2L(ghosted_id)
+      value = vec_ptr2(local_id)
+      call VecRestoreArrayF90(field%volume,vec_ptr2,ierr)
      case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariableValueAtCell'')') &
