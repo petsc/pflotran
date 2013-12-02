@@ -230,6 +230,8 @@ class RegressionTest(object):
                         "ERROR: job '{0}' has exceeded timeout limit of "
                         "{1} seconds.".format(test_name, self._timeout))
                     print(''.join(['\n', message, '\n']), file=testlog)
+            finish = time.time()
+            print("    # {0} : run time : {1:.2f} seconds".format(test_name, finish - start), file=testlog)
             pflotran_status = abs(proc.returncode)
             run_stdout.close()
         # pflotran returns 0 on an error (e.g. can't find an input

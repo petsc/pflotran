@@ -322,6 +322,12 @@ subroutine MphaseSetupPatch(realization)
   allocate(mphase%res_old_AR(grid%nlmax,option%nflowdof))
   allocate(mphase%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
+
+#ifdef YE_FLUX
+  allocate(patch%internal_fluxes(3,1,ConnectionGetNumberInList(patch%grid%&
+           internal_connection_set_list)))
+  patch%internal_fluxes = 0.d0
+#endif
            
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -795,14 +801,14 @@ subroutine MPhaseUpdateReason(reason, realization)
 
   call MPI_Barrier(realization%option%mycomm,ierr)
   
-  if (realization%option%mycommsize >1 ) then
-     call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+  if (realization%option%mycommsize > 1) then
+    call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                         realization%option%mycomm,ierr)
-     if (re0<realization%option%mycommsize) re=0
+    if (re0<realization%option%mycommsize) re=0
   endif
   reason=re
   
-  if(reason<=0 .and. realization%option%myrank ==0) print *,'Sat or Con out of Region', re
+  if(reason <= 0 .and. realization%option%myrank == 0) print *,'Sat or Con out of Region', re
 end subroutine MPhaseUpdateReason
 
 ! ************************************************************************** !
@@ -843,25 +849,25 @@ end subroutine MPhaseUpdateReason
     
     ipass=1
     do local_id = 1, grid%nlmax
-       ghosted_id = grid%nL2G(local_id)
+      ghosted_id = grid%nL2G(local_id)
        !geh - Ignore inactive cells with inactive materials
-       if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-       endif
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
       
 !   insure zero liquid sat not passed to ptran (no effect on pflow)
-       if(xx_p((local_id-1)*option%nflowdof+3) < 0.D0)xx_p((local_id-1)*option%nflowdof+3) = zerocut
-       if(xx_p((local_id-1)*option%nflowdof+3) > 1.D0)xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
+      if(xx_p((local_id-1)*option%nflowdof+3) < 0.D0)xx_p((local_id-1)*option%nflowdof+3) = zerocut
+      if(xx_p((local_id-1)*option%nflowdof+3) > 1.D0)xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
     
 !   check if p,T within range of table  
-       if(xx_p((local_id-1)*option%nflowdof+1)< p0_tab*1D6 &
+      if(xx_p((local_id-1)*option%nflowdof+1)< p0_tab*1D6 &
             .or. xx_p((local_id-1)*option%nflowdof+1)>(ntab_p*dp_tab + p0_tab)*1D6)then
           ipass=-1; exit  
-       endif
-       if(xx_p((local_id-1)*option%nflowdof+2)< t0_tab -273.15D0 &
+      endif
+      if(xx_p((local_id-1)*option%nflowdof+2)< t0_tab -273.15D0 &
             .or. xx_p((local_id-1)*option%nflowdof+2)>ntab_t*dt_tab + t0_tab-273.15D0)then
           ipass=-1; exit
-       endif
+      endif
     enddo
 
     call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
@@ -1057,7 +1063,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option, xphi)
     
-      if( associated(global_aux_vars_bc))then
+      if (associated(global_aux_vars_bc)) then
         global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars_bc(sum_connection)%aux_var_elem(0)%pc(:)
         global_aux_vars_bc(sum_connection)%temp(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
@@ -1076,7 +1082,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                               /((1.d0-ynacl)*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O &
                               +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(2) * FMWCO2 &
                               +ynacl*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars_bc(sum_connection)%xmass(2) = aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
+        global_aux_vars_bc(sum_connection)%xmass(2) = aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               /(aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(4) * FMWCO2) 
  
@@ -1465,8 +1471,22 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
     case(MASS_RATE_SS)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
-      if (msrc(1) /= 0.d0) then ! H2O injection
+      if (msrc(1) > 0.d0) then ! H2O injection
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
+          option%scale,ierr)
+!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
+        Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
+        Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
+        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + &
+          msrc(1)*enth_src_h2o*option%flow_dt
+          
+!       print *,'soure/sink: ',msrc,csrc,enth_src_h2o,option%flow_dt,option%nflowdof
+
+        ! store volumetric rate for ss_fluid_fluxes()
+        qsrc_phase(1) = msrc(1)/dw_mol
+      elseif (msrc(1) < 0.d0) then ! H2O extraction
+        call wateos_noderiv(aux_var%temp,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
@@ -2134,8 +2154,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: k1, k2, z1, z2, xg, vmco2, vmh2o, sg, sgg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
-! PetscReal :: yh2o_in_co2 = 1.d-2
-  PetscReal :: yh2o_in_co2 = 0.d0
+  PetscReal :: yh2o_in_co2 = 1.d-2
+! PetscReal :: yh2o_in_co2 = 0.d0
   PetscReal :: wat_sat_x, co2_sat_x
   PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
@@ -2282,7 +2302,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
 
 !         if(xmol(4)+ wat_sat_x > 1.05d0) then
-          if(xmol(2) > xco2eq) then
+!         if(xmol(2) > xco2eq) then
+          if(xmol(2) >= xco2eq) then
 
         !   Rachford-Rice initial guess: 1=H2O, 2=CO2
             k1 = wat_sat_x !sat_pressure*1.D5/p
@@ -2322,8 +2343,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
         case(2) ! gas
           
-          if (xmol(3) > wat_sat_x * 1.05d0) then
-        
+!         if (xmol(3) > wat_sat_x * 1.05d0) then
+          if (xmol(3) > wat_sat_x * 1.001d0) then
+
 !           print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
@@ -2352,8 +2374,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           xmol(4) = 1.D0-tmp          
 
 !         if(satu(2) >= 1.D0) then
-          if(satu(2) >= 1.01D0) then
-          
+!         if(satu(2) >= 1.01D0) then
+          if(satu(2) >= 1.001D0) then
+
             write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
        &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1pe11.4)') &
             option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3)
@@ -2366,7 +2389,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           else if(satu(2) <= 0.D0) then
           
             write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
-      &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4)')  &
+      &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' Xco2eq='',1pe11.4)')  &
             option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),xmol(2)
 
             iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
@@ -2540,9 +2563,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
- 
-! Multiphase flash calculation is more expensive, so calculate once per iteration
-! print *, 'Mphase residual patch 1' 
 
   vol_frac_prim = 1.d0
   
@@ -2568,7 +2588,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
        global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
        global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!      global_aux_vars(ghosted_id)%sat_store = 
        global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
        global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
@@ -2995,6 +3014,11 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
 
+#ifdef YE_FLUX
+      patch%internal_fluxes(1:option%nflowdof,1,sum_connection) = &
+                                                     Res(1:option%nflowdof)
+#endif
+
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
@@ -3015,7 +3039,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
     istart = 1 + (local_id-1)*option%nflowdof
 !   if(volume_p(local_id) > 1.D0) &    ! karra added 05/06/2013
-      r_p (istart:istart+option%nflowdof-1) = &
+    r_p (istart:istart+option%nflowdof-1) = &
         r_p(istart:istart+option%nflowdof-1)/volume_p(local_id)
     if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *,'mphase residual: ', r_p (istart:istart+2)
   enddo
@@ -3432,8 +3456,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         case(HYDROSTATIC_BC,SEEPAGE_BC)
           xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
           if (idof >= MPH_TEMPERATURE_DOF) then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-             delxbc(idof) = mphase%delx(idof,ghosted_id)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            delxbc(idof) = mphase%delx(idof,ghosted_id)
           endif 
         case(ZERO_GRADIENT_BC,NEUMANN_BC)
           ! solve for pb from Darcy's law given qb /= 0
@@ -4187,42 +4211,42 @@ subroutine MphaseSetPlotVariables(realization)
                                GAS_SATURATION)
 
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
 
   name = 'Gas Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_DENSITY)
 
   name = 'Liquid Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_ENERGY)
 
   name = 'Gas Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
   name = 'Gas Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_VISCOSITY)
 
   name = 'Liquid Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_MOBILITY)
 
   name = 'Gas Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_MOBILITY)
 

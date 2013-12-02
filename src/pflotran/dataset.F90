@@ -251,6 +251,7 @@ recursive subroutine DatasetLoad(dataset,option)
   class(dataset_global_type), pointer :: dataset_global
   class(dataset_gridded_type), pointer :: dataset_gridded
   class(dataset_map_type), pointer :: dataset_map
+  class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5
   class(dataset_base_type), pointer :: dataset_base
 
   select type (selector => dataset)
@@ -263,6 +264,16 @@ recursive subroutine DatasetLoad(dataset,option)
     class is (dataset_map_type)
       dataset_map => selector
       call DatasetMapLoad(dataset_map,option)
+    class is (dataset_common_hdf5_type)
+      dataset_common_hdf5 => selector
+      if (dataset_common_hdf5%is_cell_indexed) then
+        option%io_buffer = 'Cell Indexed datasets opened later.'
+        call printMsg(option)
+      else
+        option%io_buffer = 'Unrecognized dataset that extends ' // &
+          'dataset_common_hdf5 in DatasetLoad.'
+        call printErrMsg(option)
+      endif
     class is (dataset_ascii_type)
       ! do nothing.  dataset should already be in memory at this point
     class is (dataset_base_type)

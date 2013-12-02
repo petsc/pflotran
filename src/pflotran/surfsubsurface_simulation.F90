@@ -126,8 +126,10 @@ subroutine SurfSubsurfaceInitializeRun(this)
           case (RICHARDS_MODE)
             call pmc%PMCSurfaceGetAuxDataAfterRestart()
           case (TH_MODE)
-            call printErrMsg(this%option,'extend SurfSubsurfaceInitializeRun ' // &
-                  'for TH mode')
+            call pmc%PMCSurfaceGetAuxDataAfterRestart()
+          case default
+            call printErrMsg(this%option,'SurfSubsurfaceInitializeRun ' // &
+                  'not supported in current flow mode.')
         end select
     end select
 

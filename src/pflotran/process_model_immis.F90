@@ -1,4 +1,4 @@
-module Process_Model_Mphase_class
+module Process_Model_Immis_class
 
   use Process_Model_Base_class
   use Realization_class
@@ -19,79 +19,79 @@ module Process_Model_Mphase_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_mphase_type
+  type, public, extends(pm_base_type) :: pm_immis_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
   contains
-    procedure, public :: Init => PMMphaseInit
-    procedure, public :: PMMphaseSetRealization
-    procedure, public :: InitializeRun => PMMphaseInitializeRun
-    procedure, public :: FinalizeRun => PMMphaseFinalizeRun
-    procedure, public :: InitializeTimestep => PMMphaseInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMMphaseFinalizeTimeStep
-    procedure, public :: Residual => PMMphaseResidual
-    procedure, public :: Jacobian => PMMphaseJacobian
-    procedure, public :: UpdateTimestep => PMMphaseUpdateTimestep
-    procedure, public :: PreSolve => PMMphasePreSolve
-    procedure, public :: PostSolve => PMMphasePostSolve
-    procedure, public :: AcceptSolution => PMMphaseAcceptSolution
+    procedure, public :: Init => PMImmisInit
+    procedure, public :: PMImmisSetRealization
+    procedure, public :: InitializeRun => PMImmisInitializeRun
+    procedure, public :: FinalizeRun => PMImmisFinalizeRun
+    procedure, public :: InitializeTimestep => PMImmisInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMImmisFinalizeTimeStep
+    procedure, public :: Residual => PMImmisResidual
+    procedure, public :: Jacobian => PMImmisJacobian
+    procedure, public :: UpdateTimestep => PMImmisUpdateTimestep
+    procedure, public :: PreSolve => PMImmisPreSolve
+    procedure, public :: PostSolve => PMImmisPostSolve
+    procedure, public :: AcceptSolution => PMImmisAcceptSolution
 #if 0
-    procedure, public :: CheckUpdatePre => PMMphaseCheckUpdatePre
-    procedure, public :: CheckUpdatePost => PMMphaseCheckUpdatePost
+    procedure, public :: CheckUpdatePre => PMImmisCheckUpdatePre
+    procedure, public :: CheckUpdatePost => PMImmisCheckUpdatePost
 #endif
-    procedure, public :: TimeCut => PMMphaseTimeCut
-    procedure, public :: UpdateSolution => PMMphaseUpdateSolution
-    procedure, public :: MaxChange => PMMphaseMaxChange
-    procedure, public :: ComputeMassBalance => PMMphaseComputeMassBalance
-    procedure, public :: Checkpoint => PMMphaseCheckpoint    
-    procedure, public :: Restart => PMMphaseRestart  
-    procedure, public :: Destroy => PMMphaseDestroy
-  end type pm_mphase_type
+    procedure, public :: TimeCut => PMImmisTimeCut
+    procedure, public :: UpdateSolution => PMImmisUpdateSolution
+    procedure, public :: MaxChange => PMImmisMaxChange
+    procedure, public :: ComputeMassBalance => PMImmisComputeMassBalance
+    procedure, public :: Checkpoint => PMImmisCheckpoint    
+    procedure, public :: Restart => PMImmisRestart  
+    procedure, public :: Destroy => PMImmisDestroy
+  end type pm_immis_type
   
-  public :: PMMphaseCreate
+  public :: PMImmisCreate
   
 contains
 
 ! ************************************************************************** !
 !
-! PMMphaseCreate: Creates Mphase process models shell
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisCreate: Creates Immiscible process models shell
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-function PMMphaseCreate()
+function PMImmisCreate()
 
   implicit none
   
-  class(pm_mphase_type), pointer :: PMMphaseCreate
+  class(pm_immis_type), pointer :: PMImmisCreate
 
-  class(pm_mphase_type), pointer :: mphase_pm
+  class(pm_immis_type), pointer :: immis_pm
   
-#ifdef PM_MPHASE_DEBUG  
-  print *, 'PMMphaseCreate()'
+#ifdef PM__DEBUG  
+  print *, 'PMImmisCreate()'
 #endif  
 
-  allocate(mphase_pm)
-  nullify(mphase_pm%option)
-  nullify(mphase_pm%output_option)
-  nullify(mphase_pm%realization)
-  nullify(mphase_pm%comm1)
+  allocate(immis_pm)
+  nullify(immis_pm%option)
+  nullify(immis_pm%output_option)
+  nullify(immis_pm%realization)
+  nullify(immis_pm%comm1)
 
-  call PMBaseCreate(mphase_pm)
-  mphase_pm%name = 'PMMphase'
+  call PMBaseCreate(immis_pm)
+  immis_pm%name = 'PMImmis'
 
-  PMMphaseCreate => mphase_pm
+  PMImmisCreate => immis_pm
   
-end function PMMphaseCreate
+end function PMImmisCreate
 
 ! ************************************************************************** !
 !
-! PMMphaseInit: Initializes variables associated with Richard
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisInit: Initializes variables associated with Richard
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseInit(this)
+subroutine PMImmisInit(this)
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -102,10 +102,10 @@ subroutine PMMphaseInit(this)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%Init()')
+#ifdef PM_IMMIS_DEBUG
+  call printMsg(this%option,'PMImmis%Init()')
 #endif
   
 #ifndef SIMPLIFY  
@@ -119,27 +119,27 @@ subroutine PMMphaseInit(this)
   call this%comm1%SetDM(this%realization%discretization%dm_1dof)
 #endif
 
-end subroutine PMMphaseInit
+end subroutine PMImmisInit
 
 ! ************************************************************************** !
 !
-! PMMphaseSetRealization: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisSetRealization: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseSetRealization(this,realization)
+subroutine PMImmisSetRealization(this,realization)
 
   use Realization_class
   use Grid_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   class(realization_type), pointer :: realization
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%SetRealization()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%SetRealization()')
 #endif
   
   this%realization => realization
@@ -153,26 +153,26 @@ subroutine PMMphaseSetRealization(this,realization)
     this%residual_vec = realization%field%flow_r
   endif
   
-end subroutine PMMphaseSetRealization
+end subroutine PMImmisSetRealization
 
 ! ************************************************************************** !
 ! Should not need this as it is called in PreSolve.
-! PMMphaseInitializeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisInitializeTimestep: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseInitializeTimestep(this)
+subroutine PMImmisInitializeTimestep(this)
 
-  use Mphase_module, only : MphaseInitializeTimestep
+  use Immis_module, only : ImmisInitializeTimestep
   use Global_module
   
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%InitializeTimestep()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%InitializeTimestep()')
 #endif
 
   this%option%flow_dt = this%option%dt
@@ -184,84 +184,84 @@ subroutine PMMphaseInitializeTimestep(this)
 #endif
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," MPHASE FLOW ",62("="))')
+    write(*,'(/,2("=")," IMMISCIBLE FLOW ",62("="))')
   endif
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
-  call MphaseInitializeTimestep(this%realization)
+  call ImmisInitializeTimestep(this%realization)
   
-end subroutine PMMphaseInitializeTimestep
+end subroutine PMImmisInitializeTimestep
 
 ! ************************************************************************** !
 !
-! PMMphasePreSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisPreSolve: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphasePreSolve(this)
+subroutine PMImmisPreSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%PreSolve()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%PreSolve()')
 #endif
 
-end subroutine PMMphasePreSolve
+end subroutine PMImmisPreSolve
 
 ! ************************************************************************** !
 !
-! PMMphaseUpdatePostSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisUpdatePostSolve: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphasePostSolve(this)
+subroutine PMImmisPostSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%PostSolve()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%PostSolve()')
 #endif
   
-end subroutine PMMphasePostSolve
+end subroutine PMImmisPostSolve
 
 ! ************************************************************************** !
 !
-! PMMphaseFinalizeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisFinalizeTimestep: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseFinalizeTimestep(this)
+subroutine PMImmisFinalizeTimestep(this)
 
-  use Mphase_module, only : MphaseMaxChange
+  use Immis_module, only : ImmisMaxChange
   use Global_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%FinalizeTimestep()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%FinalizeTimestep()')
 #endif
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
-  call MphaseMaxChange(this%realization)
+  call ImmisMaxChange(this%realization)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
@@ -275,44 +275,44 @@ subroutine PMMphaseFinalizeTimestep(this)
       this%option%dsmax
   endif  
   
-end subroutine PMMphaseFinalizeTimestep
+end subroutine PMImmisFinalizeTimestep
 
 ! ************************************************************************** !
 !
-! PMMphaseAcceptSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisAcceptSolution: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-function PMMphaseAcceptSolution(this)
+function PMImmisAcceptSolution(this)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-  PetscBool :: PMMphaseAcceptSolution
+  PetscBool :: PMImmisAcceptSolution
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%AcceptSolution()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%AcceptSolution()')
 #endif
   ! do nothing
-  PMMphaseAcceptSolution = PETSC_TRUE
+  PMImmisAcceptSolution = PETSC_TRUE
   
-end function PMMphaseAcceptSolution
+end function PMImmisAcceptSolution
 
 ! ************************************************************************** !
 !
-! PMMphaseUpdateTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisUpdateTimestep: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMImmisUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -330,8 +330,8 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: dt_tfac
   PetscInt :: ifac
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%UpdateTimestep()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%UpdateTimestep()')
 #endif
   
   if (iacceleration > 0) then
@@ -365,26 +365,26 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
       
   dt = dtt
   
-end subroutine PMMphaseUpdateTimestep
+end subroutine PMImmisUpdateTimestep
 
 ! ************************************************************************** !
 !
-! PMMphaseInitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
+! PMImmisInitializeRun: Initializes the time stepping
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-recursive subroutine PMMphaseInitializeRun(this)
+recursive subroutine PMImmisInitializeRun(this)
 
-  use Mphase_module, only : MphaseUpdateSolution
+  use Immis_module, only : ImmisUpdateSolution
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
  
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%InitializeRun()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%InitializeRun()')
 #endif
   
   ! restart
@@ -394,26 +394,26 @@ recursive subroutine PMMphaseInitializeRun(this)
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
   endif  
-  call MphaseUpdateSolution(this%realization)
+  call ImmisUpdateSolution(this%realization)
 #endif  
     
-end subroutine PMMphaseInitializeRun
+end subroutine PMImmisInitializeRun
 
 ! ************************************************************************** !
 !
-! PMMphaseFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
+! PMImmisFinalizeRun: Finalizes the time stepping
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-recursive subroutine PMMphaseFinalizeRun(this)
+recursive subroutine PMImmisFinalizeRun(this)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%FinalizeRun()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%FinalizeRun()')
 #endif
   
   ! do something here
@@ -422,119 +422,119 @@ recursive subroutine PMMphaseFinalizeRun(this)
     call this%next%FinalizeRun()
   endif  
   
-end subroutine PMMphaseFinalizeRun
+end subroutine PMImmisFinalizeRun
 
 ! ************************************************************************** !
 !
-! PMMphaseResidual: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisResidual: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseResidual(this,snes,xx,r,ierr)
+subroutine PMImmisResidual(this,snes,xx,r,ierr)
 
-  use Mphase_module, only : MphaseResidual
+  use Immis_module, only : ImmisResidual
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%Residual()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%Residual()')
 #endif
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MphaseResidualMFDLP(snes,xx,r,this%realization,ierr)
+!      call ImmisResidualMFDLP(snes,xx,r,this%realization,ierr)
     case default
-      call MphaseResidual(snes,xx,r,this%realization,ierr)
+      call ImmisResidual(snes,xx,r,this%realization,ierr)
   end select
 
-end subroutine PMMphaseResidual
+end subroutine PMImmisResidual
 
 ! ************************************************************************** !
 !
-! PMMphaseJacobian: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisJacobian: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMImmisJacobian(this,snes,xx,A,B,flag,ierr)
 
-  use Mphase_module, only : MphaseJacobian
+  use Immis_module, only : ImmisJacobian
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
   MatStructure flag
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%Jacobian()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%Jacobian()')
 #endif
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MphaseJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call ImmisJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
     case default
-      call MphaseJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call ImmisJacobian(snes,xx,A,B,flag,this%realization,ierr)
   end select
 
-end subroutine PMMphaseJacobian
+end subroutine PMImmisJacobian
     
 #if 0
 ! ************************************************************************** !
 !
-! PMMphaseCheckUpdatePre: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisCheckUpdatePre: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMImmisCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
-  use Mphase_module, only : MphaseCheckUpdatePre
+  use Immis_module, only : ImmisCheckUpdatePre
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%CheckUpdatePre()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%CheckUpdatePre()')
 #endif
   
 #ifndef SIMPLIFY  
-  call MphaseCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call ImmisCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
 #endif
 
-end subroutine PMMphaseCheckUpdatePre
+end subroutine PMImmisCheckUpdatePre
     
 ! ************************************************************************** !
 !
-! PMMphaseCheckUpdatePost: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisCheckUpdatePost: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
+subroutine PMImmisCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
 
-  use Mphase_module, only : MphaseCheckUpdatePost
+  use Immis_module, only : ImmisCheckUpdatePost
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -543,63 +543,63 @@ subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%CheckUpdatePost()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%CheckUpdatePost()')
 #endif
   
 #ifndef SIMPLIFY  
-  call MphaseCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+  call ImmisCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
 #endif
 
-end subroutine PMMphaseCheckUpdatePost
+end subroutine PMImmisCheckUpdatePost
 #endif
 
 ! ************************************************************************** !
 !
-! PMMphaseTimeCut: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisTimeCut: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseTimeCut(this)
+subroutine PMImmisTimeCut(this)
 
-  use Mphase_module, only : MphaseTimeCut
+  use Immis_module, only : ImmisTimeCut
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%TimeCut()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%TimeCut()')
 #endif
   
   this%option%flow_dt = this%option%dt
 
-  call MphaseTimeCut(this%realization)
+  call ImmisTimeCut(this%realization)
 
-end subroutine PMMphaseTimeCut
+end subroutine PMImmisTimeCut
     
 ! ************************************************************************** !
 !
-! PMMphaseUpdateSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisUpdateSolution: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseUpdateSolution(this)
+subroutine PMImmisUpdateSolution(this)
 
-  use Mphase_module, only : MphaseUpdateSolution
+  use Immis_module, only : ImmisUpdateSolution
   use Condition_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%UpdateSolution()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%UpdateSolution()')
 #endif
 
   ! begin from RealizationUpdate()
@@ -612,134 +612,134 @@ subroutine PMMphaseUpdateSolution(this)
     call RealizUpdateUniformVelocity(this%realization)
   endif  
   ! end from RealizationUpdate()
-  call MphaseUpdateSolution(this%realization)
+  call ImmisUpdateSolution(this%realization)
 
-end subroutine PMMphaseUpdateSolution     
+end subroutine PMImmisUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given MphaseMaxChange is called in PostSolve
-! PMMphaseMaxChange: 
-! author: Glenn Hammond
-! date: 03/14/13
+! Not needed given PMImmisMaxChange is called in PostSolve
+! PMImmisMaxChange: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseMaxChange(this)
+subroutine PMImmisMaxChange(this)
 
-  use Mphase_module, only : MphaseMaxChange
+  use Immis_module, only : ImmisMaxChange
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%MaxChange()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%MaxChange()')
 #endif
 
-  call MphaseMaxChange(this%realization)
+  call ImmisMaxChange(this%realization)
 
-end subroutine PMMphaseMaxChange
+end subroutine PMImmisMaxChange
     
 ! ************************************************************************** !
 !
-! PMMphaseComputeMassBalance: 
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisComputeMassBalance: 
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseComputeMassBalance(this,mass_balance_array)
+subroutine PMImmisComputeMassBalance(this,mass_balance_array)
 
-  use Mphase_module, only : MphaseComputeMassBalance
+  use Immis_module, only : ImmisComputeMassBalance
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%ComputeMassBalance()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmis%ComputeMassBalance()')
 #endif
 
 #ifndef SIMPLIFY
   !geh: currently does not include "trapped" mass
-  !call MphaseComputeMassBalance(this%realization,mass_balance_array)
+  !call ImmisComputeMassBalance(this%realization,mass_balance_array)
 #endif
 
-end subroutine PMMphaseComputeMassBalance
+end subroutine PMImmisComputeMassBalance
 
 ! ************************************************************************** !
 !
-! PMMphaseCheckpoint: Checkpoints data associated with Mphase PM
-! author: Glenn Hammond
-! date: 07/26/13
+! PMImmisCheckpoint: Checkpoints data associated with Immiscible PM
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseCheckpoint(this,viewer)
+subroutine PMImmisCheckpoint(this,viewer)
 
   use Checkpoint_module
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   PetscViewer :: viewer
   
   call CheckpointFlowProcessModel(viewer,this%realization) 
   
-end subroutine PMMphaseCheckpoint
+end subroutine PMImmisCheckpoint
 
 
 ! ************************************************************************** !
 !
-! PMMphaseRestart: Restarts data associated with Mphase PM
-! author: Glenn Hammond
-! date: 07/30/13
+! PMImmisRestart: Restarts data associated with Immiscible PM
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseRestart(this,viewer)
+subroutine PMImmisRestart(this,viewer)
 
   use Checkpoint_module
-  use Mphase_module, only : MphaseUpdateAuxVars
+  use Immis_module, only : ImmisUpdateAuxVars
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   PetscViewer :: viewer
   
   call RestartFlowProcessModel(viewer,this%realization)
-  call MphaseUpdateAuxVars(this%realization)
+  call ImmisUpdateAuxVars(this%realization)
   call this%UpdateSolution()
   
-end subroutine PMMphaseRestart
+end subroutine PMImmisRestart
 
 ! ************************************************************************** !
 !
-! PMMphaseDestroy: Destroys Mphase process model
-! author: Glenn Hammond
-! date: 03/14/13
+! PMImmisDestroy: Destroys Immiscible process model
+! author: Gautam Bisht
+! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseDestroy(this)
+subroutine PMImmisDestroy(this)
 
-  use Mphase_module, only : MphaseDestroy
+  use Immis_module, only : ImmisDestroy
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_immis_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphaseDestroy()')
+#ifdef PM_IMMIS_DEBUG  
+  call printMsg(this%option,'PMImmisDestroy()')
 #endif
 
 #ifndef SIMPLIFY 
-  call MphaseDestroy(this%realization)
+  call ImmisDestroy(this%realization)
 #endif
   call this%comm1%Destroy()
   
-end subroutine PMMphaseDestroy
+end subroutine PMImmisDestroy
   
-end module Process_Model_Mphase_class
+end module Process_Model_Immis_class

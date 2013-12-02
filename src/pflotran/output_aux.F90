@@ -55,6 +55,8 @@ module Output_Aux_module
     PetscBool :: print_permeability
     PetscBool :: print_porosity
     PetscBool :: print_iproc
+    PetscBool :: print_volume
+    PetscBool :: print_tortuosity
 
     PetscInt :: xmf_vert_len
     
@@ -178,6 +180,8 @@ function OutputOptionCreate()
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
   output_option%print_iproc = PETSC_FALSE
+  output_option%print_volume = PETSC_FALSE
+  output_option%print_tortuosity = PETSC_FALSE
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
   

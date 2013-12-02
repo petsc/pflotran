@@ -1178,11 +1178,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                 endif
                 xx_p(ibegin:iend) = &
                       initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-                !TODO(gb): Correct the initialization of surface flow condition
-                xx_p(ibegin) = 0.d0
-                !if (idof == 1.and.option%iflowmode==TH_MODE) then
-                !  xx_p(ibegin) = 0.d0 + option%reference_pressure
-                !endif
+                xx_p(ibegin:iend) = 0.0d0
               enddo
             endif
           initial_condition => initial_condition%next

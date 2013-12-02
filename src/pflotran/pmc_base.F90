@@ -54,10 +54,24 @@ module PMC_Base_class
         class(pmc_base_type) :: pmc
     end subroutine Synchronize
   end interface
-  
-  type, public :: pmc_bag_type
+
+  ! For checkpointing  
+  type, public :: pmc_base_header_type
     integer*8 :: plot_number      ! in the checkpoint file format
-  end type pmc_bag_type
+    integer*8 :: times_per_h5_file! in the checkpoint file format
+  end type pmc_base_header_type
+  PetscSizeT, parameter, private :: bagsize = 16
+
+  interface PetscBagGetData
+    subroutine PetscBagGetData(bag,header,ierr)
+      import :: pmc_base_header_type
+      implicit none
+#include "finclude/petscbag.h"      
+      PetscBag :: bag
+      class(pmc_base_header_type), pointer :: header
+      PetscErrorCode :: ierr
+    end subroutine
+  end interface PetscBagGetData   
     
   public :: PMCBaseCreate, &
             PMCBaseInit, &
@@ -80,7 +94,9 @@ function PMCBaseCreate()
   
   class(pmc_base_type), pointer :: pmc
 
+#ifdef DEBUG
   print *, 'PMCBase%Create()'
+#endif
   
   allocate(pmc)
   call pmc%Init()
@@ -102,7 +118,9 @@ subroutine PMCBaseInit(this)
   
   class(pmc_base_type) :: this
   
+#ifdef DEBUG
   print *, 'PMCBase%Init()'
+#endif
   
   this%name = 'PMCBase'
   this%is_master = PETSC_FALSE
@@ -155,7 +173,9 @@ subroutine PMCBaseSetTimestepper(this,timestepper)
   class(pmc_base_type) :: this
   class(stepper_base_type), pointer :: timestepper
 
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%SetTimestepper()')
+#endif
   
   this%timestepper => timestepper
   
@@ -176,7 +196,9 @@ recursive subroutine InitializeRun(this)
   
   class(pm_base_type), pointer :: cur_pm
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%InitializeRun()')
+#endif
   
   cur_pm => this%pm_list
   do
@@ -330,7 +352,9 @@ recursive subroutine PMCBaseUpdateSolution(this)
 
   class(pm_base_type), pointer :: cur_pm
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%UpdateSolution()')
+#endif
   
   cur_pm => this%pm_list
   do
@@ -358,7 +382,9 @@ recursive subroutine FinalizeRun(this)
   
   character(len=MAXSTRINGLENGTH) :: string
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%FinalizeRun()')
+#endif
   
   call this%timestepper%FinalizeRun(this%option)
 
@@ -425,7 +451,9 @@ recursive subroutine OutputLocal(this)
   
   class(pm_base_type), pointer :: cur_pm
   
+#ifdef DEBUG
   call printMsg(this%option,'PMC%Output()')
+#endif
   
   cur_pm => this%pm_list
   do
@@ -458,6 +486,8 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   
   class(pm_base_type), pointer :: cur_pm
+  class(pmc_base_header_type), pointer :: header
+  PetscBag :: bag
   PetscLogDouble :: tstart, tend
   PetscErrorCode :: ierr
 
@@ -471,6 +501,13 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
     else
        call OpenCheckpointFile(viewer,id,this%option)
     endif
+    ! create header for storing local information specific to PMc
+    call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr)
+    call PetscBagGetData(bag,header,ierr)
+    call PMCBaseRegisterHeader(this,bag,header)
+    call PMCBaseSetHeader(this,bag,header)
+    call PetscBagView(bag,viewer,ierr)
+    call PetscBagDestroy(bag,ierr)     
   endif
   
   call this%timestepper%Checkpoint(viewer,this%option)
@@ -504,6 +541,66 @@ end subroutine PMCBaseCheckpoint
 
 ! ************************************************************************** !
 !
+! PMCBaseRegisterHeader: Register header entries.
+! author: Glenn Hammond
+! date: 12/02/13
+!
+! ************************************************************************** !
+subroutine PMCBaseRegisterHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(pmc_base_type) :: this
+  class(pmc_base_header_type) :: header
+  PetscBag :: bag
+  
+  PetscErrorCode :: ierr
+  
+  ! bagsize = 2 * 8 bytes = 16 bytes
+  call PetscBagRegisterInt(bag,header%plot_number,0, &
+                           "plot number","",ierr)
+  call PetscBagRegisterInt(bag,header%times_per_h5_file,0, &
+                           "times_per_h5_file","",ierr)
+
+end subroutine PMCBaseRegisterHeader
+
+! ************************************************************************** !
+!
+! PMCBaseSetHeader: Sets values in checkpoint header.
+! author: Glenn Hammond
+! date: 12/02/13
+!
+! ************************************************************************** !
+subroutine PMCBaseSetHeader(this,bag,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(pmc_base_type) :: this
+  class(pmc_base_header_type) :: header
+  PetscBag :: bag
+  
+  PetscErrorCode :: ierr
+  
+  header%plot_number = &
+    this%pm_list%realization_base%output_option%plot_number
+
+  header%times_per_h5_file = &
+    this%pm_list%realization_base%output_option%times_per_h5_file
+
+end subroutine PMCBaseSetHeader
+
+! ************************************************************************** !
+!
 ! PMCBaseRestart: Restarts PMC timestepper and state variables.
 ! author: Glenn Hammond
 ! date: 07/26/13
@@ -523,6 +620,8 @@ recursive subroutine PMCBaseRestart(this,viewer)
   character(len=MAXWORDLENGTH) :: filename
   
   class(pm_base_type), pointer :: cur_pm
+  class(pmc_base_header_type), pointer :: header
+  PetscBag :: bag
   PetscLogDouble :: tstart, tend
   PetscErrorCode :: ierr
 
@@ -535,6 +634,14 @@ recursive subroutine PMCBaseRestart(this,viewer)
                                FILE_MODE_READ,viewer,ierr)
     ! skip reading info file when loading, but not working
     call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr)
+
+    ! read pmc header
+    call PetscBagCreate(this%option%mycomm,bagsize,bag,ierr)
+    call PetscBagGetData(bag,header,ierr)
+    call PMCBaseRegisterHeader(this,bag,header)
+    call PetscBagLoad(viewer,bag,ierr)
+    call PMCBaseGetHeader(this,header)
+    call PetscBagDestroy(bag,ierr)  
   endif
   
   call this%timestepper%Restart(viewer,this%option)
@@ -576,6 +683,49 @@ recursive subroutine PMCBaseRestart(this,viewer)
   endif
     
 end subroutine PMCBaseRestart
+
+! ************************************************************************** !
+!
+! PMCBaseGetHeader: Gets values in checkpoint header.
+! author: Glenn Hammond
+! date: 12/02/13
+!
+! ************************************************************************** !
+subroutine PMCBaseGetHeader(this,header)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
+
+  class(pmc_base_type) :: this
+  class(pmc_base_header_type) :: header
+  
+  character(len=MAXSTRINGLENGTH) :: string
+
+  this%pm_list%realization_base%output_option%plot_number = &
+    header%plot_number
+
+  ! Check the value of 'times_per_h5_file'
+  if (header%times_per_h5_file /= &
+      this%pm_list%realization_base%output_option%times_per_h5_file) then
+    write(string,*),header%times_per_h5_file
+    this%option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
+    call printMsg(this%option)
+    write(string,*),this%pm_list%realization_base%output_option%times_per_h5_file
+    this%option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
+    call printMsg(this%option)
+    this%option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &
+      'match that stored in checkpoint file. Correct the inputdeck.'
+    call printErrMsg(this%option)
+  endif
+
+  this%pm_list%realization_base%output_option%times_per_h5_file = &
+    header%times_per_h5_file
+
+end subroutine PMCBaseGetHeader
 
 ! ************************************************************************** !
 !> This routine
@@ -640,7 +790,9 @@ recursive subroutine PMCBaseDestroy(this)
   
   class(pmc_base_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMC%Destroy()')
+#endif
   
   if (associated(this%next)) then
     call this%next%Destroy()

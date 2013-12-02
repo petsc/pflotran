@@ -42,7 +42,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 
   class(hydrogeophysics_simulation_type), pointer :: simulation
   PetscMPIInt :: mycolor_mpi, mykey_mpi
-  PetscInt :: i, num_subsurface_processes, offset, num_slaves
+  PetscInt :: i, num_pflotran_processes, offset, num_slaves
   PetscInt :: local_size
   PetscBool :: option_found
   PetscMPIInt :: mpi_int, process_range(3)
@@ -77,8 +77,8 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   simulation => HydrogeophysicsCreate(option)
   
   if (num_slaves < -998) then
-    num_subsurface_processes = option%global_commsize / 2
-    num_slaves = option%global_commsize - num_subsurface_processes - 1
+    num_pflotran_processes = option%global_commsize / 2
+    num_slaves = option%global_commsize - num_pflotran_processes - 1
   else if (num_slaves <= 0) then
     option%io_buffer = 'Number of slaves must be greater than zero. ' // &
       'Currently set to ' // StringFormatInt(num_slaves) // '.'
@@ -89,26 +89,26 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
         'simulation: ' // StringFormatInt(num_slaves)
       call printErrMsg(option)
     endif
-    num_subsurface_processes = option%global_commsize - num_slaves - 1
+    num_pflotran_processes = option%global_commsize - num_slaves - 1
   endif
   
   write(option%io_buffer,*) 'Number of E4D processes: ', &
     StringFormatInt(num_slaves+1)
   call printMsg(option)
   write(option%io_buffer,*) 'Number of PFLOTRAN processes: ', &
-    StringFormatInt(num_subsurface_processes)
+    StringFormatInt(num_pflotran_processes)
   call printMsg(option)
   
   ! split the communicator
   option%mygroup_id = 0
   offset = 0
-  if (option%global_rank > num_subsurface_processes-1) then
+  if (option%global_rank > num_pflotran_processes-1) then
     option%mygroup_id = 1
-    offset = num_subsurface_processes
+    offset = num_pflotran_processes
   endif
 
   if (option%mygroup_id == 0) then
-    simulation%subsurface_process = PETSC_TRUE
+    simulation%pflotran_process = PETSC_TRUE
   endif
 
   mycolor_mpi = option%mygroup_id
@@ -125,7 +125,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 !print *, 2, option%global_rank, option%myrank, option%mygroup, option%mycomm, mpi_int
   mpi_int = 1
   process_range(1) = 0
-  process_range(2) = num_subsurface_processes ! includes e4d master due to 
+  process_range(2) = num_pflotran_processes ! includes e4d master due to 
   process_range(3) = 1                        ! zero-based indexing
   call MPI_Group_range_incl(option%global_group,mpi_int,process_range, &
                             simulation%pf_e4d_scatter_grp,ierr)
@@ -143,7 +143,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     ! remove processes between pf_master and e4d_master
     mpi_int = 1
     process_range(1) = 1
-    process_range(2) = num_subsurface_processes-1
+    process_range(2) = num_pflotran_processes-1
     process_range(3) = 1
     ! if there are no process ranks to remove, set mpi_int to zero
     if (process_range(2) - process_range(1) < 0) mpi_int = 0
@@ -166,7 +166,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 
 !print *, 9, option%global_rank, simulation%pf_e4d_scatter_comm, simulation%pf_e4d_master_comm, MPI_COMM_NULL
   
-  if (simulation%subsurface_process) then
+  if (simulation%pflotran_process) then
     call HydrogeophysicsInitPostPetsc(simulation,option)
   else
     option%io_rank = -1 ! turn off I/O from E4D processes.
@@ -175,8 +175,8 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
 !#define DEBUG
 
   !   PFLOTRAN subsurface processes      E4D master process
-  if (simulation%subsurface_process .or. option%myrank == 0) then 
-    if (simulation%subsurface_process) then
+  if (simulation%pflotran_process .or. option%myrank == 0) then 
+    if (simulation%pflotran_process) then
       simulation%hydrogeophysics_coupler%pf_to_e4d_master_comm = &
         simulation%pf_e4d_master_comm
     endif
@@ -184,7 +184,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     ! create mpi Vec that includes all PFLOTRAN processes and the E4D master
     call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_solution_vec_mpi, &
                    ierr)
-    if (simulation%subsurface_process) then
+    if (simulation%pflotran_process) then
       call VecGetLocalSize(simulation%realization%field%work,local_size,ierr)
     else ! E4D master process
       local_size = 0
@@ -193,7 +193,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     call VecSetFromOptions(pflotran_solution_vec_mpi,ierr)
 
     allocate(int_array(local_size))
-    if (simulation%subsurface_process) then
+    if (simulation%pflotran_process) then
       int_array = 0
       do i = 1, local_size
         int_array(i) =  simulation%realization%patch%grid%nG2A( &
@@ -207,7 +207,7 @@ print *, option%myrank, int_array
 !    call ISCreateGeneral(PETSC_COMM_SELF,local_size,int_array, &
                          PETSC_COPY_VALUES,is_natural,ierr)
     deallocate(int_array)
-    if (simulation%subsurface_process) then
+    if (simulation%pflotran_process) then
       call VecGetOwnershipRange(simulation%realization%field%work,istart, &
                                 PETSC_NULL_INTEGER,ierr)
     endif
@@ -230,7 +230,7 @@ print *, option%myrank, int_array
 
     ! create seq Vec on each (all PFLOTRAN processes and the E4D master)
     call VecGetSize(pflotran_solution_vec_mpi,local_size,ierr)
-    if (simulation%subsurface_process) local_size = 0
+    if (simulation%pflotran_process) local_size = 0
     ! make global size the local size of pflotran_solution_vec_seq on E4D master
 !    call VecCreate(PETSC_COMM_SELF,pflotran_solution_vec_seq,ierr)
     call VecCreate(simulation%pf_e4d_scatter_comm,pflotran_solution_vec_seq,ierr)
@@ -266,7 +266,7 @@ print *, option%myrank, int_array
 
   simulation_base => simulation
 
-  if (simulation%subsurface_process) then
+  if (simulation%pflotran_process) then
     simulation%hydrogeophysics_coupler%solution_mpi = pflotran_solution_vec_mpi
     simulation%hydrogeophysics_coupler%solution_seq = pflotran_solution_vec_seq
     simulation%solution_mpi = pflotran_solution_vec_mpi

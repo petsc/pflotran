@@ -11,7 +11,7 @@ module Mphase_Aux_module
 #define DUANDEN 1
 #include "finclude/petscsys.h"
 
-type, public :: mphase_auxvar_elem_type
+  type, public :: mphase_auxvar_elem_type
     PetscReal :: pres
     PetscReal :: temp
     PetscReal , pointer :: sat(:)
@@ -29,7 +29,7 @@ type, public :: mphase_auxvar_elem_type
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
- end type mphase_auxvar_elem_type
+  end type mphase_auxvar_elem_type
 
   type, public :: mphase_auxvar_type
     
@@ -59,21 +59,21 @@ type, public :: mphase_auxvar_elem_type
   end type mphase_parameter_type
   
   type, public :: mphase_type
-     PetscInt :: n_zero_rows
-     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-     PetscBool :: aux_vars_up_to_date
-     PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc, num_aux_ss
+    PetscBool :: aux_vars_up_to_date
+    PetscBool :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
 
-     PetscReal, pointer :: res_old_AR(:,:)
-     PetscReal, pointer :: res_old_FL(:,:)
-     PetscReal, pointer :: delx(:,:)
+    PetscReal, pointer :: res_old_AR(:,:)
+    PetscReal, pointer :: res_old_FL(:,:)
+    PetscReal, pointer :: delx(:,:)
   
-     type(mphase_parameter_type), pointer :: mphase_parameter
-     type(mphase_auxvar_type), pointer :: aux_vars(:)
-     type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
-     type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
+    type(mphase_parameter_type), pointer :: mphase_parameter
+    type(mphase_auxvar_type), pointer :: aux_vars(:)
+    type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
+    type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
   end type mphase_type
 
 
@@ -187,7 +187,7 @@ end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
 !
-! THCAuxVarCopy: Copies an auxiliary variable
+! MphaseAuxVarCopy: Copies an auxiliary variable
 ! author: 
 ! date: 
 !
@@ -298,8 +298,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   t = aux_var%temp
   
   select case(iphase)
-!******* Only aqueous phase exist ***********  
     case(1)
+!******* aqueous phase exists ***********
       aux_var%xmol(2) = x(3)
 !      if(aux_var%xmol(2) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(aux_var%xmol(2) > 1.D0) print *,'tran:',iphase, x(1:3)
@@ -309,8 +309,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%sat(2) = 0.D0
       kr(1)= 1.D0
       kr(2)= 0.D0
-!******* Only gas phase exist ***********  
     case(2)
+!******* gas phase exists ***********
       aux_var%xmol(4)=x(3)
 !      if(aux_var%xmol(4) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(aux_var%xmol(4) > 1.D0) print *,'tran:',iphase, x(1:3)
@@ -321,6 +321,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       kr(1)= 0.D0
       kr(2)= 1.D0
     case(3)    
+!******* 2-phase phase exists ***********
       aux_var%sat(2) = x(3)
       if(aux_var%sat(2) < 0.D0)then
 !        print *,'tran:',iphase, x(1:3)
@@ -329,7 +330,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !      if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
       aux_var%sat(1) = 1.D0 - aux_var%sat(2)
       aux_var%pc(:) = 0.D0
-      temp = 1D-2
+      temp = 1.D-2
       aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
       aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
@@ -445,7 +446,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
  
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     aux_var%h(1) = hw
-    aux_var%u(1) = aux_var%h(1) - pw /dw_mol*option%scale
+    aux_var%u(1) = hw - pw/dw_mol*option%scale
+
     aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   ! fluid_properties%diff_base(1)
 

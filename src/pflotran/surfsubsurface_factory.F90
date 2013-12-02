@@ -125,8 +125,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
     nullify(surf_simulation%process_model_coupler_list)
   
-    if (option%subsurf_surf_coupling == SEQ_COUPLED .or. &
-        option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
+    if (option%subsurf_surf_coupling == SEQ_COUPLED) then
        select case(option%iflowmode)
          case (RICHARDS_MODE)
             call SurfaceFlowGetSubsurfProp(simulation%realization, &
@@ -140,6 +139,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       ! Only subsurface flow active
       simulation%process_model_coupler_list => &
            subsurf_simulation%process_model_coupler_list
+      simulation%process_model_coupler_list%is_master = PETSC_TRUE
       ! call printErrMsg(option,'Only subsurface-flow is active. ' // &
       !        'Check inputfile or switch -simulation_mode subsurface')
       nullify(simulation%surf_realization)
@@ -148,16 +148,15 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 
    nullify(subsurf_simulation%process_model_coupler_list)
 
-  ! sim_aux: Create PETSc Vectors
-  call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
-                                    vec_subsurf_pres, vec_subsurf_pres_top_bc)
-  call SimAuxCopySubsurfVec(simulation%sim_aux, vec_subsurf_pres)
-  call SimAuxCopySubsurfTopBCVec(simulation%sim_aux, vec_subsurf_pres_top_bc)
-  call VecDestroy(vec_subsurf_pres, ierr)
-  call VecDestroy(vec_subsurf_pres_top_bc, ierr)
+  ! sim_aux: Create PETSc Vectors and VectorScatters
+  if(option%nsurfflowdof>0) then
 
-  ! sim_aux: Create PETSc VectorScatters
-  if(option%nsurfflowdof>0) &
+    call SurfSubsurfCreateSubsurfVecs(simulation_old%realization, option, &
+                                      vec_subsurf_pres, vec_subsurf_pres_top_bc)
+    call SimAuxCopySubsurfVec(simulation%sim_aux, vec_subsurf_pres)
+    call SimAuxCopySubsurfTopBCVec(simulation%sim_aux, vec_subsurf_pres_top_bc)
+    call VecDestroy(vec_subsurf_pres, ierr)
+    call VecDestroy(vec_subsurf_pres_top_bc, ierr)
 
     call SurfSubsurfCreateSurfVecs(simulation_old%surf_realization, option, &
                                    vec_surf_head)
@@ -170,6 +169,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     call SimAuxCopyVecScatter(simulation%sim_aux, vscat_subsurf_to_surf, SUBSURF_TO_SURF)
     call VecScatterDestroy(vscat_surf_to_subsurf, ierr)
     call VecScatterDestroy(vscat_surf_to_subsurf, ierr)
+  endif
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux
