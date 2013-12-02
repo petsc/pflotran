@@ -13,22 +13,23 @@ module Checkpoint_Header_module
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
   ! Currently:
   !  PetscReal: 8
-  !  PetscInt:  19
-  !  Total: 27 * 8 = 216
+  !  PetscInt:  20
+  !  Total: 28 * 8 = 224
 ! IMPORTANT: If you change the contents of the header, you MUST update 
 ! 'bagsize' or risk corrupting memory.
 #ifdef PetscSizeT
-  PetscSizeT, parameter :: bagsize = 216
+  PetscSizeT, parameter :: bagsize = 224
 #else
   ! PETSC_SIZEOF_SIZE_T isn't defined, so we just have to assume that it 
   ! is 8 bytes.  This is dangerous, but what can we do?
-  integer*8, parameter :: bagsize = 216
+  integer*8, parameter :: bagsize = 224
 #endif
   public :: bagsize
   type, public :: checkpoint_header_type
     integer*8 :: revision_number  ! increment this every time there is a change
     integer*8 :: plot_number      ! in the checkpoint file format
     integer*8 :: match_waypoint_flag
+    integer*8 :: times_per_h5_file
 
     integer*8 :: grid_discretization_type
 
@@ -231,6 +232,7 @@ subroutine Checkpoint(realization, &
   ! Revision # register in PetscBagRegister since it is default.  All other 
   ! header entities default to 0 or 0.d0
   header%plot_number = output_option%plot_number
+  header%times_per_h5_file = output_option%times_per_h5_file
   header%match_waypoint_flag = ZERO_INTEGER
   if (option%match_waypoint) then
     header%match_waypoint_flag = ONE_INTEGER
@@ -529,6 +531,7 @@ subroutine Restart(realization, &
   endif
   
   output_option%plot_number = header%plot_number
+  output_option%times_per_h5_file = header%times_per_h5_file
   option%match_waypoint = (header%match_waypoint_flag == ONE_INTEGER)
 
    if (header%grid_discretization_type /= grid%itype) then
@@ -749,6 +752,10 @@ subroutine CheckpointRegisterBagHeader(bag,header)
   call PetscBagRegisterInt(bag,header%plot_number,0, &
                            "plot_number", &
                            "plot_number", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%times_per_h5_file,0, &
+                           "times_per_h5_file", &
+                           "times_per_h5_file", &
                            ierr)
   call PetscBagRegisterInt(bag,header%match_waypoint_flag,0, &
                            "match_waypoint_flag","match_waypoint_flag",ierr)
