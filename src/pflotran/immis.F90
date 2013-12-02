@@ -668,9 +668,14 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Immis_auxvar_type), pointer :: aux_vars(:)
+  type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
+  type(Immis_auxvar_type), pointer :: aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
@@ -684,8 +689,11 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   
   aux_vars => patch%aux%Immis%aux_vars
   aux_vars_bc => patch%aux%Immis%aux_vars_bc
+  aux_vars_ss => patch%aux%Immis%aux_vars_ss
+
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
   
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
@@ -757,7 +765,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
       enddo
  
       call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
 
       if (associated(global_aux_vars_bc)) then
@@ -768,7 +776,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
         !    global_aux_vars(ghosted_id)%sat_store = 
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+              * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !     global_aux_vars(ghosted_id)%den_kg_store
   !     global_aux_vars(ghosted_id)%mass_balance
   !     global_aux_vars(ghosted_id)%mass_balance_delta
@@ -776,6 +784,28 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
 
     enddo
     boundary_condition => boundary_condition%next
+  enddo
+
+
+! source/sinks
+  source_sink => patch%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
+    cur_connection_set => source_sink%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      call ImmisAuxVarCopy(aux_vars(ghosted_id)%aux_var_elem(0), &
+                          aux_vars_ss(sum_connection)%aux_var_elem(0),option)
+      call GlobalAuxVarCopy(global_aux_vars(ghosted_id), &
+                          global_aux_vars_ss(sum_connection),option)
+
+    enddo
+    source_sink => source_sink%next
   enddo
 
 
@@ -1747,7 +1777,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(r, r_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
  
-  call VecGetArrayF90(field%flow_yy,yy_p,ierr)
+! call VecGetArrayF90(field%flow_yy,yy_p,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -1767,7 +1797,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       if (patch%imat(ng) <= 0) cycle
     endif
         
-    istart = (ng-1)*option%nflowdof + 1; iend = istart -1 + option%nflowdof
+    istart = (ng-1)*option%nflowdof + 1; iend = istart - 1 + option%nflowdof
     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0), &
       realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
@@ -1823,7 +1853,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                               option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    patch%aux%Immis%res_old_AR(local_id, :)= Res(1:option%nflowdof)
+    patch%aux%Immis%res_old_AR(local_id, :) = Res(1:option%nflowdof)
   enddo
 #endif
 
@@ -2125,7 +2155,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   endif
 
   call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
+! call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
