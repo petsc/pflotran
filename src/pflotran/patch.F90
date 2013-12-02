@@ -3507,6 +3507,12 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
         vec_ptr(local_id) = vec_ptr2(local_id)
       enddo
       call VecRestoreArrayF90(field%volume,vec_ptr2,ierr)
+    case(TORTUOSITY)
+      call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call VecRestoreArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariable'')') ivar
@@ -4100,6 +4106,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
               sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
+    case(TORTUOSITY)
+      call VecGetArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call VecRestoreArrayF90(field%tortuosity_loc,vec_ptr2,ierr)
      case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetVariableValueAtCell'')') &

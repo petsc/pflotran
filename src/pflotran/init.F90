@@ -999,9 +999,15 @@ subroutine Init(simulation)
     output_variable => OutputVariableCreate('Volume',OUTPUT_DISCRETE,'', &
                                             VOLUME)
     output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-    output_variable%iformat = 0 ! integer
+    output_variable%iformat = 0 ! double
     call OutputVariableAddToList( &
            realization%output_option%output_variable_list,output_variable)
+  endif
+
+  if (realization%output_option%print_tortuosity) then
+    call OutputVariableAddToList( &
+                              realization%output_option%output_variable_list, &
+                              'Tortuosity',OUTPUT_GENERIC,'-',TORTUOSITY)
   endif
 
   ! write material ids
@@ -2190,6 +2196,8 @@ subroutine InitReadInput(simulation)
               output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
               output_option%print_porosity = PETSC_TRUE
+            case('TORTUOSITY')
+              output_option%print_tortuosity = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
