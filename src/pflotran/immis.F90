@@ -556,7 +556,7 @@ end subroutine ImmisUpdateReason
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-  function  ImmisInitGuessCheckPatch(realization)
+  function ImmisInitGuessCheckPatch(realization)
    
     use co2_span_wagner_module
      
@@ -709,7 +709,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option)
 
  ! update global variables
-    if( associated(global_aux_vars))then
+    if (associated(global_aux_vars))then
       global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp = aux_vars(ghosted_id)%aux_var_elem(0)%temp
@@ -723,9 +723,8 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
     else
       print *,'Not associated global for IMS'
     endif
-
-
   enddo
+
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -738,35 +737,41 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      do idof=1,option%nflowdof
+      do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
         case(DIRICHLET_BC)
-          xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
+!         xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
+          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
         case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          xxbc(2:option%nflowdof) = &
-            xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+!         xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+!         xxbc(2:option%nflowdof) = &
+!           xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+          xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+          if (idof >= MPH_PRESSURE_DOF) then
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
-      end select
-    enddo
+!         xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+        end select
+      enddo
  
-    call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+      call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
 
-    if(associated(global_aux_vars_bc)) then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+      if (associated(global_aux_vars_bc)) then
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !    global_aux_vars(ghosted_id)%den_kg_store
-  !    global_aux_vars(ghosted_id)%mass_balance 
-  !    global_aux_vars(ghosted_id)%mass_balance_delta                   
+  !     global_aux_vars(ghosted_id)%den_kg_store
+  !     global_aux_vars(ghosted_id)%mass_balance
+  !     global_aux_vars(ghosted_id)%mass_balance_delta
       endif
 
     enddo
@@ -1334,78 +1339,78 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-        upweight= dd_dn/(dd_up+dd_dn)
-        if (aux_var_up%sat(np) <eps) then 
-           upweight=0.d0
-        else if (aux_var_dn%sat(np) <eps) then 
-           upweight=1.d0
-        endif
-        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+    if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+      upweight= dd_dn/(dd_up+dd_dn)
+      if (aux_var_up%sat(np) <eps) then
+        upweight=0.d0
+      else if (aux_var_dn%sat(np) <eps) then
+        upweight=1.d0
+      endif
+      density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
         
-        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+      gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
              (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = aux_var_up%pres - aux_var_dn%pres &
+      dphi = aux_var_up%pres - aux_var_dn%pres &
              - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
-        v_darcy = 0.D0
-        ukvr=0.D0
-        uh=0.D0
-        uxmol=0.D0
+      v_darcy = 0.D0
+      ukvr=0.D0
+      uh=0.D0
+      uxmol=0.D0
 
-        ! note uxmol only contains one phase xmol
-        if (dphi>=0.D0) then
-           ukvr = aux_var_up%kvr(np)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
-        else
-           ukvr = aux_var_dn%kvr(np)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
-        endif
+      ! note uxmol only contains one phase xmol
+      if (dphi>=0.D0) then
+        ukvr = aux_var_up%kvr(np)
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        uh = aux_var_up%h(np)
+      else
+        ukvr = aux_var_dn%kvr(np)
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        uh = aux_var_dn%h(np)
+      endif
    
 
-        if (ukvr>floweps) then
-           v_darcy= Dq * ukvr * dphi
-           vv_darcy(np)=v_darcy
-           q = v_darcy * area
-           fluxm(np)=fluxm(np) + q * density_ave
-          ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif
+      if (ukvr > floweps) then
+        v_darcy= Dq * ukvr * dphi
+        vv_darcy(np)=v_darcy
+        q = v_darcy * area
+        fluxm(np)=fluxm(np) + q * density_ave
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        fluxe = fluxe + q*density_ave*uh
+      endif
+    endif
 
 #if 0 
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+    if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
+      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
-        do ispec=1, option%nflowspec
-           ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+      do ispec=1, option%nflowspec
+        ind = ispec + (np-1)*option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
                 (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
                 (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
-        enddo
-     endif
+      enddo
+    endif
 #endif
   enddo
 
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
+  Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp)
+  fluxe=fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nphase) = fluxm(:) * option%flow_dt
-     Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nphase) = fluxm(:) * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1945,11 +1950,16 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-       do idof =1, option%nflowdof   
+       do idof = 1, option%nflowdof
          select case(boundary_condition%flow_condition%itype(idof))
            case(DIRICHLET_BC)
              xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-         case(NEUMANN_BC, ZERO_GRADIENT_BC)
+           case(HYDROSTATIC_BC)
+             xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+             if(idof>=MPH_TEMPERATURE_DOF)then
+               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+             endif
+           case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
          end select
@@ -2434,76 +2444,82 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id))
 
 ! Then need fill up increments for BCs
-    delxbc=0.D0;
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
+      delxbc=0.D0;
+      do idof =1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          delxbc(idof)=0.D0
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          delxbc(idof) = 0.D0
+        case(HYDROSTATIC_BC,SEEPAGE_BC)
+          xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+          if (idof >= MPH_TEMPERATURE_DOF) then
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            delxbc(idof) = patch%aux%Immis%delx(idof,ghosted_id)
+          endif
+        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          delxbc(idof)=patch%aux%Immis%delx(idof,ghosted_id)
-       end select
-    enddo
+          delxbc(idof) = patch%aux%Immis%delx(idof,ghosted_id)
+        end select
+      enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call ImmisAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+      call ImmisAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
-    call ImmisAuxVarCompute_Winc(xxbc,delxbc,&
+      call ImmisAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
-    do nvar=1,option%nflowdof
-       call ImmisBCFlux(boundary_condition%flow_condition%itype, &
-         boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
-         aux_vars(ghosted_id)%aux_var_elem(nvar), &
-         porosity_loc_p(ghosted_id), &
-         tortuosity_loc_p(ghosted_id), &
-         immis_parameter%sir(:,icap_dn), &
-         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
-         cur_connection_set%area(iconn), &
-         distance_gravity,option, &
-         vv_darcy,Res)
-       ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      do nvar=1,option%nflowdof
+        call ImmisBCFlux(boundary_condition%flow_condition%itype, &
+          boundary_condition%flow_aux_real_var(:,iconn), &
+          aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
+          aux_vars(ghosted_id)%aux_var_elem(nvar), &
+          porosity_loc_p(ghosted_id), &
+          tortuosity_loc_p(ghosted_id), &
+          immis_parameter%sir(:,icap_dn), &
+          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+          cur_connection_set%area(iconn), &
+          distance_gravity,option, &
+          vv_darcy,Res)
+        ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      enddo
     enddo
- enddo
     boundary_condition => boundary_condition%next
- enddo
+   enddo
 #endif
 ! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
 
-     ra=0.D0
-     max_dev=0.D0
-     do neq=1, option%nflowdof
-        do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Immis%res_old_AR(local_id,neq))/patch%aux%Immis%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
-        enddo
-     enddo
+    ra=0.D0
+    max_dev=0.D0
+    do neq=1, option%nflowdof
+      do nvar=1, option%nflowdof
+        ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Immis%res_old_AR(local_id,neq))/patch%aux%Immis%delx(nvar,ghosted_id)
+        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+      enddo
+    enddo
    
-   select case(option%idt_switch)
+    select case(option%idt_switch)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
         if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
-     Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+    Jup=ra(1:option%nflowdof,1:option%nflowdof)
+    if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
    
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
-     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
   if (realization%debug%matview_Jacobian_detailed) then
@@ -3040,6 +3056,11 @@ subroutine ImmisSetPlotVariables(realization)
   call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
                                LIQUID_PRESSURE)
 
+! name = 'Gas Pressure'
+! units = 'Pa'
+! call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+! GAS_PRESSURE)
+
   name = 'Liquid Saturation'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
@@ -3051,50 +3072,50 @@ subroutine ImmisSetPlotVariables(realization)
                                GAS_SATURATION)
 
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
 
   name = 'Gas Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_DENSITY)
 
   name = 'Liquid Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_ENERGY)
 
   name = 'Gas Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
   name = 'Gas Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_VISCOSITY)
 
   name = 'Liquid Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_MOBILITY)
 
   name = 'Gas Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_MOBILITY)
 
-  name = 'Phase'
-  units = ''
-  output_variable%iformat = 1 ! integer
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               PHASE)
+! name = 'Phase'
+! units = ''
+! output_variable%iformat = 1 ! integer
+! call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+!                              PHASE)
 
 end subroutine ImmisSetPlotVariables
 
