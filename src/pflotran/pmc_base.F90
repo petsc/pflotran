@@ -58,8 +58,9 @@ module PMC_Base_class
   ! For checkpointing  
   type, public :: pmc_base_header_type
     integer*8 :: plot_number      ! in the checkpoint file format
+    integer*8 :: times_per_h5_file! in the checkpoint file format
   end type pmc_base_header_type
-  PetscSizeT, parameter, private :: bagsize = 8
+  PetscSizeT, parameter, private :: bagsize = 16
 
   interface PetscBagGetData
     subroutine PetscBagGetData(bag,header,ierr)
@@ -560,9 +561,11 @@ subroutine PMCBaseRegisterHeader(this,bag,header)
   
   PetscErrorCode :: ierr
   
-  ! bagsize = 1 * 8 bytes = 8 bytes
+  ! bagsize = 2 * 8 bytes = 16 bytes
   call PetscBagRegisterInt(bag,header%plot_number,0, &
                            "plot number","",ierr)
+  call PetscBagRegisterInt(bag,header%times_per_h5_file,0, &
+                           "times_per_h5_file","",ierr)
 
 end subroutine PMCBaseRegisterHeader
 
@@ -590,6 +593,9 @@ subroutine PMCBaseSetHeader(this,bag,header)
   
   header%plot_number = &
     this%pm_list%realization_base%output_option%plot_number
+
+  header%times_per_h5_file = &
+    this%pm_list%realization_base%output_option%times_per_h5_file
 
 end subroutine PMCBaseSetHeader
 
@@ -697,8 +703,27 @@ subroutine PMCBaseGetHeader(this,header)
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header
   
+  character(len=MAXSTRINGLENGTH) :: string
+
   this%pm_list%realization_base%output_option%plot_number = &
     header%plot_number
+
+  ! Check the value of 'times_per_h5_file'
+  if (header%times_per_h5_file /= &
+      this%pm_list%realization_base%output_option%times_per_h5_file) then
+    write(string,*),header%times_per_h5_file
+    this%option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
+    call printMsg(this%option)
+    write(string,*),this%pm_list%realization_base%output_option%times_per_h5_file
+    this%option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
+    call printMsg(this%option)
+    this%option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &
+      'match that stored in checkpoint file. Correct the inputdeck.'
+    call printErrMsg(this%option)
+  endif
+
+  this%pm_list%realization_base%output_option%times_per_h5_file = &
+    header%times_per_h5_file
 
 end subroutine PMCBaseGetHeader
 
