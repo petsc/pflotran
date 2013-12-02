@@ -187,7 +187,7 @@ end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
 !
-! THCAuxVarCopy: Copies an auxiliary variable
+! MphaseAuxVarCopy: Copies an auxiliary variable
 ! author: 
 ! date: 
 !

@@ -2563,9 +2563,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
- 
-! Multiphase flash calculation is more expensive, so calculate once per iteration
-! print *, 'Mphase residual patch 1' 
 
   vol_frac_prim = 1.d0
   
@@ -2591,7 +2588,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
        global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
        global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!      global_aux_vars(ghosted_id)%sat_store = 
        global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
        global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
