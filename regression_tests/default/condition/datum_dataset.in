@@ -40,9 +40,8 @@ GRID
   TYPE structured
   NXYZ 5 5 5
   BOUNDS
-    0.d0 5.d0
-    0.d0 5.d0
-    0.d0 5.d0
+    0.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
   /
 END
 
