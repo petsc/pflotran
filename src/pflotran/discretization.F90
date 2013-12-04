@@ -453,10 +453,19 @@ subroutine DiscretizationRead(discretization,input,option)
                                    i)
             call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
             if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+              ! 2 values were read in in x and y locations, must move y value
+              ! to z as it was really z.
+              grid%structured_grid%bounds(Z_DIRECTION,LOWER) = &
+                grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+              grid%structured_grid%bounds(Z_DIRECTION,UPPER) = &
+                grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+              ! set y bounds to 0 and 1
               grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
               grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
             endif
             if (grid%structured_grid%itype == SPHERICAL_GRID) then
+              grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
               grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
               grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
             endif
