@@ -3086,10 +3086,10 @@ subroutine ImmisSetPlotVariables(realization)
   call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
                                LIQUID_PRESSURE)
 
-! name = 'Gas Pressure'
-! units = 'Pa'
-! call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
-! GAS_PRESSURE)
+  name = 'Gas Pressure'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+                               GAS_PRESSURE)
 
   name = 'Liquid Saturation'
   units = ''

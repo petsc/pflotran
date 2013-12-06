@@ -3802,6 +3802,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(TEMPERATURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
           case(LIQUID_PRESSURE)
+            value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
+          case(GAS_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(2)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
