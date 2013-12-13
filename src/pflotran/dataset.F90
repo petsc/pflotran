@@ -3,9 +3,9 @@ module Dataset_module
   use Dataset_Base_class
   use Dataset_Ascii_class
   use Dataset_Common_HDF5_class
-  use Dataset_Gridded_class
-  use Dataset_Map_class
-  use Dataset_Global_class
+  use Dataset_Gridded_HDF5_class
+  use Dataset_Map_HDF5_class
+  use Dataset_Global_HDF5_class
   
   use PFLOTRAN_Constants_module
 
@@ -45,8 +45,8 @@ subroutine DatasetRead(input,dataset,option)
 
   type(input_type) :: input
   class(dataset_base_type), pointer :: dataset
-  class(dataset_map_type), pointer :: dataset_map
-  class(dataset_global_type), pointer :: dataset_global
+  class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
+  class(dataset_global_hdf5_type), pointer :: dataset_global_hdf5
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: word, word2
@@ -61,17 +61,17 @@ subroutine DatasetRead(input,dataset,option)
   
   select case(word2)
     case('MAPPED')
-      dataset_map => DatasetMapCreate()
-      call InputReadWord(input,option,dataset_map%name,PETSC_TRUE)
+      dataset_map_hdf5 => DatasetMapHDF5Create()
+      call InputReadWord(input,option,dataset_map_hdf5%name,PETSC_TRUE)
       call InputDefaultMsg(input,option,'DATASET name') 
-      call DatasetMapRead(dataset_map,input,option)
-      dataset => dataset_map
+      call DatasetMapHDF5Read(dataset_map_hdf5,input,option)
+      dataset => dataset_map_hdf5
     case('GLOBAL')
-      dataset_global => DatasetGlobalCreate()
-      call InputReadWord(input,option,dataset_global%name,PETSC_TRUE)
+      dataset_global_hdf5 => DatasetGlobalHDF5Create()
+      call InputReadWord(input,option,dataset_global_hdf5%name,PETSC_TRUE)
       call InputDefaultMsg(input,option,'DATASET name') 
-      call DatasetCommonHDF5Read(dataset_global,input,option)
-      dataset => dataset_global
+      call DatasetCommonHDF5Read(dataset_global_hdf5,input,option)
+      dataset => dataset_global_hdf5
     case default ! CELL_INDEXED, GLOBAL, GRIDDED
       dataset => DatasetCommonHDF5Create()
       select case(word2)
@@ -92,7 +92,7 @@ end subroutine DatasetRead
 ! *************************************************************************** !
 !
 ! DatasetScreenForNonCellIndexed: Recasts datasets of dataset_common_hdf5_type
-!                                 to dataset_gridded_type
+!                                 to dataset_gridded_hdf5_type
 ! author: Glenn Hammond
 ! date: 03/26/12
 !
@@ -108,31 +108,31 @@ subroutine DatasetScreenForNonCellIndexed(datasets,option)
   
   class(dataset_base_type), pointer :: cur_dataset
   class(dataset_base_type), pointer :: prev_dataset
-  class(dataset_gridded_type), pointer :: dataset_gridded
+  class(dataset_gridded_hdf5_type), pointer :: dataset_gridded_hdf5
   PetscBool :: swapped
   
   cur_dataset => datasets
   nullify(prev_dataset)
   do
     if (.not.associated(cur_dataset)) exit
-    nullify(dataset_gridded)
+    nullify(dataset_gridded_hdf5)
     swapped = PETSC_FALSE
     select type(cur_dataset)
-      class is(dataset_map_type)
+      class is(dataset_map_hdf5_type)
         ! do nothing
-      class is(dataset_global_type)
+      class is(dataset_global_hdf5_type)
         ! do nothing
       class is(dataset_common_hdf5_type)
         ! if class is dataset_common_hdf5_type, the dataset should really 
-        ! be dataset_gridded unless cell indexed
+        ! be dataset_gridded_hdf5 unless cell indexed
         cur_dataset%is_cell_indexed = &
           DatasetCommonHDF5IsCellIndexed(cur_dataset,option)
         ! if not cell indexed, we need to change the type to the extended
-        ! dataset_gridded type
+        ! dataset_gridded_hdf5 type
         if (.not.cur_dataset%is_cell_indexed) then
           swapped = PETSC_TRUE
-          dataset_gridded => DatasetGriddedCreate()
-          call DatasetCommonHDF5Copy(cur_dataset,dataset_gridded)
+          dataset_gridded_hdf5 => DatasetGriddedHDF5Create()
+          call DatasetCommonHDF5Copy(cur_dataset,dataset_gridded_hdf5)
         endif
       class default
         option%io_buffer = &
@@ -142,16 +142,16 @@ subroutine DatasetScreenForNonCellIndexed(datasets,option)
     ! if we changed the derived type, we need to replace the old dataset
     ! in the linked list of datasets and destroy the old dataset.
     if (swapped) then
-      ! dataset_gridded%next is already set to cur_dataset%next
+      ! dataset_gridded_hdf5%next is already set to cur_dataset%next
       if (associated(prev_dataset)) then
-        prev_dataset%next => dataset_gridded
+        prev_dataset%next => dataset_gridded_hdf5
       else
-        datasets => dataset_gridded
+        datasets => dataset_gridded_hdf5
       endif
       ! just to be sure
       nullify(cur_dataset%next)
       call DatasetDestroy(cur_dataset)
-      cur_dataset => dataset_gridded
+      cur_dataset => dataset_gridded_hdf5
     endif
     prev_dataset => cur_dataset
     cur_dataset => cur_dataset%next
@@ -248,22 +248,22 @@ recursive subroutine DatasetLoad(dataset,option)
   class(dataset_base_type), pointer :: dataset
   type(option_type) :: option
 
-  class(dataset_global_type), pointer :: dataset_global
-  class(dataset_gridded_type), pointer :: dataset_gridded
-  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_global_hdf5_type), pointer :: dataset_global_hdf5
+  class(dataset_gridded_hdf5_type), pointer :: dataset_gridded_hdf5
+  class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
   class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5
   class(dataset_base_type), pointer :: dataset_base
 
   select type (selector => dataset)
-    class is (dataset_global_type)
-      dataset_global => selector
-      call DatasetGlobalLoad(dataset_global,option)
-    class is (dataset_gridded_type)
-      dataset_gridded => selector
-      call DatasetGriddedLoad(dataset_gridded,option)
-    class is (dataset_map_type)
-      dataset_map => selector
-      call DatasetMapLoad(dataset_map,option)
+    class is (dataset_global_hdf5_type)
+      dataset_global_hdf5 => selector
+      call DatasetGlobalHDF5Load(dataset_global_hdf5,option)
+    class is (dataset_gridded_hdf5_type)
+      dataset_gridded_hdf5 => selector
+      call DatasetGriddedHDF5Load(dataset_gridded_hdf5,option)
+    class is (dataset_map_hdf5_type)
+      dataset_map_hdf5 => selector
+      call DatasetMapHDF5Load(dataset_map_hdf5,option)
     class is (dataset_common_hdf5_type)
       dataset_common_hdf5 => selector
       if (dataset_common_hdf5%is_cell_indexed) then
@@ -389,12 +389,12 @@ subroutine DatasetPrint(this,option)
   select type (d=>this)
     class is (dataset_ascii_type)
       call DatasetAsciiPrint(d,option)
-    class is (dataset_global_type)
-      call DatasetGlobalPrint(d,option)
-    class is (dataset_gridded_type)
-      call DatasetGriddedPrint(d,option)
-    class is (dataset_map_type)
-      call DatasetMapPrint(d,option)
+    class is (dataset_global_hdf5_type)
+      call DatasetGlobalHDF5Print(d,option)
+    class is (dataset_gridded_hdf5_type)
+      call DatasetGriddedHDF5Print(d,option)
+    class is (dataset_map_hdf5_type)
+      call DatasetMapHDF5Print(d,option)
     class is (dataset_common_hdf5_type)
       call DatasetCommonHDF5Print(d,option)
     class default
@@ -424,12 +424,12 @@ function DatasetGetClass(dataset)
   select type (dataset)
     class is (dataset_ascii_type)
       DatasetGetClass = 'dataset_ascii_type'
-    class is (dataset_global_type)
-      DatasetGetClass = 'dataset_global_type'
-    class is (dataset_gridded_type)
-      DatasetGetClass = 'dataset_gridded_type'
-    class is (dataset_map_type)
-      DatasetGetClass = 'dataset_map_type'
+    class is (dataset_global_hdf5_type)
+      DatasetGetClass = 'dataset_global_hdf5_type'
+    class is (dataset_gridded_hdf5_type)
+      DatasetGetClass = 'dataset_gridded_hdf5_type'
+    class is (dataset_map_hdf5_type)
+      DatasetGetClass = 'dataset_map_hdf5_type'
     class is (dataset_common_hdf5_type)
       DatasetGetClass = 'dataset_hdf5_type'
     class is (dataset_base_type)
@@ -453,9 +453,9 @@ recursive subroutine DatasetDestroy(dataset)
   
   class(dataset_base_type), pointer :: dataset
   
-  class(dataset_global_type), pointer :: dataset_global
-  class(dataset_gridded_type), pointer :: dataset_gridded
-  class(dataset_map_type), pointer :: dataset_map
+  class(dataset_global_hdf5_type), pointer :: dataset_global_hdf5
+  class(dataset_gridded_hdf5_type), pointer :: dataset_gridded_hdf5
+  class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
   class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5
   class(dataset_ascii_type), pointer :: dataset_ascii
   class(dataset_base_type), pointer :: dataset_base
@@ -470,15 +470,15 @@ recursive subroutine DatasetDestroy(dataset)
     class is (dataset_ascii_type)
       dataset_ascii => selector
       call DatasetAsciiDestroy(dataset_ascii)
-    class is (dataset_global_type)
-      dataset_global => selector
-      call DatasetGlobalDestroy(dataset_global)
-    class is (dataset_gridded_type)
-      dataset_gridded => selector
-      call DatasetGriddedDestroy(dataset_gridded)
-    class is (dataset_map_type)
-      dataset_map => selector
-      call DatasetMapDestroy(dataset_map)
+    class is (dataset_global_hdf5_type)
+      dataset_global_hdf5 => selector
+      call DatasetGlobalHDF5Destroy(dataset_global_hdf5)
+    class is (dataset_gridded_hdf5_type)
+      dataset_gridded_hdf5 => selector
+      call DatasetGriddedHDF5Destroy(dataset_gridded_hdf5)
+    class is (dataset_map_hdf5_type)
+      dataset_map_hdf5 => selector
+      call DatasetMapHDF5Destroy(dataset_map_hdf5)
     class is (dataset_common_hdf5_type)
       dataset_common_hdf5 => selector
       call DatasetCommonHDF5Destroy(dataset_common_hdf5)
