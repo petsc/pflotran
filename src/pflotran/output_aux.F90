@@ -51,7 +51,8 @@ module Output_Aux_module
     
     PetscReal :: periodic_output_time_incr
     PetscReal :: periodic_tr_output_time_incr
-    
+    PetscReal :: periodic_checkpoint_time_incr
+
     PetscBool :: print_permeability
     PetscBool :: print_porosity
     PetscBool :: print_iproc
@@ -184,6 +185,7 @@ function OutputOptionCreate()
   output_option%print_tortuosity = PETSC_FALSE
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
+  output_option%periodic_checkpoint_time_incr = 0.d0
   
   nullify(output_option%output_variable_list)
   nullify(output_option%aveg_output_variable_list)
