@@ -498,6 +498,10 @@ subroutine ReactionReadPass1(reaction,input,option)
                           kd_rxn%itype = SORPTION_LANGMUIR
                         case('FREUNDLICH')
                           kd_rxn%itype = SORPTION_FREUNDLICH
+                        option%io_buffer = &
+                          'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS,TYPE keyword: ' // &
+                          trim(word)//' not recognized'
+                        call printErrMsg(option)
                       end select
                     case('DISTRIBUTION_COEFFICIENT','KD')
                       call InputReadDouble(input,option,kd_rxn%Kd)
@@ -513,6 +517,11 @@ subroutine ReactionReadPass1(reaction,input,option)
                       call InputErrorMsg(input,option,'Freundlich_N', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
                       kd_rxn%itype = SORPTION_FREUNDLICH
+                    case default
+                      option%io_buffer = &
+                        'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS keyword: ' // &
+                        trim(word)//' not recognized'
+                      call printErrMsg(option)
                   end select
                 enddo
                 ! add to list
