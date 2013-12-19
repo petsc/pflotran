@@ -331,6 +331,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: flow_to_tran_ts_ratio
   PetscBool :: geomech_plot_flag
+  PetscBool :: checkpoint_flag
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -349,6 +350,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
   if (associated(flow_stepper)) then
     run_flow_as_steady_state = flow_stepper%run_as_steady_state
   endif
+  checkpoint_flag = PETSC_FALSE
 
   call PetscTime(master_stepper%start_time, ierr)
 
@@ -374,7 +376,8 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 
     call StepperSetTargetTimes(flow_stepper,tran_stepper, &
                                option,plot_flag, &
-                               transient_plot_flag)
+                               transient_plot_flag, &
+                               checkpoint_flag)
 
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
