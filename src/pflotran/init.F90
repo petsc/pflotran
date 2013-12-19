@@ -995,6 +995,21 @@ subroutine Init(simulation)
            realization%output_option%output_variable_list,output_variable)
   endif
 
+  if (realization%output_option%print_volume) then
+    output_variable => OutputVariableCreate('Volume',OUTPUT_DISCRETE,'', &
+                                            VOLUME)
+    output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+    output_variable%iformat = 0 ! double
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list,output_variable)
+  endif
+
+  if (realization%output_option%print_tortuosity) then
+    call OutputVariableAddToList( &
+                              realization%output_option%output_variable_list, &
+                              'Tortuosity',OUTPUT_GENERIC,'-',TORTUOSITY)
+  endif
+
   ! write material ids
   output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
                                           MATERIAL_ID)
@@ -1076,6 +1091,7 @@ subroutine Init(simulation)
   if (debug%print_waypoints) then
     call WaypointListPrint(realization%waypoints,option,realization%output_option)
   endif
+    call WaypointListPrint(realization%waypoints,option,realization%output_option)
 
 #ifdef OS_STATISTICS
   call RealizationPrintGridStatistics(realization)
@@ -1162,7 +1178,8 @@ subroutine Init(simulation)
                           simulation%realization, simulation%surf_realization)
         endif
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call printErrMsg(option,'SEQ_COUPLED_NEW not implemented in Surface-TH mode')
+          call SurfaceTHCreateSurfSubsurfVecNew( &
+                          simulation%realization, simulation%surf_realization)
         endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
@@ -1800,7 +1817,7 @@ subroutine InitReadInput(simulation)
         call StrataRead(strata,input,option)
         call RealizationAddStrata(realization,strata)
         nullify(strata)
-        
+
 !.....................
       case ('DATASET')
         nullify(dataset)
@@ -1965,7 +1982,64 @@ subroutine InitReadInput(simulation)
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
         call InputReadInt(input,option,option%checkpoint_frequency)
-        call InputErrorMsg(input,option,'CHECKPOINT','Checkpoint frequency') 
+
+        if (input%ierr == 1) then
+          option%checkpoint_frequency = 0
+          do
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','CHECKPOINT')
+            call StringToUpper(word)
+
+            select case(trim(word))
+              case ('PERIODIC')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'time increment', &
+                                   'OUTPUT,PERIODIC')
+                call StringToUpper(word)
+
+                select case(trim(word))
+                  case('TIME')
+                    call InputReadDouble(input,option,temp_real)
+                    call InputErrorMsg(input,option,'time increment', &
+                                       'CHECKPOINT,PERIODIC,TIME')
+                    call InputReadWord(input,option,word,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'time increment units', &
+                                       'CHECKPOINT,PERIODIC,TIME')
+                    units_conversion = UnitsConvertToInternal(word,option)
+                    output_option%periodic_checkpoint_time_incr = temp_real* &
+                                                              units_conversion
+                  case('TIMESTEP')
+                    call InputReadInt(input,option,option%checkpoint_frequency)
+                    call InputErrorMsg(input,option,'timestep increment', &
+                                       'CHECKPOINT,PERIODIC,TIMESTEP')
+                  case default
+                    option%io_buffer = 'Keyword: ' // trim(word) // &
+                                       ' not recognized in CHECKPOINT,PERIODIC.'
+                    call printErrMsg(option)
+                end select
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in CHECKPOINT.'
+                call printErrMsg(option)
+            end select
+          enddo
+          if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
+              option%checkpoint_frequency /= 0) then
+            option%io_buffer = 'Both TIME and TIMESTEP cannot be specified ' // &
+              'for CHECKPOINT,PERIODIC.'
+            call printErrMsg(option)
+          endif
+          if (output_option%periodic_checkpoint_time_incr == 0.d0 .and. &
+              option%checkpoint_frequency == 0) then
+            option%io_buffer = 'Either, TIME and TIMESTEP need to be specified ' // &
+              'for CHECKPOINT,PERIODIC.'
+            call printErrMsg(option)
+          endif
+        endif
 
 !......................
 
@@ -2183,6 +2257,8 @@ subroutine InitReadInput(simulation)
               output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
               output_option%print_porosity = PETSC_TRUE
+            case('TORTUOSITY')
+              output_option%print_tortuosity = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
@@ -2437,6 +2513,8 @@ subroutine InitReadInput(simulation)
               call OutputVariableRead(input,option,output_option%output_variable_list)
             case('AVERAGE_VARIABLES')
               call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
+            case('VOLUME')
+              output_option%print_volume = PETSC_TRUE
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'

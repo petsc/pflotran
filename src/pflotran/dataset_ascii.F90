@@ -25,6 +25,7 @@ module Dataset_Ascii_class
             DatasetAsciiCast, &
             DatasetAsciiRead, &
             DatasetAsciiUpdate, &
+            DatasetAsciiPrint, &
             DatasetAsciiDestroy
   
 contains
@@ -332,7 +333,7 @@ subroutine DatasetAsciiVerify(this,option)
   type(option_type) :: option
   
   if (len_trim(this%name) < 1) then
-    this%name = 'Unknown Ascii Dataset'
+    this%name = 'Unnamed Ascii Dataset'
   endif
   call DatasetBaseVerify(this,option)
   if (associated(this%rbuffer)) then
@@ -346,6 +347,26 @@ subroutine DatasetAsciiVerify(this,option)
   endif
     
 end subroutine DatasetAsciiVerify
+
+! ************************************************************************** !
+!
+! DatasetAsciiPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetAsciiPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_ascii_type) :: this
+  type(option_type) :: option
+  
+  write(option%fid_out,'(10x,''Array Rank: '',i2)') this%array_rank
+  
+end subroutine DatasetAsciiPrint
   
 ! ************************************************************************** !
 !

@@ -39,7 +39,9 @@ function PMCSubsurfaceCreate()
   
   class(pmc_subsurface_type), pointer :: pmc
 
+#ifdef DEBUG
   print *, 'PMCSubsurface%Create()'
+#endif
   
   allocate(pmc)
   call pmc%Init()
@@ -61,13 +63,49 @@ subroutine PMCSubsurfaceInit(this)
   
   class(pmc_subsurface_type) :: this
   
+#ifdef DEBUG
   print *, 'PMCSubsurface%Init()'
+#endif
   
   call PMCBaseInit(this)
   this%name = 'PMCSubsurface'
   nullify(this%realization)
 
 end subroutine PMCSubsurfaceInit
+
+! ************************************************************************** !
+!
+! PMCSubsurfaceGetAuxData:
+! author: Gautam Bisht
+! date: 10/24/13
+!
+! ************************************************************************** !
+subroutine PMCSubsurfaceGetAuxData(this)
+
+  implicit none
+
+  class(pmc_subsurface_type) :: this
+
+  call PMCSubsurfaceGetAuxDataFromSurf(this)
+
+end subroutine PMCSubsurfaceGetAuxData
+
+! ************************************************************************** !
+!
+! PMCSubsurfaceSetAuxData:
+! author: Gautam Bisht
+! date: 10/24/13
+!
+! ************************************************************************** !
+subroutine PMCSubsurfaceSetAuxData(this)
+
+  implicit none
+
+  class(pmc_subsurface_type) :: this
+
+  call PMCSubsurfaceSetAuxDataForSurf(this)
+
+end subroutine PMCSubsurfaceSetAuxData
 
 ! ************************************************************************** !
 !> This routine
@@ -77,7 +115,7 @@ end subroutine PMCSubsurfaceInit
 !!
 !! date: 08/22/13
 ! ************************************************************************** !
-subroutine PMCSubsurfaceGetAuxData(this)
+subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
   use Connection_module
   use Coupler_module
@@ -113,9 +151,12 @@ subroutine PMCSubsurfaceGetAuxData(this)
   PetscReal, pointer                   :: mflux_p(:)
   PetscReal, pointer                   :: hflux_p(:)
   PetscReal, pointer                   :: head_p(:)
+  PetscReal, pointer                   :: temp_p(:)
   PetscErrorCode                       :: ierr
 
-!  print *, 'PMCSubsurfaceGetAuxData()'
+#ifdef DEBUG
+  print *, 'PMCSubsurfaceGetAuxData()'
+#endif
 
 #ifdef SURFACE_FLOW
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -204,32 +245,123 @@ subroutine PMCSubsurfaceGetAuxData(this)
                   enddo
                   call VecRestoreArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
                                           head_p,ierr)
-
                 endif
               endif
               coupler => coupler%next
             enddo
 
           case (TH_MODE)
-            this%option%io_buffer='Extend PMCSubsurfaceGetAuxData for TH'
+            call VecScatterBegin(pmc%sim_aux%surf_to_subsurf, &
+                                 pmc%sim_aux%surf_head, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%surf_to_subsurf, &
+                               pmc%sim_aux%surf_head, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+            call VecScatterBegin(pmc%sim_aux%surf_to_subsurf, &
+                                 pmc%sim_aux%surf_temp, &
+                                 pmc%sim_aux%subsurf_temp_top_bc, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%surf_to_subsurf, &
+                               pmc%sim_aux%surf_temp, &
+                               pmc%sim_aux%subsurf_temp_top_bc, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+            call VecScatterBegin(pmc%sim_aux%surf_to_subsurf, &
+                                 pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                                 pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%surf_to_subsurf, &
+                               pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                               pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+            coupler_list => patch%boundary_conditions
+            coupler => coupler_list%first
+            do
+              if (.not.associated(coupler)) exit
+
+              ! FLOW
+              if (associated(coupler%flow_aux_real_var)) then
+                ! Find the BC from the list of BCs
+                if(StringCompare(coupler%name,'from_surface_bc')) then
+                  coupler_found = PETSC_TRUE
+
+                  call VecGetArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
+                                      head_p,ierr)
+                  call VecGetArrayF90(pmc%sim_aux%subsurf_temp_top_bc, &
+                                      temp_p,ierr)
+
+                  do iconn = 1,coupler%connection_set%num_connections
+
+                    ! The pressure value needed to computed density should
+                    ! be surf_press and not reference_pressure. But,
+                    ! surf_pressure depends on density.
+                    call density(temp_p(iconn), option%reference_pressure, &
+                                 den)
+
+                    surfpress = head_p(iconn)*(abs(option%gravity(3)))*den + &
+                                option%reference_pressure
+                    coupler%flow_aux_real_var(TH_PRESSURE_DOF,iconn) = &
+                      surfpress
+                    coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
+                      temp_p(iconn)
+                  enddo
+
+                  call VecRestoreArrayF90(pmc%sim_aux%subsurf_pres_top_bc, &
+                                          head_p,ierr)
+                  call VecRestoreArrayF90(pmc%sim_aux%subsurf_temp_top_bc, &
+                                      temp_p,ierr)
+                endif
+              endif
+
+              if(StringCompare(coupler%name,'from_atm_subsurface_bc')) then
+                coupler_found = PETSC_TRUE
+
+                call VecGetArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                    mflux_p,ierr)
+
+                do iconn = 1,coupler%connection_set%num_connections
+                  coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
+                    mflux_p(iconn)
+                enddo
+
+                call VecRestoreArrayF90(pmc%sim_aux%subsurf_mflux_exchange_with_surf, &
+                                    mflux_p,ierr)
+              endif
+
+              coupler => coupler%next
+            enddo
+
+          case default
+            this%option%io_buffer='PMCSubsurfaceGetAuxData() not supported for this mode.'
             call printErrMsg(this%option)
+
         end select
 
+        if( .not. coupler_found) then
+          option%io_buffer = 'Coupler not found in PMCSubsurfaceGetAuxData()'
+          call printErrMsg(option)
+        endif
       endif
-    end select
-  endif
 
-end subroutine PMCSubsurfaceGetAuxData
+    end select
+
+  endif ! if (associated(this%sim_aux))
+
+end subroutine PMCSubsurfaceGetAuxDataFromSurf
 
 ! ************************************************************************** !
-!> This routine
+!> This routine sets auxiliary to be exchanged between process-models.
 !!
 !> @author
 !! Gautam Bisht, LBNL
 !!
 !! date: 08/21/13
 ! ************************************************************************** !
-subroutine PMCSubsurfaceSetAuxData(this)
+subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
   use Grid_module
   use String_module
@@ -269,7 +401,9 @@ subroutine PMCSubsurfaceSetAuxData(this)
   PetscReal, pointer                   :: head_p(:)
   PetscErrorCode                       :: ierr
 
-!  print *, 'PMCSubsurfaceSetAuxData()'
+#ifdef DEBUG
+  print *, 'PMCSubsurfaceSetAuxData()'
+#endif
 
   if (associated(this%sim_aux)) then
 
@@ -359,8 +493,26 @@ subroutine PMCSubsurfaceSetAuxData(this)
                     call VecRestoreArrayF90(this%sim_aux%subsurf_pres_top_bc, &
                                             pres_top_bc_p,ierr)
                   case (TH_MODE)
-                    call printErrMsg(this%option, &
-                      'PMCSubsurfaceSetAuxData not supported for this MODE')
+                    call VecGetArrayF90(this%sim_aux%subsurf_pres_top_bc, &
+                                        pres_top_bc_p,ierr)
+                    call VecGetArrayF90(this%sim_aux%subsurf_temp_top_bc, &
+                                        temp_top_bc_p,ierr)
+
+                    do iconn = 1,coupler%connection_set%num_connections
+                      pres_top_bc_p(iconn) = &
+                        coupler%flow_aux_real_var(TH_PRESSURE_DOF,iconn)
+                      temp_top_bc_p(iconn) = &
+                        coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn)
+                    enddo
+
+                    call VecRestoreArrayF90(this%sim_aux%subsurf_pres_top_bc, &
+                                            pres_top_bc_p,ierr)
+                    call VecRestoreArrayF90(this%sim_aux%subsurf_temp_top_bc, &
+                                            temp_top_bc_p,ierr)
+                    case default
+                      option%io_buffer = 'PMCSubsurfaceGetAuxData() not ' // &
+                        'supported in this FLOW_MODE'
+                      call printErrMsg(option)
                 end select
               endif
             endif
@@ -373,7 +525,7 @@ subroutine PMCSubsurfaceSetAuxData(this)
 
   endif
 
-end subroutine PMCSubsurfaceSetAuxData
+end subroutine PMCSubsurfaceSetAuxDataForSurf
 
 
 ! ************************************************************************** !
@@ -391,7 +543,9 @@ recursive subroutine PMCSubsurfaceFinalizeRun(this)
   
   class(pmc_subsurface_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCSubsurface%FinalizeRun()')
+#endif
   
   nullify(this%realization)
   
@@ -413,7 +567,9 @@ recursive subroutine Destroy(this)
   
   class(pmc_subsurface_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCSubsurface%Destroy()')
+#endif
   
   if (associated(this%next)) then
     call this%next%Destroy()

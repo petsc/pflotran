@@ -1,4 +1,4 @@
-module Dataset_Gridded_class
+module Dataset_Gridded_HDF5_class
  
   use Dataset_Common_HDF5_class
   
@@ -10,12 +10,12 @@ module Dataset_Gridded_class
 
 #include "finclude/petscsys.h"
 
-  type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_type
+  type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_hdf5_type
     PetscBool :: is_cell_centered
     PetscInt :: data_dim
     PetscReal, pointer :: origin(:)
     PetscReal, pointer :: discretization(:)
-  end type dataset_gridded_type
+  end type dataset_gridded_hdf5_type
   
   PetscInt, parameter, public :: DIM_NULL = 0
   PetscInt, parameter, public :: DIM_X = 1
@@ -28,52 +28,53 @@ module Dataset_Gridded_class
   
   PetscInt, parameter :: MAX_NSLICE = 4
 
-  public :: DatasetGriddedCreate, &
-            DatasetGriddedInit, &
-            DatasetGriddedCast, &
-            DatasetGriddedLoad, &
-            DatasetGriddedInterpolateReal, &
-            DatasetGriddedStrip, &
-            DatasetGriddedDestroy
+  public :: DatasetGriddedHDF5Create, &
+            DatasetGriddedHDF5Init, &
+            DatasetGriddedHDF5Cast, &
+            DatasetGriddedHDF5Load, &
+            DatasetGriddedHDF5InterpolateReal, &
+            DatasetGriddedHDF5Print, &
+            DatasetGriddedHDF5Strip, &
+            DatasetGriddedHDF5Destroy
   
 contains
 
 ! ************************************************************************** !
 !
-! DatasetGriddedCreate: Creates global dataset class
+! DatasetGriddedHDF5Create: Creates global dataset class
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-function DatasetGriddedCreate()
+function DatasetGriddedHDF5Create()
   
   implicit none
   
-  class(dataset_gridded_type), pointer :: dataset
+  class(dataset_gridded_hdf5_type), pointer :: dataset
 
-  class(dataset_gridded_type), pointer :: DatasetGriddedCreate
+  class(dataset_gridded_hdf5_type), pointer :: DatasetGriddedHDF5Create
   
   allocate(dataset)
-  call DatasetGriddedInit(dataset)
+  call DatasetGriddedHDF5Init(dataset)
 
-  DatasetGriddedCreate => dataset
+  DatasetGriddedHDF5Create => dataset
     
-end function DatasetGriddedCreate
+end function DatasetGriddedHDF5Create
 
 ! ************************************************************************** !
 !
-! DatasetGriddedInit: Initializes members of global dataset class
+! DatasetGriddedHDF5Init: Initializes members of global dataset class
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedInit(this)
+subroutine DatasetGriddedHDF5Init(this)
 
   use Dataset_Base_class
   
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   
   call DatasetCommonHDF5Init(this)
   this%is_cell_centered = PETSC_FALSE
@@ -81,16 +82,16 @@ subroutine DatasetGriddedInit(this)
   nullify(this%origin)
   nullify(this%discretization)
     
-end subroutine DatasetGriddedInit
+end subroutine DatasetGriddedHDF5Init
 
 ! ************************************************************************** !
 !
-! DatasetGriddedCast: Casts a dataset_base_type to dataset_gridded_type
+! DatasetGriddedHDF5Cast: Casts a dataset_base_type to dataset_gridded_hdf5_type
 ! author: Glenn Hammond
 ! date: 08/29/13
 !
 ! ************************************************************************** !
-function DatasetGriddedCast(this)
+function DatasetGriddedHDF5Cast(this)
   
   use Dataset_Base_class
 
@@ -98,24 +99,24 @@ function DatasetGriddedCast(this)
 
   class(dataset_base_type), pointer :: this
 
-  class(dataset_gridded_type), pointer :: DatasetGriddedCast
+  class(dataset_gridded_hdf5_type), pointer :: DatasetGriddedHDF5Cast
   
-  nullify(DatasetGriddedCast)
+  nullify(DatasetGriddedHDF5Cast)
   select type (this)
-    class is (dataset_gridded_type)
-      DatasetGriddedCast => this
+    class is (dataset_gridded_hdf5_type)
+      DatasetGriddedHDF5Cast => this
   end select
     
-end function DatasetGriddedCast
+end function DatasetGriddedHDF5Cast
 
 ! ************************************************************************** !
 !
-! DatasetGriddedLoad: Load new data into dataset buffer
+! DatasetGriddedHDF5Load: Load new data into dataset buffer
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedLoad(this,option)
+subroutine DatasetGriddedHDF5Load(this,option)
   
   use Option_module
   use Time_Storage_module
@@ -123,29 +124,29 @@ subroutine DatasetGriddedLoad(this,option)
 
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   type(option_type) :: option
   
   if (DatasetCommonHDF5Load(this,option)) then
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetGriddedReadData(this,option)
+    call DatasetGriddedHDF5ReadData(this,option)
 #endif    
 !    call this%Reorder(option)
     call DatasetBaseReorder(this,option)
   endif
   call DatasetBaseInterpolateTime(this)
     
-end subroutine DatasetGriddedLoad
+end subroutine DatasetGriddedHDF5Load
 
 #if defined(PETSC_HAVE_HDF5)    
 ! ************************************************************************** !
 !
-! DatasetGriddedReadData: Read an hdf5 data into arrays
+! DatasetGriddedHDF5ReadData: Read an hdf5 data into arrays
 ! author: Glenn Hammond
 ! date: 10/25/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedReadData(this,option)
+subroutine DatasetGriddedHDF5ReadData(this,option)
 
   use hdf5
   use Option_module
@@ -154,7 +155,7 @@ subroutine DatasetGriddedReadData(this,option)
   
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   type(option_type) :: option
   
   integer(HID_T) :: file_id
@@ -216,7 +217,7 @@ subroutine DatasetGriddedReadData(this,option)
       call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
       ! set dimensionality of dataset
-      call DatasetSetDimension(this,word)
+      call DatasetGriddedHDF5SetDimension(this,word)
     else
       option%io_buffer = &
         'Dimension attribute must be included in hdf5 dataset file.'
@@ -225,7 +226,7 @@ subroutine DatasetGriddedReadData(this,option)
     attribute_name = "Discretization"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
-      attribute_dim(1) = DatasetGetNDimensions(this)
+      attribute_dim(1) = DatasetGriddedHDF5GetNDimensions(this)
       allocate(this%discretization(attribute_dim(1)))
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       call h5aread_f(attribute_id,H5T_NATIVE_DOUBLE,this%discretization, &
@@ -239,7 +240,7 @@ subroutine DatasetGriddedReadData(this,option)
     attribute_name = "Origin"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
-      attribute_dim(1) = DatasetGetNDimensions(this)
+      attribute_dim(1) = DatasetGriddedHDF5GetNDimensions(this)
       allocate(this%origin(attribute_dim(1)))
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       call h5aread_f(attribute_id,H5T_NATIVE_DOUBLE,this%origin, &
@@ -253,7 +254,7 @@ subroutine DatasetGriddedReadData(this,option)
     endif
   endif ! this%data_dim == DIM_NULL
   
-  num_spatial_dims = DatasetGetNDimensions(this)
+  num_spatial_dims = DatasetGriddedHDF5GetNDimensions(this)
   time_dim = -1
   num_times = 1
   if (associated(this%time_storage)) then
@@ -401,24 +402,24 @@ subroutine DatasetGriddedReadData(this,option)
   !TODO(geh): add to event log
   !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
                           
-end subroutine DatasetGriddedReadData
+end subroutine DatasetGriddedHDF5ReadData
 
 #endif
 
 ! ************************************************************************** !
 !
-! DatasetSetDimension: Sets the dimension of the dataset
+! DatasetGriddedHDF5SetDimension: Sets the dimension of the dataset
 ! author: Glenn Hammond
 ! date: 10/24/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetSetDimension(this,word)
+subroutine DatasetGriddedHDF5SetDimension(this,word)
 
   use String_module
 
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   character(len=MAXWORDLENGTH) :: word
 
   call StringToUpper(word)
@@ -439,51 +440,85 @@ subroutine DatasetSetDimension(this,word)
       this%data_dim = DIM_XYZ
   end select
       
-end subroutine DatasetSetDimension
+end subroutine DatasetGriddedHDF5SetDimension
 
 ! ************************************************************************** !
 !
-! DatasetGetNDimensions: Returns the number of dimensions
+! DatasetGriddedHDF5GetDimensionString: Returns a string describing dimension
+! author: Glenn Hammond
+! date: 10/24/11, 05/29/13, 10/22/13
+!
+! ************************************************************************** !
+function DatasetGriddedHDF5GetDimensionString(this)
+
+  implicit none
+  
+  class(dataset_gridded_hdf5_type) :: this
+  
+  character(len=MAXWORDLENGTH) :: DatasetGriddedHDF5GetDimensionString
+
+  select case(this%data_dim)
+    case(DIM_X)
+      DatasetGriddedHDF5GetDimensionString = 'X'
+    case(DIM_Y)
+      DatasetGriddedHDF5GetDimensionString = 'Y'
+    case(DIM_Z)
+      DatasetGriddedHDF5GetDimensionString = 'Z'
+    case(DIM_XY)
+      DatasetGriddedHDF5GetDimensionString = 'XY'
+    case(DIM_XZ)
+      DatasetGriddedHDF5GetDimensionString = 'XZ'
+    case(DIM_YZ)
+      DatasetGriddedHDF5GetDimensionString = 'YZ'
+    case(DIM_XYZ)
+      DatasetGriddedHDF5GetDimensionString = 'XYZ'
+  end select
+      
+end function DatasetGriddedHDF5GetDimensionString
+
+! ************************************************************************** !
+!
+! DatasetGriddedHDF5GetNDimensions: Returns the number of dimensions
 ! author: Glenn Hammond
 ! date: 10/24/11, 05/29/13
 !
 ! ************************************************************************** !
-function DatasetGetNDimensions(this)
+function DatasetGriddedHDF5GetNDimensions(this)
 
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   
-  PetscInt :: DatasetGetNDimensions
+  PetscInt :: DatasetGriddedHDF5GetNDimensions
 
   select case(this%data_dim)
     case(DIM_X,DIM_Y,DIM_Z)
-      DatasetGetNDimensions = ONE_INTEGER
+      DatasetGriddedHDF5GetNDimensions = ONE_INTEGER
     case(DIM_XY,DIM_XZ,DIM_YZ)
-      DatasetGetNDimensions = TWO_INTEGER
+      DatasetGriddedHDF5GetNDimensions = TWO_INTEGER
     case(DIM_XYZ)
-      DatasetGetNDimensions = THREE_INTEGER
+      DatasetGriddedHDF5GetNDimensions = THREE_INTEGER
     case default
-      DatasetGetNDimensions = ZERO_INTEGER
+      DatasetGriddedHDF5GetNDimensions = ZERO_INTEGER
   end select
       
-end function DatasetGetNDimensions
+end function DatasetGriddedHDF5GetNDimensions
 
 ! ************************************************************************** !
 !
-! DatasetGriddedInterpolateReal: Interpolates data from the dataset
+! DatasetGriddedHDF5InterpolateReal: Interpolates data from the dataset
 ! author: Glenn Hammond
 ! date: 10/26/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedInterpolateReal(this,xx,yy,zz,time,real_value,option)
+subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,option)
 
   use Utility_module, only : InterpolateBilinear
   use Option_module
   
   implicit none
   
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   PetscReal, intent(in) :: xx, yy, zz
   PetscReal :: time
   PetscReal :: real_value
@@ -499,7 +534,7 @@ subroutine DatasetGriddedInterpolateReal(this,xx,yy,zz,time,real_value,option)
   PetscInt :: nx
   character(len=MAXWORDLENGTH) :: word
   
-  call DatasetGriddedGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
+  call DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   
   spatial_interpolation_method = INTERPOLATION_LINEAR
   
@@ -581,20 +616,20 @@ subroutine DatasetGriddedInterpolateReal(this,xx,yy,zz,time,real_value,option)
       end select
   end select
   
-end subroutine DatasetGriddedInterpolateReal
+end subroutine DatasetGriddedHDF5InterpolateReal
 
 ! ************************************************************************** !
 !
-! DatasetGriddedGetIndices: Returns bounding indices for point in dataset
+! DatasetGriddedHDF5GetIndices: Returns bounding indices for point in dataset
 ! author: Glenn Hammond
 ! date: 10/26/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
+subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
 
   implicit none
 
-  class(dataset_gridded_type) :: this
+  class(dataset_gridded_hdf5_type) :: this
   PetscReal, intent(in)  :: xx, yy, zz
   PetscInt :: i, j, k
   PetscReal :: x, y, z
@@ -649,50 +684,84 @@ subroutine DatasetGriddedGetIndices(this,xx,yy,zz,i,j,k,x,y,z)
     endif
   endif
   
-end subroutine DatasetGriddedGetIndices
+end subroutine DatasetGriddedHDF5GetIndices
 
 ! ************************************************************************** !
 !
-! DatasetGriddedStrip: Strips allocated objects within XYZ dataset object
+! DatasetGriddedHDF5Print: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetGriddedHDF5Print(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_gridded_hdf5_type), target :: this
+  type(option_type) :: option
+
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
+  
+  write(option%fid_out,'(10x,''Grid Dimension: '',a)') &
+    trim(DatasetGriddedHDF5GetDimensionString(this))
+  if (this%is_cell_centered) then
+    write(option%fid_out,'(10x,''Is cell-centered?: yes'')') 
+  else
+    write(option%fid_out,'(10x,''Is cell-centered?: no'')')
+  endif
+  write(option%fid_out,'(10x,''Origin: '',3es12.4)') this%origin(:)
+  write(option%fid_out,'(10x,''Discretization: '',3es12.4)') &
+    this%discretization(:)
+  
+end subroutine DatasetGriddedHDF5Print
+
+! ************************************************************************** !
+!
+! DatasetGriddedHDF5Strip: Strips allocated objects within XYZ dataset object
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedStrip(this)
+subroutine DatasetGriddedHDF5Strip(this)
 
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(dataset_gridded_type)  :: this
+  class(dataset_gridded_hdf5_type)  :: this
   
   call DatasetCommonHDF5Strip(this)
   
   call DeallocateArray(this%origin)
   call DeallocateArray(this%discretization)
   
-end subroutine DatasetGriddedStrip
+end subroutine DatasetGriddedHDF5Strip
 
 ! ************************************************************************** !
 !
-! DatasetGriddedDestroy: Destroys a dataset
+! DatasetGriddedHDF5Destroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetGriddedDestroy(this)
+subroutine DatasetGriddedHDF5Destroy(this)
 
   implicit none
   
-  class(dataset_gridded_type), pointer :: this
+  class(dataset_gridded_hdf5_type), pointer :: this
   
   if (.not.associated(this)) return
   
-  call DatasetGriddedStrip(this)
+  call DatasetGriddedHDF5Strip(this)
   
   deallocate(this)
   nullify(this)
   
-end subroutine DatasetGriddedDestroy
+end subroutine DatasetGriddedHDF5Destroy
 
-end module Dataset_Gridded_class
+end module Dataset_Gridded_HDF5_class

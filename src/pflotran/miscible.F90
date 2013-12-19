@@ -46,7 +46,8 @@ module Miscible_module
          MiscibleSetup, &
          MiscibleMaxChange, MiscibleUpdateSolution, &
          MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
-         MiscibleUpdateAuxVars,MiscibleComputeMassBalance
+         MiscibleUpdateAuxVars,MiscibleComputeMassBalance, &
+         MiscibleDestroy
 
 contains
 
@@ -3161,5 +3162,25 @@ subroutine MiscibleSetPlotVariables(realization)
 
 end subroutine MiscibleSetPlotVariables
 
+
+! ************************************************************************** !
+!
+! MphaseDestroy: Deallocates variables associated with Miscible
+! author: Gautam Bisht
+! date: 11/27/13
+!
+! ************************************************************************** !
+subroutine MiscibleDestroy(realization)
+
+  use Realization_class
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  ! need to free array in aux vars
+  !call MiscibleAuxDestroy(patch%aux%miscible)
+
+end subroutine MiscibleDestroy
 
 end module Miscible_module

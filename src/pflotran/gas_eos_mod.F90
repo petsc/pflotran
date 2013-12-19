@@ -16,13 +16,15 @@ subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
 
    
     PetscReal, parameter:: Rg=8.31415 
-    PetscReal, parameter:: Cpg=Rg*2.5 !maybe
+    ! Cpg units: J/mol-K
+    PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+!geh    PetscReal, parameter:: Cpg=Rg*2.5 !maybe
     PetscReal  t
     
     t = tc + 273.15
     d= p / t / Rg /1D3
-    h= Cpg * t * energyscale*1D3
-    u= (Cpg- Rg) * t * energyscale*1D3
+    h= Cv_air * t * energyscale*1D3
+    u= (Cv_air - Rg) * t * energyscale*1D3
 
    
 end subroutine ideal_gaseos_noderiv
@@ -34,20 +36,22 @@ subroutine ideal_gaseos(p,tc,energyscale,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
     PetscReal, intent(out):: d,d_p,d_t,h,h_p,h_t,u,u_p,u_t
 
     PetscReal, parameter:: Rg=8.31415 
-    PetscReal, parameter:: Cpg=Rg*2.5 ! maybe
+    ! Cpg units: J/mol-K
+    PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+!geh    PetscReal, parameter:: Cpg=Rg*2.5 ! maybe
     PetscReal  t
 
     t = tc + 273.15
     d= p / t / Rg/1D3
-    h= Cpg * t * energyscale*1D3
-    u= (Cpg- Rg) * t * energyscale*1D3
+    h= Cv_air * t * energyscale*1D3
+    u= (Cv_air - Rg) * t * energyscale*1D3
 
     d_p=  d / p
     d_t=- d / t
     h_p=0.
-    h_t=Cpg * energyscale*1D3
+    h_t=Cv_air * energyscale*1D3
     u_p=0.
-    u_t= (Cpg- Rg) * energyscale*1D3
+    u_t= (Cv_air - Rg) * energyscale*1D3
 
 !print *,'ideal gas ',energyscale,h,h_p,h_t,u,u_p,u_t
 end subroutine ideal_gaseos

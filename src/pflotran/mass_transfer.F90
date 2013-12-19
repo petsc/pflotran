@@ -1,6 +1,6 @@
 module Mass_Transfer_module
  
-  use Dataset_Global_class
+  use Dataset_Global_HDF5_class
   
   use PFLOTRAN_Constants_module
 
@@ -15,7 +15,7 @@ module Mass_Transfer_module
   type, public :: mass_transfer_type
     PetscInt :: idof
     character(len=MAXWORDLENGTH) :: name
-    class(dataset_global_type), pointer :: dataset
+    class(dataset_global_hdf5_type), pointer :: dataset
     Vec :: vec
     type(mass_transfer_type), pointer :: next
   end type mass_transfer_type
@@ -88,7 +88,7 @@ subroutine MassTransferRead(mass_transfer,input,option)
         call InputReadInt(input,option,mass_transfer%idof)
         call InputErrorMsg(input,option,'idof','MASS_TRANSFER')
       case('DATASET')
-        mass_transfer%dataset => DatasetGlobalCreate()
+        mass_transfer%dataset => DatasetGlobalHDF5Create()
         call InputReadNChars(input,option, &
                              mass_transfer%dataset%name,&
                              MAXWORDLENGTH,PETSC_TRUE)
@@ -175,9 +175,9 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
   dataset_base_ptr => &
     DatasetBaseGetPointer(available_datasets,mass_transfer%dataset%name, &
                           string,option)
-  call DatasetGlobalDestroy(mass_transfer%dataset)
+  call DatasetGlobalHDF5Destroy(mass_transfer%dataset)
   select type(dataset => dataset_base_ptr)
-    class is(dataset_global_type)
+    class is(dataset_global_hdf5_type)
       mass_transfer%dataset => dataset
     class default
       option%io_buffer = 'DATASET ' // trim(dataset%name) // 'is not of ' // &
@@ -243,7 +243,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
   
   if (.not.associated(mass_transfer)) return
 
-  call DatasetGlobalLoad(mass_transfer%dataset,option)
+  call DatasetGlobalHDF5Load(mass_transfer%dataset,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
   ! multiply by -1.d0 for positive contribution to residual

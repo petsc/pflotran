@@ -106,7 +106,8 @@ end subroutine TimestepperSurfaceInit
 subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
                                         option, &
                                         stop_flag,plot_flag, &
-                                        transient_plot_flag)
+                                        transient_plot_flag, &
+                                        checkpoint_flag)
 
   use Option_module
 
@@ -118,6 +119,7 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
   PetscInt :: stop_flag
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
 
   PetscReal :: dt
   PetscReal :: target_time
@@ -157,6 +159,7 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
 
       if(max_time == cur_waypoint%time) then
         if(cur_waypoint%print_output) plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
       endif
 
   else
@@ -181,6 +184,7 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
       target_time = target_time + dt
 
       if(cur_waypoint%print_output) plot_flag = PETSC_TRUE
+      if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
     endif
   
   endif

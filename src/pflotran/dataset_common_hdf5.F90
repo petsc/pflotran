@@ -25,6 +25,7 @@ module Dataset_Common_HDF5_class
             DatasetCommonHDF5ReadSelectCase, &
             DatasetCommonHDF5Load, &
             DatasetCommonHDF5IsCellIndexed, &
+            DatasetCommonHDF5Print, &
             DatasetCommonHDF5Strip, &
             DatasetCommonHDF5Destroy
   
@@ -513,6 +514,41 @@ function DatasetCommonHDF5GetPointer(dataset_list, dataset_name, &
   end select
 
 end function DatasetCommonHDF5GetPointer
+
+! ************************************************************************** !
+!
+! DatasetCommonHDF5Print: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetCommonHDF5Print(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_common_hdf5_type) :: this
+  type(option_type) :: option
+    
+  if (len_trim(this%hdf5_dataset_name) > 0) then
+    write(option%fid_out,'(10x,''HDF5 Dataset Name: '',a)') &
+      trim(this%hdf5_dataset_name)
+  endif
+  if (this%realization_dependent) then
+    write(option%fid_out,'(10x,''Realization Dependent: yes'')')
+  else
+    write(option%fid_out,'(10x,''Realization Dependent: no'')') 
+  endif
+  if (this%is_cell_indexed) then
+    write(option%fid_out,'(10x,''Cell Indexed: yes'')')
+  else
+    write(option%fid_out,'(10x,''Cell Indexed: no'')')
+  endif
+  write(option%fid_out,'(10x,''Maximum Buffer Size: '',i3)') &
+    this%max_buffer_size
+  
+end subroutine DatasetCommonHDF5Print
 
 ! ************************************************************************** !
 !

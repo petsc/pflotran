@@ -1002,7 +1002,7 @@ subroutine RealProcessFlowConditions(realization)
                            string,option)
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE,MIS_MODE,TH_MODE)
+      case default
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! find dataset
           call DatasetFindInList(realization%datasets, &
@@ -1647,6 +1647,21 @@ subroutine RealizationAddWaypointsToList(realization)
       enddo
     endif
 
+  endif
+
+  ! add waypoints for periodic checkpoint
+  if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
+
+    ! standard output
+    temp_real = 0.d0
+    do
+      temp_real = temp_real + realization%output_option%periodic_checkpoint_time_incr
+      if (temp_real > final_time) exit
+      waypoint => WaypointCreate()
+      waypoint%time = temp_real
+      waypoint%print_checkpoint = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoints)
+    enddo
   endif
 
 end subroutine RealizationAddWaypointsToList

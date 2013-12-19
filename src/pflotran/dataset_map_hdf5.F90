@@ -1,4 +1,4 @@
-module Dataset_Map_class
+module Dataset_Map_HDF5_class
  
   use Dataset_Common_HDF5_class
   
@@ -10,7 +10,7 @@ module Dataset_Map_class
 
 #include "finclude/petscsys.h"
 
-  type, public, extends(dataset_common_hdf5_type) :: dataset_map_type
+  type, public, extends(dataset_common_hdf5_type) :: dataset_map_hdf5_type
     character(len=MAXSTRINGLENGTH) :: h5_dataset_map_name
     character(len=MAXSTRINGLENGTH) :: map_filename
     PetscInt, pointer :: mapping(:,:)
@@ -19,53 +19,54 @@ module Dataset_Map_class
     PetscInt, pointer :: datatocell_ids(:)
     PetscInt, pointer :: cell_ids_local(:)
     PetscBool         :: first_time
-  end type dataset_map_type
+  end type dataset_map_hdf5_type
   
   PetscInt, parameter :: MAX_NSLICE = 100
   
-  public :: DatasetMapCreate, &
-            DatasetMapInit, &
-            DatasetMapCast, &
-            DatasetMapRead, &
-            DatasetMapLoad, &
-            DatasetMapDestroy
+  public :: DatasetMapHDF5Create, &
+            DatasetMapHDF5Init, &
+            DatasetMapHDF5Cast, &
+            DatasetMapHDF5Read, &
+            DatasetMapHDF5Load, &
+            DatasetMapHDF5Print, &
+            DatasetMapHDF5Destroy
   
 contains
 
 ! ************************************************************************** !
 !
-! DatasetMapCreate: Creates global dataset class
+! DatasetMapHDF5Create: Creates global dataset class
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-function DatasetMapCreate()
+function DatasetMapHDF5Create()
   
   implicit none
   
-  class(dataset_map_type), pointer :: dataset
+  class(dataset_map_hdf5_type), pointer :: dataset
 
-  class(dataset_map_type), pointer :: DatasetMapCreate
+  class(dataset_map_hdf5_type), pointer :: DatasetMapHDF5Create
   
   allocate(dataset)
-  call DatasetMapInit(dataset)
+  call DatasetMapHDF5Init(dataset)
 
-  DatasetMapCreate => dataset
+  DatasetMapHDF5Create => dataset
     
-end function DatasetMapCreate
+end function DatasetMapHDF5Create
 
 ! ************************************************************************** !
 !
-! DatasetMapInit: Initializes members of global dataset class
+! DatasetMapHDF5Init: Initializes members of global dataset class
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetMapInit(this)
+subroutine DatasetMapHDF5Init(this)
   
   implicit none
   
-  class(dataset_map_type) :: this
+  class(dataset_map_hdf5_type) :: this
   
   call DatasetCommonHDF5Init(this)
   this%h5_dataset_map_name = ''
@@ -77,15 +78,15 @@ subroutine DatasetMapInit(this)
   nullify(this%cell_ids_local)
   this%first_time = PETSC_TRUE
     
-end subroutine DatasetMapInit
+end subroutine DatasetMapHDF5Init
 
 ! ************************************************************************** !
 !
-! DatasetMapCast: Casts a dataset_base_type to dataset_map_type
+! DatasetMapHDF5Cast: Casts a dataset_base_type to dataset_map_hdf5_type
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-function DatasetMapCast(this)
+function DatasetMapHDF5Cast(this)
 
   use Dataset_Base_class
   
@@ -93,24 +94,24 @@ function DatasetMapCast(this)
 
   class(dataset_base_type), pointer :: this
 
-  class(dataset_map_type), pointer :: DatasetMapCast
+  class(dataset_map_hdf5_type), pointer :: DatasetMapHDF5Cast
   
-  nullify(DatasetMapCast)
+  nullify(DatasetMapHDF5Cast)
   select type (this)
-    class is (dataset_map_type)
-      DatasetMapCast => this
+    class is (dataset_map_hdf5_type)
+      DatasetMapHDF5Cast => this
   end select
     
-end function DatasetMapCast
+end function DatasetMapHDF5Cast
 
 ! ************************************************************************** !
 !
-! DatasetMapRead: Reads in contents of a dataset card
+! DatasetMapHDF5Read: Reads in contents of a dataset card
 ! author: Glenn Hammond
 ! date: 01/12/11, 06/04/13
 ! 
 ! ************************************************************************** !
-subroutine DatasetMapRead(this,input,option)
+subroutine DatasetMapHDF5Read(this,input,option)
 
   use Option_module
   use Input_Aux_module
@@ -118,7 +119,7 @@ subroutine DatasetMapRead(this,input,option)
 
   implicit none
   
-  class(dataset_map_type) :: this
+  class(dataset_map_hdf5_type) :: this
   type(input_type) :: input
   type(option_type) :: option
   
@@ -162,16 +163,16 @@ subroutine DatasetMapRead(this,input,option)
     this%map_filename = this%filename
   endif
   
-end subroutine DatasetMapRead
+end subroutine DatasetMapHDF5Read
 
 ! ************************************************************************** !
 !
-! DatasetMapLoad: Load new data into dataset buffer
+! DatasetMapHDF5Load: Load new data into dataset buffer
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetMapLoad(this,option)
+subroutine DatasetMapHDF5Load(this,option)
   
   use Option_module
   use Time_Storage_module
@@ -179,32 +180,32 @@ subroutine DatasetMapLoad(this,option)
 
   implicit none
   
-  class(dataset_map_type) :: this
+  class(dataset_map_hdf5_type) :: this
   type(option_type) :: option
   
   if (DatasetCommonHDF5Load(this,option)) then
 #if defined(PETSC_HAVE_HDF5)    
     if (.not.associated(this%mapping)) then
-      call DatasetMapReadMap(this,option)
+      call DatasetMapHDF5ReadMap(this,option)
     endif
-    call DatasetMapReadData(this,option)
+    call DatasetMapHDF5ReadData(this,option)
 #endif    
 !    call this%Reorder(option)
     call DatasetBaseReorder(this,option)
   endif
   call DatasetBaseInterpolateTime(this)
     
-end subroutine DatasetMapLoad
+end subroutine DatasetMapHDF5Load
 
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
-! DatasetMapReadData: Read an hdf5 data into a array
+! DatasetMapHDF5ReadData: Read an hdf5 data into a array
 ! author: Glenn Hammond
 ! date: 10/25/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetMapReadData(this,option)
+subroutine DatasetMapHDF5ReadData(this,option)
 
   use hdf5
   use Option_module
@@ -213,7 +214,7 @@ subroutine DatasetMapReadData(this,option)
   
   implicit none
   
-  class(dataset_map_type) :: this
+  class(dataset_map_hdf5_type) :: this
   type(option_type) :: option
   
   integer(HID_T) :: file_id
@@ -399,16 +400,16 @@ subroutine DatasetMapReadData(this,option)
   !TODO(geh): add to event log
   !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
                           
-end subroutine DatasetMapReadData
+end subroutine DatasetMapHDF5ReadData
 
 ! ************************************************************************** !
 !
-! DatasetMapReadMap: Read an hdf5 array 
+! DatasetMapHDF5ReadMap: Read an hdf5 array 
 ! author: Glenn Hammond
 ! date: 10/25/11, 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetMapReadMap(this,option)
+subroutine DatasetMapHDF5ReadMap(this,option)
 
   use hdf5
   use Option_module
@@ -417,7 +418,7 @@ subroutine DatasetMapReadMap(this,option)
   
   implicit none
   
-  class(dataset_map_type) :: this
+  class(dataset_map_hdf5_type) :: this
   type(option_type) :: option
   
   integer(HID_T) :: file_id
@@ -541,23 +542,57 @@ subroutine DatasetMapReadMap(this,option)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)  
   
-end subroutine DatasetMapReadMap
+end subroutine DatasetMapHDF5ReadMap
 #endif
 
 ! ************************************************************************** !
 !
-! DatasetMapStrip: Strips allocated objects within Map dataset object
+! DatasetMapHDF5Print: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetMapHDF5Print(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_map_hdf5_type), target :: this
+  type(option_type) :: option
+  
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
+
+  if (len_trim(this%h5_dataset_map_name) > 0) then
+    write(option%fid_out,'(10x,''HDF5 Dataset Map Name: '',a)') &
+      trim(this%h5_dataset_map_name)
+  endif
+  if (len_trim(this%map_filename) > 0) then
+    write(option%fid_out,'(10x,''Map Filename: '',a)') &
+      trim(this%map_filename)
+  endif
+  write(option%fid_out,'(10x,''Global Dimensions: '',2i8)') &
+    this%map_dims_global(:)
+  
+end subroutine DatasetMapHDF5Print
+
+! ************************************************************************** !
+!
+! DatasetMapHDF5Strip: Strips allocated objects within Map dataset object
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetMapStrip(this)
+subroutine DatasetMapHDF5Strip(this)
 
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(dataset_map_type)  :: this
+  class(dataset_map_hdf5_type)  :: this
   
   call DatasetCommonHDF5Strip(this)
   
@@ -565,28 +600,28 @@ subroutine DatasetMapStrip(this)
   call DeallocateArray(this%datatocell_ids)
   call DeallocateArray(this%cell_ids_local)
   
-end subroutine DatasetMapStrip
+end subroutine DatasetMapHDF5Strip
 
 ! ************************************************************************** !
 !
-! DatasetMapDestroy: Destroys a dataset
+! DatasetMapHDF5Destroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 05/29/13
 !
 ! ************************************************************************** !
-subroutine DatasetMapDestroy(this)
+subroutine DatasetMapHDF5Destroy(this)
 
   implicit none
   
-  class(dataset_map_type), pointer :: this
+  class(dataset_map_hdf5_type), pointer :: this
   
   if (.not.associated(this)) return
   
-  call DatasetMapStrip(this)
+  call DatasetMapHDF5Strip(this)
   
   deallocate(this)
   nullify(this)
   
-end subroutine DatasetMapDestroy
+end subroutine DatasetMapHDF5Destroy
 
-end module Dataset_Map_class
+end module Dataset_Map_HDF5_class

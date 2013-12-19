@@ -33,7 +33,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Region_module
   use Structured_Grid_module
   use Utility_module, only : DotProduct
-  use Dataset_Gridded_class
+  use Dataset_Gridded_HDF5_class
   use Dataset_Ascii_class
   
   use General_Aux_module
@@ -62,7 +62,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: gravity_magnitude
   PetscReal :: z_offset
   
-  class(dataset_gridded_type), pointer :: datum_dataset
+  class(dataset_gridded_hdf5_type), pointer :: datum_dataset
   PetscReal :: datum_dataset_rmax
   PetscReal :: datum_dataset_rmin
   
@@ -142,7 +142,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         select type(dataset=>condition%datum)
           class is (dataset_ascii_type)
             datum = dataset%rarray(1:3)
-          class is (dataset_gridded_type)
+          class is (dataset_gridded_hdf5_type)
             datum_dataset => dataset
             !TODO(geh): move this to FlowSubConditionUpdateDataset()
             !call DatasetLoad(datum_dataset,option)
@@ -252,7 +252,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       pressure0 = pressure
     enddo
 
-    ! compute pressures above datum, if any
+    ! compute pressures below datum, if any
     pressure0 = pressure_array(idatum)
     select case(option%iflowmode)
       case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
@@ -337,7 +337,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         dist_x = 0.d0
         dist_y = 0.d0
         !TODO(geh): check that sign is correct for dx/y_conn
-        call DatasetGriddedInterpolateReal(datum_dataset, &
+        call DatasetGriddedHDF5InterpolateReal(datum_dataset, &
                                            grid%x(ghosted_id)-dx_conn, &
                                            grid%y(ghosted_id)-dy_conn, &
                                            0.d0, &

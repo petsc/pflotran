@@ -276,11 +276,13 @@ subroutine PMTHFinalizeTimestep(this)
   
   call THMaxChange(this%realization)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & " dtmpmx= ",1pe12.4)') &
+      this%option%dpmax,this%option%dtmpmax
   endif  
   
 end subroutine PMTHFinalizeTimestep
@@ -582,7 +584,7 @@ end subroutine PMTHTimeCut
 ! ************************************************************************** !
 subroutine PMTHUpdateSolution(this)
 
-  use TH_module, only : THUpdateSolution
+  use TH_module, only : THUpdateSolution, THUpdateSurfaceBC
   use Condition_module
 
   implicit none
@@ -606,6 +608,10 @@ subroutine PMTHUpdateSolution(this)
   endif  
   ! end from RealizationUpdate()
   call THUpdateSolution(this%realization)
+#ifdef SURFACE_FLOW
+  if(this%option%nsurfflowdof>0) &
+    call THUpdateSurfaceBC(this%realization)
+#endif
 
 end subroutine PMTHUpdateSolution     
 

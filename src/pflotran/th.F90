@@ -33,7 +33,8 @@ module TH_module
          THComputeMassBalance, THResidualToMass, &
          THSecondaryHeat, THSecondaryHeatJacobian, & 
          THUpdateAuxVars, THDestroy, &
-         THCheckUpdatePost, THCheckUpdatePre
+         THCheckUpdatePost, THCheckUpdatePre, &
+         THUpdateSurfaceBC
          
   PetscInt, parameter :: jh2o = 1
 
@@ -924,7 +925,7 @@ subroutine THUpdateAuxVarsPatch(realization)
 
       do idof=1,option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET,HET_SURF_SEEPAGE_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -2451,6 +2452,8 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: res_pert_dn(option%nflowdof)
   PetscReal :: J_pert_dn(option%nflowdof,option%nflowdof)
 
+  PetscBool :: hw_present
+
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
   PetscReal :: p_g
@@ -2491,12 +2494,15 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
   dq_dp_dn = 0.d0
   dq_dt_dn = 0.d0
   duxmol_dxmol_dn = 0.d0
+
+  hw_present = PETSC_TRUE ! assume standing water is present when running with
+                          ! surface-flow
         
-  ! Flow   
+  ! Flow
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(TH_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
       Dq = perm_dn / dd_up
       ! Flow term
       if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
@@ -2524,12 +2530,14 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
         dphi_dt_dn = dgravity_dden_dn*aux_var_dn%dden_dt
 
-        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC .or. &
+            ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
             dphi_dp_dn = 0.d0
             dphi_dt_dn = 0.d0
+            if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) hw_present = PETSC_FALSE
           endif
         endif        
         
@@ -2584,9 +2592,6 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
       duh_dt_dn = aux_var_up%dh_dt
     endif
-    if (ibndtype(TH_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
-      duxmol_dxmol_dn = 1.d0
-    endif
   else
     uh = aux_var_dn%h
     duh_dp_dn = aux_var_dn%dh_dp
@@ -2605,32 +2610,21 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
   Jdn(option%nflowdof,2) =  &
      ((dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn)
 
-  ! Diffusion term   
-  select case(ibndtype(TH_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
-
-      diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
-      ddiff_dp_dn = diffdp * (aux_var_dn%dsat_dp*global_aux_var_dn%den(1)+ &
-                                global_aux_var_dn%sat(1)*aux_var_dn%dden_dp)
-      ddiff_dt_dn = diffdp * global_aux_var_dn%sat(1)*aux_var_dn%dden_dt
-
-#ifdef ICE
-#ifdef REMOVE_SATURATION
-      diff = diffdp * global_aux_var_dn%den(1)
-      
-      ddiff_dp_dn = diffdp * aux_var_dn%dden_dp
-      ddiff_dt_dn = diffdp * aux_var_dn%dden_dt
-
-#endif
-#endif
-  end select
-   
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
-      !cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
-      Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
+      !cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1))
+
+      if (ibndtype(TH_TEMPERATURE_DOF) /= HET_SURF_SEEPAGE_BC) then
+        Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
+      else
+        ! Only add contribution to Jacboian term for heat equation if
+        ! standing water is present
+        if (hw_present) then
+          Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0)
+        endif
+      endif
 #ifdef ICE
       ! Added by Satish Karra, 11/21/11
       satg_up = aux_var_up%sat_gas
@@ -2725,8 +2719,7 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
                   area,dist_gravity,option,v_darcy,Diff_dn, &
                   res)
     if (ibndtype(TH_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
-        ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
-        ibndtype(TH_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+        ibndtype(TH_TEMPERATURE_DOF) == ZERO_GRADIENT_BC ) then
       x_pert_up = x_up
     endif
 
@@ -2804,7 +2797,8 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
                     Res)
   use Option_module
-  use Water_EOS_module 
+  use Water_EOS_module
+  use Condition_module
  
   implicit none
   
@@ -2824,6 +2818,7 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
+  PetscBool :: hw_present
   
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_dn, Ddiffgas_up
@@ -2844,12 +2839,13 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
+  hw_present = PETSC_TRUE ! assume standing water is present
 
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(TH_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_SURF_SEEPAGE_BC)
       Dq = perm_dn / dd_up
       ! Flow term
       if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
@@ -2867,10 +2863,12 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
 
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
-        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
-              ! flow in         ! boundary cell is <= pref
+        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC .or. &
+            ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) then
+          ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1) - option%reference_pressure < eps) then
             dphi = 0.d0
+            if(ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC) hw_present = PETSC_FALSE
           endif
         endif
         
@@ -2895,6 +2893,11 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
         endif 
       endif
 
+    case default
+      option%io_buffer = 'BC type "' // trim(GetSubConditionName(ibndtype(TH_PRESSURE_DOF))) // &
+        '" not implemented in TH mode.'
+      call printErrMsg(option)
+
   end select
 
   q = v_darcy * area
@@ -2912,83 +2915,72 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   enddo
   fluxe = fluxe + q*density_ave*uh
 
-  ! Diffusion term   
-  select case(ibndtype(TH_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-    
-!      if (global_aux_var_up%sat > eps .and. global_aux_var_dn%sat > eps) then
-!        diff = diffdp * 0.25D0*(global_aux_var_up%sat(1)+global_aux_var_dn%sat(1))* &
-!               (global_aux_var_up%den+global_aux_var_dn%den)
-
-!pcl  if (global_aux_var_dn%sat(1) > eps) then
-        diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
- !         fluxm(ispec) = fluxm(ispec) + diff*aux_var_dn%diff(ispec)* &
-!                          (aux_var_up%xmol(ispec)-aux_var_dn%xmol(ispec))
-!!GB        fluxm(2) = fluxm(2) + diff*Diff_dn* &
-!!GB                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
-!pcl  endif
-#ifdef ICE
-
-#endif
-  end select
-  
-
-
   ! Conduction term
   select case(ibndtype(TH_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET)
       Dk = Dk_dn / dd_up
-      cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
+      cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1))
+
+      ! Check if the pressure BC is associated with surface-flow model and
+      ! there is no standing water, set heat conduction to be zero.
+      if (ibndtype(TH_PRESSURE_DOF) == HET_SURF_SEEPAGE_BC .and. &
+          .not.(hw_present)) then
+        cond = 0.d0
+      endif
+
       fluxe = fluxe + cond
 
 #ifdef ICE
-  ! Added by Satish Karra,
+      ! Added by Satish Karra,
       satg_up = aux_var_up%sat_gas
       satg_dn = aux_var_dn%sat_gas
- if ((satg_up > eps) .and. (satg_dn > eps)) then
-      p_g = option%reference_pressure ! set to reference pressure
-      deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
-      deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
-        
-      Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
-      p_ref = 1.01325d5 ! in Pa
-      T_ref = 25.d0 ! in deg C
-        
-      Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + &
-                 273.15d0)/(T_ref + 273.15d0))**(1.8)
-      Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + &
-                 273.15d0)/(T_ref + 273.15d0))**(1.8)
-      Ddiffgas_up = satg_up*deng_up*Diffg_up
-      Ddiffgas_dn = satg_dn*deng_dn*Diffg_dn
-      call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
-      call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
-      
-      ! vapor pressure lowering due to capillary pressure
-      fv_up = exp(-aux_var_up%pc/(global_aux_var_up%den(1)* &
-              R_gas_constant*(global_aux_var_up%temp(1) + 273.15d0)))
-      fv_dn = exp(-aux_var_dn%pc/(global_aux_var_dn%den(1)* &
-              R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0)))
+      if ((satg_up > eps) .and. (satg_dn > eps)) then
+        p_g = option%reference_pressure ! set to reference pressure
+        deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
+        deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
+  
+        Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
+        p_ref = 1.01325d5 ! in Pa
+        T_ref = 25.d0 ! in deg C
 
-      molg_up = psat_up*fv_up/p_g
-      molg_dn = psat_dn*fv_dn/p_g
+        Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + &
+                   273.15d0)/(T_ref + 273.15d0))**(1.8)
+        Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + &
+                   273.15d0)/(T_ref + 273.15d0))**(1.8)
+        Ddiffgas_up = satg_up*deng_up*Diffg_up
+        Ddiffgas_dn = satg_dn*deng_dn*Diffg_dn
+        call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
+        call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
         
-      if (molg_up > molg_dn) then 
-        upweight = 0.d0
-      else 
-        upweight = 1.d0
+        ! vapor pressure lowering due to capillary pressure
+        fv_up = exp(-aux_var_up%pc/(global_aux_var_up%den(1)* &
+                R_gas_constant*(global_aux_var_up%temp(1) + 273.15d0)))
+        fv_dn = exp(-aux_var_dn%pc/(global_aux_var_dn%den(1)* &
+                R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0)))
+
+        molg_up = psat_up*fv_up/p_g
+        molg_dn = psat_dn*fv_dn/p_g
+
+        if (molg_up > molg_dn) then 
+          upweight = 0.d0
+        else
+          upweight = 1.d0
+        endif
+
+        Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
+        fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
+                   dd_up*area
       endif
-        
-      Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
-      fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
-                 dd_up*area
-  endif
-
 #endif 
 
     case(NEUMANN_BC)
       fluxe = fluxe + aux_vars(TH_TEMPERATURE_DOF)*area*option%scale ! added by SK 10/18/11
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
+    case default
+      option%io_buffer = 'BC type "' // trim(GetSubConditionName(ibndtype(TH_TEMPERATURE_DOF))) // &
+        '" not implemented in TH mode.'
+      call printErrMsg(option)
   end select
 
   Res(1:option%nflowspec) = fluxm(:)
@@ -3290,7 +3282,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         case (HET_ENERGY_RATE_SS)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
-      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1
+      ! convert J/s --> MJ/s
+      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
@@ -4450,13 +4443,13 @@ subroutine THSetPlotVariables(realization)
                                ICE_SATURATION)
 
   name = 'Ice Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
                                ICE_DENSITY)
 #endif
 
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
 
@@ -4466,7 +4459,7 @@ subroutine THSetPlotVariables(realization)
 !                              GAS_DENSITY)
 
   name = 'Liquid Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_ENERGY)
 
@@ -4476,7 +4469,7 @@ subroutine THSetPlotVariables(realization)
 !                              GAS_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
@@ -4486,7 +4479,7 @@ subroutine THSetPlotVariables(realization)
 !                              GAS_VISCOSITY)
 
   name = 'Liquid Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_MOBILITY)
 
@@ -4763,6 +4756,150 @@ subroutine THSecondaryHeatJacobian(sec_heat_vars, &
                             
               
 end subroutine THSecondaryHeatJacobian                                  
+
+! ************************************************************************** !
+!
+! THUpdateSurfaceBC: Deallocates variables associated with Richard
+! author: Gautam Bisht
+! date: 10/23/13
+!
+! ************************************************************************** !
+subroutine THUpdateSurfaceBC(realization)
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Grid_module
+  use Region_module
+  use Coupler_module
+  use Connection_module
+  use Fluid_module
+  use Secondary_Continuum_Aux_module
+  use Secondary_Continuum_module
+  use String_module
+  use Water_EOS_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+#ifdef SURFACE_FLOW
+
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: iter
+  PetscInt :: niter
+  PetscReal :: eflux
+  PetscReal :: area
+  PetscReal :: den
+  PetscReal :: energy_old
+  PetscReal :: energy_new
+  PetscReal :: head_old
+  PetscReal :: head_new
+  PetscReal :: surfpress_old
+  PetscReal :: surfpress_new
+  PetscReal :: surftemp_old
+  PetscReal :: surftemp_new
+  PetscReal :: Cwi
+  PetscErrorCode :: ierr
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+
+  ! GB: Should probably add this as a member of option
+  Cwi = 4.188d3 ! [J/kg/K]
+
+  ! Maximum no. of iterations to compute updated temperature of surface-flow
+  niter = 20
+
+  ! boundary conditions
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    if(StringCompare(boundary_condition%name,'from_surface_bc')) then
+
+      if(boundary_condition%flow_condition%itype(TH_PRESSURE_DOF) /= &
+         HET_SURF_SEEPAGE_BC) then
+        call printErrMsg(option,'from_surface_bc is not of type ' // &
+                        'HET_SURF_SEEPAGE_BC')
+      endif
+
+      do iconn = 1, cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+
+#ifdef STORE_FLOWRATES
+      eflux = patch%boundary_fluxes(TH_TEMPERATURE_DOF,1,sum_connection) ! [MJ/s]
+        eflux = eflux/option%scale ! [MJ/s] to [J/s]
+#else
+        option%io_buffer = 'Recompile code with store_flowrates=1 for ' // &
+          'surface TH mode.'
+        call printErrMsg(option)
+#endif
+        area = cur_connection_set%area(iconn) ! [m^2]
+
+        surfpress_old = &
+          boundary_condition%flow_aux_real_var(TH_PRESSURE_DOF,iconn)
+        surftemp_old = &
+          boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn)
+        call density(surftemp_old,option%reference_pressure,den)
+
+        head_old = (surfpress_old - option%reference_pressure)/den/abs(option%gravity(3)) ! [m]
+        head_new = head_old - &
+          patch%boundary_velocities(1,sum_connection)*option%flow_dt ! [m]
+
+        if (head_new <= 0.d0) then
+          surfpress_new = option%reference_pressure
+          surftemp_new = option%reference_temperature
+        else
+          ! GB: Do not update temperature of BC because eflux needs to be split
+          !     into heat flux associated with:
+          !     - bulk movement of water, and
+          !     - conduction term.
+          !     To update temperature, heat loss associated with conduction
+          !     is required.
+          !
+          !call density(surftemp_old,option%reference_pressure,den)
+          !energy_old = den*Cwi*(surftemp_old + 273.15d0)*head_old
+          !energy_new = energy_old - eflux*option%flow_dt/area
+          !! Perform iteration to get updated temperature for surface-water
+          !do iter = 1,niter
+          !  surftemp_new = energy_new/(den*Cwi*head_new) - 273.15d0
+          !  call density(surftemp_new,option%reference_pressure,den)
+          !enddo
+          surfpress_new = head_new*(abs(option%gravity(3)))*den + &
+            option%reference_pressure
+        endif
+
+        boundary_condition%flow_aux_real_var(TH_PRESSURE_DOF,iconn) = &
+          surfpress_new
+        !boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn) = &
+        !  surftemp_new
+      enddo
+
+    else
+      sum_connection = sum_connection + cur_connection_set%num_connections
+    endif
+
+    boundary_condition => boundary_condition%next
+
+  enddo
+
+#endif
+
+end subroutine THUpdateSurfaceBC
 
 ! ************************************************************************** !
 !

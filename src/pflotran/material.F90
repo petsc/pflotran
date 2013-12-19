@@ -185,6 +185,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
   character(len=MAXSTRINGLENGTH) :: string
 
   PetscInt :: length
+  PetscBool :: therm_k_frz
+  PetscBool :: therm_k_exp_frz
+
+  therm_k_frz = PETSC_FALSE
+  therm_k_exp_frz = PETSC_FALSE
 
   input%ierr = 0
   do
@@ -243,11 +248,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
                            'MATERIAL_PROPERTY')
 #ifdef ICE
       case('THERMAL_CONDUCTIVITY_FROZEN') 
+        therm_k_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_frozen)
         call InputErrorMsg(input,option,'frozen thermal conductivity', &
                            'MATERIAL_PROPERTY')
       case('THERMAL_COND_EXPONENT_FROZEN') 
+        therm_k_exp_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
                              material_property%alpha_fr)
         call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
@@ -543,6 +550,18 @@ subroutine MaterialPropertyRead(material_property,input,option)
   
   enddo  
 
+#ifdef ICE
+  if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
+    if (.not.therm_k_frz) then
+      option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN not set in inputdeck'
+      call printErrMsg(option)
+    endif
+    if (.not.therm_k_exp_frz) then
+      option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN not set in inputdeck'
+      call printErrMsg(option)
+    endif
+  endif
+#endif
 
 end subroutine MaterialPropertyRead
 

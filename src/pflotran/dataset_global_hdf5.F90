@@ -1,4 +1,4 @@
-module Dataset_Global_class
+module Dataset_Global_HDF5_class
  
   use Dataset_Common_HDF5_class
   use DM_Kludge_module
@@ -11,70 +11,71 @@ module Dataset_Global_class
 
 #include "finclude/petscsys.h"
 
-  type, public, extends(dataset_common_hdf5_type) :: dataset_global_type
+  type, public, extends(dataset_common_hdf5_type) :: dataset_global_hdf5_type
     PetscInt :: local_size    ! local number of entries on this process
     PetscInt :: global_size   ! global number of entries
     type(dm_ptr_type), pointer :: dm_wrapper ! pointer 
-  end type dataset_global_type
+  end type dataset_global_hdf5_type
   
-  public :: DatasetGlobalCreate, &
-            DatasetGlobalInit, &
-            DatasetGlobalCast, &
-            DatasetGlobalLoad, &
-            DatasetGlobalDestroy
+  public :: DatasetGlobalHDF5Create, &
+            DatasetGlobalHDF5Init, &
+            DatasetGlobalHDF5Cast, &
+            DatasetGlobalHDF5Load, &
+            DatasetGlobalHDF5Print, &
+            DatasetGlobalHDF5Destroy
   
 contains
 
 ! ************************************************************************** !
 !
-! DatasetGlobalCreate: Creates global dataset class
+! DatasetGlobalHDF5Create: Creates global dataset class
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-function DatasetGlobalCreate()
+function DatasetGlobalHDF5Create()
   
   implicit none
   
-  class(dataset_global_type), pointer :: dataset
+  class(dataset_global_hdf5_type), pointer :: dataset
 
-  class(dataset_global_type), pointer :: DatasetGlobalCreate
+  class(dataset_global_hdf5_type), pointer :: DatasetGlobalHDF5Create
   
   allocate(dataset)
-  call DatasetGlobalInit(dataset)
+  call DatasetGlobalHDF5Init(dataset)
 
-  DatasetGlobalCreate => dataset
+  DatasetGlobalHDF5Create => dataset
     
-end function DatasetGlobalCreate
+end function DatasetGlobalHDF5Create
 
 ! ************************************************************************** !
 !
-! DatasetGlobalInit: Initializes members of global dataset class
+! DatasetGlobalHDF5Init: Initializes members of global dataset class
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalInit(this)
+subroutine DatasetGlobalHDF5Init(this)
   
   implicit none
   
-  class(dataset_global_type) :: this
+  class(dataset_global_hdf5_type) :: this
   
   call DatasetCommonHDF5Init(this)
   this%local_size = 0
   this%global_size = 0
   nullify(this%dm_wrapper)
     
-end subroutine DatasetGlobalInit
+end subroutine DatasetGlobalHDF5Init
 
 ! ************************************************************************** !
 !
-! DatasetGlobalCast: Casts a dataset_base_type to database_global_type
+! DatasetGlobalHDF5Cast: Casts a dataset_base_type to database_global_type
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-function DatasetGlobalCast(this)
+function DatasetGlobalHDF5Cast(this)
 
   use Dataset_Base_class
   
@@ -82,24 +83,24 @@ function DatasetGlobalCast(this)
 
   class(dataset_base_type), pointer :: this
 
-  class(dataset_global_type), pointer :: DatasetGlobalCast
+  class(dataset_global_hdf5_type), pointer :: DatasetGlobalHDF5Cast
   
-  nullify(DatasetGlobalCast)
+  nullify(DatasetGlobalHDF5Cast)
   select type (this)
-    class is (dataset_global_type)
-      DatasetGlobalCast => this
+    class is (dataset_global_hdf5_type)
+      DatasetGlobalHDF5Cast => this
   end select
     
-end function DatasetGlobalCast
+end function DatasetGlobalHDF5Cast
 
 ! ************************************************************************** !
 !
-! DatasetGlobalLoad: Load new data into dataset buffer
+! DatasetGlobalHDF5Load: Load new data into dataset buffer
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalLoad(this,option)
+subroutine DatasetGlobalHDF5Load(this,option)
   
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
@@ -110,7 +111,7 @@ subroutine DatasetGlobalLoad(this,option)
 
   implicit none
   
-  class(dataset_global_type) :: this
+  class(dataset_global_hdf5_type) :: this
   type(option_type) :: option
   
   if (.not.associated(this%dm_wrapper)) then
@@ -135,23 +136,23 @@ subroutine DatasetGlobalLoad(this,option)
       this%rbuffer = 0.d0
     endif
 #if defined(PETSC_HAVE_HDF5)    
-    call DatasetGlobalReadData(this,option,H5T_NATIVE_DOUBLE)
+    call DatasetGlobalHDF5ReadData(this,option,H5T_NATIVE_DOUBLE)
 #endif  
     ! no need to reorder since it is 1D in the h5 file.
   endif
   call DatasetBaseInterpolateTime(this)
     
-end subroutine DatasetGlobalLoad
+end subroutine DatasetGlobalHDF5Load
 
 #if defined(PETSC_HAVE_HDF5)    
 ! ************************************************************************** !
 !
-! DatasetGlobalReadData: Read an hdf5 array into a Petsc Vec
+! DatasetGlobalHDF5ReadData: Read an hdf5 array into a Petsc Vec
 ! author: Glenn Hammond
 ! date: 01/12/08
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalReadData(this,option,data_type)
+subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
                          
   use hdf5
   use Logging_module
@@ -168,7 +169,7 @@ subroutine DatasetGlobalReadData(this,option,data_type)
 
 ! Default HDF5 Mechanism 
  
-  class(dataset_global_type) :: this
+  class(dataset_global_hdf5_type) :: this
   type(option_type) :: option
   integer(HID_T) :: data_type 
   
@@ -200,7 +201,7 @@ subroutine DatasetGlobalReadData(this,option,data_type)
     call DMCreateGlobalVector(this%dm_wrapper%dm,global_vec,ierr)
     call DMDACreateNaturalVector(this%dm_wrapper%dm,natural_vec,ierr)
   else
-    option%io_buffer = 'ugdm not yet supported in DatasetGlobalReadData()'
+    option%io_buffer = 'ugdm not yet supported in DatasetGlobalHDF5ReadData()'
     call printErrMsg(option)
   endif
   
@@ -382,49 +383,75 @@ subroutine DatasetGlobalReadData(this,option,data_type)
   call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
 ! End of Default HDF5 Mechanism
 
-end subroutine DatasetGlobalReadData
+end subroutine DatasetGlobalHDF5ReadData
 #endif
 
 ! ************************************************************************** !
 !
-! DatasetGlobalStrip: Strips allocated objects within Global dataset object
+! DatasetGlobalHDF5Print: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetGlobalHDF5Print(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_global_hdf5_type), target :: this
+  type(option_type) :: option
+  
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
+
+  ! no need to print local_size as it varies by process
+  write(option%fid_out,'(10x,''Global Size: '',i2)') this%global_size
+  
+end subroutine DatasetGlobalHDF5Print
+
+! ************************************************************************** !
+!
+! DatasetGlobalHDF5Strip: Strips allocated objects within Global dataset object
 ! author: Glenn Hammond
 ! date: 05/03/13
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalStrip(this)
+subroutine DatasetGlobalHDF5Strip(this)
 
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(dataset_global_type)  :: this
+  class(dataset_global_hdf5_type)  :: this
   
   call DatasetCommonHDF5Strip(this)
   nullify(this%dm_wrapper) ! do not deallocate, as this is solely a pointer
   
-end subroutine DatasetGlobalStrip
+end subroutine DatasetGlobalHDF5Strip
 
 ! ************************************************************************** !
 !
-! DatasetGlobalDestroy: Destroys a dataset
+! DatasetGlobalHDF5Destroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 01/12/11
 !
 ! ************************************************************************** !
-subroutine DatasetGlobalDestroy(this)
+subroutine DatasetGlobalHDF5Destroy(this)
 
   implicit none
   
-  class(dataset_global_type), pointer :: this
+  class(dataset_global_hdf5_type), pointer :: this
   
   if (.not.associated(this)) return
   
-  call DatasetGlobalStrip(this)
+  call DatasetGlobalHDF5Strip(this)
   
   deallocate(this)
   nullify(this)
   
-end subroutine DatasetGlobalDestroy
+end subroutine DatasetGlobalHDF5Destroy
 
-end module Dataset_Global_class
+end module Dataset_Global_HDF5_class

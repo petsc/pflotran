@@ -110,6 +110,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   PetscBool :: failure
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
   class(pm_base_type), pointer :: cur_pm
   PetscReal :: dt_max_loc
   PetscReal :: dt_max_glb
@@ -130,6 +131,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     call SetOutputFlags(this)
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
+    checkpoint_flag = PETSC_FALSE
     
     cur_pm => this%pm_list
 
@@ -152,7 +154,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
-                                        transient_plot_flag)
+                                        transient_plot_flag,checkpoint_flag)
 
     this%option%surf_flow_dt = this%timestepper%dt
 
@@ -207,10 +209,18 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
                          plot_flag, transient_plot_flag)
     !endif
 
-    if (this%is_master .and. &
-        this%option%checkpoint_flag .and. &
-        mod(this%timestepper%steps, &
-        this%option%checkpoint_frequency) == 0) then
+    if (this%is_master) then
+      if (checkpoint_flag) exit
+      if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
+        if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
+         checkpoint_flag = PETSC_TRUE
+        endif
+      endif
+    else
+      checkpoint_flag = PETSC_FALSE
+    endif
+
+    if (checkpoint_flag) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
       ! Set data needed by process-model
@@ -292,6 +302,7 @@ subroutine PMCSurfaceGetAuxData(this)
 
   use Surface_Flow_module
   use Surface_TH_module
+  use Surface_TH_module
   use Option_module
 
   implicit none
@@ -333,10 +344,23 @@ subroutine PMCSurfaceGetAuxData(this)
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
             call SurfaceFlowUpdateSurfStateNew(pmc%surf_realization)
           case (TH_MODE)
-            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
-                                           pmc%surf_realization)
-            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
-            call printErrMsg(this%option)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 pmc%surf_realization%surf_field%press_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               pmc%surf_realization%surf_field%press_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_temp_top_bc, &
+                                 pmc%surf_realization%surf_field%temp_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_temp_top_bc, &
+                               pmc%surf_realization%surf_field%temp_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call SurfaceTHUpdateSurfStateNew(pmc%surf_realization)
         end select
     end select
   endif
@@ -344,7 +368,8 @@ subroutine PMCSurfaceGetAuxData(this)
 end subroutine PMCSurfaceGetAuxData
 
 ! ************************************************************************** !
-!> This routine
+!> This routine extracts data from surface flow model and stores it sim-aux,
+!! which will be required by the subsurface flow model.
 !!
 !> @author
 !! Gautam Bisht, LBNL
@@ -353,9 +378,17 @@ end subroutine PMCSurfaceGetAuxData
 ! ************************************************************************** !
 subroutine PMCSurfaceSetAuxData(this)
 
+  use Connection_module
+  use Coupler_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  use Surface_Global_Aux_module
   use Surface_Flow_module
   use Surface_TH_module
-  use Option_module
+  use Surface_TH_Aux_module
+  use Surface_Realization_class
+  use String_module
 
   implicit none
   
@@ -364,7 +397,27 @@ subroutine PMCSurfaceSetAuxData(this)
 
   class(pmc_surface_type) :: this
 
+  type(grid_type), pointer :: surf_grid
+  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(patch_type), pointer :: surf_patch
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  class(surface_realization_type), pointer :: surf_realization
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iend
+  PetscInt :: istart
+  PetscInt :: iconn
+
   PetscReal :: dt
+  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: surf_head_p(:)
+  PetscReal, pointer :: surf_temp_p(:)
+  PetscReal, pointer :: surf_hflux_p(:)
+  PetscBool :: found
+  PetscReal :: esrc
   PetscErrorCode :: ierr
 
   dt = this%option%surf_subsurf_coupling_flow_dt
@@ -392,18 +445,98 @@ subroutine PMCSurfaceSetAuxData(this)
     end select
   endif
 
+
   if(this%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
     select type(pmc => this)
       class is(pmc_surface_type)
+
         select case(this%option%iflowmode)
+
           case (RICHARDS_MODE)
             call VecCopy(pmc%surf_realization%surf_field%flow_xx, &
                          pmc%sim_aux%surf_head, ierr)
           case (TH_MODE)
-            call SurfaceTHUpdateSubsurfSS(pmc%subsurf_realization, &
-                                            pmc%surf_realization,dt)
-            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
-            call printErrMsg(this%option)
+
+            surf_realization => pmc%surf_realization
+            surf_patch => surf_realization%patch
+            surf_grid => surf_patch%grid
+            surf_global_aux_vars => surf_patch%surf_aux%SurfaceGlobal%aux_vars
+            surf_aux_vars => surf_patch%surf_aux%SurfaceTH%aux_vars
+
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
+                                xx_loc_p,ierr)
+            call VecGetArrayF90(pmc%sim_aux%surf_head, surf_head_p, ierr)
+            call VecGetArrayF90(pmc%sim_aux%surf_temp, surf_temp_p, ierr)
+            call VecGetArrayF90(pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                                surf_hflux_p, ierr)
+
+            do ghosted_id = 1, surf_grid%ngmax
+              local_id = surf_grid%nG2L(ghosted_id)
+              if (local_id < 1) cycle
+              iend = local_id*this%option%nflowdof
+              istart = iend - this%option%nflowdof+1
+              if (xx_loc_p(istart) < 1.d-15) then
+                surf_head_p(local_id) = 0.d0
+                surf_temp_p(local_id) = this%option%reference_temperature
+              else
+                surf_head_p(local_id) = xx_loc_p(istart)
+                surf_temp_p(local_id) = surf_global_aux_vars(ghosted_id)%temp(1)
+              endif
+            enddo
+
+            found = PETSC_FALSE
+            source_sink => surf_patch%source_sinks%first
+            do
+              if (.not.associated(source_sink)) exit
+
+              if (associated(source_sink%flow_aux_real_var)) then
+                cur_connection_set => source_sink%connection_set
+
+                if (StringCompare(source_sink%name,'atm_energy_ss')) then
+
+                  do iconn = 1, cur_connection_set%num_connections
+
+                    local_id = cur_connection_set%id_dn(iconn)
+                    select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
+                      case (ENERGY_RATE_SS)
+                        esrc = source_sink%flow_condition%energy_rate%dataset%rarray(1)
+                      case (HET_ENERGY_RATE_SS)
+                        esrc = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
+                      case default
+                        this%option%io_buffer = 'atm_energy_ss does not have '// &
+                          'a temperature condition that is either a ' // &
+                          ' ENERGY_RATE_SS or HET_ENERGY_RATE_SS'
+                    end select
+
+                    ! Only when no standing water is present, the atmospheric
+                    ! energy flux is applied directly on subsurface domain.
+                    if (surf_head_p(local_id) == 0.d0) then
+                      surf_hflux_p(local_id) = esrc
+                    else
+                      surf_hflux_p(local_id) = 0.d0
+                    endif
+
+                  enddo
+
+                  found = PETSC_TRUE
+
+                endif ! StringCompare()
+              endif ! associate()
+
+              source_sink => source_sink%next
+            enddo
+
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
+                                    xx_loc_p,ierr)
+            call VecRestoreArrayF90(pmc%sim_aux%surf_head, surf_head_p,ierr)
+            call VecRestoreArrayF90(pmc%sim_aux%surf_temp, surf_temp_p,ierr)
+            call VecRestoreArrayF90(pmc%sim_aux%surf_hflux_exchange_with_subsurf, &
+                                surf_hflux_p, ierr)
+
+            if (.not.(found)) then
+              this%option%io_buffer = 'atm_energy_ss not found in surface-flow model'
+              call printErrMsg(this%option)
+            endif
         end select
     end select
   endif
@@ -422,6 +555,7 @@ end subroutine PMCSurfaceSetAuxData
 subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 
   use Surface_Flow_module
+  use Surface_TH_Aux_module
   use Surface_TH_module
   use Option_module
   use Water_EOS_module
@@ -436,10 +570,13 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: count
-  PetscReal, pointer      :: hw_p(:)           ! head [m]
+  PetscReal, pointer      :: xx_p(:)
   PetscReal, pointer      :: surfpress_p(:)
+  PetscReal, pointer      :: surftemp_p(:)
+  PetscInt :: istart, iend
   PetscReal :: den
   PetscErrorCode :: ierr
+  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
 
   print *, 'PMCSurfaceGetAuxDataAfterRestart()'
   if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
@@ -460,7 +597,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 
             call density(this%option%reference_temperature,this%option%reference_pressure,den)
 
-            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, hw_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
             count = 0
             do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
@@ -469,10 +606,10 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
               if(local_id <= 0) cycle
 
               count = count + 1
-              surfpress_p(count) = hw_p(ghosted_id)*den*abs(this%option%gravity(3)) + &
+              surfpress_p(count) = xx_p(ghosted_id)*den*abs(this%option%gravity(3)) + &
                                    this%option%reference_pressure
             enddo
-            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, hw_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
 
             call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
@@ -485,10 +622,54 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
                                INSERT_VALUES,SCATTER_REVERSE,ierr)
 
           case (TH_MODE)
-            call SurfaceTHUpdateSurfBC(pmc%subsurf_realization, &
-                                           pmc%surf_realization)
-            this%option%io_buffer='Extend PMCSurfaceGetAuxData for TH'
-            call printErrMsg(this%option)
+
+            ! NOTE(GB:) This is strictly not correct since density should be
+            ! computed based on surface-water temperature (not on
+            ! reference-temperature). Presently, SurfaceCheckpointProcessModel()
+            ! does not output surface-water temperature for TH-Mode and the
+            ! subroutine needs to be modified in future.
+            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+
+            surf_aux_vars => pmc%surf_realization%patch%surf_aux%SurfaceTH%aux_vars
+
+            call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
+            call VecGetArrayF90(pmc%surf_realization%surf_field%temp_subsurf, surftemp_p, ierr)
+
+            count = 0
+            do ghosted_id = 1, pmc%surf_realization%discretization%grid%ngmax
+
+              local_id = pmc%surf_realization%discretization%grid%nG2L(ghosted_id)
+              if(local_id <= 0) cycle
+
+              count = count + 1
+              iend = ghosted_id*this%option%nflowdof
+              istart = iend - this%option%nflowdof+1
+              surfpress_p(count) = xx_p(istart)*den*abs(this%option%gravity(3)) + &
+                                   this%option%reference_pressure
+              surftemp_p = xx_p(iend)/xx_p(istart)/den/ &
+                      surf_aux_vars(ghosted_id)%Cwi - 273.15d0
+            enddo
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
+            call VecRestoreArrayF90(pmc%surf_realization%surf_field%temp_subsurf, surftemp_p, ierr)
+
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_pres_top_bc, &
+                                 pmc%surf_realization%surf_field%press_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_pres_top_bc, &
+                               pmc%surf_realization%surf_field%press_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterBegin(pmc%sim_aux%subsurf_to_surf, &
+                                 pmc%sim_aux%subsurf_temp_top_bc, &
+                                 pmc%surf_realization%surf_field%temp_subsurf, &
+                                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(pmc%sim_aux%subsurf_to_surf, &
+                               pmc%sim_aux%subsurf_temp_top_bc, &
+                               pmc%surf_realization%surf_field%temp_subsurf, &
+                               INSERT_VALUES,SCATTER_FORWARD,ierr)
         end select
     end select
   endif

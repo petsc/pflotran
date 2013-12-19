@@ -295,7 +295,8 @@ end subroutine TimestepperBaseUpdateDT
 ! ************************************************************************** !
 subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
                                         stop_flag,plot_flag, &
-                                        transient_plot_flag)
+                                        transient_plot_flag, &
+                                        checkpoint_flag)
 
   use Option_module
   
@@ -307,6 +308,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   PetscInt :: stop_flag
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
+  PetscBool :: checkpoint_flag
   
   PetscReal :: target_time
   PetscReal :: dt
@@ -323,8 +325,10 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   type(waypoint_type), pointer :: cur_waypoint
 
 !geh: for debugging
-!  option%io_buffer = 'StepperSetTargetTime()'
-!  call printMsg(option)
+#ifdef DEBUG
+  option%io_buffer = 'TimestepperBaseSetTargetTime()'
+  call printMsg(option)
+#endif
   
   if (this%time_step_cut_flag) then
     this%time_step_cut_flag = PETSC_FALSE
@@ -362,9 +366,9 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   target_time = this%target_time + dt
 
   !TODO(geh): move to process model initialization stage
-  ! For the case where the second waypoint is a printout after the first time step
-  ! we must increment the waypoint beyond the first (time=0.) waypoint.  Otherwise
-  ! the second time step will be zero. - geh
+  ! For the case where the second waypoint is a printout after the first time 
+  ! step, we must increment the waypoint beyond the first (time=0.) waypoint.  
+  ! Otherwise the second time step will be zero. - geh
   if (cur_waypoint%time < 1.d-40) then
     cur_waypoint => cur_waypoint%next
   endif
@@ -395,6 +399,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
           if (force_to_match_waypoint) revert_due_to_waypoint = PETSC_TRUE
           if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
           if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+          if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
         endif
         if (equal_to_or_exceeds_sync_time) then
           ! If the time step was cut to match the sync time, we want to set
@@ -696,7 +701,9 @@ recursive subroutine TimestepperBaseFinalizeRun(this,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   
-  call printMsg(option,'TSBE%FinalizeRun()')
+#ifdef DEBUG
+  call printMsg(option,'TimestepperBaseFinalizeRun()')
+#endif
   
   if (OptionPrintToScreen(option)) then
     write(*,'(/," TS Base steps = ",i6," cuts = ",i6)') &

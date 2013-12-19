@@ -16,6 +16,7 @@ module Waypoint_module
     PetscReal :: time
     PetscBool :: print_output
     PetscBool :: print_tr_output
+    PetscBool :: print_checkpoint
 !    type(output_option_type), pointer :: output_option
     PetscBool :: update_conditions
     PetscReal :: dt_max
@@ -72,6 +73,7 @@ function WaypointCreate1()
   waypoint%time = 0.d0
   waypoint%print_output = PETSC_FALSE
   waypoint%print_tr_output = PETSC_FALSE
+  waypoint%print_checkpoint = PETSC_FALSE
   waypoint%final = PETSC_FALSE
   waypoint%update_conditions = PETSC_FALSE
   waypoint%dt_max = 0.d0
@@ -103,6 +105,7 @@ function WaypointCreate2(original_waypoint)
   waypoint%time = original_waypoint%time
   waypoint%print_output = original_waypoint%print_output
   waypoint%print_tr_output = original_waypoint%print_tr_output
+  waypoint%print_checkpoint = original_waypoint%print_checkpoint
   waypoint%final = original_waypoint%final
   waypoint%update_conditions = original_waypoint%update_conditions
   waypoint%dt_max = original_waypoint%dt_max
@@ -453,6 +456,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%final = PETSC_FALSE
   endif
 
+  if (old_waypoint%print_checkpoint .or. new_waypoint%print_checkpoint) then
+    old_waypoint%print_checkpoint = PETSC_TRUE
+  else
+    old_waypoint%print_checkpoint = PETSC_FALSE
+  endif
+
   ! deallocate new waypoint
   deallocate(new_waypoint)
   ! point new_waypoint to old
@@ -640,6 +649,7 @@ function WaypointForceMatchToTime(waypoint)
       .or. &
       waypoint%print_output .or. &
       waypoint%print_tr_output .or. &
+      waypoint%print_checkpoint .or. &
       waypoint%final &
       ) then
     WaypointForceMatchToTime = PETSC_TRUE
@@ -679,6 +689,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(*,10) trim(string), waypoint%time/output_option%tconv
     write(*,30) 'Print Output', waypoint%print_output
     write(*,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(*,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(*,30) 'Update Conditions', waypoint%update_conditions
     write(*,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
@@ -693,6 +704,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(option%fid_out,10) trim(string), waypoint%time/output_option%tconv
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(option%fid_out,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(option%fid_out,30) 'Update Conditions', waypoint%update_conditions
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
