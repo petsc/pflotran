@@ -35,7 +35,7 @@ module Geomechanics_Discretization_module
     PetscInt :: dm_index_to_ndof(3)            ! mapping between a dm_ptr to the number of degrees of freedom
     type(gmdm_ptr_type), pointer :: dm_1dof
     type(gmdm_ptr_type), pointer :: dm_ngeodof 
-    type(gmdm_ptr_type), pointer :: dm_6dof    ! For stress and strain
+    type(gmdm_ptr_type), pointer :: dm_n_stress_strain_dof    ! For stress and strain
   end type geomech_discretization_type
 
   public :: GeomechDiscretizationCreate, &
@@ -86,13 +86,13 @@ function GeomechDiscretizationCreate()
   ! nullify DM pointers
   allocate(discretization%dm_1dof)
   allocate(discretization%dm_ngeodof)
-  allocate(discretization%dm_6dof)
+  allocate(discretization%dm_n_stress_strain_dof)
   discretization%dm_1dof%dm = 0
   discretization%dm_ngeodof%dm = 0
-  discretization%dm_6dof%dm = 0
+  discretization%dm_n_stress_strain_dof%dm = 0
   nullify(discretization%dm_1dof%gmdm)
   nullify(discretization%dm_ngeodof%gmdm)  
-  nullify(discretization%dm_6dof%gmdm) 
+  nullify(discretization%dm_n_stress_strain_dof%gmdm) 
   nullify(discretization%grid)
   
   GeomechDiscretizationCreate => discretization
@@ -135,8 +135,9 @@ subroutine GeomechDiscretizationCreateDMs(discretization,option)
     call GeomechDiscretizationCreateDM(discretization,discretization%dm_ngeodof, &
                                        ndof,option)
 
-    call GeomechDiscretizationCreateDM(discretization,discretization%dm_6dof, &
-                                       SIX_INTEGER,option)
+    call GeomechDiscretizationCreateDM(discretization, &
+                                       discretization%dm_n_stress_strain_dof, &
+                                       option%n_stress_strain_dof,option)
   endif
 
 
@@ -251,7 +252,8 @@ function GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
     case(NGEODOF)
       GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_ngeodof
     case(SIX_INTEGER)
-      GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_6dof
+      GeomechDiscretizationGetDMPtrFromIndex => &
+        discretization%dm_n_stress_strain_dof
   end select  
   
 end function GeomechDiscretizationGetDMPtrFromIndex

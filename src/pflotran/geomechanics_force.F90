@@ -30,10 +30,14 @@ module Geomechanics_Force_module
             GeomechForceResidual, &
             GeomechForceJacobian, &
             GeomechUpdateFromSubsurf, &
+            GeomechUpdateSubsurfFromGeomech, &
             GeomechCreateGeomechSubsurfVec, &
+            GeomechCreateSubsurfStressStrainVec, &
             GeomechUpdateSolution, &
             GeomechStoreInitialPressTemp, &
-            GeomechStoreInitialDisp
+            GeomechStoreInitialDisp, &
+            GeomechStoreInitialPorosity, &
+            GeomechUpdateSubsurfPorosity
  
 contains
 
@@ -1616,7 +1620,82 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
                                             geomech_field%temp, &
                                             geomech_field%temp_loc,ONEDOF)
 
-end subroutine
+end subroutine GeomechUpdateFromSubsurf
+
+! ************************************************************************** !
+!
+! GeomechUpdateSubsurfFromGeomech: The stresses and strains from geomech
+! are mapped to subsurf.
+! author: Satish Karra, LANL
+! date: 10/10/13
+!
+! ************************************************************************** !
+subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
+
+  use Realization_class
+  use Discretization_module
+  use Grid_module
+  use Field_module
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Field_module
+  use Geomechanics_Discretization_module
+  use Option_module
+  
+  implicit none
+  
+  type(realization_type)                       :: realization
+  type(geomech_realization_type)               :: geomech_realization
+  type(grid_type), pointer                     :: grid
+  type(geomech_grid_type), pointer             :: geomech_grid
+  type(option_type), pointer                   :: option
+  type(field_type), pointer                    :: field
+  type(geomech_field_type), pointer            :: geomech_field
+  type(gmdm_ptr_type), pointer                 :: dm_ptr
+
+  PetscErrorCode :: ierr
+
+  option        => realization%option
+  grid          => realization%discretization%grid
+  field         => realization%field
+  geomech_grid  => geomech_realization%discretization%grid
+  geomech_field => geomech_realization%geomech_field
+  
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
+                                                   discretization,ONEDOF)
+  
+  ! Scatter the strains
+  call VecScatterBegin(dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
+                       geomech_field%strain, &
+                       geomech_field%strain_subsurf, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
+                       geomech_field%strain, &
+                       geomech_field%strain_subsurf, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+                       
+  ! Scatter the stresses
+  call VecScatterBegin(dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
+                       geomech_field%stress, &
+                       geomech_field%stress_subsurf, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
+                       geomech_field%stress, &
+                       geomech_field%stress_subsurf, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr) 
+                       
+  ! Scatter from global to local vectors
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   geomech_field%strain_subsurf, &
+                                   geomech_field%strain_subsurf_loc, &
+                                   NGEODOF)
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   geomech_field%stress_subsurf, &
+                                   geomech_field%stress_subsurf_loc, &
+                                   NGEODOF)
+ 
+end subroutine GeomechUpdateSubsurfFromGeomech
 
 ! ************************************************************************** !
 !
@@ -1665,6 +1744,77 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
   call VecSetFromOptions(geomech_field%subsurf_vec_1dof,ierr)
   
 end subroutine GeomechCreateGeomechSubsurfVec
+
+! ************************************************************************** !
+!
+! GeomechCreateSubsurfStressStrainVec: Creates the subsurface stress and strain
+! MPI vectors to store information from geomechanics
+! author: Satish Karra, LANL
+! date: 10/10/13
+!
+! ************************************************************************** !
+subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
+
+  use Grid_module
+  use Geomechanics_Discretization_module
+  use Geomechanics_Realization_module
+  use Geomechanics_Grid_Aux_module
+  use Geomechanics_Grid_module
+  use Geomechanics_Field_module
+  use String_module
+  use Realization_class
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(realization_type)               :: realization
+  type(geomech_realization_type)       :: geomech_realization
+
+  type(grid_type), pointer             :: grid
+  type(geomech_grid_type), pointer     :: geomech_grid
+  type(option_type), pointer           :: option
+  type(geomech_field_type), pointer    :: geomech_field
+  
+  PetscErrorCode :: ierr
+  
+  option     => realization%option
+  grid       => realization%discretization%grid
+  geomech_field => geomech_realization%geomech_field
+  
+  ! strain
+  call VecCreate(option%mycomm,geomech_field%strain_subsurf,ierr)
+  call VecSetSizes(geomech_field%strain_subsurf, &
+                   grid%nlmax*SIX_INTEGER,PETSC_DECIDE,ierr)
+  call VecSetBlockSize(geomech_field%strain_subsurf,SIX_INTEGER,ierr)
+  call VecSetFromOptions(geomech_field%strain_subsurf,ierr)
+  
+  ! stress
+  call VecCreate(option%mycomm,geomech_field%stress_subsurf,ierr)
+  call VecSetSizes(geomech_field%stress_subsurf, &
+                   grid%nlmax*SIX_INTEGER,PETSC_DECIDE,ierr)
+  call VecSetBlockSize(geomech_field%stress_subsurf,SIX_INTEGER,ierr)
+  call VecSetFromOptions(geomech_field%stress_subsurf,ierr)
+  
+  ! strain_loc
+  call VecCreate(PETSC_COMM_SELF,geomech_field%strain_subsurf_loc,ierr)
+  call VecSetSizes(geomech_field%strain_subsurf_loc, &
+                   grid%ngmax*SIX_INTEGER,PETSC_DECIDE,ierr)  
+  call VecSetBlockSize(geomech_field%strain_subsurf_loc,SIX_INTEGER,ierr)
+  call VecSetFromOptions(geomech_field%strain_subsurf_loc,ierr)
+  
+  ! stress_loc 
+  call VecCreate(PETSC_COMM_SELF,geomech_field%stress_subsurf_loc,ierr)
+  call VecSetSizes(geomech_field%stress_subsurf_loc, &
+                   grid%ngmax*SIX_INTEGER,PETSC_DECIDE,ierr)  
+  call VecSetBlockSize(geomech_field%stress_subsurf_loc,SIX_INTEGER,ierr)
+  call VecSetFromOptions(geomech_field%stress_subsurf_loc,ierr)
+  
+end subroutine GeomechCreateSubsurfStressStrainVec
 
 ! ************************************************************************** !
 !
@@ -1974,7 +2124,7 @@ end subroutine GeomechForceLocalElemStressStrain
 !
 ! GeomechUpdateSolution: Updates data in module after a successful time 
 !                        step
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 09/17/13 
 !
 ! ************************************************************************** !
@@ -2045,6 +2195,35 @@ end subroutine GeomechStoreInitialPressTemp
 
 ! ************************************************************************** !
 !
+! GeomechStoreInitialPorosity: Stores initial porosity from
+!                              subsurface 
+! Author: Satish Karra, LANL 
+! Date: 10/22/13
+!
+! ************************************************************************** !
+subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
+
+  use Geomechanics_Realization_module
+  use Realization_class
+  use Discretization_module
+    
+  implicit none 
+  
+  type(geomech_realization_type) :: geomech_realization
+  type(realization_type) :: realization
+  type(discretization_type) :: discretization
+
+  PetscErrorCode :: ierr
+
+  call DiscretizationDuplicateVector(discretization, &
+                                     realization%field%porosity_loc, &
+                                     geomech_realization%geomech_field% &
+                                     porosity_init_loc)
+   
+end subroutine GeomechStoreInitialPorosity
+
+! ************************************************************************** !
+!
 ! GeomechStoreInitialDisp: Stores initial displacement for calculating
 !                          relative displacements 
 ! Author: Satish Karra, LANL 
@@ -2065,6 +2244,73 @@ subroutine GeomechStoreInitialDisp(realization)
                realization%geomech_field%disp_xx_init_loc,ierr)
    
 end subroutine GeomechStoreInitialDisp
+
+! ************************************************************************** !
+!
+! GeomechUpdateSubsurfPorosity: Updates the porosity in the subsurface based 
+!                               on the deformation in geomechanics
+! author: Satish Karra, LANL
+! date: 10/08/13 
+!
+! ************************************************************************** !
+subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
+
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+  use Discretization_module
+  use Geomechanics_Field_module
+  use Geomechanics_Realization_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(geomech_field_type), pointer :: geomech_field
+  type(grid_type), pointer :: grid
+
+  PetscReal :: trace_epsilon
+  PetscReal, pointer :: por0_loc_p(:), por_loc_p(:), strain_loc_p(:)
+  PetscInt :: ghosted_id
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  geomech_field => geomech_realization%geomech_field
+
+  if (.not.associated(patch%imat)) then
+    option%io_buffer = 'Materials IDs not present in run.  Material ' // &
+      ' properties cannot be updated without material ids'
+    call printErrMsg(option)
+  endif
+  
+  call VecGetArrayF90(geomech_field%porosity_init_loc,por0_loc_p,ierr)
+  call VecGetArrayF90(field%porosity_loc,por_loc_p,ierr)
+  call VecGetArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
+  
+  do ghosted_id = 1, grid%ngmax
+    trace_epsilon = strain_loc_p((ghosted_id-1)*SIX_INTEGER+ONE_INTEGER) + &
+                    strain_loc_p((ghosted_id-1)*SIX_INTEGER+TWO_INTEGER) + &
+                    strain_loc_p((ghosted_id-1)*SIX_INTEGER+THREE_INTEGER)
+    por_loc_p(ghosted_id) = por0_loc_p(ghosted_id)/ &
+                            (1.d0 + (1.d0 - por0_loc_p(ghosted_id))*trace_epsilon)
+  enddo
+  
+  call VecRestoreArrayF90(geomech_field%porosity_init_loc,por0_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,por_loc_p,ierr)
+  call VecRestoreArrayF90(geomech_field%strain_subsurf_loc,strain_loc_p,ierr)
+
+  call DiscretizationLocalToLocal(realization%discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+
+end subroutine GeomechUpdateSubsurfPorosity
 
 end module Geomechanics_Force_module
 

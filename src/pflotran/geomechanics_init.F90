@@ -62,6 +62,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   call InputFindStringInFile(input,option,string)
   if(InputError(input)) return
   option%ngeomechdof = 3  ! displacements in x, y, z directions
+  option%n_stress_strain_dof = 6
   
   string = "GEOMECHANICS_GRID"
   call InputFindStringInFile(input,option,string)
@@ -334,7 +335,9 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         call StringToUpper(word)
         select case (word)
           case ('ONE_WAY_COUPLED')      
-            option%geomech_subsurf_coupling = ONE_WAY_COUPLED 
+            option%geomech_subsurf_coupling = GEOMECH_ONE_WAY_COUPLED 
+          case ('TWO_WAY_COUPLED')      
+            option%geomech_subsurf_coupling = GEOMECH_TWO_WAY_COUPLED 
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
                                ' not recognized in GEOMECHANICS_SUBSURFACE_COUPLING.'

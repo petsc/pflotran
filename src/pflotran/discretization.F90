@@ -42,6 +42,7 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_1dof
     type(dm_ptr_type), pointer :: dm_nflowdof
     type(dm_ptr_type), pointer :: dm_ntrandof
+    type(dm_ptr_type), pointer :: dm_n_stress_strain_dof
     type(mfd_type), pointer :: MFD
     VecScatter :: tvd_ghost_scatter
     
@@ -123,12 +124,15 @@ function DiscretizationCreate()
   allocate(discretization%dm_1dof)
   allocate(discretization%dm_nflowdof)
   allocate(discretization%dm_ntrandof)
+  allocate(discretization%dm_n_stress_strain_dof)
   discretization%dm_1dof%dm = 0
   discretization%dm_nflowdof%dm = 0
   discretization%dm_ntrandof%dm = 0
+  discretization%dm_n_stress_strain_dof%dm = 0
   nullify(discretization%dm_1dof%ugdm)
   nullify(discretization%dm_nflowdof%ugdm)
   nullify(discretization%dm_ntrandof%ugdm)
+  nullify(discretization%dm_n_stress_strain_dof%ugdm)
   
   nullify(discretization%grid)
   nullify(discretization%MFD)
@@ -686,6 +690,14 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                 discretization%stencil_type,option)
   endif
 
+#ifdef GEOMECH
+  if (option%ngeomechdof > 0) then
+    ndof = option%n_stress_strain_dof
+    call DiscretizationCreateDM(discretization,discretization%dm_n_stress_strain_dof, &
+                                ndof,discretization%stencil_width, &
+                                discretization%stencil_type,option)
+  endif
+#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -830,6 +842,8 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
       DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
       DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
+    case(NGEODOF)
+      DiscretizationGetDMPtrFromIndex => discretization%dm_n_stress_strain_dof
   end select  
   
 end function DiscretizationGetDMPtrFromIndex
@@ -1872,7 +1886,10 @@ subroutine DiscretizationDestroy(discretization)
       discretization%dm_nflowdof%dm = 0
       if (discretization%dm_ntrandof%dm /= 0) &
         call DMDestroy(discretization%dm_ntrandof%dm,ierr)
-      discretization%dm_ntrandof%dm = 0
+      discretization%dm_n_stress_strain_dof%dm = 0
+      if (discretization%dm_nflowdof%dm /= 0) &
+        call DMDestroy(discretization%dm_n_stress_strain_dof%dm,ierr)
+      discretization%dm_n_stress_strain_dof%dm = 0
       if (associated(discretization%dmc_nflowdof)) then
         do i=1,size(discretization%dmc_nflowdof)
           call DMDestroy(discretization%dmc_nflowdof(i)%dm,ierr)
@@ -1894,6 +1911,9 @@ subroutine DiscretizationDestroy(discretization)
         call UGridDMDestroy(discretization%dm_nflowdof%ugdm)
       if (associated(discretization%dm_ntrandof%ugdm)) &
         call UGridDMDestroy(discretization%dm_ntrandof%ugdm)
+      if (associated(discretization%dm_n_stress_strain_dof%ugdm)) &
+        call UGridDMDestroy(discretization%dm_n_stress_strain_dof%ugdm)
+
   end select
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)
@@ -1904,6 +1924,9 @@ subroutine DiscretizationDestroy(discretization)
   if (associated(discretization%dm_ntrandof)) &
     deallocate(discretization%dm_ntrandof)
   nullify(discretization%dm_ntrandof)
+  if (associated(discretization%dm_n_stress_strain_dof)) &
+    deallocate(discretization%dm_n_stress_strain_dof)
+  nullify(discretization%dm_n_stress_strain_dof)
 
 
   if (associated(discretization%MFD)) &

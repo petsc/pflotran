@@ -74,6 +74,7 @@ module Option_module
 
 #ifdef GEOMECH
     PetscInt  :: ngeomechdof
+    PetscInt  :: n_stress_strain_dof
     PetscReal :: geomech_time
     PetscInt  :: geomech_subsurf_coupling
     PetscReal :: geomech_gravity(3)
@@ -421,6 +422,7 @@ subroutine OptionInitRealization(option)
 
 #ifdef GEOMECH
   option%ngeomechdof = 0
+  option%n_stress_strain_dof = 0
   option%geomech_time = 0.d0
   option%geomech_subsurf_coupling = 0 
   option%geomech_gravity(:) = 0.d0
