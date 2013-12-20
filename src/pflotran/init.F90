@@ -1091,7 +1091,6 @@ subroutine Init(simulation)
   if (debug%print_waypoints) then
     call WaypointListPrint(realization%waypoints,option,realization%output_option)
   endif
-    call WaypointListPrint(realization%waypoints,option,realization%output_option)
 
 #ifdef OS_STATISTICS
   call RealizationPrintGridStatistics(realization)
