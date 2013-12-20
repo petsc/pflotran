@@ -1161,8 +1161,7 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
   use Option_module
   use Global_Aux_module
   use Water_EOS_module
-
-
+  use EOS_Water_module
 
   type(global_auxvar_type) :: global_aux_var
   PetscScalar :: pres
@@ -1185,8 +1184,8 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
   endif
 
 #ifndef DONT_USE_WATEOS
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-              hw_dp,hw_dt,option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 #else
   call density(global_aux_var%temp(1),pw,dw_kg)
   pert = tol*pw

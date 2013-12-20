@@ -70,6 +70,7 @@ subroutine Init(simulation)
   use Global_module
   use Variables_module
   use Water_EOS_module
+  use EOS_Water_module
 !  use Utility_module
   use Output_module
   use Output_Aux_module
@@ -162,6 +163,9 @@ subroutine Init(simulation)
   
   nullify(flow_solver)
   nullify(tran_solver)
+
+  ! sets pointers to EOS procedures
+  call EOSWaterInit()
   
   if (OptionPrintToScreen(option)) then
     temp_int = 6
@@ -275,9 +279,10 @@ subroutine Init(simulation)
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
-    call wateos(option%reference_temperature,option%reference_pressure, &
-                option%reference_water_density,r1,r2,r3,r4,r5,r6, &
-                option%scale,ierr)
+    call EOSWaterDensityEnthalpy(option%reference_temperature, &
+                                 option%reference_pressure, &
+                                 option%reference_water_density, &
+                                 r1,r2,option%scale, ierr)    
 #else
     call density(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)

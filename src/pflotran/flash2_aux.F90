@@ -239,6 +239,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   use Option_module
   use Global_Aux_module  
   use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
   use co2_span_wagner_module
@@ -391,7 +392,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 ! **************  Gas phase properties ********************
     aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
-    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr)
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg * option%scale

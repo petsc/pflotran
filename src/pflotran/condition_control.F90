@@ -1065,7 +1065,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   use Condition_module
   use Grid_module
   use Patch_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
   
@@ -1155,8 +1155,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                         sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                       pw = option%reference_pressure
                         
-                      call wateos_noderiv(temp, pw, dw_kg, &
-                                          dw_mol, hw, option%scale, ierr)
+                      call EOSWaterDensityEnthalpy(temp,pw,dw_kg,dw_mol,hw, &
+                                                   option%scale, ierr)
                       ! [rho*h*T*Cw]
                       xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
                                             (temp + 273.15d0)* &

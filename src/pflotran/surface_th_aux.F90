@@ -156,6 +156,7 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   use Option_module
   use Surface_Global_Aux_module
   use Water_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module  
   
   implicit none
@@ -197,7 +198,8 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
   ds_dp = 0.d0
   dkr_dp = 0.d0
 
-  call wateos_noderiv(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw,option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+                               option%scale,ierr)
   global_aux_var%den_kg(1) = dw_kg
   di_kg = 917.d0 ![kg/m^3]
     ! RTM: WARNING!  We are hard-coding the density of ice at atmospheric 

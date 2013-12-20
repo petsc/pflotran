@@ -18,8 +18,12 @@ module Water_EOS_module
     module procedure PSATgeh
   end interface
 
+!  public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
+!            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
+!            Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp, &
+!            wateos_flag
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
-            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
+            density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
             Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp, &
             wateos_flag
 
@@ -50,6 +54,7 @@ contains
  
   end subroutine VISW1
 
+!geh: currently not used
   subroutine VISW2 (T,P,PS,pswt,VW,vwt,vwp,ierr)
 
     implicit none
@@ -96,6 +101,7 @@ contains
   end subroutine VISW_noderiv
 
 
+!geh: currently not used
 ! ************************************************************************** !
 !
 ! VISW_temp: Viscosity of water which is a function of temperature only
@@ -137,6 +143,7 @@ contains
     
   end subroutine VISW_temp
 
+!geh: currently not used  
 subroutine VISW_FLO (t,dw,vw)
        implicit none
 !c=======================================================================
@@ -209,7 +216,7 @@ subroutine VISW_FLO (t,dw,vw)
         
 
 
-
+!geh: currently not used
   subroutine PSAT_new (TC, P, ierr)
 
     implicit none
@@ -246,7 +253,8 @@ subroutine VISW_FLO (t,dw,vw)
     ierr = 0
 
   end subroutine PSAT_NEW
-
+  
+!geh: currently not used
  subroutine PSAT1_new (TC, P, tsp, ierr)
 
     implicit none
@@ -374,7 +382,7 @@ subroutine PSATgeh (T, psat, dpsat_dt, ierr)
 
   end subroutine PSATgeh  
  
-
+!geh: currently not used
 subroutine PSAT1(T, Ps, tsp, ierr)
 
     implicit none
@@ -430,7 +438,6 @@ subroutine PSAT1(T, Ps, tsp, ierr)
     ierr = 0
 
   end subroutine PSAT1
-
 
 
 subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
@@ -1371,6 +1378,7 @@ subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
   
   end subroutine steameos
 
+!geh: currently not used
 subroutine COWAT (TC,PP,D,U, ierr)
 
     implicit none

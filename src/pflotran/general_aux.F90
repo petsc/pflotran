@@ -219,6 +219,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   use Global_Aux_module
   use Water_EOS_module
   use Gas_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module
   
   implicit none
@@ -356,9 +357,9 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
   ! Liquid phase thermodynamic properties
   ! must use pres_max as the pressure, not %pres(lid)
-  call wateos_noderiv(gen_aux_var%temp,pres_max, &
-                      gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
-                      gen_aux_var%H(lid),option%scale,ierr)
+  call EOSWaterDensityEnthalpy(gen_aux_var%temp,pres_max, &
+                               gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
+                               gen_aux_var%H(lid),option%scale,ierr)
 
   ! MJ/kmol comp
   gen_aux_var%U(lid) = gen_aux_var%H(lid) - &

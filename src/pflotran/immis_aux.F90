@@ -242,6 +242,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
   use Option_module
   use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
   use co2_span_wagner_module
@@ -374,7 +375,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 
-  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
 
   aux_var%h(1) = hw
   aux_var%u(1) = aux_var%h(1) - pw /dw_mol*option%scale

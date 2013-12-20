@@ -1739,6 +1739,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   use Option_module
   use Water_EOS_module
   use Gas_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -1784,9 +1785,9 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
 !      if (global_aux_var%istate == LIQUID_STATE .or. &
 !          global_aux_var%istate == TWO_PHASE_STATE) then
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call wateos_noderiv(gen_aux_var%temp, &
-                            gen_aux_var%pres(option%liquid_phase), &
-                            den_kg,den,enthalpy,option%scale,ierr)
+        call EOSWaterDensityEnthalpy(gen_aux_var%temp, &
+                                     gen_aux_var%pres(option%liquid_phase), &
+                                     den_kg,den,enthalpy,option%scale,ierr)
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy

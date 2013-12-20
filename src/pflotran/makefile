@@ -190,7 +190,8 @@ eos_obj = \
 	${common_src}co2_span_wagner.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}gas_eos_mod.o \
-	${common_src}water_eos.o 
+	${common_src}water_eos.o \
+	${common_src}eos_water.o 
 
 mode_aux_obj = \
 	${common_src}auxiliary.o \
@@ -475,6 +476,7 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
                    unstructured_explicit.o unstructured_grid.o \
                    unstructured_grid_aux.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
+eos_water.o : water_eos.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
            connection.o coupler.o debug.o discretization.o field.o \

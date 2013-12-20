@@ -252,6 +252,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   use Option_module
   use Global_Aux_module
   use Water_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module  
   
   implicit none
@@ -322,8 +323,8 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
 ! may need to compute dpsat_dt to pass to VISW
   call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
@@ -389,6 +390,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   use Option_module
   use Global_Aux_module
   use Water_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module  
   
   implicit none
@@ -471,8 +473,8 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, p_th, option)
 
 
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
 !  call wateos_flag (global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
 !                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
