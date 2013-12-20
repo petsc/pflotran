@@ -252,6 +252,7 @@ subroutine EOSWaterDensityEnthalpy1(t,p,dw,dwmol,hw,calculate_derivatives, &
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
   PetscReal, intent(out) :: hw,hwp,hwt
+  PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
   PetscInt :: i
@@ -279,7 +280,6 @@ subroutine EOSWaterDensityEnthalpy1(t,p,dw,dwmol,hw,calculate_derivatives, &
   PetscReal, parameter :: eight = 8.d0
   PetscReal, parameter :: nine = 9.d0
   PetscReal, parameter :: ten = 10.d0
-  PetscReal :: scale
   
 !   save aa,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
     
