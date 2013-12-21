@@ -499,7 +499,7 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use Saturation_Function_module
   use Fluid_module
   

@@ -934,7 +934,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
 
   use Option_module
   
-  use Water_EOS_module
+  
   use EOS_Water_module
   use co2eos_module
   use co2_span_wagner_spline_module, only: sw_prop

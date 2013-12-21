@@ -155,7 +155,7 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
 
   use Option_module
   use Surface_Global_Aux_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   use Saturation_Function_module  
   

@@ -874,7 +874,6 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 
   use Option_module
   
-   use Water_EOS_module
   use EOS_Water_module
 !   use Gas_EOS_module  
   use co2eos_module

@@ -1119,7 +1119,7 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
                            qsrc_phase,energy_flag,option)
 
   use Option_module
-  use Water_EOS_module
+  
   use EOS_Water_module
 ! use Gas_EOS_module  
   use co2eos_module

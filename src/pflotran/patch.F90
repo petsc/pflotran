@@ -923,7 +923,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1167,7 +1167,7 @@ subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1272,7 +1272,7 @@ subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1377,7 +1377,7 @@ subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1482,7 +1482,7 @@ subroutine PatchUpdateCouplerAuxVarsTHC(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1587,7 +1587,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1741,7 +1741,7 @@ subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -1822,7 +1822,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  
   
   use General_Aux_module
   use Grid_module
@@ -2365,7 +2365,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reaction_Aux_module
   use Global_Aux_module
   use Constraint_module
-  use Water_EOS_module
+  
   use EOS_Water_module
     
   implicit none
@@ -2428,7 +2428,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                                      global_auxvar%den_kg(1), &
                                      r1,r2,option%scale,ierr)
 #else
-        call density(global_auxvar%temp(1),global_auxvar%pres(1), &
+        call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
                      global_auxvar%den_kg(1))
 #endif                     
       else

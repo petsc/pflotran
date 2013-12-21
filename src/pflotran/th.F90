@@ -1362,7 +1362,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
 
   use Option_module
   use Saturation_Function_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   
   implicit none
@@ -1550,7 +1550,7 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
                            rock_dencpr,option,vol_frac_prim,Res)
 
   use Option_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   
   implicit none
@@ -1641,7 +1641,7 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-  use Water_EOS_module 
+   
   use EOS_Water_module
   
   implicit none
@@ -2214,7 +2214,7 @@ subroutine THFlux(aux_var_up,global_aux_var_up, &
                   Res)
                   
   use Option_module                              
-  use Water_EOS_module
+  
   use EOS_Water_module
 
   implicit none
@@ -2412,7 +2412,7 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
                               sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
-  use Water_EOS_module
+  
   use EOS_Water_module
  
   implicit none
@@ -2802,7 +2802,7 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
                     Res)
   use Option_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   use Condition_module
  
@@ -3056,7 +3056,7 @@ end subroutine THResidual
 ! ************************************************************************** !
 subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -3617,7 +3617,7 @@ end subroutine THJacobian
 ! ************************************************************************** !
 subroutine THJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
-  use Water_EOS_module
+  
 
   use Connection_module
   use Option_module
@@ -4783,7 +4783,7 @@ subroutine THUpdateSurfaceBC(realization)
   use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
   use String_module
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -4860,7 +4860,7 @@ subroutine THUpdateSurfaceBC(realization)
           boundary_condition%flow_aux_real_var(TH_PRESSURE_DOF,iconn)
         surftemp_old = &
           boundary_condition%flow_aux_real_var(TH_TEMPERATURE_DOF,iconn)
-        call density(surftemp_old,option%reference_pressure,den)
+        call EOSWaterdensity(surftemp_old,option%reference_pressure,den)
 
         head_old = (surfpress_old - option%reference_pressure)/den/abs(option%gravity(3)) ! [m]
         head_new = head_old - &

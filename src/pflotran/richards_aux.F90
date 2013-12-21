@@ -183,7 +183,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   use Saturation_Function_module
   
@@ -259,10 +259,10 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw,dw_dp, &
                                dw_dt,hw_dp,hw_dt,option%scale,ierr)
 #else
-  call density(global_aux_var%temp(1),pw,dw_kg)
+  call EOSWaterdensity(global_aux_var%temp(1),pw,dw_kg)
   pert = tol*pw
   pw_pert = pw+pert
-  call density(global_aux_var%temp(1),pw_pert,dw_kg_pert)
+  call EOSWaterdensity(global_aux_var%temp(1),pw_pert,dw_kg_pert)
   dw_dp = (dw_kg_pert-dw_kg)/pert
   ! dw_kg = kg/m^3
   ! dw_mol = kmol/m^3

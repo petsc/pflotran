@@ -790,7 +790,7 @@ end subroutine RichardsResidualMFDLP
 ! ************************************************************************** !
 subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
   use Logging_module
   use Connection_module
   use Realization_class
@@ -976,7 +976,7 @@ end subroutine RichardsResidualPatchMFD1
 ! ************************************************************************** !
 subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
   use Logging_module
   use Connection_module
   use Realization_class
@@ -1232,7 +1232,7 @@ end subroutine RichardsResidualPatchMFD2
 ! ************************************************************************** !
 subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
   use Logging_module
   use Connection_module
   use Realization_class
@@ -1470,7 +1470,7 @@ end subroutine RichardsResidualPatchMFDLP1
 ! ************************************************************************** !
 subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
   use Logging_module
   use Connection_module
   use Realization_class
@@ -1922,7 +1922,7 @@ end subroutine RichardsJacobianMFDLP
 ! ************************************************************************** !
 subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
        
-  use Water_EOS_module
+  
   use MFD_Aux_module
   use Connection_module
   use Realization_class
@@ -2118,7 +2118,7 @@ end subroutine RichardsJacobianPatchMFD
 ! ************************************************************************** !
 subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
        
-  use Water_EOS_module
+  
   use MFD_Aux_module
   use Connection_module
   use Realization_class

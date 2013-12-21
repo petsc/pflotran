@@ -499,7 +499,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   use Reaction_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   
   implicit none 
@@ -615,7 +615,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
                                    global_auxvar%den_kg(1), &
                                    r1,r2,option%scale,ierr)
 #else
-      call density(global_auxvar%temp(1),global_auxvar%pres(1), &
+      call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
                     global_auxvar%den_kg(1))
 #endif             
     else

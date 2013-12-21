@@ -525,7 +525,7 @@ end subroutine SurfaceFlowRHSFunction
 ! ************************************************************************** !
 subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use Water_EOS_module
+  
   use Connection_module
   use Surface_Realization_class
   use Patch_module
@@ -990,7 +990,7 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1403,7 +1403,7 @@ subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1741,7 +1741,7 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class

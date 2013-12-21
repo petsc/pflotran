@@ -441,7 +441,7 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
-  use Water_EOS_module
+  
   use Saturation_Function_module
   use Fluid_module
   

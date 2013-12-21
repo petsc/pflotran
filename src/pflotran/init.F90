@@ -69,7 +69,7 @@ subroutine Init(simulation)
   
   use Global_module
   use Variables_module
-  use Water_EOS_module
+  
   use EOS_Water_module
 !  use Utility_module
   use Output_module
@@ -284,7 +284,7 @@ subroutine Init(simulation)
                                  option%reference_water_density, &
                                  r1,r2,option%scale, ierr)    
 #else
-    call density(option%reference_temperature,option%reference_pressure, &
+    call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)
 #endif                 
   endif

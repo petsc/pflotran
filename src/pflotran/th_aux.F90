@@ -251,7 +251,7 @@ subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   use Saturation_Function_module  
   
@@ -388,7 +388,7 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use EOS_Water_module
   use Saturation_Function_module  
   
