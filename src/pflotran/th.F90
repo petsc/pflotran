@@ -1363,6 +1363,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   use Option_module
   use Saturation_Function_module
   use Water_EOS_module
+  use EOS_Water_module
   
   implicit none
 
@@ -1445,7 +1446,7 @@ subroutine THAccumDerivative(TH_aux_var,global_aux_var,por,vol, &
   den_i = TH_aux_var%den_ice
   p_g = option%reference_pressure ! set to reference pressure
   den_g = p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0))*1.d-3 
-  call PSAT(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
+  call EOSWaterSaturationPressure(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
   mol_g = p_sat/p_g
   C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !in MJ/kmol/K, expression might be different
   u_g = C_g*(global_aux_var%temp(1) + 273.15d0)
@@ -1550,6 +1551,7 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
 
   use Option_module
   use Water_EOS_module
+  use EOS_Water_module
   
   implicit none
 
@@ -1602,7 +1604,7 @@ subroutine THAccumulation(aux_var,global_aux_var,por,vol, &
   den_i = aux_var%den_ice
   p_g = option%reference_pressure
   den_g = p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0))*1.d-3 !in kmol/m3
-  call PSAT(global_aux_var%temp(1), p_sat, ierr)
+  call EOSWaterSaturationPressure(global_aux_var%temp(1), p_sat, ierr)
   mol_g = p_sat/p_g
   C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR ! in MJ/kmol/K
   u_g = C_g*(global_aux_var%temp(1) + 273.15d0)       ! in MJ/kmol
@@ -1639,7 +1641,8 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              
   use Option_module 
   use Saturation_Function_module             
-  use Water_EOS_module       
+  use Water_EOS_module 
+  use EOS_Water_module
   
   implicit none
   
@@ -1884,8 +1887,8 @@ subroutine THFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
              
   Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
   Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-  call PSAT(global_aux_var_up%temp(1), psat_up, dpsat_dt_up, ierr)
-  call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
+  call EOSWaterSaturationPressure(global_aux_var_up%temp(1), psat_up, dpsat_dt_up, ierr)
+  call EOSWaterSaturationPressure(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
   
   ! vapor pressure lowering due to capillary pressure
   fv_up = exp(-aux_var_up%pc/(global_aux_var_up%den(1)* &
@@ -2212,6 +2215,7 @@ subroutine THFlux(aux_var_up,global_aux_var_up, &
                   
   use Option_module                              
   use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2326,8 +2330,8 @@ subroutine THFlux(aux_var_up,global_aux_var_up, &
              
   Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
   Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-  call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
-  call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
+  call EOSWaterSaturationPressure(global_aux_var_up%temp(1), psat_up, ierr)
+  call EOSWaterSaturationPressure(global_aux_var_dn%temp(1), psat_dn, ierr)
   
   ! vapor pressure lowering due to capillary pressure
   fv_up = exp(-aux_var_up%pc/(global_aux_var_up%den(1)* &
@@ -2409,6 +2413,7 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
   use Option_module
   use Saturation_Function_module
   use Water_EOS_module
+  use EOS_Water_module
  
   implicit none
   
@@ -2646,8 +2651,8 @@ subroutine THBCFluxDerivative(ibndtype,aux_vars, &
                    273.15d0)/(T_ref + 273.15d0))**(1.8)  
         Ddiffgas_up = satg_up*deng_up*Diffg_up
         Ddiffgas_dn = satg_dn*deng_dn*Diffg_dn
-        call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
-        call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
+        call EOSWaterSaturationPressure(global_aux_var_up%temp(1), psat_up, ierr)
+        call EOSWaterSaturationPressure(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
         molg_up = psat_up/p_g
         molg_dn = psat_dn/p_g
         ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + &
@@ -2798,6 +2803,7 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     Res)
   use Option_module
   use Water_EOS_module
+  use EOS_Water_module
   use Condition_module
  
   implicit none
@@ -2949,8 +2955,8 @@ subroutine THBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                    273.15d0)/(T_ref + 273.15d0))**(1.8)
         Ddiffgas_up = satg_up*deng_up*Diffg_up
         Ddiffgas_dn = satg_dn*deng_dn*Diffg_dn
-        call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
-        call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
+        call EOSWaterSaturationPressure(global_aux_var_up%temp(1), psat_up, ierr)
+        call EOSWaterSaturationPressure(global_aux_var_dn%temp(1), psat_dn, ierr)
         
         ! vapor pressure lowering due to capillary pressure
         fv_up = exp(-aux_var_up%pc/(global_aux_var_up%den(1)* &

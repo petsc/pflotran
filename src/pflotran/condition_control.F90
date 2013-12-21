@@ -46,7 +46,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Dataset_Common_HDF5_class
   use Grid_module
   use Patch_module
-  use Water_EOS_module
+  use EOS_Water_module
 #ifdef DASVYAT
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
@@ -199,7 +199,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                   xx_p(ibegin+GENERAL_GAS_SATURATION_DOF) = &
                     general%gas_saturation%dataset%rarray(1)
                   temperature = general%temperature%dataset%rarray(1)
-                  call psat(temperature,p_sat,ierr)
+                  call EOSWaterSaturationPressure(temperature,p_sat,ierr)
                   ! p_a = p_g - p_s(T)
                   xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
                     general%gas_pressure%dataset%rarray(1) - &

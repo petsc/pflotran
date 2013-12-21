@@ -217,7 +217,6 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
   use Gas_EOS_module
   use EOS_Water_module
   use Saturation_Function_module
@@ -297,7 +296,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(lid) = 1.d0
       gen_aux_var%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,P_sat,ierr)
+      call EOSWaterSaturationPressure(gen_aux_var%temp,P_sat,ierr)
       !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
       !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
       call Henry_air_noderiv(dummy,gen_aux_var%temp, &
@@ -333,7 +332,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       
       P_sat = gen_aux_var%pres(vpid)
       guess = gen_aux_var%temp
-      call Tsat(gen_aux_var%temp,P_sat,dummy,guess,ierr)
+      call EOSWaterSaturationTemperature(gen_aux_var%temp,P_sat,dummy, &
+                                         guess,ierr)
       
       call SatFuncGetCapillaryPressure(gen_aux_var%pres(cpid), &
                                        gen_aux_var%sat(lid), &
@@ -370,9 +370,12 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   ! Gas phase thermodynamic properties
   call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
                             option%scale,den_air,h_air,u)
-  call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
-                gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
-                h_wat_vap,hgp,hgt,option%scale,ierr)      
+!  call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
+!                gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
+!                h_wat_vap,hgp,hgt,option%scale,ierr) 
+  call EOSWaterSteamDensityEnthalpy(gen_aux_var%temp,gen_aux_var%pres(gid), &
+                                    gen_aux_var%pres(apid),den_kg_wat_vap, &
+                                    den_wat_vap,h_wat_vap,option%scale,ierr)
   
   gen_aux_var%den(gid) = den_wat_vap + den_air
   gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
@@ -394,8 +397,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
     ! this does not need to be calculated for LIQUID_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
-    call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                      P_sat,visl,ierr)
+    call EOSWaterViscosity(gen_aux_var%temp,gen_aux_var%pres(lid), &
+                           P_sat,visl,ierr)
     gen_aux_var%kvr(lid) = krl/visl
   endif
 
@@ -425,7 +428,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use Saturation_Function_module
   
@@ -463,7 +466,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   gen_aux_var%istate_store(PREV_IT) = global_aux_var%istate
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-      call psat(gen_aux_var%temp,P_sat,ierr)
+      call EOSWaterSaturationPressure(gen_aux_var%temp,P_sat,ierr)
       if (gen_aux_var%pres(vpid) <= P_sat) then
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
@@ -483,7 +486,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
-      call psat(gen_aux_var%temp,P_sat,ierr)
+      call EOSWaterSaturationPressure(gen_aux_var%temp,P_sat,ierr)
       if (gen_aux_var%pres(vpid) >= P_sat) then
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &

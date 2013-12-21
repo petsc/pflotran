@@ -327,12 +327,9 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
                                dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
-  
-!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
-  
-  dvis_dpsat = -dvis_dp 
+  call EOSWaterSaturationPressure(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
+  call EOSWaterViscosity(global_aux_var%temp(1),pw,sat_pressure,dpsat_dt,visl, &
+                         dvis_dt,dvis_dp,dvis_dpsat,ierr)
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
     dw_dp = 0.d0
@@ -486,10 +483,10 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 !  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
 !                         dw_dt, hw, hw_dp, hw_dt, ierr)
                          
-  call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
-  
-  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
-            dvis_dp, ierr)
+  call EOSWaterSaturationPressure(global_aux_var%temp(1), sat_pressure, &
+                                  dpsat_dt, ierr)
+  call EOSWaterViscosity(global_aux_var%temp(1), pw, sat_pressure, dpsat_dt, &
+                         visl, dvis_dt,dvis_dp, dvis_dpsat, ierr)
 
 !  call VISW_temp(global_aux_var%temp(1),visl,dvis_dt,ierr)
 !  dvis_dp = 0.d0

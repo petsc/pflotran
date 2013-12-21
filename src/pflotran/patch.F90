@@ -994,7 +994,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
-  use Water_EOS_module
+  use EOS_Water_module
   
   use General_Aux_module
   use Grid_module
@@ -1054,7 +1054,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
       select case(general%temperature%itype)
         case(DIRICHLET_BC)
           temperature = general%temperature%dataset%rarray(1)
-          call psat(temperature,p_sat,ierr)
+          call EOSWaterSaturationPressure(temperature,p_sat,ierr)
           coupler%flow_aux_real_var(GENERAL_AIR_PRESSURE_DOF,1:num_connections) = &
             general%gas_pressure%dataset%rarray(1) - p_sat
           dof3 = PETSC_TRUE

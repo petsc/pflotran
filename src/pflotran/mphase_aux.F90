@@ -273,7 +273,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: dg, dddp, dddt, m_na, m_cl, m_nacl
   PetscReal :: fg, dfgdp, dfgdt, xphi
   PetscReal :: eng, hg, dhdp, dhdt
-  PetscReal :: visg, dvdp, dvdt
+  PetscReal :: visg, dvdp, dvdt, dvdps
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
@@ -336,7 +336,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err = 1.D0
     p2 = p
 
@@ -458,7 +458,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
     dw_kg = dw_kg*1.D3
 !   call nacl_vis(t,p*1.D-6,xm_nacl,visl)
-    call VISW(t,pw,sat_pressure,visl,dvdt,dvdp,ierr)
+    call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,dvdps,ierr)
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol

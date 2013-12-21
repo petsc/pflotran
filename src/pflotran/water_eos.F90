@@ -22,9 +22,9 @@ module Water_EOS_module
 !            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
 !            Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp, &
 !            wateos_flag
-  public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
-            density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
-            Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp, &
+  public :: &
+            density, duan_mix_den, nacl_den, nacl_vis, cowat, & 
+            Tsat, DensityIce, InternalEnergyIce, wateos_simple, &
             wateos_flag
 
 contains

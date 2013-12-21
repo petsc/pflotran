@@ -307,7 +307,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
 
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err = 1.D0
     p2 = p
 

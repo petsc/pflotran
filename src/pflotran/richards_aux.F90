@@ -271,12 +271,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   dw_dp = dw_dp/FMWH2O
 #endif
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(global_aux_var%temp(1),sat_pressure,ierr)
-!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
-  dvis_dpsat = -dvis_dp 
+  call EOSWaterSaturationPressure(global_aux_var%temp(1),sat_pressure,ierr)
+  !geh: 0.d0 passed in for derivative of pressure w/respect to temp
+  call EOSWaterViscosity(global_aux_var%temp(1),pw,sat_pressure,0.d0, &
+                         visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
+!geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
   if (.not.saturated) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
+    dvis_dpsat = 0.d0
     dw_dp = 0.d0
     hw_dp = 0.d0
   endif

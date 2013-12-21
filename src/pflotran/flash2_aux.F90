@@ -293,7 +293,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   t = aux_var%temp
 
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err=1.D0
     p2 = p
 

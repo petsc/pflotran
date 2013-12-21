@@ -2129,7 +2129,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   use Grid_module
   use Patch_module
   
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module  
   use co2eos_module
   use co2_span_wagner_spline_module, only: sw_prop
@@ -2262,7 +2262,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     endif
    
     xphi = fg/p2
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     sat_pressure = sat_pressure/1.D5
   
     m_na=option%m_nacl; m_cl=m_na; m_nacl = m_na 
