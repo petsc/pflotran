@@ -18,10 +18,10 @@ module Water_EOS_module
     module procedure PSATgeh
   end interface
 
-!  public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
-!            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
-!            Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp, &
-!            wateos_flag
+  public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
+            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
+            Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp, &
+            wateos_flag
 
 contains
 
