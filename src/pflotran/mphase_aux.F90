@@ -244,7 +244,6 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
   use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
@@ -455,9 +454,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   
     xm_nacl = m_nacl*FMWNACL
     xm_nacl = xm_nacl/(1.D3 + xm_nacl)
-    call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
     dw_kg = dw_kg*1.D3
-!   call nacl_vis(t,p*1.D-6,xm_nacl,visl)
+!   call EOSWaterViscosityNaCl(t,p*1.D-6,xm_nacl,visl)
     call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,dvdps,ierr)
 
 !FEHM mixing ****************************
@@ -482,7 +481,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !duan mixing **************************
 #ifdef DUANDEN
 !                 units: t [C], p [MPa], dw_kg [kg/m^3]
-  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************

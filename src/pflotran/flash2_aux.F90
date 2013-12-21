@@ -238,7 +238,6 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   use Option_module
   use Global_Aux_module  
-  use Water_EOS_module
   use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
@@ -417,9 +416,9 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-    call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
+    call EOSWaterDensityNaCl(t, p*1D-6, xm_nacl, dw_kg) 
     dw_kg = dw_kg * 1D3
-    call nacl_vis(t,p*1D-6,xm_nacl,visl)
+    call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
     
     y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 !   y_nacl is the mole fraction
@@ -428,7 +427,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 !duan mixing **************************
 #ifdef DUANDEN
-  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************

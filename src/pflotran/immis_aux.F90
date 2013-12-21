@@ -241,7 +241,6 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
                                    fluid_properties,option)
 
   use Option_module
-  use Water_EOS_module
   use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
@@ -384,9 +383,9 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
   xm_nacl = option%m_nacl*FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-  call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
+  call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
   dw_kg = dw_kg * 1D3
-  call nacl_vis(t,p*1D-6,xm_nacl,visl)
+  call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
 
 !FEHM mixing ****************************
 ! den(1) = xmol(2)*dg + xmol(1)*dw_mol

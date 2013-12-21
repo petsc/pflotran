@@ -523,10 +523,10 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dsat_gas_dt = dsg_temp
   
 ! Calculate the density, internal energy and derivatives for ice
-  call DensityIce(global_aux_var%temp(1), global_aux_var%pres(1), &
-                  den_ice, dden_ice_dT, dden_ice_dP)
+  call EOSWaterDensityIce(global_aux_var%temp(1), global_aux_var%pres(1), &
+                          den_ice, dden_ice_dT, dden_ice_dP)
 
-  call InternalEnergyIce(global_aux_var%temp(1), u_ice, du_ice_dT)
+  call EOSWaterInternalEnergyIce(global_aux_var%temp(1), u_ice, du_ice_dT)
 
   aux_var%den_ice = den_ice
   aux_var%dden_ice_dt = dden_ice_dT

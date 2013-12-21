@@ -23,7 +23,7 @@ contains
 ! ************************************************************************** !
 subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
-  use Water_EOS_module
+  use EOS_Water_module
 
   use Option_module
   use Grid_module
@@ -168,7 +168,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       endif
   end select      
       
-  call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
+  call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum*1.d-6, &
+                           xm_nacl,dw_kg) 
   rho = dw_kg * 1.d3
   
   gravity_magnitude = sqrt(DotProduct(option%gravity,option%gravity))
@@ -211,7 +212,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     idatum = int((datum(Z_DIRECTION)-min_z)/(max_z-min_z) * &
                  dble(num_pressures))+1
     pressure_array(idatum) = pressure_at_datum
-    call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(temperature_at_datum,pressure_at_datum*1.d-6, &
+                             xm_nacl,dw_kg) 
     temperature = temperature_at_datum
     pressure0 = pressure_at_datum
     rho = dw_kg * 1.d3
@@ -226,14 +228,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
           temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       end select
-      call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
+      call EOSWaterDensityNaCl(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
       
       num_iteration = 0
       do 
         pressure = pressure0 + 0.5d0*(rho+rho0) * &
                    option%gravity(Z_DIRECTION) * delta_z
-        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
@@ -266,14 +268,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       end select
-      call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
+      call EOSWaterDensityNaCl(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
       num_iteration = 0
       do                   ! notice the negative sign (-) here
         pressure = pressure0 - 0.5d0*(rho+rho0) * &
                    option%gravity(Z_DIRECTION) * delta_z
-        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg)
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
@@ -536,7 +538,7 @@ end subroutine HydrostaticUpdateCoupler
 ! ************************************************************************** !
 subroutine HydrostaticTest()
 
-  use Water_EOS_module
+  use EOS_Water_module
   
   implicit none
   
@@ -567,7 +569,7 @@ subroutine HydrostaticTest()
   
   do i_increment = 1, num_increment
     pressure = 101325.d0
-    call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
     rho = dw_kg * 1.d3
     dist_z = 0.d0
     pressure_array(1,i_increment) = pressure
@@ -578,7 +580,7 @@ subroutine HydrostaticTest()
       num_iteration = 0
       do
         pressure = pressure0 + rho * 9.8068d0 * increment(i_increment)
-        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        call EOSWaterDensityNaCl(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
