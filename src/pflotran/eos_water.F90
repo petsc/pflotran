@@ -171,6 +171,7 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dt, VW, calculate_derivatives, &
             ! dpwr_EX_dt
             VW*aln10*247.8d0/(t+133.15d0)**2
     dVWdp = VW/AM*PHI*1.d-11
+    dVWdps = -1.d0 * dVWdp
   else
     dVWdt = -999.d0
     dVWdp = -999.d0
