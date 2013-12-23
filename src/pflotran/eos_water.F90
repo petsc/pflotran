@@ -350,9 +350,15 @@ subroutine EOSWaterDensityEnthalpy1(t,p,dw,dwmol,hw,calculate_derivatives, &
   PetscReal :: beta,beta2x,beta4,theta,utheta,theta2x,theta18,theta20
   PetscReal :: xx,yy,zz
   PetscReal :: u0,u1,u2,u3,u4,u5,u6,u7,u8,u9
-  PetscReal :: v0,v1,v2,v3,v4,v20,v40
+  PetscReal :: tempreal
+  PetscReal :: v0_1, v1_1, v2_1, v3_1, v4_1
+  PetscReal :: v1_2, v2_2, v3_2, v4_2, v20_2, v40_2
+  PetscReal :: v1_3, v2_3, v3_3, v4_3
+  PetscReal :: v1_4, v2_4, v3_4
+  PetscReal :: v1_5, v2_5
+  PetscReal :: v1_6
   PetscReal :: term1,term2,term2t,term3,term3t,term3p,term4,term4t,term4p, &
-            term5,term5t,term5p,term6,term6t,term6p,term7,term7t,term7p
+               term5,term5t,term5p,term6,term6t,term6p,term7,term7t,term7p
   PetscReal :: dv2t,dv2p,dv3t
   PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
   PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
@@ -443,12 +449,11 @@ subroutine EOSWaterDensityEnthalpy1(t,p,dw,dwmol,hw,calculate_derivatives, &
   ! ypt used for enthalpy even if derivative not calculated
   ypt = six*a2*theta**(-7)-two*a1*theta
   
-    !---calculate derivatives for water density
+  !---calculate derivatives for water density
+  if (calculate_derivatives) then
     zpt = ypt+(a3*yy*ypt-a4)/xx
     zpp = a5/xx
     u9 = u0*u1/zz
-    
-  if (calculate_derivatives) then
     vrpt = u9*zpt+aa(13)+two*aa(14)*theta-ten*u8 &
         -19.d0*aa(16)*u4*u4*theta18+11.d0*u2*u2*u3*theta**10 &
         -aa(20)*u6*(18.d0*a9*theta18+20.d0*theta20)/theta &
@@ -471,73 +476,98 @@ subroutine EOSWaterDensityEnthalpy1(t,p,dw,dwmol,hw,calculate_derivatives, &
 !---compute enthalpy internal energy and derivatives for water
   utheta = one/theta
   term1 = aa(0)*theta
-  !TODO(geh): split out derivative terms and place in conditional below
   term2 = -aa(1)
+  ! term2t is part of the derivative calc., but left here to avoid
+  ! recomputing the expensive do loop
   term2t = zero
   do i = 3,10
-    v1 = dfloat(i-2)*aa(i)*theta**(i-1)
-    term2t = term2t+v1*utheta*dfloat(i-1)
-    term2 = term2+v1                            
+    tempreal = dfloat(i-2)*aa(i)*theta**(i-1)
+    term2t = term2t+tempreal*utheta*dfloat(i-1)
+    term2 = term2+tempreal                            
   end do
     
-  v0 = u1/a5
-  v2 = 17.d0*(zz/29.d0-yy/12.d0)+five*theta*ypt/12.d0
-  v3 = a4*theta-(a3-one)*theta*yy*ypt
-  v1 = zz*v2+v3
-  term3 = v0*v1
-    
-  yptt = -two*a1-42.d0*a2/theta**8
-  dv2t = 17.d0*(zpt/29.d0-ypt/12.d0)+five/12.d0*(ypt+theta*yptt) 
-  dv3t = a4-(a3-one)*(theta*yy*yptt+yy*ypt+theta*ypt*ypt)
-  dv2p = 17.d0*zpp/29.d0
-  v4 = five*v1/(17.d0*zz)       
-    
-  term3t = v0*(zz*dv2t+(v2-v4)*zpt+dv3t)
-  term3p = v0*(zz*dv2p+(v2-v4)*zpp)
-    
-  v1 = nine*theta+a6
-  v20 = (a6-theta)
-  v2 = v20**9
-  v3 = a7+20.d0*theta**19
-  v40 = a7+theta**19
-  v4 = one/(v40*v40)
-  term4p = aa(12)-aa(14)*theta2x+aa(15)*v1*v2+aa(16)*v3*v4
+  ! "v" section 1
+  v0_1 = u1/a5
+  v2_1 = 17.d0*(zz/29.d0-yy/12.d0)+five*theta*ypt/12.d0
+  v3_1 = a4*theta-(a3-one)*theta*yy*ypt
+  v1_1 = zz*v2_1+v3_1
+  term3 = v0_1*v1_1
+  
+  ! block 1 removed from here
+
+  ! "v" section 2
+  v1_2 = nine*theta+a6
+  v20_2 = (a6-theta)
+  v2_2 = v20_2**9
+  v3_2 = a7+20.d0*theta**19
+  v40_2 = a7+theta**19
+  v4_2 = one/(v40_2*v40_2)
+  ! term4p is a derivative, but left due to dependency in term4
+  term4p = aa(12)-aa(14)*theta2x+aa(15)*v1_2*v2_2+aa(16)*v3_2*v4_2
   term4 = term4p*beta
-  term4t =(-two*aa(14)*theta+nine*aa(15)*(v2-v1*v2/v20) &
-          +38.d0*theta18*aa(16)*(ten*v4-v3*v4/v40))*beta
+  
+  ! block 2 removed from here
     
-  v1 = beta*(aa(17)+aa(18)*beta+aa(19)*beta2x)
-  v2 = 12.d0*theta**11+a8
-  v4 = one/(a8+theta**11)
-  v3 = v4*v4
-  term5 = v1*v2*v3
-  term5p = v3*v2*(aa(17)+two*aa(18)*beta+three*aa(19)*beta2x)
-  term5t = v1*(132.d0*v3*theta**10-22.d0*v2*v3*v4*theta**10)
+  ! "v" section 3
+  v1_3 = beta*(aa(17)+aa(18)*beta+aa(19)*beta2x)
+  v2_3 = 12.d0*theta**11+a8
+  v4_3 = one/(a8+theta**11)
+  v3_3 = v4_3*v4_3
+  term5 = v1_3*v2_3*v3_3
+  
+  ! block 3 removed from here
     
-  v1 = (a10+beta)**(-3)+a11*beta
-  v3 = (17.d0*a9+19.d0*theta2x)
-  v2 = aa(20)*theta18*v3                     
-  term6 = v1*v2
-  term6p = v2*(a11-three*(a10+beta)**(-4))
-  term6t = v1*aa(20)*theta18*(18.d0*v3*utheta+38.d0*theta)
+  ! "v" section 4
+  v1_4 = (a10+beta)**(-3)+a11*beta
+  v3_4 = (17.d0*a9+19.d0*theta2x)
+  v2_4 = aa(20)*theta18*v3_4       
+  term6 = v1_4*v2_4
+
+  ! block 4 removed from here
     
-  v1 = 21.d0*aa(22)/theta20*beta4
-  v2 = aa(21)*a12*beta2x*beta
-  term7 = v1+v2  
-  term7p = beta2x*(three*aa(21)*a12+84.d0*aa(22)*beta/theta20)
-  term7t = -420.d0*aa(22)*beta4/(theta20*theta)
+  ! "v" section 5
+  v1_5 = 21.d0*aa(22)/theta20*beta4
+  v2_5 = aa(21)*a12*beta2x*beta
+  term7 = v1_5+v2_5  
     
   ! The scale (usually 1e-6) should be applied below to pc1 to convert
   ! from Pa -> MPa.  Applying it to critical volume does the same, but is
   ! misleading - geh
   vc1molh = vc1mol*scale
     
-  v1 = pc1*vc1molh ! MPa * m^3/kmol = MJ/kmol assuming scale = 1e-6
-  hw = (term1-term2+term3+term4-term5+term6+term7)*v1
+  ! "v" section 6
+  v1_6 = pc1*vc1molh ! MPa * m^3/kmol = MJ/kmol assuming scale = 1e-6
+  hw = (term1-term2+term3+term4-term5+term6+term7)*v1_6
     
   if (calculate_derivatives) then
+
+    ! block 1
+    yptt = -two*a1-42.d0*a2/theta**8
+    dv2t = 17.d0*(zpt/29.d0-ypt/12.d0)+five/12.d0*(ypt+theta*yptt) 
+    dv3t = a4-(a3-one)*(theta*yy*yptt+yy*ypt+theta*ypt*ypt)
+    dv2p = 17.d0*zpp/29.d0
+    v4_1 = five*v1_1/(17.d0*zz)       
+    term3t = v0_1*(zz*dv2t+(v2_1-v4_1)*zpt+dv3t)
+    term3p = v0_1*(zz*dv2p+(v2_1-v4_1)*zpp)
+  
+    ! block 2
+    term4t = (-two*aa(14)*theta+nine*aa(15)*(v2_2-v1_2*v2_2/v20_2) &
+             +38.d0*theta18*aa(16)*(ten*v4_2-v3_2*v4_2/v40_2))*beta
+
+    ! block 3
+    term5p = v3_3*v2_3*(aa(17)+two*aa(18)*beta+three*aa(19)*beta2x)
+    term5t = v1_3*(132.d0*v3_3*theta**10-22.d0*v2_3*v3_3*v4_3*theta**10)
+  
+    ! block 4
+    term6p = v2_4*(a11-three*(a10+beta)**(-4))
+    term6t = v1_4*aa(20)*theta18*(18.d0*v3_4*utheta+38.d0*theta)
+    
+    ! block 5
+    term7p = beta2x*(three*aa(21)*a12+84.d0*aa(22)*beta/theta20)
+    term7t = -420.d0*aa(22)*beta4/(theta20*theta)
+
     hwp = (term3p+term4p-term5p+term6p+term7p)*vc1molh
-    hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1*utc1
+    hwt = (aa(0)-term2t+term3t+term4t-term5t+term6t+term7t)*v1_6*utc1
   else
     hwp = -999.d0
     hwt = -999.d0
