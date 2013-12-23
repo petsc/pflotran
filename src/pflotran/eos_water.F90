@@ -8,6 +8,14 @@ module EOS_Water_module
   
 #include "finclude/petscsys.h"
 
+  ! In order to support generic EOS subroutines, we need the following:
+  ! 1. An interface declaration that defines the argument list (best to have 
+  !    "Dummy" appended.
+  ! 2. A procedure pointer that is initially set to null.  This pointer is
+  !    pointed to the appropriate subroutine later on (e.g. EOSWaterInit())
+  ! 3. An interface for derivative/non-derivative versions
+
+  ! proceduer pointer declarations
   procedure(EOSWaterViscosityDummy), pointer :: EOSWaterViscosityPtr => null()
   procedure(EOSWaterSatPressDummy), pointer :: &
     EOSWaterSaturationPressurePtr => null()
@@ -16,6 +24,7 @@ module EOS_Water_module
   procedure(EOSWaterSteamDenEnthDummy), pointer :: &
     EOSWaterSteamDensityEnthalpyPtr => null()
   
+  ! interface blocks
   interface
     subroutine EOSWaterViscosityDummy(T, P, PS, dPSdt, VW, &
                                       calculate_derivatives, &
@@ -47,7 +56,8 @@ module EOS_Water_module
       PetscReal, intent(in) :: scale
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterDensityEnthalpyDummy
-    subroutine EOSWaterSteamDenEnthDummy(t,p,pa,dg,dgmol,hg,calculate_derivatives, &
+    subroutine EOSWaterSteamDenEnthDummy(t,p,pa,dg,dgmol,hg, &
+                                         calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
       implicit none
       PetscReal, intent(in) :: t
@@ -60,6 +70,8 @@ module EOS_Water_module
     end subroutine EOSWaterSteamDenEnthDummy
   end interface
   
+  ! interfaces for derivative/non-derivative versions that are visible outside
+  ! the module.
   interface EOSWaterViscosity
     procedure EOSWaterViscosityNoDerive
     procedure EOSWaterViscosityDerive
@@ -77,6 +89,7 @@ module EOS_Water_module
     procedure EOSWaterSteamDenEnthDerive
   end interface
 
+  ! the "public" definition that makes subroutines visible outside.
   public :: EOSWaterInit, &
             EOSWaterViscosity, &
             EOSWaterSaturationPressure, &
