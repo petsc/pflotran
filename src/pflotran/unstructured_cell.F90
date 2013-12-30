@@ -13,6 +13,7 @@ module Unstructured_Cell_module
   PetscInt, parameter, public :: TET_TYPE          = 2
   PetscInt, parameter, public :: WEDGE_TYPE        = 3
   PetscInt, parameter, public :: PYR_TYPE          = 4
+  PetscInt, parameter, public :: POLY_TYPE         = 8 ! move LINE_TYPE from gauss.F90
   ! 2D cell types:
   PetscInt, parameter, public :: TRI_TYPE          = 5
   PetscInt, parameter, public :: QUAD_TYPE         = 6

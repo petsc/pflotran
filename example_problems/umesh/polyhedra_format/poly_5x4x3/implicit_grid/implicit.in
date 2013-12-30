@@ -1,0 +1,157 @@
+:Description: 3D test problem for unstructured richards equation with mixed 
+:             elements in explicit format
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== discretization ===================================
+GRID
+  TYPE unstructured ./5x4x3.mesh
+END
+
+:=========================== solver options ===================================
+TIMESTEPPER
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 5.d-13
+  /
+END
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE BROOKS_COREY
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.3d0
+  ALPHA 1.d-4
+END
+
+:=========================== times ============================================
+TIME
+  :FINAL_TIME 40.d0 d
+  FINAL_TIME 100.d0 s
+  MAXIMUM_TIMESTEP_SIZE 10.d0 s
+END
+
+REFERENCE_PRESSURE 101325.
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
+  /
+END 
+
+REGION top
+:  FILE top_of_1.ex
+  COORDINATES
+    0.d0 0.d0 3.d0
+    5.d0 5.d0 3.d0
+  /
+END 
+
+REGION west
+:  file west_of_12.ex
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 5.d0 5.d0
+  /
+END 
+
+REGION center_of_13
+:  FILE 13.txt
+  COORDINATES
+    2.d0 2.d0 0.d0
+    3.d0 3.d0 1.d0
+  /
+END 
+
+:REGION middle
+:  COORDINATE 2.50001d0 2.50001d0 2.50001d0
+:END 
+
+:=========================== observation points ===============================
+:OBSERVATION
+:  REGION middle
+:/
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 2.5d0
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION west
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM list
+    TIME_UNITS d
+    0.d0 0.d0 0.d0 2.5d0
+    10.d0 0.d0 0.d0 4.d0
+    20.d0 0.d0 0.d0 -2.d0
+    40.d0 0.d0 0.d0 3.d0
+  /
+  PRESSURE 101325.d0
+  INTERPOLATION LINEAR
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    PRESSURE neumann
+  /
+  FLUX 15 cm/y
+END
+
+FLOW_CONDITION well
+  TYPE
+    RATE volumetric_rate
+  /
+  RATE 0.1 l/min
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION west
+  REGION west
+END
+
+BOUNDARY_CONDITION
+  FLOW_CONDITION recharge
+  REGION top
+END
+
+SOURCE_SINK
+  FLOW_CONDITION well
+  REGION center_of_13
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all 
+  MATERIAL soil1
+END

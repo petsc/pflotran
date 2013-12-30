@@ -5,6 +5,7 @@ module Discretization_module
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Explicit_module
+  use Unstructured_Polyhedra_module
   use MFD_Aux_module
   use MFD_module
   use DM_Kludge_module
@@ -219,7 +220,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
                 structured_grid_itype = CARTESIAN_GRID
                 structured_grid_ctype = 'cartesian'
             end select
-          case('unstructured','unstructured_explicit')
+          case('unstructured','unstructured_explicit','unstructured_polyhedra')
             discretization%itype = UNSTRUCTURED_GRID
             word = discretization%ctype
             discretization%ctype = 'unstructured'
@@ -230,6 +231,9 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
               case('unstructured_explicit')
                 unstructured_grid_itype = EXPLICIT_UNSTRUCTURED_GRID
                 unstructured_grid_ctype = 'explicit unstructured'
+              case('unstructured_polyhedra')
+                unstructured_grid_itype = POLYHEDRA_UNSTRUCTURED_GRID
+                unstructured_grid_ctype = 'polyhedra unstructured'
             end select
             call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
                                  PETSC_TRUE)
@@ -333,6 +337,15 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
           un_str_grid%explicit_grid => UGridExplicitCreate()
           call ExplicitUGridRead(un_str_grid, &
                                  discretization%filename,option)
+          grid%unstructured_grid => un_str_grid
+        case(POLYHEDRA_UNSTRUCTURED_GRID)
+          un_str_grid%polyhedra_grid => UGridPolyhedraCreate()
+          if (index(discretization%filename,'.h5') > 0 ) then
+            !call PolyhedraUGridReadHDF5(un_str_grid,discretization%filename,option)
+            call printErrMsg(option,'Add PolyhedraUGridReadHDF5')
+          else
+            call PolyhedraUGridRead(un_str_grid,discretization%filename,option)
+          endif
           grid%unstructured_grid => un_str_grid
       end select
       grid%itype = unstructured_grid_itype
@@ -694,6 +707,9 @@ subroutine DiscretizationCreateDMs(discretization,option)
         case(EXPLICIT_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
           call ExplicitUGridDecompose(ugrid,option)
+        case(POLYHEDRA_UNSTRUCTURED_GRID)
+          ugrid => discretization%grid%unstructured_grid
+          call PolyhedraUGridDecompose(ugrid,option)
       end select
   end select
 

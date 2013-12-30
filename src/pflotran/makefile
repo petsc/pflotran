@@ -262,7 +262,8 @@ grid_obj = \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o 
+	${common_src}structured_grid.o \
+  ${common_src}unstructured_polyhedra.o
 
 relations_obj = \
 	${common_src}saturation.o \
@@ -444,7 +445,7 @@ endif
 convergence.o : grid.o option.o pflotran_constants.o solver.o
 coupler.o : condition.o connection.o grid.o input.o mfd_aux.o option.o \
             pflotran_constants.o region.o string.o structured_grid.o \
-            unstructured_explicit.o unstructured_grid_aux.o
+            unstructured_explicit.o unstructured_grid_aux.o unstructured_polyhedra.o
 database.o : database_aux.o immobile.o immobile_aux.o input.o microbial.o \
              microbial_aux.o mineral.o mineral_aux.o option.o \
              pflotran_constants.o reaction.o reaction_aux.o reaction_sandbox.o \
@@ -472,7 +473,7 @@ debug.o : input.o option.o pflotran_constants.o
 discretization.o : dm_kludge.o grid.o input.o mfd.o mfd_aux.o option.o \
                    pflotran_constants.o string.o structured_grid.o \
                    unstructured_explicit.o unstructured_grid.o \
-                   unstructured_grid_aux.o
+                   unstructured_grid_aux.o unstructured_polyhedra.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
@@ -572,7 +573,7 @@ global_aux.o : option.o pflotran_constants.o utility.o
 grid.o : connection.o logging.o mfd_aux.o option.o pflotran_constants.o \
          region.o structured_grid.o unstructured_cell.o \
          unstructured_explicit.o unstructured_grid.o unstructured_grid_aux.o \
-         utility.o
+         utility.o unstructured_polyhedra.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          pflotran_constants.o realization.o realization_base.o region.o \
          unstructured_cell.o utility.o
@@ -919,6 +920,9 @@ unstructured_grid.o : connection.o geometry.o hdf5_aux.o input.o option.o \
                       unstructured_grid_aux.o utility.o
 unstructured_grid_aux.o : geometry.o option.o pflotran_constants.o \
                           unstructured_cell.o utility.o
+unstructured_polyhedra.o : connection.o geometry.o input.o option.o \
+                          pflotran_constants.o string.o \
+                          unstructured_grid_aux.o utility.o
 utility.o : input.o option.o pflotran_constants.o string.o
 variables.o :
 water_eos.o : pflotran_constants.o

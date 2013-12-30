@@ -33,6 +33,7 @@ module Unstructured_Grid_Aux_module
     PetscInt, pointer :: ghost_cell_ids_petsc(:) ! petsc ordering of ghost cells ids
     AO :: ao_natural_to_petsc ! mapping of natural to petsc ordering
     type(unstructured_explicit_type), pointer :: explicit_grid
+    type(unstructured_polyhedra_type), pointer :: polyhedra_grid
     ! variables for implicit unstructured grids
     PetscInt :: grid_type         ! 3D subsurface (default) or 2D surface grid
     PetscInt :: num_vertices_global ! number of vertices in entire problem domain
@@ -78,6 +79,32 @@ module Unstructured_Grid_Aux_module
     type(point3d_type), pointer :: vertex_coordinates(:)
   end type unstructured_explicit_type
 
+  type, public :: unstructured_polyhedra_type
+    PetscInt, pointer :: cell_ids(:)
+    PetscInt, pointer :: cell_nfaces(:)
+    PetscInt, pointer :: cell_nverts(:)
+    PetscInt, pointer :: cell_faceids(:,:)
+    PetscInt, pointer :: cell_vertids(:,:)
+    PetscReal, pointer :: cell_volumes(:)
+    type(point3d_type), pointer :: cell_centroids(:)
+    PetscInt, pointer :: face_ids(:)
+    PetscInt, pointer :: face_cellids(:)
+    PetscInt, pointer :: face_nverts(:)
+    PetscInt, pointer :: face_vertids(:,:)
+    PetscReal, pointer :: face_areas(:)
+    type(point3d_type), pointer :: face_centroids(:)
+    type(point3d_type), pointer :: vertex_coordinates(:)
+    PetscInt :: num_cells_global
+    PetscInt :: num_cells_local
+    PetscInt :: num_faces_global
+    PetscInt :: num_faces_local
+    PetscInt :: num_vertices_global
+    PetscInt :: num_vertices_local
+    PetscInt :: max_nface_per_cell
+    PetscInt :: max_nvert_per_face
+    PetscInt :: max_nvert_per_cell
+  end type unstructured_polyhedra_type
+
   type, public :: ugdm_type
     ! local: included both local (non-ghosted) and ghosted cells
     ! global: includes only local (non-ghosted) cells
@@ -121,6 +148,7 @@ module Unstructured_Grid_Aux_module
 
   public :: UGridCreate, &
             UGridExplicitCreate, &
+            UGridPolyhedraCreate, &
             UGridMapIndices, &
             UGridDMCreateJacobian, &
             UGridDMCreateVector, &
@@ -205,6 +233,7 @@ function UGridCreate()
   nullify(unstructured_grid%ghost_cell_ids_petsc)
   unstructured_grid%ao_natural_to_petsc = 0
   nullify(unstructured_grid%explicit_grid)
+  nullify(unstructured_grid%polyhedra_grid)
 
   ! variables for implicit unstructured grids
   unstructured_grid%grid_type = THREE_DIM_GRID
@@ -257,6 +286,53 @@ function UGridExplicitCreate()
   UGridExplicitCreate => explicit_grid
   
 end function UGridExplicitCreate
+
+! ************************************************************************** !
+!> This routine creates a polyhedra unstructured grid object.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 09/29/13
+! ************************************************************************** !
+function UGridPolyhedraCreate()
+
+  implicit none
+
+  type(unstructured_polyhedra_type), pointer :: UGridPolyhedraCreate
+
+  type(unstructured_polyhedra_type), pointer :: polyhedra_grid
+
+  allocate(polyhedra_grid)
+
+  polyhedra_grid%num_cells_global = 0
+  polyhedra_grid%num_cells_local = 0
+  polyhedra_grid%num_faces_global = 0
+  polyhedra_grid%num_faces_local = 0
+  polyhedra_grid%num_vertices_global = 0
+  polyhedra_grid%num_vertices_local = 0
+  polyhedra_grid%max_nface_per_cell = 0
+  polyhedra_grid%max_nvert_per_face = 0
+  polyhedra_grid%max_nvert_per_cell = 0
+
+  nullify(polyhedra_grid%cell_ids)
+  nullify(polyhedra_grid%cell_nfaces)
+  nullify(polyhedra_grid%cell_vertids)
+  nullify(polyhedra_grid%cell_faceids)
+  nullify(polyhedra_grid%cell_nverts)
+  nullify(polyhedra_grid%cell_volumes)
+  nullify(polyhedra_grid%cell_centroids)
+  nullify(polyhedra_grid%face_ids)
+  nullify(polyhedra_grid%face_cellids)
+  nullify(polyhedra_grid%face_nverts)
+  nullify(polyhedra_grid%face_vertids)
+  nullify(polyhedra_grid%face_areas)
+  nullify(polyhedra_grid%face_centroids)
+  nullify(polyhedra_grid%vertex_coordinates)
+
+  UGridPolyhedraCreate => polyhedra_grid
+
+end function UGridPolyhedraCreate
 
 ! ************************************************************************** !
 !
@@ -1507,7 +1583,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   call PetscViewerDestroy(viewer,ierr)
 
   call printMsg(option,'Scatter/gathering local ghosted vertices')
-#endif  
+#endif
 
 end subroutine UGridNaturalToPetsc  
   
@@ -1536,6 +1612,7 @@ subroutine UGridDestroy(unstructured_grid)
   call DeallocateArray(unstructured_grid%cell_ids_petsc)
   call DeallocateArray(unstructured_grid%ghost_cell_ids_petsc)
   call UGridExplicitDestroy(unstructured_grid%explicit_grid)
+  call UGridPolyhedraDestroy(unstructured_grid%polyhedra_grid)
   if (unstructured_grid%ao_natural_to_petsc /= 0) &
     call AODestroy(unstructured_grid%ao_natural_to_petsc,ierr)
   
@@ -1572,7 +1649,7 @@ end subroutine UGridDestroy
 subroutine UGridDMDestroy(ugdm)
 
   implicit none
-  
+
   type(ugdm_type), pointer :: ugdm
   
   PetscErrorCode :: ierr
@@ -1640,5 +1717,52 @@ subroutine UGridExplicitDestroy(explicit_grid)
   nullify(explicit_grid)
 
 end subroutine UGridExplicitDestroy
+
+! ************************************************************************** !
+!> This routine deallocates a polyhedra unstructured grid object
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 09/29/13
+! ************************************************************************** !
+subroutine UGridPolyhedraDestroy(polyhedra_grid)
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  type(unstructured_polyhedra_type), pointer :: polyhedra_grid
+
+  PetscErrorCode :: ierr
+
+  if (.not.associated(polyhedra_grid)) return
+
+  call DeallocateArray(polyhedra_grid%cell_ids)
+  call DeallocateArray(polyhedra_grid%cell_nfaces)
+  call DeallocateArray(polyhedra_grid%cell_nverts)
+  call DeallocateArray(polyhedra_grid%cell_faceids)
+  call DeallocateArray(polyhedra_grid%cell_vertids)
+  call DeallocateArray(polyhedra_grid%cell_volumes)
+  call DeallocateArray(polyhedra_grid%face_ids)
+  call DeallocateArray(polyhedra_grid%face_cellids)
+  call DeallocateArray(polyhedra_grid%face_nverts)
+  call DeallocateArray(polyhedra_grid%face_vertids)
+  call DeallocateArray(polyhedra_grid%face_areas)
+
+  if (associated(polyhedra_grid%cell_centroids)) &
+    deallocate(polyhedra_grid%cell_centroids)
+  nullify(polyhedra_grid%cell_centroids)
+  if (associated(polyhedra_grid%face_centroids)) &
+    deallocate(polyhedra_grid%face_centroids)
+  nullify(polyhedra_grid%face_centroids)
+  if (associated(polyhedra_grid%vertex_coordinates)) &
+    deallocate(polyhedra_grid%vertex_coordinates)
+  nullify(polyhedra_grid%vertex_coordinates)
+
+  deallocate(polyhedra_grid)
+  nullify(polyhedra_grid)
+
+end subroutine UGridPolyhedraDestroy
 
 end module Unstructured_Grid_Aux_module
