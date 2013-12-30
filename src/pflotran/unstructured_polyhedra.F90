@@ -38,7 +38,7 @@ contains
 ! ************************************************************************** !
 subroutine PolyhedraUGridRead(ugrid, filename, option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -83,7 +83,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
     fileid = 86
     input => InputCreate(fileid,filename,option)
 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read CELL card, though we already know the
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'CELLS'
@@ -141,7 +141,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)
 
         call InputReadInt(input,option,temp_int)
@@ -236,7 +236,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
 
   if (option%myrank == option%io_rank) then
 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'FACES'
     call InputErrorMsg(input,option,word,card)
@@ -279,7 +279,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
       temp_real_array = -999.d0
       num_to_read = nfaces_per_proc(irank+1)
       do iface = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
 
         call InputReadInt(input,option,temp_int)
@@ -369,7 +369,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
   deallocate(temp_real_array)
 
   if (option%myrank == option%io_rank) then
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'VERTICES'
     call InputErrorMsg(input,option,word,card)
@@ -414,7 +414,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do ivert = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         call InputReadDouble(input,option,temp_real_array(1,ivert))
         call InputErrorMsg(input,option,'vertex x coordinate',hint)
@@ -482,7 +482,7 @@ end subroutine PolyhedraUGridRead
 ! ************************************************************************** !
 subroutine PolyhedraUGridDecompose(ugrid, option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   use Unstructured_Cell_module

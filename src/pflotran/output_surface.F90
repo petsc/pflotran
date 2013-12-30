@@ -82,6 +82,7 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   use Realization_class, only : realization_type
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
+  use PFLOTRAN_Constants_module
 
   implicit none
 
@@ -112,11 +113,13 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   endif
 
   if (plot_flag) then
-    if (surf_realization%output_option%print_hdf5) then
+    if (surf_realization%output_option%print_hdf5 .and. &
+        option%subsurf_surf_coupling /= DECOUPLED ) then
       call OutputSurfaceHDF5UGridXDMF(surf_realization,realization,INSTANTANEOUS_VARS)
     endif
   
-    if (surf_realization%output_option%print_tecplot) then
+    if (surf_realization%output_option%print_tecplot .and. &
+        option%subsurf_surf_coupling /= DECOUPLED ) then
       call PetscTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(surf_realization%output_option%tecplot_format)
@@ -137,8 +140,10 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   endif
 
-  ! Output temporally average variables
-  call OutputSurfaceAvegVars(surf_realization,realization)
+  if (option%subsurf_surf_coupling /= DECOUPLED) then
+    ! Output temporally average variables
+    call OutputSurfaceAvegVars(surf_realization,realization)
+  endif
 
   ! Increment the plot number
   if(plot_flag) then
@@ -692,7 +697,8 @@ end subroutine OutputHydrograph
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization,var_list_type)
+subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
+                                      var_list_type)
 
   use Surface_Realization_class
   use Realization_class
@@ -703,18 +709,19 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization,var_list_type
   use Patch_module
   use Reaction_Aux_module
 
-#if  !defined(PETSC_HAVE_HDF5)
+#if !defined(PETSC_HAVE_HDF5)
   implicit none
   
   class(surface_realization_type) :: surf_realization
   class(realization_type) :: realization
+  PetscInt :: var_list_type
 
   call printMsg(surf_realization%option,'')
   write(surf_realization%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids Darn.")')
   call printErrMsg(surf_realization%option)
-#endif
+#else
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
@@ -1009,9 +1016,12 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization,var_list_type
 
 #endif
 !ifdef SCORPIO_WRITE
+#endif
+!ifdef PETSC_HAVE_HDF5
 
 end subroutine OutputSurfaceHDF5UGridXDMF
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !> This routine writes unstructured coordinates to HDF5 file in XDMF format
 !!
@@ -1532,6 +1542,8 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 ! ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
+#endif
+! ifdef PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar from a multivar array
@@ -1705,7 +1717,7 @@ end subroutine OutputSurfaceAvegVars
 subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Variables_module
 
@@ -1719,7 +1731,7 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
   character(len=MAXWORDLENGTH) :: name, units
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     
@@ -1795,6 +1807,7 @@ function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
 
 end function OutputSurfaceHDF5FilenameID
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !> This returns mass/energy flowrate at all faces of a control volume for
 !! surface realizaton.
@@ -2274,6 +2287,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 ! #ifdef SCORPIO_WRITE
 
 end subroutine WriteHDF5SurfaceFlowratesUGrid
+#endif
 
 end module Output_Surface_module
 

@@ -690,7 +690,7 @@ where the number density $\N_\b/V$ of secondary continua of type $\b$ is equal t
 \EQ
 \frac{\N_\b}{V} \eq \frac{1}{V} \frac{V_\b}{V_\b^0} \eq \frac{\epsilon_\b}{V_\b^0},
 \EN
-and $A_\b^0$ and $V_\b^0$ refer to the area and volume of each geometric type as listed in Table~\ref{tdcdm}.
+and $A_\b^0$ and $V_\b^0$ refer to the area and volume of each geometric type as listed in Table~\ref{tdcdmgeom}.
 \begin{table}\centering
 \caption{DCDM geometric parameters.}\label{tdcdmgeom}
 \vspace{3mm}
@@ -1294,6 +1294,28 @@ $c_3$ & 4027.337694858\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Geomechanics}
+In PFLOTRAN, linear elasticity model is assumed as the constitutive model for deformation of the rock.
+Biot's model is used to incorporate the effect of flow on the geomechanics. In addition, the effect of temperature on geomechanics is considered via coefficient of thermal expansion. The following governing equations are used:
+\SEQ
+\begin{align}
+& \nabla \cdot [\bss{\sigma}] + \rho \bss{b} = 0 \quad \mathrm{in} \; \Omega, \label{Eq:mom}\\ 
+& \bss{\sigma} = \lambda \text{tr}\left(\bss{\varepsilon}\right) + 2\mu \bss{\varepsilon} - \beta (p - p_0) \bss{I} - \alpha (T - T_0) \bss{I}, \\
+& \bss{\varepsilon} = \frac{1}{2} \left(\nabla\bss{u}(\bss{x}) + [\nabla \bss{u}(\bss{x})]^{T}  \right), \\ 
+&\bss{u}(\bss{x}) = \bss{u}^p(\bss{x}) \quad \mathrm{on} \; \Gamma^D,\label{eqn:diri}\\
+& \bss{\sigma}\bss{n}(\bss{x}) = t^p(\bss{x}) \quad \mathrm{on} \; \Gamma^N, \label{eqn:neu}
+\end{align}
+\SEN
+ where $\bss{u}$ is the unknown displacement field, $\bss{\sigma}$ is the Cauchy stress tensor,   $\lambda$, $\mu$ are Lam\'{e} parameters (Young's modulus and Poisson's ratio can be related to these two parameters), $\bss{b}$ is the specific body force (which is gravity in most cases), $\bss{n}$ is the outward normal to the boundary $\Gamma^N$. Also, $\bss{u}^p$ is the prescribed values of $\bss{u}$ on the Dirichlet part of the boundary $\Gamma^D$, and $\bss{t}^p$ is the prescribed traction on $\Gamma^N$. Additionally, $\beta$ is the Biot's coefficient, $\alpha$ is the coefficient of thermal expansion, $p$, $T$ are the fluid pressure and temperature, obtained by solving subsurface flow problem. Also, $p_0$ and $T_0$ are set to initial  pressure and temperature in the domain, $\bss{\varepsilon}$ is the strain tensor and $\text{tr}$ is the trace of a second order tensor, $\Omega$ is the domain, and $\bss{I}$ is the identity tensor. Note that stress is assumed \textit{positive under tension}.
+The effect of deformation on the pore structure is accounted for via 
+\BA
+\phi = \frac{\phi_0}{1 + (1-\phi_0) \text{tr}(\bss{\varepsilon})}.
+\EA
+
+Note that the above equations are solved using finite element method (Galerkin finite element) with the displacements solved for at the vertices. Since, the flow equations are solved via finite volume method with unknowns such as pressure and temperature solved for at the cell centers, in order to transfer data from the subsurface to geomechanics grid without interpolation, the geomechanics grid is constructed such that the vertices of the geomechanics grid coincide with the cell centers of the subsurface mesh. That is, the dual mesh of the subsurface mesh is used for the geomechanics solve.
+
+Also, geomechanics grid is read as an unstructured grid. Even if one needs to work with a structured grid, they have to set it up in the unstructured grid format. 
 
 \section{Appendix: Method of Solution}
 

@@ -263,7 +263,6 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   use Surface_Realization_class
   use Surface_Field_module
   use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
   use Logging_module
@@ -468,7 +467,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
     qsrc_flow = 0.d0
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-    qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    qsrc_flow = source_sink%flow_condition%rate%dataset%rarray(1)
       
     cur_connection_set => source_sink%connection_set
     
@@ -985,7 +984,6 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -1279,7 +1277,6 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -1400,7 +1397,6 @@ subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -1522,7 +1518,6 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -1738,7 +1733,6 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -1837,7 +1831,6 @@ subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module
@@ -2163,7 +2156,6 @@ subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
   use Condition_module

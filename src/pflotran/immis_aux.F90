@@ -60,18 +60,18 @@ type, public :: Immis_auxvar_elem_type
   end type Immis_parameter_type
     
   type, public :: Immis_type
-     PetscInt :: n_zero_rows
-     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-     PetscBool :: aux_vars_up_to_date
-     PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc, num_aux_ss
-     type(Immis_parameter_type), pointer :: immis_parameter
-     type(Immis_auxvar_type), pointer :: aux_vars(:)
-     type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
-     type(Immis_auxvar_type), pointer :: aux_vars_ss(:)
+    PetscBool :: aux_vars_up_to_date
+    PetscBool :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
+    type(Immis_parameter_type), pointer :: immis_parameter
+    type(Immis_auxvar_type), pointer :: aux_vars(:)
+    type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
+    type(Immis_auxvar_type), pointer :: aux_vars_ss(:)
 
-     PetscReal, pointer :: res_old_AR(:,:), res_old_FL(:,:), delx(:,:)
+    PetscReal, pointer :: res_old_AR(:,:), res_old_FL(:,:), delx(:,:)
   end type Immis_type
 
   

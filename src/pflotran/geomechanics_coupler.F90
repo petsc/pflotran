@@ -193,7 +193,7 @@ end subroutine GeomechCouplerInitList
 ! ************************************************************************** !
 subroutine GeomechCouplerRead(coupler,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -208,7 +208,7 @@ subroutine GeomechCouplerRead(coupler,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     

@@ -4,7 +4,7 @@ module Realization_class
 
   use Option_module
   use Output_Aux_module
-  use Input_module
+  use Input_Aux_module
   use Region_module
   use Condition_module
   use Constraint_module
@@ -22,7 +22,6 @@ module Realization_class
   
   use Reaction_Aux_module
   
-  use Level_module
   use Patch_module
   
   use PFLOTRAN_Constants_module
@@ -567,7 +566,6 @@ subroutine RealizationAddCoupler(realization,coupler)
   type(realization_type) :: realization
   type(coupler_type), pointer :: coupler
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: patch
   
   type(coupler_type), pointer :: new_coupler
@@ -799,7 +797,7 @@ subroutine RealizationProcessConditions(realization)
   
   type(realization_type) :: realization
 
-  call DatasetProcessDatasets(realization%datasets,realization%option)
+  call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -813,9 +811,8 @@ subroutine RealizationProcessConditions(realization)
                           realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%flow_mass_transfer_list, &
-                          realization%discretization, &
-                          realization%patch%grid, &
-                          realization%option)
+                            realization%patch%grid, &
+                            realization%option)
   endif
   if (associated(realization%rt_mass_transfer_list)) then
     call MassTransferInit(realization%rt_mass_transfer_list, &
@@ -823,9 +820,8 @@ subroutine RealizationProcessConditions(realization)
                           realization%datasets, &
                           realization%option)
     call MassTransferUpdate(realization%rt_mass_transfer_list, &
-                          realization%discretization, &
-                          realization%patch%grid, &
-                          realization%option)
+                            realization%patch%grid, &
+                            realization%option)
   endif
 
 
@@ -991,9 +987,7 @@ subroutine RealProcessFlowConditions(realization)
   type(flow_sub_condition_type), pointer :: cur_flow_sub_condition
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: i
-  class(dataset_base_type), pointer :: dataset
   
   option => realization%option
   
@@ -1001,57 +995,25 @@ subroutine RealProcessFlowConditions(realization)
   cur_flow_condition => realization%flow_conditions%first
   do
     if (.not.associated(cur_flow_condition)) exit
-    !TODO(geh): could destroy the time_series here if dataset allocated
+    string = 'flow_condition ' // trim(cur_flow_condition%name)
+    ! find datum dataset
+    call DatasetFindInList(realization%datasets,cur_flow_condition%datum, &
+                           cur_flow_condition%default_time_storage, &
+                           string,option)
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE,MIS_MODE,TH_MODE)
+      case default
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
-          ! check for dataset in flow_dataset
-          if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                          flow_dataset%dataset)) then
-            dataset_name = cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                          flow_dataset%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                                flow_dataset%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
-            cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
-              dataset
-            nullify(dataset)
-          endif
-          if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                          datum%dataset)) then
-            dataset_name = cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                          datum%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                                datum%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
-            cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
-              dataset
-            nullify(dataset)
-          endif
-          if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                          gradient%dataset)) then
-            dataset_name = cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                          gradient%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_flow_condition%sub_condition_ptr(i)%ptr% &
-                                gradient%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(realization%datasets,dataset_name,string,option)
-            cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
-              dataset
-            nullify(dataset)
-          endif
+          ! find dataset
+          call DatasetFindInList(realization%datasets, &
+                 cur_flow_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 cur_flow_condition%default_time_storage, &
+                 string,option)
+          ! find gradient dataset
+          call DatasetFindInList(realization%datasets, &
+                 cur_flow_condition%sub_condition_ptr(i)%ptr%gradient, &
+                 cur_flow_condition%default_time_storage, &
+                 string,option)
         enddo
     end select
     cur_flow_condition => cur_flow_condition%next
@@ -1207,21 +1169,15 @@ subroutine RealizationInitConstraints(realization)
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchInitConstraints(cur_patch,realization%reaction, &
-                                realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo            
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchInitConstraints(cur_patch,realization%reaction, &
+                              realization%option)
+    cur_patch => cur_patch%next
+  enddo
  
 end subroutine RealizationInitConstraints
 
@@ -1240,7 +1196,6 @@ subroutine RealizationPrintCouplers(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(coupler_type), pointer :: cur_coupler
   type(option_type), pointer :: option
@@ -1251,39 +1206,34 @@ subroutine RealizationPrintCouplers(realization)
  
   if (.not.OptionPrintToFile(option)) return
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+
+    cur_coupler => cur_patch%initial_conditions%first
     do
-      if (.not.associated(cur_patch)) exit
-
-      cur_coupler => cur_patch%initial_conditions%first
-      do
-        if (.not.associated(cur_coupler)) exit
-        call RealizationPrintCoupler(cur_coupler,reaction,option)    
-        cur_coupler => cur_coupler%next
-      enddo
-     
-      cur_coupler => cur_patch%boundary_conditions%first
-      do
-        if (.not.associated(cur_coupler)) exit
-        call RealizationPrintCoupler(cur_coupler,reaction,option)    
-        cur_coupler => cur_coupler%next
-      enddo
-     
-      cur_coupler => cur_patch%source_sinks%first
-      do
-        if (.not.associated(cur_coupler)) exit
-        call RealizationPrintCoupler(cur_coupler,reaction,option)    
-        cur_coupler => cur_coupler%next
-      enddo
-
-      cur_patch => cur_patch%next
+      if (.not.associated(cur_coupler)) exit
+      call RealizationPrintCoupler(cur_coupler,reaction,option)    
+      cur_coupler => cur_coupler%next
     enddo
-    cur_level => cur_level%next
-  enddo            
- 
+     
+    cur_coupler => cur_patch%boundary_conditions%first
+    do
+      if (.not.associated(cur_coupler)) exit
+      call RealizationPrintCoupler(cur_coupler,reaction,option)    
+      cur_coupler => cur_coupler%next
+    enddo
+     
+    cur_coupler => cur_patch%source_sinks%first
+    do
+      if (.not.associated(cur_coupler)) exit
+      call RealizationPrintCoupler(cur_coupler,reaction,option)    
+      cur_coupler => cur_coupler%next
+    enddo
+
+    cur_patch => cur_patch%next
+  enddo
+    
 end subroutine RealizationPrintCouplers
 
 ! ************************************************************************** !
@@ -1441,12 +1391,10 @@ subroutine RealizationUpdate(realization)
 !  call RealizationUpdateSrcSinks(realization)
 
   call MassTransferUpdate(realization%flow_mass_transfer_list, &
-                          realization%discretization, &
                           realization%patch%grid, &
                           realization%option)
 
   call MassTransferUpdate(realization%rt_mass_transfer_list, &
-                          realization%discretization, &
                           realization%patch%grid, &
                           realization%option)
 
@@ -1528,6 +1476,7 @@ subroutine RealizationAddWaypointsToList(realization)
 
   use Option_module
   use Waypoint_module
+  use Time_Storage_module
 
   implicit none
   
@@ -1576,24 +1525,26 @@ subroutine RealizationAddWaypointsToList(realization)
         sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
         !TODO(geh): check if this updated more than simply the flow_dataset (i.e. datum and gradient)
         !geh: followup - no, datum/gradient are not considered.  Should they be considered?
-        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
-                                          times)
-        if (size(times) > 1000) then
-          option%io_buffer = 'For flow condition "' // &
-            trim(cur_flow_condition%name) // &
-            '" dataset "' // trim(sub_condition%name) // &
-            '", the number of times is excessive for synchronization ' // &
-            'with waypoints.'
-          call printErrMsg(option)
+        call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
+                                final_time, times)
+        if (associated(times)) then
+          if (size(times) > 1000) then
+            option%io_buffer = 'For flow condition "' // &
+              trim(cur_flow_condition%name) // &
+              '" dataset "' // trim(sub_condition%name) // &
+              '", the number of times is excessive for synchronization ' // &
+              'with waypoints.'
+            call printErrMsg(option)
+          endif
+          do itime = 1, size(times)
+            waypoint => WaypointCreate()
+            waypoint%time = times(itime)
+            waypoint%update_conditions = PETSC_TRUE
+            call WaypointInsertInList(waypoint,waypoint_list)
+          enddo
+          deallocate(times)
+          nullify(times)
         endif
-        do itime = 1, size(times)
-          waypoint => WaypointCreate()
-          waypoint%time = times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        enddo
-        deallocate(times)
-        nullify(times)
       enddo
     endif
     cur_flow_condition => cur_flow_condition%next
@@ -1698,95 +1649,22 @@ subroutine RealizationAddWaypointsToList(realization)
 
   endif
 
+  ! add waypoints for periodic checkpoint
+  if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
+
+    ! standard output
+    temp_real = 0.d0
+    do
+      temp_real = temp_real + realization%output_option%periodic_checkpoint_time_incr
+      if (temp_real > final_time) exit
+      waypoint => WaypointCreate()
+      waypoint%time = temp_real
+      waypoint%print_checkpoint = PETSC_TRUE
+      call WaypointInsertInList(waypoint,realization%waypoints)
+    enddo
+  endif
+
 end subroutine RealizationAddWaypointsToList
-
-#if 0
-! ************************************************************************** !
-!
-! RealizationGetVariable: Extracts variables indexed by ivar and isubvar from a 
-!                        realization
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
-subroutine RealizationGetVariable(realization,vec,ivar,isubvar,isubvar1)
-
-  use Option_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  Vec :: vec
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
-  
-  call PatchGetVariable(realization%patch,realization%field, &
-                       realization%reaction,realization%option, &
-                       realization%output_option,vec,ivar,isubvar,isubvar1)
-
-end subroutine RealizationGetVariable
-
-! ************************************************************************** !
-!
-! RealizGetVariableValueAtCell: Extracts variables indexed by ivar and isubvar
-!                              from a realization
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
-function RealizGetVariableValueAtCell(realization,ivar,isubvar,ghosted_id, &
-                                     isubvar1)
-
-  use Option_module
-
-  implicit none
-  
-  PetscReal :: RealizGetVariableValueAtCell
-  type(realization_type) :: realization
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
-  PetscInt :: ghosted_id
-  
-  PetscReal :: value
-  
-  value = PatchGetVariableValueAtCell(realization%patch,realization%field, &
-                                     realization%reaction, &
-                                     realization%option, &
-                                     realization%output_option, &
-                                     ivar,isubvar,ghosted_id,isubvar1)
-  RealizGetVariableValueAtCell = value
-
-end function RealizGetVariableValueAtCell
-
-! ************************************************************************** !
-!
-! RealizationSetVariable: Sets variables indexed by ivar and isubvar in a 
-!                        realization
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
-subroutine RealizationSetVariable(realization,vec,vec_format,ivar,isubvar)
-
-  use Option_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  Vec :: vec
-  PetscInt :: vec_format
-  PetscInt :: ivar
-  PetscInt :: isubvar
-
-  call PatchSetVariable(realization%patch,realization%field, &
-                       realization%option, &
-                       vec,vec_format,ivar,isubvar)
-
-end subroutine RealizationSetVariable
-
-#endif
 
 ! ************************************************************************** !
 !
@@ -1802,7 +1680,6 @@ subroutine RealizationUpdateProperties(realization)
   type(realization_type) :: realization
   
   type(option_type), pointer :: option  
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: min_value  
   PetscInt :: ivalue
@@ -2593,7 +2470,7 @@ subroutine RealizationDestroy(realization)
   call TranConditionDestroyList(realization%transport_conditions)
   call TranConstraintDestroyList(realization%transport_constraints)
 
-  call LevelDestroyList(realization%level_list)
+  call PatchDestroyList(realization%patch_list)
 
   if (associated(realization%debug)) deallocate(realization%debug)
   nullify(realization%debug)

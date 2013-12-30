@@ -306,7 +306,8 @@ subroutine initialize_span_wagner(itable,myrank,option)
          !  1 p,     2  T
          !  3 rho    4 dddt,  5 dddp,
          !  6 fg,    7 dfgdp, 8 dfgdt
-         !  9 eng,  10 ent,  11 dhdt,  12 dhdp,
+         !  9 eng,  
+         ! 10 ent,  11 dhdt,  12 dhdp,
          ! 13 visc, 14 dvdt, 15 dvdp
           
     tmp2=0.D0    
@@ -492,19 +493,22 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
       p=pl;t=tl;iitable=0
       if(present(itable)) iitable=itable
 
-!     units: 
-!     P      : MPa
-!     T      : K
-!     h(ent) : MJ/Kg
-!     e(eng) : MJ/Kg
-!     dhdt   : MJ/kg/C
-!     dhdp   : MJ/Kg/MPa
-!     rho    : kg/m3
-!     dddt   : kg/m3/C
-!     dddp   : kg/m3/MPa
-!     visc   : Pa.s
-!     dvdt   : Pa.s/C
-!     dvdp   : Pa.s/Mpa
+!     co2data0.dat - units: 
+!      1-P      : MPa
+!      2-T      : K
+!      3-d (den): kg/m^3
+!      4-dddT   : kg/m3/C
+!      5-dddp   : kg/m3/MPa
+!      6-fg     : -
+!      7-dfgdp  : 1/MPa
+!      8-dfgdT  : 1/C
+!      9-u(eng) : MJ/Kg
+!     10-h(ent) : MJ/Kg
+!     11-dhdT   : MJ/kg/C
+!     12-dhdp   : MJ/Kg/MPa
+!     13-vis    : Pa.s
+!     14-dvdT   : Pa.s/C
+!     15-dvdp   : Pa.s/Mpa
 
 !     print *,'span_wag: ',p,t,tc,pc,rg,iitable
 

@@ -1100,7 +1100,8 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
-  
+ 
+#if 0
   string="      <Attribute Name=""X"" AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
@@ -1116,6 +1117,7 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   string="      </Attribute>"
   write(fid,'(a)') trim(string)  
+#endif
 
 end subroutine OutputXMFHeaderGeomech
 
@@ -1493,6 +1495,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 
 end subroutine OutputHDF5UGridXDMFGeomech
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! WriteHDF5CoordinatesXDMFGeomech: Writes the geomech coordinates in HDF5 file
@@ -1821,6 +1824,8 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 !if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesXDMFGeomech
+#endif
+! defined(PETSC_HAVE_HDF5)
 
 end module Output_Geomechanics_module
 

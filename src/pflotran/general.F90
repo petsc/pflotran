@@ -48,7 +48,6 @@ subroutine GeneralTimeCut(realization)
   use Realization_class
   use Option_module
   use Field_module
-  use Level_module
   use Patch_module
  
   implicit none
@@ -56,7 +55,6 @@ subroutine GeneralTimeCut(realization)
   type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   
@@ -69,19 +67,13 @@ subroutine GeneralTimeCut(realization)
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
   call GeneralInitializeTimestep(realization)  
   
-  ! loop over patches
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralTimeCutPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo  
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralTimeCutPatch(realization)
+    cur_patch => cur_patch%next
+  enddo
  
 end subroutine GeneralTimeCut
 
@@ -139,25 +131,18 @@ end subroutine GeneralTimeCutPatch
 subroutine GeneralSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
   
   call GeneralSetPlotVariables(realization)  
@@ -291,28 +276,21 @@ end subroutine GeneralSetupPatch
 subroutine GeneralComputeMassBalance(realization,mass_balance)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   mass_balance = 0.d0
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralComputeMassBalancePatch(realization,mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralComputeMassBalance
@@ -457,26 +435,19 @@ end subroutine GeneralUpdateMassBalancePatch
 subroutine GeneralUpdateAuxVars(realization,update_state)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscBool :: update_state
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch             
-      call GeneralUpdateAuxVarsPatch(realization,update_state)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch             
+    call GeneralUpdateAuxVarsPatch(realization,update_state)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralUpdateAuxVars
@@ -546,7 +517,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                        global_aux_vars(ghosted_id), &
-                       patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                       patch%saturation_function_array( &
+                         patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
@@ -573,19 +545,16 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-! right now, hardware to Dirichlet or Hydrostatic
-#if 0      
       do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            option%io_buffer = 'NEUMANN_BC and ZERO_GRADIENT_BC not yet ' // &
+              'supported in GeneralUpdateAuxVarsPatch()'
+            call printErrMsg(option)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
-      enddo
-#endif
-      do idof = 1, option%nflowdof
-        xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
       enddo
 
       ! set this based on data given 
@@ -595,12 +564,14 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       ! the aux var as update state updates if the state changes
       call GeneralAuxVarUpdateState(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                         patch%saturation_function_array( &
+                           patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          ghosted_id,option)
       call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                         patch%saturation_function_array( &
+                           patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          option)
     enddo
@@ -646,7 +617,6 @@ subroutine GeneralUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   use Discretization_module
   
@@ -655,7 +625,6 @@ subroutine GeneralUpdateSolution(realization)
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   
@@ -663,17 +632,12 @@ subroutine GeneralUpdateSolution(realization)
   
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralUpdateSolutionPatch(realization)
+    cur_patch => cur_patch%next
   enddo
   
   ! update ghosted iphase_loc values (must come after 
@@ -732,6 +696,7 @@ subroutine GeneralUpdateSolutionPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     iphas_loc_p(ghosted_id) = global_aux_vars(ghosted_id)%istate
+    gen_aux_vars%istate_store(PREV_TS) = global_aux_vars(ghosted_id)%istate
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
 
@@ -748,25 +713,18 @@ end subroutine GeneralUpdateSolutionPatch
 subroutine GeneralUpdateFixedAccum(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralUpdateFixedAccum
@@ -1192,6 +1150,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
+  PetscInt :: istate_up, istate_dn
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)
   PetscReal :: den
@@ -1229,7 +1188,14 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
 #ifdef DEBUG_GENERAL_LOCAL
   flux = 0.d0
 #endif
+
+  istate_up = global_aux_var_up%istate
+  istate_dn = global_aux_var_dn%istate
+
   do iphase = 1, option%nphase
+ 
+!    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
+!              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
     
     ! using residual saturation cannot be correct! - geh
     if (gen_aux_var_up%sat(iphase) > sir_up .or. &
@@ -1304,7 +1270,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   flux = 0.d0
 #endif  
 
-#if 0
+#if 1
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
@@ -1360,7 +1326,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   flux = 0.d0
 #endif  
     
-#if 0
+#if 1
   ! add heat conduction flux
   k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
              general_parameter%thermal_conductivity(option%liquid_phase) + &
@@ -1496,6 +1462,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
 
+  PetscInt :: istate_up, istate_dn
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave
@@ -1520,17 +1487,20 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   Res = 0.d0
   v_darcy = 0.d0
   
+  istate_up = global_aux_var_up%istate
+  istate_dn = global_aux_var_dn%istate
+
   do iphase = 1, option%nphase
+ 
+!    if (.not.((istate_up == TWO_PHASE_STATE .or. istate_up == iphase) .and. &
+!              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
   
-#if 0  
     select case(iphase)
       case(LIQUID_PHASE)
         bc_type = ibndtype(GENERAL_LIQUID_PRESSURE_DOF)
       case(GAS_PHASE)
         bc_type = ibndtype(GENERAL_GAS_PRESSURE_DOF)
     end select
-#endif
-    bc_type = DIRICHLET_BC
 
     select case(bc_type)
       ! figure out the direction of flow
@@ -1767,6 +1737,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                           gen_aux_var,global_aux_var,scale,res)
 
   use Option_module
+  use Water_EOS_module
+  use Gas_EOS_module
 
   implicit none
 
@@ -1780,7 +1752,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: qsrc_mol(option%nphase)
-  PetscInt :: icomp
+  PetscReal :: den, den_kg, enthalpy, internal_energy
+  PetscInt :: icomp, ierr
   
 
   fmw_phase(option%liquid_phase) = FMWH2O
@@ -1805,18 +1778,32 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       res(ONE_INTEGER) = res(ONE_INTEGER) + qsrc_mol(icomp)
     endif
   enddo
+  ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-      if (global_aux_var%istate == LIQUID_STATE .or. &
-          global_aux_var%istate == TWO_PHASE_STATE) then
-        res(option%energy_id) = qsrc_mol(ONE_INTEGER) * &
-          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(1) / &
-                                        gen_aux_var%den(1) * 1.d-6)
-      else if (global_aux_var%istate == GAS_STATE .or. &
-               global_aux_var%istate == TWO_PHASE_STATE) then
-        res(option%energy_id) = qsrc_mol(TWO_INTEGER) * &
-          (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
-                                        gen_aux_var%den(TWO_INTEGER) * 1.d-6)
+!      if (global_aux_var%istate == LIQUID_STATE .or. &
+!          global_aux_var%istate == TWO_PHASE_STATE) then
+      if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
+        call wateos_noderiv(gen_aux_var%temp, &
+                            gen_aux_var%pres(option%liquid_phase), &
+                            den_kg,den,enthalpy,option%scale,ierr)
+        ! enthalpy units: MJ/kmol
+        res(option%energy_id) = res(option%energy_id) + &
+                                qsrc_mol(ONE_INTEGER) * enthalpy
+!          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(ONE_INTEGER) / &
+!                                        gen_aux_var%den(ONE_INTEGER) * 1.d-6)
+      endif
+!      if (global_aux_var%istate == GAS_STATE .or. &
+!          global_aux_var%istate == TWO_PHASE_STATE) then
+      if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
+        call ideal_gaseos_noderiv(gen_aux_var%pres(option%air_pressure_id), &
+                                  gen_aux_var%temp, &
+                                  option%scale,den,enthalpy,internal_energy)
+        ! enthalpy units: MJ/kmol
+        res(option%energy_id) = res(option%energy_id) + &
+          qsrc_mol(TWO_INTEGER) * enthalpy
+!          (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
+!                                        gen_aux_var%den(TWO_INTEGER) * 1.d-6)
       endif
     else
       res(option%energy_id) = qsrc(THREE_INTEGER)
@@ -1875,7 +1862,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   use Realization_class
   use Field_module
   use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
 
@@ -1890,7 +1876,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
@@ -2295,7 +2280,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       endif
       
       call GeneralSrcSink(option,source_sink%flow_condition%general%rate% &
-                                  flow_dataset%time_series%cur_value(:), &
+                                  dataset%rarray(:), &
                         source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                         global_aux_vars(ghosted_id), &
@@ -2330,7 +2315,6 @@ end subroutine GeneralResidualPatch2
 subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -2347,7 +2331,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
@@ -2760,7 +2743,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       Jup = 0.d0
       call GeneralSrcSinkDerivative(option, &
                         source_sink%flow_condition%general%rate% &
-                                  flow_dataset%time_series%cur_value(:), &
+                                  dataset%rarray(:), &
                         source_sink%flow_condition%general%rate%itype, &
                         gen_aux_vars(:,ghosted_id), &
                         global_aux_vars(ghosted_id), &
@@ -2957,6 +2940,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   call VecGetArrayF90(dX,dX_p,ierr)
   call VecGetArrayF90(X,X_p,ierr)
 
+#if 0
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     print *, '-----------------------------------------'
@@ -2966,6 +2950,7 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
     print *, -1.d0*dX_p
     print *, '-----------------------------------------'  
   enddo
+#endif
 
   call VecRestoreArrayF90(dX,dX_p,ierr)
   call VecRestoreArrayF90(X,X_p,ierr)
@@ -3342,27 +3327,20 @@ end subroutine GeneralSetPlotVariables
 subroutine GeneralDestroy(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   implicit none
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralDestroyPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call GeneralDestroyPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine GeneralDestroy

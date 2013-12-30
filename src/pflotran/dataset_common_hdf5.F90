@@ -15,7 +15,6 @@ module Dataset_Common_HDF5_class
     PetscBool :: realization_dependent
     PetscInt :: max_buffer_size
     PetscBool :: is_cell_indexed
-    PetscBool :: is_transient
   end type dataset_common_hdf5_type
 
   public :: DatasetCommonHDF5Create, &
@@ -26,6 +25,7 @@ module Dataset_Common_HDF5_class
             DatasetCommonHDF5ReadSelectCase, &
             DatasetCommonHDF5Load, &
             DatasetCommonHDF5IsCellIndexed, &
+            DatasetCommonHDF5Print, &
             DatasetCommonHDF5Strip, &
             DatasetCommonHDF5Destroy
   
@@ -76,7 +76,7 @@ subroutine DatasetCommonHDF5Init(this)
   this%realization_dependent = PETSC_FALSE
   this%max_buffer_size = 10
   this%is_cell_indexed = PETSC_FALSE
-  this%is_transient = PETSC_FALSE
+  this%data_type = DATASET_REAL
     
 end subroutine DatasetCommonHDF5Init
 
@@ -99,7 +99,6 @@ subroutine DatasetCommonHDF5Copy(this, that)
   that%realization_dependent = this%realization_dependent
   that%max_buffer_size = this%max_buffer_size
   that%is_cell_indexed = this%is_cell_indexed
-  that%is_transient = this%is_transient
     
 end subroutine DatasetCommonHDF5Copy
 
@@ -136,7 +135,7 @@ end function DatasetCommonHDF5Cast
 subroutine DatasetCommonHDF5Read(this,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -151,7 +150,7 @@ subroutine DatasetCommonHDF5Read(this,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -186,7 +185,7 @@ end subroutine DatasetCommonHDF5Read
 subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -419,9 +418,6 @@ function DatasetCommonHDF5Load(this,option)
 #endif
     ! if no times are read, this%time_storage will be null coming out of
     ! DatasetCommonHDF5ReadTimes()
-    if (associated(this%time_storage)) then
-      this%is_transient = PETSC_TRUE
-    endif
   endif
   
   if (associated(this%time_storage)) then
@@ -521,6 +517,41 @@ end function DatasetCommonHDF5GetPointer
 
 ! ************************************************************************** !
 !
+! DatasetCommonHDF5Print: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetCommonHDF5Print(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_common_hdf5_type) :: this
+  type(option_type) :: option
+    
+  if (len_trim(this%hdf5_dataset_name) > 0) then
+    write(option%fid_out,'(10x,''HDF5 Dataset Name: '',a)') &
+      trim(this%hdf5_dataset_name)
+  endif
+  if (this%realization_dependent) then
+    write(option%fid_out,'(10x,''Realization Dependent: yes'')')
+  else
+    write(option%fid_out,'(10x,''Realization Dependent: no'')') 
+  endif
+  if (this%is_cell_indexed) then
+    write(option%fid_out,'(10x,''Cell Indexed: yes'')')
+  else
+    write(option%fid_out,'(10x,''Cell Indexed: no'')')
+  endif
+  write(option%fid_out,'(10x,''Maximum Buffer Size: '',i3)') &
+    this%max_buffer_size
+  
+end subroutine DatasetCommonHDF5Print
+
+! ************************************************************************** !
+!
 ! DatasetCommonHDF5Strip: Strips allocated objects within common hdf5 dataset 
 !                         object
 ! author: Glenn Hammond
@@ -528,8 +559,6 @@ end function DatasetCommonHDF5GetPointer
 !
 ! ************************************************************************** !
 subroutine DatasetCommonHDF5Strip(this)
-
-  use Utility_module, only : DeallocateArray
 
   implicit none
   

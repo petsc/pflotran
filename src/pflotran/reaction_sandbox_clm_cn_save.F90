@@ -104,7 +104,7 @@ subroutine CLM_CN_Map(this,reaction,option)
   use Reaction_Aux_module
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Database_Aux_module
   use Immobile_Aux_module
   
@@ -238,7 +238,7 @@ subroutine CLM_CN_Read(this,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -258,7 +258,7 @@ subroutine CLM_CN_Read(this,input,option)
   character(len=MAXSTRINGLENGTH) :: strings(100)
 
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
@@ -270,7 +270,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('REACTIONS')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -280,7 +280,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('LITTER_NAMES')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -295,7 +295,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('SOM_NAMES')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -309,7 +309,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('LITTER_COEFFICIENTS')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1
@@ -326,7 +326,7 @@ subroutine CLM_CN_Read(this,input,option)
       case('SOM_COEFFICIENTS')
         icount = 0
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit   
           icount = icount + 1

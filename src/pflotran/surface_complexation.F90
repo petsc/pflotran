@@ -35,7 +35,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -70,7 +70,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
   temp_srfcplx_count = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
@@ -89,7 +89,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
       case('COMPLEX_KINETICS')
         nullify(prev_srfcplx)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
                       
@@ -99,7 +99,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
             'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
                         
           do
-            call InputReadFlotranString(input,option)
+            call InputReadPflotranString(input,option)
             call InputReadStringErrorMsg(input,option,card)
             if (InputCheckExit(input,option)) exit
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -167,7 +167,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
       case('COMPLEXES')
         nullify(prev_srfcplx)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
                       
@@ -365,7 +365,7 @@ subroutine SrfCplxProcessConstraint(surface_complexation,constraint_name, &
                                     constraint,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module  
   

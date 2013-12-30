@@ -64,6 +64,7 @@ module PFLOTRAN_Constants_module
   PetscMPIInt, parameter, public :: TWO_INTEGER_MPI = TWO_INTEGER
   PetscMPIInt, parameter, public :: THREE_INTEGER_MPI = THREE_INTEGER
   PetscMPIInt, parameter, public :: FOUR_INTEGER_MPI = FOUR_INTEGER
+  PetscMPIInt, parameter, public :: SIX_INTEGER_MPI = SIX_INTEGER
   PetscMPIInt, parameter, public :: SEVEN_INTEGER_MPI = SEVEN_INTEGER
   PetscMPIInt, parameter, public :: TWELVE_INTEGER_MPI = TWELVE_INTEGER
   PetscMPIInt, parameter, public :: MAXSTRINGLENGTH_MPI = MAXSTRINGLENGTH
@@ -114,8 +115,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: FLASH2_MODE = 6
   PetscInt, parameter, public :: G_MODE = 7
   PetscInt, parameter, public :: MIS_MODE = 8
-  PetscInt, parameter, public :: THMC_MODE = 9
-  PetscInt, parameter, public :: TH_MODE = 10
+  PetscInt, parameter, public :: TH_MODE = 9
   
   ! transport modes
   PetscInt, parameter, public :: EXPLICIT_ADVECTION = 1
@@ -158,28 +158,14 @@ module PFLOTRAN_Constants_module
   
   ! dofs for each mode
   PetscInt, parameter, public :: THC_PRESSURE_DOF = 1
-  !PetscInt, parameter, public :: THC_MASS_RATE_DOF = 2
-  PetscInt, parameter, public :: THC_MASS_RATE_DOF = 4
   PetscInt, parameter, public :: THC_TEMPERATURE_DOF = 2
-  !PetscInt, parameter, public :: THC_CONCENTRATION_DOF = 4
   PetscInt, parameter, public :: THC_CONCENTRATION_DOF = 3
+  PetscInt, parameter, public :: THC_MASS_RATE_DOF = 4
   PetscInt, parameter, public :: THC_ENTHALPY_DOF = 5
   
   PetscInt, parameter, public :: TH_PRESSURE_DOF = 1
-  PetscInt, parameter, public :: TH_MASS_RATE_DOF = 4
   PetscInt, parameter, public :: TH_TEMPERATURE_DOF = 2
-  PetscInt, parameter, public :: TH_CONCENTRATION_DOF = 3
-  PetscInt, parameter, public :: TH_ENTHALPY_DOF = 5
-  
-  PetscInt, parameter, public :: THMC_PRESSURE_DOF = 1
-  PetscInt, parameter, public :: THMC_TEMPERATURE_DOF = 2
-  PetscInt, parameter, public :: THMC_CONCENTRATION_DOF = 3
-  !PetscInt, parameter, public :: THMC_MASS_RATE_DOF = 4
-  !PetscInt, parameter, public :: THMC_ENTHALPY_DOF = 5
-  PetscInt, parameter, public :: THMC_DISP_X_DOF = 4
-  PetscInt, parameter, public :: THMC_DISP_Y_DOF = 5
-  PetscInt, parameter, public :: THMC_DISP_Z_DOF = 6
-  
+
   PetscInt, parameter, public :: MPH_PRESSURE_DOF = 1
   PetscInt, parameter, public :: MPH_TEMPERATURE_DOF = 2
   PetscInt, parameter, public :: MPH_CONCENTRATION_DOF = 3
@@ -231,11 +217,9 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: PRINT_SEC_CONC =           1
   PetscInt, parameter, public :: PRINT_SEC_MIN_VOLFRAC =    2
   
-  
   PetscInt, parameter, public :: PROCEED = 0
   PetscInt, parameter, public :: DONE = 1
   PetscInt, parameter, public :: FAIL = 2
-
 
   ! Grid type
   PetscInt, parameter, public :: NULL_GRID = 0
@@ -254,5 +238,12 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: GEOMECH_DISP_X_DOF = 1
   PetscInt, parameter, public :: GEOMECH_DISP_Y_DOF = 2
   PetscInt, parameter, public :: GEOMECH_DISP_Z_DOF = 3
+  PetscInt, parameter, public :: GEOMECH_ONE_WAY_COUPLED = 4
+  PetscInt, parameter, public :: GEOMECH_TWO_WAY_COUPLED = 5
+
+  ! Macros that are used as 'vscatter_index' values
+  PetscInt, parameter, public :: SURF_TO_SUBSURF = 1
+  PetscInt, parameter, public :: SUBSURF_TO_SURF = 2
+  PetscInt, parameter, public :: SUBSURF_TO_HYDROGEOPHY = 3
 
 end module PFLOTRAN_Constants_module

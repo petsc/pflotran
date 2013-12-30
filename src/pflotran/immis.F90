@@ -49,7 +49,8 @@ module Immis_module
          ImmisMaxChange,ImmisUpdateSolution, &
          ImmisGetTecplotHeader,ImmisInitializeTimestep, &
          ImmisUpdateAuxVars, &
-         ImmisComputeMassBalance
+         ImmisComputeMassBalance, &
+         ImmisDestroy
 
 contains
 
@@ -93,7 +94,6 @@ end subroutine ImmisTimeCut
 subroutine ImmisSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use co2_span_wagner_module
   use co2_sw_module
@@ -101,41 +101,14 @@ subroutine ImmisSetup(realization)
    
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
-#if 0  
-  if (realization%option%co2eos == EOS_SPAN_WAGNER)then
-    select case(realization%option%itable)
-       case(0,1,2)
-         call initialize_span_wagner(realization%option%itable, &
-                                     realization%option%myrank, &
-                                     realization%option)
-       case(4,5)
-         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank, &
-                                     realization%option)
-         call initialize_sw_interp(realization%option%itable, &
-                                   realization%option%myrank)
-       case(3)
-         call sw_spline_read
-       case default
-         print *, 'Wrong table option : STOP'
-      stop
-    end select
-  endif
-#endif 
- 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call ImmisSetPlotVariables(realization)
@@ -277,29 +250,22 @@ end subroutine ImmisSetupPatch
 subroutine ImmisComputeMassBalance(realization,mass_balance)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
 ! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_balance(realization%option%nflowspec,1)
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   mass_balance = 0.d0
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisComputeMassBalancePatch(realization,mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisComputeMassBalance
@@ -431,45 +397,38 @@ end subroutine ImmisZeroMassBalDeltaPatch
   function  ImmisInitGuessCheck(realization)
  
   use Realization_class
-  use Level_module
   use Patch_module
   use Option_module
   
   PetscInt ::  ImmisInitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr    
 
   option => realization%option
-  cur_level => realization%level_list%first
   ipass = 1
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ipass= ImmisInitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    ipass= ImmisInitGuessCheckPatch(realization)
+    if(ipass<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
   enddo
 
-   call MPI_Barrier(option%mycomm,ierr)
-   if(option%mycommsize >1)then
+  call MPI_Barrier(option%mycomm,ierr)
+  if(option%mycommsize >1)then
       call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER, &
                          MPI_SUM,option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
    ImmisInitGuessCheck =ipass
- end function ImmisInitGuessCheck
+
+end function ImmisInitGuessCheck
 
 ! ************************************************************************** !
 ! Immisinitguesscheckpatch: 
@@ -556,13 +515,11 @@ end subroutine ImmisUpdateReasonPatch
 subroutine ImmisUpdateReason(reason, realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   implicit none
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
@@ -570,24 +527,18 @@ subroutine ImmisUpdateReason(reason, realization)
   PetscErrorCode :: ierr
 
   re = 1
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisUpdateReasonPatch(re, realization)
-        if(re<=0)then
-           nullify(cur_level)
-           exit 
-        endif
-        cur_patch => cur_patch%next
-     enddo
-    cur_level => cur_level%next
- enddo
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisUpdateReasonPatch(re, realization)
+    if(re<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
+  enddo
 
- call MPI_Barrier(realization%option%mycomm,ierr)
+  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if(realization%option%mycommsize >1)then
      call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
@@ -605,7 +556,7 @@ end subroutine ImmisUpdateReason
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-  function  ImmisInitGuessCheckPatch(realization)
+  function ImmisInitGuessCheckPatch(realization)
    
     use co2_span_wagner_module
      
@@ -673,25 +624,18 @@ end subroutine ImmisUpdateReason
 subroutine ImmisUpdateAuxVars(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisUpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisUpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisUpdateAuxVars
@@ -724,9 +668,14 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Immis_auxvar_type), pointer :: aux_vars(:)
+  type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
+  type(Immis_auxvar_type), pointer :: aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
@@ -740,8 +689,11 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   
   aux_vars => patch%aux%Immis%aux_vars
   aux_vars_bc => patch%aux%Immis%aux_vars_bc
+  aux_vars_ss => patch%aux%Immis%aux_vars_ss
+
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
   
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
@@ -765,7 +717,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option)
 
  ! update global variables
-    if( associated(global_aux_vars))then
+    if (associated(global_aux_vars))then
       global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp = aux_vars(ghosted_id)%aux_var_elem(0)%temp
@@ -779,9 +731,8 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
     else
       print *,'Not associated global for IMS'
     endif
-
-
   enddo
+
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -794,39 +745,67 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      do idof=1,option%nflowdof
+      do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
         case(DIRICHLET_BC)
-          xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
+!         xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
+          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
         case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          xxbc(2:option%nflowdof) = &
-            xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+!         xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+!         xxbc(2:option%nflowdof) = &
+!           xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+          xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+          if (idof >= MPH_PRESSURE_DOF) then
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
-      end select
-    enddo
+!         xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+        end select
+      enddo
  
-    call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+      call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
 
-    if(associated(global_aux_vars_bc)) then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+      if (associated(global_aux_vars_bc)) then
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !    global_aux_vars(ghosted_id)%den_kg_store
-  !    global_aux_vars(ghosted_id)%mass_balance 
-  !    global_aux_vars(ghosted_id)%mass_balance_delta                   
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+              * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+  !     global_aux_vars(ghosted_id)%den_kg_store
+  !     global_aux_vars(ghosted_id)%mass_balance
+  !     global_aux_vars(ghosted_id)%mass_balance_delta
       endif
 
     enddo
     boundary_condition => boundary_condition%next
+  enddo
+
+
+! source/sinks
+  source_sink => patch%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
+    cur_connection_set => source_sink%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      call ImmisAuxVarCopy(aux_vars(ghosted_id)%aux_var_elem(0), &
+                          aux_vars_ss(sum_connection)%aux_var_elem(0),option)
+      call GlobalAuxVarCopy(global_aux_vars(ghosted_id), &
+                          global_aux_vars_ss(sum_connection),option)
+
+    enddo
+    source_sink => source_sink%next
   enddo
 
 
@@ -867,7 +846,6 @@ subroutine ImmisUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   
   implicit none
@@ -875,7 +853,6 @@ subroutine ImmisUpdateSolution(realization)
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -884,17 +861,12 @@ subroutine ImmisUpdateSolution(realization)
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
 !     call ImmisUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    cur_patch => cur_patch%next
   enddo
 
 ! make room for hysteric s-Pc-kr
@@ -985,25 +957,18 @@ end subroutine ImmisUpdateMassBalancePatch
 subroutine ImmisUpdateFixedAccumulation(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisUpdateFixedAccumulation
@@ -1404,78 +1369,78 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-        upweight= dd_dn/(dd_up+dd_dn)
-        if (aux_var_up%sat(np) <eps) then 
-           upweight=0.d0
-        else if (aux_var_dn%sat(np) <eps) then 
-           upweight=1.d0
-        endif
-        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+    if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+      upweight= dd_dn/(dd_up+dd_dn)
+      if (aux_var_up%sat(np) <eps) then
+        upweight=0.d0
+      else if (aux_var_dn%sat(np) <eps) then
+        upweight=1.d0
+      endif
+      density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
         
-        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+      gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
              (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = aux_var_up%pres - aux_var_dn%pres &
+      dphi = aux_var_up%pres - aux_var_dn%pres &
              - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
-        v_darcy = 0.D0
-        ukvr=0.D0
-        uh=0.D0
-        uxmol=0.D0
+      v_darcy = 0.D0
+      ukvr=0.D0
+      uh=0.D0
+      uxmol=0.D0
 
-        ! note uxmol only contains one phase xmol
-        if (dphi>=0.D0) then
-           ukvr = aux_var_up%kvr(np)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
-        else
-           ukvr = aux_var_dn%kvr(np)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
-        endif
+      ! note uxmol only contains one phase xmol
+      if (dphi>=0.D0) then
+        ukvr = aux_var_up%kvr(np)
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        uh = aux_var_up%h(np)
+      else
+        ukvr = aux_var_dn%kvr(np)
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        uh = aux_var_dn%h(np)
+      endif
    
 
-        if (ukvr>floweps) then
-           v_darcy= Dq * ukvr * dphi
-           vv_darcy(np)=v_darcy
-           q = v_darcy * area
-           fluxm(np)=fluxm(np) + q * density_ave
-          ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif
+      if (ukvr > floweps) then
+        v_darcy= Dq * ukvr * dphi
+        vv_darcy(np)=v_darcy
+        q = v_darcy * area
+        fluxm(np)=fluxm(np) + q * density_ave
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        fluxe = fluxe + q*density_ave*uh
+      endif
+    endif
 
 #if 0 
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+    if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
+      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
-        do ispec=1, option%nflowspec
-           ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+      do ispec=1, option%nflowspec
+        ind = ispec + (np-1)*option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
                 (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
                 (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
-        enddo
-     endif
+      enddo
+    endif
 #endif
   enddo
 
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
+  Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp)
+  fluxe=fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nphase) = fluxm(:) * option%flow_dt
-     Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nphase) = fluxm(:) * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1645,7 +1610,6 @@ end subroutine ImmisBCFlux
 subroutine ImmisResidual(snes,xx,r,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -1664,7 +1628,6 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange  
 
@@ -1695,17 +1658,12 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisResidualPatch(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisResidual
@@ -1819,7 +1777,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(r, r_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
  
-  call VecGetArrayF90(field%flow_yy,yy_p,ierr)
+! call VecGetArrayF90(field%flow_yy,yy_p,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -1839,7 +1797,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       if (patch%imat(ng) <= 0) cycle
     endif
         
-    istart = (ng-1)*option%nflowdof + 1; iend = istart -1 + option%nflowdof
+    istart = (ng-1)*option%nflowdof + 1; iend = istart - 1 + option%nflowdof
     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0), &
       realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
@@ -1895,7 +1853,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                               option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    patch%aux%Immis%res_old_AR(local_id, :)= Res(1:option%nflowdof)
+    patch%aux%Immis%res_old_AR(local_id, :) = Res(1:option%nflowdof)
   enddo
 #endif
 
@@ -1914,12 +1872,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
    ! endif
       
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 !     hsrc1=0D0
 !     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !     csrc1 = csrc1 / FMWCO2
@@ -1931,10 +1889,10 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !clu add
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-      msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+      msrc => source_sink%flow_condition%rate%dataset%rarray
       nsrcpara = 2
     case(WELL_SS)
-      msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+      msrc => source_sink%flow_condition%well%dataset%rarray
       nsrcpara = 7 + option%nflowspec 
      
 !     print *,'src/sink: ',nsrcpara,msrc
@@ -2022,11 +1980,16 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-       do idof =1, option%nflowdof   
+       do idof = 1, option%nflowdof
          select case(boundary_condition%flow_condition%itype(idof))
            case(DIRICHLET_BC)
              xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-         case(NEUMANN_BC, ZERO_GRADIENT_BC)
+           case(HYDROSTATIC_BC)
+             xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+             if(idof>=MPH_TEMPERATURE_DOF)then
+               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+             endif
+           case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
          end select
@@ -2192,7 +2155,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   endif
 
   call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
+! call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
@@ -2227,7 +2190,6 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
 
@@ -2240,21 +2202,15 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisJacobian
@@ -2424,12 +2380,12 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
@@ -2440,10 +2396,10 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !clu add
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'ims mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -2518,76 +2474,82 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id))
 
 ! Then need fill up increments for BCs
-    delxbc=0.D0;
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
+      delxbc=0.D0;
+      do idof =1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-          delxbc(idof)=0.D0
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          delxbc(idof) = 0.D0
+        case(HYDROSTATIC_BC,SEEPAGE_BC)
+          xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+          if (idof >= MPH_TEMPERATURE_DOF) then
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            delxbc(idof) = patch%aux%Immis%delx(idof,ghosted_id)
+          endif
+        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          delxbc(idof)=patch%aux%Immis%delx(idof,ghosted_id)
-       end select
-    enddo
+          delxbc(idof) = patch%aux%Immis%delx(idof,ghosted_id)
+        end select
+      enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call ImmisAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+      call ImmisAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
-    call ImmisAuxVarCompute_Winc(xxbc,delxbc,&
+      call ImmisAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
-    do nvar=1,option%nflowdof
-       call ImmisBCFlux(boundary_condition%flow_condition%itype, &
-         boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
-         aux_vars(ghosted_id)%aux_var_elem(nvar), &
-         porosity_loc_p(ghosted_id), &
-         tortuosity_loc_p(ghosted_id), &
-         immis_parameter%sir(:,icap_dn), &
-         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
-         cur_connection_set%area(iconn), &
-         distance_gravity,option, &
-         vv_darcy,Res)
-       ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      do nvar=1,option%nflowdof
+        call ImmisBCFlux(boundary_condition%flow_condition%itype, &
+          boundary_condition%flow_aux_real_var(:,iconn), &
+          aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
+          aux_vars(ghosted_id)%aux_var_elem(nvar), &
+          porosity_loc_p(ghosted_id), &
+          tortuosity_loc_p(ghosted_id), &
+          immis_parameter%sir(:,icap_dn), &
+          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+          cur_connection_set%area(iconn), &
+          distance_gravity,option, &
+          vv_darcy,Res)
+        ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+      enddo
     enddo
- enddo
     boundary_condition => boundary_condition%next
- enddo
+   enddo
 #endif
 ! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
 
-     ra=0.D0
-     max_dev=0.D0
-     do neq=1, option%nflowdof
-        do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Immis%res_old_AR(local_id,neq))/patch%aux%Immis%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
-        enddo
-     enddo
+    ra=0.D0
+    max_dev=0.D0
+    do neq=1, option%nflowdof
+      do nvar=1, option%nflowdof
+        ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Immis%res_old_AR(local_id,neq))/patch%aux%Immis%delx(nvar,ghosted_id)
+        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+      enddo
+    enddo
    
-   select case(option%idt_switch)
+    select case(option%idt_switch)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
         if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
-     Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+    Jup=ra(1:option%nflowdof,1:option%nflowdof)
+    if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
    
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
-     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
   if (realization%debug%matview_Jacobian_detailed) then
@@ -2913,7 +2875,6 @@ end subroutine ImmisCreateZeroArray
 subroutine ImmisMaxChange(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Field_module
   use Option_module
@@ -2925,7 +2886,6 @@ subroutine ImmisMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
   PetscErrorCode :: ierr 
@@ -2933,7 +2893,6 @@ subroutine ImmisMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
   option%dpmax=0.D0
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
@@ -2945,27 +2904,6 @@ subroutine ImmisMaxChange(realization)
   call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
   call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax,ierr)
 
-#if 0
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisMaxChangePatch(realization, max_s)
-      if(dsmax <max_s)  dsmax =max_s
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  if(option%mycommsize >1)then
-    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    dsmax = max_s
-  endif 
-  option%dsmax=dsmax
-#endif
   !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
 end subroutine ImmisMaxChange
 
@@ -3148,6 +3086,11 @@ subroutine ImmisSetPlotVariables(realization)
   call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
                                LIQUID_PRESSURE)
 
+  name = 'Gas Pressure'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+                               GAS_PRESSURE)
+
   name = 'Liquid Saturation'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
@@ -3159,50 +3102,50 @@ subroutine ImmisSetPlotVariables(realization)
                                GAS_SATURATION)
 
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
 
   name = 'Gas Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_DENSITY)
 
   name = 'Liquid Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_ENERGY)
 
   name = 'Gas Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
   name = 'Gas Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_VISCOSITY)
 
   name = 'Liquid Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_MOBILITY)
 
   name = 'Gas Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_MOBILITY)
 
-  name = 'Phase'
-  units = ''
-  output_variable%iformat = 1 ! integer
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               PHASE)
+! name = 'Phase'
+! units = ''
+! output_variable%iformat = 1 ! integer
+! call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+!                              PHASE)
 
 end subroutine ImmisSetPlotVariables
 
@@ -3213,13 +3156,13 @@ end subroutine ImmisSetPlotVariables
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine ImmisDestroy(patch)
+subroutine ImmisDestroy(realization)
 
-  use Patch_module
+  use Realization_class
 
   implicit none
   
-  type(patch_type) :: patch
+  type(realization_type) :: realization
   
   ! need to free array in aux vars
   !call ImmisAuxDestroy(patch%aux%Immis)

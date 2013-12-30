@@ -1,6 +1,6 @@
 module Mass_Transfer_module
  
-  use Dataset_Global_class
+  use Dataset_Global_HDF5_class
   
   use PFLOTRAN_Constants_module
 
@@ -15,7 +15,7 @@ module Mass_Transfer_module
   type, public :: mass_transfer_type
     PetscInt :: idof
     character(len=MAXWORDLENGTH) :: name
-    class(dataset_global_type), pointer :: dataset
+    class(dataset_global_hdf5_type), pointer :: dataset
     Vec :: vec
     type(mass_transfer_type), pointer :: next
   end type mass_transfer_type
@@ -61,7 +61,7 @@ end function MassTransferCreate
 subroutine MassTransferRead(mass_transfer,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -75,7 +75,7 @@ subroutine MassTransferRead(mass_transfer,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -88,7 +88,7 @@ subroutine MassTransferRead(mass_transfer,input,option)
         call InputReadInt(input,option,mass_transfer%idof)
         call InputErrorMsg(input,option,'idof','MASS_TRANSFER')
       case('DATASET')
-        mass_transfer%dataset => DatasetGlobalCreate()
+        mass_transfer%dataset => DatasetGlobalHDF5Create()
         call InputReadNChars(input,option, &
                              mass_transfer%dataset%name,&
                              MAXWORDLENGTH,PETSC_TRUE)
@@ -175,15 +175,17 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
   dataset_base_ptr => &
     DatasetBaseGetPointer(available_datasets,mass_transfer%dataset%name, &
                           string,option)
-  call DatasetGlobalDestroy(mass_transfer%dataset)
+  call DatasetGlobalHDF5Destroy(mass_transfer%dataset)
   select type(dataset => dataset_base_ptr)
-    class is(dataset_global_type)
+    class is(dataset_global_hdf5_type)
       mass_transfer%dataset => dataset
     class default
       option%io_buffer = 'DATASET ' // trim(dataset%name) // 'is not of ' // &
         'GLOBAL type, which is necessary for all MASS_TRANSFER objects.'
       call printErrMsg(option)
   end select
+  ! dm_wrapper is solely a pointer; it should not be allocated
+  mass_transfer%dataset%dm_wrapper => discretization%dm_1dof
   mass_transfer%dataset%local_size = discretization%grid%nlmax
   mass_transfer%dataset%global_size = discretization%grid%nmax
   call DiscretizationCreateVector(discretization,ONEDOF,mass_transfer%vec, &
@@ -196,6 +198,12 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
                                     mass_transfer%dataset%hdf5_dataset_name, &
                                     mass_transfer%dataset%time_storage,option)
 #endif
+    ! if time interpolation methods not set in hdf5 file, set to default of STEP
+    if (mass_transfer%dataset%time_storage%time_interpolation_method == &
+        INTERPOLATION_NULL) then
+      mass_transfer%dataset%time_storage%time_interpolation_method = &
+        INTERPOLATION_STEP
+    endif
   endif 
   
   ! update the next one recursively
@@ -214,8 +222,8 @@ end subroutine MassTransferInit
 ! date: 05/01/13
 !
 ! ************************************************************************** !
-recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
-                                        grid, option)
+recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
+
   use Discretization_module
   use Grid_module
   use Option_module
@@ -226,7 +234,6 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
 #include "finclude/petscvec.h90"  
   
   type(mass_transfer_type), pointer :: mass_transfer
-  type(discretization_type) :: discretization
   type(grid_type) :: grid
   type(option_type) :: option  
   PetscReal :: time
@@ -236,8 +243,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   
   if (.not.associated(mass_transfer)) return
 
-!  call mass_transfer%dataset%Load(discretization,grid,option)
-  call DatasetGlobalLoad(mass_transfer%dataset,discretization%dm_1dof,option)
+  call DatasetGlobalHDF5Load(mass_transfer%dataset,option)
 
   call VecGetArrayF90(mass_transfer%vec,vec_ptr,ierr)
   ! multiply by -1.d0 for positive contribution to residual
@@ -246,7 +252,7 @@ recursive subroutine MassTransferUpdate(mass_transfer, discretization, &
   
   ! update the next one
   if (associated(mass_transfer%next)) then
-    call MassTransferUpdate(mass_transfer%next,discretization,grid,option)
+    call MassTransferUpdate(mass_transfer%next,grid,option)
   endif
   
 end subroutine MassTransferUpdate

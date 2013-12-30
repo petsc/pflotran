@@ -95,8 +95,8 @@ end subroutine HydrogeophysicsWrapperStart
 ! date: 07/02/13
 !
 ! ************************************************************************** !
-subroutine HydrogeophysicsWrapperStep(solution_mpi,solution_seq,scatter, &
-                                      comm,option)
+subroutine HydrogeophysicsWrapperStep(time,solution_mpi,solution_seq, &
+                                      scatter,comm,option)
   use Option_module
 
   implicit none
@@ -104,12 +104,14 @@ subroutine HydrogeophysicsWrapperStep(solution_mpi,solution_seq,scatter, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
+  PetscReal :: time
   Vec :: solution_mpi
   Vec :: solution_seq
   VecScatter :: scatter
   PetscMPIInt :: comm
   type(option_type) :: option
   
+  PetscReal :: temp_time
   PetscErrorCode :: ierr
   
 !  call printMsg(option,'HydrogeophysicsWrapperStep()')
@@ -117,6 +119,9 @@ subroutine HydrogeophysicsWrapperStep(solution_mpi,solution_seq,scatter, &
   ! Bcasting a 1 to E4D tells it to run a forward simulation 
   if (comm /= MPI_COMM_NULL) then
     call MPI_Bcast(ONE_INTEGER_MPI,ONE_INTEGER_MPI,MPI_INTEGER, &
+                   ZERO_INTEGER_MPI,comm,ierr)
+    temp_time = time
+    call MPI_Bcast(temp_time,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                    ZERO_INTEGER_MPI,comm,ierr)
   endif
   call VecScatterBegin(scatter,solution_mpi,solution_seq, &

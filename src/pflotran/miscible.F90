@@ -46,7 +46,8 @@ module Miscible_module
          MiscibleSetup, &
          MiscibleMaxChange, MiscibleUpdateSolution, &
          MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
-         MiscibleUpdateAuxVars,MiscibleComputeMassBalance
+         MiscibleUpdateAuxVars,MiscibleComputeMassBalance, &
+         MiscibleDestroy
 
 contains
 
@@ -90,25 +91,18 @@ end subroutine MiscibleTimeCut
 subroutine MiscibleSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
    
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
  
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call MiscibleSetPlotVariables(realization)
@@ -227,28 +221,21 @@ end subroutine MiscibleSetupPatch
 subroutine MiscibleComputeMassBalance(realization,mass_balance)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,1)
    
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   mass_balance = 0.d0
 
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleComputeMassBalancePatch(realization,mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleComputeMassBalance    
@@ -441,45 +428,38 @@ end subroutine MiscibleUpdateMassBalancePatch
   function MiscibleInitGuessCheck(realization)
  
   use Realization_class
-  use Level_module
   use Patch_module
   use Option_module
   
   PetscInt ::  MiscibleInitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr
 
   option => realization%option
-  cur_level => realization%level_list%first
   ipass = 1
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ipass= MiscibleInitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    ipass= MiscibleInitGuessCheckPatch(realization)
+    if(ipass<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
   enddo
 
-   call MPI_Barrier(option%mycomm,ierr)
-   if(option%mycommsize >1)then
-      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
-                         option%mycomm,ierr)
-      if(ipass0 < option%mycommsize) ipass=-1
-   endif
+  call MPI_Barrier(option%mycomm,ierr)
+  if (option%mycommsize >1)then
+    call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                       option%mycomm,ierr)
+    if(ipass0 < option%mycommsize) ipass=-1
+  endif
    MiscibleInitGuessCheck =ipass
- end function MiscibleInitGuessCheck
+
+end function MiscibleInitGuessCheck
 
 
 
@@ -533,25 +513,18 @@ end subroutine MiscibleUpdateMassBalancePatch
 subroutine MiscibleUpdateAuxVars(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleUpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleUpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleUpdateAuxVars
@@ -713,7 +686,6 @@ subroutine MiscibleUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   
   implicit none
@@ -721,7 +693,6 @@ subroutine MiscibleUpdateSolution(realization)
   type(realization_type) :: realization
   
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   PetscErrorCode :: ierr
@@ -730,17 +701,12 @@ subroutine MiscibleUpdateSolution(realization)
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do 
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleUpdateSolutionPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleUpdateSolution
@@ -780,25 +746,18 @@ end subroutine MiscibleUpdateSolutionPatch
 subroutine MiscibleUpdateFixedAccumulation(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleUpdateFixedAccumulation
@@ -1335,7 +1294,6 @@ end subroutine MiscibleBCFlux
 subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -1356,7 +1314,6 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange  
 
@@ -1393,45 +1350,30 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
 
 ! pass #0 prepare numerical increment  
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleResidualPatch0(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleResidualPatch0(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #1 internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleResidualPatch1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleResidualPatch1(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #2 for everything else
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleResidualPatch2(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleResidualPatch2(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
   if (realization%debug%vecview_residual) then
@@ -2049,22 +1991,22 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
    ! endif
       
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif 
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 !    hsrc1=0D0
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -2173,7 +2115,6 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
   use Logging_module
@@ -2188,7 +2129,6 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
 
@@ -2208,31 +2148,21 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
  ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #2 for everything else
- cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 
@@ -2821,21 +2751,21 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -3071,7 +3001,6 @@ end subroutine MiscibleCreateZeroArray
 subroutine MiscibleMaxChange(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Field_module
   use Option_module
@@ -3083,7 +3012,6 @@ subroutine MiscibleMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dcmax
   PetscInt :: idof
@@ -3092,7 +3020,6 @@ subroutine MiscibleMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
   option%dpmax=0.D0
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
@@ -3235,5 +3162,25 @@ subroutine MiscibleSetPlotVariables(realization)
 
 end subroutine MiscibleSetPlotVariables
 
+
+! ************************************************************************** !
+!
+! MphaseDestroy: Deallocates variables associated with Miscible
+! author: Gautam Bisht
+! date: 11/27/13
+!
+! ************************************************************************** !
+subroutine MiscibleDestroy(realization)
+
+  use Realization_class
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  ! need to free array in aux vars
+  !call MiscibleAuxDestroy(patch%aux%miscible)
+
+end subroutine MiscibleDestroy
 
 end module Miscible_module

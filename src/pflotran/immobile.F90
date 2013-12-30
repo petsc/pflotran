@@ -26,7 +26,7 @@ subroutine ImmobileRead(immobile,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -40,7 +40,7 @@ subroutine ImmobileRead(immobile,input,option)
            
   nullify(prev_immobile_species)
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
           
@@ -74,7 +74,7 @@ end subroutine ImmobileRead
 subroutine ImmobileProcessConstraint(immobile,constraint_name, &
                                     constraint,option)
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module  
   

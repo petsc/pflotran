@@ -37,7 +37,7 @@ contains
 ! ************************************************************************** !
 subroutine ExplicitUGridRead(unstructured_grid,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -96,7 +96,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
     fileid = 86
     input => InputCreate(fileid,filename,option)
 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read CELL card, though we already know the
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'CELLS'
@@ -146,7 +146,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         call InputReadInt(input,option,temp_int)
         call InputErrorMsg(input,option,'cell id',hint)
@@ -217,7 +217,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
   if (option%myrank == option%io_rank) then
   
  
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read CONNECTIONS card, though we already know the
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'CONNECTIONS'
@@ -267,7 +267,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
       num_to_read = num_connections_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do iconn = 1, num_to_read
-        call InputReadFlotranString(input,option)
+        call InputReadPflotranString(input,option)
         call InputReadStringErrorMsg(input,option,hint)  
         call InputReadInt(input,option,temp_int)
         call InputErrorMsg(input,option,'cell id upwind',hint)
@@ -341,7 +341,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
   deallocate(temp_real_array)  
   
   if (option%myrank == option%io_rank) then
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read ELEMENTS card, we only use this for tecplot output
     ! not used while solving the PDEs
     call InputReadWord(input,option,card,PETSC_TRUE)
@@ -355,7 +355,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
     allocate(explicit_grid%cell_connectivity(0:unstructured_grid% &
                                   max_nvert_per_cell,num_elems)) 
     do iconn = 1, num_elems
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,card)  
       call InputReadWord(input,option,word,PETSC_TRUE)
       call InputErrorMsg(input,option,'element_type',card)
@@ -380,7 +380,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
         call InputErrorMsg(input,option,'vertex id',hint)
       enddo
     enddo
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read VERTICES card, not used for calcuations, only tecplot output
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'VERTICES'
@@ -397,7 +397,7 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
       explicit_grid%vertex_coordinates(icell)%z = 0.d0
     enddo
     do icell = 1, explicit_grid%num_cells_global
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,card)  
       call InputReadDouble(input,option, &
                            explicit_grid%vertex_coordinates(icell)%x)
@@ -1405,7 +1405,7 @@ function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
   
   num_connections = size(cell_ids)
   connections => ConnectionCreate(num_connections,connection_type)
-  
+    
   do iconn = 1, num_connections
     id = cell_ids(iconn)
     connections%id_dn(iconn) = id

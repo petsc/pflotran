@@ -26,7 +26,7 @@ module Hydrogeophysics_Simulation_class
     PetscMPIInt :: pf_e4d_master_grp
     PetscMPIInt :: pf_e4d_master_size
     PetscMPIInt :: pf_e4d_master_rank
-    PetscBool :: subsurface_process
+    PetscBool :: pflotran_process
     Vec :: solution_mpi
   contains
     procedure, public :: Init => HydrogeophysicsInit
@@ -95,7 +95,7 @@ subroutine HydrogeophysicsInit(this,option)
   this%pf_e4d_master_grp = -999
   this%pf_e4d_master_size = -999
   this%pf_e4d_master_rank = -999
-  this%subsurface_process = PETSC_FALSE
+  this%pflotran_process = PETSC_FALSE
    
 end subroutine HydrogeophysicsInit
 
@@ -123,7 +123,7 @@ subroutine HydrogeophysicsInitializeRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%InitializeRun()')
 
-  if (this%subsurface_process) then
+  if (this%pflotran_process) then
     call this%process_model_coupler_list%InitializeRun()
   endif
 
@@ -150,7 +150,7 @@ subroutine HydrogeophysicsExecuteRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%ExecuteRun()')
 
-  if (this%subsurface_process) then
+  if (this%pflotran_process) then
     final_time = SimulationGetFinalWaypointTime(this)
     ! take hourly steps until final time
     current_time = 0.d0
@@ -183,7 +183,7 @@ subroutine HydrogeophysicsFinalizeRun(this)
   
   call printMsg(this%option,'Hydrogeophysics%FinalizeRun()')
   
-  if (this%subsurface_process) then
+  if (this%pflotran_process) then
     call SubsurfaceFinalizeRun(this)
   endif
   
@@ -209,7 +209,7 @@ subroutine HydrogeophysicsStrip(this)
   call printMsg(this%option,'Hydrogeophysics%Strip()')
   
   call SubsurfaceSimulationStrip(this)
-  if (.not.this%subsurface_process) then
+  if (.not.this%pflotran_process) then
     call HydrogeophysicsWrapperDestroy(this%option)
   endif
   if (this%solution_mpi /= 0) &

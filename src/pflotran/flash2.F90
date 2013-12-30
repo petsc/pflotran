@@ -50,7 +50,7 @@ module Flash2_module
          Flash2Setup,Flash2UpdateReason,&
          Flash2MaxChange, Flash2UpdateSolution, &
          Flash2GetTecplotHeader, Flash2InitializeTimestep, &
-         Flash2UpdateAuxVars
+         Flash2UpdateAuxVars, Flash2Destroy
 
 contains
 
@@ -94,7 +94,6 @@ end subroutine Flash2TimeCut
 subroutine Flash2Setup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 !  use span_wagner_module
 !  use co2_sw_module
@@ -102,40 +101,14 @@ subroutine Flash2Setup(realization)
    
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  
-#if 0
-  if (realization%option%co2eos == EOS_SPAN_WAGNER)then
-    select case(realization%option%itable)
-       case(0,1,2)
-         call initialize_span_wagner(realization%option%itable, &
-                                     realization%option%myrank, &
-                                     realization%option)
-       case(4,5)
-         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank, &
-                                     realization%option)
-         call initialize_sw_interp(realization%option%itable, realization%option%myrank)
-       case(3)
-         call sw_spline_read
-       case default
-         print *, 'Wrong table option : STOP'
-      stop
-    end select
-  endif
-#endif
  
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2SetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2SetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call Flash2SetPlotVariables(realization)
@@ -263,35 +236,27 @@ end subroutine Flash2SetupPatch
   function  Flash2InitGuessCheck(realization)
  
   use Realization_class
-  use Level_module
   use Patch_module
   use Option_module
   
   PetscInt ::  Flash2InitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr
 
   option => realization%option
-  cur_level => realization%level_list%first
   ipass = 1
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ipass= Flash2InitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    ipass= Flash2InitGuessCheckPatch(realization)
+    if(ipass<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
   enddo
 
    call MPI_Barrier(option%mycomm,ierr)
@@ -390,13 +355,11 @@ end subroutine Flash2UpdateReasonPatch
 subroutine Flash2UpdateReason(reason, realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   implicit none
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
@@ -404,24 +367,18 @@ subroutine Flash2UpdateReason(reason, realization)
   PetscErrorCode :: ierr
 
   re = 1
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2UpdateReasonPatch(re, realization)
-        if(re<=0)then
-           nullify(cur_level)
-           exit 
-        endif
-        cur_patch => cur_patch%next
-     enddo
-    if(re>0) cur_level => cur_level%next
- enddo
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2UpdateReasonPatch(re, realization)
+    if (re<=0) then
+      exit 
+    endif
+    cur_patch => cur_patch%next
+  enddo
 
- call MPI_Barrier(realization%option%mycomm,ierr)
+  call MPI_Barrier(realization%option%mycomm,ierr)
 !  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
      call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
@@ -507,25 +464,18 @@ end subroutine Flash2UpdateReason
 subroutine Flash2UpdateAuxVars(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2UpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2UpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine Flash2UpdateAuxVars
@@ -752,25 +702,18 @@ end subroutine Flash2UpdateSolution
 subroutine Flash2UpdateFixedAccumulation(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2UpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2UpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine Flash2UpdateFixedAccumulation
@@ -1766,7 +1709,6 @@ end subroutine Flash2BCFluxDiffusion
 subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -1787,7 +1729,6 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange  
 
@@ -1821,45 +1762,30 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
 
 ! pass #0 prepare numerical increment  
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2ResidualPatch0(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #1 internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2ResidualPatch1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #2 for everything else
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
   if (realization%debug%vecview_residual) then
@@ -2097,12 +2023,12 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
    if (associated(source_sink%flow_condition%pressure)) then   
-    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
    endif 
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 !    hsrc1=0D0
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
@@ -2111,10 +2037,10 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -2980,22 +2906,22 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
    ! endif
       
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif 
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 !    hsrc1=0D0
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -3095,7 +3021,6 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
   use Logging_module
@@ -3110,7 +3035,6 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
 
@@ -3130,33 +3054,22 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
  ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #2 for everything else
- cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
-
 
   if (realization%debug%matview_Jacobian) then
 #if 1  
@@ -3359,21 +3272,21 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -4316,21 +4229,21 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -4582,7 +4495,6 @@ end subroutine Flash2CreateZeroArray
 subroutine Flash2MaxChange(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Field_module
   use Option_module
@@ -4594,7 +4506,6 @@ subroutine Flash2MaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
   PetscErrorCode :: ierr 
@@ -4602,7 +4513,6 @@ subroutine Flash2MaxChange(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
   option%dpmax=0.D0
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
@@ -4614,28 +4524,6 @@ subroutine Flash2MaxChange(realization)
   call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
   call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax,ierr)
 
-#if 0
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call Flash2MaxChangePatch(realization, max_s)
-      if(dsmax <max_s)  dsmax =max_s
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  if(option%mycommsize >1)then
-    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    dsmax = max_s
-  endif 
-  option%dsmax=dsmax
-#endif
-  !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
 end subroutine Flash2MaxChange
 
 ! ************************************************************************** !
@@ -4918,13 +4806,13 @@ end subroutine Flash2SetPlotVariables
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine Flash2Destroy(patch)
+subroutine Flash2Destroy(realization)
 
-  use Patch_module
+  use Realization_class
 
   implicit none
   
-  type(patch_type) :: patch
+  type(realization_type) :: realization
   
   ! need to free array in aux vars
   !call Flash2AuxDestroy(patch%aux%Flash2)

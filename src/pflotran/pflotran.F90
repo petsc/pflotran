@@ -29,27 +29,25 @@
 ! or
 
 ! Glenn E. Hammond
-! Pacific Northwest National Laboratory
-! Energy and Environment Directorate
-! MSIN K9-36
-! (509) 375-3875
-! glenn.hammond@pnnl.gov
-! Richland, WA
+! Sandia National Laboratories
+! Applied Systems Analysis & Research
+! 413 Cherry Blossom Lp
+! (509) 392-1715
+! gehammo@sandia.gov
+! Richland, WA 99352
 
 !=======================================================================
 program pflotran
   
   use Option_module
-  use Input_module
-  use Stochastic_module
-  use Stochastic_Aux_module
-  use Simulation_module
-  use Timestepper_module  
+  use Simulation_Base_class
   use PFLOTRAN_Factory_module
-  use Logging_module
-#ifdef GEOMECH
-  use Geomechanics_Logging_module
-#endif
+  use Subsurface_Factory_module
+  use Hydrogeophysics_Factory_module
+#ifdef SURFACE_FLOW  
+  use Surface_Factory_module
+  use Surf_Subsurf_Factory_module
+#endif  
   
   use PFLOTRAN_Constants_module
 
@@ -57,63 +55,40 @@ program pflotran
 
 #include "finclude/petscsys.h"
 
-  PetscErrorCode :: ierr
-  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
-  type(simulation_type), pointer :: simulation
-  type(stepper_type), pointer :: master_stepper
-  type(stochastic_type), pointer :: stochastic
+  class(simulation_base_type), pointer :: simulation
   type(option_type), pointer :: option
-  character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: option_found
-  PetscBool :: bool_flag
-  PetscInt :: init_status
   
+  nullify(simulation)
   option => OptionCreate()
   call OptionInitMPI(option)
-  call PFLOTRANInitializePrePETSc(option)
-
-  !geh: in the refactored code, this portion has been relocated to
-  !     subsurface_factory.F90.
-  string = '-multisimulation'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) then
-    option%subsurface_simulation_type = MULTISIMULATION_SIM_TYPE
-  endif
-
-  string = '-stochastic'
-  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
-  if (option_found) then
-    option%subsurface_simulation_type = STOCHASTIC_SIM_TYPE
-  endif
-  
-  select case(option%subsurface_simulation_type)
-    case(STOCHASTIC_SIM_TYPE)
-      stochastic => StochasticCreate()
-      ! PETSc initialized within StochasticInit()
-      call StochasticInit(stochastic,option)
-      call StochasticRun(stochastic,option)
-    case(SUBSURFACE_SIM_TYPE,MULTISIMULATION_SIM_TYPE)
-      if (option%subsurface_simulation_type == MULTISIMULATION_SIM_TYPE) then
-        call InputReadFilenames(option,filenames)
-        call OptionDivvyUpSimulations(option,filenames)
-        deallocate(filenames)
-        nullify(filenames)
-      endif
-      call OptionInitPetsc(option)
-      call LoggingCreate()
-#ifdef GEOMECH
-      call GeomechLoggingCreate()
-#endif
-      call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
-                                       init_status)
-      call PFLOTRANRun(simulation,master_stepper,init_status)
-      call PFLOTRANFinalize(simulation,option)
-      call LoggingDestroy()
-#ifdef GEOMECH
-      call GeomechLoggingDestroy()
-#endif
+  call PFLOTRANInitialize(option)
+  select case(option%simulation_mode)
+    case('SUBSURFACE')
+      call SubsurfaceInitialize(simulation,option)
+    case('HYDROGEOPHYSICS')
+      call HydrogeophysicsInitialize(simulation,option)
+#ifdef SURFACE_FLOW      
+    case('SURFACE')
+      call SurfaceInitialize(simulation,option)
+    case('SURFACE_SUBSURFACE')
+      call SurfSubsurfaceInitialize(simulation,option)
+#endif      
+    case default
+      option%io_buffer = 'Simulation Mode not recognized.'
+      call printErrMsg(option)
   end select
+  call simulation%InitializeRun()
 
+  if (option%status == PROCEED) then
+    call simulation%ExecuteRun()
+  endif
+
+  call simulation%FinalizeRun()
+  call simulation%Strip()
+  deallocate(simulation)
+  nullify(simulation)
+  
+  call PFLOTRANFinalize(option)
   call OptionFinalize(option)
 
 end program pflotran

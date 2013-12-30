@@ -1,0 +1,1 @@
+dataloader.py is an example of how to load permeabilities defined on a cell by cell basis within an ASCII file (perm_test.dat) into an PFLOTRAN readable HDF5 file through the dataset_global type. It converts the units from hydraulic conductivity (m/d) to permeability (m^2) using assumed water viscosity and density and collect statistics on the permeability data set.

@@ -1239,7 +1239,7 @@ subroutine RTCalculateRHS_t1(realization)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
     
@@ -1294,8 +1294,8 @@ subroutine RTCalculateRHS_t1(realization)
         if (.not.associated(source_sink)) exit
 
 !geh begin change
-!geh        msrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
-        msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
+!geh        msrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
+        msrc(:) = source_sink%flow_condition%rate%dataset%rarray(:)
 !geh end change
         msrc(1) =  msrc(1) / FMWH2O*1D3
         msrc(2) =  msrc(2) / FMWCO2*1D3
@@ -1512,7 +1512,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
       
@@ -1916,7 +1916,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
       
@@ -2668,7 +2668,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
 
         select case(source_sink%flow_condition%itype(1))
           case(MASS_RATE_SS)
-            msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
+            msrc(:) = source_sink%flow_condition%rate%dataset%rarray(:)
           case default
             msrc(:) = 0.d0
         end select

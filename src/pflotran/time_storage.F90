@@ -18,6 +18,8 @@ module Time_Storage_module
     PetscReal :: time_shift    ! shift for cyclic data sets 
     PetscBool :: cur_time_index_changed
     PetscBool :: cur_time_fraction_changed
+    PetscInt :: time_interpolation_method
+    PetscBool :: force_update
   end type time_storage_type
   
   public :: TimeStorageCreate, &
@@ -53,6 +55,8 @@ function TimeStorageCreate()
   time_storage%time_shift = 0.d0
   time_storage%cur_time_index_changed = PETSC_FALSE
   time_storage%cur_time_fraction_changed = PETSC_FALSE
+  time_storage%time_interpolation_method = INTERPOLATION_NULL
+  time_storage%force_update = PETSC_FALSE
   
   TimeStorageCreate => time_storage
     
@@ -65,26 +69,51 @@ end function TimeStorageCreate
 ! date: 10/26/11, 05/03/13
 !
 ! ************************************************************************** !
-subroutine TimeStorageVerify(default_time, time_storage, default_time_storage)
+subroutine TimeStorageVerify(default_time, time_storage, &
+                             default_time_storage, option)
+
+  use Option_module
+
   implicit none
   
   PetscReal :: default_time
-  type(time_storage_type) :: time_storage
-  type(time_storage_type) :: default_time_storage
+  type(time_storage_type), pointer :: time_storage
+  type(time_storage_type), pointer :: default_time_storage
+  type(option_type) :: option
   
   PetscInt :: array_size
   
-  if (default_time_storage%is_cyclic) time_storage%is_cyclic = PETSC_TRUE  
+  if (.not.associated(time_storage)) return
+  
+  if (associated(default_time_storage)) then
+    if (default_time_storage%is_cyclic) time_storage%is_cyclic = PETSC_TRUE
+    if (time_storage%time_interpolation_method == INTERPOLATION_NULL) then
+      time_storage%time_interpolation_method = &
+        default_time_storage%time_interpolation_method
+    endif
+    if (time_storage%time_interpolation_method == INTERPOLATION_NULL) then
+      option%io_buffer = 'Time interpolation method must be specified.'
+      call printErrMsg(option)
+    endif
+  endif
+  
   time_storage%max_time_index = 1
   if (.not.associated(time_storage%times)) then
-    if (.not.associated(default_time_storage%times)) then
+    if (associated(default_time_storage)) then
+      if (.not.associated(default_time_storage%times)) then
+        array_size = 1
+        allocate(time_storage%times(array_size))
+        time_storage%times = default_time
+      else
+        array_size = size(default_time_storage%times,1)
+        allocate(time_storage%times(array_size))
+        time_storage%times(1:array_size) = &
+          default_time_storage%times(1:array_size)
+      endif
+    else
       array_size = 1
       allocate(time_storage%times(array_size))
       time_storage%times = default_time
-    else
-      array_size = size(default_time_storage%times,1)
-      allocate(time_storage%times(array_size))
-      time_storage%times(1:array_size) = default_time_storage%times(1:array_size)
     endif
   endif
   time_storage%max_time_index = size(time_storage%times,1) 
@@ -274,6 +303,12 @@ subroutine TimeStorageUpdate(time_storage)
       time_storage%cur_time_fraction_changed = PETSC_TRUE
       time_storage%cur_time_fraction = 1.d0
     endif
+  endif
+
+  if (time_storage%force_update) then
+    time_storage%cur_time_fraction_changed = PETSC_TRUE
+    time_storage%cur_time_index_changed = PETSC_TRUE
+    time_storage%force_update = PETSC_FALSE
   endif
 
 end subroutine TimeStorageUpdate

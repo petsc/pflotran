@@ -203,6 +203,7 @@ STRATA
   MATERIAL soil1
 END
 
+
 :=========================== checkpoint / restart =============================
-CHECKPOINT 25
+CHECKPOINT 10
 

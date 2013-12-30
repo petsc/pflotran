@@ -9,10 +9,14 @@ module General_Aux_module
 #include "finclude/petscsys.h"
 
   ! thermodynamic state of fluid ids
+  PetscInt, parameter, public :: NULL_STATE = 0
   PetscInt, parameter, public :: LIQUID_STATE = 1
   PetscInt, parameter, public :: GAS_STATE = 2
   PetscInt, parameter, public :: TWO_PHASE_STATE = 3
   PetscInt, parameter, public :: ANY_STATE = 4
+  
+  PetscInt, parameter, public :: PREV_TS = 1
+  PetscInt, parameter, public :: PREV_IT = 2
 
   PetscInt, parameter, public :: GENERAL_LIQUID_PRESSURE_DOF = 1
   PetscInt, parameter, public :: GENERAL_GAS_PRESSURE_DOF = 1
@@ -32,6 +36,7 @@ module General_Aux_module
   PetscInt, parameter, public :: GENERAL_FLUX_DOF = 4
 
   type, public :: general_auxvar_type
+    PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
     PetscReal, pointer :: den(:)    ! (iphase)
@@ -146,6 +151,7 @@ subroutine GeneralAuxVarInit(aux_var,option)
   type(general_auxvar_type) :: aux_var
   type(option_type) :: option
 
+  aux_var%istate_store = NULL_STATE
   allocate(aux_var%pres(option%nphase+THREE_INTEGER))
   aux_var%pres = 0.d0
   allocate(aux_var%sat(option%nphase))
@@ -185,6 +191,7 @@ subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
   type(general_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
+  aux_var2%istate_store = aux_var%istate_store
   aux_var2%pres = aux_var%pres
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
@@ -221,9 +228,10 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   PetscReal :: x(option%nflowdof)
   type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
-
   PetscReal :: por, perm
+
   PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: pres_max
   PetscReal :: den_wat_vap, den_kg_wat_vap, h_wat_vap
   PetscReal :: den_air, h_air
   PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
@@ -261,7 +269,6 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 #ifdef DEBUG_GENERAL  
   gen_aux_var%H = -999.d0
   gen_aux_var%U = -999.d0
-  gen_aux_var%kvr = -999.d0
   gen_aux_var%pres = -999.d0
   gen_aux_var%sat = -999.d0
   gen_aux_var%den = -999.d0
@@ -270,13 +277,13 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 #else
   gen_aux_var%H = 0.d0
   gen_aux_var%U = 0.d0
-  gen_aux_var%kvr = 0.d0
   gen_aux_var%pres = 0.d0
   gen_aux_var%sat = 0.d0
   gen_aux_var%den = 0.d0
   gen_aux_var%den_kg = 0.d0
   gen_aux_var%xmol = 0.d0
 #endif  
+  gen_aux_var%kvr = 0.d0
   
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
@@ -290,6 +297,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(gid) = 0.d0
 
       call psat(gen_aux_var%temp,P_sat,ierr)
+      !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
+      !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
       call Henry_air_noderiv(dummy,gen_aux_var%temp, &
                              P_sat,K_H_tilde)
       gen_aux_var%pres(gid) = gen_aux_var%pres(lid)
@@ -305,10 +314,12 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
       gen_aux_var%sat(lid) = 0.d0
       gen_aux_var%sat(gid) = 1.d0
-      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
+      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / &
+                                   gen_aux_var%pres(gid)
       gen_aux_var%xmol(:,lid) = 0.d0
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
       gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
+      !TODO(geh): what to set p_l to when in gas state, pc_max???
       gen_aux_var%pres(lid) = 0.d0
       
     case(TWO_PHASE_STATE)
@@ -327,30 +338,59 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                                        gen_aux_var%sat(lid), &
                                        saturation_function,option)      
 
-      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cpid)
+      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - &
+                              gen_aux_var%pres(cpid)
 
       call Henry_air_noderiv(dummy,gen_aux_var%temp, &
                              P_sat,K_H_tilde)
       gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / K_H_tilde
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
-      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
+      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / &
+                                   gen_aux_var%pres(gid)
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
 
   end select
 
+  pres_max = max(gen_aux_var%pres(lid),gen_aux_var%pres(gid))
+
+  ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
+  ! Liquid phase thermodynamic properties
+  ! must use pres_max as the pressure, not %pres(lid)
+  call wateos_noderiv(gen_aux_var%temp,pres_max, &
+                      gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
+                      gen_aux_var%H(lid),option%scale,ierr)
+
+  ! MJ/kmol comp
+  gen_aux_var%U(lid) = gen_aux_var%H(lid) - &
+                       ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                       (pres_max / gen_aux_var%den(lid) * &
+                        option%scale)
+
+  ! Gas phase thermodynamic properties
+  call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
+                            option%scale,den_air,h_air,u)
+  call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
+                gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
+                h_wat_vap,hgp,hgt,option%scale,ierr)      
+  
+  gen_aux_var%den(gid) = den_wat_vap + den_air
+  gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
+  ! if xmol not set for gas phase, set based on densities
+  if (gen_aux_var%xmol(acid,gid) < 1.d-40) then
+    gen_aux_var%xmol(acid,gid) = den_air / gen_aux_var%den(gid)
+    gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
+  endif
+  ! MJ/kmol
+  gen_aux_var%H(gid) = gen_aux_var%xmol(wid,gid)*h_wat_vap + &
+                       gen_aux_var%xmol(acid,gid)*h_air
+  gen_aux_var%U(gid) = gen_aux_var%H(gid) - &
+                       ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                       (gen_aux_var%pres(gid) / gen_aux_var%den(gid) * &
+                        option%scale)
 
   if (global_aux_var%istate == LIQUID_STATE .or. &
       global_aux_var%istate == TWO_PHASE_STATE) then
-    call wateos_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                        gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
-                        gen_aux_var%H(lid),option%scale,ierr)
-
-    ! MJ/kmol comp
-    gen_aux_var%U(lid) = gen_aux_var%H(lid) - &
-                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
-                         (gen_aux_var%pres(lid) / gen_aux_var%den(lid) * &
-                          option%scale)
-    ! this does not need to be calculated for LIQUID_STATE (=1)                     
+    ! this does not need to be calculated for LIQUID_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
     call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
@@ -360,22 +400,6 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
   if (global_aux_var%istate == GAS_STATE .or. &
       global_aux_var%istate == TWO_PHASE_STATE) then
-    call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
-                              option%scale,den_air,h_air,u)
-    call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
-                  gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
-                  h_wat_vap,hgp,hgt,option%scale,ierr)      
-    
-    gen_aux_var%den(gid) = den_wat_vap + den_air
-    gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
-    ! MJ/kmol
-    gen_aux_var%H(gid) = gen_aux_var%xmol(wid,gid)*h_wat_vap + &
-                         gen_aux_var%xmol(acid,gid)*h_air
-    gen_aux_var%U(gid) = gen_aux_var%H(gid) - &
-                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
-                         (gen_aux_var%pres(gid) / gen_aux_var%den(gid) * &
-                          option%scale)
-
     ! this does not need to be calculated for GAS_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(gid),krg,dkrg_Se, &
                                   saturation_function,gid,PETSC_FALSE,option)
@@ -435,6 +459,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 
   flag = PETSC_FALSE
   
+  gen_aux_var%istate_store(PREV_IT) = global_aux_var%istate
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
       call psat(gen_aux_var%temp,P_sat,ierr)
@@ -442,7 +467,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i)') &
+        write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
           ghosted_id
 #endif      
         global_aux_var%istate = TWO_PHASE_STATE
@@ -462,7 +487,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i)') &
+        write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
           ghosted_id
 #endif      
         global_aux_var%istate = TWO_PHASE_STATE
@@ -475,7 +500,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i)') &
+        write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
           ghosted_id
 #endif      
         ! convert to liquid state
@@ -491,7 +516,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
                                  'Before Update',option)
-        write(state_change_string,'(''2 Phase -> Gas at Cell '',i)') &
+        write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
           ghosted_id
 #endif      
         ! convert to gas state

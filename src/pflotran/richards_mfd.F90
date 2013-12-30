@@ -1697,7 +1697,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
 
     if(source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
 
     cur_connection_set => source_sink%connection_set
 

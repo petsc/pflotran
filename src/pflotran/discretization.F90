@@ -43,6 +43,7 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_1dof
     type(dm_ptr_type), pointer :: dm_nflowdof
     type(dm_ptr_type), pointer :: dm_ntrandof
+    type(dm_ptr_type), pointer :: dm_n_stress_strain_dof
     type(mfd_type), pointer :: MFD
     VecScatter :: tvd_ghost_scatter
     
@@ -124,12 +125,15 @@ function DiscretizationCreate()
   allocate(discretization%dm_1dof)
   allocate(discretization%dm_nflowdof)
   allocate(discretization%dm_ntrandof)
+  allocate(discretization%dm_n_stress_strain_dof)
   discretization%dm_1dof%dm = 0
   discretization%dm_nflowdof%dm = 0
   discretization%dm_ntrandof%dm = 0
+  discretization%dm_n_stress_strain_dof%dm = 0
   nullify(discretization%dm_1dof%ugdm)
   nullify(discretization%dm_nflowdof%ugdm)
   nullify(discretization%dm_ntrandof%ugdm)
+  nullify(discretization%dm_n_stress_strain_dof%ugdm)
   
   nullify(discretization%grid)
   nullify(discretization%MFD)
@@ -157,7 +161,7 @@ end function DiscretizationCreate
 subroutine DiscretizationReadRequiredCards(discretization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -189,7 +193,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
 
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (input%ierr /= 0) exit
 
     if (InputCheckExit(input,option)) exit
@@ -382,7 +386,7 @@ end subroutine DiscretizationReadRequiredCards
 subroutine DiscretizationRead(discretization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -412,7 +416,7 @@ subroutine DiscretizationRead(discretization,input,option)
 
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (input%ierr /= 0) exit
 
     if (InputCheckExit(input,option)) exit
@@ -430,7 +434,7 @@ subroutine DiscretizationRead(discretization,input,option)
           case default
             call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
         end select
-        call InputReadFlotranString(input,option) ! read END card
+        call InputReadPflotranString(input,option) ! read END card
         call InputReadStringErrorMsg(input,option,'DISCRETIZATION,DXYZ,END')
         if (.not.(InputCheckExit(input,option))) then
           option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
@@ -443,82 +447,48 @@ subroutine DiscretizationRead(discretization,input,option)
             grid => discretization%grid
 
             ! read first line and we will split off the legacy approach vs. new
-            call InputReadFlotranString(input,option)
-            call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or Min Coordinate')
-            string = input%buf
-
-            do i = 1, 3
-              call InputReadDouble(input,option,tempreal)
-              if (input%ierr /= 0) exit
-            enddo
-
-            input%ierr = 0
-            input%buf = string
-
-            if (i == 3) then ! only 2 successfully read
-              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                  grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
-                  grid%structured_grid%itype == SPHERICAL_GRID) then
-!geh                  call InputReadFlotranString(input,option) ! x-direction
-!geh                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
-              endif
-              if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                call InputReadFlotranString(input,option) ! y-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower Y','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper Y','BOUNDS')
-              else
-                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-              endif
-              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                  grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                call InputReadFlotranString(input,option) ! z-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower Z','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper Z','BOUNDS')
-              else
-                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-              endif
-            else ! new min max coordinate approach
-              select case(grid%structured_grid%itype)
-                case(CARTESIAN_GRID)
-                  i = 3
-                case(CYLINDRICAL_GRID)
-                  i = 2
-                case(SPHERICAL_GRID)
-                  i = 1
-              end select
-              call InputReadNDoubles(input,option, &
-                                     grid%structured_grid%bounds(:,LOWER), &
-                                     i)
-              call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
-              call InputReadFlotranString(input,option)
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,MAX COORDINATE')
-              call InputReadNDoubles(input,option, &
-                                     grid%structured_grid%bounds(:,UPPER), &
-                                     i)
-              call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
-              if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-              endif
-              if (grid%structured_grid%itype == SPHERICAL_GRID) then
-                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-              endif
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option, &
+                                       'DISCRETIZATION,BOUNDS,Min Coordinates')
+            select case(grid%structured_grid%itype)
+              case(CARTESIAN_GRID)
+                i = 3
+              case(CYLINDRICAL_GRID)
+                i = 2
+              case(SPHERICAL_GRID)
+                i = 1
+            end select
+            call InputReadNDoubles(input,option, &
+                                   grid%structured_grid%bounds(:,LOWER), &
+                                   i)
+            call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option, &
+                                        'DISCRETIZATION,BOUNDS,Min Coordinates')
+            call InputReadNDoubles(input,option, &
+                                   grid%structured_grid%bounds(:,UPPER), &
+                                   i)
+            call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
+            if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+              ! 2 values were read in in x and y locations, must move y value
+              ! to z as it was really z.
+              grid%structured_grid%bounds(Z_DIRECTION,LOWER) = &
+                grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+              grid%structured_grid%bounds(Z_DIRECTION,UPPER) = &
+                grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+              ! set y bounds to 0 and 1
+              grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
             endif
-            call InputReadFlotranString(input,option)
-            call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,END')
+            if (grid%structured_grid%itype == SPHERICAL_GRID) then
+              grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+              grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+              grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
+            endif
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option, &
+                                         'DISCRETIZATION,BOUNDS,END')
             if (.not.(InputCheckExit(input,option))) then
               if (OptionPrintToScreen(option)) then
                 if (grid%structured_grid%itype == CARTESIAN_GRID) then
@@ -736,6 +706,14 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                 discretization%stencil_type,option)
   endif
 
+#ifdef GEOMECH
+  if (option%ngeomechdof > 0) then
+    ndof = option%n_stress_strain_dof
+    call DiscretizationCreateDM(discretization,discretization%dm_n_stress_strain_dof, &
+                                ndof,discretization%stencil_width, &
+                                discretization%stencil_type,option)
+  endif
+#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -880,6 +858,8 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
       DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
       DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
+    case(NGEODOF)
+      DiscretizationGetDMPtrFromIndex => discretization%dm_n_stress_strain_dof
   end select  
   
 end function DiscretizationGetDMPtrFromIndex
@@ -940,7 +920,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   select case(discretization%itype)
     case(STRUCTURED_GRID)
 #ifndef DMGET
-      call DMCreateMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
+      call DMSetMatType(dm_ptr%dm,mat_type,ierr)
+      call DMCreateMatrix(dm_ptr%dm,Jacobian,ierr)
 #else
       call DMGetMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
 #endif
@@ -973,7 +954,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
         case(NTRANDOF)
 #ifndef DMGET
-          call DMCreateMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
+          call DMSetMatType(dm_ptr%dm,mat_type,ierr)
+          call DMCreateMatrix(dm_ptr%dm,Jacobian,ierr)
 #else
           call DMGetMatrix(dm_ptr%dm,mat_type,Jacobian,ierr)
 #endif
@@ -1920,7 +1902,10 @@ subroutine DiscretizationDestroy(discretization)
       discretization%dm_nflowdof%dm = 0
       if (discretization%dm_ntrandof%dm /= 0) &
         call DMDestroy(discretization%dm_ntrandof%dm,ierr)
-      discretization%dm_ntrandof%dm = 0
+      discretization%dm_n_stress_strain_dof%dm = 0
+      if (discretization%dm_nflowdof%dm /= 0) &
+        call DMDestroy(discretization%dm_n_stress_strain_dof%dm,ierr)
+      discretization%dm_n_stress_strain_dof%dm = 0
       if (associated(discretization%dmc_nflowdof)) then
         do i=1,size(discretization%dmc_nflowdof)
           call DMDestroy(discretization%dmc_nflowdof(i)%dm,ierr)
@@ -1942,6 +1927,9 @@ subroutine DiscretizationDestroy(discretization)
         call UGridDMDestroy(discretization%dm_nflowdof%ugdm)
       if (associated(discretization%dm_ntrandof%ugdm)) &
         call UGridDMDestroy(discretization%dm_ntrandof%ugdm)
+      if (associated(discretization%dm_n_stress_strain_dof%ugdm)) &
+        call UGridDMDestroy(discretization%dm_n_stress_strain_dof%ugdm)
+
   end select
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)
@@ -1952,6 +1940,9 @@ subroutine DiscretizationDestroy(discretization)
   if (associated(discretization%dm_ntrandof)) &
     deallocate(discretization%dm_ntrandof)
   nullify(discretization%dm_ntrandof)
+  if (associated(discretization%dm_n_stress_strain_dof)) &
+    deallocate(discretization%dm_n_stress_strain_dof)
+  nullify(discretization%dm_n_stress_strain_dof)
 
 
   if (associated(discretization%MFD)) &

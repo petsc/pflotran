@@ -162,6 +162,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     endif
   endif
 
+  !geh: We must check the convergence here as it initializes
+  !     snes->ttol for subsequent iterations.
+  call SNESConvergedDefault(snes_,it,xnorm,pnorm,fnorm,reason, &
+                            PETSC_NULL_OBJECT,ierr)
+
   ! for some reason (e.g. negative saturation/mole fraction in multiphase),
   ! we are forcing extra newton iterations
   if (option%force_newton_iteration) then
@@ -178,9 +183,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       return
     endif
   endif
-
-  call SNESConvergedDefault(snes_,it,xnorm,pnorm,fnorm,reason, &
-                            PETSC_NULL_OBJECT,ierr)
 
 ! Checking if norm exceeds divergence tolerance
 !geh: inorm_residual is being used without being calculated.

@@ -29,7 +29,6 @@ module Global_Aux_module
     PetscReal, pointer :: reaction_rate(:)
     PetscReal, pointer :: reaction_rate_store(:)
 !   PetscReal, pointer :: reaction_rate_store(:,:)
-    PetscReal, pointer :: displacement(:)
     PetscReal, pointer :: dphi(:,:)
     PetscReal :: scco2_eq_logK ! SC CO2
   end type global_auxvar_type
@@ -117,8 +116,6 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
-  allocate(aux_var%displacement(THREE_INTEGER))
-  aux_var%displacement = 0.d0
   allocate(aux_var%dphi(option%nphase,THREE_INTEGER))
   aux_var%dphi = 0.d0
 
@@ -231,7 +228,6 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%den_kg = aux_var%den_kg
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
-  aux_var2%displacement = aux_var%displacement
 !  aux_var2%dphi = aux_var%dphi
   
   if (associated(aux_var%reaction_rate) .and. &
@@ -352,7 +348,6 @@ subroutine GlobalAuxVarStrip(aux_var)
   call DeallocateArray(aux_var%m_nacl)
   call DeallocateArray(aux_var%xmass)
   call DeallocateArray(aux_var%reaction_rate)
-  call DeallocateArray(aux_var%displacement)
   call DeallocateArray(aux_var%dphi)
 
   call DeallocateArray(aux_var%pres_store)

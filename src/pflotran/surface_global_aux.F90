@@ -90,7 +90,7 @@ subroutine SurfaceGlobalAuxVarInit(aux_var,option)
   allocate(aux_var%head(option%nphase))
   aux_var%head = 0.d0
   allocate(aux_var%temp(ONE_INTEGER))
-  aux_var%temp = 0.d0
+  aux_var%temp = option%reference_temperature
   allocate(aux_var%den_kg(option%nphase))
   aux_var%den_kg = 0.d0
 
