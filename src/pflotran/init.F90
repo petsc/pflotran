@@ -639,7 +639,7 @@ subroutine Init(simulation)
       geomech_solver%Jpre_mat_type = geomech_solver%J_mat_type
     endif
     call GeomechDiscretizationCreateJacobian(geomech_realization% &
-                                             discretization,NGEODOF, &
+                                             geomech_discretization,NGEODOF, &
                                              geomech_solver%Jpre_mat_type, &
                                              geomech_solver%Jpre,option)
 

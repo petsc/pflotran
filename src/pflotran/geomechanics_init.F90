@@ -44,7 +44,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   implicit none
   
   type(geomech_realization_type)             :: geomech_realization
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -94,7 +94,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   implicit none
   
   type(geomech_realization_type)             :: geomech_realization
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer          :: patch
   type(input_type)                           :: input
   type(option_type), pointer                 :: option
@@ -102,7 +102,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   type(unstructured_grid_type), pointer      :: ugrid
   character(len=MAXWORDLENGTH)               :: card
   
-  discretization       => geomech_realization%discretization
+  geomech_discretization       => geomech_realization%geomech_discretization
        
   input%ierr = 0
   ! we initialize the word to blanks to avoid error reported by valgrind
@@ -124,21 +124,21 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
 
         select case(trim(word))
           case ('UNSTRUCTURED')
-            discretization%itype = UNSTRUCTURED_GRID
+            geomech_discretization%itype = UNSTRUCTURED_GRID
             call InputReadNChars(input,option, &
-                                 discretization%filename, &
+                                 geomech_discretization%filename, &
                                  MAXSTRINGLENGTH, &
                                  PETSC_TRUE)
             call InputErrorMsg(input,option,'keyword','filename')
 
-            discretization%grid  => GMGridCreate()
+            geomech_discretization%grid  => GMGridCreate()
             ugrid => UGridCreate()
-            call UGridRead(ugrid,discretization%filename,option)
+            call UGridRead(ugrid,geomech_discretization%filename,option)
             call UGridDecompose(ugrid,option)
             call CopySubsurfaceGridtoGeomechGrid(ugrid, &
-                                                 discretization%grid,option)
+                                                 geomech_discretization%grid,option)
             patch => GeomechanicsPatchCreate()
-            patch%geomech_grid => discretization%grid
+            patch%geomech_grid => geomech_discretization%grid
             geomech_realization%geomech_patch => patch
           case default
             option%io_buffer = 'Geomechanics supports only unstructured grid'
@@ -203,7 +203,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(input_type)                             :: input
   type(option_type)                            :: option
   
-  type(geomech_discretization_type), pointer   :: discretization
+  type(geomech_discretization_type), pointer   :: geomech_discretization
   type(geomech_material_property_type),pointer :: geomech_material_property
   type(waypoint_type), pointer                 :: waypoint
   type(geomech_grid_type), pointer             :: grid
@@ -227,7 +227,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
 ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
   
-  discretization => geomech_realization%discretization
+  geomech_discretization => geomech_realization%geomech_discretization
   output_option => geomech_realization%output_option
     
   if (associated(geomech_realization%geomech_patch)) grid => &
@@ -326,7 +326,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
         
       !.........................................................................
       case ('GEOMECHANICS_DEBUG')
-        call GeomechDebugRead(geomech_realization%debug,input,option)    
+        call GeomechDebugRead(geomech_realization%geomech_debug,input,option)
 
       !.........................................................................
       case ('GEOMECHANICS_SUBSURFACE_COUPLING')
@@ -630,7 +630,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   
   type(option_type), pointer :: option
   type(geomech_grid_type), pointer :: grid
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_field_type), pointer :: field
   type(geomech_strata_type), pointer :: strata
   type(geomech_patch_type), pointer :: patch  
@@ -642,7 +642,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   PetscReal, pointer :: imech_loc_p(:)
   
   option => geomech_realization%option
-  discretization => geomech_realization%discretization
+  geomech_discretization => geomech_realization%geomech_discretization
   field => geomech_realization%geomech_field
   patch => geomech_realization%geomech_patch
 
@@ -742,7 +742,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   call GeomechanicsMaterialPropertyDestroy(null_geomech_material_property)
   nullify(null_geomech_material_property)
   
-  call GeomechDiscretizationLocalToLocal(discretization,field%imech_loc, &
+  call GeomechDiscretizationLocalToLocal(geomech_discretization,field%imech_loc, &
                                          field%imech_loc,ONEDOF)
   
 end subroutine GeomechInitMatPropToGeomechRegions

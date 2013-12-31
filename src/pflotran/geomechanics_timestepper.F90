@@ -680,7 +680,7 @@ end subroutine GeomechTimestepperFinalizeRun
 ! date: 06/19/13
 !
 ! ************************************************************************** !
-subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
+subroutine StepperSolveGeomechSteadyState(geomech_realization,stepper,failure)
   
   use Geomechanics_Realization_module
   use Geomechanics_Discretization_module
@@ -697,7 +697,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
 #include "finclude/petscviewer.h"
 #include "finclude/petscsnes.h"
 
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   type(stepper_type) :: stepper
   PetscBool :: failure
 
@@ -712,11 +712,11 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   type(option_type), pointer :: option
   type(geomech_field_type), pointer :: field 
   type(solver_type), pointer :: solver
-  type(geomech_discretization_type), pointer :: discretization 
+  type(geomech_discretization_type), pointer :: geomech_discretization
 
-  option => realization%option
-  discretization => realization%discretization
-  field => realization%geomech_field
+  option => geomech_realization%option
+  geomech_discretization => geomech_realization%geomech_discretization
+  field => geomech_realization%geomech_field
   solver => stepper%solver
 
   sum_newton_iterations = 0
@@ -725,7 +725,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
     
   if (option%print_screen_flag) write(*,'(/,2("=")," GEOMECHANICS ",65("="))')
 
-  call GeomechanicsForceInitialGuess(realization)
+  call GeomechanicsForceInitialGuess(geomech_realization)
 
 
   call SNESSolve(solver%snes,PETSC_NULL_OBJECT,field%disp_xx,ierr)
@@ -750,8 +750,8 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%disp_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
-    if (associated(discretization%grid)) then
-       scaled_fnorm = fnorm/discretization%grid%nmax_node 
+    if (associated(geomech_discretization%grid)) then
+       scaled_fnorm = fnorm/geomech_discretization%grid%nmax_node
     else
        scaled_fnorm = fnorm
     endif
