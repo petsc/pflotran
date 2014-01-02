@@ -1,6 +1,6 @@
-module Process_Model_Immis_class
+module PM_Immis_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
   use Realization_class
   use Communicator_Base_module
   use Option_module
@@ -742,4 +742,4 @@ subroutine PMImmisDestroy(this)
   
 end subroutine PMImmisDestroy
   
-end module Process_Model_Immis_class
+end module PM_Immis_class

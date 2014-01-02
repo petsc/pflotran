@@ -91,8 +91,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Timestepper_Base_class
   use Output_module, only : Output
   use Realization_class, only : realization_type
-  use Process_Model_Base_class
-  use Process_Model_Surface_Flow_class
+  use PM_Base_class
+  use PM_Surface_Flow_class
   use Option_module
   use Surface_Flow_module
   use Surface_TH_module

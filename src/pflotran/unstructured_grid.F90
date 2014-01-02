@@ -1871,7 +1871,7 @@ end subroutine UGridDecompose
 !
 ! ************************************************************************** !
 function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
-                                   scatter_ltol,option)
+                                   option)
 
   use Connection_module
   use Option_module
@@ -1883,7 +1883,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(option_type) :: option
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(unstructured_grid_type) :: unstructured_grid
-  VecScatter :: scatter_ltol 
 
   type(connection_set_type), pointer :: connections
   PetscInt :: nconn, iconn
@@ -2627,7 +2626,6 @@ end subroutine UGridPopulateConnection
 !
 ! ************************************************************************** !
 subroutine UGridComputeCoord(unstructured_grid,option, &
-                             scatter_ltol, & 
                              grid_x,grid_y,grid_z, &
                              x_min,x_max,y_min,y_max,z_min,z_max)
 
@@ -2637,7 +2635,6 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
 
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
-  VecScatter :: scatter_ltol 
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
