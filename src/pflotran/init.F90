@@ -70,6 +70,7 @@ subroutine Init(simulation)
   use Global_module
   use Variables_module
   
+  use EOS_module
   use EOS_Water_module
 !  use Utility_module
   use Output_module
@@ -165,7 +166,7 @@ subroutine Init(simulation)
   nullify(tran_solver)
 
   ! sets pointers to EOS procedures
-  call EOSWaterInit()
+  call EOSInit()
   
   if (OptionPrintToScreen(option)) then
     temp_int = 6
@@ -1501,6 +1502,7 @@ subroutine InitReadInput(simulation)
   use Output_Aux_module
   use Output_Tecplot_module
   use Mass_Transfer_module
+  use EOS_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -2159,6 +2161,10 @@ subroutine InitReadInput(simulation)
         call FluidPropertyAddToList(fluid_property,realization%fluid_properties)
         nullify(fluid_property)
         
+!....................
+
+      case ('EOS')
+        call EOSRead(input,option)
 !....................
 
       case ('SATURATION_FUNCTION')
