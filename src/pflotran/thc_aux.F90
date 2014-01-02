@@ -354,7 +354,9 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
 
   aux_var%dden_dp = dw_dp
   
-  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt+dvis_dpsat*dpsat_dt)
+!geh: contribution of dvis_dpsat is now added in EOSWaterViscosity  
+!  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt+dvis_dpsat*dpsat_dt)
+  aux_var%dkvr_dt = -kr/(visl*visl)*dvis_dt
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   if (iphase < 3) then !kludge since pw is constant in the unsat zone
     aux_var%dh_dp = hw_dp
@@ -508,7 +510,9 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dsat_dp = ds_dp
   aux_var%dden_dt = dw_dt
   aux_var%dden_dp = dw_dp
-  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt) + dkr_dt/visl
+!geh: contribution of dvis_dpsat is now added in EOSWaterViscosity  
+!  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt) + dkr_dt/visl
+  aux_var%dkvr_dt = -kr/(visl*visl)*dvis_dt + dkr_dt/visl
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   aux_var%dh_dp = hw_dp
   aux_var%du_dp = hw_dp - (dpw_dp/dw_mol - pw/(dw_mol*dw_mol)*dw_dp)* &
