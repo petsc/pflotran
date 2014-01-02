@@ -345,10 +345,10 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         case(POLYHEDRA_UNSTRUCTURED_GRID)
           un_str_grid%polyhedra_grid => UGridPolyhedraCreate()
           if (index(discretization%filename,'.h5') > 0 ) then
-            !call PolyhedraUGridReadHDF5(un_str_grid,discretization%filename,option)
-            call printErrMsg(option,'Add PolyhedraUGridReadHDF5')
+            !call UGridPolyhedraReadHDF5(un_str_grid,discretization%filename,option)
+            call printErrMsg(option,'Add UGridPolyhedraReadHDF5')
           else
-            call PolyhedraUGridRead(un_str_grid,discretization%filename,option)
+            call UGridPolyhedraRead(un_str_grid,discretization%filename,option)
           endif
           grid%unstructured_grid => un_str_grid
       end select
@@ -679,7 +679,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
           call UGridExplicitDecompose(ugrid,option)
         case(POLYHEDRA_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
-          call PolyhedraUGridDecompose(ugrid,option)
+          call UGridPolyhedraDecompose(ugrid,option)
       end select
   end select
 

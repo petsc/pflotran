@@ -18,13 +18,13 @@ module Unstructured_Polyhedra_module
   include "scorpiof.h"
 #endif
 
-  public :: PolyhedraUGridRead, &
-            PolyhedraUGridDecompose, &
-            PolyhedraUGridSetCellCentroids, &
-            PolyhedraUGridComputeInternConnect, &
-            PolyhedraUGridComputeVolumes, &
-            PolyhedraUGridPopulateConnection, &
-            PolyhedraUGridGetCellsInRectangle
+  public :: UGridPolyhedraRead, &
+            UGridPolyhedraDecompose, &
+            UGridPolyhedraSetCellCentroids, &
+            UGridPolyhedraComputeInternConnect, &
+            UGridPolyhedraComputeVolumes, &
+            UGridPolyhedraPopulateConnection, &
+            UGridPolyhedraGetCellsInRectangle
 
 contains
 
@@ -36,7 +36,7 @@ contains
 !!
 !! date: 09/29/13
 ! ************************************************************************** !
-subroutine PolyhedraUGridRead(ugrid, filename, option)
+subroutine UGridPolyhedraRead(ugrid, filename, option)
 
   use Input_Aux_module
   use Option_module
@@ -470,7 +470,7 @@ subroutine PolyhedraUGridRead(ugrid, filename, option)
     call InputDestroy(input)
   endif
 
-end subroutine PolyhedraUGridRead
+end subroutine UGridPolyhedraRead
 
 ! ************************************************************************** !
 !> This routine decomposes a polyhedra grid across ranks.
@@ -480,7 +480,7 @@ end subroutine PolyhedraUGridRead
 !!
 !! date: 09/29/13
 ! ************************************************************************** !
-subroutine PolyhedraUGridDecompose(ugrid, option)
+subroutine UGridPolyhedraDecompose(ugrid, option)
 
   use Input_Aux_module
   use Option_module
@@ -1355,11 +1355,11 @@ subroutine PolyhedraUGridDecompose(ugrid, option)
         ugrid%cell_type(ghosted_id) = POLY_TYPE
       enddo
     case default
-      option%io_buffer = 'Grid type not recognized in PolyhedraUGridDecompose.'
+      option%io_buffer = 'Grid type not recognized in UGridPolyhedraDecompose.'
       call printErrMsg(option)
   end select
 
-end subroutine PolyhedraUGridDecompose
+end subroutine UGridPolyhedraDecompose
 
 ! ************************************************************************** !
 !> This routine set cell centroids for local+ghosted control volumes.
@@ -1369,7 +1369,7 @@ end subroutine PolyhedraUGridDecompose
 !!
 !! date: 12/28/13
 ! ************************************************************************** !
-subroutine PolyhedraUGridSetCellCentroids(pgrid,x,y,z, &
+subroutine UGridPolyhedraSetCellCentroids(pgrid,x,y,z, &
                                          x_min,x_max,y_min,y_max,z_min,z_max,option)
 
   use Option_module
@@ -1402,7 +1402,7 @@ subroutine PolyhedraUGridSetCellCentroids(pgrid,x,y,z, &
       z_min = pgrid%vertex_coordinates(ivertex)%z
   enddo
 
-end subroutine PolyhedraUGridSetCellCentroids
+end subroutine UGridPolyhedraSetCellCentroids
 
 ! ************************************************************************** !
 !> This routine compute internal connectivity of an unstrucutred polyhedra
@@ -1413,7 +1413,7 @@ end subroutine PolyhedraUGridSetCellCentroids
 !!
 !! date: 12/28/13
 ! ************************************************************************** !
-function PolyhedraUGridComputeInternConnect(ugrid, grid_x, &
+function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
                                              grid_y, grid_z, option)
 
   use Connection_module
@@ -1423,7 +1423,7 @@ function PolyhedraUGridComputeInternConnect(ugrid, grid_x, &
 
   implicit none
 
-  type(connection_set_type), pointer :: PolyhedraUGridComputeInternConnect
+  type(connection_set_type), pointer :: UGridPolyhedraComputeInternConnect
   type(unstructured_grid_type) :: ugrid 
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(option_type) :: option
@@ -2003,9 +2003,9 @@ function PolyhedraUGridComputeInternConnect(ugrid, grid_x, &
   deallocate(vertex_ids)
   deallocate(dup_face_id)
 
-  PolyhedraUGridComputeInternConnect => connections
+  UGridPolyhedraComputeInternConnect => connections
 
-end function PolyhedraUGridComputeInternConnect
+end function UGridPolyhedraComputeInternConnect
 
 ! ************************************************************************** !
 !> This routine sets volumes of local control volumes.
@@ -2015,7 +2015,7 @@ end function PolyhedraUGridComputeInternConnect
 !!
 !! date: 12/28/13
 ! ************************************************************************** !
-subroutine PolyhedraUGridComputeVolumes(ugrid, option, volume)
+subroutine UGridPolyhedraComputeVolumes(ugrid, option, volume)
 
   use Option_module
 
@@ -2039,7 +2039,7 @@ subroutine PolyhedraUGridComputeVolumes(ugrid, option, volume)
   enddo
   call VecRestoreArrayF90(volume,vec_ptr,ierr)
 
-end subroutine PolyhedraUGridComputeVolumes
+end subroutine UGridPolyhedraComputeVolumes
 
 ! ************************************************************************** !
 !> This routine computes details about boundary connections (area, dist, etc)
@@ -2049,7 +2049,7 @@ end subroutine PolyhedraUGridComputeVolumes
 !!
 !! date: 12/28/13
 ! ************************************************************************** !
-subroutine PolyhedraUGridPopulateConnection(ugrid, connection, iface_cell, &
+subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
                                              iconn, ghosted_id, option)
 
   use Connection_module
@@ -2125,7 +2125,7 @@ subroutine PolyhedraUGridPopulateConnection(ugrid, connection, iface_cell, &
       
   end select
 
-end subroutine PolyhedraUGridPopulateConnection
+end subroutine UGridPolyhedraPopulateConnection
 
 ! ************************************************************************** !
 !> This routine returns cells that are within a cube.
@@ -2135,7 +2135,7 @@ end subroutine PolyhedraUGridPopulateConnection
 !!
 !! date: 12/28/13
 ! ************************************************************************** !
-subroutine PolyhedraUGridGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, z_max, &
+subroutine UGridPolyhedraGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, z_max, &
                                               ugrid, option, num_cells, &
                                               cell_ids, cell_face_ids)
   use Option_module
@@ -2229,6 +2229,6 @@ subroutine PolyhedraUGridGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, 
   deallocate(temp_face_array)
   nullify(temp_face_array)
 
-end subroutine PolyhedraUGridGetCellsInRectangle
+end subroutine UGridPolyhedraGetCellsInRectangle
 
 end module Unstructured_Polyhedra_module

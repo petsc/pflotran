@@ -330,7 +330,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
                                         option)
     case(POLYHEDRA_UNSTRUCTURED_GRID)
       connection_set => &
-        PolyhedraUGridComputeInternConnect(grid%unstructured_grid, &
+        UGridPolyhedraComputeInternConnect(grid%unstructured_grid, &
                                            grid%x, grid%y, grid%z, &
                                            option)
   end select
@@ -422,7 +422,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
       call UGridPopulateConnection(grid%unstructured_grid,connection,iface,&
                                    iconn,cell_id_ghosted,option)
     case(POLYHEDRA_UNSTRUCTURED_GRID)
-      call PolyhedraUGridPopulateConnection(grid%unstructured_grid,connection,iface, &
+      call UGridPolyhedraPopulateConnection(grid%unstructured_grid,connection,iface, &
                                             iconn,cell_id_ghosted,option)
   end select
 
@@ -1244,7 +1244,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                              grid%y_min_local,grid%y_max_local, &
                              grid%z_min_local,grid%z_max_local)
     case(POLYHEDRA_UNSTRUCTURED_GRID)
-      call PolyhedraUGridSetCellCentroids(grid%unstructured_grid%polyhedra_grid, &
+      call UGridPolyhedraSetCellCentroids(grid%unstructured_grid%polyhedra_grid, &
                                           grid%x,grid%y,grid%z, &
                                           grid%x_min_local,grid%x_max_local, &
                                           grid%y_min_local,grid%y_max_local, &
@@ -1320,7 +1320,7 @@ subroutine GridComputeVolumes(grid,volume,option)
       call UGridExplicitComputeVolumes(grid%unstructured_grid, &
                                        option,volume)
     case(POLYHEDRA_UNSTRUCTURED_GRID)
-      call PolyhedraUGridComputeVolumes(grid%unstructured_grid,option,volume)
+      call UGridPolyhedraComputeVolumes(grid%unstructured_grid,option,volume)
   end select
 
 end subroutine GridComputeVolumes
@@ -2780,7 +2780,7 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
                                             region%num_cells,region%cell_ids, &
                                             region%faces)
             else
-              call PolyhedraUGridGetCellsInRectangle(x_min,x_max,y_min,y_max, &
+              call UGridPolyhedraGetCellsInRectangle(x_min,x_max,y_min,y_max, &
                                                      z_min,z_max, &
                                                      grid%unstructured_grid,option, &
                                                      region%num_cells,region%cell_ids, &
