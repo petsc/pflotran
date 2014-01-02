@@ -321,7 +321,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
     case(IMPLICIT_UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
-                                  grid%z,ugdm%scatter_ltol,option)
+                                  grid%z,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       connection_set => &
         ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
@@ -1215,7 +1215,6 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                                       grid%z_min_local,grid%z_max_local)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeCoord(grid%unstructured_grid,option, &
-                             ugdm%scatter_ltol, & !sp 
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
