@@ -1096,27 +1096,16 @@ end subroutine CreateMFDStruct4LP
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm, ugdm, sgrid_stencil_type, lsm_flux_method, &
+subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
                           option)
 
-use Option_module
+  use Option_module
+  use DM_Kludge_module
 
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-
-
   
   type(grid_type) :: grid
-  DM :: sgdm
-  type(ugdm_type) :: ugdm
+  type(dm_ptr_type) :: dm_ptr
   PetscInt :: sgrid_stencil_type
   PetscBool :: lsm_flux_method
   type(option_type) :: option
@@ -1130,15 +1119,15 @@ use Option_module
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructGridMapIndices(grid%structured_grid,sgrid_stencil_type, &
-                                    lsm_flux_method, &
-                                    grid%nG2L,grid%nL2G,grid%nG2A, &
-                                    grid%ghosted_level,option)
+                                lsm_flux_method, &
+                                grid%nG2L,grid%nL2G,grid%nG2A, &
+                                grid%ghosted_level,option)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
         allocate(grid%nG2P(grid%ngmax))
         allocate(int_tmp(grid%ngmax))
 !geh     call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
-        call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
+        call DMDAGetGlobalIndices(dm_ptr%dm, grid%ngmax, int_tmp, i_da, ierr)
         do icount = 1, grid%ngmax
 !geh         write(*,*) icount,  int_tmp(icount + i_da)
           grid%nG2P(icount) = int_tmp(icount + i_da)
@@ -1150,7 +1139,7 @@ use Option_module
 #endif
     case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
       call UGridMapIndices(grid%unstructured_grid, &
-                           ugdm, &
+                           dm_ptr%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
   end select
  

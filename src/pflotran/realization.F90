@@ -351,8 +351,7 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, &
-                          discretization%dm_1dof%dm, &
-                          discretization%dm_1dof%ugdm, &
+                          discretization%dm_1dof, &
                           discretization%stencil_type,&
                           discretization%lsm_flux_method, &
                           option)
@@ -385,8 +384,7 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid, &
-                          discretization%dm_1dof%dm, &
-                          discretization%dm_1dof%ugdm, &
+                          discretization%dm_1dof, &
                           discretization%stencil_type,&
                           discretization%lsm_flux_method, &
                           option)
