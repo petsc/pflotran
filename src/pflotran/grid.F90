@@ -2842,7 +2842,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
       ! B = disp_mat^T * disp_mat
       call MatMatMult(grid%dispT(ghosted_id),A, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,B,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,B,ierr)
 
       ! Pack the values of B in disp_mat for obtaining the inverse of matrix
       do ii=0,2
@@ -2880,7 +2880,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
       ! Compute Minv * dispT
       call MatMatMult(grid%Minv(ghosted_id),grid%dispT(ghosted_id), &
-                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,A,ierr)
+                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,A,ierr)
 
       call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),iden_vec,ierr)
 

@@ -461,7 +461,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
 #endif
 
   call MatMatMult(Mat_vert_to_face_subsurf,Mat_vert_to_face_surf_transp, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,prod,ierr)
 
 #if UGRID_DEBUG
   string = 'prod.out'
@@ -475,7 +475,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   call MatDestroy(prod,ierr)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,prod,ierr)
 
 #if UGRID_DEBUG
   string = 'prod_2.out'

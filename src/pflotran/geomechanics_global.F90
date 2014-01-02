@@ -287,7 +287,7 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   ! x displacement
   call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
                                GEOMECH_DISP_X,ZERO_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
                               geomech_field%work,geomech_field%work_loc,ONEDOF)
   call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
                                     GEOMECH_DISP_X,time_level)
@@ -295,7 +295,7 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   ! y displacement
   call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
                                GEOMECH_DISP_Y,ZERO_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
                               geomech_field%work,geomech_field%work_loc,ONEDOF)
   call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
                                     GEOMECH_DISP_Y,time_level)
@@ -303,7 +303,7 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   ! z displacement
   call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
                                GEOMECH_DISP_Z,ZERO_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
                               geomech_field%work,geomech_field%work_loc,ONEDOF)
   call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
                                     GEOMECH_DISP_Z,time_level)
