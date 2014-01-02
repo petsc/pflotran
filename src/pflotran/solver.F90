@@ -117,16 +117,16 @@ function SolverCreate()
   
   ! initialize to default values
   solver%itype = NULL_CLASS
-  solver%linear_atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%linear_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%linear_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_atol = PETSC_DEFAULT_REAL_PRECISION
+  solver%linear_rtol = PETSC_DEFAULT_REAL_PRECISION
+  solver%linear_dtol = PETSC_DEFAULT_REAL_PRECISION
   solver%linear_maxit = PETSC_DEFAULT_INTEGER
-  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_REAL_PRECISION
   
-  solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION 
+  solver%newton_atol = PETSC_DEFAULT_REAL_PRECISION
+  solver%newton_rtol = PETSC_DEFAULT_REAL_PRECISION
+  solver%newton_stol = PETSC_DEFAULT_REAL_PRECISION
+  solver%newton_dtol = PETSC_DEFAULT_REAL_PRECISION 
   solver%max_norm = 1.d20     ! set to a large value
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
@@ -227,7 +227,7 @@ subroutine SolverSetSNESOptions(solver)
   call PCGetType(solver%pc,solver%pc_type,ierr)
   
   if ((solver%pc_type == PCLU .or. solver%pc_type == PCILU) .and. &
-      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL_PRECISION) then
     call PCFactorSetZeroPivot(solver%pc,solver%linear_lu_zero_pivot_tol,ierr)
   endif
 
@@ -259,8 +259,8 @@ subroutine SolverSetSNESOptions(solver)
 
   call SNESGetLineSearch(solver%snes, linesearch, ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
-          PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
-          PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
+          PETSC_DEFAULT_REAL_PRECISION,PETSC_DEFAULT_REAL_PRECISION, &
+          PETSC_DEFAULT_REAL_PRECISION,PETSC_DEFAULT_REAL_PRECISION, &
           PETSC_DEFAULT_INTEGER, ierr)
 
   call SNESGetTolerances(solver%snes,solver%newton_atol,solver%newton_rtol, &
@@ -808,7 +808,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(*,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(*,'("    maxit:",i7)') solver%linear_maxit
     if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL_PRECISION) then
       write(*,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
     endif
   endif
@@ -824,7 +824,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(fid,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(fid,'("    maxit:",i7)') solver%linear_maxit
     if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL_PRECISION) then
       write(fid,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
     endif
   endif

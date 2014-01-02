@@ -241,7 +241,7 @@ end subroutine GeomechForceSetPlotVariables
 ! date: 06/19/13
 !
 ! ************************************************************************** !
-subroutine GeomechanicsForceInitialGuess(realization)
+subroutine GeomechanicsForceInitialGuess(geomech_realization)
 
   use Geomechanics_Realization_module
   use Geomechanics_Field_module
@@ -254,7 +254,7 @@ subroutine GeomechanicsForceInitialGuess(realization)
   
   implicit none
   
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   
   type(option_type), pointer :: option
   type(geomech_field_type), pointer :: field
@@ -267,9 +267,9 @@ subroutine GeomechanicsForceInitialGuess(realization)
   PetscReal, pointer :: xx_p(:)
   PetscErrorCode :: ierr
   
-  option => realization%option
-  field => realization%geomech_field
-  patch => realization%geomech_patch
+  option => geomech_realization%option
+  field => geomech_realization%geomech_field
+  patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
   
   call GeomechGridVecGetArrayF90(grid,field%disp_xx,xx_p,ierr)
@@ -413,7 +413,7 @@ end subroutine GeomechForceUpdateAuxVars
 ! date: 06/21/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceResidual(snes,xx,r,realization,ierr)
+subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
 
   use Geomechanics_Realization_module
   use Geomechanics_Field_module
@@ -426,35 +426,35 @@ subroutine GeomechForceResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_field_type), pointer :: field
   type(option_type), pointer :: option
   
   call PetscLogEventBegin(geomech_logging%event_geomech_residual,ierr)
   
-  field => realization%geomech_field
-  discretization => realization%discretization
-  option => realization%option
+  field => geomech_realization%geomech_field
+  geomech_discretization => geomech_realization%geomech_discretization
+  option => geomech_realization%option
 
   ! Communication -----------------------------------------
-  call GeomechDiscretizationGlobalToLocal(discretization,xx, &
+  call GeomechDiscretizationGlobalToLocal(geomech_discretization,xx, &
                                           field%disp_xx_loc,NGEODOF)
   
-  call GeomechForceResidualPatch(snes,xx,r,realization,ierr)
+  call GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
 
-  if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%mycomm, &
+  if (geomech_realization%geomech_debug%vecview_residual) then
+    call PetscViewerASCIIOpen(geomech_realization%option%mycomm, &
                               'Geomech_residual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_xx.out', &
+  if (geomech_realization%geomech_debug%vecview_solution) then
+    call PetscViewerASCIIOpen(geomech_realization%option%mycomm,'Geomech_xx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -471,7 +471,7 @@ end subroutine GeomechForceResidual
 ! date: 06/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
+subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
 
   use Geomechanics_Realization_module
   use Geomechanics_Field_module
@@ -491,11 +491,11 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer :: patch
   type(geomech_field_type), pointer :: field
   type(geomech_grid_type), pointer :: grid
@@ -526,15 +526,15 @@ subroutine GeomechForceResidualPatch(snes,xx,r,realization,ierr)
   PetscReal, pointer :: imech_loc_p(:)      
   PetscInt :: size_elenodes
                     
-  field => realization%geomech_field
-  discretization => realization%discretization
-  patch => realization%geomech_patch
+  field => geomech_realization%geomech_field
+  geomech_discretization => geomech_realization%geomech_discretization
+  patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
-  option => realization%option
+  option => geomech_realization%option
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
   GeomechParam => patch%geomech_aux%GeomechParam 
 
-  call GeomechForceUpdateAuxVars(realization)
+  call GeomechForceUpdateAuxVars(geomech_realization)
   ! Add flag for the update
   
   call VecSet(r,0.d0,ierr)
@@ -1241,7 +1241,7 @@ end subroutine GeomechGetBodyForce
 ! date: 06/21/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine GeomechForceJacobian(snes,xx,A,B,flag,geomech_realization,ierr)
 
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
@@ -1255,7 +1255,7 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -1268,7 +1268,7 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
   
   call PetscLogEventBegin(geomech_logging%event_geomech_jacobian,ierr)
 
-  option => realization%option
+  option => geomech_realization%option
 
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
@@ -1282,17 +1282,17 @@ subroutine GeomechForceJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  call GeomechForceJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+  call GeomechForceJacobianPatch(snes,xx,J,J,flag,geomech_realization,ierr)
 
-  if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Geomech_jacobian.out', &
+  if (geomech_realization%geomech_debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(geomech_realization%option%mycomm,'Geomech_jacobian.out', &
                               viewer,ierr)
    
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-  if (realization%debug%norm_Jacobian) then
-    option => realization%option
+  if (geomech_realization%geomech_debug%norm_Jacobian) then
+    option => geomech_realization%option
     call MatNorm(J,NORM_1,norm,ierr)
     write(option%io_buffer,'("1 norm: ",es11.4)') norm
     call printMsg(option) 
@@ -1316,7 +1316,7 @@ end subroutine GeomechForceJacobian
 ! date: 06/21/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,geomech_realization,ierr)
        
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
@@ -1341,8 +1341,8 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   PetscErrorCode :: ierr
    
-  type(geomech_realization_type) :: realization 
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_realization_type) :: geomech_realization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer :: patch
   type(geomech_field_type), pointer :: field
   type(geomech_grid_type), pointer :: grid
@@ -1370,11 +1370,11 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal, pointer :: imech_loc_p(:)
   PetscInt :: size_elenodes
         
-  field => realization%geomech_field
-  discretization => realization%discretization
-  patch => realization%geomech_patch
+  field => geomech_realization%geomech_field
+  geomech_discretization => geomech_realization%geomech_discretization
+  patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
-  option => realization%option
+  option => geomech_realization%option
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
   GeomechParam => patch%geomech_aux%GeomechParam 
 
@@ -1558,7 +1558,7 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   option        => realization%option
   grid          => realization%discretization%grid
   field         => realization%field
-  geomech_grid  => geomech_realization%discretization%grid
+  geomech_grid  => geomech_realization%geomech_discretization%grid
   geomech_field => geomech_realization%geomech_field
 
   ! use the subsurface output option parameters for geomechanics as well
@@ -1566,7 +1566,7 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   geomech_realization%output_option%tconv = realization%output_option%tconv
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
-                                                   discretization,ONEDOF)
+                                                   geomech_discretization,ONEDOF)
 
 
   ! pressure
@@ -1611,12 +1611,12 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
   endif                       
  
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
                                           geomech_field%press, & 
                                           geomech_field%press_loc,ONEDOF)
   
   if (option%nflowdof > 1) &
-    call GeomechDiscretizationGlobalToLocal(geomech_realization%discretization, &
+    call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
                                             geomech_field%temp, &
                                             geomech_field%temp_loc,ONEDOF)
 
@@ -1659,11 +1659,11 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   option        => realization%option
   grid          => realization%discretization%grid
   field         => realization%field
-  geomech_grid  => geomech_realization%discretization%grid
+  geomech_grid  => geomech_realization%geomech_discretization%grid
   geomech_field => geomech_realization%geomech_field
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
-                                                   discretization,ONEDOF)
+                                                   geomech_discretization,ONEDOF)
   
   ! Scatter the strains
   call VecScatterBegin(dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
@@ -1823,7 +1823,7 @@ end subroutine GeomechCreateSubsurfStressStrainVec
 ! date: 09/17/13
 !
 ! ************************************************************************** !
-subroutine GeomechForceStressStrain(realization)
+subroutine GeomechForceStressStrain(geomech_realization)
 
   use Geomechanics_Realization_module
   use Geomechanics_Field_module
@@ -1840,8 +1840,8 @@ subroutine GeomechForceStressStrain(realization)
 
   implicit none
 
-  type(geomech_realization_type) :: realization
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_realization_type) :: geomech_realization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer :: patch
   type(geomech_field_type), pointer :: field
   type(geomech_grid_type), pointer :: grid
@@ -1872,11 +1872,11 @@ subroutine GeomechForceStressStrain(realization)
   
   PetscErrorCode :: ierr
                   
-  field => realization%geomech_field
-  discretization => realization%discretization
-  patch => realization%geomech_patch
+  field => geomech_realization%geomech_field
+  geomech_discretization => geomech_realization%geomech_discretization
+  patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
-  option => realization%option
+  option => geomech_realization%option
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
   GeomechParam => patch%geomech_aux%GeomechParam 
 
@@ -1951,10 +1951,10 @@ subroutine GeomechForceStressStrain(realization)
   call VecRestoreArrayF90(field%strain_loc,strain_loc_p,ierr)
   call VecRestoreArrayF90(field%stress_loc,stress_loc_p,ierr)
   
-  call GeomechDiscretizationLocalToGlobalAdd(discretization, &
+  call GeomechDiscretizationLocalToGlobalAdd(geomech_discretization, &
                                              field%strain_loc,field%strain, &
                                              SIX_INTEGER)
-  call GeomechDiscretizationLocalToGlobalAdd(discretization, &
+  call GeomechDiscretizationLocalToGlobalAdd(geomech_discretization, &
                                              field%stress_loc,field%stress, &
                                              SIX_INTEGER)
                                              
@@ -1976,10 +1976,10 @@ subroutine GeomechForceStressStrain(realization)
   call VecRestoreArrayF90(grid%no_elems_sharing_node,no_elems_p,ierr)
 
 ! Now scatter back to local domains
-  call GeomechDiscretizationGlobalToLocal(discretization, &
+  call GeomechDiscretizationGlobalToLocal(geomech_discretization, &
                                           field%strain,field%strain_loc, &
                                           SIX_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(discretization, &
+  call GeomechDiscretizationGlobalToLocal(geomech_discretization, &
                                           field%stress,field%stress_loc, &
                                           SIX_INTEGER)
                                           
@@ -2128,22 +2128,22 @@ end subroutine GeomechForceLocalElemStressStrain
 ! date: 09/17/13 
 !
 ! ************************************************************************** !
-subroutine GeomechUpdateSolution(realization)
+subroutine GeomechUpdateSolution(geomech_realization)
 
   use Geomechanics_Realization_module 
   use Geomechanics_Field_module
   
   implicit none 
   
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   type(geomech_field_type), pointer :: field
   
   PetscErrorCode :: ierr 
   PetscViewer :: viewer
   
-  field => realization%geomech_field
+  field => geomech_realization%geomech_field
 
-  call GeomechUpdateSolutionPatch(realization)
+  call GeomechUpdateSolutionPatch(geomech_realization)
 
 end subroutine GeomechUpdateSolution
 
@@ -2155,15 +2155,15 @@ end subroutine GeomechUpdateSolution
 ! date: 09/17/13
 !
 ! ************************************************************************** !
-subroutine geomechupdatesolutionpatch(realization)
+subroutine geomechupdatesolutionpatch(geomech_realization)
 
   use Geomechanics_Realization_module
     
   implicit none 
   
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
 
-  call geomechforcestressstrain(realization)
+  call geomechforcestressstrain(geomech_realization)
 
 end subroutine geomechupdatesolutionpatch
 
@@ -2175,21 +2175,21 @@ end subroutine geomechupdatesolutionpatch
 ! Date: 09/24/13
 !
 ! ************************************************************************** !
-subroutine GeomechStoreInitialPressTemp(realization)
+subroutine GeomechStoreInitialPressTemp(geomech_realization)
 
   use Geomechanics_Realization_module
     
   implicit none 
   
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
 
   PetscErrorCode :: ierr
 
-  call VecCopy(realization%geomech_field%press_loc, & 
-               realization%geomech_field%press_init_loc,ierr)
+  call VecCopy(geomech_realization%geomech_field%press_loc, & 
+               geomech_realization%geomech_field%press_init_loc,ierr)
  
-  call VecCopy(realization%geomech_field%temp_loc, & 
-               realization%geomech_field%temp_init_loc,ierr)
+  call VecCopy(geomech_realization%geomech_field%temp_loc, & 
+               geomech_realization%geomech_field%temp_init_loc,ierr)
    
 end subroutine GeomechStoreInitialPressTemp
 
@@ -2230,18 +2230,18 @@ end subroutine GeomechStoreInitialPorosity
 ! Date: 09/30/13
 !
 ! ************************************************************************** !
-subroutine GeomechStoreInitialDisp(realization)
+subroutine GeomechStoreInitialDisp(geomech_realization)
 
   use Geomechanics_Realization_module
     
   implicit none 
   
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
 
   PetscErrorCode :: ierr
 
-  call VecCopy(realization%geomech_field%disp_xx_loc, & 
-               realization%geomech_field%disp_xx_init_loc,ierr)
+  call VecCopy(geomech_realization%geomech_field%disp_xx_loc, & 
+               geomech_realization%geomech_field%disp_xx_init_loc,ierr)
    
 end subroutine GeomechStoreInitialDisp
 

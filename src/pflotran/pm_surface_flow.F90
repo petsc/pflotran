@@ -1,8 +1,8 @@
 #ifdef SURFACE_FLOW
 
-module Process_Model_Surface_TH_class
+module PM_Surface_Flow_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
 !geh: using Richards_module here fails with gfortran (internal compiler error)
 !  use Richards_module
   use Surface_Realization_class
@@ -25,36 +25,36 @@ module Process_Model_Surface_TH_class
 #include "finclude/petscsnes.h"
 #include "finclude/petscts.h"
 
-  type, public, extends(pm_base_type) :: pm_surface_th_type
+  type, public, extends(pm_base_type) :: pm_surface_flow_type
     class(surface_realization_type), pointer :: surf_realization
     class(communicator_type), pointer :: comm1
   contains
-    procedure, public :: Init => PMSurfaceTHInit
-    procedure, public :: PMSurfaceTHSetRealization
-    procedure, public :: InitializeRun => PMSurfaceTHInitializeRun
-    procedure, public :: FinalizeRun => PMSurfaceTHFinalizeRun
-!    procedure, public :: InitializeTimestep => PMSurfaceTHInitializeTimestep ! not needed for TS
-!    procedure, public :: FinalizeTimestep => PMSurfaceTHFinalizeTimeStep
-!    procedure, public :: Residual => PMSurfaceTHResidual
-!    procedure, public :: Jacobian => PMSurfaceTHJacobian
-    procedure, public :: UpdateTimestep => PMSurfaceTHUpdateTimestep
-    procedure, public :: PreSolve => PMSurfaceTHPreSolve
-    procedure, public :: PostSolve => PMSurfaceTHPostSolve
-!    procedure, public :: AcceptSolution => PMSurfaceTHAcceptSolution
-!    procedure, public :: CheckUpdatePre => PMSurfaceTHCheckUpdatePre
-!    procedure, public :: CheckUpdatePost => PMSurfaceTHCheckUpdatePost
-!    procedure, public :: TimeCut => PMSurfaceTHTimeCut
-    procedure, public :: UpdateSolution => PMSurfaceTHUpdateSolution
-!    procedure, public :: MaxChange => PMSurfaceTHMaxChange
-!    procedure, public :: ComputeMassBalance => PMSurfaceTHComputeMassBalance
-    procedure, public :: Destroy => PMSurfaceTHDestroy
-    procedure, public :: RHSFunction => PMSurfaceTHRHSFunction
-    procedure, public :: Checkpoint => PMSurfaceTHCheckpoint
-    procedure, public :: Restart => PMSurfaceTHRestart
-  end type pm_surface_th_type
+    procedure, public :: Init => PMSurfaceFlowInit
+    procedure, public :: PMSurfaceFlowSetRealization
+    procedure, public :: InitializeRun => PMSurfaceFlowInitializeRun
+    procedure, public :: FinalizeRun => PMSurfaceFlowFinalizeRun
+!    procedure, public :: InitializeTimestep => PMSurfaceFlowInitializeTimestep ! not needed for TS
+!    procedure, public :: FinalizeTimestep => PMSurfaceFlowFinalizeTimeStep
+!    procedure, public :: Residual => PMSurfaceFlowResidual
+!    procedure, public :: Jacobian => PMSurfaceFlowJacobian
+    procedure, public :: UpdateTimestep => PMSurfaceFlowUpdateTimestep
+    procedure, public :: PreSolve => PMSurfaceFlowPreSolve
+    procedure, public :: PostSolve => PMSurfaceFlowPostSolve
+!    procedure, public :: AcceptSolution => PMSurfaceFlowAcceptSolution
+!    procedure, public :: CheckUpdatePre => PMSurfaceFlowCheckUpdatePre
+!    procedure, public :: CheckUpdatePost => PMSurfaceFlowCheckUpdatePost
+!    procedure, public :: TimeCut => PMSurfaceFlowTimeCut
+    procedure, public :: UpdateSolution => PMSurfaceFlowUpdateSolution
+!    procedure, public :: MaxChange => PMSurfaceFlowMaxChange
+!    procedure, public :: ComputeMassBalance => PMSurfaceFlowComputeMassBalance
+    procedure, public :: Destroy => PMSurfaceFlowDestroy
+    procedure, public :: RHSFunction => PMSurfaceFlowRHSFunction
+    procedure, public :: Checkpoint => PMSurfaceCheckpoint
+    procedure, public :: Restart => PMSurfaceRestart
+  end type pm_surface_flow_type
 
-  public :: PMSurfaceTHCreate, &
-            PMSurfaceTHDTExplicit
+  public :: PMSurfaceFlowCreate, &
+            PMSurfaceFlowDTExplicit
 
 contains
 
@@ -64,27 +64,27 @@ contains
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-function PMSurfaceTHCreate()
+function PMSurfaceFlowCreate()
 
   implicit none
 
-  class(pm_surface_th_type), pointer :: PMSurfaceTHCreate
+  class(pm_surface_flow_type), pointer :: PMSurfaceFlowCreate
 
-  class(pm_surface_th_type), pointer :: surface_th_pm
+  class(pm_surface_flow_type), pointer :: surface_flow_pm
 
-  allocate(surface_th_pm)
-  nullify(surface_th_pm%option)
-  nullify(surface_th_pm%output_option)
-  nullify(surface_th_pm%surf_realization)
-  nullify(surface_th_pm%comm1)
+  allocate(surface_flow_pm)
+  nullify(surface_flow_pm%option)
+  nullify(surface_flow_pm%output_option)
+  nullify(surface_flow_pm%surf_realization)
+  nullify(surface_flow_pm%comm1)
 
-  call PMBaseCreate(surface_th_pm)
+  call PMBaseCreate(surface_flow_pm)
 
-  PMSurfaceTHCreate => surface_th_pm
+  PMSurfaceFlowCreate => surface_flow_pm
 
-end function PMSurfaceTHCreate
+end function PMSurfaceFlowCreate
 
 ! ************************************************************************** !
 !> This routine
@@ -92,9 +92,9 @@ end function PMSurfaceTHCreate
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHInit(this)
+subroutine PMSurfaceFlowInit(this)
 
   use Discretization_module
   use Unstructured_Communicator_class
@@ -102,7 +102,7 @@ subroutine PMSurfaceTHInit(this)
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
   ! set up communicator
   select case(this%surf_realization%discretization%itype)
@@ -115,7 +115,7 @@ subroutine PMSurfaceTHInit(this)
 
   call this%comm1%SetDM(this%surf_realization%discretization%dm_1dof)
 
-end subroutine PMSurfaceTHInit
+end subroutine PMSurfaceFlowInit
 
 ! ************************************************************************** !
 !> This routine
@@ -123,20 +123,19 @@ end subroutine PMSurfaceTHInit
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHPreSolve(this)
+subroutine PMSurfaceFlowPreSolve(this)
 
   implicit none
 
-  PetscErrorCode :: ierr
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," SURFACE TH FLOW ",62("="))')
+    write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
   endif
 
-end subroutine PMSurfaceTHPreSolve
+end subroutine PMSurfaceFlowPreSolve
 
 ! ************************************************************************** !
 !> This routine
@@ -144,16 +143,16 @@ end subroutine PMSurfaceTHPreSolve
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHSetRealization(this, surf_realization)
+subroutine PMSurfaceFlowSetRealization(this, surf_realization)
 
   use Surface_Realization_class
   use Grid_module
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
   class(surface_realization_type), pointer :: surf_realization
 
   this%surf_realization => surf_realization
@@ -162,7 +161,7 @@ subroutine PMSurfaceTHSetRealization(this, surf_realization)
   this%solution_vec = surf_realization%surf_field%flow_xx
   this%residual_vec = surf_realization%surf_field%flow_r
 
-end subroutine PMSurfaceTHSetRealization
+end subroutine PMSurfaceFlowSetRealization
 
 ! ************************************************************************** !
 !> This routine
@@ -170,17 +169,17 @@ end subroutine PMSurfaceTHSetRealization
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-recursive subroutine PMSurfaceTHInitializeRun(this)
+recursive subroutine PMSurfaceFlowInitializeRun(this)
 
-  use Surface_TH_module, only : SurfaceTHUpdateSolution
+  use Surface_Flow_module, only : SurfaceFlowUpdateSolution
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
-end subroutine PMSurfaceTHInitializeRun
+end subroutine PMSurfaceFlowInitializeRun
 
 ! ************************************************************************** !
 !> This routine
@@ -188,16 +187,16 @@ end subroutine PMSurfaceTHInitializeRun
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-recursive subroutine PMSurfaceTHFinalizeRun(this)
+recursive subroutine PMSurfaceFlowFinalizeRun(this)
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
 #ifdef PM_SURFACE_FLOW_DEBUG
-  call printMsg(this%option,'PMSurfaceTH%FinalizeRun()')
+  call printMsg(this%option,'PMSurfaceFlow%FinalizeRun()')
 #endif
 
   ! do something here
@@ -206,7 +205,7 @@ recursive subroutine PMSurfaceTHFinalizeRun(this)
     call this%next%FinalizeRun()
   endif
 
-end subroutine PMSurfaceTHFinalizeRun
+end subroutine PMSurfaceFlowFinalizeRun
 
 ! ************************************************************************** !
 !> This routine
@@ -214,21 +213,21 @@ end subroutine PMSurfaceTHFinalizeRun
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHUpdateSolution(this)
+subroutine PMSurfaceFlowUpdateSolution(this)
 
-  use Surface_TH_module, only : SurfaceTHUpdateSolution
+  use Surface_Flow_module, only : SurfaceFlowUpdateSolution
   use Condition_module
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
   PetscBool :: force_update_flag = PETSC_FALSE
 
 #ifdef PM_SURFACE_FLOW_DEBUG
-  call printMsg(this%option,'PMSurfaceTH%UpdateSolution()')
+  call printMsg(this%option,'PMSurfaceFlow%UpdateSolution()')
 #endif
 
   ! begin from RealizationUpdate()
@@ -238,9 +237,9 @@ subroutine PMSurfaceTHUpdateSolution(this)
 
   call SurfRealizAllCouplerAuxVars(this%surf_realization,force_update_flag)
 
-  call SurfaceTHUpdateSolution(this%surf_realization)
+  call SurfaceFlowUpdateSolution(this%surf_realization)
 
-end subroutine PMSurfaceTHUpdateSolution
+end subroutine PMSurfaceFlowUpdateSolution
 
 ! ************************************************************************** !
 !> This routine
@@ -248,15 +247,15 @@ end subroutine PMSurfaceTHUpdateSolution
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHRHSFunction(this,ts,time,xx,ff,ierr)
+subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
 
-  use Surface_TH_module, only : SurfaceTHRHSFunction
+  use Surface_Flow_module, only : SurfaceFlowRHSFunction
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
   TS                                     :: ts
   PetscReal                              :: time
   Vec                                    :: xx
@@ -264,9 +263,9 @@ subroutine PMSurfaceTHRHSFunction(this,ts,time,xx,ff,ierr)
   type(surface_realization_type)         :: surf_realization
   PetscErrorCode                         :: ierr
 
-  call SurfaceTHRHSFunction(ts,time,xx,ff,this%surf_realization,ierr)
+  call SurfaceFlowRHSFunction(ts,time,xx,ff,this%surf_realization,ierr)
 
-end subroutine PMSurfaceTHRHSFunction
+end subroutine PMSurfaceFlowRHSFunction
 
 ! ************************************************************************** !
 !> This routine
@@ -274,16 +273,16 @@ end subroutine PMSurfaceTHRHSFunction
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
 
-  use Surface_TH_module, only : SurfaceTHComputeMaxDt
+  use Surface_Flow_module, only : SurfaceFlowComputeMaxDt
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -294,12 +293,12 @@ subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscErrorCode :: ierr
   PetscReal :: dt_max_loc
 
-  call SurfaceTHComputeMaxDt(this%surf_realization,dt_max_loc)
+  call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max_loc)
   call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_MIN,this%option%mycomm,ierr)
   dt = min(0.9d0*dt_max_glb,this%surf_realization%dt_max)
 
-end subroutine PMSurfaceTHUpdateTimestep
+end subroutine PMSurfaceFlowUpdateTimestep
 
 
 ! ************************************************************************** !
@@ -308,27 +307,27 @@ end subroutine PMSurfaceTHUpdateTimestep
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHDTExplicit(this,dt_max)
+subroutine PMSurfaceFlowDTExplicit(this,dt_max)
 
-  use Surface_TH_module, only : SurfaceTHComputeMaxDt
+  use Surface_Flow_module, only : SurfaceFlowComputeMaxDt
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
   PetscReal :: dt_max
 
   PetscReal :: dt_max_glb
   PetscErrorCode :: ierr
   PetscReal :: dt_max_loc
 
-  call SurfaceTHComputeMaxDt(this%surf_realization,dt_max_loc)
+  call SurfaceFlowComputeMaxDt(this%surf_realization,dt_max_loc)
   call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_MIN,this%option%mycomm,ierr)
   dt_max = min(0.9d0*dt_max_glb,this%surf_realization%dt_max)
 
-end subroutine PMSurfaceTHDTExplicit
+end subroutine PMSurfaceFlowDTExplicit
 
 ! ************************************************************************** !
 !> This routine
@@ -336,41 +335,32 @@ end subroutine PMSurfaceTHDTExplicit
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHPostSolve(this)
+subroutine PMSurfaceFlowPostSolve(this)
 
-  use Grid_module
   use Discretization_module
   use Surface_Field_module
-  use Surface_TH_module
+  use Surface_Flow_module
 
   implicit none
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
   PetscReal, pointer :: xx_p(:)
   PetscInt :: local_id
-  PetscInt :: istart, iend
   type(surface_field_type), pointer   :: surf_field 
-  type(grid_type),pointer             :: surf_grid
   PetscErrorCode :: ierr
 
-  surf_grid => this%surf_realization%discretization%grid
   surf_field => this%surf_realization%surf_field
 
   ! Ensure evolved solution is +ve
   call VecGetArrayF90(surf_field%flow_xx,xx_p,ierr)
   do local_id = 1,this%surf_realization%discretization%grid%nlmax
-    iend = local_id*this%option%nflowdof
-    istart = iend - this%option%nflowdof + 1
-    if(xx_p(istart) < 1.d-15) then
-      xx_p(istart) = 0.d0
-      xx_p(iend) = this%option%reference_temperature
-    endif
+    if(xx_p(local_id)<1.d-15) xx_p(local_id) = 0.d0
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
 
@@ -379,10 +369,9 @@ subroutine PMSurfaceTHPostSolve(this)
           surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
 
   ! Update aux vars
-  call SurfaceTHUpdateTemperature(this%surf_realization)
-  call SurfaceTHUpdateAuxVars(this%surf_realization)
+  call SurfaceFlowUpdateAuxVars(this%surf_realization)
 
-end subroutine PMSurfaceTHPostSolve
+end subroutine PMSurfaceFlowPostSolve
 
 ! ************************************************************************** !
 !> This routine checkpoints data associated with surface-flow PM
@@ -392,19 +381,19 @@ end subroutine PMSurfaceTHPostSolve
 !!
 !! date: 09/19/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHCheckpoint(this,viewer)
+subroutine PMSurfaceCheckpoint(this,viewer)
 
   use Surface_Checkpoint_module
 
   implicit none
 #include "finclude/petscviewer.h"
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
   PetscViewer :: viewer
 
   call SurfaceCheckpointProcessModel(viewer,this%surf_realization)
 
-end subroutine PMSurfaceTHCheckpoint
+end subroutine PMSurfaceCheckpoint
 
 ! ************************************************************************** !
 !> This routine reads checkpoint data associated with surface-flow PM
@@ -414,22 +403,22 @@ end subroutine PMSurfaceTHCheckpoint
 !!
 !! date: 09/19/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHRestart(this,viewer)
+subroutine PMSurfaceRestart(this,viewer)
 
   use Surface_Checkpoint_module
-  use Surface_TH_module, only : SurfaceTHUpdateAuxVars
+  use Surface_Flow_module, only : SurfaceFlowUpdateAuxVars
 
   implicit none
 #include "finclude/petscviewer.h"
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
   PetscViewer :: viewer
 
   call SurfaceRestartProcessModel(viewer,this%surf_realization)
-  call SurfaceTHUpdateAuxVars(this%surf_realization)
+  call SurfaceFlowUpdateAuxVars(this%surf_realization)
   call this%UpdateSolution()
 
-end subroutine PMSurfaceTHRestart
+end subroutine PMSurfaceRestart
 
 ! ************************************************************************** !
 !> This routine
@@ -437,31 +426,31 @@ end subroutine PMSurfaceTHRestart
 !> @author
 !! Gautam Bisht, LBNL
 !!
-!! date: 07/23/13
+!! date: 04/11/13
 ! ************************************************************************** !
-subroutine PMSurfaceTHDestroy(this)
+subroutine PMSurfaceFlowDestroy(this)
 
-!  use Surface_TH_module, only : SurfaceTHDestroy
+!  use Surface_Flow_module, only : SurfaceFlowDestroy
 
   implicit none
 
-  class(pm_surface_th_type) :: this
+  class(pm_surface_flow_type) :: this
 
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
 
 #ifdef PM_SURFACE_FLOW_DEBUG
-  call printMsg(this%option,'PMSurfaceTHDestroy()')
+  call printMsg(this%option,'PMSurfaceFlowDestroy()')
 #endif
 
 #ifndef SIMPLIFY
-!  call SurfaceTHDestroy(this%surf_realization)
+!  call SurfaceFlowDestroy(this%surf_realization)
 #endif
   call this%comm1%Destroy()
 
-end subroutine PMSurfaceTHDestroy
+end subroutine PMSurfaceFlowDestroy
 
-end module Process_Model_Surface_TH_class
+end module PM_Surface_Flow_class
 
 #endif

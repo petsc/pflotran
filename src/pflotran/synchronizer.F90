@@ -1,6 +1,6 @@
 module Synchronizer_module
 
-  use Process_Model_Coupler_module
+  use PM_Coupler_module
   use Timestepper_module
   use Option_module
   use Output_Aux_module

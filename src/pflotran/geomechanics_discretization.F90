@@ -75,27 +75,27 @@ function GeomechDiscretizationCreate()
   implicit none
   
   type(geomech_discretization_type), pointer :: GeomechDiscretizationCreate
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   
-  allocate(discretization)
-  discretization%ctype = ''
-  discretization%itype = 0
-  discretization%origin = 0.d0
-  discretization%filename = ''
+  allocate(geomech_discretization)
+  geomech_discretization%ctype = ''
+  geomech_discretization%itype = 0
+  geomech_discretization%origin = 0.d0
+  geomech_discretization%filename = ''
 
   ! nullify DM pointers
-  allocate(discretization%dm_1dof)
-  allocate(discretization%dm_ngeodof)
-  allocate(discretization%dm_n_stress_strain_dof)
-  discretization%dm_1dof%dm = 0
-  discretization%dm_ngeodof%dm = 0
-  discretization%dm_n_stress_strain_dof%dm = 0
-  nullify(discretization%dm_1dof%gmdm)
-  nullify(discretization%dm_ngeodof%gmdm)  
-  nullify(discretization%dm_n_stress_strain_dof%gmdm) 
-  nullify(discretization%grid)
+  allocate(geomech_discretization%dm_1dof)
+  allocate(geomech_discretization%dm_ngeodof)
+  allocate(geomech_discretization%dm_n_stress_strain_dof)
+  geomech_discretization%dm_1dof%dm = 0
+  geomech_discretization%dm_ngeodof%dm = 0
+  geomech_discretization%dm_n_stress_strain_dof%dm = 0
+  nullify(geomech_discretization%dm_1dof%gmdm)
+  nullify(geomech_discretization%dm_ngeodof%gmdm)
+  nullify(geomech_discretization%dm_n_stress_strain_dof%gmdm)
+  nullify(geomech_discretization%grid)
   
-  GeomechDiscretizationCreate => discretization
+  GeomechDiscretizationCreate => geomech_discretization
 
 end function GeomechDiscretizationCreate
 
@@ -110,13 +110,13 @@ end function GeomechDiscretizationCreate
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationCreateDMs(discretization,option)
+subroutine GeomechDiscretizationCreateDMs(geomech_discretization,option)
       
   use Option_module    
       
   implicit none
   
-  type(geomech_discretization_type)            :: discretization
+  type(geomech_discretization_type)            :: geomech_discretization
   type(option_type)                            :: option
       
   PetscInt                                     :: ndof
@@ -127,16 +127,16 @@ subroutine GeomechDiscretizationCreateDMs(discretization,option)
   ! Generate the DM objects that will manage communication.
   !-----------------------------------------------------------------------
   ndof = 1
-  call GeomechDiscretizationCreateDM(discretization,discretization%dm_1dof, &
+  call GeomechDiscretizationCreateDM(geomech_discretization,geomech_discretization%dm_1dof, &
                                      ndof,option)
   
   if (option%ngeomechdof > 0) then
     ndof = option%ngeomechdof
-    call GeomechDiscretizationCreateDM(discretization,discretization%dm_ngeodof, &
+    call GeomechDiscretizationCreateDM(geomech_discretization,geomech_discretization%dm_ngeodof, &
                                        ndof,option)
 
-    call GeomechDiscretizationCreateDM(discretization, &
-                                       discretization%dm_n_stress_strain_dof, &
+    call GeomechDiscretizationCreateDM(geomech_discretization, &
+                                       geomech_discretization%dm_n_stress_strain_dof, &
                                        option%n_stress_strain_dof,option)
   endif
 
@@ -151,25 +151,25 @@ end subroutine GeomechDiscretizationCreateDMs
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationCreateDM(discretization,dm_ptr,ndof,option)
+subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,option)
 
   use Option_module
   
   implicit none
   
-  type(geomech_discretization_type)                :: discretization
+  type(geomech_discretization_type)                :: geomech_discretization
   type(gmdm_ptr_type), pointer                     :: dm_ptr
   type(option_type)                                :: option
   PetscInt                                         :: ndof
   PetscErrorCode                                   :: ierr
 
-  select case(discretization%itype)
+  select case(geomech_discretization%itype)
     case(STRUCTURED_GRID)
       option%io_buffer = &
         'Geomechanics currently works only with unstructured grid.'
       call printErrMsg(option)
     case(UNSTRUCTURED_GRID)
-      call GMCreateGMDM(discretization%grid, &
+      call GMCreateGMDM(geomech_discretization%grid, &
                         dm_ptr%gmdm,ndof,option)
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr)
       call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%gmdm%scatter_gtol,ierr)
@@ -184,13 +184,13 @@ end subroutine GeomechDiscretizationCreateDM
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationCreateVector(discretization,dm_index,vector, &
+subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vector, &
                                              vector_type,option)
   use Option_module                                      
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(option_type)                             :: option
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   PetscInt                                      :: dm_index
@@ -200,9 +200,9 @@ subroutine GeomechDiscretizationCreateVector(discretization,dm_index,vector, &
   PetscErrorCode                                :: ierr
   
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
-  call GMGridDMCreateVector(discretization%grid,dm_ptr%gmdm,vector, &
+  call GMGridDMCreateVector(geomech_discretization%grid,dm_ptr%gmdm,vector, &
                             vector_type,option)
                             
   call VecSet(vector,0.d0,ierr)
@@ -216,11 +216,11 @@ end subroutine GeomechDiscretizationCreateVector
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationDuplicateVector(discretization,vector1,vector2)
+subroutine GeomechDiscretizationDuplicateVector(geomech_discretization,vector1,vector2)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   Vec                                           :: vector1
   Vec                                           :: vector2
   PetscErrorCode                                :: ierr
@@ -238,22 +238,22 @@ end subroutine GeomechDiscretizationDuplicateVector
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-function GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+function GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: GeomechDiscretizationGetDMPtrFromIndex
   PetscInt                                      :: dm_index
   
   select case (dm_index)
     case(ONEDOF)
-      GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_1dof
+      GeomechDiscretizationGetDMPtrFromIndex => geomech_discretization%dm_1dof
     case(NGEODOF)
-      GeomechDiscretizationGetDMPtrFromIndex => discretization%dm_ngeodof
+      GeomechDiscretizationGetDMPtrFromIndex => geomech_discretization%dm_ngeodof
     case(SIX_INTEGER)
       GeomechDiscretizationGetDMPtrFromIndex => &
-        discretization%dm_n_stress_strain_dof
+        geomech_discretization%dm_n_stress_strain_dof
   end select  
   
 end function GeomechDiscretizationGetDMPtrFromIndex
@@ -266,14 +266,14 @@ end function GeomechDiscretizationGetDMPtrFromIndex
 ! date: 06/05/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationCreateJacobian(discretization,dm_index, &
+subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, &
                                                mat_type,Jacobian,option)
 
   use Option_module
   
   implicit none
 
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(option_type)                             :: option
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   PetscInt                                      :: dm_index
@@ -281,10 +281,10 @@ subroutine GeomechDiscretizationCreateJacobian(discretization,dm_index, &
   MatType                                       :: mat_type
   Mat                                           :: Jacobian
 
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
 
-  call GMGridDMCreateJacobian(discretization%grid,dm_ptr%gmdm, &
+  call GMGridDMCreateJacobian(geomech_discretization%grid,dm_ptr%gmdm, &
                               mat_type,Jacobian,option)
   call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
   call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
@@ -299,19 +299,19 @@ end subroutine GeomechDiscretizationCreateJacobian
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationGlobalToLocal(discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec, &
                                               local_vec,dm_index)
 
   implicit none
 
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: local_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
     
   call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
   call DMGlobalToLocalEnd(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec,ierr)
@@ -326,19 +326,19 @@ end subroutine GeomechDiscretizationGlobalToLocal
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationLocalToGlobal(discretization,local_vec, &
+subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, &
                                               global_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec
   Vec                                           :: global_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -355,19 +355,19 @@ end subroutine GeomechDiscretizationLocalToGlobal
 ! date: 09/17/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationLocalToGlobalAdd(discretization,local_vec, &
+subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_vec, &
                                                  global_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec
   Vec                                           :: global_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
                        ADD_VALUES,SCATTER_FORWARD,ierr)
@@ -384,19 +384,19 @@ end subroutine GeomechDiscretizationLocalToGlobalAdd
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationLocalToLocal(discretization,local_vec1, &
+subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, &
                                              local_vec2,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec1
   Vec                                           :: local_vec2
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -413,19 +413,19 @@ end subroutine GeomechDiscretizationLocalToLocal
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationGlobalToNatural(discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
                                                 natural_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: natural_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
   call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -442,19 +442,19 @@ end subroutine GeomechDiscretizationGlobalToNatural
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationNaturalToGlobal(discretization,natural_vec, &
+subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_vec, &
                                                 global_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: natural_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -471,19 +471,19 @@ end subroutine GeomechDiscretizationNaturalToGlobal
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationGlobalToLocalBegin(discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global_vec, &
                                                    local_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec
   Vec                                           :: global_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -498,19 +498,19 @@ end subroutine GeomechDiscretizationGlobalToLocalBegin
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationGlobalToLocalEnd(discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_vec, &
                                                  local_vec,dm_index)
 
  implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec
   Vec                                           :: global_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -525,19 +525,19 @@ end subroutine GeomechDiscretizationGlobalToLocalEnd
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationLocalToLocalBegin(discretization,local_vec1, &
+subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_vec1, &
                                                   local_vec2,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec1
   Vec                                           :: local_vec2
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -552,19 +552,19 @@ end subroutine GeomechDiscretizationLocalToLocalBegin
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationLocalToLocalEnd(discretization,local_vec1, &
+subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec1, &
                                                 local_vec2,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: local_vec1
   Vec                                           :: local_vec2
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)    
@@ -579,19 +579,19 @@ end subroutine GeomechDiscretizationLocalToLocalEnd
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizGlobalToNaturalBegin(discretization,global_vec, &
+subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_vec, &
                                                 natural_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: natural_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -606,19 +606,19 @@ end subroutine GeomechDiscretizGlobalToNaturalBegin
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizGlobalToNaturalEnd(discretization,global_vec, &
+subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec, &
                                               natural_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: natural_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)       
@@ -633,19 +633,19 @@ end subroutine GeomechDiscretizGlobalToNaturalEnd
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizNaturalToGlobalBegin(discretization,natural_vec, & 
+subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization,natural_vec, &
                                                 global_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: natural_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
     
 end subroutine GeomechDiscretizNaturalToGlobalBegin
 
@@ -657,19 +657,19 @@ end subroutine GeomechDiscretizNaturalToGlobalBegin
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizNaturalToGlobalEnd(discretization,natural_vec, &
+subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization,natural_vec, &
                                               global_vec,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   type(gmdm_ptr_type), pointer                  :: dm_ptr
   Vec                                           :: global_vec
   Vec                                           :: natural_vec
   PetscInt                                      :: dm_index
   PetscErrorCode                                :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
 end subroutine GeomechDiscretizNaturalToGlobalEnd
 
@@ -680,18 +680,18 @@ end subroutine GeomechDiscretizNaturalToGlobalEnd
 ! date: 06/02/13
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretAOApplicationToPetsc(discretization,int_array)
+subroutine GeomechDiscretAOApplicationToPetsc(geomech_discretization,int_array)
 
   implicit none
   
 #include "finclude/petscao.h"  
   
-  type(geomech_discretization_type)             :: discretization
+  type(geomech_discretization_type)             :: geomech_discretization
   PetscInt                                      :: int_array(:)
   PetscErrorCode                                :: ierr
   AO                                            :: ao
   
-  ao = discretization%grid%ao_natural_to_petsc_nodes
+  ao = geomech_discretization%grid%ao_natural_to_petsc_nodes
   
   call AOApplicationToPetsc(ao,size(int_array),int_array,ierr)
   
@@ -704,30 +704,30 @@ end subroutine GeomechDiscretAOApplicationToPetsc
 ! date: 05/23/2013
 !
 ! ************************************************************************** !
-subroutine GeomechDiscretizationDestroy(discretization)
+subroutine GeomechDiscretizationDestroy(geomech_discretization)
 
   implicit none
   
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   
   PetscErrorCode :: ierr
   PetscInt :: i
     
-  if (.not.associated(discretization)) return
+  if (.not.associated(geomech_discretization)) return
       
-  if (associated(discretization%dm_1dof%gmdm)) &
-    call GMDMDestroy(discretization%dm_1dof%gmdm)
-  if (associated(discretization%dm_ngeodof%gmdm)) &
-    call GMDMDestroy(discretization%dm_ngeodof%gmdm)
+  if (associated(geomech_discretization%dm_1dof%gmdm)) &
+    call GMDMDestroy(geomech_discretization%dm_1dof%gmdm)
+  if (associated(geomech_discretization%dm_ngeodof%gmdm)) &
+    call GMDMDestroy(geomech_discretization%dm_ngeodof%gmdm)
 
-  if (associated(discretization%dm_1dof)) &
-    deallocate(discretization%dm_1dof)
-  nullify(discretization%dm_1dof)
-  if (associated(discretization%dm_ngeodof)) &
-    deallocate(discretization%dm_ngeodof)
-  nullify(discretization%dm_ngeodof)
+  if (associated(geomech_discretization%dm_1dof)) &
+    deallocate(geomech_discretization%dm_1dof)
+  nullify(geomech_discretization%dm_1dof)
+  if (associated(geomech_discretization%dm_ngeodof)) &
+    deallocate(geomech_discretization%dm_ngeodof)
+  nullify(geomech_discretization%dm_ngeodof)
   
-  call GMGridDestroy(discretization%grid)
+  call GMGridDestroy(geomech_discretization%grid)
 
 end subroutine GeomechDiscretizationDestroy
 

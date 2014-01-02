@@ -323,7 +323,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
     case(IMPLICIT_UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
-                                  grid%z,ugdm%scatter_ltol,option)
+                                  grid%z,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       connection_set => &
         ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
@@ -1226,7 +1226,6 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                                       grid%z_min_local,grid%z_max_local)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeCoord(grid%unstructured_grid,option, &
-                             ugdm%scatter_ltol, & !sp 
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
@@ -2876,7 +2875,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
       ! B = disp_mat^T * disp_mat
       call MatMatMult(grid%dispT(ghosted_id),A, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,B,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,B,ierr)
 
       ! Pack the values of B in disp_mat for obtaining the inverse of matrix
       do ii=0,2
@@ -2914,7 +2913,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
       ! Compute Minv * dispT
       call MatMatMult(grid%Minv(ghosted_id),grid%dispT(ghosted_id), &
-                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,A,ierr)
+                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,A,ierr)
 
       call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),iden_vec,ierr)
 
