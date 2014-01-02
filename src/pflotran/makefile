@@ -479,7 +479,7 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
                    unstructured_explicit.o unstructured_grid.o \
                    unstructured_grid_aux.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
-eos.o : pflotran_constants.o input_aux.o option.o string.o eos_water.o
+eos.o : eos_water.o input_aux.o option.o pflotran_constants.o string.o
 eos_water.o : pflotran_constants.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
@@ -542,7 +542,7 @@ immobile_aux.o : database_aux.o option.o pflotran_constants.o string.o \
                  utility.o
 init.o : condition.o condition_control.o connection.o constraint.o \
          convergence.o coupler.o database.o database_hpt.o dataset.o \
-         dataset_base.o dataset_common_hdf5.o debug.o discretization.o \
+         dataset_base.o dataset_common_hdf5.o debug.o discretization.o eos.o \
          eos_water.o field.o flash2.o fluid.o general.o general_grid.o \
          global.o grid.o hdf5.o immis.o input_aux.o logging.o mass_transfer.o \
          material.o mineral.o miscible.o mphase.o observation.o option.o \
@@ -553,8 +553,7 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          string.o structured_grid.o surface_field.o surface_flow.o \
          surface_global.o surface_init.o surface_realization.o surface_th.o \
          th.o thc.o timestepper.o uniform_velocity.o units.o \
-         unstructured_grid.o unstructured_grid_aux.o variables.o waypoint.o \
-         eos.o
+         unstructured_grid.o unstructured_grid_aux.o variables.o waypoint.o
 input_aux.o : option.o pflotran_constants.o string.o
 logging.o : pflotran_constants.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
@@ -654,9 +653,54 @@ pflotran_constants.o :
 pflotran_factory.o : init.o input_aux.o logging.o option.o \
                      pflotran_constants.o regression.o simulation.o string.o \
                      timestepper.o
+pm_base.o : option.o output_aux.o pflotran_constants.o realization_base.o
+pm_flash2.o : checkpoint.o communicator_base.o condition.o discretization.o \
+              flash2.o global.o grid.o option.o pflotran_constants.o pm_base.o \
+              realization.o structured_communicator.o \
+              unstructured_communicator.o
+pm_general.o : checkpoint.o communicator_base.o condition.o discretization.o \
+               field.o general.o general_aux.o global.o global_aux.o grid.o \
+               option.o pflotran_constants.o pm_base.o realization.o \
+               structured_communicator.o unstructured_communicator.o
+pm_immis.o : checkpoint.o communicator_base.o condition.o discretization.o \
+             global.o grid.o immis.o option.o pflotran_constants.o pm_base.o \
+             realization.o structured_communicator.o \
+             unstructured_communicator.o
+pm_miscible.o : checkpoint.o communicator_base.o condition.o discretization.o \
+                global.o grid.o miscible.o option.o pflotran_constants.o \
+                pm_base.o realization.o structured_communicator.o \
+                unstructured_communicator.o
+pm_mphase.o : checkpoint.o communicator_base.o condition.o discretization.o \
+              global.o grid.o mphase.o option.o pflotran_constants.o pm_base.o \
+              realization.o structured_communicator.o \
+              unstructured_communicator.o
+pm_richards.o : checkpoint.o communicator_base.o condition.o discretization.o \
+                global.o grid.o option.o pflotran_constants.o pm_base.o \
+                realization.o richards.o structured_communicator.o \
+                unstructured_communicator.o
+pm_rt.o : communicator_base.o condition.o discretization.o field.o global.o \
+          grid.o mass_transfer.o option.o pflotran_constants.o pm_base.o \
+          reaction_aux.o reactive_transport.o realization.o realization_base.o \
+          structured_communicator.o unstructured_communicator.o variables.o
+pm_surface_flow.o : communicator_base.o condition.o discretization.o grid.o \
+                    option.o pflotran_constants.o pm_base.o realization.o \
+                    surface_checkpoint.o surface_field.o surface_flow.o \
+                    surface_realization.o unstructured_communicator.o
+pm_surface_th.o : communicator_base.o condition.o discretization.o grid.o \
+                  option.o pflotran_constants.o pm_base.o realization.o \
+                  surface_checkpoint.o surface_field.o surface_realization.o \
+                  surface_th.o unstructured_communicator.o
+pm_th.o : checkpoint.o communicator_base.o condition.o discretization.o \
+          global.o grid.o option.o pflotran_constants.o pm_base.o \
+          realization.o structured_communicator.o th.o \
+          unstructured_communicator.o
+pm_thc.o : communicator_base.o condition.o discretization.o global.o grid.o \
+           option.o pflotran_constants.o pm_base.o realization.o \
+           structured_communicator.o thc.o unstructured_communicator.o
+pm_top.o : option.o pflotran_constants.o pm_base.o realization.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
-             pflotran_constants.o pm_base.o pm_top.o \
-             simulation_aux.o timestepper_base.o utility.o waypoint.o
+             pflotran_constants.o pm_base.o pm_top.o simulation_aux.o \
+             timestepper_base.o utility.o waypoint.o
 pmc_hydrogeophysics.o : hydrogeophysics_wrapper.o option.o \
                         pflotran_constants.o pmc_base.o realization.o \
                         realization_base.o string.o utility.o variables.o
@@ -664,72 +708,11 @@ pmc_subsurface.o : connection.o coupler.o eos_water.o field.o grid.o option.o \
                    patch.o pflotran_constants.o pmc_base.o realization.o \
                    realization_base.o string.o utility.o
 pmc_surface.o : connection.o coupler.o eos_water.o grid.o option.o output.o \
-                output_surface.o patch.o pflotran_constants.o pmc_base.o \
-                pm_base.o process_model_surface_flow.o \
-                realization.o string.o surface_flow.o surface_global_aux.o \
-                surface_realization.o surface_th.o surface_th_aux.o \
-                timestepper_base.o timestepper_surface.o utility.o
-pm_base.o : option.o output_aux.o pflotran_constants.o realization_base.o
-pm_general.o : checkpoint.o communicator_base.o condition.o \
-                           discretization.o general.o global.o grid.o option.o \
-                           pflotran_constants.o pm_base.o \
-                           realization.o structured_communicator.o \
-                           unstructured_communicator.o
-pm_flash2.o : checkpoint.o communicator_base.o condition.o \
-                         discretization.o global.o grid.o flash2.o option.o \
-                         pflotran_constants.o pm_base.o \
-                         realization.o structured_communicator.o \
-                         unstructured_communicator.o
-pm_immis.o : checkpoint.o communicator_base.o condition.o \
-                         discretization.o global.o grid.o immis.o option.o \
-                         pflotran_constants.o pm_base.o \
-                         realization.o structured_communicator.o \
-                         unstructured_communicator.o
-pm_mphase.o : checkpoint.o communicator_base.o condition.o \
-                         discretization.o global.o grid.o mphase.o option.o \
-                         pflotran_constants.o pm_base.o \
-                         realization.o structured_communicator.o \
-                         unstructured_communicator.o
-pm_miscible.o : checkpoint.o communicator_base.o condition.o \
-                         discretization.o global.o grid.o miscible.o option.o \
-                         pflotran_constants.o pm_base.o \
-                         realization.o structured_communicator.o \
-                         unstructured_communicator.o
-pm_richards.o : checkpoint.o communicator_base.o condition.o \
-                           discretization.o global.o grid.o option.o \
-                           pflotran_constants.o pm_base.o \
-                           realization.o richards.o structured_communicator.o \
-                           unstructured_communicator.o
-pm_rt.o : communicator_base.o condition.o discretization.o field.o \
-                     global.o grid.o mass_transfer.o option.o \
-                     pflotran_constants.o pm_base.o reaction_aux.o \
-                     reactive_transport.o realization.o realization_base.o \
-                     structured_communicator.o unstructured_communicator.o \
-                     variables.o
-pm_surface_flow.o : communicator_base.o condition.o \
-                               discretization.o grid.o option.o \
-                               pflotran_constants.o pm_base.o \
-                               realization.o surface_checkpoint.o \
-                               surface_field.o surface_flow.o \
-                               surface_realization.o \
-                               unstructured_communicator.o
-pm_surface_th.o : communicator_base.o condition.o discretization.o \
-                             grid.o option.o pflotran_constants.o \
-                             pm_base.o realization.o \
-                             surface_field.o surface_realization.o \
-                             surface_th.o unstructured_communicator.o
-pm_th.o : checkpoint.o communicator_base.o condition.o \
-                     discretization.o global.o grid.o option.o \
-                     pflotran_constants.o pm_base.o realization.o \
-                     structured_communicator.o th.o \
-                     unstructured_communicator.o
-pm_thc.o : communicator_base.o condition.o discretization.o \
-                      global.o grid.o option.o pflotran_constants.o \
-                      pm_base.o realization.o \
-                      structured_communicator.o thc.o \
-                      unstructured_communicator.o
-pm_top.o : option.o pflotran_constants.o pm_base.o \
-                      realization.o
+                output_surface.o patch.o pflotran_constants.o pm_base.o \
+                pm_surface_flow.o pmc_base.o realization.o string.o \
+                surface_flow.o surface_global_aux.o surface_realization.o \
+                surface_th.o surface_th_aux.o timestepper_base.o \
+                timestepper_surface.o utility.o
 ifdef PFLOTRAN_RXN_FLAG
 reaction.o : constraint.o global_aux.o immobile.o immobile_aux.o input_aux.o \
              microbial.o microbial_aux.o mineral.o mineral_aux.o option.o \
@@ -841,15 +824,11 @@ structured_communicator.o : communicator_base.o dm_kludge.o \
                             pflotran_constants.o structured_grid.o
 structured_grid.o : connection.o input_aux.o option.o pflotran_constants.o \
                     string.o
-subsurface_factory.o : condition_control.o init.o input_aux.o option.o output.o \
-                       output_aux.o pflotran_constants.o pmc_base.o \
-                       pmc_subsurface.o pm_base.o \
-                       pm_general.o \
-                       pm_flash2.o pm_immis.o \
-                       pm_mphase.o pm_miscible.o \
-                       pm_richards.o \
-                       pm_rt.o pm_th.o \
-                       pm_thc.o pm_top.o \
+subsurface_factory.o : condition_control.o init.o input_aux.o option.o \
+                       output.o output_aux.o pflotran_constants.o pm_base.o \
+                       pm_flash2.o pm_general.o pm_immis.o pm_miscible.o \
+                       pm_mphase.o pm_richards.o pm_rt.o pm_th.o pm_thc.o \
+                       pm_top.o pmc_base.o pmc_subsurface.o \
                        reactive_transport.o realization.o simulation.o \
                        simulation_base.o subsurface_simulation.o timestepper.o \
                        timestepper_BE.o timestepper_base.o
@@ -869,9 +848,8 @@ surface_complexation_aux.o : database_aux.o option.o pflotran_constants.o \
                              utility.o
 surface_factory.o : condition_control.o init.o input_aux.o logging.o option.o \
                     output.o output_aux.o output_surface.o \
-                    pflotran_constants.o pmc_base.o pmc_surface.o \
-                    pm_base.o pm_surface_flow.o \
-                    pm_surface_th.o pm_top.o \
+                    pflotran_constants.o pm_base.o pm_surface_flow.o \
+                    pm_surface_th.o pm_top.o pmc_base.o pmc_surface.o \
                     simulation.o simulation_base.o surface_checkpoint.o \
                     surface_realization.o surface_simulation.o timestepper.o \
                     timestepper_base.o timestepper_surface.o
@@ -965,9 +943,9 @@ timestepper_BE.o : convergence.o input_aux.o option.o output.o \
                    timestepper_base.o utility.o
 timestepper_base.o : input_aux.o option.o output.o pflotran_constants.o \
                      pm_base.o string.o waypoint.o
-timestepper_surface.o : option.o output.o pflotran_constants.o \
-                        pm_base.o pm_surface_flow.o \
-                        solver.o surface_flow.o timestepper_base.o waypoint.o
+timestepper_surface.o : option.o output.o pflotran_constants.o pm_base.o \
+                        pm_surface_flow.o solver.o surface_flow.o \
+                        timestepper_base.o waypoint.o
 transport.o : global_aux.o matrix_block_aux.o option.o pflotran_constants.o \
               reactive_transport_aux.o
 uniform_velocity.o : input_aux.o logging.o option.o pflotran_constants.o \
