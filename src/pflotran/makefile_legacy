@@ -197,8 +197,10 @@ eos_obj = \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
 	${common_src}co2_span_wagner_spline.o \
-	${common_src}gas_eos_mod.o \
-	${common_src}water_eos.o 
+	${common_src}eos.o \
+	${common_src}eos_water.o \
+	${common_src}co2_span_wagner_spline.o \
+	${common_src}gas_eos_mod.o
 
 mode_aux_obj = \
 	${common_src}auxiliary.o \
