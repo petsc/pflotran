@@ -339,7 +339,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
           grid%unstructured_grid => un_str_grid
         case(EXPLICIT_UNSTRUCTURED_GRID)
           un_str_grid%explicit_grid => UGridExplicitCreate()
-          call ExplicitUGridRead(un_str_grid, &
+          call UGridExplicitRead(un_str_grid, &
                                  discretization%filename,option)
           grid%unstructured_grid => un_str_grid
         case(POLYHEDRA_UNSTRUCTURED_GRID)
@@ -676,7 +676,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
           endif
         case(EXPLICIT_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
-          call ExplicitUGridDecompose(ugrid,option)
+          call UGridExplicitDecompose(ugrid,option)
         case(POLYHEDRA_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
           call PolyhedraUGridDecompose(ugrid,option)

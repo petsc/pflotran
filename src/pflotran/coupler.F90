@@ -340,8 +340,8 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   use Region_module
   use Grid_module
   use Unstructured_Grid_Aux_module
-  use Unstructured_Explicit_module, only : ExplicitUGridSetBoundaryConnect, &
-                                           ExplicitUGridSetConnections
+  use Unstructured_Explicit_module, only : UGridExplicitSetBoundaryConnect, &
+                                           UGridExplicitSetConnections
   
   implicit none
  
@@ -395,7 +395,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       if (associated(region%explicit_faceset)) then
         connection_set => &
-          ExplicitUGridSetBoundaryConnect(grid%unstructured_grid% &
+          UGridExplicitSetBoundaryConnect(grid%unstructured_grid% &
                                             explicit_grid, &
                                           region%cell_ids, &
                                      region%explicit_faceset%face_centroids, &
@@ -403,7 +403,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
                                      option)
       else
         connection_set => &
-          ExplicitUGridSetConnections(grid%unstructured_grid% &
+          UGridExplicitSetConnections(grid%unstructured_grid% &
                                         explicit_grid, &
                                       region%cell_ids, &
                                       connection_itype,option)

@@ -326,7 +326,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
                                   grid%z,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       connection_set => &
-        ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
+        UGridExplicitSetInternConnect(grid%unstructured_grid%explicit_grid, &
                                         option)
     case(POLYHEDRA_UNSTRUCTURED_GRID)
       connection_set => &
@@ -1106,7 +1106,8 @@ end subroutine CreateMFDStruct4LP
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm, stencil_type, lsm_flux_method, option)
+subroutine GridMapIndices(grid, sgdm, ugdm, sgrid_stencil_type, lsm_flux_method, &
+                          option)
 
 use Option_module
 
@@ -1125,7 +1126,8 @@ use Option_module
   
   type(grid_type) :: grid
   DM :: sgdm
-  PetscInt :: stencil_type
+  type(ugdm_type) :: ugdm
+  PetscInt :: sgrid_stencil_type
   PetscBool :: lsm_flux_method
   type(option_type) :: option
 
@@ -1137,7 +1139,7 @@ use Option_module
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructGridMapIndices(grid%structured_grid,stencil_type, &
+      call StructGridMapIndices(grid%structured_grid,sgrid_stencil_type, &
                                     lsm_flux_method, &
                                     grid%nG2L,grid%nL2G,grid%nG2A, &
                                     grid%ghosted_level,option)
@@ -1156,7 +1158,11 @@ use Option_module
         deallocate(int_tmp)
       endif
 #endif
-    case(IMPLICIT_UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID, &
+         POLYHEDRA_UNSTRUCTURED_GRID)
+      call UGridMapIndices(grid%unstructured_grid, &
+                           ugdm, &
+                           grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
   end select
  
  
@@ -1231,7 +1237,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                              grid%y_min_local,grid%y_max_local, &
                              grid%z_min_local,grid%z_max_local)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridSetCellCentroids(grid%unstructured_grid% &
+      call UGridExplicitSetCellCentroids(grid%unstructured_grid% &
                                          explicit_grid, &
                                          grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
@@ -1311,7 +1317,7 @@ subroutine GridComputeVolumes(grid,volume,option)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
       call UGridComputeQuality(grid%unstructured_grid,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridComputeVolumes(grid%unstructured_grid, &
+      call UGridExplicitComputeVolumes(grid%unstructured_grid, &
                                        option,volume)
     case(POLYHEDRA_UNSTRUCTURED_GRID)
       call PolyhedraUGridComputeVolumes(grid%unstructured_grid,option,volume)
