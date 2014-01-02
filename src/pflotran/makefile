@@ -189,6 +189,7 @@ eos_obj = \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
 	${common_src}co2_span_wagner_spline.o \
+	${common_src}eos.o \
 	${common_src}eos_water.o \
 	${common_src}gas_eos_mod.o 
 
@@ -478,6 +479,7 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
                    unstructured_explicit.o unstructured_grid.o \
                    unstructured_grid_aux.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
+eos.o : pflotran_constants.o input_aux.o option.o string.o eos_water.o
 eos_water.o : pflotran_constants.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
@@ -551,7 +553,8 @@ init.o : condition.o condition_control.o connection.o constraint.o \
          string.o structured_grid.o surface_field.o surface_flow.o \
          surface_global.o surface_init.o surface_realization.o surface_th.o \
          th.o thc.o timestepper.o uniform_velocity.o units.o \
-         unstructured_grid.o unstructured_grid_aux.o variables.o waypoint.o
+         unstructured_grid.o unstructured_grid_aux.o variables.o waypoint.o \
+         eos.o
 input_aux.o : option.o pflotran_constants.o string.o
 logging.o : pflotran_constants.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
