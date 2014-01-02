@@ -1,6 +1,6 @@
-module Process_Model_General_class
+module PM_General_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
 !geh: using General_module here fails with gfortran (internal compiler error)
 !  use General_module
   use Realization_class
@@ -828,4 +828,4 @@ subroutine PMGeneralDestroy(this)
   
 end subroutine PMGeneralDestroy
   
-end module Process_Model_General_class
+end module PM_General_class

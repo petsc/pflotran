@@ -1,6 +1,6 @@
-module Process_Model_module
+module PM_module
 
-  use Process_Model_Base_class
+  use PM_Base_class
   
   use PFLOTRAN_Constants_module
 
@@ -126,4 +126,4 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
 
 end subroutine PMRHSFunction
 
-end module Process_Model_module
+end module PM_module

@@ -1,4 +1,4 @@
-module Process_Model_Base_class
+module PM_Base_class
 
   use Option_module
   use Output_Aux_module
@@ -377,4 +377,4 @@ end subroutine PMBaseCheckpoint
 
 #endif
 
-end module Process_Model_Base_class
+end module PM_Base_class
