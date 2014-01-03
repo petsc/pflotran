@@ -213,6 +213,7 @@ subroutine EOSWaterSetDensityIFC67()
   implicit none
   
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyIFC67
+  EOSWaterDensityPtr => EOSWaterDensityIFC67
   
 end subroutine EOSWaterSetDensityIFC67
 
@@ -222,6 +223,7 @@ subroutine EOSWaterSetEnthalpyIFC67()
   implicit none
   
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyIFC67
+  EOSWaterEnthalpyPtr => EOSWaterEnthalpyIFC67
   
 end subroutine EOSWaterSetEnthalpyIFC67
 
@@ -586,7 +588,6 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
   call EOSWaterEnthalpyIFC67(t,p,hw, &
                              calculate_derivatives, &
                              hwp,hwt,scale,ierr)  
-print *, 'here'
 #else
   PetscInt :: i
     
