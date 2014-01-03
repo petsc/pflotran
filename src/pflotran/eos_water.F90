@@ -13,6 +13,11 @@ module EOS_Water_module
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
 
+  ! bragflo
+  PetscReal :: bragflo_reference_density
+  PetscReal :: bragflo_reference_pressure
+  PetscReal :: bragflo_water_compressibility
+
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 
   !    "Dummy" appended.
@@ -147,7 +152,8 @@ module EOS_Water_module
             EOSWaterSetEnthalpyIFC67, &
             EOSWaterSetDensityConstant, &
             EOSWaterSetEnthalpyConstant, &
-            EOSWaterSetViscosityConstant
+            EOSWaterSetViscosityConstant, &
+            EOSWaterSetDensityBRAGFLO
  
   contains
   
@@ -159,6 +165,10 @@ subroutine EOSWaterInit()
   constant_density = -999.d0
   constant_viscosity = -999.d0
   constant_enthalpy = -999.d0
+
+  bragflo_reference_density = -999.d0
+  bragflo_reference_pressure = -999.d0
+  bragflo_water_compressibility = -999.d0
   
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyIFC67
   EOSWaterDensityPtr => EOSWaterDensityIFC67
@@ -170,22 +180,17 @@ subroutine EOSWaterInit()
 end subroutine EOSWaterInit
 
 ! ************************************************************************** !
-subroutine EOSWaterVerify(ierr)
+subroutine EOSWaterVerify(ierr,error_string)
 
   implicit none
   
-  PetscErrorCode :: ierr
+  PetscErrorCode, intent(out) :: ierr
+  character(len=MAXSTRINGLENGTH), intent(out) :: error_string
   
   ierr = 0
   
+  error_string = ''
   if ((associated(EOSWaterDensityEnthalpyPtr, &
-                  EOSWaterDensityEnthalpyConstant) .and. &
-        (constant_density < -998.d0 .or. constant_enthalpy < -998.d0)) .or. &
-      (associated(EOSWaterDensityPtr,EOSWaterDensityConstant) .and. &
-        constant_density < -998.d0) .or. &
-      (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyConstant) .and. &
-        constant_enthalpy < -998.d0) .or. &
-      (associated(EOSWaterDensityEnthalpyPtr, &
                   EOSWaterDensityEnthalpyIFC67) .and. &
         (constant_density > -998.d0 .or. constant_enthalpy > -998.d0)) .or. &
       (associated(EOSWaterDensityPtr,EOSWaterDensityIFC67) .and. &
@@ -193,6 +198,29 @@ subroutine EOSWaterVerify(ierr)
       (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyIFC67) .and. &
         constant_enthalpy > -998.d0) &
      ) then
+    ierr = 1
+  endif
+
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityConstant) .and. &
+      constant_density < -998.d0) then
+    error_string = trim(error_string) // &
+      ' CONSTANT density not set.'
+    ierr = 1
+  endif
+  
+  if (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyConstant) .and. &
+      constant_enthalpy < -998.d0) then
+    error_string = trim(error_string) // &
+      ' CONSTANT enthalpy not set.'
+    ierr = 1
+  endif
+  
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityBragflo) .and. &
+      (bragflo_reference_density < -998.d0 .or. & 
+       bragflo_reference_pressure < -998.d0 .or. &
+       bragflo_water_compressibility < -998.d0)) then
+    error_string = trim(error_string) // &
+      ' BRAGFLO parameters incorrect.'
     ierr = 1
   endif
 
@@ -235,7 +263,7 @@ subroutine EOSWaterSetDensityConstant(density)
   PetscReal :: density
   
   constant_density = density  
-  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyConstant
+  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyGeneral
   EOSWaterDensityPtr => EOSWaterDensityConstant
   
 end subroutine EOSWaterSetDensityConstant
@@ -248,7 +276,7 @@ subroutine EOSWaterSetEnthalpyConstant(enthalpy)
   PetscReal :: enthalpy
   
   constant_enthalpy = enthalpy  
-  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyConstant
+  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyGeneral
   EOSWaterEnthalpyPtr => EOSWaterEnthalpyConstant
   
 end subroutine EOSWaterSetEnthalpyConstant
@@ -264,6 +292,23 @@ subroutine EOSWaterSetViscosityConstant(viscosity)
   EOSWaterViscosityPtr => EOSWaterViscosityConstant
   
 end subroutine EOSWaterSetViscosityConstant
+
+! ************************************************************************** !
+subroutine EOSWaterSetDensityBRAGFLO(density0,pressure0,water_compressibility)
+
+  implicit none
+  
+  PetscReal :: density0
+  PetscReal :: pressure0
+  PetscReal :: water_compressibility
+  
+  bragflo_reference_density = density0
+  bragflo_reference_pressure = pressure0
+  bragflo_water_compressibility = water_compressibility  
+  EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyGeneral
+  EOSWaterDensityPtr => EOSWaterDensityBRAGFLO
+  
+end subroutine EOSWaterSetDensityBRAGFLO
 
 ! ************************************************************************** !
 subroutine EOSWaterViscosityNoDerive(T, P, PS, VW, ierr)
@@ -548,6 +593,29 @@ subroutine EOSWaterDenEnthDerive(t,p,dw,dwmol,hw, &
                                   dwp,dwt,hwp,hwt,scale,ierr)
   
 end subroutine EOSWaterDenEnthDerive
+
+! ************************************************************************** !
+subroutine EOSWaterDensityEnthalpyGeneral(t,p,dw,dwmol,hw, &
+                                        calculate_derivatives, &
+                                        dwp,dwt,hwp,hwt,scale,ierr)
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscReal, intent(out) :: hw,hwp,hwt
+  PetscReal, intent(in) :: scale
+  PetscErrorCode, intent(out) :: ierr
+  
+  call EOSWaterDensityPtr(t,p,dw,dwmol, &
+                            calculate_derivatives, &
+                            dwp,dwt,scale,ierr)
+  call EOSWaterEnthalpyPtr(t,p,hw, &
+                           calculate_derivatives, &
+                           hwp,hwt,scale,ierr)  
+  
+end subroutine EOSWaterDensityEnthalpyGeneral
 
 ! ************************************************************************** !
 subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
@@ -1285,25 +1353,31 @@ subroutine EOSWaterEnthalpyConstant(t,p,hw, &
 end subroutine EOSWaterEnthalpyConstant
 
 ! ************************************************************************** !
-subroutine EOSWaterDensityEnthalpyConstant(t,p,dw,dwmol,hw, &
-                                           calculate_derivatives, &
-                                           dwp,dwt,hwp,hwt,scale,ierr)
+subroutine EOSWaterDensityBRAGFLO(t,p,dw,dwmol, &
+                                  calculate_derivatives, &
+                                  dwp,dwt,scale,ierr)
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade
   PetscReal, intent(in) :: p   ! Pressure in Pascals
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
-  PetscReal, intent(out) :: hw,hwp,hwt
   PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
-  call EOSWaterDensityConstant(t,p,dw,dwmol,calculate_derivatives,dwp,dwt, &
-                               scale,ierr)
-  call EOSWaterEnthalpyConstant(t,p,hw,calculate_derivatives,hwp,hwt, &
-                                scale,ierr)
+  ! kg/m^3
+  dw = bragflo_reference_density*exp(bragflo_water_compressibility* &
+                                     (p-bragflo_reference_pressure))
+  dwmol = dw/FMWH2O ! kmol/m^3
   
-end subroutine EOSWaterDensityEnthalpyConstant
+  if (calculate_derivatives) then
+    dwp = dwmol*bragflo_water_compressibility !kmol/m^3/Pa
+  else
+    dwp = 0.d0
+  endif
+  dwt = 0.d0
+
+end subroutine EOSWaterDensityBRAGFLO
 
 ! ************************************************************************** !
 subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
