@@ -122,7 +122,7 @@ subroutine Init(simulation)
   PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
 #ifdef SURFACE_FLOW
@@ -280,10 +280,10 @@ subroutine Init(simulation)
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
-    call EOSWaterDensityEnthalpy(option%reference_temperature, &
-                                 option%reference_pressure, &
-                                 option%reference_water_density, &
-                                 r1,r2,option%scale, ierr)    
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,option%scale, ierr)    
 #else
     call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)

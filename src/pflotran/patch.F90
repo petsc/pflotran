@@ -2378,7 +2378,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   type(global_auxvar_type), pointer :: global_auxvar
   type(coupler_type), pointer :: cur_coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscErrorCode :: ierr
   
   cur_coupler => coupler_list%first
@@ -2423,10 +2423,10 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         endif
 
 #ifndef DONT_USE_WATEOS
-        call EOSWaterDensityEnthalpy(global_auxvar%temp(1), &
-                                     global_auxvar%pres(1), &
-                                     global_auxvar%den_kg(1), &
-                                     r1,r2,option%scale,ierr)
+        call EOSWaterDensity(global_auxvar%temp(1), &
+                             global_auxvar%pres(1), &
+                             global_auxvar%den_kg(1), &
+                             dum1,option%scale,ierr)
 #else
         call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
                      global_auxvar%den_kg(1))
