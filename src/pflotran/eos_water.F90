@@ -715,7 +715,7 @@ subroutine EOSWaterDensityEnthalpyConstant(t,p,dw,dwmol,hw, &
   PetscErrorCode, intent(out) :: ierr
   
   dw = constant_density ! kg/m^3
-  dwmol = dw*FMWH2O ! kmol/m^3
+  dwmol = dw/FMWH2O ! kmol/m^3
   
   dwp = 0.d0
   dwt = 0.d0
