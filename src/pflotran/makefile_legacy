@@ -583,7 +583,7 @@ global_aux.o : option.o pflotran_constants.o utility.o
 grid.o : connection.o logging.o mfd_aux.o option.o pflotran_constants.o \
          region.o structured_grid.o unstructured_cell.o \
          unstructured_explicit.o unstructured_grid.o unstructured_grid_aux.o \
-         utility.o
+         utility.o dm_kludge.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          pflotran_constants.o realization.o realization_base.o region.o \
          unstructured_cell.o utility.o
