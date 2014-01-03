@@ -180,13 +180,22 @@ subroutine EOSWaterVerify(ierr)
   
   if ((associated(EOSWaterDensityEnthalpyPtr, &
                   EOSWaterDensityEnthalpyConstant) .and. &
-       (constant_density < -998.d0 .or. constant_enthalpy < -998.d0)) .or. &
+        (constant_density < -998.d0 .or. constant_enthalpy < -998.d0)) .or. &
+      (associated(EOSWaterDensityPtr,EOSWaterDensityConstant) .and. &
+        constant_density < -998.d0) .or. &
+      (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyConstant) .and. &
+        constant_enthalpy < -998.d0) .or. &
       (associated(EOSWaterDensityEnthalpyPtr, &
                   EOSWaterDensityEnthalpyIFC67) .and. &
-       (constant_density > -998.d0 .or. constant_enthalpy > -998.d0))) then
+        (constant_density > -998.d0 .or. constant_enthalpy > -998.d0)) .or. &
+      (associated(EOSWaterDensityPtr,EOSWaterDensityIFC67) .and. &
+        constant_density > -998.d0) .or. &
+      (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyIFC67) .and. &
+        constant_enthalpy > -998.d0) &
+     ) then
     ierr = 1
   endif
-  
+
   if ((associated(EOSWaterViscosityPtr, &
                   EOSWaterViscosityConstant) .and. &
        constant_viscosity < -998.d0) .or. &
@@ -225,6 +234,7 @@ subroutine EOSWaterSetDensityConstant(density)
   
   constant_density = density  
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyConstant
+  EOSWaterDensityPtr => EOSWaterDensityConstant
   
 end subroutine EOSWaterSetDensityConstant
 
@@ -237,6 +247,7 @@ subroutine EOSWaterSetEnthalpyConstant(enthalpy)
   
   constant_enthalpy = enthalpy  
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyConstant
+  EOSWaterEnthalpyPtr => EOSWaterEnthalpyConstant
   
 end subroutine EOSWaterSetEnthalpyConstant
 
@@ -1232,6 +1243,47 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
 end subroutine EOSWaterEnthalpyIFC67
 
 ! ************************************************************************** !
+subroutine EOSWaterDensityConstant(t,p,dw,dwmol, &
+                                   calculate_derivatives, &
+                                   dwp,dwt,scale,ierr)
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscReal, intent(in) :: scale
+  PetscErrorCode, intent(out) :: ierr
+  
+  dw = constant_density ! kg/m^3
+  dwmol = dw/FMWH2O ! kmol/m^3
+  
+  dwp = 0.d0
+  dwt = 0.d0
+
+end subroutine EOSWaterDensityConstant
+
+! ************************************************************************** !
+subroutine EOSWaterEnthalpyConstant(t,p,hw, &
+                                    calculate_derivatives, &
+                                    hwp,hwt,scale,ierr)
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: hw,hwp,hwt
+  PetscReal, intent(in) :: scale
+  PetscErrorCode, intent(out) :: ierr
+  
+  hw = constant_enthalpy ! MJ/kmol
+  
+  hwp = 0.d0
+  hwt = 0.d0
+  
+end subroutine EOSWaterEnthalpyConstant
+
+! ************************************************************************** !
 subroutine EOSWaterDensityEnthalpyConstant(t,p,dw,dwmol,hw, &
                                            calculate_derivatives, &
                                            dwp,dwt,hwp,hwt,scale,ierr)
@@ -1245,16 +1297,10 @@ subroutine EOSWaterDensityEnthalpyConstant(t,p,dw,dwmol,hw, &
   PetscReal, intent(in) :: scale
   PetscErrorCode, intent(out) :: ierr
   
-  dw = constant_density ! kg/m^3
-  dwmol = dw/FMWH2O ! kmol/m^3
-  
-  dwp = 0.d0
-  dwt = 0.d0
-
-  hw = constant_enthalpy ! MJ/kmol
-  
-  hwp = 0.d0
-  hwt = 0.d0
+  call EOSWaterDensityConstant(t,p,dw,dwmol,calculate_derivatives,dwp,dwt, &
+                               scale,ierr)
+  call EOSWaterEnthalpyConstant(t,p,hw,calculate_derivatives,hwp,hwt, &
+                                scale,ierr)
   
 end subroutine EOSWaterDensityEnthalpyConstant
 
