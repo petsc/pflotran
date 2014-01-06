@@ -1090,6 +1090,8 @@ end subroutine OptionInitMPI2
 ! ************************************************************************** !
 subroutine OptionInitPetsc(option)
 
+  use Logging_module
+  
   implicit none
   
   type(option_type) :: option
@@ -1105,7 +1107,9 @@ subroutine OptionInitPetsc(option)
     string = '-log_summary'
     call PetscOptionsInsertString(string, ierr)
   endif 
-  
+
+  call LoggingCreate()
+
 end subroutine OptionInitPetsc
 
 ! ************************************************************************** !
@@ -1272,9 +1276,11 @@ subroutine OptionFinalize(option)
   
   ! pushed in FinalizeRun()
   call PetscLogStagePop(ierr)
+  call LoggingDestroy()
   call PetscOptionsSetValue('-options_left','no',ierr)
   ! list any PETSc objects that have not been freed - for debugging
   call PetscOptionsSetValue('-objects_left','yes',ierr)
+  call MPI_Barrier(option%global_comm,ierr)
   call OptionDestroy(option)
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)
