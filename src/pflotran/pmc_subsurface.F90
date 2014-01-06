@@ -132,7 +132,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 !  use Realization_Base_class
   use Realization_class
   use String_module
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -201,8 +201,8 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                pmc%sim_aux%surf_head, &
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            call density(option%reference_temperature, option%reference_pressure, &
-                         den)
+            call EOSWaterdensity(option%reference_temperature, &
+                                 option%reference_pressure, den)
 
             coupler_list => patch%source_sinks
             coupler => coupler_list%first
@@ -305,8 +305,8 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                     ! The pressure value needed to computed density should
                     ! be surf_press and not reference_pressure. But,
                     ! surf_pressure depends on density.
-                    call density(temp_p(iconn), option%reference_pressure, &
-                                 den)
+                    call EOSWaterdensity(temp_p(iconn), option%reference_pressure, &
+                                         den)
 
                     surfpress = head_p(iconn)*(abs(option%gravity(3)))*den + &
                                 option%reference_pressure
@@ -378,7 +378,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   use Field_module
   use Connection_module
   use Realization_Base_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -476,8 +476,8 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
             coupler => coupler%next
           enddo
 
-          call density(option%reference_temperature, option%reference_pressure, &
-                       den)
+          call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
+                               den)
           coupler_list => patch%boundary_conditions
           coupler => coupler_list%first
           do

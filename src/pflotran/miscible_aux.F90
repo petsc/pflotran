@@ -296,7 +296,7 @@ subroutine MiscibleAuxVarCompute_WINC(x,delx,aux_var,global_auxvar, &
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use Fluid_module
   
   implicit none

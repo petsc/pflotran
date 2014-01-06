@@ -525,7 +525,7 @@ end subroutine SurfaceFlowRHSFunction
 ! ************************************************************************** !
 subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use Water_EOS_module
+  
   use Connection_module
   use Surface_Realization_class
   use Patch_module
@@ -990,7 +990,7 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1282,7 +1282,7 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1326,7 +1326,7 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   coupler_list => patch%source_sinks
   coupler => coupler_list%first
@@ -1403,7 +1403,7 @@ subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1524,10 +1524,9 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
   use Discretization_module
   use Connection_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1580,8 +1579,10 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: sat_pressure
   PetscReal :: pw
   PetscReal :: visl
-  PetscReal :: dvis_dp
-  PetscReal :: dvis_dt
+!geh: uncomment if derivatives needed.
+!  PetscReal :: dvis_dp
+!  PetscReal :: dvis_dt
+!  PetscReal :: dvis_dps
   PetscReal :: v_darcy
   PetscReal :: v_darcy_max
   PetscReal :: gravity
@@ -1598,7 +1599,7 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
   surf_grid  => surf_realization%discretization%grid
   surf_field => surf_realization%surf_field
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
   call VecGetArrayF90(surf_field%flow_xx,hw_p,ierr)
@@ -1677,8 +1678,10 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
           pw = option%reference_pressure
         endif
                                            
-        call psat(option%reference_temperature,sat_pressure,ierr)
-        call VISW(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
+        call EOSWaterSaturationPressure(option%reference_temperature,sat_pressure,ierr)
+!geh: we now have a noderivative version, change back if need derivatives
+!geh        call EOSWaterViscosity(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,dvis_dps,ierr)
+        call EOSWaterViscosity(option%reference_temperature,pw,sat_pressure,visl,ierr)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
         if (v_darcy<=0.d0) then
@@ -1738,7 +1741,7 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1836,7 +1839,6 @@ subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -1938,7 +1940,7 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
   use String_module
   use Surface_Field_module
   use Surface_Realization_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2029,7 +2031,7 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
                      surf_field%work, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%work, surfpress_p, ierr)
@@ -2073,7 +2075,7 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   use String_module
   use Surface_Field_module
   use Surface_Realization_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2111,7 +2113,7 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
   surf_field => surf_realization%surf_field
   surf_grid  => surf_realization%discretization%grid
   
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
@@ -2161,11 +2163,11 @@ subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
   use DM_Kludge_module
+  use EOS_Water_module
 
   implicit none
   
@@ -2207,7 +2209,7 @@ subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   call VecGetArrayF90(surf_field%flow_xx, hw_p, ierr)
   call VecGetArrayF90(surf_field%work, surfpress_p, ierr)

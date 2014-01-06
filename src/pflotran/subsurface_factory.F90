@@ -133,17 +133,17 @@ subroutine HijackSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Subsurface_class  
   use Simulation_Base_class
-  use Process_Model_General_class
-  use Process_Model_Flash2_class
-  use Process_Model_Immis_class
-  use Process_Model_Mphase_class
-  use Process_Model_Miscible_class
-  use Process_Model_Richards_class
-  use Process_Model_RT_class
-  use Process_Model_TH_class
-  use Process_Model_THC_class
-  use Process_Model_Base_class
-  use Process_Model_module
+  use PM_General_class
+  use PM_Flash2_class
+  use PM_Immis_class
+  use PM_Mphase_class
+  use PM_Miscible_class
+  use PM_Richards_class
+  use PM_RT_class
+  use PM_TH_class
+  use PM_THC_class
+  use PM_Base_class
+  use PM_module
   use Timestepper_BE_class
   
   implicit none

@@ -90,7 +90,7 @@ end subroutine TimestepperGeomechanicsInit
 ! ************************************************************************** !
 subroutine TimestepperGeomechanicsStepDT(this, process_model, stop_flag)
 
-  use Process_Model_Base_class
+  use PM_Base_class
   use Process_Model_Geomechanics_Force_class
   use Option_module
   use Output_module, only : Output

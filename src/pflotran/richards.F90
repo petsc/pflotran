@@ -1244,7 +1244,7 @@ end subroutine RichardsResidual
 ! ************************************************************************** !
 subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -1543,7 +1543,7 @@ end subroutine RichardsResidualPatch1
 ! ************************************************************************** !
 subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -1800,7 +1800,7 @@ end subroutine RichardsJacobian
 ! ************************************************************************** !
 subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
        
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -2131,7 +2131,7 @@ end subroutine RichardsJacobianPatch1
 ! ************************************************************************** !
 subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
        
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -2522,7 +2522,7 @@ subroutine RichardsUpdateSurfacePress(realization)
   use Material_module
   use Logging_module
   use String_module
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -2553,7 +2553,7 @@ subroutine RichardsUpdateSurfacePress(realization)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
     
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   ! boundary conditions
   boundary_condition => patch%boundary_conditions%first

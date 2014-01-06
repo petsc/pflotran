@@ -463,7 +463,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   use Option_module
   use Saturation_Function_module
 #ifdef SURFACE_FLOW
-  use Water_EOS_module
+  use EOS_Water_module
 #endif
  
   implicit none
@@ -604,7 +604,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
           ! If running with surface-flow model, ensure (darcy_velocity*dt) does
           ! not exceed depth of standing water.
           if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            call density(option%reference_temperature,option%reference_pressure,rho)
+            call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
             v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if(v_darcy > v_darcy_allowable) then
@@ -733,7 +733,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
                           area, dist, option,v_darcy,Res)
   use Option_module
 #ifdef SURFACE_FLOW
-  use Water_EOS_module
+  use EOS_Water_module
 #endif
  
   implicit none
@@ -843,7 +843,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
           ! If running with surface-flow model, ensure (darcy_velocity*dt) does
           ! not exceed depth of standing water.
           if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
-            call density(option%reference_temperature,option%reference_pressure,rho)
+            call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
             v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable

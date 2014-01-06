@@ -94,7 +94,7 @@ subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
 
   use Timestepper_Base_class
   use Option_module
-  use Process_Model_Base_class
+  use PM_Base_class
 
   implicit none
 

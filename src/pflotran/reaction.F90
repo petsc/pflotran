@@ -1103,7 +1103,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 #ifdef CHUAN_CO2
   use co2eos_module, only: Henry_duan_sun
   use co2_span_wagner_module, only: co2_span_wagner
-  use Water_EOS_module
+  use EOS_Water_module
 #endif  
   implicit none
   
@@ -1519,7 +1519,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             
             tc = global_auxvar%temp(1)
 
-            call PSAT(tc, sat_pressure, ierr)
+            call EOSWaterSaturationPressure(tc, sat_pressure, ierr)
             
             pco2 = conc(icomp)*1.e5
 !           pco2 = pres - sat_pressure
@@ -3659,7 +3659,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   use Option_module
 #ifdef CHUAN_CO2  
   use co2eos_module, only: Henry_duan_sun
-  use Water_EOS_module
+  use EOS_Water_module
 #endif  
   
   implicit none
@@ -3765,7 +3765,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       xphico2 = global_auxvar%fugacoeff(1)
       den = global_auxvar%den(2)
  
-      call PSAT(temperature, sat_pressure, ierr)
+      call EOSWaterSaturationPressure(temperature, sat_pressure, ierr)
       pco2 = pressure - sat_pressure
 !     call co2_span_wagner(pressure*1.D-6,temperature+273.15D0,dg,dddt,dddp,fg, &
 !              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)

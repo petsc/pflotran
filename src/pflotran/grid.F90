@@ -321,10 +321,10 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
     case(IMPLICIT_UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
-                                  grid%z,ugdm%scatter_ltol,option)
+                                  grid%z,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
       connection_set => &
-        ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
+        UGridExplicitSetInternConnect(grid%unstructured_grid%explicit_grid, &
                                         option)
   end select
   
@@ -1096,26 +1096,17 @@ end subroutine CreateMFDStruct4LP
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm, stencil_type, lsm_flux_method, option)
+subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type, lsm_flux_method, &
+                          option)
 
-use Option_module
+  use Option_module
+  use DM_Kludge_module
 
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-
-
   
   type(grid_type) :: grid
-  DM :: sgdm
-  PetscInt :: stencil_type
+  type(dm_ptr_type) :: dm_ptr
+  PetscInt :: sgrid_stencil_type
   PetscBool :: lsm_flux_method
   type(option_type) :: option
 
@@ -1127,16 +1118,16 @@ use Option_module
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructGridMapIndices(grid%structured_grid,stencil_type, &
-                                    lsm_flux_method, &
-                                    grid%nG2L,grid%nL2G,grid%nG2A, &
-                                    grid%ghosted_level,option)
+      call StructGridMapIndices(grid%structured_grid,sgrid_stencil_type, &
+                                lsm_flux_method, &
+                                grid%nG2L,grid%nL2G,grid%nG2A, &
+                                grid%ghosted_level,option)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
         allocate(grid%nG2P(grid%ngmax))
         allocate(int_tmp(grid%ngmax))
 !geh     call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
-        call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
+        call DMDAGetGlobalIndices(dm_ptr%dm, grid%ngmax, int_tmp, i_da, ierr)
         do icount = 1, grid%ngmax
 !geh         write(*,*) icount,  int_tmp(icount + i_da)
           grid%nG2P(icount) = int_tmp(icount + i_da)
@@ -1146,7 +1137,10 @@ use Option_module
         deallocate(int_tmp)
       endif
 #endif
-    case(IMPLICIT_UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
+      call UGridMapIndices(grid%unstructured_grid, &
+                           dm_ptr%ugdm, &
+                           grid%nG2L,grid%nL2G,grid%nG2A,grid%nG2P,option)
   end select
  
  
@@ -1215,13 +1209,12 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
                                       grid%z_min_local,grid%z_max_local)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeCoord(grid%unstructured_grid,option, &
-                             ugdm%scatter_ltol, & !sp 
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
                              grid%z_min_local,grid%z_max_local)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridSetCellCentroids(grid%unstructured_grid% &
+      call UGridExplicitSetCellCentroids(grid%unstructured_grid% &
                                          explicit_grid, &
                                          grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
@@ -1293,7 +1286,7 @@ subroutine GridComputeVolumes(grid,volume,option)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
       call UGridComputeQuality(grid%unstructured_grid,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridComputeVolumes(grid%unstructured_grid, &
+      call UGridExplicitComputeVolumes(grid%unstructured_grid, &
                                        option,volume)
   end select
 

@@ -1,6 +1,6 @@
-module Process_Model_RT_class
+module PM_RT_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
 !geh: using Reactive_Transport_module here fails with gfortran (internal 
 !     compiler error)
 !  use Reactive_Transport_module
@@ -1066,4 +1066,4 @@ subroutine PMRTDestroy(this)
 
 end subroutine PMRTDestroy
   
-end module Process_Model_RT_class
+end module PM_RT_class

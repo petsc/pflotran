@@ -2,7 +2,7 @@
 
 module Process_Model_Geomechanics_Force_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
 #else

@@ -241,7 +241,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
                                    fluid_properties,option)
 
   use Option_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
   use co2_span_wagner_module
@@ -306,7 +306,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
 
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err = 1.D0
     p2 = p
 
@@ -374,7 +374,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 
-  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
 
   aux_var%h(1) = hw
   aux_var%u(1) = aux_var%h(1) - pw /dw_mol*option%scale
@@ -383,9 +383,9 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
   xm_nacl = option%m_nacl*FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-  call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
+  call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
   dw_kg = dw_kg * 1D3
-  call nacl_vis(t,p*1D-6,xm_nacl,visl)
+  call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
 
 !FEHM mixing ****************************
 ! den(1) = xmol(2)*dg + xmol(1)*dw_mol
@@ -441,7 +441,7 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
-  use Water_EOS_module
+  
   use Saturation_Function_module
   use Fluid_module
   
