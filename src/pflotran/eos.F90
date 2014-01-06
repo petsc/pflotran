@@ -36,7 +36,8 @@ subroutine EOSRead(input,option)
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word
-  PetscReal :: tempreal
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: tempreal, tempreal2, tempreal3
   PetscErrorCode :: ierr
 
   input%ierr = 0
@@ -64,6 +65,17 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,DENSITY,CONSTANT')
                 call EOSWaterSetDensityConstant(tempreal)
+              case('BRAGFLO')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'REFERENCE_DENSITY', &
+                                   'EOS,WATER,DENSITY,BRAGFLO')
+                call InputReadDouble(input,option,tempreal2)
+                call InputErrorMsg(input,option,'REFERENCE_PRESSURE', &
+                                   'EOS,WATER,DENSITY,BRAGFLO')
+                call InputReadDouble(input,option,tempreal3)
+                call InputErrorMsg(input,option,'WATER_COMPRESSIBILITY', &
+                                   'EOS,WATER,DENSITY,BRAGFLO')
+                call EOSWaterSetDensityBRAGFLO(tempreal,tempreal2,tempreal3)
               case('IFC67')
                 call EOSWaterSetDensityIFC67()
               case default
@@ -108,11 +120,15 @@ subroutine EOSRead(input,option)
                                ' not recognized in EOS,WATER'    
             call printErrMsg(option)
         end select
-      enddo 
-      call EOSWaterVerify(ierr)
+      enddo
+      string = ''
+      call EOSWaterVerify(ierr,string)
       if (ierr /= 0) then
         option%io_buffer = 'Error in Water EOS'    
-      call printErrMsg(option)
+        if (len_trim(string) > 1) then
+          option%io_buffer = trim(option%io_buffer) // ': ' // trim(string)
+        endif
+        call printErrMsg(option)
       endif
     case default
       option%io_buffer = 'Keyword: ' // trim(keyword) // &

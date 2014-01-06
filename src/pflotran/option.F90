@@ -59,6 +59,8 @@ module Option_module
     PetscInt :: rt_idof
     PetscInt :: nmechdof
     PetscInt :: nsec_cells
+    PetscBool :: use_th_freezing
+
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
@@ -406,6 +408,8 @@ subroutine OptionInitRealization(option)
   option%nflowdof = 0
   option%nmechdof = 0
   option%nsec_cells = 0
+  option%use_th_freezing = PETSC_FALSE
+
 #ifdef SURFACE_FLOW
   option%nsurfflowdof = 0
   option%subsurf_surf_coupling = DECOUPLED

@@ -916,11 +916,11 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           Ke_up = (sat + epsilon)**th_alpha_p(local_id)
           k_eff_up = ckdry_p(local_id) + &
                       (ckwet_p(local_id) - ckdry_p(local_id))*Ke_up
-#ifdef ICE
-          Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
-          k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
-                     ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
-#endif
+          if (option%use_th_freezing) then
+             Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
+             k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
+                  ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
+          endif
           k_eff_dn = surf_aux_vars(ghosted_id)%k_therm
 
           Dk_eff = k_eff_up*k_eff_dn/(k_eff_up*hw/2.d0 + &
@@ -1305,13 +1305,13 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
     ckdry_p(local_id) = TH_parameter%ckdry(int(ithrm_loc_p(local_id)))
     th_alpha_p(local_id) = TH_parameter%alpha(int(ithrm_loc_p(local_id)))
 
-#ifdef ICE
-    ckice_p(local_id) = TH_parameter%ckfrozen(int(ithrm_loc_p(local_id)))
-    th_alpha_fr_p(local_id) = TH_parameter%alpha_fr(int(ithrm_loc_p(local_id)))
-#else
-    ckice_p(local_id) = 0.d0
-    th_alpha_fr_p(local_id) = 0.d0
-#endif
+    if (option%use_th_freezing) then
+       ckice_p(local_id) = TH_parameter%ckfrozen(int(ithrm_loc_p(local_id)))
+       th_alpha_fr_p(local_id) = TH_parameter%alpha_fr(int(ithrm_loc_p(local_id)))
+    else
+       ckice_p(local_id) = 0.d0
+       th_alpha_fr_p(local_id) = 0.d0
+    endif
 
   enddo
 

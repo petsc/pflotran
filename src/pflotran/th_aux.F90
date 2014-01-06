@@ -29,7 +29,7 @@ module TH_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-#ifdef ICE
+    ! ice
     PetscReal :: sat_ice
     PetscReal :: sat_gas
     PetscReal :: dsat_dt
@@ -42,7 +42,6 @@ module TH_Aux_module
     PetscReal :: dden_ice_dt
     PetscReal :: u_ice
     PetscReal :: du_ice_dt
-#endif
   end type TH_auxvar_type
 
   type, public :: TH_parameter_type
@@ -50,10 +49,8 @@ module TH_Aux_module
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Thermal conductivity (wet)
     PetscReal, pointer :: alpha(:)
-#ifdef ICE
     PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
-    PetscReal, pointer :: alpha_fr(:)
-#endif
+    PetscReal, pointer :: alpha_fr(:) ! exponent frozen
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
     PetscReal, pointer :: diffusion_activation_energy(:)
@@ -76,9 +73,7 @@ module TH_Aux_module
             THAuxVarCompute, THAuxVarInit, &
             THAuxVarCopy
 
-#ifdef ICE
   public :: THAuxVarComputeIce
-#endif
 
 contains
 
@@ -164,7 +159,7 @@ subroutine THAuxVarInit(aux_var,option)
   aux_var%xmol = 0.d0
   allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 1.d-9
-#ifdef ICE
+  ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
   aux_var%sat_ice = 0.d0
   aux_var%sat_gas = 0.d0
   aux_var%dsat_dt = 0.d0
@@ -177,7 +172,6 @@ subroutine THAuxVarInit(aux_var,option)
   aux_var%dden_ice_dt = 0.d0
   aux_var%u_ice = 0.d0
   aux_var%du_ice_dt = 0.d0
-#endif
 
 end subroutine THAuxVarInit
 
@@ -222,20 +216,20 @@ subroutine THAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%du_dt = aux_var%du_dt  
   aux_var2%xmol = aux_var%xmol
   aux_var2%diff = aux_var%diff
-#ifdef ICE
-  aux_var2%sat_ice = aux_var%sat_ice 
-  aux_var2%sat_gas = aux_var%sat_gas
-  aux_var2%dsat_dt = aux_var%dsat_dt
-  aux_var2%dsat_ice_dp = aux_var%dsat_ice_dp
-  aux_var2%dsat_gas_dp = aux_var%dsat_gas_dp
-  aux_var2%dsat_ice_dt = aux_var%dsat_ice_dt
-  aux_var2%dsat_gas_dt = aux_var%dsat_gas_dt
-  aux_var2%den_ice = aux_var%den_ice
-  aux_var2%dden_ice_dp = aux_var%dden_ice_dp
-  aux_var2%dden_ice_dt = aux_var%dden_ice_dt
-  aux_var2%u_ice = aux_var%u_ice
-  aux_var2%du_ice_dt = aux_var%du_ice_dt
-#endif
+  if (option%use_th_freezing) then
+     aux_var2%sat_ice = aux_var%sat_ice 
+     aux_var2%sat_gas = aux_var%sat_gas
+     aux_var2%dsat_dt = aux_var%dsat_dt
+     aux_var2%dsat_ice_dp = aux_var%dsat_ice_dp
+     aux_var2%dsat_gas_dp = aux_var%dsat_gas_dp
+     aux_var2%dsat_ice_dt = aux_var%dsat_ice_dt
+     aux_var2%dsat_gas_dt = aux_var%dsat_gas_dt
+     aux_var2%den_ice = aux_var%den_ice
+     aux_var2%dden_ice_dp = aux_var%dden_ice_dp
+     aux_var2%dden_ice_dt = aux_var%dden_ice_dt
+     aux_var2%u_ice = aux_var%u_ice
+     aux_var2%du_ice_dt = aux_var%du_ice_dt
+  endif
 
 end subroutine THAuxVarCopy
 
@@ -382,7 +376,6 @@ end subroutine THAuxVarCompute
 !
 ! ************************************************************************** !
 
-#ifdef ICE
 subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                saturation_function, por, perm, option)
 
@@ -539,7 +532,6 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
 
 end subroutine THAuxVarComputeIce
-#endif
 
 ! ************************************************************************** !
 !
@@ -612,12 +604,12 @@ subroutine THAuxDestroy(aux)
     nullify(aux%TH_parameter%ckdry)
     if (associated(aux%TH_parameter%alpha)) deallocate(aux%TH_parameter%alpha)
     nullify(aux%TH_parameter%alpha)
-#ifdef ICE
+    ! ice
     if (associated(aux%TH_parameter%ckfrozen)) deallocate(aux%TH_parameter%ckfrozen)
     nullify(aux%TH_parameter%ckfrozen)
     if (associated(aux%TH_parameter%alpha_fr)) deallocate(aux%TH_parameter%alpha_fr)
     nullify(aux%TH_parameter%alpha_fr)
-#endif
+
     if (associated(aux%TH_parameter%sir)) deallocate(aux%TH_parameter%sir)
     nullify(aux%TH_parameter%sir)
   endif

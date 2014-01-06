@@ -122,7 +122,7 @@ subroutine Init(simulation)
   PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
 #ifdef SURFACE_FLOW
@@ -280,10 +280,10 @@ subroutine Init(simulation)
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
-    call EOSWaterDensityEnthalpy(option%reference_temperature, &
-                                 option%reference_pressure, &
-                                 option%reference_water_density, &
-                                 r1,r2,option%scale, ierr)    
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,option%scale, ierr)    
 #else
     call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)
@@ -1636,6 +1636,26 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('MODE')
+         call InputReadWord(input, option, word, PETSC_FALSE)
+         call StringToUpper(word)
+         if ('TH' == trim(word) .or. 'THC' == trim(word)) then
+            call InputReadWord(input, option, word, PETSC_TRUE)
+            call InputErrorMsg(input, option, 'th(c) freezing mode', 'mode th(c)')
+            call StringToUpper(word)
+            if ('FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_TRUE
+               option%io_buffer = ' TH(C): using FREEZING submode!'
+               call printMsg(option)
+            else if ('NO_FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_FALSE
+               option%io_buffer = ' TH(C): using NO_FREEZING submode!'
+               call printMsg(option)
+            else
+               ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
+               option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
+               call printErrMsg(option)
+            endif
+         endif
 
 !....................
       case ('GRID')

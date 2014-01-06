@@ -29,7 +29,7 @@ module THC_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-#ifdef ICE
+    ! ice
     PetscReal :: sat_ice
     PetscReal :: sat_gas
     PetscReal :: dsat_dt
@@ -42,7 +42,6 @@ module THC_Aux_module
     PetscReal :: dden_ice_dt
     PetscReal :: u_ice
     PetscReal :: du_ice_dt
-#endif
   end type thc_auxvar_type
 
   type, public :: thc_parameter_type
@@ -50,10 +49,8 @@ module THC_Aux_module
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Thermal conductivity (wet)
     PetscReal, pointer :: alpha(:)
-#ifdef ICE
     PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
-    PetscReal, pointer :: alpha_fr(:)
-#endif
+    PetscReal, pointer :: alpha_fr(:) ! exponent frozen
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
     PetscReal, pointer :: diffusion_activation_energy(:)
@@ -76,9 +73,7 @@ module THC_Aux_module
             THCAuxVarCompute, THCAuxVarInit, &
             THCAuxVarCopy
 
-#ifdef ICE
   public :: THCAuxVarComputeIce
-#endif
 
 contains
 
@@ -164,7 +159,7 @@ subroutine THCAuxVarInit(aux_var,option)
   aux_var%xmol = 0.d0
   allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 1.d-9
-#ifdef ICE
+  ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
   aux_var%sat_ice = 0.d0
   aux_var%sat_gas = 0.d0
   aux_var%dsat_dt = 0.d0
@@ -177,7 +172,6 @@ subroutine THCAuxVarInit(aux_var,option)
   aux_var%dden_ice_dt = 0.d0
   aux_var%u_ice = 0.d0
   aux_var%du_ice_dt = 0.d0
-#endif
 
 end subroutine THCAuxVarInit
 
@@ -222,20 +216,20 @@ subroutine THCAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%du_dt = aux_var%du_dt  
   aux_var2%xmol = aux_var%xmol
   aux_var2%diff = aux_var%diff
-#ifdef ICE
-  aux_var2%sat_ice = aux_var%sat_ice 
-  aux_var2%sat_gas = aux_var%sat_gas
-  aux_var2%dsat_dt = aux_var%dsat_dt
-  aux_var2%dsat_ice_dp = aux_var%dsat_ice_dp
-  aux_var2%dsat_gas_dp = aux_var%dsat_gas_dp
-  aux_var2%dsat_ice_dt = aux_var%dsat_ice_dt
-  aux_var2%dsat_gas_dt = aux_var%dsat_gas_dt
-  aux_var2%den_ice = aux_var%den_ice
-  aux_var2%dden_ice_dp = aux_var%dden_ice_dp
-  aux_var2%dden_ice_dt = aux_var%dden_ice_dt
-  aux_var2%u_ice = aux_var%u_ice
-  aux_var2%du_ice_dt = aux_var%du_ice_dt
-#endif
+  if (option%use_th_freezing) then
+     aux_var2%sat_ice = aux_var%sat_ice 
+     aux_var2%sat_gas = aux_var%sat_gas
+     aux_var2%dsat_dt = aux_var%dsat_dt
+     aux_var2%dsat_ice_dp = aux_var%dsat_ice_dp
+     aux_var2%dsat_gas_dp = aux_var%dsat_gas_dp
+     aux_var2%dsat_ice_dt = aux_var%dsat_ice_dt
+     aux_var2%dsat_gas_dt = aux_var%dsat_gas_dt
+     aux_var2%den_ice = aux_var%den_ice
+     aux_var2%dden_ice_dp = aux_var%dden_ice_dp
+     aux_var2%dden_ice_dt = aux_var%dden_ice_dt
+     aux_var2%u_ice = aux_var%u_ice
+     aux_var2%du_ice_dt = aux_var%du_ice_dt
+  endif
 
 end subroutine THCAuxVarCopy
 
@@ -380,7 +374,6 @@ end subroutine THCAuxVarCompute
 !
 ! ************************************************************************** !
 
-#ifdef ICE
 subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                saturation_function, por, perm, option)
 
@@ -541,7 +534,6 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
 
 end subroutine THCAuxVarComputeIce
-#endif
 
 ! ************************************************************************** !
 !
@@ -614,12 +606,10 @@ subroutine THCAuxDestroy(aux)
     nullify(aux%thc_parameter%ckdry)
     if (associated(aux%thc_parameter%alpha)) deallocate(aux%thc_parameter%alpha)
     nullify(aux%thc_parameter%alpha)
-#ifdef ICE
     if (associated(aux%thc_parameter%ckfrozen)) deallocate(aux%thc_parameter%ckfrozen)
     nullify(aux%thc_parameter%ckfrozen)
     if (associated(aux%thc_parameter%alpha_fr)) deallocate(aux%thc_parameter%alpha_fr)
     nullify(aux%thc_parameter%alpha_fr)
-#endif
     if (associated(aux%thc_parameter%sir)) deallocate(aux%thc_parameter%sir)
     nullify(aux%thc_parameter%sir)
   endif

@@ -518,7 +518,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   PetscReal :: equil_conc(reaction%mineral%nmnrl)
   PetscInt :: i, cell
   PetscReal :: area_per_vol
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscInt :: num_iterations, ierr
   
   num_iterations = 0
@@ -610,10 +610,10 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
       endif
         
 #ifndef DONT_USE_WATEOS
-      call EOSWaterDensityEnthalpy(global_auxvar%temp(1), &
-                                   global_auxvar%pres(1), &
-                                   global_auxvar%den_kg(1), &
-                                   r1,r2,option%scale,ierr)
+      call EOSWaterDensity(global_auxvar%temp(1), &
+                           global_auxvar%pres(1), &
+                           global_auxvar%den_kg(1), &
+                           dum1,option%scale,ierr)
 #else
       call EOSWaterdensity(global_auxvar%temp(1),global_auxvar%pres(1), &
                     global_auxvar%den_kg(1))

@@ -1,6 +1,6 @@
 :Description: 1D test problem for THC mode
 :===================== THC mode ===============================================
-MODE TH
+MODE TH no_freezing
 
 :=========================== regression =======================================
 REGRESSION

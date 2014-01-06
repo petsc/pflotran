@@ -256,8 +256,10 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
 #ifndef DONT_USE_WATEOS
-  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw,dw_dp, &
-                               dw_dt,hw_dp,hw_dt,option%scale,ierr)
+!geh  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+!                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
+  call EOSWaterDensity(global_aux_var%temp(1),pw,dw_kg,dw_mol, &
+                       dw_dp,dw_dt,option%scale,ierr)
 #else
   call EOSWaterdensity(global_aux_var%temp(1),pw,dw_kg)
   pert = tol*pw

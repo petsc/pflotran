@@ -69,10 +69,6 @@ ifdef temp
   MYFLAGS += -DTEMP_DEPENDENT_LOGK
 endif
 
-ifdef ice
-  MYFLAGS += -DICE
-endif
-
 ifdef remove_sat
   MYFLAGS += -DREMOVE_SATURATION
 endif
