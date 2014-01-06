@@ -79,15 +79,22 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_module
   use Surface_Global_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadRequiredCards, &
+                                  SurfaceInitMatPropToRegions, &
+                                  SurfaceInitReadRegionFiles
   use Surface_Realization_class
   use Surface_TH_module
   use Unstructured_Grid_module
 #endif
 
 #ifdef GEOMECH
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  use Geomechanics_Init_module 
+#endif
+  use Geomechanics_Init_module, only : GeomechicsInitReadRequiredCards, &
+                                       GeomechInitMatPropToGeomechRegions
   use Geomechanics_Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Field_module
@@ -1499,11 +1506,15 @@ subroutine InitReadInput(simulation)
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
-  use Surface_Init_module
+  use Surface_Init_module, only : SurfaceInitReadInput
 #endif
 #ifdef GEOMECH
-  use Geomechanics_Init_module
+  use Geomechanics_Init_module, only : GeomechanicsInitReadInput
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
 #endif
 #ifdef SOLID_SOLUTION
   use Solid_Solution_module, only : SolidSolutionReadFromInputFile

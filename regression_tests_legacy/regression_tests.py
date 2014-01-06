@@ -83,7 +83,7 @@ class RegressionTest(object):
         self._pflotran_args = None
         self._stochastic_realizations = None
         self._restart_timestep = None
-        self._timeout = 60.0
+        self._timeout = 600.0
         self._check_performance = False
         self._num_failed = 0
         self._test_name = None

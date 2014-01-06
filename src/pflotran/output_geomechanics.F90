@@ -36,7 +36,11 @@ contains
 ! ************************************************************************** !
 subroutine OutputGeomechInit(geomech_realization,num_steps)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Option_module
 
   implicit none
@@ -62,7 +66,11 @@ end subroutine OutputGeomechInit
 subroutine OutputGeomechanics(geomech_realization,plot_flag, &
                               transient_plot_flag)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
 
@@ -129,7 +137,11 @@ end subroutine OutputGeomechanics
 ! ************************************************************************** !
 subroutine OutputTecplotGeomechanics(geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Discretization_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -234,7 +246,11 @@ end subroutine OutputTecplotGeomechanics
 ! ************************************************************************** !
 subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -395,7 +411,11 @@ end subroutine GetCellConnectionsGeomech
 ! ************************************************************************** !
 subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -472,7 +492,11 @@ end subroutine OutputTecplotHeader
 function OutputTecplotZoneHeader(geomech_realization,variable_count, &
                                  tecplot_format)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -531,7 +555,11 @@ end function OutputTecplotZoneHeader
 ! ************************************************************************** !
 subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
   use Option_module
@@ -669,7 +697,11 @@ end subroutine GetVertexCoordinatesGeomech
 subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
                                         isubvar1)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Field_module
@@ -706,8 +738,12 @@ end subroutine OutputGeomechGetVarFromArray
 ! ************************************************************************** !
 subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatype)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
-  
+#endif
+
   implicit none
 
   PetscInt :: fid
@@ -736,7 +772,11 @@ end subroutine WriteTecplotDataSetGeomechFromVec
 subroutine WriteTecplotDataSetGeomech(fid,geomech_realization,array,datatype, &
                                       size_flag)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Patch_module
@@ -769,7 +809,11 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
                                                 array,datatype, &
                                                 size_flag,num_per_line)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -1191,7 +1235,11 @@ end subroutine OutputXMFAttributeGeomech
 ! ************************************************************************** !
 subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Discretization_module
   use Option_module
   use Geomechanics_Grid_module
@@ -1508,7 +1556,11 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 
   use hdf5
   use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec
+#ifdef PROCESS_MODEL
+  use Geomechanics_Realization_class
+#else
   use Geomechanics_Realization_module
+#endif
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module

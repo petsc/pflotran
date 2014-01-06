@@ -286,7 +286,11 @@ class(pmc_base_type), target :: this
 
     ! Run underlying process model couplers
     if (associated(this%below)) then
+      ! Set data needed by process-models
+      call this%SetAuxData()
       call this%below%RunToTime(this%timestepper%target_time,local_stop_flag)
+      ! Get data from other process-models
+      call this%GetAuxData()
     endif
     
     ! only print output for process models of depth 0

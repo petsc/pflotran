@@ -48,7 +48,9 @@ program pflotran
   use Surface_Factory_module
   use Surf_Subsurf_Factory_module
 #endif  
-  
+#ifdef GEOMECH
+  use Geomechanics_Factory_module
+#endif
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -72,7 +74,11 @@ program pflotran
       call SurfaceInitialize(simulation,option)
     case('SURFACE_SUBSURFACE')
       call SurfSubsurfaceInitialize(simulation,option)
-#endif      
+#endif
+#ifdef GEOMECH
+    case ('GEOMECHANICS')
+      call GeomechanicsInitialize(simulation,option)
+#endif
     case default
       option%io_buffer = 'Simulation Mode not recognized.'
       call printErrMsg(option)

@@ -21,11 +21,17 @@ module Simulation_Aux_module
     Vec :: subsurf_sat
     Vec :: subsurf_den
 
+    Vec :: subsurf_por0
+    Vec :: subsurf_por
+    Vec :: subsurf_strain
+    Vec :: subsurf_stress
+
     ! Size of surface cells of subsurface domain
     Vec :: subsurf_pres_top_bc
     Vec :: subsurf_temp_top_bc
     Vec :: subsurf_mflux_exchange_with_surf
     Vec :: subsurf_hflux_exchange_with_surf
+
 
     ! Size of entire surface domain
     Vec :: surf_head
@@ -36,6 +42,8 @@ module Simulation_Aux_module
     VecScatter :: surf_to_subsurf
     VecScatter :: subsurf_to_surf
     VecScatter :: subsurf_to_hydrogeophyics
+    VecScatter :: geomechanics_to_subsurf
+    VecScatter :: subsurf_to_geomechanics
 
   end type simulation_aux_type
 
@@ -44,6 +52,7 @@ module Simulation_Aux_module
             SimAuxCopySubsurfVec, &
             SimAuxCopySubsurfTopBCVec, &
             SimAuxCopySurfVec, &
+            SimAuxCopySubsurfGeomechVec, &
             SimAuxDestroy
 
 contains
@@ -71,6 +80,10 @@ function SimAuxCreate()
   aux%subsurf_temp = 0
   aux%subsurf_sat = 0
   aux%subsurf_den = 0
+  aux%subsurf_por0 = 0
+  aux%subsurf_por = 0
+  aux%subsurf_strain = 0
+  aux%subsurf_stress = 0
   aux%subsurf_pres_top_bc = 0
   aux%subsurf_temp_top_bc = 0
   aux%subsurf_mflux_exchange_with_surf = 0
@@ -84,6 +97,8 @@ function SimAuxCreate()
   aux%surf_to_subsurf = 0
   aux%subsurf_to_surf = 0
   aux%subsurf_to_hydrogeophyics = 0
+  aux%subsurf_to_geomechanics = 0
+  aux%geomechanics_to_subsurf = 0
 
   SimAuxCreate => aux
 
@@ -114,6 +129,10 @@ subroutine SimAuxCopyVecScatter(aux, vscat, vscat_index)
       call VecScatterCopy(vscat, aux%subsurf_to_surf, ierr)
     case(SUBSURF_TO_HYDROGEOPHY)
       call VecScatterCopy(vscat, aux%subsurf_to_hydrogeophyics, ierr)
+    case(SUBSURF_TO_GEOMECHANICS)
+      call VecScatterCopy(vscat, aux%subsurf_to_geomechanics, ierr)
+    case(GEOMECHANICS_TO_SUBSURF)
+      call VecScatterCopy(vscat, aux%geomechanics_to_subsurf, ierr)
   end select  
 
 end subroutine SimAuxCopyVecScatter
@@ -139,6 +158,8 @@ subroutine SimAuxCopySubsurfVec(aux, subsurf_vec)
   call VecDuplicate(subsurf_vec,aux%subsurf_temp,ierr)
   call VecDuplicate(subsurf_vec,aux%subsurf_sat,ierr)
   call VecDuplicate(subsurf_vec,aux%subsurf_den,ierr)
+  call VecDuplicate(subsurf_vec,aux%subsurf_por0,ierr)
+  call VecDuplicate(subsurf_vec,aux%subsurf_por,ierr)
 
 end subroutine SimAuxCopySubsurfVec
 
@@ -192,6 +213,28 @@ subroutine SimAuxCopySurfVec(aux, surf_head_vec)
 end subroutine SimAuxCopySurfVec
 
 ! ************************************************************************** !
+!> This routine creates vectors associated with geomechanics.
+!!
+!> @author
+!! Gautam Bisht,LBNL
+!!
+!! date: 01/02/13
+! ************************************************************************** !
+subroutine SimAuxCopySubsurfGeomechVec(aux, subsurf_geomech_vec)
+
+  implicit none
+
+  type (simulation_aux_type),pointer :: aux
+  Vec :: subsurf_geomech_vec
+
+  PetscErrorCode :: ierr
+
+  call VecDuplicate(subsurf_geomech_vec, aux%subsurf_stress, ierr)
+  call VecDuplicate(subsurf_geomech_vec, aux%subsurf_strain, ierr)
+
+end subroutine SimAuxCopySubsurfGeomechVec
+
+! ************************************************************************** !
 !> This routine deallocates auxillary object.
 !!
 !> @author
@@ -211,6 +254,11 @@ subroutine SimAuxDestroy(aux)
   if (aux%subsurf_temp /= 0) call VecDestroy(aux%subsurf_temp,ierr)
   if (aux%subsurf_sat /= 0) call VecDestroy(aux%subsurf_sat,ierr)
   if (aux%subsurf_den /= 0) call VecDestroy(aux%subsurf_den,ierr)
+  if (aux%subsurf_por0 /= 0) call VecDestroy(aux%subsurf_por0,ierr)
+  if (aux%subsurf_por /= 0) call VecDestroy(aux%subsurf_por,ierr)
+  if (aux%subsurf_stress /= 0) call VecDestroy(aux%subsurf_stress,ierr)
+  if (aux%subsurf_strain /= 0) call VecDestroy(aux%subsurf_strain,ierr)
+
   if (aux%subsurf_pres_top_bc /= 0) call VecDestroy(aux%subsurf_pres_top_bc,ierr)
   if (aux%subsurf_temp_top_bc /= 0) call VecDestroy(aux%subsurf_temp_top_bc,ierr)
   if (aux%subsurf_mflux_exchange_with_surf /= 0) &
@@ -229,6 +277,10 @@ subroutine SimAuxDestroy(aux)
   if (aux%subsurf_to_surf /= 0) call VecScatterDestroy(aux%subsurf_to_surf,ierr)
   if (aux%subsurf_to_hydrogeophyics /= 0) &
     call VecScatterDestroy(aux%subsurf_to_hydrogeophyics,ierr)
+  if (aux%subsurf_to_geomechanics /= 0) &
+    call VecScatterDestroy(aux%subsurf_to_geomechanics, ierr)
+  if (aux%geomechanics_to_subsurf /= 0) &
+    call VecScatterDestroy(aux%geomechanics_to_subsurf, ierr)
 
 end subroutine SimAuxDestroy
 
