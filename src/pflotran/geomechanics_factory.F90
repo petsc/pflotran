@@ -212,7 +212,7 @@ subroutine HijackGeomechanicsSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Geomechanics_class
   use Simulation_Base_class
-  use Process_Model_Geomechanics_Force_class
+  use PM_Geomechanics_Force_class
   use PM_Base_class
   use PM_module
   use Timestepper_Geomechanics_class

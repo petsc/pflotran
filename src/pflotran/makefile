@@ -390,7 +390,7 @@ geomech_obj = \
 	${common_src}shape_function.o \
 	${common_src}geomechanics_global_aux.o\
 	${common_src}output_geomechanics.o \
-	${common_src}process_model_geomechanics_force.o \
+	${common_src}pm_geomechanics_force.o \
 	${common_src}pmc_geomechanics.o \
 	${common_src}geomechanics_factory.o \
 	${common_src}geomechanics_simulation.o \
@@ -766,7 +766,7 @@ pm_general.o : checkpoint.o communicator_base.o condition.o discretization.o \
                field.o general.o general_aux.o global.o global_aux.o grid.o \
                option.o pflotran_constants.o pm_base.o realization.o \
                structured_communicator.o unstructured_communicator.o
-process_model_geomechanics_force.o : communicator_base.o condition.o \
+pm_geomechanics_force.o : communicator_base.o condition.o \
                                geomechanics_discretization.o grid.o option.o \
                                pflotran_constants.o pm_base.o \
                                geomechanics_realization.o \
@@ -1058,7 +1058,7 @@ timestepper_BE.o : convergence.o input_aux.o option.o output.o \
 timestepper_base.o : input_aux.o option.o output.o pflotran_constants.o \
                      pm_base.o string.o waypoint.o
 timestepper_geomechanics.o : option.o output.o pflotran_constants.o \
-                        pm_base.o process_model_geomechanics_force.o \
+                        pm_base.o pm_geomechanics_force.o \
                         solver.o geomechanics_force.o timestepper_base.o waypoint.o
 timestepper_surface.o : option.o output.o pflotran_constants.o pm_base.o \
                         pm_surface_flow.o solver.o surface_flow.o \

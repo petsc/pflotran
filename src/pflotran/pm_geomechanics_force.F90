@@ -1,6 +1,6 @@
 #ifdef GEOMECH
 
-module Process_Model_Geomechanics_Force_class
+module PM_Geomechanics_Force_class
 
   use PM_Base_class
 #ifdef PROCESS_MODEL
@@ -404,6 +404,6 @@ subroutine PMGeomechForceDestroy(this)
   
 end subroutine PMGeomechForceDestroy
 
-end module Process_Model_Geomechanics_Force_class
+end module PM_Geomechanics_Force_class
 
 #endif
