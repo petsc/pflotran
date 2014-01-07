@@ -174,6 +174,8 @@ subroutine MultiSimulationIncrement(multisimulation,option)
   do
 #endif
 
+    call OptionInitRealization(option)
+
     multisimulation%cur_realization = multisimulation%cur_realization + 1
     ! Set group prefix based on id
     option%id = &
