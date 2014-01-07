@@ -52,7 +52,6 @@ subroutine HydrogeophysicsWrapperInit(option, &
 !  call printMsg(option,'HydrogeophysicsWrapperInit()')
   
   ! from e4d_vars.F90
-#ifdef E4D
   E4D_COMM = option%mycomm
   PFE4D_MASTER_COMM = pf_e4d_master_comm
   my_rank = option%myrank
@@ -67,7 +66,6 @@ subroutine HydrogeophysicsWrapperInit(option, &
 
   call setup_e4d
   call run_e4d
-#endif
   
 end subroutine HydrogeophysicsWrapperInit
 
