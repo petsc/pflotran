@@ -320,6 +320,7 @@ misc_obj = \
 	${common_src}init.o \
 	${common_src}mass_transfer.o \
 	${common_src}matrix_buffer.o \
+	${common_src}multisimulation.o \
 	${common_src}observation.o \
 	${common_src}patch.o \
 	${common_src}pflotran_factory.o \
@@ -590,6 +591,8 @@ mphase_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                saturation_function.o
 mphase_pckr_mod.o : material.o option.o pflotran_constants.o \
                     saturation_function.o
+multisimulation.o : pflotran_constants.o simulation.o option.o input_aux.o \
+                    option.o
 observation.o : connection.o input_aux.o option.o pflotran_constants.o \
                 region.o string.o
 option.o : logging.o pflotran_constants.o
@@ -644,11 +647,11 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           th_aux.o thc_aux.o utility.o variables.o
 pflotran.o : hydrogeophysics_factory.o option.o pflotran_constants.o \
              pflotran_factory.o simulation_base.o subsurface_factory.o \
-             surface_factory.o surfsubsurface_factory.o
+             surface_factory.o surfsubsurface_factory.o multisimulation.o
 pflotran_constants.o :
 pflotran_factory.o : init.o input_aux.o logging.o option.o \
                      pflotran_constants.o regression.o simulation.o string.o \
-                     timestepper.o
+                     timestepper.o multisimulation.o
 pm_base.o : option.o output_aux.o pflotran_constants.o realization_base.o
 pm_flash2.o : checkpoint.o communicator_base.o condition.o discretization.o \
               flash2.o global.o grid.o option.o pflotran_constants.o pm_base.o \
