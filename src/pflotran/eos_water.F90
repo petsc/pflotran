@@ -13,10 +13,10 @@ module EOS_Water_module
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
 
-  ! bragflo
-  PetscReal :: bragflo_reference_density
-  PetscReal :: bragflo_reference_pressure
-  PetscReal :: bragflo_water_compressibility
+  ! exponential
+  PetscReal :: exponent_reference_density
+  PetscReal :: exponent_reference_pressure
+  PetscReal :: exponent_water_compressibility
 
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 
@@ -153,7 +153,7 @@ module EOS_Water_module
             EOSWaterSetDensityConstant, &
             EOSWaterSetEnthalpyConstant, &
             EOSWaterSetViscosityConstant, &
-            EOSWaterSetDensityBRAGFLO
+            EOSWaterSetDensityExponential
  
   contains
   
@@ -166,9 +166,9 @@ subroutine EOSWaterInit()
   constant_viscosity = -999.d0
   constant_enthalpy = -999.d0
 
-  bragflo_reference_density = -999.d0
-  bragflo_reference_pressure = -999.d0
-  bragflo_water_compressibility = -999.d0
+  exponent_reference_density = -999.d0
+  exponent_reference_pressure = -999.d0
+  exponent_water_compressibility = -999.d0
   
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyIFC67
   EOSWaterDensityPtr => EOSWaterDensityIFC67
@@ -215,12 +215,12 @@ subroutine EOSWaterVerify(ierr,error_string)
     ierr = 1
   endif
   
-  if (associated(EOSWaterDensityPtr,EOSWaterDensityBragflo) .and. &
-      (bragflo_reference_density < -998.d0 .or. & 
-       bragflo_reference_pressure < -998.d0 .or. &
-       bragflo_water_compressibility < -998.d0)) then
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityExponential) .and. &
+      (exponent_reference_density < -998.d0 .or. & 
+       exponent_reference_pressure < -998.d0 .or. &
+       exponent_water_compressibility < -998.d0)) then
     error_string = trim(error_string) // &
-      ' BRAGFLO parameters incorrect.'
+      ' Exponential parameters incorrect.'
     ierr = 1
   endif
 
@@ -294,7 +294,8 @@ subroutine EOSWaterSetViscosityConstant(viscosity)
 end subroutine EOSWaterSetViscosityConstant
 
 ! ************************************************************************** !
-subroutine EOSWaterSetDensityBRAGFLO(density0,pressure0,water_compressibility)
+subroutine EOSWaterSetDensityExponential(density0,pressure0, &
+                                         water_compressibility)
 
   implicit none
   
@@ -302,13 +303,13 @@ subroutine EOSWaterSetDensityBRAGFLO(density0,pressure0,water_compressibility)
   PetscReal :: pressure0
   PetscReal :: water_compressibility
   
-  bragflo_reference_density = density0
-  bragflo_reference_pressure = pressure0
-  bragflo_water_compressibility = water_compressibility  
+  exponent_reference_density = density0
+  exponent_reference_pressure = pressure0
+  exponent_water_compressibility = water_compressibility  
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyGeneral
-  EOSWaterDensityPtr => EOSWaterDensityBRAGFLO
+  EOSWaterDensityPtr => EOSWaterDensityExponential
   
-end subroutine EOSWaterSetDensityBRAGFLO
+end subroutine EOSWaterSetDensityExponential
 
 ! ************************************************************************** !
 subroutine EOSWaterViscosityNoDerive(T, P, PS, VW, ierr)
@@ -1353,9 +1354,9 @@ subroutine EOSWaterEnthalpyConstant(t,p,hw, &
 end subroutine EOSWaterEnthalpyConstant
 
 ! ************************************************************************** !
-subroutine EOSWaterDensityBRAGFLO(t,p,dw,dwmol, &
-                                  calculate_derivatives, &
-                                  dwp,dwt,scale,ierr)
+subroutine EOSWaterDensityExponential(t,p,dw,dwmol, &
+                                      calculate_derivatives, &
+                                      dwp,dwt,scale,ierr)
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade
@@ -1366,18 +1367,18 @@ subroutine EOSWaterDensityBRAGFLO(t,p,dw,dwmol, &
   PetscErrorCode, intent(out) :: ierr
   
   ! kg/m^3
-  dw = bragflo_reference_density*exp(bragflo_water_compressibility* &
-                                     (p-bragflo_reference_pressure))
+  dw = exponent_reference_density*exp(exponent_water_compressibility* &
+                                     (p-exponent_reference_pressure))
   dwmol = dw/FMWH2O ! kmol/m^3
   
   if (calculate_derivatives) then
-    dwp = dwmol*bragflo_water_compressibility !kmol/m^3/Pa
+    dwp = dwmol*exponent_water_compressibility !kmol/m^3/Pa
   else
     dwp = 0.d0
   endif
   dwt = 0.d0
 
-end subroutine EOSWaterDensityBRAGFLO
+end subroutine EOSWaterDensityExponential
 
 ! ************************************************************************** !
 subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
