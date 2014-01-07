@@ -137,6 +137,8 @@ subroutine ReactionReadPass1(reaction,input,option)
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
+  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
+                                               prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
   PetscInt :: i, temp_int
   PetscReal :: temp_real
@@ -151,6 +153,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   nullify(prev_colloid)
   nullify(prev_cation)
   nullify(prev_general_rxn)
+  nullify(prev_radioactive_decay_rxn)
   nullify(prev_kd_rxn)
   nullify(prev_ionx_rxn)
   
@@ -273,6 +276,44 @@ subroutine ReactionReadPass1(reaction,input,option)
           prev_immobile_species => immobile_species
           nullify(immobile_species)
         enddo        
+      case('RADIOACTIVE_DECAY_REACTION')
+        reaction%nradiodecay_rxn = reaction%nradiodecay_rxn + 1
+        radioactive_decay_rxn => RadioactiveDecayRxnCreate()
+        do 
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'CHEMISTRY,RADIOACTIVE_DECAY_REACTION')
+          call StringToUpper(word)   
+
+          select case(trim(word))
+            case('REACTION')
+              ! remainder of string should be the reaction equation
+              radioactive_decay_rxn%reaction = trim(adjustl(input%buf))
+              ! set flag for error message
+              if (len_trim(radioactive_decay_rxn%reaction) < 2) input%ierr = 1
+              call InputErrorMsg(input,option,'reaction', &
+                                 'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+            case('FORWARD_RATE')
+              call InputReadDouble(input,option, &
+                                   radioactive_decay_rxn%forward_rate)
+              call InputErrorMsg(input,option,'forward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
+          end select
+        enddo   
+        if (.not.associated(reaction%radioactive_decay_rxn_list)) then
+          reaction%radioactive_decay_rxn_list => radioactive_decay_rxn
+          radioactive_decay_rxn%id = 1
+        endif
+        if (associated(prev_radioactive_decay_rxn)) then
+          prev_radioactive_decay_rxn%next => radioactive_decay_rxn
+          radioactive_decay_rxn%id = prev_radioactive_decay_rxn%id + 1
+        endif
+        prev_radioactive_decay_rxn => radioactive_decay_rxn
+        nullify(radioactive_decay_rxn)
       case('GENERAL_REACTION')
         reaction%ngeneral_rxn = reaction%ngeneral_rxn + 1
         general_rxn => GeneralRxnCreate()
@@ -752,7 +793,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   endif
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
       reaction%ngeneral_rxn + reaction%microbial%nrxn + &
-      reaction%immobile%nimmobile > 0 .or. &
+      reaction%nradiodecay_rxn + reaction%immobile%nimmobile > 0 .or. &
       reaction_sandbox_read) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
@@ -808,7 +849,8 @@ subroutine ReactionReadPass2(reaction,input,option)
     select case(trim(word))
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
-            'MICROBIAL_REACTION','IMMOBILE_SPECIES')
+            'MICROBIAL_REACTION','IMMOBILE_SPECIES', &
+            'RADIOACTIVE_DECAY_REACTION')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)
@@ -3246,6 +3288,11 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                           volume,reaction,option)
   endif
   
+  if (reaction%nradiodecay_rxn > 0) then
+    call RRadioactiveDecay(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                           porosity,volume,reaction,option)
+  endif
+  
   if (reaction%ngeneral_rxn > 0) then
     call RGeneral(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
@@ -4197,16 +4244,17 @@ subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
     rt_auxvar%dtotal_sorb_eq(:,:)*v_t
 
 end subroutine RAccumulationSorbDerivative
-#ifdef RADIOACTIVE_DECAY
 ! ************************************************************************** !
 !
-! RGeneral: Computes the general reaction rates
+! RRadioactiveDecay: Computes radioactive decay with a single reactant 
+!                    (considering both the aqueous and sorbed phases) with 
+!                    the possibility of multiple daughter products
 ! author: Glenn Hammond
-! date: 09/08/10
+! date: 09/08/10, 01/07/13
 !
 ! ************************************************************************** !
-subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
-                    porosity,volume,reaction,option)
+subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
+                             global_auxvar,porosity,volume,reaction,option)
 
   use Option_module
   
@@ -4229,12 +4277,12 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
 
   L_water = porosity*global_auxvar%sat(iphase)*volume*1.d3 ! L water
 
-  do irxn = 1, reaction%ngeneral_rxn ! for each mineral
+  do irxn = 1, reaction%nradiodecay_rxn ! for each mineral
     
     ! units(kf): 1/sec
     
     ! we assume only one chemical component involved in decay reaction
-    icomp = reaction%generalforwardspecid(1,irxn)
+    icomp = reaction%radiodecayforwardspecid(irxn)
 
     ! sum total moles of component in aqueous and sorbed phases
     sum = rt_auxvar%total(icomp,iphase)*L_water
@@ -4242,45 +4290,45 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
       sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
     endif
     
-    rate = sum*reaction%general_kf(irxn)
+    rate = sum*reaction%radiodecay_kf(irxn)
     
     ! units(Res): mol/sec
-    ncomp = reaction%generalspecid(0,irxn)
+    ncomp = reaction%radiodecayspecid(0,irxn)
     do i = 1, ncomp
-      icomp = reaction%generalspecid(i,irxn)
+      icomp = reaction%radiodecayspecid(i,irxn)
       ! units = mol/sec
-      Res(icomp) = Res(icomp) - reaction%generalstoich(i,irxn)*rate
+      Res(icomp) = Res(icomp) - reaction%radiodecaystoich(i,irxn)*rate
     enddo    
 
     if (.not. compute_derivative) cycle   
 
-    tempreal = -1.d0*reaction%general_kf(irxn)
-    jcomp = reaction%generalforwardspecid(1,irxn)
+    tempreal = -1.d0*reaction%radiodecay_kf(irxn)
+    jcomp = reaction%radiodecayforwardspecid(irxn)
     if (associated(rt_auxvar%dtotal_sorb_eq)) then
       do i = 1, ncomp
-        icomp = reaction%generalspecid(i,irxn)
+        icomp = reaction%radiodecayspecid(i,irxn)
         ! units = (mol/sec)*(kg water/mol) = kg water/sec
         Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
           tempreal * &
-          reaction%generalstoich(i,irxn) * &
+          reaction%radiodecaystoich(i,irxn) * &
           (rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water + &
            rt_auxvar%dtotal_sorb_eq(jcomp,1:reaction%naqcomp)*volume)
       enddo
     else ! no sorption
       do i = 1, ncomp
-        icomp = reaction%generalspecid(i,irxn)
+        icomp = reaction%radiodecayspecid(i,irxn)
         ! units = (mol/sec)*(kg water/mol) = kg water/sec
         Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
           tempreal * &
-          reaction%generalstoich(i,irxn) * &
+          reaction%radiodecaystoich(i,irxn) * &
           rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water
       enddo
     endif
     
   enddo  ! loop over reactions
     
-end subroutine RGeneral
-#else
+end subroutine RRadioactiveDecay
+
 ! ************************************************************************** !
 !
 ! RGeneral: Computes the general reaction rates
@@ -4420,7 +4468,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   enddo  ! loop over reactions
     
 end subroutine RGeneral
-#endif
+
 ! ************************************************************************** !
 !
 ! RSolve: Computes the kinetic mineral precipitation/dissolution
