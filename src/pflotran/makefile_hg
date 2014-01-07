@@ -477,7 +477,7 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
                    unstructured_grid_aux.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
 e4d_run.o : e4d_vars.o
-e4d_setup.o : e4d_vars.o
+e4d_setup.o : e4d_vars.o mat_inv.o
 e4d_vars.o :
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
