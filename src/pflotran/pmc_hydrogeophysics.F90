@@ -203,7 +203,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   call VecGetArrayF90(this%solution_mpi,vec2_ptr,ierr)
 !      vec1_ptr(:) = vec1_ptr(:) + num_calls
   vec2_ptr(:) = vec1_ptr(:)
-  print *, 'PMC update to solution', vec2_ptr(16)
+!  print *, 'PMC update to solution', vec2_ptr(16)
   call VecRestoreArrayF90(this%realization%field%work,vec1_ptr,ierr)
   call VecRestoreArrayF90(this%solution_mpi,vec2_ptr,ierr)
 
