@@ -403,7 +403,6 @@ contains
 
   !____________________________________________________________________
   subroutine build_delA
-    use e4d_mat_inv
     implicit none
     
    
