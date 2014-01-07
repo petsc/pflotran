@@ -31,13 +31,11 @@ subroutine HydrogeophysicsWrapperInit(option, &
   
   use Option_module
 
-#ifdef E4D
   use vars, only : E4D_COMM, my_rank, n_rank, PFE4D_MASTER_COMM, &
                    pflotran_solution_vec_mpi, pflotran_solution_vec_seq, &
                    pflotran_scatter, pflotran_solution_vec_size
   use e4d_setup, only : setup_e4d
   use e4d_run, only: run_e4D
-#endif
   
   implicit none
 
