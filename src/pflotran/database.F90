@@ -2967,7 +2967,7 @@ subroutine BasisInit(reaction,option)
         endif
       enddo
       reaction%radiodecayspecid(0,irxn) = dbaserxn%nspec
-      reaction%radiodecay_kf(irxn) = cur_radiodecay_rxn%forward_rate
+      reaction%radiodecay_kf(irxn) = cur_radiodecay_rxn%rate_constant
       
       cur_radiodecay_rxn => cur_radiodecay_rxn%next
       
