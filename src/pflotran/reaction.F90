@@ -115,6 +115,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   use String_module
   use Input_Aux_module
   use Utility_module
+  use Units_module
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
                                TOTAL_MOLALITY, TOTAL_MOLARITY, &
                                SECONDARY_MOLALITY, SECONDARY_MOLARITY
@@ -279,6 +280,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('RADIOACTIVE_DECAY_REACTION')
         reaction%nradiodecay_rxn = reaction%nradiodecay_rxn + 1
         radioactive_decay_rxn => RadioactiveDecayRxnCreate()
+        radioactive_decay_rxn%rate_constant = -999.d0
         do 
           call InputReadPflotranString(input,option)
           if (InputError(input)) exit
@@ -296,14 +298,45 @@ subroutine ReactionReadPass1(reaction,input,option)
               ! set flag for error message
               if (len_trim(radioactive_decay_rxn%reaction) < 2) input%ierr = 1
               call InputErrorMsg(input,option,'reaction', &
-                                 'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
-            case('FORWARD_RATE')
+                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+            case('RATE_CONSTANT')
               call InputReadDouble(input,option, &
-                                   radioactive_decay_rxn%forward_rate)
-              call InputErrorMsg(input,option,'forward rate', &
-                                 'CHEMISTRY,GENERAL_REACTION') 
+                                   radioactive_decay_rxn%rate_constant)
+              call InputErrorMsg(input,option,'rate constant', &
+                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (InputError(input)) then
+                call InputDefaultMsg(input,option, &
+                                  'RADIOACTIVE_DECAY_RXN RATE_CONSTANT UNITS')
+              else
+                radioactive_decay_rxn%rate_constant = &
+                  UnitsConvertToInternal(word,option) * &
+                  radioactive_decay_rxn%rate_constant
+              endif
+            case('HALF_LIFE')
+              call InputReadDouble(input,option, &
+                                   radioactive_decay_rxn%rate_constant)
+              call InputErrorMsg(input,option,'half life', &
+                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (InputError(input)) then
+                call InputDefaultMsg(input,option, &
+                                     'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
+              else
+                radioactive_decay_rxn%rate_constant = &
+                  UnitsConvertToInternal(word,option) * &
+                  radioactive_decay_rxn%rate_constant
+              endif
+              ! convert half life to rate constant
+              radioactive_decay_rxn%rate_constant = &
+                -1.d0*log(0.5d0)/radioactive_decay_rxn%rate_constant
           end select
         enddo   
+        if (dabs(radioactive_decay_rxn%rate_constant + 999.d0) < 1.d-10) then
+          option%io_buffer = 'RATE_CONSTANT or HALF_LIFE must be set in ' // &
+            'RADIOACTIVE_DECAY_REACTION.'
+          call printErrMsg(option)
+        endif
         if (.not.associated(reaction%radioactive_decay_rxn_list)) then
           reaction%radioactive_decay_rxn_list => radioactive_decay_rxn
           radioactive_decay_rxn%id = 1
