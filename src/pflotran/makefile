@@ -311,9 +311,10 @@ misc_obj = \
 	${common_src}convergence.o \
 	${common_src}coupler.o \
 	${common_src}debug.o \
-	${common_src}e4d_vars.o \
-	${common_src}e4d_setup.o \
+	${common_src}e4d_mat_inv.o \
 	${common_src}e4d_run.o \
+	${common_src}e4d_setup.o \
+	${common_src}e4d_vars.o \
 	${common_src}field.o \
 	${common_src}geometry.o \
 	${common_src}hydrogeophysics_factory.o \
@@ -322,7 +323,6 @@ misc_obj = \
 	${common_src}hydrostatic.o \
 	${common_src}init.o \
 	${common_src}mass_transfer.o \
-	${common_src}mat_inv.o \
 	${common_src}matrix_buffer.o \
 	${common_src}multisimulation.o \
 	${common_src}observation.o \
@@ -480,8 +480,9 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
                    unstructured_explicit.o unstructured_grid.o \
                    unstructured_grid_aux.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
+e4d_mat_inv.o :
 e4d_run.o : e4d_vars.o
-e4d_setup.o : e4d_vars.o
+e4d_setup.o : e4d_vars.o e4d_mat_inv.o
 e4d_vars.o :
 eos.o : eos_water.o input_aux.o option.o pflotran_constants.o string.o
 eos_water.o : pflotran_constants.o
@@ -564,7 +565,6 @@ logging.o : pflotran_constants.o
 mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
                   pflotran_constants.o string.o
-mat_inv.o :
 material.o : dataset_common_hdf5.o input_aux.o option.o pflotran_constants.o \
              string.o
 material_aux.o : option.o pflotran_constants.o
