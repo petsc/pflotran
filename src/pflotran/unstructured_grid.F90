@@ -3979,7 +3979,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   
   ! Perform a matrix-matrix multiplication
   call MatMatMult(Mat_vert_to_cell,Mat_proc_to_vert, &
-                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL_PRECISION,Mat_proc_to_cell,ierr)
+                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,Mat_proc_to_cell,ierr)
 
   ! Transpose of the result gives: cell ids that are needed after growing stencil
   ! width by one

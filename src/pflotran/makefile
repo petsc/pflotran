@@ -311,6 +311,10 @@ misc_obj = \
 	${common_src}convergence.o \
 	${common_src}coupler.o \
 	${common_src}debug.o \
+	${common_src}e4d_mat_inv.o \
+	${common_src}e4d_run.o \
+	${common_src}e4d_setup.o \
+	${common_src}e4d_vars.o \
 	${common_src}field.o \
 	${common_src}geometry.o \
 	${common_src}hydrogeophysics_factory.o \
@@ -476,6 +480,10 @@ discretization.o : dm_kludge.o grid.o input_aux.o mfd.o mfd_aux.o option.o \
                    unstructured_explicit.o unstructured_grid.o \
                    unstructured_grid_aux.o
 dm_kludge.o : pflotran_constants.o unstructured_grid_aux.o
+e4d_mat_inv.o :
+e4d_run.o : e4d_vars.o
+e4d_setup.o : e4d_vars.o e4d_mat_inv.o
+e4d_vars.o :
 eos.o : eos_water.o input_aux.o option.o pflotran_constants.o string.o
 eos_water.o : pflotran_constants.o
 field.o : pflotran_constants.o
@@ -504,10 +512,10 @@ global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
            option.o patch.o pflotran_constants.o realization.o \
            realization_base.o variables.o
 global_aux.o : option.o pflotran_constants.o utility.o
-grid.o : connection.o logging.o mfd_aux.o option.o pflotran_constants.o \
-         region.o structured_grid.o unstructured_cell.o \
+grid.o : connection.o dm_kludge.o logging.o mfd_aux.o option.o \
+         pflotran_constants.o region.o structured_grid.o unstructured_cell.o \
          unstructured_explicit.o unstructured_grid.o unstructured_grid_aux.o \
-         utility.o dm_kludge.o
+         utility.o
 hdf5.o : discretization.o field.o grid.o hdf5_aux.o logging.o option.o patch.o \
          pflotran_constants.o realization.o realization_base.o region.o \
          unstructured_cell.o utility.o
@@ -521,7 +529,8 @@ hydrogeophysics_simulation.o : hydrogeophysics_wrapper.o option.o output.o \
                                pflotran_constants.o pmc_base.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                subsurface_simulation.o
-hydrogeophysics_wrapper.o : option.o pflotran_constants.o
+hydrogeophysics_wrapper.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
+                            pflotran_constants.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_ascii.o \
                 dataset_gridded_hdf5.o eos_water.o general_aux.o grid.o \
                 option.o pflotran_constants.o region.o structured_grid.o \
@@ -591,8 +600,7 @@ mphase_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                saturation_function.o
 mphase_pckr_mod.o : material.o option.o pflotran_constants.o \
                     saturation_function.o
-multisimulation.o : pflotran_constants.o simulation.o option.o input_aux.o \
-                    option.o
+multisimulation.o : input_aux.o option.o pflotran_constants.o simulation.o
 observation.o : connection.o input_aux.o option.o pflotran_constants.o \
                 region.o string.o
 option.o : logging.o pflotran_constants.o
@@ -645,13 +653,13 @@ patch.o : auxiliary.o condition.o connection.o constraint.o coupler.o \
           saturation.o saturation_function.o strata.o surface_auxiliary.o \
           surface_complexation_aux.o surface_field.o surface_material.o \
           th_aux.o thc_aux.o utility.o variables.o
-pflotran.o : hydrogeophysics_factory.o option.o pflotran_constants.o \
-             pflotran_factory.o simulation_base.o subsurface_factory.o \
-             surface_factory.o surfsubsurface_factory.o multisimulation.o
+pflotran.o : hydrogeophysics_factory.o multisimulation.o option.o \
+             pflotran_constants.o pflotran_factory.o simulation_base.o \
+             subsurface_factory.o surface_factory.o surfsubsurface_factory.o
 pflotran_constants.o :
-pflotran_factory.o : init.o input_aux.o logging.o option.o \
+pflotran_factory.o : init.o input_aux.o multisimulation.o option.o \
                      pflotran_constants.o regression.o simulation.o string.o \
-                     timestepper.o multisimulation.o
+                     timestepper.o
 pm_base.o : option.o output_aux.o pflotran_constants.o realization_base.o
 pm_flash2.o : checkpoint.o communicator_base.o condition.o discretization.o \
               flash2.o global.o grid.o option.o pflotran_constants.o pm_base.o \

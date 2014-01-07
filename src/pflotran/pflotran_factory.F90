@@ -79,6 +79,7 @@ subroutine PFLOTRANInitializePrePetsc(option)
   !       has not yet been initialized.
   
   call PFLOTRANInitCommandLineSettings(option)
+#ifdef PROCESS_MODEL
   ! initialize stochastic realizations here
   string = '-stochastic'
   call InputGetCommandLineTruth(string,bool_flag,option_found,option)
@@ -86,6 +87,7 @@ subroutine PFLOTRANInitializePrePetsc(option)
     multisimulation => MultiSimulationCreate()
     call MultiSimulationInitialize(multisimulation,option)
   endif
+#endif
   
 end subroutine PFLOTRANInitializePrePetsc
 

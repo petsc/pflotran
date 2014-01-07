@@ -62,6 +62,10 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   call printErrMsg(option)
 #endif
 
+  ! initialize PETSc Vecs to 0
+  pflotran_solution_vec_mpi = 0
+  pflotran_solution_vec_seq = 0
+
   string = '-num_slaves'
   num_slaves = -999
   call InputGetCommandLineInt(string,i,option_found,option)

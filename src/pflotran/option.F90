@@ -1108,7 +1108,9 @@ subroutine OptionInitPetsc(option)
     call PetscOptionsInsertString(string, ierr)
   endif 
 
+#ifdef PROCESS_MODEL
   call LoggingCreate()
+#endif
 
 end subroutine OptionInitPetsc
 
@@ -1276,7 +1278,9 @@ subroutine OptionFinalize(option)
   
   ! pushed in FinalizeRun()
   call PetscLogStagePop(ierr)
+#ifdef PROCESS_MODEL
   call LoggingDestroy()
+#endif
   call PetscOptionsSetValue('-options_left','no',ierr)
   ! list any PETSc objects that have not been freed - for debugging
   call PetscOptionsSetValue('-objects_left','yes',ierr)
