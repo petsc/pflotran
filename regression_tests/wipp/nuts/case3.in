@@ -34,7 +34,7 @@ CHEMISTRY
     REACTION Tracer1 <-> Tracer2 
     FORWARD_RATE  8.0225d-7   ! half life of 8.64d+5 seconds
   /
-  DATABASE ../hanford.dat
+  DATABASE ../../../database/hanford.dat
   OUTPUT
     all
   /
@@ -76,7 +76,7 @@ OUTPUT
   :TIMES y 5. 10. 15. 20.
 :  PERIODIC TIME  8.64d3 s
   PERIODIC_OBSERVATION TIMESTEP 1
-  FORMAT TECPLOT POINT
+:  FORMAT TECPLOT POINT
 END
 
 :=========================== times ============================================
