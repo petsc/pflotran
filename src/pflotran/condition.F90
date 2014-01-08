@@ -1131,7 +1131,7 @@ subroutine FlowConditionRead(condition,input,option)
     
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate) .and. &
-          .not.associated(saturation)) then
+          .not.associated(saturation) .and. .not.associated(well)) then
         option%io_buffer = 'pressure, rate and saturation condition null in ' // &
                            'condition: ' // trim(condition%name)
         call printErrMsg(option)      
@@ -1146,7 +1146,10 @@ subroutine FlowConditionRead(condition,input,option)
       if (associated(rate)) then
         condition%rate => rate
       endif
-      
+      if (associated(well)) then
+        condition%well => well
+      endif
+            
       condition%num_sub_conditions = 1
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
       if (associated(pressure)) then
@@ -1155,6 +1158,8 @@ subroutine FlowConditionRead(condition,input,option)
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => saturation
       elseif (associated(rate)) then
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      elseif (associated(well)) then
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
       endif                         
 
       allocate(condition%itype(ONE_INTEGER))
@@ -1164,6 +1169,8 @@ subroutine FlowConditionRead(condition,input,option)
         condition%itype(ONE_INTEGER) = saturation%itype
       else if (associated(rate)) then
         condition%itype(ONE_INTEGER) = rate%itype
+      else if (associated(well)) then
+        condition%itype(ONE_INTEGER) = well%itype
       endif
       
       ! these are not used with richards
