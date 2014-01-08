@@ -40,7 +40,6 @@ subroutine Init(simulation)
   use Field_module
   use Connection_module   
   use Coupler_module
-  use General_Grid_module
   use Debug_module
   use Convergence_module
   use Waypoint_module
@@ -825,13 +824,6 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
-  ! should we still support this
-  if (option%use_generalized_grid) then 
-    call printMsg(option,'Reading structured grid from hdf5')
-    if (.not.associated(patch%imat)) &
-      allocate(patch%imat(grid%ngmax))  ! allocate material id array
-    call ReadStructuredGridHDF5(realization)
-  endif
   call PetscLogEventEnd(logging%event_setup,ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
@@ -1725,11 +1717,6 @@ subroutine InitReadInput(simulation)
         call InputReadDouble(input,option,option%dcmxe)
         call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
         
-!....................
-      case ('GENERALIZED_GRID')
-        option%use_generalized_grid = PETSC_TRUE
-        call InputReadWord(input,option,option%generalized_grid,PETSC_TRUE)
-
 !....................
       case ('PROC')
       

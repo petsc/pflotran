@@ -123,8 +123,6 @@ module Option_module
     PetscBool :: update_flow_perm ! If true, permeability changes due to pressure    
     
     PetscBool :: use_ice_new      ! use new formulation for ice partitioning
-    character(len=MAXWORDLENGTH) :: generalized_grid
-    PetscBool :: use_generalized_grid
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
@@ -515,9 +513,6 @@ subroutine OptionInitRealization(option)
   
 !  option%disp = 0.d0
   
-  option%generalized_grid = ""
-  option%use_generalized_grid = PETSC_FALSE
-
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
   option%restart_time = -999.d0
