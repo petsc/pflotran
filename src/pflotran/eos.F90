@@ -65,17 +65,18 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,DENSITY,CONSTANT')
                 call EOSWaterSetDensityConstant(tempreal)
-              case('BRAGFLO')
+              case('EXPONENTIAL')
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'REFERENCE_DENSITY', &
-                                   'EOS,WATER,DENSITY,BRAGFLO')
+                                   'EOS,WATER,DENSITY,EXPONENTIAL')
                 call InputReadDouble(input,option,tempreal2)
                 call InputErrorMsg(input,option,'REFERENCE_PRESSURE', &
-                                   'EOS,WATER,DENSITY,BRAGFLO')
+                                   'EOS,WATER,DENSITY,EXPONENTIAL')
                 call InputReadDouble(input,option,tempreal3)
                 call InputErrorMsg(input,option,'WATER_COMPRESSIBILITY', &
-                                   'EOS,WATER,DENSITY,BRAGFLO')
-                call EOSWaterSetDensityBRAGFLO(tempreal,tempreal2,tempreal3)
+                                   'EOS,WATER,DENSITY,EXPONENTIAL')
+                call EOSWaterSetDensityExponential(tempreal,tempreal2, &
+                                                   tempreal3)
               case('IFC67')
                 call EOSWaterSetDensityIFC67()
               case default

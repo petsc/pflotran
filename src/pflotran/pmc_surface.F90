@@ -187,7 +187,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     
     ! only print output for process models of depth 0
     ! TODO(GB): Modify OutputSurface()
-    !if (associated(this%Output)) then
+    if (associated(this%Output)) then
       if (this%timestepper%time_step_cut_flag) then
         plot_flag = PETSC_FALSE
       endif
@@ -207,15 +207,16 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       !                 transient_plot_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
-    !endif
+    endif
 
     if (this%is_master) then
-      if (checkpoint_flag) exit
-      if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
-        if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
-         checkpoint_flag = PETSC_TRUE
+      if (.not.checkpoint_flag) then
+        if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
+          if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
+           checkpoint_flag = PETSC_TRUE
+          endif
         endif
-      endif
+       endif
     else
       checkpoint_flag = PETSC_FALSE
     endif
