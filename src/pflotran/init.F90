@@ -1969,7 +1969,6 @@ subroutine InitReadInput(simulation)
         call TranConstraintRead(sec_tran_constraint,reaction,input,option)
         realization%sec_transport_constraint => sec_tran_constraint
         nullify(sec_tran_constraint)        
->>>>>>> other
 
 !......................
 
