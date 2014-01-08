@@ -389,10 +389,6 @@ libpflotranchem.a : $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
 pflotran_rxn : libpflotranchem.a $(pflotran_rxn_obj)
 	${FLINKER} -o $@ $(pflotran_rxn_obj) -L. -lpflotranchem ${PETSC_LIB} ${LIBS} 
 
-ascii_to_hdf5: input_aux.o hdf5_dataset.o ascii_to_hdf5.o 
-	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input_aux.o \
-	$(LIBS)
-
 # do these files exist anymore?
 #test: functions.o test.o
 #	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
