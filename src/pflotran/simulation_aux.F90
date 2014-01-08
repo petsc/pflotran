@@ -12,7 +12,7 @@ module Simulation_Aux_module
 
   type,public :: simulation_aux_type
 
-    ! Note: These are LOCAL vectors (i.e. they do not contain ghost control 
+    ! Note: These are GLOBAL vectors (i.e. they do not contain ghost control
     !       volumes)
 
     ! Size of entire subsurface domain
