@@ -116,7 +116,6 @@ SATURATION_FUNCTION default
 END
 
 :========================= output options =====================================
-skip
 OUTPUT
 :  TIMES y 100. 250. 500. 1000. 5000. 1.e4
 :  SCREEN PERIODIC 1
@@ -126,7 +125,6 @@ OUTPUT
   FORMAT HDF5
   VELOCITIES
 END
-noskip
 
 :======================== times ===============================================
 TIME
