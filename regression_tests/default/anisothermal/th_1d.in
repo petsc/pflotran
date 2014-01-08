@@ -116,15 +116,17 @@ SATURATION_FUNCTION default
 END
 
 :========================= output options =====================================
+skip
 OUTPUT
-:  TIMES y 100. 250. 500. 1000. 5000. 1.e4
-:  SCREEN PERIODIC 1
+  TIMES y 100. 250. 500. 1000. 5000. 1.e4
+  SCREEN PERIODIC 1
   PERIODIC_OBSERVATION TIMESTEP 1 
   PRINT_COLUMN_IDS
   FORMAT TECPLOT POINT
   FORMAT HDF5
   VELOCITIES
 END
+noskip
 
 :======================== times ===============================================
 TIME
@@ -247,4 +249,4 @@ CONSTRAINT inlet_constraint
 END
 
 :=========================== checkpoint / restart =============================
-CHECKPOINT 10
+:CHECKPOINT 10
