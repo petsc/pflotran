@@ -49,7 +49,6 @@ END
 
 :=========================== output options ===================================
 OUTPUT
-  VELOCITIES
   VARIABLES
     LIQUID_PRESSURE
     LIQUID_SATURATION

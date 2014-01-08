@@ -41,6 +41,7 @@ STANDARD_CFG = \
 	default/543/543.cfg \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
+	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
@@ -75,6 +76,7 @@ GEOCHEMISTRY_CFG = \
 FLOW_CFG = \
 	default/543/543.cfg \
 	default/condition/condition.cfg \
+	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg
