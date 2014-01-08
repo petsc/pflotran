@@ -2622,7 +2622,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
         ! The Newton solver diverged, so try reducing the time step.
         icut = icut + 1
         stepper%time_step_cut_flag = PETSC_TRUE
-        option%out_of_table = PETSC_FALSE
 
         if (icut > stepper%max_time_step_cuts .or. option%flow_dt<1.d-20) then
           if (option%print_screen_flag) then
