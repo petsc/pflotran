@@ -259,7 +259,6 @@ grid_obj = \
 	${common_src}communicator_base.o \
 	${common_src}discretization.o \
 	${common_src}dm_kludge.o \
-	${common_src}general_grid.o \
 	${common_src}grid.o \
 	${common_src}mfd.o \
 	${common_src}mfd_aux.o \
@@ -500,9 +499,6 @@ general.o : connection.o coupler.o debug.o discretization.o eos_water.o \
             variables.o
 general_aux.o : eos_water.o gas_eos_mod.o global_aux.o option.o \
                 pflotran_constants.o saturation_function.o
-general_grid.o : connection.o discretization.o field.o grid.o hdf5.o \
-                 hdf5_aux.o logging.o option.o patch.o pflotran_constants.o \
-                 realization.o
 geometry.o : input_aux.o option.o pflotran_constants.o
 global.o : connection.o coupler.o discretization.o field.o global_aux.o grid.o \
            option.o patch.o pflotran_constants.o realization.o \
@@ -545,7 +541,7 @@ immobile_aux.o : database_aux.o option.o pflotran_constants.o string.o \
 init.o : condition.o condition_control.o connection.o constraint.o \
          convergence.o coupler.o database.o database_hpt.o dataset.o \
          dataset_base.o dataset_common_hdf5.o debug.o discretization.o eos.o \
-         eos_water.o field.o flash2.o fluid.o general.o general_grid.o \
+         eos_water.o field.o flash2.o fluid.o general.o \
          global.o grid.o hdf5.o immis.o input_aux.o logging.o mass_transfer.o \
          material.o mineral.o miscible.o mphase.o observation.o option.o \
          output.o output_aux.o output_tecplot.o patch.o pflotran_constants.o \
