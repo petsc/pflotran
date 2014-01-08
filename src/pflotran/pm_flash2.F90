@@ -1,6 +1,6 @@
-module Process_Model_Miscible_class
+module PM_Flash2_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
   use Realization_class
   use Communicator_Base_module
   use Option_module
@@ -19,79 +19,79 @@ module Process_Model_Miscible_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_miscible_type
+  type, public, extends(pm_base_type) :: pm_flash2_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
   contains
-    procedure, public :: Init => PMMiscibleInit
-    procedure, public :: PMMiscibleSetRealization
-    procedure, public :: InitializeRun => PMMiscibleInitializeRun
-    procedure, public :: FinalizeRun => PMMiscibleFinalizeRun
-    procedure, public :: InitializeTimestep => PMMiscibleInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMMiscibleFinalizeTimeStep
-    procedure, public :: Residual => PMMiscibleResidual
-    procedure, public :: Jacobian => PMMiscibleJacobian
-    procedure, public :: UpdateTimestep => PMMiscibleUpdateTimestep
-    procedure, public :: PreSolve => PMMisciblePreSolve
-    procedure, public :: PostSolve => PMMisciblePostSolve
-    procedure, public :: AcceptSolution => PMMiscibleAcceptSolution
+    procedure, public :: Init => PMFlash2Init
+    procedure, public :: PMFlash2SetRealization
+    procedure, public :: InitializeRun => PMFlash2InitializeRun
+    procedure, public :: FinalizeRun => PMFlash2FinalizeRun
+    procedure, public :: InitializeTimestep => PMFlash2InitializeTimestep
+    procedure, public :: FinalizeTimestep => PMFlash2FinalizeTimeStep
+    procedure, public :: Residual => PMFlash2Residual
+    procedure, public :: Jacobian => PMFlash2Jacobian
+    procedure, public :: UpdateTimestep => PMFlash2UpdateTimestep
+    procedure, public :: PreSolve => PMFlash2PreSolve
+    procedure, public :: PostSolve => PMFlash2PostSolve
+    procedure, public :: AcceptSolution => PMFlash2AcceptSolution
 #if 0
-    procedure, public :: CheckUpdatePre => PMMiscibleCheckUpdatePre
-    procedure, public :: CheckUpdatePost => PMMiscibleCheckUpdatePost
+    procedure, public :: CheckUpdatePre => PMFlash2CheckUpdatePre
+    procedure, public :: CheckUpdatePost => PMFlash2CheckUpdatePost
 #endif
-    procedure, public :: TimeCut => PMMiscibleTimeCut
-    procedure, public :: UpdateSolution => PMMiscibleUpdateSolution
-    procedure, public :: MaxChange => PMMiscibleMaxChange
-    procedure, public :: ComputeMassBalance => PMMiscibleComputeMassBalance
-    procedure, public :: Checkpoint => PMMiscibleCheckpoint    
-    procedure, public :: Restart => PMMiscibleRestart  
-    procedure, public :: Destroy => PMMiscibleDestroy
-  end type pm_miscible_type
+    procedure, public :: TimeCut => PMFlash2TimeCut
+    procedure, public :: UpdateSolution => PMFlash2UpdateSolution
+    procedure, public :: MaxChange => PMFlash2MaxChange
+    procedure, public :: ComputeMassBalance => PMFlash2ComputeMassBalance
+    procedure, public :: Checkpoint => PMFlash2Checkpoint    
+    procedure, public :: Restart => PMFlash2Restart  
+    procedure, public :: Destroy => PMFlash2Destroy
+  end type pm_flash2_type
   
-  public :: PMMiscibleCreate
+  public :: PMFlash2Create
   
 contains
 
 ! ************************************************************************** !
 !
-! PMMiscibleCreate: Creates Miscible process models shell
+! PMFlash2Create: Creates Flash2 process models shell
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-function PMMiscibleCreate()
+function PMFlash2Create()
 
   implicit none
   
-  class(pm_miscible_type), pointer :: PMMiscibleCreate
+  class(pm_flash2_type), pointer :: PMFlash2Create
 
-  class(pm_miscible_type), pointer :: miscible_pm
+  class(pm_flash2_type), pointer :: flash2_pm
   
-#ifdef PM__DEBUG  
-  print *, 'PMMiscibleCreate()'
+#ifdef PM_FLAHS2_DEBUG
+  print *, 'PMFlash2Create()'
 #endif  
 
-  allocate(miscible_pm)
-  nullify(miscible_pm%option)
-  nullify(miscible_pm%output_option)
-  nullify(miscible_pm%realization)
-  nullify(miscible_pm%comm1)
+  allocate(flash2_pm)
+  nullify(flash2_pm%option)
+  nullify(flash2_pm%output_option)
+  nullify(flash2_pm%realization)
+  nullify(flash2_pm%comm1)
 
-  call PMBaseCreate(miscible_pm)
-  miscible_pm%name = 'PMMiscible'
+  call PMBaseCreate(flash2_pm)
+  flash2_pm%name = 'PMFlash2'
 
-  PMMiscibleCreate => miscible_pm
+  PMFlash2Create => flash2_pm
   
-end function PMMiscibleCreate
+end function PMFlash2Create
 
 ! ************************************************************************** !
 !
-! PMMiscibleInit: Initializes variables associated with Richard
+! PMFlash2Init: Initializes variables associated with Richard
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleInit(this)
+subroutine PMFlash2Init(this)
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -102,10 +102,10 @@ subroutine PMMiscibleInit(this)
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
 
-#ifdef PM_MISCIBLE_DEBUG
-  call printMsg(this%option,'PMMiscible%Init()')
+#ifdef PM_FLAHS2_DEBUG
+  call printMsg(this%option,'PMFlash2%Init()')
 #endif
   
 #ifndef SIMPLIFY  
@@ -119,27 +119,27 @@ subroutine PMMiscibleInit(this)
   call this%comm1%SetDM(this%realization%discretization%dm_1dof)
 #endif
 
-end subroutine PMMiscibleInit
+end subroutine PMFlash2Init
 
 ! ************************************************************************** !
 !
-! PMMiscibleSetRealization: 
+! PMFlash2SetRealization: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleSetRealization(this,realization)
+subroutine PMFlash2SetRealization(this,realization)
 
   use Realization_class
   use Grid_module
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   class(realization_type), pointer :: realization
 
-#ifdef PM_miscible_DEBUG  
-  call printMsg(this%option,'PMMiscible%SetRealization()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%SetRealization()')
 #endif
   
   this%realization => realization
@@ -153,26 +153,26 @@ subroutine PMMiscibleSetRealization(this,realization)
     this%residual_vec = realization%field%flow_r
   endif
   
-end subroutine PMMiscibleSetRealization
+end subroutine PMFlash2SetRealization
 
 ! ************************************************************************** !
 ! Should not need this as it is called in PreSolve.
-! PMMiscibleInitializeTimestep: 
+! PMFlash2InitializeTimestep: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleInitializeTimestep(this)
+subroutine PMFlash2InitializeTimestep(this)
 
-  use Miscible_module, only : MiscibleInitializeTimestep
+  use Flash2_module, only : Flash2InitializeTimestep
   use Global_module
   
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
 
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%InitializeTimestep()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%InitializeTimestep()')
 #endif
 
   this%option%flow_dt = this%option%dt
@@ -184,84 +184,84 @@ subroutine PMMiscibleInitializeTimestep(this)
 #endif
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," MISCIBLE FLOW ",62("="))')
+    write(*,'(/,2("=")," FLASH2 FLOW ",62("="))')
   endif
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
-  call MiscibleInitializeTimestep(this%realization)
+  call Flash2InitializeTimestep(this%realization)
   
-end subroutine PMMiscibleInitializeTimestep
+end subroutine PMFlash2InitializeTimestep
 
 ! ************************************************************************** !
 !
-! PMMisciblePreSolve: 
+! PMFlash2PreSolve: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMisciblePreSolve(this)
+subroutine PMFlash2PreSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%PreSolve()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%PreSolve()')
 #endif
 
-end subroutine PMMisciblePreSolve
+end subroutine PMFlash2PreSolve
 
 ! ************************************************************************** !
 !
-! PMMiscibleUpdatePostSolve: 
+! PMFlash2UpdatePostSolve: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMisciblePostSolve(this)
+subroutine PMFlash2PostSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%PostSolve()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%PostSolve()')
 #endif
   
-end subroutine PMMisciblePostSolve
+end subroutine PMFlash2PostSolve
 
 ! ************************************************************************** !
 !
-! PMMiscibleFinalizeTimestep: 
+! PMFlash2FinalizeTimestep: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleFinalizeTimestep(this)
+subroutine PMFlash2FinalizeTimestep(this)
 
-  use Miscible_module, only : MiscibleMaxChange
+  use Flash2_module, only : Flash2MaxChange
   use Global_module
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%FinalizeTimestep()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%FinalizeTimestep()')
 #endif
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
-  call MiscibleMaxChange(this%realization)
+  call Flash2MaxChange(this%realization)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
@@ -275,44 +275,44 @@ subroutine PMMiscibleFinalizeTimestep(this)
       this%option%dsmax
   endif  
   
-end subroutine PMMiscibleFinalizeTimestep
+end subroutine PMFlash2FinalizeTimestep
 
 ! ************************************************************************** !
 !
-! PMMiscibleAcceptSolution: 
+! PMFlash2AcceptSolution: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-function PMMiscibleAcceptSolution(this)
+function PMFlash2AcceptSolution(this)
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-  PetscBool :: PMMiscibleAcceptSolution
+  PetscBool :: PMFlash2AcceptSolution
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%AcceptSolution()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%AcceptSolution()')
 #endif
   ! do nothing
-  PMMiscibleAcceptSolution = PETSC_TRUE
+  PMFlash2AcceptSolution = PETSC_TRUE
   
-end function PMMiscibleAcceptSolution
+end function PMFlash2AcceptSolution
 
 ! ************************************************************************** !
 !
-! PMMiscibleUpdateTimestep: 
+! PMFlash2UpdateTimestep: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMFlash2UpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -330,8 +330,8 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: dt_tfac
   PetscInt :: ifac
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%UpdateTimestep()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%UpdateTimestep()')
 #endif
   
   if (iacceleration > 0) then
@@ -365,26 +365,26 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
       
   dt = dtt
   
-end subroutine PMMiscibleUpdateTimestep
+end subroutine PMFlash2UpdateTimestep
 
 ! ************************************************************************** !
 !
-! PMMiscibleInitializeRun: Initializes the time stepping
+! PMFlash2InitializeRun: Initializes the time stepping
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-recursive subroutine PMMiscibleInitializeRun(this)
+recursive subroutine PMFlash2InitializeRun(this)
 
-  use Miscible_module, only : MiscibleUpdateSolution
+  use Flash2_module, only : Flash2UpdateSolution
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
  
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%InitializeRun()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%InitializeRun()')
 #endif
   
   ! restart
@@ -394,26 +394,26 @@ recursive subroutine PMMiscibleInitializeRun(this)
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
   endif  
-  call MiscibleUpdateSolution(this%realization)
+  call Flash2UpdateSolution(this%realization)
 #endif  
     
-end subroutine PMMiscibleInitializeRun
+end subroutine PMFlash2InitializeRun
 
 ! ************************************************************************** !
 !
-! PMMiscibleFinalizeRun: Finalizes the time stepping
+! PMFlash2FinalizeRun: Finalizes the time stepping
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-recursive subroutine PMMiscibleFinalizeRun(this)
+recursive subroutine PMFlash2FinalizeRun(this)
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%FinalizeRun()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%FinalizeRun()')
 #endif
   
   ! do something here
@@ -422,119 +422,119 @@ recursive subroutine PMMiscibleFinalizeRun(this)
     call this%next%FinalizeRun()
   endif  
   
-end subroutine PMMiscibleFinalizeRun
+end subroutine PMFlash2FinalizeRun
 
 ! ************************************************************************** !
 !
-! PMMiscibleResidual: 
+! PMFlash2Residual: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleResidual(this,snes,xx,r,ierr)
+subroutine PMFlash2Residual(this,snes,xx,r,ierr)
 
-  use Miscible_module, only : MiscibleResidual
+  use Flash2_module, only : Flash2Residual
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%Residual()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%Residual()')
 #endif
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MiscibleResidualMFDLP(snes,xx,r,this%realization,ierr)
+!      call Flash2ResidualMFDLP(snes,xx,r,this%realization,ierr)
     case default
-      call MiscibleResidual(snes,xx,r,this%realization,ierr)
+      call Flash2Residual(snes,xx,r,this%realization,ierr)
   end select
 
-end subroutine PMMiscibleResidual
+end subroutine PMFlash2Residual
 
 ! ************************************************************************** !
 !
-! PMMiscibleJacobian: 
+! PMFlash2Jacobian: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMFlash2Jacobian(this,snes,xx,A,B,flag,ierr)
 
-  use Miscible_module, only : MiscibleJacobian
+  use Flash2_module, only : Flash2Jacobian
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
   MatStructure flag
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%Jacobian()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%Jacobian()')
 #endif
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MiscibleJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call Flash2JacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
     case default
-      call MiscibleJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call Flash2Jacobian(snes,xx,A,B,flag,this%realization,ierr)
   end select
 
-end subroutine PMMiscibleJacobian
+end subroutine PMFlash2Jacobian
     
 #if 0
 ! ************************************************************************** !
 !
-! PMMiscibleCheckUpdatePre: 
+! PMFlash2CheckUpdatePre: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMFlash2CheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
-  use Miscible_module, only : MiscibleCheckUpdatePre
+  use Flash2_module, only : Flash2CheckUpdatePre
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%CheckUpdatePre()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%CheckUpdatePre()')
 #endif
   
 #ifndef SIMPLIFY  
-  call MiscibleCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call Flash2CheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
 #endif
 
-end subroutine PMMiscibleCheckUpdatePre
+end subroutine PMFlash2CheckUpdatePre
     
 ! ************************************************************************** !
 !
-! PMMiscibleCheckUpdatePost: 
+! PMFlash2CheckUpdatePost: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
+subroutine PMFlash2CheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
 
-  use Miscible_module, only : MiscibleCheckUpdatePost
+  use Flash2_module, only : Flash2CheckUpdatePost
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -543,63 +543,63 @@ subroutine PMMiscibleCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%CheckUpdatePost()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%CheckUpdatePost()')
 #endif
   
 #ifndef SIMPLIFY  
-  call MiscibleCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+  call Flash2CheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
 #endif
 
-end subroutine PMMiscibleCheckUpdatePost
+end subroutine PMFlash2CheckUpdatePost
 #endif
 
 ! ************************************************************************** !
 !
-! PMMiscibleTimeCut: 
+! PMFlash2TimeCut: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleTimeCut(this)
+subroutine PMFlash2TimeCut(this)
 
-  use Miscible_module, only : MiscibleTimeCut
+  use Flash2_module, only : Flash2TimeCut
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%TimeCut()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%TimeCut()')
 #endif
   
   this%option%flow_dt = this%option%dt
 
-  call MiscibleTimeCut(this%realization)
+  call Flash2TimeCut(this%realization)
 
-end subroutine PMMiscibleTimeCut
+end subroutine PMFlash2TimeCut
     
 ! ************************************************************************** !
 !
-! PMMiscibleUpdateSolution: 
+! PMFlash2UpdateSolution: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleUpdateSolution(this)
+subroutine PMFlash2UpdateSolution(this)
 
-  use Miscible_module, only : MiscibleUpdateSolution
+  use Flash2_module, only : Flash2UpdateSolution
   use Condition_module
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%UpdateSolution()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%UpdateSolution()')
 #endif
 
   ! begin from RealizationUpdate()
@@ -612,134 +612,134 @@ subroutine PMMiscibleUpdateSolution(this)
     call RealizUpdateUniformVelocity(this%realization)
   endif  
   ! end from RealizationUpdate()
-  call MiscibleUpdateSolution(this%realization)
+  call Flash2UpdateSolution(this%realization)
 
-end subroutine PMMiscibleUpdateSolution     
+end subroutine PMFlash2UpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given PMMiscibleMaxChange is called in PostSolve
-! PMMiscibleMaxChange: 
+! Not needed given PMFlash2MaxChange is called in PostSolve
+! PMFlash2MaxChange: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleMaxChange(this)
+subroutine PMFlash2MaxChange(this)
 
-  use Miscible_module, only : MiscibleMaxChange
+  use Flash2_module, only : Flash2MaxChange
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%MaxChange()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%MaxChange()')
 #endif
 
-  call MiscibleMaxChange(this%realization)
+  call Flash2MaxChange(this%realization)
 
-end subroutine PMMiscibleMaxChange
+end subroutine PMFlash2MaxChange
     
 ! ************************************************************************** !
 !
-! PMMiscibleComputeMassBalance: 
+! PMFlash2ComputeMassBalance: 
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleComputeMassBalance(this,mass_balance_array)
+subroutine PMFlash2ComputeMassBalance(this,mass_balance_array)
 
-  use Miscible_module, only : MiscibleComputeMassBalance
+  !use Flash2_module, only : Flash2ComputeMassBalance
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscible%ComputeMassBalance()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2%ComputeMassBalance()')
 #endif
 
 #ifndef SIMPLIFY
   !geh: currently does not include "trapped" mass
-  !call MiscibleComputeMassBalance(this%realization,mass_balance_array)
+  !call Flash2ComputeMassBalance(this%realization,mass_balance_array)
 #endif
 
-end subroutine PMMiscibleComputeMassBalance
+end subroutine PMFlash2ComputeMassBalance
 
 ! ************************************************************************** !
 !
-! PMMiscibleCheckpoint: Checkpoints data associated with Miscible PM
+! PMFlash2Checkpoint: Checkpoints data associated with Flash2 PM
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleCheckpoint(this,viewer)
+subroutine PMFlash2Checkpoint(this,viewer)
 
   use Checkpoint_module
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   PetscViewer :: viewer
   
   call CheckpointFlowProcessModel(viewer,this%realization) 
   
-end subroutine PMMiscibleCheckpoint
+end subroutine PMFlash2Checkpoint
 
 
 ! ************************************************************************** !
 !
-! PMMiscibleRestart: Restarts data associated with Miscible PM
+! PMFlash2Restart: Restarts data associated with Flash2 PM
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleRestart(this,viewer)
+subroutine PMFlash2Restart(this,viewer)
 
   use Checkpoint_module
-  use Miscible_module, only : MiscibleUpdateAuxVars
+  use Flash2_module, only : Flash2UpdateAuxVars
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   PetscViewer :: viewer
   
   call RestartFlowProcessModel(viewer,this%realization)
-  call MiscibleUpdateAuxVars(this%realization)
+  call Flash2UpdateAuxVars(this%realization)
   call this%UpdateSolution()
   
-end subroutine PMMiscibleRestart
+end subroutine PMFlash2Restart
 
 ! ************************************************************************** !
 !
-! PMMiscibleDestroy: Destroys Miscible process model
+! PMFlash2Destroy: Destroys Flash2 process model
 ! author: Gautam Bisht
 ! date: 11/27/13
 !
 ! ************************************************************************** !
-subroutine PMMiscibleDestroy(this)
+subroutine PMFlash2Destroy(this)
 
-  use Miscible_module, only : MiscibleDestroy
+  use Flash2_module, only : Flash2Destroy
 
   implicit none
   
-  class(pm_miscible_type) :: this
+  class(pm_flash2_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
 
-#ifdef PM_MISCIBLE_DEBUG  
-  call printMsg(this%option,'PMMiscibleDestroy()')
+#ifdef PM_FLAHS2_DEBUG  
+  call printMsg(this%option,'PMFlash2Destroy()')
 #endif
 
 #ifndef SIMPLIFY 
-  call MiscibleDestroy(this%realization)
+  call Flash2Destroy(this%realization)
 #endif
   call this%comm1%Destroy()
   
-end subroutine PMMiscibleDestroy
+end subroutine PMFlash2Destroy
   
-end module Process_Model_Miscible_class
+end module PM_Flash2_class

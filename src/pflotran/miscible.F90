@@ -934,7 +934,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
 
   use Option_module
   
-  use Water_EOS_module
+  
+  use EOS_Water_module
   use co2eos_module
   use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
@@ -977,7 +978,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
       msrc(1) = msrc(1) / FMWH2O
       msrc(2) = msrc(2) / FMWGLYC
       if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
-!        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+!        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
@@ -1042,8 +1043,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
     ! injection well (well status = 2)
       if (dabs(well_status - 2D0) < 1D-1) then 
 
-        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
-          option%scale,ierr)
+        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol, &
+                                     enth_src_h2o,option%scale,ierr)
 
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 

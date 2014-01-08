@@ -149,7 +149,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   character(len=MAXWORDLENGTH) :: word
   type(geomech_grid_type), pointer :: grid
   type(option_type), pointer :: option
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_field_type), pointer :: geomech_field
   type(geomech_patch_type), pointer :: patch 
   type(output_option_type), pointer :: output_option
@@ -164,7 +164,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   
   type(gmdm_type), pointer :: gmdm_element
   
-  discretization => geomech_realization%discretization
+  geomech_discretization => geomech_realization%geomech_discretization
   patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
   option => geomech_realization%option
@@ -185,9 +185,9 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
 
   ! write blocks
   ! write out data sets
-  call GeomechDiscretizationCreateVector(discretization,ONEDOF, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF, &
                                          global_vec,GLOBAL,option)
-  call GeomechDiscretizationCreateVector(discretization,ONEDOF, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF, &
                                          natural_vec,NATURAL,option)
 
   ! write out coordinates
@@ -200,7 +200,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
     call OutputGeomechGetVarFromArray(geomech_realization,global_vec, &
                                       cur_variable%ivar, &
                                       cur_variable%isubvar)
-    call GeomechDiscretizationGlobalToNatural(discretization,global_vec, &
+    call GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
                                               natural_vec,ONEDOF)
     if (cur_variable%iformat == 0) then
       call WriteTecplotDataSetGeomechFromVec(OUTPUT_UNIT,geomech_realization, &
@@ -1264,7 +1264,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 #endif
 
   type(geomech_grid_type), pointer :: grid
-  type(geomech_discretization_type), pointer :: discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_field_type), pointer :: field
   type(geomech_patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
@@ -1292,7 +1292,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   PetscInt :: vert_count
   PetscErrorCode :: ierr
 
-  discretization => geomech_realization%discretization
+  geomech_discretization => geomech_realization%geomech_discretization
   patch => geomech_realization%geomech_patch
   option => geomech_realization%option
   field => geomech_realization%geomech_field
@@ -1408,9 +1408,9 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   call h5eset_auto_f(ON,hdf5_err)
 
   ! write out data sets 
-  call GeomechDiscretizationCreateVector(discretization,ONEDOF,global_vec, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,global_vec, &
                                          GLOBAL,option)
-  call GeomechDiscretizationCreateVector(discretization,ONEDOF,natural_vec, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,natural_vec, &
                                          NATURAL,option)
 
   select case (var_list_type)
@@ -1423,7 +1423,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
         call OutputGeomechGetVarFromArray(geomech_realization,global_vec, &
                                           cur_variable%ivar, &
                                           cur_variable%isubvar)
-        call GeomechDiscretizationGlobalToNatural(discretization,global_vec, &
+        call GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
                                                   natural_vec,ONEDOF)
         string = cur_variable%name
         if (len_trim(cur_variable%units) > 0) then
@@ -1458,7 +1458,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
             string = trim(string) // ' [' // trim(word) // ']'
           endif
 
-          call GeomechDiscretizationGlobalToNatural(discretization, &
+          call GeomechDiscretizationGlobalToNatural(geomech_discretization, &
                                             field%avg_vars_vec(ivar), &
                                             natural_vec,ONEDOF)
           call HDF5WriteUnstructuredDataSetFromVec(string,option, &

@@ -1,0 +1,304 @@
+:Description: 3D test problem for testing chemical reactions
+:             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 2
+  CELLS
+    29
+  /
+END
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== solver options ===================================
+TIMESTEPPER
+  TS_ACCELERATION 8
+END
+
+NEWTON_SOLVER FLOW
+END
+
+LINEAR_SOLVER FLOW
+  KSP_TYPE PREONLY
+  PC_TYPE LU
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 5 4 3
+  DXYZ
+    10. 11. 12. 13. 14.
+    13. 12. 11. 10.
+    15. 20. 25.
+  /
+END
+
+:=========================== eos ==============================================
+EOS WATER
+  DENSITY EXPONENTIAL 997.16d0 101325.d0 1.d-8
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== datasets =========================================
+skip
+DATASET U
+  HDF5_DATASET_NAME U 
+  FILENAME datasets.h5
+END
+
+DATASET Calcite
+  HDF5_DATASET_NAME Calcite 
+  FILENAME datasets.h5
+END
+noskip
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  SATURATION_FUNCTION sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  SATURATION_FUNCTION sf2
+  PERMEABILITY
+    PERM_X 1.d-11
+    PERM_Y 1.d-11
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.2d0
+  TORTUOSITY 1.d0
+  SATURATION_FUNCTION sf3
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  SATURATION_FUNCTION sf4
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.115
+  LAMBDA 0.286
+  ALPHA 1.9401d-4
+END
+
+SATURATION_FUNCTION sf2
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.110
+  LAMBDA 0.486
+  ALPHA 3.8801d-4
+END
+
+SATURATION_FUNCTION sf3
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.118
+  LAMBDA 0.541
+  ALPHA 1.0211d-4
+END
+
+SATURATION_FUNCTION sf4
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.143
+  LAMBDA 0.527
+  ALPHA 5.1054d-5
+END
+
+:=========================== output options ===================================
+OUTPUT
+  VELOCITIES
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    LIQUID_DENSITY
+    LIQUID_MOBILITY
+  /
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 100.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 60.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 0.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 46.d0 60.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    60.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 46.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 0.d0 60.d0
+  /
+END
+
+REGION plume
+  BLOCK 2 3 2 3 2 3
+END
+
+REGION well
+  BLOCK 4 4 2 3 3 3 
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 35.d0
+  GRADIENT
+    PRESSURE -1.6666667d-2 0.d0 0.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION east
+  TYPE
+    PRESSURE hydrostatic
+  /
+  INTERPOLATION LINEAR
+  DATUM LIST
+    TIME_UNITS d
+    0.d0 0.d0 0.d0 34.d0
+    10.d0 0.d0 0.d0 39.d0
+    50.d0 0.d0 0.d0 33.d0
+    100.d0 0.d0 0.d0 34.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 5.d0 cm/yr
+END
+
+FLOW_CONDITION injection_well
+  TYPE
+    RATE scaled_volumetric_rate
+  /
+  RATE 1 m^3/hr
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION plume
+END
+
+: west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION east
+  REGION east
+END
+
+: top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION recharge
+  REGION top
+END
+
+: well source/sink
+SOURCE_SINK well
+  FLOW_CONDITION injection_well
+  REGION well
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL ./543.h5
+END
+

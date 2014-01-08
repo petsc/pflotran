@@ -10,8 +10,8 @@ module PFLOTRAN_Factory_module
 
   public :: PFLOTRANInitialize, &
             PFLOTRANInitializePrePetsc, &
-#ifndef PROCESS_MODEL
             PFLOTRANInitializePostPetsc, &
+#ifndef PROCESS_MODEL
             PFLOTRANRun, &
 #endif
             PFLOTRANFinalize
@@ -34,10 +34,10 @@ subroutine PFLOTRANInitialize(option)
   
   type(option_type), pointer :: option
 
+#ifndef PROCESS_MODEL
   call PFLOTRANInitializePrePetsc(option)
+  ! initialize stochastic realizations here
   call OptionInitPetsc(option)
-#ifdef PROCESS_MODEL
-  call PFLOTRANInitializePostPetsc(option)
 #endif
 
 end subroutine PFLOTRANInitialize
@@ -50,18 +50,44 @@ end subroutine PFLOTRANInitialize
 ! date: 06/07/13
 !
 ! ************************************************************************** !
-subroutine PFLOTRANInitializePrePetsc(option)
+#ifdef PROCESS_MODEL
+subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
 
   use Option_module
+  use Input_Aux_module
+  use Multi_Simulation_module
   
   implicit none
   
+  type(multi_simulation_type), pointer :: multisimulation
+#else
+subroutine PFLOTRANInitializePrePetsc(option)
+
+  use Option_module
+  use Input_Aux_module
+  
+  implicit none
+  
+#endif
   type(option_type) :: option
   
-  ! NOTE: Cannot add anything that requires PETSc in this routins as PETSc 
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: bool_flag
+  PetscBool :: option_found
+  
+  ! NOTE: Cannot add anything that requires PETSc in this routine as PETSc 
   !       has not yet been initialized.
   
   call PFLOTRANInitCommandLineSettings(option)
+#ifdef PROCESS_MODEL
+  ! initialize stochastic realizations here
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,bool_flag,option_found,option)
+  if (option_found) then
+    multisimulation => MultiSimulationCreate()
+    call MultiSimulationInitialize(multisimulation,option)
+  endif
+#endif
   
 end subroutine PFLOTRANInitializePrePetsc
 
@@ -74,16 +100,18 @@ end subroutine PFLOTRANInitializePrePetsc
 !
 ! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANInitializePostPetsc(option)
+subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
 
   use Option_module
-  use Logging_module
+  use Multi_Simulation_module
   
   implicit none
   
+  type(multi_simulation_type), pointer :: multisimulation
   type(option_type) :: option
 
-  call LoggingCreate()
+  ! must come after logging is created
+  call MultiSimulationIncrement(multisimulation,option)
   call OptionBeginTiming(option)
   
 #else
@@ -214,14 +242,12 @@ end subroutine PFLOTRANRun
 subroutine PFLOTRANFinalize(option)
 
   use Option_module
-  use Logging_module
   
   implicit none
   
   type(option_type) :: option
   
   call OptionEndTiming(option)
-  call LoggingDestroy()
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     close(option%fid_out)
   endif

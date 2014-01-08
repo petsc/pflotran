@@ -1382,6 +1382,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 
 end subroutine StepperUpdateDT
 
+#ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !> This subroutine sets updates dt for surface flow.
 !!
@@ -1390,7 +1391,6 @@ end subroutine StepperUpdateDT
 !!
 !! date: 10/31/12
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
 subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
 
   use Option_module
@@ -1756,6 +1756,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
   
 end subroutine StepperSetTargetTimes
 
+#ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !> This subroutine sets target time for surface flow.
 !!
@@ -1764,7 +1765,6 @@ end subroutine StepperSetTargetTimes
 !!
 !! date: 10/31/12
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
 subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                  option,surf_plot_flag, &
                                  transient_plot_flag,checkpoint_flag)
@@ -1825,6 +1825,7 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
 end subroutine StepperSetSurfaceFlowTargetTimes
 #endif
 
+#ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !> This subroutine sets target time for model coupling.
 !!
@@ -1833,7 +1834,6 @@ end subroutine StepperSetSurfaceFlowTargetTimes
 !!
 !! date: 10/31/12
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
 subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                                         option,plot_flag,transient_plot_flag, &
                                         surf_plot_flag,checkpoint_flag)

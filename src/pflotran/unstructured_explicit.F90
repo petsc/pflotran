@@ -18,24 +18,24 @@ module Unstructured_Explicit_module
   include "scorpiof.h"
 #endif
 
-  public :: ExplicitUGridRead, &
-            ExplicitUGridDecompose, &
-            ExplicitUGridSetInternConnect, &
-            ExplicitUGridSetCellCentroids, &
-            ExplicitUGridComputeVolumes, &
-            ExplicitUGridSetBoundaryConnect, &
-            ExplicitUGridSetConnections
+  public :: UGridExplicitRead, &
+            UGridExplicitDecompose, &
+            UGridExplicitSetInternConnect, &
+            UGridExplicitSetCellCentroids, &
+            UGridExplicitComputeVolumes, &
+            UGridExplicitSetBoundaryConnect, &
+            UGridExplicitSetConnections
 
 contains
 
 ! ************************************************************************** !
 !
-! ExplicitUGridRead: Reads an explicit unstructured grid in parallel
+! UGridExplicitRead: Reads an explicit unstructured grid in parallel
 ! author: Glenn Hammond
 ! date: 10/03/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridRead(unstructured_grid,filename,option)
+subroutine UGridExplicitRead(unstructured_grid,filename,option)
 
   use Input_Aux_module
   use Option_module
@@ -415,17 +415,17 @@ subroutine ExplicitUGridRead(unstructured_grid,filename,option)
     call InputDestroy(input)
   endif
     
-end subroutine ExplicitUGridRead
+end subroutine UGridExplicitRead
 
 ! ************************************************************************** !
 !
-! ExplicitUGridDecompose: Decomposes an explicit unstructured grid across 
+! UGridExplicitDecompose: Decomposes an explicit unstructured grid across 
 !                         ranks
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridDecompose(ugrid,option)
+subroutine UGridExplicitDecompose(ugrid,option)
 
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
@@ -1183,16 +1183,16 @@ subroutine ExplicitUGridDecompose(ugrid,option)
   call VecDestroy(connections_local,ierr)
   call VecDestroy(cells_local,ierr)
   
-end subroutine ExplicitUGridDecompose
+end subroutine UGridExplicitDecompose
 
 ! ************************************************************************** !
 !
-! ExplicitUGridSetCellCentroids: Sets the centroid of each grid cell
+! UGridExplicitSetCellCentroids: Sets the centroid of each grid cell
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridSetCellCentroids(explicit_grid,x,y,z, &
+subroutine UGridExplicitSetCellCentroids(explicit_grid,x,y,z, &
                                          x_min,x_max,y_min,y_max,z_min,z_max)
 
   use Option_module
@@ -1218,17 +1218,17 @@ subroutine ExplicitUGridSetCellCentroids(explicit_grid,x,y,z, &
   z_min = minval(z)
   z_max = maxval(z)
       
-end subroutine ExplicitUGridSetCellCentroids
+end subroutine UGridExplicitSetCellCentroids
       
 ! ************************************************************************** !
 !
-! ExplicitUGridSetInternConnect: Sets up the internal connectivity within  
+! UGridExplicitSetInternConnect: Sets up the internal connectivity within  
 !                                the connectivity object
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-function ExplicitUGridSetInternConnect(explicit_grid,option)
+function UGridExplicitSetInternConnect(explicit_grid,option)
 
   use Utility_module
   use Connection_module
@@ -1236,7 +1236,7 @@ function ExplicitUGridSetInternConnect(explicit_grid,option)
 
   implicit none
   
-  type(connection_set_type), pointer :: ExplicitUGridSetInternConnect
+  type(connection_set_type), pointer :: UGridExplicitSetInternConnect
   
   type(unstructured_explicit_type) :: explicit_grid
   type(option_type) :: option
@@ -1280,18 +1280,18 @@ function ExplicitUGridSetInternConnect(explicit_grid,option)
     connections%area(iconn) = explicit_grid%face_areas(iconn)
   enddo
   
-  ExplicitUGridSetInternConnect => connections
+  UGridExplicitSetInternConnect => connections
 
-end function ExplicitUGridSetInternConnect
+end function UGridExplicitSetInternConnect
 
 ! ************************************************************************** !
 !
-! ExplicitUGridComputeVolumes: Sets the volume of each grid cell
+! UGridExplicitComputeVolumes: Sets the volume of each grid cell
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridComputeVolumes(ugrid,option,volume)
+subroutine UGridExplicitComputeVolumes(ugrid,option,volume)
 
   use Option_module
 
@@ -1315,17 +1315,17 @@ subroutine ExplicitUGridComputeVolumes(ugrid,option,volume)
   enddo
   call VecRestoreArrayF90(volume,vec_ptr,ierr)
   
-end subroutine ExplicitUGridComputeVolumes
+end subroutine UGridExplicitComputeVolumes
 
 ! ************************************************************************** !
 !
-! ExplicitUGridSetBoundaryConnect: Sets up the boundary connectivity within  
+! UGridExplicitSetBoundaryConnect: Sets up the boundary connectivity within  
 !                                  the connectivity object
 ! author: Glenn Hammond
 ! date: 05/18/12
 !
 ! ************************************************************************** !
-function ExplicitUGridSetBoundaryConnect(explicit_grid,cell_ids, &
+function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
                                          face_centroids,face_areas,option)
 
   use Utility_module
@@ -1334,7 +1334,7 @@ function ExplicitUGridSetBoundaryConnect(explicit_grid,cell_ids, &
 
   implicit none
   
-  type(connection_set_type), pointer :: ExplicitUGridSetBoundaryConnect
+  type(connection_set_type), pointer :: UGridExplicitSetBoundaryConnect
 
   type(unstructured_explicit_type) :: explicit_grid
   PetscInt :: cell_ids(:)
@@ -1371,18 +1371,18 @@ function ExplicitUGridSetBoundaryConnect(explicit_grid,cell_ids, &
     connections%area(iconn) = face_areas(iconn)
   enddo
   
-  ExplicitUGridSetBoundaryConnect => connections
+  UGridExplicitSetBoundaryConnect => connections
 
-end function ExplicitUGridSetBoundaryConnect
+end function UGridExplicitSetBoundaryConnect
 
 ! ************************************************************************** !
 !
-! ExplicitUGridSetConnections: Sets up the connectivity for a region
+! UGridExplicitSetConnections: Sets up the connectivity for a region
 ! author: Glenn Hammond
 ! date: 05/18/12
 !
 ! ************************************************************************** !
-function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
+function UGridExplicitSetConnections(explicit_grid,cell_ids,connection_type, &
                                      option)
 
   use Utility_module
@@ -1391,7 +1391,7 @@ function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
 
   implicit none
   
-  type(connection_set_type), pointer :: ExplicitUGridSetConnections
+  type(connection_set_type), pointer :: UGridExplicitSetConnections
 
   type(unstructured_explicit_type) :: explicit_grid
   PetscInt :: cell_ids(:)
@@ -1411,8 +1411,8 @@ function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
     connections%id_dn(iconn) = id
   enddo
   
-  ExplicitUGridSetConnections => connections
+  UGridExplicitSetConnections => connections
 
-end function ExplicitUGridSetConnections
+end function UGridExplicitSetConnections
 
 end module Unstructured_Explicit_module

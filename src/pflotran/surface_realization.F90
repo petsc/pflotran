@@ -972,7 +972,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 #endif  
   
   call MatMatMult(Mat_vert_to_face_subsurf,Mat_vert_to_face_surf_transp, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,prod,ierr)
 
 #if UGRID_DEBUG
   string = 'prod.out'
@@ -986,7 +986,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   call MatDestroy(prod,ierr)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
-                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,prod,ierr)
 
 #if UGRID_DEBUG
   string = 'prod_2.out'
@@ -1441,6 +1441,21 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
       enddo
     endif
 
+  endif
+
+  ! add waypoints for periodic checkpoint
+  if (surf_realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
+
+    ! standard output
+    temp_real = 0.d0
+    do
+      temp_real = temp_real + surf_realization%output_option%periodic_checkpoint_time_incr
+      if (temp_real > final_time) exit
+      waypoint => WaypointCreate()
+      waypoint%time = temp_real
+      waypoint%print_checkpoint = PETSC_TRUE
+      call WaypointInsertInList(waypoint,surf_realization%waypoints)
+    enddo
   endif
 
 end subroutine SurfRealizAddWaypointsToList

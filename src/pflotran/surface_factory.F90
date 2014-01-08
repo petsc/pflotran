@@ -98,10 +98,10 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
   use PMC_Base_class
   use PMC_Surface_class
   use Simulation_Base_class
-  use Process_Model_Surface_Flow_class
-  use Process_Model_Surface_TH_class
-  use Process_Model_Base_class
-  use Process_Model_module
+  use PM_Surface_Flow_class
+  use PM_Surface_TH_class
+  use PM_Base_class
+  use PM_module
   use Timestepper_Surface_class
 
   implicit none

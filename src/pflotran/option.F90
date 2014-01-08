@@ -59,6 +59,8 @@ module Option_module
     PetscInt :: rt_idof
     PetscInt :: nmechdof
     PetscInt :: nsec_cells
+    PetscBool :: use_th_freezing
+
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
@@ -74,6 +76,7 @@ module Option_module
 
 #ifdef GEOMECH
     PetscInt  :: ngeomechdof
+    PetscInt  :: n_stress_strain_dof
     PetscReal :: geomech_time
     PetscInt  :: geomech_subsurf_coupling
     PetscReal :: geomech_gravity(3)
@@ -405,6 +408,8 @@ subroutine OptionInitRealization(option)
   option%nflowdof = 0
   option%nmechdof = 0
   option%nsec_cells = 0
+  option%use_th_freezing = PETSC_FALSE
+
 #ifdef SURFACE_FLOW
   option%nsurfflowdof = 0
   option%subsurf_surf_coupling = DECOUPLED
@@ -421,6 +426,7 @@ subroutine OptionInitRealization(option)
 
 #ifdef GEOMECH
   option%ngeomechdof = 0
+  option%n_stress_strain_dof = 0
   option%geomech_time = 0.d0
   option%geomech_subsurf_coupling = 0 
   option%geomech_gravity(:) = 0.d0
@@ -1084,6 +1090,8 @@ end subroutine OptionInitMPI2
 ! ************************************************************************** !
 subroutine OptionInitPetsc(option)
 
+  use Logging_module
+  
   implicit none
   
   type(option_type) :: option
@@ -1099,7 +1107,11 @@ subroutine OptionInitPetsc(option)
     string = '-log_summary'
     call PetscOptionsInsertString(string, ierr)
   endif 
-  
+
+#ifdef PROCESS_MODEL
+  call LoggingCreate()
+#endif
+
 end subroutine OptionInitPetsc
 
 ! ************************************************************************** !
@@ -1266,9 +1278,13 @@ subroutine OptionFinalize(option)
   
   ! pushed in FinalizeRun()
   call PetscLogStagePop(ierr)
+#ifdef PROCESS_MODEL
+  call LoggingDestroy()
+#endif
   call PetscOptionsSetValue('-options_left','no',ierr)
   ! list any PETSc objects that have not been freed - for debugging
   call PetscOptionsSetValue('-objects_left','yes',ierr)
+  call MPI_Barrier(option%global_comm,ierr)
   call OptionDestroy(option)
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)

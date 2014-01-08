@@ -1,6 +1,8 @@
-module Process_Model_Mphase_class
+module PM_Richards_class
 
-  use Process_Model_Base_class
+  use PM_Base_class
+!geh: using Richards_module here fails with gfortran (internal compiler error)
+!  use Richards_module
   use Realization_class
   use Communicator_Base_module
   use Option_module
@@ -19,79 +21,77 @@ module Process_Model_Mphase_class
 #include "finclude/petscmat.h90"
 #include "finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_mphase_type
+  type, public, extends(pm_base_type) :: pm_richards_type
     class(realization_type), pointer :: realization
     class(communicator_type), pointer :: comm1
   contains
-    procedure, public :: Init => PMMphaseInit
-    procedure, public :: PMMphaseSetRealization
-    procedure, public :: InitializeRun => PMMphaseInitializeRun
-    procedure, public :: FinalizeRun => PMMphaseFinalizeRun
-    procedure, public :: InitializeTimestep => PMMphaseInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMMphaseFinalizeTimeStep
-    procedure, public :: Residual => PMMphaseResidual
-    procedure, public :: Jacobian => PMMphaseJacobian
-    procedure, public :: UpdateTimestep => PMMphaseUpdateTimestep
-    procedure, public :: PreSolve => PMMphasePreSolve
-    procedure, public :: PostSolve => PMMphasePostSolve
-    procedure, public :: AcceptSolution => PMMphaseAcceptSolution
-#if 0
-    procedure, public :: CheckUpdatePre => PMMphaseCheckUpdatePre
-    procedure, public :: CheckUpdatePost => PMMphaseCheckUpdatePost
-#endif
-    procedure, public :: TimeCut => PMMphaseTimeCut
-    procedure, public :: UpdateSolution => PMMphaseUpdateSolution
-    procedure, public :: MaxChange => PMMphaseMaxChange
-    procedure, public :: ComputeMassBalance => PMMphaseComputeMassBalance
-    procedure, public :: Checkpoint => PMMphaseCheckpoint    
-    procedure, public :: Restart => PMMphaseRestart  
-    procedure, public :: Destroy => PMMphaseDestroy
-  end type pm_mphase_type
+    procedure, public :: Init => PMRichardsInit
+    procedure, public :: PMRichardsSetRealization
+    procedure, public :: InitializeRun => PMRichardsInitializeRun
+    procedure, public :: FinalizeRun => PMRichardsFinalizeRun
+    procedure, public :: InitializeTimestep => PMRichardsInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMRichardsFinalizeTimeStep
+    procedure, public :: Residual => PMRichardsResidual
+    procedure, public :: Jacobian => PMRichardsJacobian
+    procedure, public :: UpdateTimestep => PMRichardsUpdateTimestep
+    procedure, public :: PreSolve => PMRichardsPreSolve
+    procedure, public :: PostSolve => PMRichardsPostSolve
+    procedure, public :: AcceptSolution => PMRichardsAcceptSolution
+    procedure, public :: CheckUpdatePre => PMRichardsCheckUpdatePre
+    procedure, public :: CheckUpdatePost => PMRichardsCheckUpdatePost
+    procedure, public :: TimeCut => PMRichardsTimeCut
+    procedure, public :: UpdateSolution => PMRichardsUpdateSolution
+    procedure, public :: MaxChange => PMRichardsMaxChange
+    procedure, public :: ComputeMassBalance => PMRichardsComputeMassBalance
+    procedure, public :: Checkpoint => PMRichardsCheckpoint    
+    procedure, public :: Restart => PMRichardsRestart  
+    procedure, public :: Destroy => PMRichardsDestroy
+  end type pm_richards_type
   
-  public :: PMMphaseCreate
+  public :: PMRichardsCreate
   
 contains
 
 ! ************************************************************************** !
 !
-! PMMphaseCreate: Creates Mphase process models shell
+! PMRichardsCreate: Creates Richards process models shell
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-function PMMphaseCreate()
+function PMRichardsCreate()
 
   implicit none
   
-  class(pm_mphase_type), pointer :: PMMphaseCreate
+  class(pm_richards_type), pointer :: PMRichardsCreate
 
-  class(pm_mphase_type), pointer :: mphase_pm
+  class(pm_richards_type), pointer :: richards_pm
   
-#ifdef PM_MPHASE_DEBUG  
-  print *, 'PMMphaseCreate()'
+#ifdef PM_RICHARDS_DEBUG  
+  print *, 'PMRichardsCreate()'
 #endif  
 
-  allocate(mphase_pm)
-  nullify(mphase_pm%option)
-  nullify(mphase_pm%output_option)
-  nullify(mphase_pm%realization)
-  nullify(mphase_pm%comm1)
+  allocate(richards_pm)
+  nullify(richards_pm%option)
+  nullify(richards_pm%output_option)
+  nullify(richards_pm%realization)
+  nullify(richards_pm%comm1)
 
-  call PMBaseCreate(mphase_pm)
-  mphase_pm%name = 'PMMphase'
+  call PMBaseCreate(richards_pm)
+  richards_pm%name = 'PMRichards'
 
-  PMMphaseCreate => mphase_pm
+  PMRichardsCreate => richards_pm
   
-end function PMMphaseCreate
+end function PMRichardsCreate
 
 ! ************************************************************************** !
 !
-! PMMphaseInit: Initializes variables associated with Richard
+! PMRichardsInit: Initializes variables associated with Richard
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseInit(this)
+subroutine PMRichardsInit(this)
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -102,10 +102,10 @@ subroutine PMMphaseInit(this)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%Init()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%Init()')
 #endif
   
 #ifndef SIMPLIFY  
@@ -119,27 +119,27 @@ subroutine PMMphaseInit(this)
   call this%comm1%SetDM(this%realization%discretization%dm_1dof)
 #endif
 
-end subroutine PMMphaseInit
+end subroutine PMRichardsInit
 
 ! ************************************************************************** !
 !
-! PMMphaseSetRealization: 
+! PMRichardsSetRealization: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseSetRealization(this,realization)
+subroutine PMRichardsSetRealization(this,realization)
 
   use Realization_class
   use Grid_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   class(realization_type), pointer :: realization
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%SetRealization()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%SetRealization()')
 #endif
   
   this%realization => realization
@@ -153,26 +153,26 @@ subroutine PMMphaseSetRealization(this,realization)
     this%residual_vec = realization%field%flow_r
   endif
   
-end subroutine PMMphaseSetRealization
+end subroutine PMRichardsSetRealization
 
 ! ************************************************************************** !
 ! Should not need this as it is called in PreSolve.
-! PMMphaseInitializeTimestep: 
+! PMRichardsInitializeTimestep: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseInitializeTimestep(this)
+subroutine PMRichardsInitializeTimestep(this)
 
-  use Mphase_module, only : MphaseInitializeTimestep
+  use Richards_module, only : RichardsInitializeTimestep
   use Global_module
   
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%InitializeTimestep()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%InitializeTimestep()')
 #endif
 
   this%option%flow_dt = this%option%dt
@@ -184,135 +184,130 @@ subroutine PMMphaseInitializeTimestep(this)
 #endif
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," MPHASE FLOW ",62("="))')
+    write(*,'(/,2("=")," RICHARDS FLOW ",62("="))')
   endif
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
   endif  
   
-  call MphaseInitializeTimestep(this%realization)
+  call RichardsInitializeTimestep(this%realization)
   
-end subroutine PMMphaseInitializeTimestep
+end subroutine PMRichardsInitializeTimestep
 
 ! ************************************************************************** !
 !
-! PMMphasePreSolve: 
+! PMRichardsPreSolve: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphasePreSolve(this)
+subroutine PMRichardsPreSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%PreSolve()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%PreSolve()')
 #endif
 
-end subroutine PMMphasePreSolve
+end subroutine PMRichardsPreSolve
 
 ! ************************************************************************** !
 !
-! PMMphaseUpdatePostSolve: 
+! PMRichardsUpdatePostSolve: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphasePostSolve(this)
+subroutine PMRichardsPostSolve(this)
 
   use Global_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%PostSolve()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%PostSolve()')
 #endif
   
-end subroutine PMMphasePostSolve
+end subroutine PMRichardsPostSolve
 
 ! ************************************************************************** !
 !
-! PMMphaseFinalizeTimestep: 
+! PMRichardsFinalizeTimestep: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseFinalizeTimestep(this)
+subroutine PMRichardsFinalizeTimestep(this)
 
-  use Mphase_module, only : MphaseMaxChange
+  use Richards_module, only : RichardsMaxChange
   use Global_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%FinalizeTimestep()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%FinalizeTimestep()')
 #endif
   
   if (this%option%ntrandof > 0) then ! store final saturations, etc. for transport
     call GlobalUpdateAuxVars(this%realization,TIME_TpDT,this%option%time)
   endif
   
-  call MphaseMaxChange(this%realization)
+  call RichardsMaxChange(this%realization)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-          this%option%dsmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-      this%option%dsmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
+      this%option%dpmax
   endif  
   
-end subroutine PMMphaseFinalizeTimestep
+end subroutine PMRichardsFinalizeTimestep
 
 ! ************************************************************************** !
 !
-! PMMphaseAcceptSolution: 
+! PMRichardsAcceptSolution: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-function PMMphaseAcceptSolution(this)
+function PMRichardsAcceptSolution(this)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-  PetscBool :: PMMphaseAcceptSolution
+  PetscBool :: PMRichardsAcceptSolution
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%AcceptSolution()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%AcceptSolution()')
 #endif
   ! do nothing
-  PMMphaseAcceptSolution = PETSC_TRUE
+  PMRichardsAcceptSolution = PETSC_TRUE
   
-end function PMMphaseAcceptSolution
+end function PMRichardsAcceptSolution
 
 ! ************************************************************************** !
 !
-! PMMphaseUpdateTimestep: 
+! PMRichardsUpdateTimestep: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
+subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: iacceleration
@@ -322,16 +317,13 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
   PetscReal :: fac
   PetscReal :: ut
   PetscReal :: up
-  PetscReal :: utmp
-  PetscReal :: uc
-  PetscReal :: uus
   PetscReal :: dtt
   PetscReal :: dt_p
   PetscReal :: dt_tfac
   PetscInt :: ifac
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%UpdateTimestep()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%UpdateTimestep()')
 #endif
   
   if (iacceleration > 0) then
@@ -341,10 +333,7 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
       ut = 0.d0
     else
       up = this%option%dpmxe/(this%option%dpmax+0.1)
-      utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
-      uc = this%option%dcmxe/(this%option%dcmax+1.d-6)
-      uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
-      ut = min(up,utmp,uc,uus)
+      ut = up
     endif
     dtt = fac * dt * (1.d0 + ut)
   else
@@ -365,26 +354,26 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
       
   dt = dtt
   
-end subroutine PMMphaseUpdateTimestep
+end subroutine PMRichardsUpdateTimestep
 
 ! ************************************************************************** !
 !
-! PMMphaseInitializeRun: Initializes the time stepping
+! PMRichardsInitializeRun: Initializes the time stepping
 ! author: Glenn Hammond
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMMphaseInitializeRun(this)
+recursive subroutine PMRichardsInitializeRun(this)
 
-  use Mphase_module, only : MphaseUpdateSolution
+  use Richards_module, only : RichardsUpdateSolution
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
  
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%InitializeRun()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%InitializeRun()')
 #endif
   
   ! restart
@@ -394,26 +383,26 @@ recursive subroutine PMMphaseInitializeRun(this)
   if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
   endif  
-  call MphaseUpdateSolution(this%realization)
+  call RichardsUpdateSolution(this%realization)
 #endif  
     
-end subroutine PMMphaseInitializeRun
+end subroutine PMRichardsInitializeRun
 
 ! ************************************************************************** !
 !
-! PMMphaseFinalizeRun: Finalizes the time stepping
+! PMRichardsFinalizeRun: Finalizes the time stepping
 ! author: Glenn Hammond
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMMphaseFinalizeRun(this)
+recursive subroutine PMRichardsFinalizeRun(this)
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%FinalizeRun()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%FinalizeRun()')
 #endif
   
   ! do something here
@@ -422,119 +411,118 @@ recursive subroutine PMMphaseFinalizeRun(this)
     call this%next%FinalizeRun()
   endif  
   
-end subroutine PMMphaseFinalizeRun
+end subroutine PMRichardsFinalizeRun
 
 ! ************************************************************************** !
 !
-! PMMphaseResidual: 
+! PMRichardsResidual: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseResidual(this,snes,xx,r,ierr)
+subroutine PMRichardsResidual(this,snes,xx,r,ierr)
 
-  use Mphase_module, only : MphaseResidual
+  use Richards_module, only : RichardsResidual
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   SNES :: snes
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%Residual()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%Residual()')
 #endif
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MphaseResidualMFDLP(snes,xx,r,this%realization,ierr)
+!      call RichardsResidualMFDLP(snes,xx,r,this%realization,ierr)
     case default
-      call MphaseResidual(snes,xx,r,this%realization,ierr)
+      call RichardsResidual(snes,xx,r,this%realization,ierr)
   end select
 
-end subroutine PMMphaseResidual
+end subroutine PMRichardsResidual
 
 ! ************************************************************************** !
 !
-! PMMphaseJacobian: 
+! PMRichardsJacobian: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
+subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
 
-  use Mphase_module, only : MphaseJacobian
+  use Richards_module, only : RichardsJacobian
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   SNES :: snes
   Vec :: xx
   Mat :: A, B
   MatStructure flag
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%Jacobian()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%Jacobian()')
 #endif
   
   select case(this%realization%discretization%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!      call MphaseJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
+!      call RichardsJacobianMFDLP(snes,xx,A,B,flag,this%realization,ierr)
     case default
-      call MphaseJacobian(snes,xx,A,B,flag,this%realization,ierr)
+      call RichardsJacobian(snes,xx,A,B,flag,this%realization,ierr)
   end select
 
-end subroutine PMMphaseJacobian
+end subroutine PMRichardsJacobian
     
-#if 0
 ! ************************************************************************** !
 !
-! PMMphaseCheckUpdatePre: 
+! PMRichardsCheckUpdatePre: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 
-  use Mphase_module, only : MphaseCheckUpdatePre
+  use Richards_module, only : RichardsCheckUpdatePre
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   SNESLineSearch :: line_search
   Vec :: P
   Vec :: dP
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%CheckUpdatePre()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%CheckUpdatePre()')
 #endif
   
 #ifndef SIMPLIFY  
-  call MphaseCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call RichardsCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
 #endif
 
-end subroutine PMMphaseCheckUpdatePre
+end subroutine PMRichardsCheckUpdatePre
     
 ! ************************************************************************** !
 !
-! PMMphaseCheckUpdatePost: 
+! PMRichardsCheckUpdatePost: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
+subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
 
-  use Mphase_module, only : MphaseCheckUpdatePost
+  use Richards_module, only : RichardsCheckUpdatePost
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   SNESLineSearch :: line_search
   Vec :: P0
   Vec :: dP
@@ -543,63 +531,62 @@ subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   PetscBool :: P1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%CheckUpdatePost()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%CheckUpdatePost()')
 #endif
   
 #ifndef SIMPLIFY  
-  call MphaseCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+  call RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                P1_changed,this%realization,ierr)
 #endif
 
-end subroutine PMMphaseCheckUpdatePost
-#endif
-
+end subroutine PMRichardsCheckUpdatePost
+  
 ! ************************************************************************** !
 !
-! PMMphaseTimeCut: 
+! PMRichardsTimeCut: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseTimeCut(this)
+subroutine PMRichardsTimeCut(this)
 
-  use Mphase_module, only : MphaseTimeCut
+  use Richards_module, only : RichardsTimeCut
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%TimeCut()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%TimeCut()')
 #endif
   
   this%option%flow_dt = this%option%dt
 
-  call MphaseTimeCut(this%realization)
+  call RichardsTimeCut(this%realization)
 
-end subroutine PMMphaseTimeCut
+end subroutine PMRichardsTimeCut
     
 ! ************************************************************************** !
 !
-! PMMphaseUpdateSolution: 
+! PMRichardsUpdateSolution: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseUpdateSolution(this)
+subroutine PMRichardsUpdateSolution(this)
 
-  use Mphase_module, only : MphaseUpdateSolution
+  use Richards_module, only : RichardsUpdateSolution, RichardsUpdateSurfacePress
   use Condition_module
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%UpdateSolution()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%UpdateSolution()')
 #endif
 
   ! begin from RealizationUpdate()
@@ -612,134 +599,137 @@ subroutine PMMphaseUpdateSolution(this)
     call RealizUpdateUniformVelocity(this%realization)
   endif  
   ! end from RealizationUpdate()
-  call MphaseUpdateSolution(this%realization)
+  call RichardsUpdateSolution(this%realization)
+#ifdef SURFACE_FLOW
+  if(this%option%nsurfflowdof>0) &
+    call RichardsUpdateSurfacePress(this%realization)
+#endif
 
-end subroutine PMMphaseUpdateSolution     
+end subroutine PMRichardsUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given MphaseMaxChange is called in PostSolve
-! PMMphaseMaxChange: 
+! Not needed given RichardsMaxChange is called in PostSolve
+! PMRichardsMaxChange: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseMaxChange(this)
+subroutine PMRichardsMaxChange(this)
 
-  use Mphase_module, only : MphaseMaxChange
+  use Richards_module, only : RichardsMaxChange
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%MaxChange()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%MaxChange()')
 #endif
 
-  call MphaseMaxChange(this%realization)
+  call RichardsMaxChange(this%realization)
 
-end subroutine PMMphaseMaxChange
+end subroutine PMRichardsMaxChange
     
 ! ************************************************************************** !
 !
-! PMMphaseComputeMassBalance: 
+! PMRichardsComputeMassBalance: 
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseComputeMassBalance(this,mass_balance_array)
+subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
 
-  use Mphase_module, only : MphaseComputeMassBalance
+  use Richards_module, only : RichardsComputeMassBalance
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   PetscReal :: mass_balance_array(:)
   
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphase%ComputeMassBalance()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichards%ComputeMassBalance()')
 #endif
 
-#ifndef SIMPLIFY
-  !geh: currently does not include "trapped" mass
-  !call MphaseComputeMassBalance(this%realization,mass_balance_array)
+#ifndef SIMPLIFY  
+  call RichardsComputeMassBalance(this%realization,mass_balance_array)
 #endif
 
-end subroutine PMMphaseComputeMassBalance
+end subroutine PMRichardsComputeMassBalance
 
 ! ************************************************************************** !
 !
-! PMMphaseCheckpoint: Checkpoints data associated with Mphase PM
+! PMRichardsCheckpoint: Checkpoints data associated with Richards PM
 ! author: Glenn Hammond
 ! date: 07/26/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseCheckpoint(this,viewer)
+subroutine PMRichardsCheckpoint(this,viewer)
 
   use Checkpoint_module
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   PetscViewer :: viewer
   
   call CheckpointFlowProcessModel(viewer,this%realization) 
   
-end subroutine PMMphaseCheckpoint
+end subroutine PMRichardsCheckpoint
 
 
 ! ************************************************************************** !
 !
-! PMMphaseRestart: Restarts data associated with Mphase PM
+! PMRichardsRestart: Restarts data associated with Richards PM
 ! author: Glenn Hammond
 ! date: 07/30/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseRestart(this,viewer)
+subroutine PMRichardsRestart(this,viewer)
 
   use Checkpoint_module
-  use Mphase_module, only : MphaseUpdateAuxVars
+  use Richards_module, only : RichardsUpdateAuxVars
 
   implicit none
 #include "finclude/petscviewer.h"      
 
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   PetscViewer :: viewer
   
   call RestartFlowProcessModel(viewer,this%realization)
-  call MphaseUpdateAuxVars(this%realization)
+  call RichardsUpdateAuxVars(this%realization)
   call this%UpdateSolution()
   
-end subroutine PMMphaseRestart
+end subroutine PMRichardsRestart
 
 ! ************************************************************************** !
 !
-! PMMphaseDestroy: Destroys Mphase process model
+! PMRichardsDestroy: Destroys Richards process model
 ! author: Glenn Hammond
 ! date: 03/14/13
 !
 ! ************************************************************************** !
-subroutine PMMphaseDestroy(this)
+subroutine PMRichardsDestroy(this)
 
-  use Mphase_module, only : MphaseDestroy
+  use Richards_module, only : RichardsDestroy
 
   implicit none
   
-  class(pm_mphase_type) :: this
+  class(pm_richards_type) :: this
   
   if (associated(this%next)) then
     call this%next%Destroy()
   endif
 
-#ifdef PM_MPHASE_DEBUG  
-  call printMsg(this%option,'PMMphaseDestroy()')
+#ifdef PM_RICHARDS_DEBUG  
+  call printMsg(this%option,'PMRichardsDestroy()')
 #endif
 
 #ifndef SIMPLIFY 
-  call MphaseDestroy(this%realization)
+  call RichardsDestroy(this%realization)
 #endif
   call this%comm1%Destroy()
   
-end subroutine PMMphaseDestroy
+end subroutine PMRichardsDestroy
   
-end module Process_Model_Mphase_class
+end module PM_Richards_class

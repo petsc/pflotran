@@ -69,7 +69,9 @@ subroutine Init(simulation)
   
   use Global_module
   use Variables_module
-  use Water_EOS_module
+  
+  use EOS_module
+  use EOS_Water_module
 !  use Utility_module
   use Output_module
   use Output_Aux_module
@@ -120,7 +122,7 @@ subroutine Init(simulation)
   PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
 #ifdef SURFACE_FLOW
@@ -162,6 +164,9 @@ subroutine Init(simulation)
   
   nullify(flow_solver)
   nullify(tran_solver)
+
+  ! sets pointers to EOS procedures
+  call EOSInit()
   
   if (OptionPrintToScreen(option)) then
     temp_int = 6
@@ -275,11 +280,12 @@ subroutine Init(simulation)
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
-    call wateos(option%reference_temperature,option%reference_pressure, &
-                option%reference_water_density,r1,r2,r3,r4,r5,r6, &
-                option%scale,ierr)
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,option%scale, ierr)    
 #else
-    call density(option%reference_temperature,option%reference_pressure, &
+    call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)
 #endif                 
   endif
@@ -639,7 +645,7 @@ subroutine Init(simulation)
       geomech_solver%Jpre_mat_type = geomech_solver%J_mat_type
     endif
     call GeomechDiscretizationCreateJacobian(geomech_realization% &
-                                             discretization,NGEODOF, &
+                                             geomech_discretization,NGEODOF, &
                                              geomech_solver%Jpre_mat_type, &
                                              geomech_solver%Jpre,option)
 
@@ -1091,7 +1097,6 @@ subroutine Init(simulation)
   if (debug%print_waypoints) then
     call WaypointListPrint(realization%waypoints,option,realization%output_option)
   endif
-    call WaypointListPrint(realization%waypoints,option,realization%output_option)
 
 #ifdef OS_STATISTICS
   call RealizationPrintGridStatistics(realization)
@@ -1200,10 +1205,16 @@ subroutine Init(simulation)
 
 #ifdef GEOMECH
   if (option%ngeomechdof > 0) then
-    if (option%geomech_subsurf_coupling /= 0) &
+    if (option%geomech_subsurf_coupling /= 0) then
+      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
+                                          simulation%geomech_realization)
+      call GeomechCreateSubsurfStressStrainVec(simulation%realization, &
+                                               simulation%geomech_realization)
+
       call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
                                               simulation%geomech_realization, &
                                               option)
+    endif
     call GeomechRealizLocalizeRegions(simulation%geomech_realization)
     call GeomechRealizPassFieldPtrToPatch(simulation%geomech_realization)
     call GeomechRealizProcessMatProp(simulation%geomech_realization)
@@ -1224,9 +1235,6 @@ subroutine Init(simulation)
     ! Initial condition is not needed, hence CondControlAssignFlowInitCondGeomech
     ! is not needed, at this point.
     call GeomechForceUpdateAuxVars(simulation%geomech_realization)
-    if (option%geomech_subsurf_coupling /= 0) &
-      call GeomechCreateGeomechSubsurfVec(simulation%realization, &
-                                          simulation%geomech_realization)
   endif
 #endif
 
@@ -1494,6 +1502,7 @@ subroutine InitReadInput(simulation)
   use Output_Aux_module
   use Output_Tecplot_module
   use Mass_Transfer_module
+  use EOS_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -1627,6 +1636,26 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('MODE')
+         call InputReadWord(input, option, word, PETSC_FALSE)
+         call StringToUpper(word)
+         if ('TH' == trim(word) .or. 'THC' == trim(word)) then
+            call InputReadWord(input, option, word, PETSC_TRUE)
+            call InputErrorMsg(input, option, 'th(c) freezing mode', 'mode th(c)')
+            call StringToUpper(word)
+            if ('FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_TRUE
+               option%io_buffer = ' TH(C): using FREEZING submode!'
+               call printMsg(option)
+            else if ('NO_FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_FALSE
+               option%io_buffer = ' TH(C): using NO_FREEZING submode!'
+               call printMsg(option)
+            else
+               ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
+               option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
+               call printErrMsg(option)
+            endif
+         endif
 
 !....................
       case ('GRID')
@@ -2152,6 +2181,10 @@ subroutine InitReadInput(simulation)
         call FluidPropertyAddToList(fluid_property,realization%fluid_properties)
         nullify(fluid_property)
         
+!....................
+
+      case ('EOS')
+        call EOSRead(input,option)
 !....................
 
       case ('SATURATION_FUNCTION')

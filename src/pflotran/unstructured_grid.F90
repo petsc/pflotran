@@ -284,6 +284,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
 end subroutine UGridRead
 
 
+#ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !
 ! UGridRead: Reads an unstructured grid
@@ -291,7 +292,6 @@ end subroutine UGridRead
 ! date: 01/09/2012
 !
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
 subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 
   use Input_Aux_module
@@ -1871,7 +1871,7 @@ end subroutine UGridDecompose
 !
 ! ************************************************************************** !
 function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
-                                   scatter_ltol,option)
+                                   option)
 
   use Connection_module
   use Option_module
@@ -1883,7 +1883,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(option_type) :: option
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(unstructured_grid_type) :: unstructured_grid
-  VecScatter :: scatter_ltol 
 
   type(connection_set_type), pointer :: connections
   PetscInt :: nconn, iconn
@@ -2627,7 +2626,6 @@ end subroutine UGridPopulateConnection
 !
 ! ************************************************************************** !
 subroutine UGridComputeCoord(unstructured_grid,option, &
-                             scatter_ltol, & 
                              grid_x,grid_y,grid_z, &
                              x_min,x_max,y_min,y_max,z_min,z_max)
 
@@ -2637,7 +2635,6 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
 
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
-  VecScatter :: scatter_ltol 
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
@@ -3982,7 +3979,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   
   ! Perform a matrix-matrix multiplication
   call MatMatMult(Mat_vert_to_cell,Mat_proc_to_vert, &
-                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,Mat_proc_to_cell,ierr)
+                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_REAL,Mat_proc_to_cell,ierr)
 
   ! Transpose of the result gives: cell ids that are needed after growing stencil
   ! width by one

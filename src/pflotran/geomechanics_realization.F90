@@ -26,7 +26,7 @@ private
 
   type, public :: geomech_realization_type
     PetscInt :: id
-    type(geomech_discretization_type), pointer        :: discretization
+    type(geomech_discretization_type), pointer        :: geomech_discretization
     type(input_type), pointer                         :: input
     type(geomech_patch_type), pointer                 :: geomech_patch
     type(option_type), pointer                        :: option
@@ -36,7 +36,7 @@ private
                            pointer       :: geomech_material_property_array(:)
     type(waypoint_list_type), pointer                 :: waypoints
     type(geomech_field_type), pointer                 :: geomech_field
-    type(geomech_debug_type), pointer                 :: debug
+    type(geomech_debug_type), pointer                 :: geomech_debug
     type(output_option_type), pointer                 :: output_option
     type(gm_region_list_type), pointer                :: geomech_regions
     type(geomech_condition_list_type),pointer         :: geomech_conditions
@@ -87,11 +87,11 @@ function GeomechRealizCreate(option)
   endif
   
   nullify(geomech_realization%input)
-  geomech_realization%discretization => GeomechDiscretizationCreate()
+  geomech_realization%geomech_discretization => GeomechDiscretizationCreate()
   
   geomech_realization%geomech_field => GeomechFieldCreate()
   geomech_realization%output_option => OutputOptionCreate()
-  geomech_realization%debug => GeomechDebugCreate()
+  geomech_realization%geomech_debug => GeomechDebugCreate()
   
   allocate(geomech_realization%geomech_regions)
   call GeomechRegionInitList(geomech_realization%geomech_regions)
@@ -212,7 +212,7 @@ end subroutine GeomechRealizProcessMatProp
 ! date: 05/23/13
 !
 ! ************************************************************************** !
-subroutine GeomechRealizCreateDiscretization(realization)
+subroutine GeomechRealizCreateDiscretization(geomech_realization)
 
   use Geomechanics_Grid_Aux_module
   
@@ -221,90 +221,89 @@ subroutine GeomechRealizCreateDiscretization(realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(geomech_realization_type)                 :: realization
-  type(geomech_discretization_type), pointer     :: discretization
+  type(geomech_realization_type)                 :: geomech_realization
+  type(geomech_discretization_type), pointer     :: geomech_discretization
   type(geomech_grid_type), pointer               :: grid
   type(option_type), pointer                     :: option
   type(geomech_field_type), pointer              :: geomech_field
   type(gmdm_ptr_type), pointer                   :: dm_ptr
   PetscErrorCode                                 :: ierr
 
-  discretization => realization%discretization
-  grid => discretization%grid
-  option => realization%option
-  geomech_field => realization%geomech_field
+  geomech_discretization => geomech_realization%geomech_discretization
+  grid => geomech_discretization%grid
+  option => geomech_realization%option
+  geomech_field => geomech_realization%geomech_field
   
-  call GeomechDiscretizationCreateDMs(discretization,option)
+  call GeomechDiscretizationCreateDMs(geomech_discretization,option)
   
   ! n degree of freedom, global
-  call GeomechDiscretizationCreateVector(discretization,NGEODOF,geomech_field%disp_xx, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,NGEODOF,geomech_field%disp_xx, &
                                          GLOBAL,option)
   call VecSet(geomech_field%disp_xx,0.d0,ierr)
 
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx, &
                                             geomech_field%disp_r)
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx, &
                                             geomech_field%work)
   
   ! 1 degree of freedom, global                                                                                    
-  call GeomechDiscretizationCreateVector(discretization,ONEDOF,geomech_field%press, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,geomech_field%press, &
                                          GLOBAL,option)
   call VecSet(geomech_field%press,0.d0,ierr)
   
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press, &
                                             geomech_field%temp)
                                             
   ! n degrees of freedom, local
-  call GeomechDiscretizationCreateVector(discretization,NGEODOF,geomech_field%disp_xx_loc, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,NGEODOF,geomech_field%disp_xx_loc, &
                                          LOCAL,option)
   call VecSet(geomech_field%disp_xx_loc,0.d0,ierr)
  
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx_loc, &
                                             geomech_field%work_loc)
 
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%disp_xx_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%disp_xx_loc, &
                                             geomech_field%disp_xx_init_loc)
                                             
   ! 1 degree of freedom, local
-  call GeomechDiscretizationCreateVector(discretization,ONEDOF,geomech_field%press_loc, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,geomech_field%press_loc, &
                                          LOCAL,option)
 
   call VecSet(geomech_field%press_loc,0.d0,ierr)
   
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press_loc, &
                                             geomech_field%temp_loc)
 
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press_loc, &
                                             geomech_field%press_init_loc)
 
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press_loc, &
                                             geomech_field%temp_init_loc)
 
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%press_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%press_loc, &
                                             geomech_field%imech_loc)
 
   ! 6 dof for strain and stress
-  call GeomechDiscretizationCreateVector(discretization,SIX_INTEGER,geomech_field%strain_loc, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,SIX_INTEGER,geomech_field%strain_loc, &
                                          LOCAL,option)
 
   call VecSet(geomech_field%strain_loc,0.d0,ierr)
  
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%strain_loc, &
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%strain_loc, &
                                             geomech_field%stress_loc)
 
-  call GeomechDiscretizationCreateVector(discretization,SIX_INTEGER,geomech_field%strain, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,SIX_INTEGER,geomech_field%strain, &
                                          GLOBAL,option)
 
   call VecSet(geomech_field%strain,0.d0,ierr)
  
-  call GeomechDiscretizationDuplicateVector(discretization,geomech_field%strain, &
-                                            geomech_field%stress)
- 
+  call GeomechDiscretizationDuplicateVector(geomech_discretization,geomech_field%strain, &
+                                            geomech_field%stress) 
 
-  grid => discretization%grid
+  grid => geomech_discretization%grid
   
   ! set up nG2L, NL2G, etc.
-  call GMGridMapIndices(grid,discretization%dm_1dof%gmdm, &
+  call GMGridMapIndices(grid,geomech_discretization%dm_1dof%gmdm, &
                         grid%nG2L,grid%nL2G,grid%nG2A,option)
                         
   ! SK, Need to add a subroutine to ensure right hand rule
@@ -356,9 +355,12 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
   PetscInt                                     :: local_id
   VecScatter                                   :: scatter
   IS                                           :: is_geomech_petsc
+  PetscInt, pointer                            :: int_ptr(:)
+  IS                                           :: is_geomech_petsc_block
+  IS                                           :: is_subsurf_petsc_block
 
-  geomech_grid => geomech_realization%discretization%grid
-  grid => realization%discretization%grid
+  geomech_grid => geomech_realization%geomech_discretization%grid
+  grid => realization%discretization%grid    
     
   ! Convert from 1-based to 0-based  
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
@@ -473,19 +475,84 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #endif
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
-                                                   discretization,ONEDOF)
+                                                   geomech_discretization,ONEDOF)
 
   call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_subsurf_to_geomech_ndof,ierr)
   
   call VecScatterDestroy(scatter,ierr)
+  
+  ! Geomech to subsurf scatter
+  
+  allocate(int_array(grid%nlmax))
+  call ISGetIndicesF90(is_geomech_petsc,int_ptr,ierr)
+  do local_id = 1, grid%nlmax
+    int_array(local_id) = int_ptr(local_id)
+  enddo  
+  call ISRestoreIndicesF90(is_geomech_petsc,int_ptr,ierr)
+  call ISCreateBlock(option%mycomm,SIX_INTEGER,grid%nlmax, &
+                     int_array,PETSC_COPY_VALUES,is_geomech_petsc_block,ierr)
+  deallocate(int_array)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_geomech_petsc_block.out', &
+                            viewer,ierr)
+  call ISView(is_geomech_petsc_block,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif 
+
+  allocate(int_array(grid%nlmax))
+  call ISGetIndicesF90(is_subsurf_petsc,int_ptr,ierr)
+  do local_id = 1, grid%nlmax
+    int_array(local_id) = int_ptr(local_id)
+  enddo  
+  call ISRestoreIndicesF90(is_subsurf_petsc,int_ptr,ierr)
+  call ISCreateBlock(option%mycomm,SIX_INTEGER,grid%nlmax, &
+                     int_array,PETSC_COPY_VALUES,is_subsurf_petsc_block,ierr)
+  deallocate(int_array)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_subsurf_petsc_block.out', &
+                            viewer,ierr)
+  call ISView(is_subsurf_petsc_block,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+  
+  call VecScatterCreate(geomech_realization%geomech_field%strain,is_geomech_petsc_block, &
+                        geomech_realization%geomech_field%strain_subsurf, &
+                        is_subsurf_petsc_block,scatter,ierr)
+                        
+  if (ierr /= 0) then
+    option%io_buffer = 'The number of cells specified in ' // &
+                       'input file might not be same as the ' // &
+                       'GEOMECH->SUBSURF mapping used.'
+    call printErrMsg(option)
+  endif
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_scatter_geomech_to_subsurf_block.out', &
+                            viewer,ierr)
+  call VecScatterView(scatter,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_realization% &
+                                                   geomech_discretization,ONEDOF)
+
+  call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof,ierr)
+  
   call ISDestroy(is_geomech,ierr)
   call ISDestroy(is_subsurf,ierr)
   call ISDestroy(is_subsurf_natural,ierr)
   call ISDestroy(is_geomech_petsc,ierr)
   call ISDestroy(is_subsurf_petsc,ierr)
-  call AODestroy(ao_geomech_to_subsurf_natural,ierr)
+  call AODestroy(ao_geomech_to_subsurf_natural,ierr) 
+  call ISDestroy(is_subsurf_petsc_block,ierr)
+  call ISDestroy(is_geomech_petsc_block,ierr)
 
-end subroutine
+end subroutine GeomechRealizMapSubsurfGeomechGrid
 
 ! ************************************************************************** !
 !
@@ -495,7 +562,7 @@ end subroutine
 ! date: 09/17/13
 !
 ! ************************************************************************** !
-subroutine GeomechGridElemSharedByNodes(realization)
+subroutine GeomechGridElemSharedByNodes(geomech_realization)
   
   use Geomechanics_Grid_Aux_module
 
@@ -504,7 +571,7 @@ subroutine GeomechGridElemSharedByNodes(realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   type(geomech_grid_type), pointer :: grid
   
   PetscInt :: ielem
@@ -514,7 +581,7 @@ subroutine GeomechGridElemSharedByNodes(realization)
   PetscReal, pointer :: elem_sharing_node_loc_p(:)
   PetscErrorCode :: ierr
   
-  grid => realization%discretization%grid
+  grid => geomech_realization%geomech_discretization%grid
   
   call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
                       ierr)
@@ -533,7 +600,7 @@ subroutine GeomechGridElemSharedByNodes(realization)
 
   
   ! Local to global scatter
-  call GeomechDiscretizationLocalToGlobalAdd(realization%discretization, &
+  call GeomechDiscretizationLocalToGlobalAdd(geomech_realization%geomech_discretization, &
                                              grid%no_elems_sharing_node_loc, &
                                              grid%no_elems_sharing_node, &
                                              ONEDOF)  
@@ -598,7 +665,7 @@ subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
                                             grid%ngmax_node)
   end select
     
-  call GeomechDiscretizationLocalToLocal(geomech_realization%discretization, &
+  call GeomechDiscretizationLocalToLocal(geomech_realization%geomech_discretization, &
                                          geomech_field%work_loc, &
                                          geomech_field%work_loc,ONEDOF)
                                   
@@ -618,23 +685,23 @@ end subroutine GeomechRealizLocalToLocalWithArray
 ! date: 06/17/13
 !
 ! ************************************************************************** !
-subroutine GeomechRealizPrintCouplers(realization)
+subroutine GeomechRealizPrintCouplers(geomech_realization)
 
   use Geomechanics_Coupler_module
   
   implicit none
   
-  type(geomech_realization_type) :: realization
+  type(geomech_realization_type) :: geomech_realization
   
   type(geomech_patch_type), pointer :: patch
   type(geomech_coupler_type), pointer :: cur_coupler
   type(option_type), pointer :: option
  
-  option => realization%option
+  option => geomech_realization%option
  
   if (.not.OptionPrintToFile(option)) return
   
-  patch => realization%geomech_patch
+  patch => geomech_realization%geomech_patch
    
   cur_coupler => patch%geomech_boundary_conditions%first
   do
@@ -830,19 +897,19 @@ end subroutine GeomechRealizGetDataset
 ! date: 06/13/13
 !
 ! ************************************************************************** !
-subroutine GeomechRealizAddGeomechCoupler(realization,coupler)
+subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
 
   use Geomechanics_Coupler_module
 
   implicit none
   
-  type(geomech_realization_type)                   :: realization
+  type(geomech_realization_type)                   :: geomech_realization
   type(geomech_coupler_type), pointer              :: coupler
   
   type(geomech_patch_type), pointer                :: patch
   type(geomech_coupler_type), pointer              :: new_coupler
   
-  patch => realization%geomech_patch
+  patch => geomech_realization%geomech_patch
   
  ! only add to geomech list for now, since they will be split out later
   new_coupler => GeomechCouplerCreate(coupler)
@@ -999,9 +1066,9 @@ subroutine GeomechRealizDestroy(geomech_realization)
   call GeomechRegionDestroyList(geomech_realization%geomech_regions)
   call GeomechConditionDestroyList(geomech_realization%geomech_conditions)
   
-  if (associated(geomech_realization%debug)) &
-    deallocate(geomech_realization%debug)
-  nullify(geomech_realization%debug)  
+  if (associated(geomech_realization%geomech_debug)) &
+    deallocate(geomech_realization%geomech_debug)
+  nullify(geomech_realization%geomech_debug)
   
   if (associated(geomech_realization%geomech_material_property_array)) &
     deallocate(geomech_realization%geomech_material_property_array)
@@ -1010,7 +1077,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
     call GeomechanicsPatchDestroy(geomech_realization%geomech_patch)                                       
   call GeomechanicsMaterialPropertyDestroy(geomech_realization% &
                                            geomech_material_properties)
-  call GeomechDiscretizationDestroy(geomech_realization%discretization)
+  call GeomechDiscretizationDestroy(geomech_realization%geomech_discretization)
   
 end subroutine GeomechRealizDestroy
 

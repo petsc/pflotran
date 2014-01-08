@@ -98,6 +98,15 @@ module Reaction_Aux_module
     type (kd_rxn_type), pointer :: next
   end type kd_rxn_type    
 
+  type, public :: radioactive_decay_rxn_type
+    PetscInt :: id
+    character(len=MAXSTRINGLENGTH) :: reaction
+    PetscReal :: rate_constant
+    PetscBool :: print_me
+    type(database_rxn_type), pointer :: dbaserxn
+    type(radioactive_decay_rxn_type), pointer :: next
+  end type radioactive_decay_rxn_type
+
   type, public :: general_rxn_type
     PetscInt :: id
     character(len=MAXSTRINGLENGTH) :: reaction
@@ -168,6 +177,7 @@ module Reaction_Aux_module
     type(colloid_type), pointer :: colloid_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(general_rxn_type), pointer :: general_rxn_list
+    type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn_list
     type(kd_rxn_type), pointer :: kd_rxn_list
     type(aq_species_type), pointer :: redox_species_list
     PetscInt :: act_coef_update_frequency
@@ -271,6 +281,16 @@ module Reaction_Aux_module
     PetscBool, pointer :: total_sorb_mobile_print(:)
     PetscBool, pointer :: colloid_print(:)
     
+    ! radioactive decay rxn
+    PetscInt :: nradiodecay_rxn
+    ! ids and stoichiometries for species involved in reaction
+    PetscInt, pointer :: radiodecayspecid(:,:)
+    PetscReal, pointer :: radiodecaystoich(:,:)
+    ! index of radiodecayspecid for species in forward
+    ! reaction equation 
+    PetscInt, pointer :: radiodecayforwardspecid(:)
+    PetscReal, pointer :: radiodecay_kf(:)
+
     ! general rxn
     PetscInt :: ngeneral_rxn
     ! ids and stoichiometries for species involved in reaction
@@ -349,6 +369,8 @@ module Reaction_Aux_module
             AqueousSpeciesConstraintDestroy, &
             MineralConstraintCreate, &
             MineralConstraintDestroy, &
+            RadioactiveDecayRxnCreate, &
+            RadioactiveDecayRxnDestroy, &
             GeneralRxnCreate, &
             GeneralRxnDestroy, &
             KDRxnCreate, &
@@ -428,6 +450,7 @@ function ReactionCreate()
   nullify(reaction%gas_species_list)
   nullify(reaction%colloid_list)
   nullify(reaction%ion_exchange_rxn_list)
+  nullify(reaction%radioactive_decay_rxn_list)
   nullify(reaction%general_rxn_list)
   nullify(reaction%kd_rxn_list)
   nullify(reaction%redox_species_list)
@@ -529,6 +552,12 @@ function ReactionCreate()
   nullify(reaction%generalh2ostoich)
   nullify(reaction%general_kf)
   nullify(reaction%general_kr)
+  
+  reaction%nradiodecay_rxn = 0
+  nullify(reaction%radiodecayspecid)
+  nullify(reaction%radiodecaystoich)
+  nullify(reaction%radiodecayforwardspecid)
+  nullify(reaction%radiodecay_kf)
 
   reaction%neqkdrxn = 0
   nullify(reaction%eqkdspecid)
@@ -736,6 +765,34 @@ function IonExchangeCationCreate()
   IonExchangeCationCreate => cation
   
 end function IonExchangeCationCreate
+
+! ************************************************************************** !
+!
+! RadioactiveDecayRxnCreate: Allocate and initialize a radioactive decay
+!                            reaction
+! author: Glenn Hammond
+! date: 01/07/14
+!
+! ************************************************************************** !
+function RadioactiveDecayRxnCreate()
+
+  implicit none
+    
+  type(radioactive_decay_rxn_type), pointer :: RadioactiveDecayRxnCreate
+
+  type(radioactive_decay_rxn_type), pointer :: rxn
+  
+  allocate(rxn)
+  rxn%id = 0
+  rxn%reaction = ''
+  rxn%rate_constant = 0.d0
+  rxn%print_me = PETSC_FALSE
+  nullify(rxn%dbaserxn)
+  nullify(rxn%next)
+  
+  RadioactiveDecayRxnCreate => rxn
+  
+end function RadioactiveDecayRxnCreate
 
 ! ************************************************************************** !
 !
@@ -1643,6 +1700,31 @@ end subroutine IonExchangeRxnDestroy
 
 ! ************************************************************************** !
 !
+! RadioactiveDecayRxnDestroy: Deallocates a general reaction
+! author: Glenn Hammond
+! date: 01/07/14
+!
+! ************************************************************************** !
+subroutine RadioactiveDecayRxnDestroy(rxn)
+
+  implicit none
+    
+  type(radioactive_decay_rxn_type), pointer :: rxn
+
+  if (.not.associated(rxn)) return
+  
+  if (associated(rxn%dbaserxn)) &
+    call DatabaseRxnDestroy(rxn%dbaserxn)
+  nullify(rxn%dbaserxn)
+  nullify(rxn%next)
+
+  deallocate(rxn)  
+  nullify(rxn)
+
+end subroutine RadioactiveDecayRxnDestroy
+
+! ************************************************************************** !
+!
 ! GeneralRxnDestroy: Deallocates a general reaction
 ! author: Glenn Hammond
 ! date: 09/03/10
@@ -1767,6 +1849,8 @@ subroutine ReactionDestroy(reaction)
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
+  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
+                                               prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
 
   if (.not.associated(reaction)) return
@@ -1814,6 +1898,16 @@ subroutine ReactionDestroy(reaction)
   enddo    
   nullify(reaction%ion_exchange_rxn_list)
 
+  ! general reactions
+  radioactive_decay_rxn => reaction%radioactive_decay_rxn_list
+  do
+    if (.not.associated(radioactive_decay_rxn)) exit
+    prev_radioactive_decay_rxn => radioactive_decay_rxn
+    radioactive_decay_rxn => radioactive_decay_rxn%next
+    call GeneralRxnDestroy(prev_general_rxn)
+  enddo    
+  nullify(reaction%radioactive_decay_rxn_list)
+  
   ! general reactions
   general_rxn => reaction%general_rxn_list
   do
@@ -1904,6 +1998,11 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%pri_spec_to_coll_spec)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
+  
+  call DeallocateArray(reaction%radiodecayspecid)
+  call DeallocateArray(reaction%radiodecaystoich)
+  call DeallocateArray(reaction%radiodecayforwardspecid)
+  call DeallocateArray(reaction%radiodecay_kf)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

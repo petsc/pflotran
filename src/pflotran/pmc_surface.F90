@@ -91,8 +91,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Timestepper_Base_class
   use Output_module, only : Output
   use Realization_class, only : realization_type
-  use Process_Model_Base_class
-  use Process_Model_Surface_Flow_class
+  use PM_Base_class
+  use PM_Surface_Flow_class
   use Option_module
   use Surface_Flow_module
   use Surface_TH_module
@@ -187,7 +187,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     
     ! only print output for process models of depth 0
     ! TODO(GB): Modify OutputSurface()
-    !if (associated(this%Output)) then
+    if (associated(this%Output)) then
       if (this%timestepper%time_step_cut_flag) then
         plot_flag = PETSC_FALSE
       endif
@@ -207,15 +207,16 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       !                 transient_plot_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
-    !endif
+    endif
 
     if (this%is_master) then
-      if (checkpoint_flag) exit
-      if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
-        if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
-         checkpoint_flag = PETSC_TRUE
+      if (.not.checkpoint_flag) then
+        if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
+          if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
+           checkpoint_flag = PETSC_TRUE
+          endif
         endif
-      endif
+       endif
     else
       checkpoint_flag = PETSC_FALSE
     endif
@@ -558,7 +559,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   use Surface_TH_Aux_module
   use Surface_TH_module
   use Option_module
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -595,7 +596,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
         select case(this%option%iflowmode)
           case (RICHARDS_MODE)
 
-            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+            call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
@@ -628,7 +629,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             ! reference-temperature). Presently, SurfaceCheckpointProcessModel()
             ! does not output surface-water temperature for TH-Mode and the
             ! subroutine needs to be modified in future.
-            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+            call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
 
             surf_aux_vars => pmc%surf_realization%patch%surf_aux%SurfaceTH%aux_vars
 
