@@ -2774,8 +2774,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
             call printErrMsg(option,'LIQUID_VISCOSITY not supported by Richards')
           case(GAS_VISCOSITY)
             call printErrMsg(option,'GAS_VISCOSITY not supported by Richards')
-          case(LIQUID_MOBILITY)
-            call printErrMsg(option,'LIQUID_MOBILITY not supported by Richards')
           case(GAS_MOBILITY)
             call printErrMsg(option,'GAS_MOBILITY not supported by Richards')
           case(LIQUID_PRESSURE)
@@ -2793,8 +2791,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               vec_ptr(local_id) = &
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
+          case(LIQUID_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%kvr
+            enddo
         end select
-        
       else if (associated(patch%aux%Flash2)) then
       
         select case(ivar)
@@ -3723,6 +3724,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
+          case(LIQUID_MOBILITY)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%kvr
         end select
       else if (associated(patch%aux%Flash2)) then
         select case(ivar)
@@ -4427,8 +4430,6 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
             call printErrMsg(option,'LIQUID_VISCOSITY not supported by Richards')
           case(GAS_VISCOSITY)
             call printErrMsg(option,'GAS_VISCOSITY not supported by Richards')
-          case(LIQUID_MOBILITY)
-            call printErrMsg(option,'LIQUID_MOBILITY not supported by Richards')
           case(GAS_MOBILITY)
             call printErrMsg(option,'GAS_MOBILITY not supported by Richards')
           case(LIQUID_ENERGY)
@@ -4463,6 +4464,16 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
                 patch%aux%Global%aux_vars(ghosted_id)%den_kg(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(LIQUID_MOBILITY)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Richards%aux_vars(grid%nL2G(local_id))%kvr = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Richards%aux_vars(ghosted_id)%kvr = vec_ptr(ghosted_id)
               enddo
             endif
         end select

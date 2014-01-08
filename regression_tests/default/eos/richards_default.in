@@ -1,0 +1,113 @@
+:Description: Unit test problem for testing EOS
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 1
+END
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== solver options ===================================
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+:=========================== EOS ==============================================
+EOS WATER
+  DENSITY DEFAULT
+  ENTHALPY DEFAULT
+  VISCOSITY DEFAULT
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  SATURATION_FUNCTION default
+END
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+END
+
+:=========================== output options ===================================
+OUTPUT
+  VELOCITIES
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    LIQUID_DENSITY
+    LIQUID_MOBILITY
+  /
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-3 d
+  MAXIMUM_TIMESTEP_SIZE 1.d0 d
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 35.d0
+  PRESSURE 101325.d0 ! Pa
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  REGION west
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+

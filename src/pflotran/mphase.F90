@@ -23,7 +23,7 @@ module Mphase_module
 #include "finclude/petscdm.h90"
 !#ifdef USE_PETSC216
 !#include "finclude/petscsles.h"
-!#endif
+!#endiff
 #include "finclude/petscsnes.h"
 #include "finclude/petscviewer.h"
 #include "finclude/petscsysdef.h"

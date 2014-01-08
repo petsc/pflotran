@@ -77,7 +77,7 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,DENSITY,EXPONENTIAL')
                 call EOSWaterSetDensityExponential(tempreal,tempreal2, &
                                                    tempreal3)
-              case('IFC67')
+              case('IFC67','DEFAULT')
                 call EOSWaterSetDensityIFC67()
               case default
                 option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -94,7 +94,7 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,ENTHALPY,CONSTANT')
                 call EOSWaterSetEnthalpyConstant(tempreal)
-              case('IFC67')
+              case('IFC67','DEFAULT')
                 call EOSWaterSetEnthalpyIFC67()
               case default
                 option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -111,6 +111,7 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,VISCOSITY,CONSTANT')
                 call EOSWaterSetViscosityConstant(tempreal)
+              case('DEFAULT')
               case default
                 option%io_buffer = 'Keyword: ' // trim(word) // &
                                    ' not recognized in EOS,WATER,VISCOSITY'    

@@ -605,30 +605,34 @@ subroutine OutputVariableRead(input,option,output_variable_list)
       case ('LIQUID_PRESSURE')
         name = 'Liquid Pressure'
         units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_PRESSURE,units, &
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
                                      LIQUID_PRESSURE)
 
       case ('LIQUID_SATURATION')
         name = 'Liquid Saturation'
         units = ''
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
-                               LIQUID_SATURATION)
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     LIQUID_SATURATION)
+      case ('LIQUID_DENSITY')
+        name = 'Liquid Density'
+        units = 'kg/m^3'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_DENSITY)
+      case ('LIQUID_MOBILITY')
+        name = 'Liquid Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOBILITY)
       case ('TEMPERATURE')
         name = 'Temperature'
         units = 'C'
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
-                                  TEMPERATURE)
-!      case ('LIQUID_VELOCITIY_AT_CELL_CENTER')
-!        name = 'Liquid Velocity at Cell Center'
-!        units = 'm/s'
-!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
-!                               LIQUID_VELOCITY_CELL_CENT)
-!
-!      case ('LIQUID_VELOCITIY_AT_CELL_FACE')
-!        name = 'Liquid Velocity at Cell Face'
-!        units = 'm/s'
-!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
-!                               LIQUID_VELOCITY_CELL_FACE)
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     TEMPERATURE)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
