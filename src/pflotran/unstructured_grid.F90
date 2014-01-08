@@ -284,6 +284,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
 end subroutine UGridRead
 
 
+#ifdef SURFACE_FLOW
 ! ************************************************************************** !
 !
 ! UGridRead: Reads an unstructured grid
@@ -291,7 +292,6 @@ end subroutine UGridRead
 ! date: 01/09/2012
 !
 ! ************************************************************************** !
-#ifdef SURFACE_FLOW
 subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 
   use Input_Aux_module
