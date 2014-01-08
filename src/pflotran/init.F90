@@ -1913,6 +1913,11 @@ subroutine InitReadInput(simulation)
         
 !......................
 
+      case('ICE_NEW')
+        option%use_ice_new = PETSC_TRUE        
+      
+!......................
+
       case('UPDATE_FLOW_PERMEABILITY')
         option%update_flow_perm = PETSC_TRUE
         

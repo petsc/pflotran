@@ -195,7 +195,7 @@ subroutine PMTHCInitializeTimestep(this)
 #endif
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," TH FLOW ",62("="))')
+    write(*,'(/,2("=")," THC FLOW ",62("="))')
   endif
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
@@ -274,11 +274,12 @@ subroutine PMTHCFinalizeTimestep(this)
   
   call THCMaxChange(this%realization)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4, " dtmpmx= ",1pe12.4)') this%option%dpmax, this%option%dtmpmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & "dtmpmx= ",1pe12.4)') &
+      this%option%dpmax, this%option%dtmpmax
   endif  
   
 end subroutine PMTHCFinalizeTimestep
