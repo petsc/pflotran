@@ -4,11 +4,13 @@ module Reaction_Chunk_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
@@ -725,7 +727,7 @@ subroutine RTotalChunk(auxvar,vector_length,ithread,reaction,option)
 
   use Option_module
   use co2eos_module, only: Henry_duan_sun
-  use water_eos_module
+  use Water_EOS_module
   
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar

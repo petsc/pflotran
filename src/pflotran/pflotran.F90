@@ -29,184 +29,76 @@
 ! or
 
 ! Glenn E. Hammond
-! Pacific Northwest National Laboratory
-! Energy and Environment Directorate
-! MSIN K9-36
-! (509) 375-3875
-! glenn.hammond@pnnl.gov
-! Richland, WA
+! Sandia National Laboratories
+! Applied Systems Analysis & Research
+! 413 Cherry Blossom Lp
+! Richland, WA 99352
+! (505) 235-0665
+! gehammo@sandia.gov
 
 !=======================================================================
 program pflotran
   
-  use Simulation_module
-  use Realization_module
-  use Timestepper_module
   use Option_module
-  use Input_module
-  use Init_module
-  use Logging_module
-  use Stochastic_module
-  use Stochastic_Aux_module
-  use Regression_module
+  use Simulation_Base_class
+  use Multi_Simulation_module
+  use PFLOTRAN_Factory_module
+  use Subsurface_Factory_module
+  use Hydrogeophysics_Factory_module
+#ifdef SURFACE_FLOW  
+  use Surface_Factory_module
+  use Surf_Subsurf_Factory_module
+#endif  
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
-#include "definitions.h"
-#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
 
-  PetscLogDouble :: timex_wall(4)
-
-  PetscBool :: truth
-  PetscBool :: option_found  
-  PetscBool :: single_inputfile
-  PetscInt :: i
-  PetscInt :: temp_int
-  PetscErrorCode :: ierr
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
-  type(stochastic_type), pointer :: stochastic
-  type(simulation_type), pointer :: simulation
-  type(realization_type), pointer :: realization
+  class(simulation_base_type), pointer :: simulation
+  ! multisimulation enables multiple simulations to be run concurrently
+  ! and/or one after another until a specified set of simulations has 
+  ! completed.
+  type(multi_simulation_type), pointer :: multisimulation
   type(option_type), pointer :: option
   
-  nullify(stochastic)
+  nullify(simulation)
+  nullify(multisimulation)
   option => OptionCreate()
-  option%fid_out = OUT_UNIT
-  single_inputfile = PETSC_TRUE
+  call OptionInitMPI(option)
+  call PFLOTRANInitializePrePetsc(multisimulation,option)
+  call OptionInitPetsc(option)
+  do ! multi-simulation loop
+    call PFLOTRANInitializePostPetsc(multisimulation,option)
+    select case(option%simulation_mode)
+      case('SUBSURFACE')
+        call SubsurfaceInitialize(simulation,option)
+      case('HYDROGEOPHYSICS')
+        call HydrogeophysicsInitialize(simulation,option)
+#ifdef SURFACE_FLOW      
+      case('SURFACE')
+        call SurfaceInitialize(simulation,option)
+      case('SURFACE_SUBSURFACE')
+        call SurfSubsurfaceInitialize(simulation,option)
+#endif      
+      case default
+        option%io_buffer = 'Simulation Mode not recognized.'
+        call printErrMsg(option)
+    end select
+    call simulation%InitializeRun()
 
-  call MPI_Init(ierr)
-  option%global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
-  option%mycomm = option%global_comm
-  option%myrank = option%global_rank
-  option%mycommsize = option%global_commsize
-  option%mygroup = option%global_group
-  ! check for non-default input filename
-  option%input_filename = "pflotran.in"
-  string = '-pflotranin'
-  call InputGetCommandLineString(string,option%input_filename,option_found,option)
-
-  string = '-screen_output'
-  call InputGetCommandLineTruth(string,option%print_to_screen,option_found,option)
-
-  string = '-file_output'
-  call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
-
-  string = '-output_prefix'
-  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
-
-  string = '-v'
-  call InputGetCommandLineTruth(string,truth,option_found,option)
-  if (option_found) option%verbosity = 1
-
-  string = '-multisimulation'
-  call InputGetCommandLineTruth(string,truth,option_found,option)
-  if (option_found) then
-    single_inputfile = PETSC_FALSE
-  endif
-
-  string = '-stochastic'
-  call InputGetCommandLineTruth(string,truth,option_found,option)
-  if (option_found) stochastic => StochasticCreate()
-
-  call InitReadStochasticCardFromInput(stochastic,option)
-
-  if (associated(stochastic)) then
-    call StochasticInit(stochastic,option)
-    call StochasticRun(stochastic,option)
-  else
-
-    if (single_inputfile) then
-      PETSC_COMM_WORLD = MPI_COMM_WORLD
-      call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-    else
-      call InitReadInputFilenames(option,filenames)
-      temp_int = size(filenames) 
-      call SimulationCreateProcessorGroups(option,temp_int)
-      option%input_filename = filenames(option%mygroup_id)
-      i = index(option%input_filename,'.',PETSC_TRUE)
-      if (i > 1) then
-        i = i-1
-      else
-        ! for some reason len_trim doesn't work on MS Visual Studio in 
-        ! this location
-        i = len(trim(option%input_filename)) 
-      endif
-      option%global_prefix = option%input_filename(1:i)
-      write(string,*) option%mygroup_id
-      option%group_prefix = 'G' // trim(adjustl(string))
-    endif
- 
-    if (option%verbosity > 0) then 
-      call PetscLogBegin(ierr)
-      string = '-log_summary'
-      call PetscOptionsInsertString(string, ierr)
-    endif
-    call LoggingCreate()
-
-    simulation => SimulationCreate(option)
-    realization => simulation%realization
-
-    call OptionCheckCommandLine(option)
-
-    call PetscGetTime(timex_wall(1), ierr)
-    option%start_time = timex_wall(1)
-
-    call Init(simulation)
-
-#ifdef SURFACE_FLOW
-    call StepperRun(simulation%realization,simulation%surf_realization, &
-                    simulation%flow_stepper, &
-                    simulation%tran_stepper, &
-                    simulation%surf_flow_stepper)
-#else
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
-#endif
-
-    call RegressionOutput(simulation%regression,simulation%realization, &
-                          simulation%flow_stepper,simulation%tran_stepper)
-
-  ! Clean things up.
-    call SimulationDestroy(simulation)
-
-  ! Final Time
-    call PetscGetTime(timex_wall(2), ierr)
-    
-    if (option%myrank == option%io_rank) then
-
-      if (option%print_to_screen) then
-        write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-          (timex_wall(2)-timex_wall(1))/3600.d0
-      endif
-      if (option%print_to_file) then
-        write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-          (timex_wall(2)-timex_wall(1))/3600.d0
-      endif
+    if (option%status == PROCEED) then
+      call simulation%ExecuteRun()
     endif
 
-    if (option%myrank == option%io_rank .and. option%print_to_file) then
-      close(option%fid_out)
-    endif
-
-    call LoggingDestroy()
-    
-  endif
-  
-  call PetscOptionsSetValue('-options_left','no',ierr)
-  ! list any PETSc objects that have not been freed - for debugging
-  call PetscOptionsSetValue('-objects_left','yes',ierr)
-
-  call OptionDestroy(option)
-  call PetscFinalize(ierr)
-  call MPI_Finalize(ierr)
-  call exit(86)
+    call simulation%FinalizeRun()
+    call simulation%Strip()
+    deallocate(simulation)
+    nullify(simulation)
+    call PFLOTRANFinalize(option)
+    if (MultiSimulationDone(multisimulation)) exit
+  enddo ! multi-simulation loop
+  call OptionFinalize(option)
 
 end program pflotran

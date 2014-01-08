@@ -2,11 +2,13 @@ module MFD_Aux_module
 
 
   use Connection_module
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
@@ -115,10 +117,6 @@ function MFDAuxCreate()
   
 end function MFDAuxCreate
 
-
-
-
-
 ! ************************************************************************** !
 !
 ! MFDAuxInit: Initialize auxiliary object
@@ -149,10 +147,7 @@ subroutine MFDAuxInit(aux, num_aux, option)
     nullify(aux%aux_vars(i)%dRp_dneig)
   end do
 
-
-  
 end subroutine MFDAuxInit
-
 
 ! ************************************************************************** !
 !
@@ -175,12 +170,8 @@ subroutine MFDAuxVarInit(aux_var, numfaces, option)
   if (associated(aux_var%face_id_gh)) deallocate(aux_var%face_id_gh)
   allocate(aux_var%face_id_gh(numfaces))
   aux_var%face_id_gh(1:numfaces) = 0
-
-
   
 end subroutine MFDAuxVarInit
-
-
 
 ! ************************************************************************** !
 !
@@ -216,10 +207,8 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
      call printMsg(option, "Imposible to add face to  MFDAuxVar")
      stop
   endif
-
   
 end subroutine MFDAuxAddFace
-
   
 ! ************************************************************************** !
 !
@@ -255,8 +244,6 @@ subroutine MFDAuxVarDestroy(aux_var)
 
   if (associated(aux_var%dRp_dneig)) deallocate(aux_var%dRp_dneig)
   nullify(aux_var%dRp_dneig)
-
-  
 
 end subroutine MFDAuxVarDestroy
 
@@ -342,14 +329,13 @@ subroutine MFDAuxDestroy(aux)
     
 end subroutine MFDAuxDestroy
 
-
-
+! ************************************************************************** !
+! ************************************************************************** !
 subroutine MFDAuxInitResidDerivArrays(aux_var, option)
 
 use Option_module
 
   implicit none
-
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(option_type) :: option
@@ -372,13 +358,13 @@ use Option_module
 
 end subroutine MFDAuxInitResidDerivArrays
 
-
+! ************************************************************************** !
+! ************************************************************************** !
 subroutine MFDAuxInitStiffMatrix(aux_var, option)
 
    use Option_module
 
   implicit none
-
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(option_type) :: option
@@ -388,7 +374,6 @@ subroutine MFDAuxInitStiffMatrix(aux_var, option)
   aux_var%StiffMatrix = 0.
 
 end subroutine MFDAuxInitStiffMatrix
-
 
 
 end module MFD_Aux_module

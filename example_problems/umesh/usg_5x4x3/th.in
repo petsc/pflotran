@@ -1,0 +1,144 @@
+:Description: 3D toy problem for richards equation
+
+:=========================== flow mode ========================================
+MODE TH
+
+:=========================== discretization ===================================
+GRID
+  TYPE unstructured hdf5/usg_5x4x3.h5
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  SATURATION_FUNCTION default
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  LONGITUDINAL_DISPERSIVITY 3.1536d0
+  PERMEABILITY 
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE BROOKS_COREY
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.3d0
+  ALPHA 1.d-4
+/
+
+:=========================== output options ===================================
+OUTPUT
+  FORMAT TECPLOT BLOCK
+  HDF5_WRITE_GROUP_SIZE 1
+  MASS_FLOWRATE
+  ENERGY_FLOWRATE
+  AVERAGE_MASS_FLOWRATE
+  FORMAT HDF5
+  AVERAGE_VARIABLES 
+  	LIQUID_SATURATION
+  END
+  PERIODIC TIME 1 s
+/
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+/
+
+REFERENCE_PRESSURE 101325.
+
+:=========================== regions ==========================================
+
+REGION All
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+REGION Top_sidesets
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+REGION Bottom_sidesets
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+REGION North_sidesets
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+REGION South_sidesets
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+REGION East_sidesets
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+REGION West_sidesets
+  FILE hdf5/usg_5x4x3.h5
+  GRID unstructured
+END 
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+    TEMPERATURE dirichlet
+    ENTHALPY dirichlet
+  END
+  INTERPOLATION linear
+  DATUM 0.d0 0.d0 60.d0
+  PRESSURE 101325.d0
+  TEMPERATURE 10.D0
+  ENTHALPY 0.D0
+END
+
+FLOW_CONDITION rain_rate
+  TYPE
+    FLUX neumann
+    TEMPERATURE dirichlet
+    ENTHALPY dirichlet
+  END
+  FLUX 5.5d-7
+  TEMPERATURE 11.D0
+  ENTHALPY 0.D0
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION All
+END
+
+BOUNDARY_CONDITION rain
+  FLOW_CONDITION rain_rate
+  REGION Top_sidesets
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION All 
+  MATERIAL soil1
+END
+
+HDF5_READ_GROUP_SIZE 1

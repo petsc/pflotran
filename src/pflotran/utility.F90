@@ -1,6 +1,10 @@
 module Utility_module
 
-#include "definitions.h"
+  use PFLOTRAN_Constants_module
+
+  implicit none
+
+#include "finclude/petscsys.h"
 
   interface DotProduct
     module procedure DotProduct1
@@ -10,6 +14,11 @@ module Utility_module
   
   interface CrossProduct
     module procedure CrossProduct1
+  end interface
+  
+  interface reallocateRealArray
+    module procedure reallocateRealArray1D
+    module procedure reallocateRealArray2D
   end interface
   
   interface UtilityReadArray
@@ -36,8 +45,11 @@ contains
 
 function rnd()
 
+  implicit none
+
 !  common/rndnr/iseed
   integer*8 iseed
+  PetscReal :: rnd
 
   iseed = iseed*125
   iseed = iseed - (iseed/2796203) * 2796203
@@ -100,10 +112,13 @@ end function ran1
 
 function ran2(idum)
       
-!  implicit none
+  implicit none
 
 !-----Minimal random number generator of Park and Miller 
 !     in the range (0,1)
+
+  PetscReal :: ran2, AM, EPS, RNMX, temp
+  PetscInt :: IA, IM, IQ, IR, NTAB, idum, iy, j, k, iv(32), NDIV
 
   parameter (IA = 16807)
   parameter (IM = 2147483647)
@@ -115,7 +130,7 @@ function ran2(idum)
   parameter (EPS  = 1.2e-7)
   parameter (RNMX = 1.0-EPS)
 
-  dimension iv(NTAB)
+  !dimension iv(NTAB)
 
   iy = 0
   if (idum.le.0 .or. iy.eq.0) then
@@ -229,12 +244,13 @@ end subroutine reallocateIntArray
 
 ! ************************************************************************** !
 !
-! reallocateRealArray: Reallocates a real array to a larger size and copies
+! reallocateRealArray2D: Reallocates a 2D real array to a larger size and 
+!                        copies values over.
 ! author: Glenn Hammond
-! date: 10/29/07
+! date: 10/29/07, 10/03/13
 !
 ! ************************************************************************** !
-subroutine reallocateRealArray(array,size)
+subroutine reallocateRealArray1D(array,size)
 
   implicit none
 
@@ -252,7 +268,36 @@ subroutine reallocateRealArray(array,size)
   size = 2*size
   deallocate(array2)
 
-end subroutine reallocateRealArray
+end subroutine reallocateRealArray1D
+
+! ************************************************************************** !
+!
+! reallocateRealArray2D: Reallocates a 2D real array to a larger size in last
+!                        dimension and copies values over.
+! author: Glenn Hammond
+! date: 10/03/13
+!
+! ************************************************************************** !
+subroutine reallocateRealArray2D(array,rank2_size)
+
+  implicit none
+
+  PetscReal, pointer :: array(:,:)
+  PetscInt :: rank1_size, rank2_size
+  
+  PetscReal, allocatable :: array2(:,:)
+  
+  rank1_size = size(array,1)
+  allocate(array2(rank1_size,rank2_size))
+  array2(:,1:rank2_size) = array(:,1:rank2_size)
+  deallocate(array)
+  allocate(array(rank1_size,2*rank2_size))
+  array = 0.d0
+  array(:,1:rank2_size) = array2(:,1:rank2_size)
+  rank2_size = 2*rank2_size
+  deallocate(array2)
+
+end subroutine reallocateRealArray2D
 
 !* Given an NxN matrix A, with physical dimension NP, this routine replaces it
 !* by the LU decomposition of a rowwise permutation of itself.
@@ -278,13 +323,13 @@ subroutine ludcmp(A,N,INDX,D)
 
   D=1
   do i=1,N
-    aamax=0
+    aamax=0.d0
     do j=1,N
       if (abs(A(i,j)).gt.aamax) aamax=abs(A(i,j))
     enddo
-    if (aamax.eq.0) then
+    if (aamax <= 0.d0) then
       call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
-      print *, "ERROR: Singular value encountered in ludcmp() on processor: ", rank, ' aamax = ',aamax,' species = ',i
+      print *, "ERROR: Singular value encountered in ludcmp() on processor: ", rank, ' aamax = ',aamax,' row = ',i
       do k = 1, N
         print *, "Jacobian: ",k,(j,A(k,j),j=1,N)
       enddo
@@ -327,7 +372,7 @@ subroutine ludcmp(A,N,INDX,D)
     INDX(j)=imax
     if (A(j,j).eq.0.) A(j,j)=tiny
     if (j.ne.N) then
-      dum=1./A(j,j)
+      dum=1.d0/A(j,j)
       do i=j+1,N
         A(i,j)=A(i,j)*dum
       enddo
@@ -782,7 +827,7 @@ end function InverseErf
 ! ************************************************************************** !
 subroutine UtilityReadIntArray(array,array_size,comment,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -813,7 +858,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
     max_size = array_size
   endif
   allocate(temp_array(max_size))
-  temp_array = 0.d0
+  temp_array = 0
   
   input%ierr = 0
   string2 = trim(input%buf)
@@ -864,7 +909,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
     endif
     
     if (continuation_flag) then
-      call InputReadFlotranString(input2,option)
+      call InputReadPflotranString(input2,option)
       call InputReadStringErrorMsg(input2,option,comment)
     endif
 
@@ -933,7 +978,7 @@ end subroutine UtilityReadIntArray
 ! ************************************************************************** !
 subroutine UtilityReadRealArray(array,array_size,comment,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -1015,7 +1060,7 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
     endif
     
     if (continuation_flag) then
-      call InputReadFlotranString(input2,option)
+      call InputReadPflotranString(input2,option)
       call InputReadStringErrorMsg(input2,option,comment)
     endif
 
@@ -1494,5 +1539,122 @@ subroutine DeallocateArray2DString(array)
   nullify(array)
 
 end subroutine DeallocateArray2DString
+
+! ************************************************************************** !
+!
+! ConvertMatrixToVector: Converts a given matrix A to a vec
+! This vec is different from PETSc Vec
+! A = [a1 a2 a3 .... am], where ai, i = 1, m are the columns
+! then vec(A) = [a1
+!                a2
+!                 .
+!                 .
+!                 .
+!                am]
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine ConvertMatrixToVector(A,vecA)
+
+  PetscReal :: A(:,:)
+  PetscReal, allocatable :: vecA(:,:)
+  PetscInt :: m, n, i, j
+  
+  m = size(A,1)
+  n = size(A,2)
+  
+  allocate(vecA(m*n,1))
+  
+  vecA = reshape(A,(/m*n,1/))
+
+end subroutine ConvertMatrixToVector
+
+! ************************************************************************** !
+!
+! Kron: Returns the Kronecker product of two matrices A, B
+! Reference: The ubiquitous Kronecker product, by Charles F.Van Loan
+! for basics of Kronecker product
+! Also see wikipedia page: http://en.wikipedia.org/wiki/Kronecker_product
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine Kron(A,B,K)
+
+  PetscReal :: A(:,:),B(:,:)
+  PetscReal, allocatable :: K(:,:)
+  PetscInt :: mA,nA,mB,nB
+  PetscInt :: iA,jA,iB,jB,iK,jK
+  
+  mA = size(A,1)
+  nA = size(A,2)
+  mB = size(B,1)
+  nB = size(B,2)
+  
+  allocate(K(mA*mB,nA*nB))
+  
+  do iB = 1, mB
+    do jB = 1, nB
+      do iA = 1, mA
+        do jA = 1, nA
+          iK = iB + (iA-1)*mB
+          jK = jB + (jA-1)*nB
+          K(iK,jK) = A(iA,jA)*B(iB,jB)
+        enddo
+      enddo
+    enddo
+  enddo
+  
+end subroutine Kron
+
+! ************************************************************************** !
+!
+! Transposer: Transposer Converts vec of a matrix to vec of its transpose
+! author: Satish Karra, LANL
+! date: 6/19/2013
+!
+! ************************************************************************** !
+subroutine Transposer(m,n,T)
+
+  PetscReal, allocatable :: T(:,:)
+  PetscInt :: m,n
+  PetscInt :: i,j
+  PetscReal :: A(m,n)
+  PetscReal, allocatable :: vecA(:,:)
+  
+  allocate(T(m*n,m*n))
+  T = 0.d0
+  
+  do i = 1,m
+    do j = 1,n
+      A = 0.d0
+      A(i,j) = 1.d0
+      call ConvertMatrixToVector(transpose(A),vecA)
+      T(:,i+m*(j-1)) = vecA(:,1)
+      deallocate(vecA)
+    enddo
+  enddo
+  
+end subroutine Transposer
+
+! ************************************************************************** !
+!
+! Determinant: Determinant of a 3x3 matrix
+! author: Satish Karra, LANL
+! date: 6/24/2013
+!
+! ************************************************************************** !
+subroutine Determinant(A,detA)
+
+  PetscReal :: A(3,3)
+  PetscReal :: detA  
+ 
+  detA = A(1,1)*(A(2,2)*A(3,3) - A(3,2)*A(2,3)) &
+       + A(1,2)*(A(3,1)*A(2,3) - A(2,1)*A(3,3))  &
+       + A(1,3)*(A(2,1)*A(3,2) - A(3,1)*A(2,2))
+  
+
+end subroutine Determinant
 
 end module Utility_module

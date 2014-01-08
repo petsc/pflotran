@@ -2,11 +2,13 @@ module Logging_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 ! stages
 PetscInt, parameter, public :: INIT_STAGE = 1
@@ -14,6 +16,7 @@ PetscInt, parameter, public :: TS_STAGE = 2
 PetscInt, parameter, public :: FLOW_STAGE = 3
 PetscInt, parameter, public :: TRAN_STAGE = 4
 PetscInt, parameter, public :: OUTPUT_STAGE = 5
+PetscInt, parameter, public :: FINAL_STAGE = 6
 
   type, public :: logging_type 
   
@@ -46,6 +49,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_write_real_array_hdf5
     PetscLogEvent :: event_write_int_array_hdf5
     PetscLogEvent :: event_read_array_hdf5    
+    PetscLogEvent :: event_read_xyz_dataset_hdf5    
     PetscLogEvent :: event_write_struct_dataset_hdf5
     PetscLogEvent :: event_region_read_hdf5
     PetscLogEvent :: event_region_read_ascii
@@ -67,6 +71,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_output_observation
     PetscLogEvent :: event_output_coordinates_hdf5
     PetscLogEvent :: event_output_hydrograph
+    PetscLogEvent :: event_output_secondary_tecplot
 
     PetscLogEvent :: event_r_residual
     PetscLogEvent :: event_r_jacobian
@@ -136,6 +141,8 @@ subroutine LoggingCreate()
                              logging%stage(TRAN_STAGE),ierr)
   call PetscLogStageRegister('Output Stage', &
                              logging%stage(OUTPUT_STAGE),ierr)
+  call PetscLogStageRegister('Finalization Stage', &
+                             logging%stage(FINAL_STAGE),ierr)
                              
 !!  call PetscCookieRegister('PFLOTRAN',logging%class_pflotran,ierr)
   call PetscClassIdRegister('PFLOTRAN',logging%class_pflotran,ierr)
@@ -235,6 +242,9 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('OutputHDF5', &
                              logging%class_pflotran, &
                              logging%event_output_hdf5,ierr)
+  call PetscLogEventRegister('OutputSecondaryTecplot', &
+                             logging%class_pflotran, &
+                             logging%event_output_secondary_tecplot,ierr)
   call PetscLogEventRegister('WriteTecStrGrid', &
                              logging%class_pflotran, &
                              logging%event_output_str_grid_tecplot,ierr)

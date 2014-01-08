@@ -1,16 +1,17 @@
 module Mphase_Aux_module
   
-  use mphase_pckr_module
-  use Secondary_Continuum_module
+  use Mphase_pckr_module
+
+  use PFLOTRAN_Constants_module
 
   implicit none
   
   private 
 !#define GARCIA 1
 #define DUANDEN 1
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
-type, public :: mphase_auxvar_elem_type
+  type, public :: mphase_auxvar_elem_type
     PetscReal :: pres
     PetscReal :: temp
     PetscReal , pointer :: sat(:)
@@ -28,7 +29,7 @@ type, public :: mphase_auxvar_elem_type
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
- end type mphase_auxvar_elem_type
+  end type mphase_auxvar_elem_type
 
   type, public :: mphase_auxvar_type
     
@@ -58,28 +59,26 @@ type, public :: mphase_auxvar_elem_type
   end type mphase_parameter_type
   
   type, public :: mphase_type
-     PetscInt :: n_zero_rows
-     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-     PetscBool :: aux_vars_up_to_date
-     PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc, num_aux_ss
+    PetscBool :: aux_vars_up_to_date
+    PetscBool :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
 
-     PetscReal, pointer :: res_old_AR(:,:)
-     PetscReal, pointer :: res_old_FL(:,:)
-     PetscReal, pointer :: delx(:,:)
+    PetscReal, pointer :: res_old_AR(:,:)
+    PetscReal, pointer :: res_old_FL(:,:)
+    PetscReal, pointer :: delx(:,:)
   
-     type(mphase_parameter_type), pointer :: mphase_parameter
-     type(mphase_auxvar_type), pointer :: aux_vars(:)
-     type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
-     type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
-     type(sec_heat_type), pointer :: sec_heat_vars(:)
+    type(mphase_parameter_type), pointer :: mphase_parameter
+    type(mphase_auxvar_type), pointer :: aux_vars(:)
+    type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
+    type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
   end type mphase_type
 
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
             MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC, &
-            MphaseSecHeatAuxVarCompute, &
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
@@ -123,8 +122,6 @@ function MphaseAuxCreate()
   nullify(aux%res_old_FL)
   nullify(aux%delx)
   
-  nullify(aux%sec_heat_vars)
-
   MphaseAuxCreate => aux
   
 end function MphaseAuxCreate
@@ -190,7 +187,7 @@ end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
 !
-! THCAuxVarCopy: Copies an auxiliary variable
+! MphaseAuxVarCopy: Copies an auxiliary variable
 ! author: 
 ! date: 
 !
@@ -247,15 +244,15 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
-  use gas_eos_module
+  use EOS_Water_module
+  use Gas_EOS_module
   use co2eos_module
-  use span_wagner_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_module
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
   use Saturation_Function_module
   use Fluid_module
-  use mphase_pckr_module
+  use Mphase_pckr_module
   
   implicit none
 
@@ -275,7 +272,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: dg, dddp, dddt, m_na, m_cl, m_nacl
   PetscReal :: fg, dfgdp, dfgdt, xphi
   PetscReal :: eng, hg, dhdp, dhdt
-  PetscReal :: visg, dvdp, dvdt
+  PetscReal :: visg, dvdp, dvdt, dvdps
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
@@ -301,8 +298,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   t = aux_var%temp
   
   select case(iphase)
-!******* Only aqueous phase exist ***********  
     case(1)
+!******* aqueous phase exists ***********
       aux_var%xmol(2) = x(3)
 !      if(aux_var%xmol(2) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(aux_var%xmol(2) > 1.D0) print *,'tran:',iphase, x(1:3)
@@ -312,8 +309,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%sat(2) = 0.D0
       kr(1)= 1.D0
       kr(2)= 0.D0
-!******* Only gas phase exist ***********  
     case(2)
+!******* gas phase exists ***********
       aux_var%xmol(4)=x(3)
 !      if(aux_var%xmol(4) < 0.D0) print *,'tran:',iphase, x(1:3)
 !      if(aux_var%xmol(4) > 1.D0) print *,'tran:',iphase, x(1:3)
@@ -321,10 +318,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%pc(:) = 0.D0
       aux_var%sat(1) = 0.D0
       aux_var%sat(2) = 1.D0
-      aux_var%pc(2) = 0.D0
       kr(1)= 0.D0
       kr(2)= 1.D0
     case(3)    
+!******* 2-phase phase exists ***********
       aux_var%sat(2) = x(3)
       if(aux_var%sat(2) < 0.D0)then
 !        print *,'tran:',iphase, x(1:3)
@@ -333,12 +330,12 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !      if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
       aux_var%sat(1) = 1.D0 - aux_var%sat(2)
       aux_var%pc(:) = 0.D0
-      temp = 1D-2
+      temp = 1.D-2
       aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
       aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err = 1.D0
     p2 = p
 
@@ -432,7 +429,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     end select
     aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
-    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg*option%scale
@@ -444,21 +441,23 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
     aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1.D-3)
+
 !***************  Liquid phase properties **************************
  
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     aux_var%h(1) = hw
-    aux_var%u(1) = aux_var%h(1) - pw /dw_mol*option%scale
+    aux_var%u(1) = hw - pw/dw_mol*option%scale
+
     aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   ! fluid_properties%diff_base(1)
 
   
     xm_nacl = m_nacl*FMWNACL
     xm_nacl = xm_nacl/(1.D3 + xm_nacl)
-    call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
     dw_kg = dw_kg*1.D3
-!   call nacl_vis(t,p*1.D-6,xm_nacl,visl)
-    call VISW(t,pw,sat_pressure,visl,dvdt,dvdp,ierr)
+!   call EOSWaterViscosityNaCl(t,p*1.D-6,xm_nacl,visl)
+    call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,dvdps,ierr)
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
@@ -466,7 +465,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !  den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 !  m_nacl=option%m_nacl
-!  if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+!  if (reaction%species_idx%na_ion_id /= 0 .and. &
+!     reaction%species_idx%cl_ion_id /= 0) then
 !    m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
 !    m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
 !    m_nacl = m_na
@@ -481,7 +481,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !duan mixing **************************
 #ifdef DUANDEN
 !                 units: t [C], p [MPa], dw_kg [kg/m^3]
-  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************
@@ -498,7 +498,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  
  !  den(1) = dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
  !  den(1) = den(1)/avgmw(1)
-!****************************** 2 phase S-Pc-kr relation *********************************
+
+!****************************** 2 phase S-Pc-kr relation ************************
     if (option%nphase >= 2) then
       if (saturation_function%hysteresis_id <= 0.1D0) then 
         call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
@@ -538,7 +539,7 @@ subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturati
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  
   use Saturation_Function_module
   use Fluid_module
   
@@ -564,106 +565,6 @@ subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturati
   enddo
 
 end subroutine MphaseAuxVarCompute_WINC
-
-! ************************************************************************** !
-! 
-! MphaesSecHeatAuxVarCompute: Computes secondary auxillary variables in each
-!                             grid cell for heat transfer only
-! author: Satish Karra
-! Date: 06/28/12
-!
-! ************************************************************************** !
-subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,aux_var,global_aux_var, &
-                                   therm_conductivity,dencpr, &
-                                   option)
-
-  use Option_module 
-  use Global_Aux_module
-  
-  implicit none
-  
-  type(sec_heat_type) :: sec_heat_vars
-  type(mphase_auxvar_elem_type) :: aux_var
-  type(global_auxvar_type) :: global_aux_var
-  type(option_type) :: option
-  PetscReal :: coeff_left(sec_heat_vars%ncells)
-  PetscReal :: coeff_diag(sec_heat_vars%ncells)
-  PetscReal :: coeff_right(sec_heat_vars%ncells)
-  PetscReal :: rhs(sec_heat_vars%ncells)
-  PetscReal :: sec_temp(sec_heat_vars%ncells)
-  PetscReal :: area(sec_heat_vars%ncells)
-  PetscReal :: vol(sec_heat_vars%ncells)
-  PetscReal :: dm_plus(sec_heat_vars%ncells)
-  PetscReal :: dm_minus(sec_heat_vars%ncells)
-  PetscInt :: i, ngcells
-  PetscReal :: area_fm
-  PetscReal :: alpha, therm_conductivity, dencpr
-  PetscReal :: temp_primary_node
-  PetscReal :: m
-  
-  
-  ngcells = sec_heat_vars%ncells
-  area = sec_heat_vars%area
-  vol = sec_heat_vars%vol
-  dm_plus = sec_heat_vars%dm_plus
-  dm_minus = sec_heat_vars%dm_minus
-  area_fm = sec_heat_vars%interfacial_area
-  temp_primary_node = aux_var%temp
-
-  
-  coeff_left = 0.d0
-  coeff_diag = 0.d0
-  coeff_right = 0.d0
-  rhs = 0.d0
-  sec_temp = 0.d0
-  
-  alpha = option%flow_dt*therm_conductivity/dencpr
-
-  
-  ! Setting the coefficients
-  do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
-    coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
-                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
-    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
-  enddo
-  
-  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
-  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
-  
-  coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
-                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
-  coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
-                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
-                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
-                       + 1.d0
-                        
-  rhs = sec_heat_vars%sec_temp  ! secondary continuum values from previous time step
-  rhs(ngcells) = rhs(ngcells) + & 
-                 alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
-                 temp_primary_node
-                
-  ! Thomas algorithm for tridiagonal system
-  ! Forward elimination
-  do i = 2, ngcells
-    m = coeff_left(i)/coeff_diag(i-1)
-    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
-    rhs(i) = rhs(i) - m*rhs(i-1)
-  enddo
-
-  ! Back substitution
-  ! Calculate temperature in the secondary continuum
-  sec_temp(ngcells) = rhs(ngcells)/coeff_diag(ngcells)
-  do i = ngcells-1, 1, -1
-    sec_temp(i) = (rhs(i) - coeff_right(i)*sec_temp(i+1))/coeff_diag(i)
-  enddo
-
-! print *,'temp_dcdm= ',(sec_temp(i),i=1,ngcells)
-  
-  sec_heat_vars%sec_temp = sec_temp
-
-
-end subroutine MphaseSecHeatAuxVarCompute
 
 ! ************************************************************************** !
 !
@@ -784,8 +685,6 @@ subroutine MphaseAuxDestroy(aux)
   if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
   if (associated(aux%delx)) deallocate(aux%delx)
   
-  nullify(aux%sec_heat_vars)
-
   deallocate(aux)
   nullify(aux)
   

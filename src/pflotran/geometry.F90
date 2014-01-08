@@ -1,10 +1,12 @@
 module Geometry_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: point3d_type
     PetscReal :: x
@@ -66,7 +68,7 @@ end function GeometryCreatePolygonalVolume
 ! ************************************************************************** !
 subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
 
   implicit none
@@ -82,7 +84,7 @@ subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 
   icount = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'REGION')
     if (InputCheckExit(input,option)) exit              
     icount = icount + 1

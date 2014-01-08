@@ -1,10 +1,12 @@
 module Database_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: database_rxn_type
     PetscInt :: nspec
@@ -68,7 +70,7 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   

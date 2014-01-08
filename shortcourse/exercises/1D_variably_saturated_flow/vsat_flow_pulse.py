@@ -15,7 +15,7 @@ import pflotran as pft
 path = []
 path.append('.')
 
-files = pft.get_default_tec_filenames(range(6))
+files = pft.get_tec_filenames('vsat_flow_pulse',range(6))
 filenames = pft.get_full_paths(path,files)
 
 line_styles = []

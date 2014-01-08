@@ -2,11 +2,13 @@ module Level_module
 
   use Patch_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: level_type 
     
@@ -151,156 +153,7 @@ subroutine LevelConvertListToArray(level_list)
   enddo
 
 end subroutine LevelConvertListToArray
-#if 0
-! ************************************************************************** !
-!
-! LevelProcessCouplers: Deallocates a realization
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
-subroutine LevelProcessCouplers(level,flow_conditions,transport_conditions, &
-                                materials,option)
 
-  use Option_module
-  use Material_module
-  use Condition_module
-  
-  implicit none
-  
-  type(level_type) :: level
-  type(material_property_type), pointer :: materials(:)
-  type(condition_list_type) :: flow_conditions
-  type(condition_list_type) :: transport_conditions
-  type(option_type) :: option  
-  
-  type(patch_type), pointer :: cur_patch
-
-  cur_patch => level%patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    call PatchProcessCouplers(cur_patch,flow_conditions,transport_conditions, &
-                              materials,option)
-    cur_patch => cur_patch%next
-  enddo
- 
-end subroutine LevelProcessCouplers
-
-! ************************************************************************** !
-!
-! LevelInitAllCouplerAuxVars: Initializes coupler auxillary variables 
-!                                within list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
-subroutine LevelInitAllCouplerAuxVars(level,option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(level_type) :: level
-  type(option_type) :: option
-  
-  type(patch_type), pointer :: cur_patch
-
-  cur_patch => level%patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    call PatchInitAllCouplerAuxVars(cur_patch,option)
-    cur_patch => cur_patch%next
-  enddo
- 
-end subroutine LevelInitAllCouplerAuxVars
-
-! ************************************************************************** !
-!
-! LevelInitCouplerAuxVars: Initializes coupler auxillary variables 
-!                                within list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
-subroutine LevelInitCouplerAuxVars(level,option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(level_type) :: level
-  type(option_type) :: option
-  
-  type(patch_type), pointer :: cur_patch
-
-  cur_patch => level%patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    call PatchInitCouplerAuxVars(cur_patch,option)
-    cur_patch => cur_patch%next
-  enddo
- 
-end subroutine LevelInitCouplerAuxVars
-
-! ************************************************************************** !
-!
-! LevelUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in lis
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
-subroutine LevelUpdateAllCouplerAuxVars(level,force_update_flag,option)
-
-  use Option_module
-
-  implicit none
-  
-  type(level_type) :: level
-  PetscBool :: force_update_flag
-  type(option_type) :: option
-    
-  type(patch_type), pointer :: cur_patch
-
-  cur_patch => level%patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    call PatchUpdateAllCouplerAuxVars(cur_patch,force_update_flag,option)
-    cur_patch => cur_patch%next
-  enddo
- 
-end subroutine LevelUpdateAllCouplerAuxVars
-
-! ************************************************************************** !
-!
-! LevelUpdateCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in lis
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
-subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,field,option)
-
-  use Option_module
-
-  implicit none
-  
-  type(level_type) :: level
-  PetscBool :: force_update_flag
-  type(field_type) :: field
-  type(option_type) :: option
-    
-  type(patch_type), pointer :: cur_patch
-
-  cur_patch => level%patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    call PatchUpdateCouplerAuxVars(cur_patch,force_update_flag,field,option)
-    cur_patch => cur_patch%next
-  enddo
- 
-end subroutine LevelUpdateCouplerAuxVars
-#endif
 ! ************************************************************************** !
 !
 ! LevelDestroyList: Deallocates a level list and array of leveles

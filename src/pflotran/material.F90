@@ -1,12 +1,14 @@
 module Material_module
  
-  use Dataset_Aux_module
+  use Dataset_Common_HDF5_class
+
+  use PFLOTRAN_Constants_module
 
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
  
   type, public :: material_property_type
     PetscInt :: id
@@ -16,10 +18,10 @@ module Material_module
     PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
     PetscReal :: permeability_scaling_factor
     character(len=MAXWORDLENGTH) :: permeability_dataset_name
-    type(dataset_type), pointer :: permeability_dataset
+    class(dataset_common_hdf5_type), pointer :: permeability_dataset
     PetscReal :: porosity
     character(len=MAXWORDLENGTH) :: porosity_dataset_name
-    type(dataset_type), pointer :: porosity_dataset
+    class(dataset_common_hdf5_type), pointer :: porosity_dataset
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
@@ -28,21 +30,27 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: alpha    ! conductivity saturation relation exponent
-    PetscReal :: youngs_modulus
-    PetscReal :: poissons_ratio
-#ifdef ICE
+
+    ! ice properties
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
-#endif
+
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
+    PetscReal :: transverse_dispersivity_h
+    PetscReal :: transverse_dispersivity_v
     PetscReal :: tortuosity_pwr
+    PetscReal :: min_pressure
+    PetscReal :: max_pressure
+    PetscReal :: max_permfactor
     !geh: minral surface area power functions must be defined on a per
     !     mineral basis, look in reaction_aux.F90
     !PetscReal :: mnrl_surf_area_volfrac_pwr
     !PetscReal :: mnrl_surf_area_porosity_pwr
     PetscReal :: permeability_pwr
+    PetscReal :: permeability_crit_por
+    PetscReal :: permeability_min_scale_fac
     character(len=MAXWORDLENGTH) :: secondary_continuum_name
     PetscReal :: secondary_continuum_length
     PetscReal :: secondary_continuum_matrix_block_size
@@ -60,6 +68,7 @@ module Material_module
     PetscReal :: secondary_continuum_mnrl_area 
     PetscBool :: secondary_continuum_log_spacing
     PetscReal :: secondary_continuum_outer_spacing
+    PetscReal :: secondary_continuum_area_scaling
     type(material_property_type), pointer :: next
   end type material_property_type
   
@@ -73,6 +82,7 @@ module Material_module
             MaterialPropGetPtrFromList, &
             MaterialPropGetPtrFromArray, &
             MaterialPropConvertListToArray, &
+            MaterialAnisotropyExists, &
             MaterialPropertyRead
   
 contains
@@ -95,14 +105,18 @@ function MaterialPropertyCreate()
   allocate(material_property)
   material_property%id = 0
   material_property%name = ''
-  material_property%permeability = 0.d0
+  ! initialize to -999.d0 to catch bugs
+  material_property%permeability = -999.d0
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_scaling_factor = 0.d0
   material_property%permeability_pwr = 0.d0
+  material_property%permeability_crit_por = 0.d0
+  material_property%permeability_min_scale_fac = 1.d0
   material_property%permeability_dataset_name = ''
   nullify(material_property%permeability_dataset)
-  material_property%porosity = 0.d0
+  ! initialize to -999.d0 to catch bugs
+  material_property%porosity = -999.d0
   material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   material_property%tortuosity = 1.d0
@@ -114,15 +128,18 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
   material_property%alpha = 0.45d0
-  material_property%youngs_modulus = 2.d11 ! in Pa
-  material_property%poissons_ratio = 0.3
-#ifdef ICE
+
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
-#endif
+
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
+  material_property%transverse_dispersivity_h = 0.d0
+  material_property%transverse_dispersivity_v = 0.d0
+  material_property%min_pressure = 0.d0
+  material_property%max_pressure = 1.d6
+  material_property%max_permfactor = 1.d0
   material_property%secondary_continuum_name = ''
   material_property%secondary_continuum_length = 0.d0
   material_property%secondary_continuum_matrix_block_size = 0.d0
@@ -140,6 +157,7 @@ function MaterialPropertyCreate()
   material_property%secondary_continuum_ncells = 0
   material_property%secondary_continuum_log_spacing = PETSC_FALSE
   material_property%secondary_continuum_outer_spacing = 1.d-3
+  material_property%secondary_continuum_area_scaling = 1.d0
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
@@ -155,7 +173,7 @@ end function MaterialPropertyCreate
 subroutine MaterialPropertyRead(material_property,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -166,14 +184,18 @@ subroutine MaterialPropertyRead(material_property,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
-  type(dataset_type), pointer :: dataset
 
   PetscInt :: length
+  PetscBool :: therm_k_frz
+  PetscBool :: therm_k_exp_frz
+
+  therm_k_frz = PETSC_FALSE
+  therm_k_exp_frz = PETSC_FALSE
 
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -204,6 +226,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('LONGITUDINAL_DISPERSIVITY') 
         call InputReadDouble(input,option,material_property%longitudinal_dispersivity)
         call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
+      case('TRANSVERSE_DISPERSIVITY_H') 
+        call InputReadDouble(input,option,material_property%transverse_dispersivity_h)
+        call InputErrorMsg(input,option,'transverse_dispersivity_h','MATERIAL_PROPERTY')
+      case('TRANSVERSE_DISPERSIVITY_V') 
+        call InputReadDouble(input,option,material_property%transverse_dispersivity_v)
+        call InputErrorMsg(input,option,'transverse_dispersivity_v','MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_dry)
@@ -219,18 +247,18 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%alpha)
         call InputErrorMsg(input,option,'thermal conductivity exponent', &
                            'MATERIAL_PROPERTY')
-#ifdef ICE
       case('THERMAL_CONDUCTIVITY_FROZEN') 
+        therm_k_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_frozen)
         call InputErrorMsg(input,option,'frozen thermal conductivity', &
                            'MATERIAL_PROPERTY')
       case('THERMAL_COND_EXPONENT_FROZEN') 
+        therm_k_exp_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
                              material_property%alpha_fr)
         call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
-#endif
       case('PORE_COMPRESSIBILITY') 
         call InputReadDouble(input,option, &
                              material_property%pore_compressibility)
@@ -261,7 +289,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
       case('PERMEABILITY')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,PERMEABILITY')
           
@@ -345,20 +373,53 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
-      case('YOUNGS_MODULUS') 
-        call InputReadDouble(input,option, &
-                             material_property%youngs_modulus)
-        call InputErrorMsg(input,option,'youngs modulus', &
-                           'MATERIAL_PROPERTY')
-      case('POISSONS_RATIO') 
-        call InputReadDouble(input,option, &
-                             material_property%poissons_ratio)
-        call InputErrorMsg(input,option,'poissons_ratio', &
-                           'MATERIAL_PROPERTY')
+      case('PERM_FACTOR') 
+      ! Permfactor is the multiplier to permeability to increase perm
+      ! The perm increase could be due to pressure or other variable
+      ! Added by Satish Karra, LANL, 1/8/12
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,PERM_FACTOR')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,PERM_FACTOR')   
+          select case(trim(word))
+          ! Assuming only ramp function for now
+          ! The permfactor ramps from 1 to max_permfactor at max_pressure
+          ! and remains same
+            case('MIN_PRESSURE')       
+              call InputReadDouble(input,option,material_property%min_pressure)
+              call InputErrorMsg(input,option,'min pressure','PERM_FACTOR')  
+            case('MAX_PRESSURE')       
+              call InputReadDouble(input,option,material_property%max_pressure)
+              call InputErrorMsg(input,option,'max pressure','PERM_FACTOR')
+            case('MAX_PERMFACTOR')       
+              call InputReadDouble(input,option,material_property%max_permfactor)
+              call InputErrorMsg(input,option,'max permfactor','PERM_FACTOR')
+            case default
+              option%io_buffer = 'Keyword (' // trim(word) // &
+                                 ') not recognized in MATERIAL_PROPERTY,' // &
+                                 'PERM_FACTOR'
+              call printErrMsg(option)
+          end select
+        enddo
       case('PERMEABILITY_POWER')
         call InputReadDouble(input,option, &
                              material_property%permeability_pwr)
         call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY')
+      case('PERMEABILITY_CRIT_POROSITY')
+        call InputReadDouble(input,option, &
+                             material_property%permeability_crit_por)
+        call InputErrorMsg(input,option,'permeability critical porosity','MATERIAL_PROPERTY')
+      case('PERMEABILITY_MIN_SCALE_FAC')
+        call InputReadDouble(input,option, &
+                             material_property%permeability_min_scale_fac)
+        call InputErrorMsg(input,option,'permeability min scale factor','MATERIAL_PROPERTY')
       case('TORTUOSITY_POWER')
         call InputReadDouble(input,option, &
                              material_property%tortuosity_pwr)
@@ -371,7 +432,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
           call printErrMsg(option)
       case('SECONDARY_CONTINUUM')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,SECONDARY_CONTINUUM')
           
@@ -380,7 +441,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword', &
-                             'MATERIAL_PROPERTY,PERMEABILITY')   
+                             'MATERIAL_PROPERTY,SECONDARY_CONTINUUM')   
           select case(trim(word))
             case('TYPE')
               call InputReadNChars(input,option, &
@@ -467,6 +528,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%secondary_continuum_outer_spacing)
               call InputErrorMsg(input,option,'secondary cont. outer spacing', &
                            'MATERIAL_PROPERTY')
+            case('AREA_SCALING_FACTOR')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_area_scaling)
+              call InputErrorMsg(input,option,'secondary area scaling factor', &
+                           'MATERIAL_PROPERTY')
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &
                                  ') not recognized in MATERIAL_PROPERTY,' // &
@@ -480,9 +546,20 @@ subroutine MaterialPropertyRead(material_property,input,option)
                            ') not recognized in material_property'    
         call printErrMsg(option)
     end select 
-  
-  enddo  
+  enddo
 
+  if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
+     if (option%use_th_freezing .eqv. PETSC_TRUE) then
+        if (.not. therm_k_frz) then
+           option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           call printErrMsg(option)
+        endif
+        if (.not. therm_k_exp_frz) then
+           option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           call printErrMsg(option)
+        endif
+     endif
+  endif
 
 end subroutine MaterialPropertyRead
 
@@ -719,6 +796,38 @@ function MaterialPropGetPtrFromArray(material_property_name, &
   enddo
   
 end function MaterialPropGetPtrFromArray
+
+! ************************************************************************** !
+!
+! MaterialAnisotropyExists: Determines whether any of the material 
+!                           properties are anisotropic
+! author: Glenn Hammond
+! date: 07/11/13
+!
+! ************************************************************************** !
+function MaterialAnisotropyExists(material_property_list)
+
+  implicit none
+  
+  type(material_property_type), pointer :: material_property_list
+
+  PetscBool :: MaterialAnisotropyExists
+  
+  type(material_property_type), pointer :: cur_material_property
+    
+  MaterialAnisotropyExists = PETSC_FALSE
+  
+  cur_material_property => material_property_list
+  do 
+    if (.not.associated(cur_material_property)) exit
+    if (.not. cur_material_property%isotropic_permeability) then
+      MaterialAnisotropyExists = PETSC_TRUE
+      return
+    endif
+    cur_material_property => cur_material_property%next
+  enddo
+  
+end function MaterialAnisotropyExists
 
 ! ************************************************************************** !
 !

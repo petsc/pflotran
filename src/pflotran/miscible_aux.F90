@@ -1,9 +1,11 @@
 module Miscible_Aux_module
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 type, public :: Miscible_auxvar_elem_type
    PetscReal :: pres
@@ -294,7 +296,7 @@ subroutine MiscibleAuxVarCompute_WINC(x,delx,aux_var,global_auxvar, &
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  
   use Fluid_module
   
   implicit none

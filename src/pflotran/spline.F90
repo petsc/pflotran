@@ -1,6 +1,6 @@
   module spline_module
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   public
   
@@ -16,6 +16,8 @@ subroutine spline(x,y,n,y2)
 !     press, w.h., b.p. flannery, s.a. teukolsky, and w.t. vetterling.
 !     1986.  numerical recipes, the art of scientific computing,
 !     cambridge university press, cambridge.  pp. 86-89.
+
+  use PFLOTRAN_Constants_module
 
       implicit none
       

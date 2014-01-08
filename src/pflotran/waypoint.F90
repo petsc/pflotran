@@ -3,17 +3,20 @@ module Waypoint_module
   use Option_module
   use Output_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type
     PetscReal :: time
     PetscBool :: print_output
     PetscBool :: print_tr_output
+    PetscBool :: print_checkpoint
 !    type(output_option_type), pointer :: output_option
     PetscBool :: update_conditions
     PetscReal :: dt_max
@@ -29,31 +32,40 @@ module Waypoint_module
     type(waypoint_type), pointer :: array(:)    
   end type waypoint_list_type
   
+  interface WaypointCreate
+    module procedure WaypointCreate1
+    module procedure WaypointCreate2
+  end interface  
   
   public :: WaypointCreate, &
             WaypointListCreate, &
+            WaypointListDestroy, &
             WaypointInsertInList, &
             WaypointDeleteFromList, &
             WaypointListFillIn, &
             WaypointListRemoveExtraWaypnts, &
             WaypointConvertTimes, &
+            WaypointReturnAtTime, &
             WaypointSkipToTime, &
-            WaypointListPrint
+            WaypointForceMatchToTime, &
+            WaypointListCopy, &
+            WaypointListPrint, &
+            WaypointListGetFinalTime
 
 contains
 
 ! ************************************************************************** !
 !
-! WaypointCreate: Creates a simulation waypoint
+! WaypointCreate1: Creates a simulation waypoint
 ! author: Glenn Hammond
 ! date: 11/07/07
 !
 ! ************************************************************************** !
-function WaypointCreate()
+function WaypointCreate1()
 
   implicit none
   
-  type(waypoint_type), pointer :: WaypointCreate
+  type(waypoint_type), pointer :: WaypointCreate1
   
   type(waypoint_type), pointer :: waypoint
   
@@ -61,15 +73,46 @@ function WaypointCreate()
   waypoint%time = 0.d0
   waypoint%print_output = PETSC_FALSE
   waypoint%print_tr_output = PETSC_FALSE
+  waypoint%print_checkpoint = PETSC_FALSE
   waypoint%final = PETSC_FALSE
   waypoint%update_conditions = PETSC_FALSE
   waypoint%dt_max = 0.d0
   nullify(waypoint%next)
   nullify(waypoint%prev)
     
-  WaypointCreate => waypoint
+  WaypointCreate1 => waypoint
   
-end function WaypointCreate 
+end function WaypointCreate1
+
+! ************************************************************************** !
+!
+! WaypointCreate2: Creates a simulation waypoint
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+function WaypointCreate2(original_waypoint)
+
+  implicit none
+  
+  type(waypoint_type), pointer :: original_waypoint
+  
+  type(waypoint_type), pointer :: WaypointCreate2
+  
+  type(waypoint_type), pointer :: waypoint
+  
+  allocate(waypoint)
+  waypoint%time = original_waypoint%time
+  waypoint%print_output = original_waypoint%print_output
+  waypoint%print_tr_output = original_waypoint%print_tr_output
+  waypoint%print_checkpoint = original_waypoint%print_checkpoint
+  waypoint%final = original_waypoint%final
+  waypoint%update_conditions = original_waypoint%update_conditions
+  waypoint%dt_max = original_waypoint%dt_max
+    
+  WaypointCreate2 => waypoint
+  
+end function WaypointCreate2
 
 ! ************************************************************************** !
 !
@@ -413,6 +456,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%final = PETSC_FALSE
   endif
 
+  if (old_waypoint%print_checkpoint .or. new_waypoint%print_checkpoint) then
+    old_waypoint%print_checkpoint = PETSC_TRUE
+  else
+    old_waypoint%print_checkpoint = PETSC_FALSE
+  endif
+
   ! deallocate new waypoint
   deallocate(new_waypoint)
   ! point new_waypoint to old
@@ -422,54 +471,19 @@ end subroutine WaypointMerge
 
 ! ************************************************************************** !
 !
-! WaypointListDestroy: Deallocates a waypoint list
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
-subroutine WaypointListDestroy(waypoint_list)
-
-  implicit none
-  
-  type(waypoint_list_type), pointer :: waypoint_list
-  
-  type(waypoint_type), pointer :: waypoint, prev_waypoint
-  
-  if (.not.associated(waypoint_list)) return
-
-  if (associated(waypoint_list%array)) deallocate(waypoint_list%array)
-  nullify(waypoint_list%array)
-  
-  waypoint => waypoint_list%first
-  do
-    if (.not.associated(waypoint)) exit
-    prev_waypoint => waypoint
-    waypoint => waypoint%next
-    call WaypointDestroy(prev_waypoint)
-  enddo
-  
-  nullify(waypoint_list%first)
-  nullify(waypoint_list%last)
-  deallocate(waypoint_list)
-  nullify(waypoint_list)
-  
-end subroutine WaypointListDestroy
-
-! ************************************************************************** !
-!
-! WaypointSkipToTime: Returns a pointer to the first waypoint after time
+! WaypointReturnAtTime: Returns a pointer to the first waypoint after time
 ! author: Glenn Hammond
 ! date: 1/03/08
 !
 ! ************************************************************************** !
-function WaypointSkipToTime(list,time)
+function WaypointReturnAtTime(list,time)
 
   implicit none
 
   type(waypoint_list_type), pointer :: list
   PetscReal :: time
 
-  type(waypoint_type), pointer :: WaypointSkipToTime
+  type(waypoint_type), pointer :: WaypointReturnAtTime
   type(waypoint_type), pointer :: waypoint
   
   waypoint => list%first
@@ -480,12 +494,34 @@ function WaypointSkipToTime(list,time)
   enddo
 
   if (associated(waypoint)) then
-    WaypointSkipToTime => waypoint
+    WaypointReturnAtTime => waypoint
   else
-    nullify(WaypointSkipToTime)
+    nullify(WaypointReturnAtTime)
   endif
 
-end function WaypointSkipToTime
+end function WaypointReturnAtTime
+
+! ************************************************************************** !
+!
+! WaypointSkipToTime: Skips the waypoint ahead to the correct time.
+! author: Glenn Hammond
+! date: 07/31/13
+!
+! ************************************************************************** !
+subroutine WaypointSkipToTime(cur_waypoint,time)
+
+  implicit none
+
+  PetscReal :: time
+  type(waypoint_type), pointer :: cur_waypoint
+  
+  do 
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%time > time) exit
+    cur_waypoint => cur_waypoint%next
+  enddo
+
+end subroutine WaypointSkipToTime
 
 ! ************************************************************************** !
 !
@@ -547,6 +583,82 @@ end subroutine WaypointListPrint
 
 ! ************************************************************************** !
 !
+! WaypointListCopy: Copies a waypoint list
+! author: Glenn Hammond
+! date: 03/19/13
+!
+! ************************************************************************** !
+function WaypointListCopy(list)
+
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+  
+  type(waypoint_list_type), pointer :: WaypointListCopy
+  
+  type(waypoint_list_type), pointer :: list
+  type(waypoint_type), pointer :: new_waypoint
+  type(waypoint_type), pointer :: prev_new_waypoint
+  
+  type(waypoint_list_type), pointer :: new_list
+  type(waypoint_type), pointer :: cur_waypoint
+
+  new_list => WaypointListCreate()
+  
+  nullify(prev_new_waypoint)
+  
+  cur_waypoint => list%first
+  do 
+    if (.not.associated(cur_waypoint)) exit
+    new_waypoint => WaypointCreate(cur_waypoint)
+    if (associated(prev_new_waypoint)) then
+      prev_new_waypoint%next => new_waypoint
+    else
+      new_list%first => new_waypoint
+    endif
+    new_list%num_waypoints = new_list%num_waypoints + 1
+    prev_new_waypoint => new_waypoint
+    nullify(new_waypoint)
+    cur_waypoint => cur_waypoint%next
+  enddo
+  
+  WaypointListCopy => new_list
+
+end function WaypointListCopy
+
+! ************************************************************************** !
+!
+! WaypointForceMatchToTime: Forces a match to waypoint time if condition is 
+!                           true.
+! author: Glenn Hammond
+! date: 03/19/13
+!
+! ************************************************************************** !
+function WaypointForceMatchToTime(waypoint)
+
+  implicit none
+  
+  type(waypoint_type) :: waypoint
+  
+  PetscBool :: WaypointForceMatchToTime
+  
+  WaypointForceMatchToTime = PETSC_FALSE
+
+  if (waypoint%update_conditions &
+      .or. &
+      waypoint%print_output .or. &
+      waypoint%print_tr_output .or. &
+      waypoint%print_checkpoint .or. &
+      waypoint%final &
+      ) then
+    WaypointForceMatchToTime = PETSC_TRUE
+  endif
+  
+end function WaypointForceMatchToTime
+
+! ************************************************************************** !
+!
 ! WaypointPrint: Prints a waypoint
 ! author: Glenn Hammond
 ! date: 05/20/11
@@ -577,6 +689,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(*,10) trim(string), waypoint%time/output_option%tconv
     write(*,30) 'Print Output', waypoint%print_output
     write(*,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(*,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(*,30) 'Update Conditions', waypoint%update_conditions
     write(*,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
@@ -591,6 +704,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(option%fid_out,10) trim(string), waypoint%time/output_option%tconv
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(option%fid_out,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(option%fid_out,30) 'Update Conditions', waypoint%update_conditions
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
@@ -601,7 +715,74 @@ subroutine WaypointPrint(waypoint,option,output_option)
  
 end subroutine WaypointPrint
 
+! ************************************************************************** !
+!
+! WaypointListDestroy: Destroys a simulation waypoint list
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+subroutine WaypointListDestroy(waypoint_list)
 
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  type(waypoint_type), pointer :: cur_waypoint, next_waypoint
+  
+  if (.not.associated(waypoint_list)) return
+  
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    next_waypoint => cur_waypoint%next
+    call WaypointDestroy(cur_waypoint)
+    cur_waypoint => next_waypoint
+  enddo
+  
+  nullify(waypoint_list%first)
+  nullify(waypoint_list%last)
+  if (associated(waypoint_list%array)) deallocate(waypoint_list%array)
+  nullify(waypoint_list%array)
+
+  deallocate(waypoint_list)
+  nullify(waypoint_list)
+  
+end subroutine WaypointListDestroy 
+
+! ************************************************************************** !
+!
+! WaypointListGetFinalTime: Returns the final time in the waypoint list
+! author: Glenn Hammond
+! date: 06/12/13
+!
+! ************************************************************************** !
+function WaypointListGetFinalTime(waypoint_list)
+
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  PetscReal :: WaypointListGetFinalTime
+  
+  type(waypoint_type), pointer :: cur_waypoint
+
+  WaypointListGetFinalTime = 0.d0
+  
+  if (.not.associated(waypoint_list)) return
+  
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%final .or. &
+        cur_waypoint%time > WaypointListGetFinalTime) then
+      WaypointListGetFinalTime = cur_waypoint%time
+      if (cur_waypoint%final) exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  
+end function WaypointListGetFinalTime 
 
 ! ************************************************************************** !
 !
@@ -610,6 +791,8 @@ end subroutine WaypointPrint
 ! date: 11/09/07
 !
 ! ************************************************************************** !
+!geh: DO NOT make this subroutine recursive as waypoints within lists need to
+!     be destroyed without recursively destroying the remainder of the list.
 subroutine WaypointDestroy(waypoint)
 
   implicit none

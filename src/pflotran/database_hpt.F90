@@ -3,15 +3,17 @@ module Database_hpt_module
   use Reaction_module
   use Reaction_Aux_module
   use Database_module
-  use Database_aux_module
+  use Database_Aux_module
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+
+  use PFLOTRAN_Constants_module
 
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: DatabaseRead_hpt, BasisInit_hpt
             
@@ -27,7 +29,7 @@ contains
 subroutine DatabaseRead_hpt(reaction,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   
   implicit none
@@ -99,7 +101,7 @@ subroutine DatabaseRead_hpt(reaction,option)
   input => InputCreate(IUNIT_TEMP,reaction%database_filename,option)
 
   ! read temperatures
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   ! remove comment
   call InputReadQuotedWord(input,option,name,PETSC_TRUE)
   call InputReadInt(input,option,reaction%num_dbase_parameters)
@@ -114,7 +116,7 @@ subroutine DatabaseRead_hpt(reaction,option)
   num_nulls = 0
   null_name = 'null'
   do ! loop over every entry in the database
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'DATABASE')
 
     call InputReadQuotedWord(input,option,name,PETSC_TRUE)
@@ -660,7 +662,7 @@ subroutine BasisInit_hpt(reaction,option)
   use Option_module
   use String_module
   use Utility_module
-  use Input_module
+  use Input_Aux_module
 
   implicit none
   
@@ -1760,7 +1762,7 @@ subroutine BasisInit_hpt(reaction,option)
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
         reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
-                                           reaction%print_all_mineral_species
+                                           reaction%mineral%print_all
         reaction%kinmnrlspecid(:,ikinmnrl) = reaction%mnrlspecid(:,imnrl)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
@@ -1982,7 +1984,7 @@ subroutine BasisInit_hpt(reaction,option)
         if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
           reaction%eqsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
           reaction%eqsrfcplx_rxn_to_surf(irxn) = &
-            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+            GetKineticMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
           if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
                                'listed in surface complexation reaction not ' // &
@@ -2186,7 +2188,7 @@ subroutine BasisInit_hpt(reaction,option)
         if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
           reaction%kinsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
           reaction%kinsrfcplx_rxn_to_surf(irxn) = &
-            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+            GetKineticMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
           if (reaction%kinsrfcplx_rxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
                                'listed in kinetic surface complexation ' // &

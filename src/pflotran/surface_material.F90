@@ -2,11 +2,13 @@
 
 module Surface_Material_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: surface_material_property_type
     
@@ -68,7 +70,7 @@ end function SurfaceMaterialPropertyCreate
 subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   
   implicit none
@@ -81,7 +83,7 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
   character(len=MAXSTRINGLENGTH) :: string
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if(InputCheckExit(input,option)) exit
   
@@ -301,4 +303,5 @@ end function SurfaceMaterialPropGetPtrFromArray
 
 end module Surface_Material_module
 
-#endif ! SURFACE_FLOW
+#endif
+! SURFACE_FLOW

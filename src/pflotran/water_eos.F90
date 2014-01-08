@@ -1,10 +1,12 @@
-module water_eos_module
+module Water_EOS_module
+
+  use PFLOTRAN_Constants_module
 
   implicit none
 
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   interface VISW
     module procedure VISW1
@@ -48,6 +50,7 @@ contains
  
   end subroutine VISW1
 
+!geh: currently not used
   subroutine VISW2 (T,P,PS,pswt,VW,vwt,vwp,ierr)
 
     implicit none
@@ -94,10 +97,11 @@ contains
   end subroutine VISW_noderiv
 
 
+!geh: currently not used
 ! ************************************************************************** !
 !
 ! VISW_temp: Viscosity of water which is a function of temperature only
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 04/12/12
 ! T in C, VW in Pa.s
 !
@@ -135,6 +139,7 @@ contains
     
   end subroutine VISW_temp
 
+!geh: currently not used  
 subroutine VISW_FLO (t,dw,vw)
        implicit none
 !c=======================================================================
@@ -207,7 +212,7 @@ subroutine VISW_FLO (t,dw,vw)
         
 
 
-
+!geh: currently not used
   subroutine PSAT_new (TC, P, ierr)
 
     implicit none
@@ -244,7 +249,8 @@ subroutine VISW_FLO (t,dw,vw)
     ierr = 0
 
   end subroutine PSAT_NEW
-
+  
+!geh: currently not used
  subroutine PSAT1_new (TC, P, tsp, ierr)
 
     implicit none
@@ -372,7 +378,7 @@ subroutine PSATgeh (T, psat, dpsat_dt, ierr)
 
   end subroutine PSATgeh  
  
-
+!geh: currently not used
 subroutine PSAT1(T, Ps, tsp, ierr)
 
     implicit none
@@ -430,8 +436,24 @@ subroutine PSAT1(T, Ps, tsp, ierr)
   end subroutine PSAT1
 
 
-
 subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
+
+!  This subroutine calculates water and steam-gas mixture properties.
+!  The water and steam properties are valid in the range of:
+!
+!            0 < p < 165.4 * 10^5 pascals (165.4 bars)
+!            0 < t < 800 centigrade (1073.15 Kelvin)
+!
+!  The properties cover densities, enthalpies, internal energies,
+!  and partial derivatives of these quanties with respect to
+!  pressure and temperature.
+!
+!  For saturated fluid, it will also calculate water saturation
+!  temperature for the specified pressure using Newton-Raphson and
+!  the derivative dts/dp (=tsp) or Ps for a given temperature.
+!
+!  Ref.: International Formulation Committee of the Sixth International
+!       Conference on Properties of Steam (1967).
 
     implicit none
   
@@ -1352,6 +1374,7 @@ subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
   
   end subroutine steameos
 
+!geh: currently not used
 subroutine COWAT (TC,PP,D,U, ierr)
 
     implicit none
@@ -1699,7 +1722,7 @@ end subroutine Tsat
 ! DensityIce: Subroutine to calculate the density of ice at given temperature
 !             and pressure
 !
-! Written by Satish Karra
+! Written by Satish Karra, LANL
 ! Date: 11/16/11
 ! T is in deg C, P is in Pa, density is in kmol/m3
 !===============================================================================
@@ -1728,7 +1751,7 @@ end subroutine DensityIce
 ! InternalEnergyIce: Subroutine to calculate the internal energy of ice at given
 !                    temperature and pressure
 !
-! Written by Satish Karra
+! Written by Satish Karra, LANL
 ! Date: 11/16/11
 ! T is in deg C, internal energy is in J/mol
 !===============================================================================
@@ -1760,7 +1783,7 @@ end subroutine InternalEnergyIce
 ! ************************************************************************** !
 !
 ! wateos_simple: Simple water equation of state from Scott Painter
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 02/1/12
 ! T in C, P in Pa
 !
@@ -1822,4 +1845,4 @@ end subroutine wateos_simple
 
 
 
-end module water_eos_module
+end module Water_EOS_module

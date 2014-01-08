@@ -1,0 +1,96 @@
+\section{Appendix: Reaction Sandbox}
+
+\setcounter{equation}{0}
+
+\subsection{Background}
+
+Researchers often have a suite of reactions tailored to a unique problem scenario, but these reaction networks only exist in their respective research codes. The ``reaction sandbox'' provides these researchers with a venue for implementing user-defined reactions within PFLOTRAN. Reaction networks developed within the reaction sandbox can leverage existing biogeochemical capability within in PFLOTRAN (e.g. equilibrium aqueous complexation, mineral precipitation--dissolution, etc.) or function independently. Please note that although the reaction sandbox facilitates the integration of user-defined reactions, the process still requires a basic understanding of PFLOTRAN and its approach to solving reaction through the Newton-Raphson method. For instance,  One must understand the purpose and function of the rt\_auxvar and global\_auxvar objects.
+
+\subsection{Implementation}
+The core framework of reaction sandbox leverages Fortran 2003 object--oriented extendable derived types and methods and consists of two modules:
+
+\begin{itemize}
+  \item[] Reaction\_Sandbox\_module (reaction\_sandbox.F90)
+  \item[] Reaction\_Sandbox\_Base\_class (reaction\_sandbox\_base.F90).
+\end{itemize}
+
+To implement a new reaction within the reaction sandbox, one creates a new class by extending the Reaction\_Sandbox\_Base\_class and adds the new class to the Reaction\_Sandbox\_module.  The following steps illustrate this process through the creation of the class Reaction\_Sandbox\_Example\_class that implements a first order decay reaction.
+
+\begin{enumerate}
+  \item Copy reaction\_sandbox\_template.F90 to a new filename (e.g. reaction\_sandbox\_example.F90).
+  \item Replace all references to Template/template with the new reaction name.
+    \begin{itemize}
+      \item[] \verb+Template+ $\rightarrow$ \verb+Example+
+      \item[] \verb+template+ $\rightarrow$ \verb+example+
+    \end{itemize}
+  \item Add necessary variables to the module and/or the extended derived type.
+\begin{verbatim}
+character(len=MAXWORDLENGTH) :: species_name
+PetscInt :: species_id
+PetscReal :: rate_constant
+\end{verbatim}
+  \item Add the necessary functionality within the following subroutines:
+    \begin{enumerate}[label=\alph*]
+      \item ExampleCreate: Allocate the reaction object, initializing all variables to zero and nullifying arrays.  {\bf Be sure to nullify ExampleCreate\%next which comes from the base class.}  E.g.,
+  \begin{verbatim}
+  allocate(ExampleCreate)
+  ExampleCreate%species_name = ''
+  ExampleCreate%species_id = 0
+  ExampleCreate%rate_constant = 0.d0
+  nullify(ExampleCreate%next)
+  \end{verbatim}
+      \item ExampleRead: Read parameters in from the input file block \verb+EXAMPLE+.  E.g.,
+  \begin{verbatim}
+  ...
+  case('SPECIES_NAME')
+    call InputReadWord(input,option,this%species_name, &
+                       PETSC_TRUE)
+    call InputErrorMsg(input,option,'species_name', &
+                   'CHEMISTRY,REACTION_SANDBOX,EXAMPLE')
+  ...
+  \end{verbatim}
+      \item ExampleSetup: Construct the reaction network (e.g. array allocation, establishing linkages, etc.). E.g.,
+  \begin{verbatim}
+  ...
+  this%species_id = &
+    GetPrimarySpeciesIDFromName(this%species_name, &
+                                reaction,option)
+  ...
+  \end{verbatim}
+      \item ExampleReact: Calculate contribution of reaction to the residual (units = moles/sec) and Jacobian (units = kg water/sec). E.g.,
+  \begin{verbatim}
+  ...
+  Residual(this%species_id) = &
+    Residual(this%species_id) - &
+    this%rate_constant*porosity* &
+    global_auxvar%sat(iphase)*volume*1.d3* &
+    rt_auxvar%total(this%species_id,iphase)
+  ...
+  Jacobian(this%species_id,this%species_id) = &
+  Jacobian(this%species_id,this%species_id) + &
+    this%rate_constant*porosity* &
+    global_auxvar%sat(iphase)*volume*1.d3*
+    rt_auxvar%aqueous%dtotal(this%species_id, &
+                             this%species_id,iphase)
+  ...
+  \end{verbatim}
+      \item ExampleDestroy: Deallocate any dynamic memory within the class (without deallocating the object itself).
+    \end{enumerate}
+  \item Ensure that the methods within the extended derived type point to the proper procedures in the module
+  \begin{verbatim}
+  procedure, public :: ReadInput => ExampleRead
+  procedure, public :: Setup => ExampleSetup
+  procedure, public :: Evaluate => ExampleReact
+  procedure, public :: Destroy => ExampleDestroy
+  \end{verbatim}
+  \item Within reaction\_sandbox.F90:
+    \begin{enumerate}[label=\alph*]
+      \item Add Reaction\_Sandbox\_Example\_class+ to the list of modules to be ``used'' at the top of the file.
+      \item Add a case statement in RSandboxRead2 for the keyword defining the new reaction and create the reaction within.  I.e.
+  \begin{verbatim}
+    case('EXAMPLE')
+      new_sandbox => ExampleCreate()
+  \end{verbatim}
+    \end{enumerate}
+\end{enumerate}
+

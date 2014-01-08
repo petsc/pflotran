@@ -1,0 +1,16 @@
+
+\section{Visualization}
+
+Visualization of the results produced by PFLOTRAN can be achieved using several different utilities including commercial and open source software. 
+Plotting 2D or 3D output files can be done using the commercial package {\bf Tecplot}, or the opensource packages \href{https://wci.llnl.gov/codes/visit/}{VisIt} and \href{http://www.paraview.org/}{ParaView}. {\bf Paraview} is similar to {\bf VisIt} and both are capable of remote visualization on parallel architectures.  In order to change the default file format in {\bf TecPlot} so that it recognizes {\tt .tec} files, place the following in the tecplot.cfg file:
+
+\verb|$!FileConfig FNameFilter {InputDataFile = "*.tec"}|
+
+For 1D problems or for plotting PFLOTRAN observation and mass balance output, the opensource software packages \href{http://www.gnuplot.info/}{gnuplot} and \href{http://matplotlib.org/}{matplotlib} are recommended.
+With {\bf gnuplot} and {\bf matplotlib} it is possible to plot data from several files in the same plot.
+To do this with {\bf gnuplot} it is necessary that the files have the same number of rows, e.g. time history points. The files can be merged during input by using the {\tt paste} command as a pipe: e.g.
+
+\verb|plot '< paste file1.dat file2.dat' using 1:($n1*$n2)|
+
+\noindent
+plots the product of variable in file 1 in column {\tt n1} times the variable in file 2 in column {\tt n2} of the merged file.

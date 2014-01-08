@@ -9,9 +9,11 @@
 
 module mixture_module
    
+  use PFLOTRAN_Constants_module
+
  implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
  public
   
@@ -32,11 +34,11 @@ subroutine mixture_eos_noderiv (p,t,xga,sg,energyscale,num_phase,num_spec,&
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
-    use water_eos_module
-    use gas_eos_module  
+    use Water_EOS_module
+    use Gas_EOS_module  
     use pckr_module
     use co2eos_module
-    use span_wagner_module
+    use co2_span_wagner_module
 
 
     implicit none
@@ -269,11 +271,11 @@ subroutine mixture_eos(p,t,xga,sg,energyscale,num_phase,num_spec, &
     ierr,itable)
 
 
-    use water_eos_module
-    use gas_eos_module  
+    use Water_EOS_module
+    use Gas_EOS_module  
     use pckr_module
     use co2eos_module
-    use span_wagner_module 
+    use co2_span_wagner_module 
 
     implicit none
 

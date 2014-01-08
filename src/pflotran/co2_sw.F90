@@ -5,9 +5,11 @@ module co2_sw_module
   ! co2_sw_prop(p,t,rho,dddt,dddp,fg,dfgdp,dfgdt,
   !                 eng,ent,dhdt,dhdp,visc,dvdt,dvdp)
 
+  use PFLOTRAN_Constants_module
+
       implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
       private
       save
@@ -38,7 +40,7 @@ module co2_sw_module
  
 ! prepare data table for interpolation 
 subroutine initialize_sw_interp(itable,myrank)
-      use span_wagner_module, only: co2_span_wagner, vappr
+      use co2_span_wagner_module, only: co2_span_wagner, vappr
         
         implicit none
         PetscInt itable
@@ -301,7 +303,7 @@ PetscReal function co2_prop_spwag(ip,it,iv)
  ! 2-d function interpolation     
 subroutine interp(x1,x2,y)
 
-      use span_wagner_module, only: vappr, co2_span_wagner
+      use co2_span_wagner_module, only: vappr, co2_span_wagner
       implicit none 
   
 #include "finclude/petscsys.h"

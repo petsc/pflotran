@@ -1,0 +1,227 @@
+:Description: 1D general reaction with sorption.
+
+:Using solely aqueous decay, compare with:
+:
+:http://hydrolab.illinois.edu/gw_applets//sequential/SequentialDecayApplet.html
+:
+:velocity = 4
+:dispersion = 6
+:pulse length >= 50
+:number of species = 3
+:
+:species 1:
+:  c = 0.1
+:  mu = 0.055451
+:  R = 2
+:
+:species 1:
+:  c = 0.
+:  mu = 0.027726
+:  R = 1
+:
+:species 1:
+:  c = 0.
+:  mu = 0.13863
+:  R = 1.25
+
+:=========================== regression =======================================
+REGRESSION
+:  CELLS_PER_PROCESS 5
+  CELLS
+    1
+    20 
+    25 
+    30 
+    35 
+    40 
+    45 
+    50 
+    55 
+    60 
+    65 
+    70 
+    75 
+    80 
+    100
+  /
+END
+
+:=========================== flow mode ========================================
+: Uniform velocity (see below). No flow mode specified.
+
+:=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+    B(aq)
+    C(aq)
+  /
+  GENERAL_REACTION
+    REACTION A(aq) <-> B(aq)
+    ! Calculating forward rate from half life
+    
+    ! forward rate = -ln(0.5) / half life [1/sec]
+
+    FORWARD_RATE 1.75836d-9  ! 1/s  half life = 12.5 yrs
+    BACKWARD_RATE 0.d0
+  /
+  GENERAL_REACTION
+    REACTION B(aq) <-> C(aq)
+    FORWARD_RATE 8.7918d-10  ! 1/s  half life = 25. yrs
+    BACKWARD_RATE 0.d0
+  /
+  GENERAL_REACTION
+    ! Note that C(aq) simply decays with no daugher products
+    REACTION C(aq) <->
+    FORWARD_RATE 4.3959d-9  ! 1/s  half life = 5. yrs
+    BACKWARD_RATE 0.d0
+  /
+  SORPTION
+    ISOTHERM_REACTIONS
+      A(aq)
+        TYPE LINEAR
+        ! Calculating distribution coefficient (Kd) from retardation (R):
+
+        !   Kd = porosity*saturation*water_density*(R-1)
+
+        ! Assume:
+        !   Kd units = kg water/m^3 bulk volume
+        !   water_density = 1000. (set above under REFERENCE_DENSITY) [kg/m^3]
+        !   saturation = 1.  [m^3 water/m^3 pore space]
+        !   porosity = 0.25 (from below)  [m^3 pore space/m^3 bulk volume]
+
+        ! R = 2, Kd = 0
+        DISTRIBUTION_COEFFICIENT 0.25d3 ! kg water/m^3 bulk
+      /
+    / 
+  /
+  DATABASE ../../../database/hanford.dat
+  OPERATOR_SPLIT
+  OUTPUT
+    all
+  /
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+:=========================== output options ===================================
+OUTPUT
+:  TIMES y 5. 10. 15. 20.
+  FORMAT TECPLOT POINT
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 25.d0 y            ! A(aq) at 50m midpoint
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE east
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION inlet
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 inlet
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    A(aq) 1.d-7  T
+    B(aq) 1.d-7  T
+    C(aq) 1.d-7  T
+  /
+END
+
+CONSTRAINT inlet
+  CONCENTRATIONS
+    A(aq) 1.d-3  T
+    B(aq) 1.d-7  T
+    C(aq) 1.d-7  T
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION outlet
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+BOUNDARY_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION west
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+

@@ -3,11 +3,13 @@ module Miscible_module
   use Miscible_Aux_module
   use Global_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
 !#include "include/petscf90.h"
 #include "finclude/petscvec.h"
@@ -44,7 +46,8 @@ module Miscible_module
          MiscibleSetup, &
          MiscibleMaxChange, MiscibleUpdateSolution, &
          MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
-         MiscibleUpdateAuxVars,MiscibleComputeMassBalance
+         MiscibleUpdateAuxVars,MiscibleComputeMassBalance, &
+         MiscibleDestroy
 
 contains
 
@@ -57,7 +60,7 @@ contains
 ! ************************************************************************** !
 subroutine MiscibleTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -87,26 +90,19 @@ end subroutine MiscibleTimeCut
 ! ************************************************************************** !
 subroutine MiscibleSetup(realization)
 
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
    
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
  
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call MiscibleSetPlotVariables(realization)
@@ -122,7 +118,7 @@ end subroutine MiscibleSetup
 ! ************************************************************************** !
 subroutine MiscibleSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -224,29 +220,22 @@ end subroutine MiscibleSetupPatch
 ! ************************************************************************** !
 subroutine MiscibleComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,1)
    
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   mass_balance = 0.d0
 
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleComputeMassBalancePatch(realization,mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleComputeMassBalance    
@@ -261,7 +250,7 @@ end subroutine MiscibleComputeMassBalance
 ! ************************************************************************** !
 subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -294,8 +283,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   global_aux_vars => patch%aux%Global%aux_vars
   miscible_aux_vars => patch%aux%Miscible%aux_vars
 
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayF90(field%volume,volume_p,ierr)
+  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -314,21 +303,21 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   mass_balance(jh2o,1) = mass_balance(jh2o,1)*FMWH2O
   mass_balance(jglyc,1) = mass_balance(jglyc,1)*FMWGLYC
 
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayF90(field%volume,volume_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   
 end subroutine MiscibleComputeMassBalancePatch
 
 ! ************************************************************************** !
 !
 ! MiscibleZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! date: 12/13/11
 !
 ! ************************************************************************** !
 subroutine MiscibleZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -380,7 +369,7 @@ end subroutine MiscibleZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine MiscibleUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -438,46 +427,39 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! ************************************************************************** !
   function MiscibleInitGuessCheck(realization)
  
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
   use Option_module
   
   PetscInt ::  MiscibleInitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr
 
   option => realization%option
-  cur_level => realization%level_list%first
   ipass = 1
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ipass= MiscibleInitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    ipass= MiscibleInitGuessCheckPatch(realization)
+    if(ipass<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
   enddo
 
-   call MPI_Barrier(option%mycomm,ierr)
-   if(option%mycommsize >1)then
-      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
-                         option%mycomm,ierr)
-      if(ipass0 < option%mycommsize) ipass=-1
-   endif
+  call MPI_Barrier(option%mycomm,ierr)
+  if (option%mycommsize >1)then
+    call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                       option%mycomm,ierr)
+    if(ipass0 < option%mycommsize) ipass=-1
+  endif
    MiscibleInitGuessCheck =ipass
- end function MiscibleInitGuessCheck
+
+end function MiscibleInitGuessCheck
 
 
 
@@ -489,9 +471,9 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! ************************************************************************** !
   function MiscibleInitGuessCheckPatch(realization)
    
-     use span_wagner_module
+    use co2_span_wagner_module
      
-    use Realization_module
+    use Realization_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -514,7 +496,7 @@ end subroutine MiscibleUpdateMassBalancePatch
     option => realization%option
     field => realization%field
     
-    call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
+    call VecGetArrayF90(field%flow_xx,xx_p, ierr)
     
     ipass=1
     MiscibleInitGuessCheckPatch = ipass
@@ -530,26 +512,19 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine MiscibleUpdateAuxVars(realization)
 
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleUpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleUpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleUpdateAuxVars
@@ -564,7 +539,7 @@ end subroutine MiscibleUpdateAuxVars
 ! ************************************************************************** !
 subroutine MiscibleUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -604,8 +579,8 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
   
-  call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -674,8 +649,8 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   
   patch%aux%Miscible%aux_vars_up_to_date = PETSC_TRUE
 
@@ -690,7 +665,7 @@ end subroutine MiscibleUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine MiscibleInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -709,9 +684,8 @@ end subroutine MiscibleInitializeTimestep
 ! ************************************************************************** !
 subroutine MiscibleUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   
   implicit none
@@ -719,7 +693,6 @@ subroutine MiscibleUpdateSolution(realization)
   type(realization_type) :: realization
   
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   PetscErrorCode :: ierr
@@ -728,17 +701,12 @@ subroutine MiscibleUpdateSolution(realization)
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do 
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleUpdateSolutionPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleUpdateSolution
@@ -748,14 +716,14 @@ end subroutine MiscibleUpdateSolution
 !
 ! MiscibleUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step 
-! author: Satish Karra
+! author: Satish Karra, LANL
 ! written based on RichardsUpdateSolutionPatch
 ! date: 08/23/11
 !
 ! ************************************************************************** !
 subroutine MiscibleUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -777,26 +745,19 @@ end subroutine MiscibleUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine MiscibleUpdateFixedAccumulation(realization)
 
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine MiscibleUpdateFixedAccumulation
@@ -811,7 +772,7 @@ end subroutine MiscibleUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine MiscibleUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -846,13 +807,13 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
   aux_vars => patch%aux%Miscible%aux_vars
     
-  call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_xx,xx_p, ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
+  call VecGetArrayF90(field%volume,volume_p,ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -871,14 +832,14 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
                               option,accum_p(istart:iend)) 
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
+  call VecRestoreArrayF90(field%volume,volume_p,ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
-  call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
 
 end subroutine MiscibleUpdateFixedAccumPatch
 
@@ -973,11 +934,12 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
 
   use Option_module
   
-  use water_eos_module
+  
+  use EOS_Water_module
   use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
+  use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module 
+  use co2_span_wagner_module 
   
   implicit none
 
@@ -1016,7 +978,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
       msrc(1) = msrc(1) / FMWH2O
       msrc(2) = msrc(2) / FMWGLYC
       if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
-!        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+!        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
@@ -1081,8 +1043,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
     ! injection well (well status = 2)
       if (dabs(well_status - 2D0) < 1D-1) then 
 
-        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
-          option%scale,ierr)
+        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol, &
+                                     enth_src_h2o,option%scale,ierr)
 
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
@@ -1332,13 +1294,12 @@ end subroutine MiscibleBCFlux
 ! ************************************************************************** !
 subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
   use Discretization_module
   use Field_module
   use Option_module
-  use grid_module 
+  use Grid_module 
   use Logging_module
 
   implicit none
@@ -1354,7 +1315,6 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange  
 
@@ -1391,45 +1351,30 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
 
 ! pass #0 prepare numerical increment  
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleResidualPatch0(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleResidualPatch0(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #1 internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleResidualPatch1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleResidualPatch1(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #2 for everything else
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleResidualPatch2(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleResidualPatch2(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
   if (realization%debug%vecview_residual) then
@@ -1459,7 +1404,7 @@ end subroutine MiscibleResidual
 subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1548,16 +1493,16 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   endif
 
 ! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid, r, r_p, ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90( r, r_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
 
   r_p = 0.d0
  
@@ -1729,16 +1674,16 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo    
 
-  call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid, r, r_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90( r, r_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
 end subroutine MiscibleResidualPatch1
 
@@ -1752,7 +1697,7 @@ end subroutine MiscibleResidualPatch1
 subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1817,8 +1762,8 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
  ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
 
   allocate(delx(option%nflowdof))
 
@@ -1905,8 +1850,8 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
   enddo
 
   deallocate(delx)
-  call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
 end subroutine MiscibleResidualPatch0
 
@@ -1921,7 +1866,7 @@ end subroutine MiscibleResidualPatch0
 subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1995,13 +1940,13 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
  ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
-  call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(r, r_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
 
-! call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
+! call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
 
   ! Accumulation terms (include reaction------------------------------------
   if (.not.option%steady_state) then
@@ -2031,7 +1976,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     enddo
   endif
 
-! call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
+! call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
@@ -2047,22 +1992,22 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
    ! endif
       
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif 
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 !    hsrc1=0D0
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -2151,11 +2096,11 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     enddo
   endif
  
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(r, r_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
  
 end subroutine MiscibleResidualPatch2
 
@@ -2169,9 +2114,8 @@ end subroutine MiscibleResidualPatch2
 ! ************************************************************************** !
 subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
   use Logging_module
@@ -2186,7 +2130,6 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
 
@@ -2206,31 +2149,21 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
  ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 ! pass #2 for everything else
- cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 
@@ -2278,7 +2211,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -2385,17 +2318,17 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
  ! MatzeroEntries has been called in MiscibleJacobin ! clu removed on 11/04/2010 
  !  call MatZeroEntries(A,ierr)
 
-  call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
 
-  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-!  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
+!  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
  ResInc = 0.D0
 
@@ -2642,17 +2575,17 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
 
    
-  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
 end subroutine MiscibleJacobianPatch1
 
@@ -2668,7 +2601,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -2774,11 +2707,11 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
  ! print *,'*********** In Jacobian ********************** '
 !  call MatZeroEntries(A,ierr)
 
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-! call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
+! call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
   ResInc = 0.D0
 #if 1
@@ -2819,21 +2752,21 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'Flash mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -2908,11 +2841,11 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-! call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
+! call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -3068,8 +3001,7 @@ end subroutine MiscibleCreateZeroArray
 ! ************************************************************************** !
 subroutine MiscibleMaxChange(realization)
 
-  use Realization_module
-  use Level_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -3081,7 +3013,6 @@ subroutine MiscibleMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dcmax
   PetscInt :: idof
@@ -3090,7 +3021,6 @@ subroutine MiscibleMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
   option%dpmax=0.D0
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
@@ -3118,7 +3048,7 @@ end subroutine MiscibleMaxChange
 ! ************************************************************************** !
 function MiscibleGetTecplotHeader(realization, icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -3187,7 +3117,7 @@ end function MiscibleGetTecplotHeader
 ! ************************************************************************** !
 subroutine MiscibleSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 
@@ -3233,5 +3163,25 @@ subroutine MiscibleSetPlotVariables(realization)
 
 end subroutine MiscibleSetPlotVariables
 
+
+! ************************************************************************** !
+!
+! MphaseDestroy: Deallocates variables associated with Miscible
+! author: Gautam Bisht
+! date: 11/27/13
+!
+! ************************************************************************** !
+subroutine MiscibleDestroy(realization)
+
+  use Realization_class
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  ! need to free array in aux vars
+  !call MiscibleAuxDestroy(patch%aux%miscible)
+
+end subroutine MiscibleDestroy
 
 end module Miscible_module

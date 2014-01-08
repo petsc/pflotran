@@ -3,11 +3,18 @@ module Observation_module
   use Region_module
   use Connection_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
+
+  PetscInt, parameter, public :: OBSERVATION_SCALAR = 1
+  PetscInt, parameter, public :: OBSERVATION_FLUX = 2
+  PetscInt, parameter, public :: OBSERVATION_AT_CELL_CENTER = 1
+  PetscInt, parameter, public :: OBSERVATION_AT_COORDINATE = 2
 
   type, public :: observation_type
     ! all added variables must be included in ObservationCreateFromObservation
@@ -116,7 +123,7 @@ end function ObservationCreateFromObservation
 ! ************************************************************************** !
 subroutine ObservationRead(observation,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -131,7 +138,7 @@ subroutine ObservationRead(observation,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if (InputCheckExit(input,option)) exit  
 

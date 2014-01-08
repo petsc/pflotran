@@ -2,7 +2,7 @@ module oil_eos_module
 
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscReal, parameter :: Rg=8.3145D3
   PetscReal, parameter :: den0= 863.983, p0= 17236893.25, vis0=3.0D-3, fmwoil= 142.D0
@@ -15,6 +15,8 @@ module oil_eos_module
   
   
 subroutine Vis_oil(p,t,viso, ierr)
+  use PFLOTRAN_Constants_module
+
    implicit none
    
    PetscReal, intent(in) :: p,t

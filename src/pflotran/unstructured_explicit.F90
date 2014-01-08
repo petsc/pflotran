@@ -3,201 +3,68 @@ module Unstructured_Explicit_module
   use Geometry_module
   use Unstructured_Grid_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private 
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
-#if defined(PARALLELIO_LIB)
-  include "piof.h"
+#if defined(SCORPIO)
+  include "scorpiof.h"
 #endif
 
-  public :: ExplicitUGridRead, &
-            ExplicitUGridDecompose, &
-            ExplicitUGridReadInParallel, &
-            ExplicitUGridDecomposeNew, &
-            ExplicitUGridSetInternConnect, &
-            ExplicitUGridSetCellCentroids, &
-            ExplicitUGridComputeVolumes, &
-            ExplicitUGridSetBoundaryConnect, &
-            ExplicitUGridSetConnections
+  public :: UGridExplicitRead, &
+            UGridExplicitDecompose, &
+            UGridExplicitSetInternConnect, &
+            UGridExplicitSetCellCentroids, &
+            UGridExplicitComputeVolumes, &
+            UGridExplicitSetBoundaryConnect, &
+            UGridExplicitSetConnections
 
 contains
 
 ! ************************************************************************** !
 !
-! ExplicitUGridRead: Reads an explicit unstructured grid
-! author: Glenn Hammond
-! date: 05/14/12
-!
-! ************************************************************************** !
-subroutine ExplicitUGridRead(explicit_grid,filename,option)
-
-  use Input_module
-  use Option_module
-  use String_module
-  
-  implicit none
-  
-  type(unstructured_explicit_type) :: explicit_grid
-  character(len=MAXSTRINGLENGTH) :: filename
-  type(option_type) :: option
-  
-  type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
-  PetscInt :: fileid, icell, iconn, id_up, id_dn
-  
-  PetscInt :: num_cells
-  PetscInt :: num_connections
-  
-  fileid = 86
-  input => InputCreate(fileid,filename,option)
-
-! Format of explicit unstructured grid file
-! id_, id_up_, id_dn_ = integer
-! x_, y_, z_, area_, volume_ = real
-! -----------------------------------------------------------------
-! CELLS <integer>    integer = # cells (N)
-! id_1 x_1 y_1 z_1 volume_1
-! id_2 x_2 y_2 z_2 volume_2
-! ...
-! ...
-! id_N x_N y_N z_N volume_N
-! CONNECTIONS <integer>   integer = # connections (M)
-! id_up_1 id_dn_1 x_1 y_1 z_1 area_1
-! id_up_2 id_dn_2 x_2 y_2 z_2 area_2
-! ...
-! ...
-! id_up_M id_dn_M x_M y_M z_M area_M
-! -----------------------------------------------------------------
-
-
-  do
-    call InputReadFlotranString(input,option)
-    if (InputError(input)) exit
-
-    call InputReadWord(input,option,word,PETSC_FALSE)
-    call StringToUpper(word)
-    card = trim(word)
-  
-    select case(word)
-      case('CELLS')
-        card = 'Explicit Unstructured Grid CELLS'
-        call InputReadInt(input,option,num_cells)
-        call InputErrorMsg(input,option,'number of cells',card)
-        allocate(explicit_grid%cell_ids(num_cells))
-        explicit_grid%cell_ids = 0
-        allocate(explicit_grid%cell_volumes(num_cells))
-        explicit_grid%cell_volumes = 0
-        allocate(explicit_grid%cell_centroids(num_cells))
-        do icell = 1, num_cells
-          explicit_grid%cell_centroids(icell)%x = 0.d0
-          explicit_grid%cell_centroids(icell)%y = 0.d0
-          explicit_grid%cell_centroids(icell)%z = 0.d0
-        enddo
-        do icell = 1, num_cells
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
-          call InputReadInt(input,option,explicit_grid%cell_ids(icell))
-          call InputErrorMsg(input,option,'cell id',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%cell_centroids(icell)%x)
-          call InputErrorMsg(input,option,'cell x coordinate',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%cell_centroids(icell)%y)
-          call InputErrorMsg(input,option,'cell y coordinate',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%cell_centroids(icell)%z)
-          call InputErrorMsg(input,option,'cell z coordinate',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%cell_volumes(icell))
-          call InputErrorMsg(input,option,'cell volume',card)
-        enddo
-      case('CONNECTIONS')
-        card = 'Explicit Unstructured Grid CONNECTIONS'
-        call InputReadInt(input,option,num_connections)
-        call InputErrorMsg(input,option,'number of connections',card)
-        allocate(explicit_grid%connections(2,num_connections))
-        explicit_grid%connections = 0
-        allocate(explicit_grid%face_areas(num_connections))
-        explicit_grid%face_areas = 0    
-        allocate(explicit_grid%face_centroids(num_connections))
-        do iconn = 1, num_connections
-          explicit_grid%face_centroids(iconn)%x = 0.d0
-          explicit_grid%face_centroids(iconn)%y = 0.d0
-          explicit_grid%face_centroids(iconn)%z = 0.d0
-        enddo
-        do iconn = 1, num_connections
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
-          call InputReadInt(input,option, &
-                            explicit_grid%connections(1,iconn))
-          call InputErrorMsg(input,option,'cell id upwind',card)
-          call InputReadInt(input,option, &
-                            explicit_grid%connections(2,iconn))
-          call InputErrorMsg(input,option,'cell id downwind',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%face_centroids(iconn)%x)
-          call InputErrorMsg(input,option,'face x coordinate',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%face_centroids(iconn)%y)
-          call InputErrorMsg(input,option,'face y coordinate',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%face_centroids(iconn)%z)
-          call InputErrorMsg(input,option,'face z coordinate',card)
-          call InputReadDouble(input,option, &
-                               explicit_grid%face_areas(iconn))
-          call InputErrorMsg(input,option,'face area',card)
-        enddo
-      case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                           ' not recognized while reading explicit ' // &
-                           'unstructured grid.'
-        call printErrMsg(option)
-    end select
-  enddo
-
-  call InputDestroy(input)
-
-end subroutine ExplicitUGridRead
-
-! ************************************************************************** !
-!
-! ExplicitUGridReadInParallel: Reads an explicit unstructured grid in parallel
+! UGridExplicitRead: Reads an explicit unstructured grid in parallel
 ! author: Glenn Hammond
 ! date: 10/03/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
+subroutine UGridExplicitRead(unstructured_grid,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
   implicit none
-  
-  type(unstructured_explicit_type) :: explicit_grid
+ 
+  type(unstructured_grid_type) :: unstructured_grid 
+  type(unstructured_explicit_type), pointer :: explicit_grid
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word, card
   PetscInt :: fileid, icell, iconn, irank, remainder, temp_int, num_to_read
   
-  PetscInt :: num_cells, num_connections
+  PetscInt :: num_cells, num_connections, num_elems
   PetscInt :: num_cells_local, num_cells_local_save
   PetscInt :: num_connections_local, num_connections_local_save
+  PetscInt :: num_elems_local, num_elems_local_save
   PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
   PetscMPIInt :: int_mpi
   PetscErrorCode :: ierr
   PetscReal, allocatable :: temp_real_array(:,:)
-  
+  PetscInt, allocatable :: temp_int_array(:,:)
+  PetscInt :: ivertex, num_vertices 
+
+  explicit_grid => unstructured_grid%explicit_grid 
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
 ! x_, y_, z_, area_, volume_ = real
@@ -229,7 +96,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     fileid = 86
     input => InputCreate(fileid,filename,option)
 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read CELL card, though we already know the
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'CELLS'
@@ -240,15 +107,16 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       call printErrMsgByRank(option)
     endif
   
-    card = 'Explicit Unstructured Grid CELLS'
+    hint = 'Explicit Unstructured Grid CELLS'
     call InputReadInt(input,option,temp_int)
-    call InputErrorMsg(input,option,'number of cells',card)
+    call InputErrorMsg(input,option,'number of cells',hint)
   endif
   
   call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%io_rank, &
                  option%mycomm,ierr)
   num_cells = temp_int
-        
+  explicit_grid%num_cells_global = num_cells
+
    ! divide cells across ranks
   num_cells_local = num_cells/option%mycommsize 
   num_cells_local_save = num_cells_local
@@ -278,19 +146,19 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadPflotranString(input,option)
+        call InputReadStringErrorMsg(input,option,hint)  
         call InputReadInt(input,option,temp_int)
-        call InputErrorMsg(input,option,'cell id',card)
+        call InputErrorMsg(input,option,'cell id',hint)
         temp_real_array(1,icell) = dble(temp_int)
         call InputReadDouble(input,option,temp_real_array(2,icell))
-        call InputErrorMsg(input,option,'cell x coordinate',card)
+        call InputErrorMsg(input,option,'cell x coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(3,icell))
-        call InputErrorMsg(input,option,'cell y coordinate',card)
+        call InputErrorMsg(input,option,'cell y coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(4,icell))
-        call InputErrorMsg(input,option,'cell z coordinate',card)
+        call InputErrorMsg(input,option,'cell z coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(5,icell))
-        call InputErrorMsg(input,option,'cell volume',card)
+        call InputErrorMsg(input,option,'cell volume',hint)
       enddo
 
       ! if the cells reside on io_rank
@@ -349,7 +217,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   if (option%myrank == option%io_rank) then
   
  
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! read CONNECTIONS card, though we already know the
     call InputReadWord(input,option,card,PETSC_TRUE)
     word = 'CONNECTIONS'
@@ -360,9 +228,9 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       call printErrMsgByRank(option)
     endif
   
-    card = 'Explicit Unstructured Grid CONNECTIONS'
+    hint = 'Explicit Unstructured Grid CONNECTIONS'
     call InputReadInt(input,option,temp_int)
-    call InputErrorMsg(input,option,'number of connections',card)
+    call InputErrorMsg(input,option,'number of connections',hint)
   endif
   
   int_mpi = 1
@@ -399,22 +267,22 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
       num_to_read = num_connections_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do iconn = 1, num_to_read
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadPflotranString(input,option)
+        call InputReadStringErrorMsg(input,option,hint)  
         call InputReadInt(input,option,temp_int)
-        call InputErrorMsg(input,option,'cell id upwind',card)
+        call InputErrorMsg(input,option,'cell id upwind',hint)
         temp_real_array(1,iconn) = dble(temp_int)
         call InputReadInt(input,option,temp_int)
-        call InputErrorMsg(input,option,'cell id downwind',card)
+        call InputErrorMsg(input,option,'cell id downwind',hint)
         temp_real_array(2,iconn) = dble(temp_int)
         call InputReadDouble(input,option,temp_real_array(3,iconn))
-        call InputErrorMsg(input,option,'face x coordinate',card)
+        call InputErrorMsg(input,option,'face x coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(4,iconn))
-        call InputErrorMsg(input,option,'face y coordinate',card)
+        call InputErrorMsg(input,option,'face y coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(5,iconn))
-        call InputErrorMsg(input,option,'face z coordinate',card)
+        call InputErrorMsg(input,option,'face z coordinate',hint)
         call InputReadDouble(input,option,temp_real_array(6,iconn))
-        call InputErrorMsg(input,option,'face area',card)
+        call InputErrorMsg(input,option,'face area',hint)
       enddo
 
       ! if the cells reside on io_rank
@@ -471,103 +339,93 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     
   endif
   deallocate(temp_real_array)  
-
+  
+  if (option%myrank == option%io_rank) then
+    call InputReadPflotranString(input,option)
+    ! read ELEMENTS card, we only use this for tecplot output
+    ! not used while solving the PDEs
+    call InputReadWord(input,option,card,PETSC_TRUE)
+    word = 'ELEMENTS'
+    if (.not.StringCompare(word,card)) return
+    card = 'Explicit Unstruct. Grid ELEMENTS'
+    call InputReadInt(input,option,num_elems)
+    call InputErrorMsg(input,option,'number of elements',card)
+        explicit_grid%num_elems = num_elems
+    unstructured_grid%max_nvert_per_cell = 8 ! Initial guess
+    allocate(explicit_grid%cell_connectivity(0:unstructured_grid% &
+                                  max_nvert_per_cell,num_elems)) 
+    do iconn = 1, num_elems
+      call InputReadPflotranString(input,option)
+      call InputReadStringErrorMsg(input,option,card)  
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'element_type',card)
+      call StringtoUpper(word)
+      select case (word)
+        case('H')
+          num_vertices = 8
+        case('W')
+          num_vertices = 6
+        case('P')
+          num_vertices = 5
+        case('T')
+          num_vertices = 4
+        case('Q')
+          num_vertices = 4
+        case('TRI')
+          num_vertices = 3
+      end select
+      explicit_grid%cell_connectivity(0,iconn) = num_vertices
+      do ivertex = 1, num_vertices
+        call InputReadInt(input,option,explicit_grid%cell_connectivity(ivertex,iconn))
+        call InputErrorMsg(input,option,'vertex id',hint)
+      enddo
+    enddo
+    call InputReadPflotranString(input,option)
+    ! read VERTICES card, not used for calcuations, only tecplot output
+    call InputReadWord(input,option,card,PETSC_TRUE)
+    word = 'VERTICES'
+    call InputErrorMsg(input,option,word,card)
+    if (.not.StringCompare(word,card)) then
+      option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
+        '" in explicit grid file.'
+      call printErrMsgByRank(option)
+    endif
+    allocate(explicit_grid%vertex_coordinates(explicit_grid%num_cells_global))
+    do icell = 1, explicit_grid%num_cells_global
+      explicit_grid%vertex_coordinates(icell)%x = 0.d0
+      explicit_grid%vertex_coordinates(icell)%y = 0.d0
+      explicit_grid%vertex_coordinates(icell)%z = 0.d0
+    enddo
+    do icell = 1, explicit_grid%num_cells_global
+      call InputReadPflotranString(input,option)
+      call InputReadStringErrorMsg(input,option,card)  
+      call InputReadDouble(input,option, &
+                           explicit_grid%vertex_coordinates(icell)%x)
+      call InputErrorMsg(input,option,'vertex 1',card)
+      call InputReadDouble(input,option, &
+                           explicit_grid%vertex_coordinates(icell)%y)
+      call InputErrorMsg(input,option,'vertex 2',card)
+      call InputReadDouble(input,option, &
+                           explicit_grid%vertex_coordinates(icell)%z)
+      call InputErrorMsg(input,option,'vertex 3',card)
+    enddo
+  endif
+  
   if (option%myrank == option%io_rank) then
     call InputDestroy(input)
   endif
     
-end subroutine ExplicitUGridReadInParallel
+end subroutine UGridExplicitRead
 
 ! ************************************************************************** !
 !
-! ExplicitUGridDecompose: Decomposes an explicit unstructured grid across 
+! UGridExplicitDecompose: Decomposes an explicit unstructured grid across 
 !                         ranks
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridDecompose(explicit_grid, num_ghost_cells, &
-                                  global_offset, nmax, nlmax, ngmax, &
-                                  cell_ids_natural, cell_ids_petsc, &
-                                  ghost_cell_ids_petsc, ao_natural_to_petsc, &
-                                  option)
-  use Option_module
-  use Utility_module, only: reallocateIntArray, SearchOrderedArray
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h" 
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-  
-  type(unstructured_explicit_type) :: explicit_grid
-  PetscInt :: num_ghost_cells
-  PetscInt :: global_offset
-  PetscInt :: nmax, nlmax, ngmax
-  PetscInt, pointer :: cell_ids_natural(:)
-  PetscInt, pointer :: cell_ids_petsc(:)
-  PetscInt, pointer :: ghost_cell_ids_petsc(:)
-  AO :: ao_natural_to_petsc
-  type(option_type) :: option
-  
-  PetscInt :: num_cells_local_new
-  PetscInt :: global_offset_new
-  PetscInt :: icell
-  PetscInt, allocatable :: int_array(:)
-  PetscErrorCode :: ierr
-
-  
-  num_cells_local_new = size(explicit_grid%cell_ids)
-  global_offset_new = 0
-  
-  allocate(cell_ids_natural(num_cells_local_new))
-  cell_ids_natural = explicit_grid%cell_ids
-
-  ! make a list of petsc ids for each local cell (you simply take the global 
-  ! offset and add it to the local contiguous cell ids on each processor
-  allocate(int_array(num_cells_local_new))
-  do icell = 1, num_cells_local_new
-    int_array(icell) = icell+global_offset_new
-  enddo
-  
-  ! make the arrays zero-based
-  int_array = int_array - 1
-  cell_ids_natural = cell_ids_natural - 1
-  ! create an application ordering (mapping of natural to petsc ordering)
-  call AOCreateBasic(option%mycomm,num_cells_local_new, &
-                     cell_ids_natural,int_array, &
-                     ao_natural_to_petsc,ierr)
-  deallocate(int_array)
-  ! make cell_ids_natural 1-based again
-  cell_ids_natural = cell_ids_natural + 1
-  
-  allocate(cell_ids_petsc(num_cells_local_new))
-  cell_ids_petsc = cell_ids_natural
-  
-  nmax = num_cells_local_new
-  nlmax = nmax
-  ngmax = nmax
-
-  num_ghost_cells = 0
-  global_offset = global_offset_new
-  
-end subroutine ExplicitUGridDecompose
-
-! ************************************************************************** !
-!
-! ExplicitUGridDecomposeNew: Decomposes an explicit unstructured grid across 
-!                         ranks
-! author: Glenn Hammond
-! date: 05/17/12
-!
-! ************************************************************************** !
-subroutine ExplicitUGridDecomposeNew(ugrid,option)
+subroutine UGridExplicitDecompose(ugrid,option)
 
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
@@ -590,7 +448,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   type(unstructured_explicit_type), pointer :: explicit_grid
   PetscViewer :: viewer
   
-  Mat :: M_mat
+  Mat :: M_mat,M_mat_loc
   Vec :: M_vec
   Mat :: Adj_mat
   Mat :: Dual_mat
@@ -607,10 +465,10 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   PetscInt :: global_offset_new
   PetscInt :: ghosted_id
   PetscInt, allocatable :: local_connections(:), local_connection_offsets(:)
+  PetscInt, allocatable :: local_connections2(:), local_connection_offsets2(:)
   PetscInt, allocatable :: int_array(:), int_array2(:), int_array3(:)
   PetscInt, allocatable :: int_array4(:)
   PetscInt, allocatable :: int_array2d(:,:)
-  PetscInt :: num_common_faces
   PetscInt :: num_connections_local_old, num_connections_local
   PetscInt :: num_connections_total 
   PetscInt :: num_connections_global, global_connection_offset
@@ -629,6 +487,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   PetscInt :: cell_stride, dual_offset, connection_offset, connection_stride
   PetscInt :: natural_id_offset
   PetscErrorCode :: ierr
+  PetscInt :: icell_up,icell_dn
   
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -701,7 +560,46 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Adj_mat,ierr)
+  ! GB: When MatConvert() is used, the diagonal entries are lost in Adj_mat
+  !call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Adj_mat,ierr)
+  !call MatDestroy(M_mat,ierr)
+
+  ! Alternate method of creating Adj_mat
+  if (option%mycommsize>1) then
+    call MatMPIAIJGetLocalMat(M_mat,MAT_INITIAL_MATRIX,M_mat_loc,ierr)
+    call MatGetRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatGetRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
+
+  count=0
+  do icell = 1,num_rows
+    istart = ia_ptr(icell)
+    iend = ia_ptr(icell+1)-1
+    num_cols = iend-istart+1
+    count = count+num_cols
+  enddo
+  allocate(local_connections(count))
+  allocate(local_connection_offsets(num_rows+1))
+  local_connection_offsets(1:num_rows+1) = ia_ptr(1:num_rows+1)
+  local_connections(1:count)             = ja_ptr(1:count)
+
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
+  call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
+                       num_connections_global, &
+                       local_connection_offsets, &
+                       local_connections,PETSC_NULL_INTEGER,Adj_mat,ierr)
+
+  if (option%mycommsize>1) then
+    call MatRestoreRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatRestoreRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
   call MatDestroy(M_mat,ierr)
 
 #if UGRID_DEBUG
@@ -709,14 +607,73 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
+!  call printErrMsg(option,'debugg')
 
-  num_common_faces = 1
-  call UGridPartition(ugrid, &
-                             option, &
-                             Adj_mat, &
-                             num_common_faces, &
-                             Dual_mat,is_new, &
-                             num_cells_local_new)
+  ! Create the Dual matrix.
+  call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
+                    ugrid%nmax,ugrid%nmax, &
+                    ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
+                    ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
+                    M_mat,ierr)
+  do iconn = 1, num_connections_local_old
+    icell_up = explicit_grid%connections(1,iconn)-1
+    icell_dn = explicit_grid%connections(2,iconn)-1
+    call MatSetValue(M_mat,icell_up,icell_dn,1.d0,INSERT_VALUES,ierr)
+    call MatSetValue(M_mat,icell_dn,icell_up,1.d0,INSERT_VALUES,ierr)
+  enddo
+  
+  call MatAssemblyBegin(M_mat,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(M_mat,MAT_FINAL_ASSEMBLY,ierr)
+  
+  !call MatConvert(M_mat,MATMPIADJ,MAT_INITIAL_MATRIX,Dual_mat,ierr)
+  !call MatDestroy(M_mat,ierr)
+
+  ! Alternate method of creating Dual_mat
+  if (option%mycommsize>1) then
+    call MatMPIAIJGetLocalMat(M_mat,MAT_INITIAL_MATRIX,M_mat_loc,ierr)
+    call MatGetRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatGetRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
+
+  count=0
+  do icell = 1,num_rows
+    istart = ia_ptr(icell)
+    iend = ia_ptr(icell+1)-1
+    num_cols = iend-istart+1
+    count = count+num_cols
+  enddo
+  allocate(local_connections2(count))
+  allocate(local_connection_offsets2(num_rows+1))
+  local_connection_offsets2(1:num_rows+1) = ia_ptr(1:num_rows+1)
+  local_connections2(1:count)             = ja_ptr(1:count)
+
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
+  call MatCreateMPIAdj(option%mycomm,num_cells_local_old, &
+                       ugrid%nmax, &
+                       local_connection_offsets2, &
+                       local_connections2,PETSC_NULL_INTEGER,Dual_mat,ierr)
+
+  if (option%mycommsize>1) then
+    call MatRestoreRowIJF90(M_mat_loc,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  else
+    call MatRestoreRowIJF90(M_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                        ia_ptr,ja_ptr,success,ierr)
+  endif
+  call MatDestroy(M_mat,ierr)
+
+#if UGRID_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'Dual_mat.out',viewer,ierr)
+  call MatView(Dual_mat,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  call UGridPartition(ugrid,option,Dual_mat,is_new, &
+                      num_cells_local_new)
 
   ! second argument of ZERO_INTEGER means to use 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
@@ -860,7 +817,12 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
                           temp_int,ia_ptr2,ja_ptr2,success,ierr)
   call MatDestroy(Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
-  
+  deallocate(local_connections)
+  deallocate(local_connection_offsets)
+  deallocate(local_connections2)
+  deallocate(local_connection_offsets2)
+
+
   ! is_scatter is destroyed within UGridNaturalToPetsc
   call UGridNaturalToPetsc(ugrid,option, &
                            cells_old,cells_local, &
@@ -894,9 +856,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
 
     
 #if UGRID_DEBUG
-  write(string,*) option%myrank
-  string = 'connections_old' // trim(adjustl(string)) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'connections_old.out',viewer,ierr)
   call VecView(connections_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
@@ -906,7 +866,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   count = 0
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! here we hit the 0 at the end of last connection
       ! yes, we will be counting them twice
       count = count + 1
@@ -918,7 +878,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   count = 0
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0 
       count = count + 1
       int_array(count) = conn_id
@@ -966,7 +926,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   count = 0
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0 
       count = count + 1
       vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride) = &
@@ -1038,7 +998,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   do ghosted_id=1, ugrid%ngmax
     do iconn = 1, ugrid%max_ndual_per_cell
       ! this connection id is now local
-      conn_id = vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride)
+      conn_id = int(vec_ptr(iconn + connection_offset + (ghosted_id-1)*cell_stride))
       if (conn_id < 1) exit ! again we hit the 0
       do i = 1, 2
         if (int_array2d(i,conn_id) <= -999) then
@@ -1068,8 +1028,8 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
       vec_ptr(offset+7) = 0.d0
       cycle
     endif
-    id_up = vec_ptr(offset+1) ! this is the natural id
-    id_dn = vec_ptr(offset+2)
+    id_up = int(vec_ptr(offset+1)) ! this is the natural id
+    id_dn = int(vec_ptr(offset+2))
     count = 0
     found = PETSC_FALSE
     do i = 1, 2
@@ -1142,7 +1102,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call VecGetArrayF90(cells_local,vec_ptr,ierr)
   do ghosted_id=1, ugrid%ngmax
     offset = cell_stride*(ghosted_id-1)
-    explicit_grid%cell_ids(ghosted_id) = vec_ptr(offset + 2)
+    explicit_grid%cell_ids(ghosted_id) = int(vec_ptr(offset + 2))
     explicit_grid%cell_centroids(ghosted_id)%x = vec_ptr(offset + 3)
     explicit_grid%cell_centroids(ghosted_id)%y = vec_ptr(offset + 4)
     explicit_grid%cell_centroids(ghosted_id)%z = vec_ptr(offset + 5)
@@ -1155,7 +1115,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   string = 'cells_local_raw' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do ghosted_id = 1, ugrid%ngmax
-    write(86,'(i5,4f7.3)') explicit_grid%cell_ids(ghosted_id), &
+    write(86,'(i5,4f10.3)') explicit_grid%cell_ids(ghosted_id), &
                 explicit_grid%cell_centroids(ghosted_id)%x, &
                 explicit_grid%cell_centroids(ghosted_id)%y, &
                 explicit_grid%cell_centroids(ghosted_id)%z, &
@@ -1193,8 +1153,8 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
     offset = connection_stride*(iconn-1)
     if (vec_ptr(offset+7) > 0.1d0) then
       count = count + 1
-      explicit_grid%connections(1,count) = vec_ptr(offset+1)
-      explicit_grid%connections(2,count) = vec_ptr(offset+2)
+      explicit_grid%connections(1,count) = int(vec_ptr(offset+1))
+      explicit_grid%connections(2,count) = int(vec_ptr(offset+2))
       explicit_grid%face_centroids(count)%x = vec_ptr(offset+3)
       explicit_grid%face_centroids(count)%y = vec_ptr(offset+4)
       explicit_grid%face_centroids(count)%z = vec_ptr(offset+5)
@@ -1223,16 +1183,16 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call VecDestroy(connections_local,ierr)
   call VecDestroy(cells_local,ierr)
   
-end subroutine ExplicitUGridDecomposeNew
+end subroutine UGridExplicitDecompose
 
 ! ************************************************************************** !
 !
-! ExplicitUGridSetCellCentroids: Sets the centroid of each grid cell
+! UGridExplicitSetCellCentroids: Sets the centroid of each grid cell
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridSetCellCentroids(explicit_grid,x,y,z, &
+subroutine UGridExplicitSetCellCentroids(explicit_grid,x,y,z, &
                                          x_min,x_max,y_min,y_max,z_min,z_max)
 
   use Option_module
@@ -1258,17 +1218,17 @@ subroutine ExplicitUGridSetCellCentroids(explicit_grid,x,y,z, &
   z_min = minval(z)
   z_max = maxval(z)
       
-end subroutine ExplicitUGridSetCellCentroids
+end subroutine UGridExplicitSetCellCentroids
       
 ! ************************************************************************** !
 !
-! ExplicitUGridSetInternConnect: Sets up the internal connectivity within  
+! UGridExplicitSetInternConnect: Sets up the internal connectivity within  
 !                                the connectivity object
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-function ExplicitUGridSetInternConnect(explicit_grid,option)
+function UGridExplicitSetInternConnect(explicit_grid,option)
 
   use Utility_module
   use Connection_module
@@ -1276,7 +1236,7 @@ function ExplicitUGridSetInternConnect(explicit_grid,option)
 
   implicit none
   
-  type(connection_set_type), pointer :: ExplicitUGridSetInternConnect
+  type(connection_set_type), pointer :: UGridExplicitSetInternConnect
   
   type(unstructured_explicit_type) :: explicit_grid
   type(option_type) :: option
@@ -1320,18 +1280,18 @@ function ExplicitUGridSetInternConnect(explicit_grid,option)
     connections%area(iconn) = explicit_grid%face_areas(iconn)
   enddo
   
-  ExplicitUGridSetInternConnect => connections
+  UGridExplicitSetInternConnect => connections
 
-end function ExplicitUGridSetInternConnect
+end function UGridExplicitSetInternConnect
 
 ! ************************************************************************** !
 !
-! ExplicitUGridComputeVolumes: Sets the volume of each grid cell
+! UGridExplicitComputeVolumes: Sets the volume of each grid cell
 ! author: Glenn Hammond
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridComputeVolumes(ugrid,option,volume)
+subroutine UGridExplicitComputeVolumes(ugrid,option,volume)
 
   use Option_module
 
@@ -1355,17 +1315,17 @@ subroutine ExplicitUGridComputeVolumes(ugrid,option,volume)
   enddo
   call VecRestoreArrayF90(volume,vec_ptr,ierr)
   
-end subroutine ExplicitUGridComputeVolumes
+end subroutine UGridExplicitComputeVolumes
 
 ! ************************************************************************** !
 !
-! ExplicitUGridSetBoundaryConnect: Sets up the boundary connectivity within  
+! UGridExplicitSetBoundaryConnect: Sets up the boundary connectivity within  
 !                                  the connectivity object
 ! author: Glenn Hammond
 ! date: 05/18/12
 !
 ! ************************************************************************** !
-function ExplicitUGridSetBoundaryConnect(explicit_grid,cell_ids, &
+function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
                                          face_centroids,face_areas,option)
 
   use Utility_module
@@ -1374,7 +1334,7 @@ function ExplicitUGridSetBoundaryConnect(explicit_grid,cell_ids, &
 
   implicit none
   
-  type(connection_set_type), pointer :: ExplicitUGridSetBoundaryConnect
+  type(connection_set_type), pointer :: UGridExplicitSetBoundaryConnect
 
   type(unstructured_explicit_type) :: explicit_grid
   PetscInt :: cell_ids(:)
@@ -1411,18 +1371,18 @@ function ExplicitUGridSetBoundaryConnect(explicit_grid,cell_ids, &
     connections%area(iconn) = face_areas(iconn)
   enddo
   
-  ExplicitUGridSetBoundaryConnect => connections
+  UGridExplicitSetBoundaryConnect => connections
 
-end function ExplicitUGridSetBoundaryConnect
+end function UGridExplicitSetBoundaryConnect
 
 ! ************************************************************************** !
 !
-! ExplicitUGridSetConnections: Sets up the connectivity for a region
+! UGridExplicitSetConnections: Sets up the connectivity for a region
 ! author: Glenn Hammond
 ! date: 05/18/12
 !
 ! ************************************************************************** !
-function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
+function UGridExplicitSetConnections(explicit_grid,cell_ids,connection_type, &
                                      option)
 
   use Utility_module
@@ -1431,7 +1391,7 @@ function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
 
   implicit none
   
-  type(connection_set_type), pointer :: ExplicitUGridSetConnections
+  type(connection_set_type), pointer :: UGridExplicitSetConnections
 
   type(unstructured_explicit_type) :: explicit_grid
   PetscInt :: cell_ids(:)
@@ -1445,14 +1405,14 @@ function ExplicitUGridSetConnections(explicit_grid,cell_ids,connection_type, &
   
   num_connections = size(cell_ids)
   connections => ConnectionCreate(num_connections,connection_type)
-  
+    
   do iconn = 1, num_connections
     id = cell_ids(iconn)
     connections%id_dn(iconn) = id
   enddo
   
-  ExplicitUGridSetConnections => connections
+  UGridExplicitSetConnections => connections
 
-end function ExplicitUGridSetConnections
+end function UGridExplicitSetConnections
 
 end module Unstructured_Explicit_module

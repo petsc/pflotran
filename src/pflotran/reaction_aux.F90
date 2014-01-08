@@ -3,18 +3,29 @@ module Reaction_Aux_module
   use Database_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
+  use Immobile_Aux_module
   use Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_Aux_module
-#endif  
+#endif
+
+  use PFLOTRAN_Constants_module
 
   implicit none
   
   private 
 
-#include "definitions.h"
-  
+#include "finclude/petscsys.h"
+
+  ! activity coefficients
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_OFF = 0
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_TIMESTEP = 1
+  PetscInt, parameter, public :: ACT_COEF_FREQUENCY_NEWTON_ITER = 2
+  PetscInt, parameter, public :: ACT_COEF_ALGORITHM_LAG = 3
+  PetscInt, parameter, public :: ACT_COEF_ALGORITHM_NEWTON = 4
+  PetscInt, parameter, public :: NO_BDOT = 5
+
   type, public :: species_idx_type
     PetscInt :: h2o_aq_id
     PetscInt :: h_ion_id
@@ -87,6 +98,15 @@ module Reaction_Aux_module
     type (kd_rxn_type), pointer :: next
   end type kd_rxn_type    
 
+  type, public :: radioactive_decay_rxn_type
+    PetscInt :: id
+    character(len=MAXSTRINGLENGTH) :: reaction
+    PetscReal :: rate_constant
+    PetscBool :: print_me
+    type(database_rxn_type), pointer :: dbaserxn
+    type(radioactive_decay_rxn_type), pointer :: next
+  end type radioactive_decay_rxn_type
+
   type, public :: general_rxn_type
     PetscInt :: id
     character(len=MAXSTRINGLENGTH) :: reaction
@@ -128,8 +148,10 @@ module Reaction_Aux_module
     PetscBool :: print_all_primary_species
     PetscBool :: print_all_secondary_species
     PetscBool :: print_all_gas_species
-    PetscBool :: print_all_mineral_species
     PetscBool :: print_pH
+    PetscBool :: print_Eh
+    PetscBool :: print_pe
+    PetscBool :: print_O2
     PetscBool :: print_kd
     PetscBool :: print_total_sorb
     PetscBool :: print_total_sorb_mobile
@@ -155,6 +177,7 @@ module Reaction_Aux_module
     type(colloid_type), pointer :: colloid_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(general_rxn_type), pointer :: general_rxn_list
+    type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn_list
     type(kd_rxn_type), pointer :: kd_rxn_list
     type(aq_species_type), pointer :: redox_species_list
     PetscInt :: act_coef_update_frequency
@@ -169,6 +192,7 @@ module Reaction_Aux_module
     type(surface_complexation_type), pointer :: surface_complexation
     type(mineral_type), pointer :: mineral
     type(microbial_type), pointer :: microbial
+    type(immobile_type), pointer :: immobile
     
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
@@ -223,9 +247,9 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
-#ifdef CHUAN_CO2        
-    PetscReal :: scco2_eq_logK ! SC CO2 
-#endif    
+!#ifdef CHUAN_CO2
+!   PetscReal :: scco2_eq_logK ! SC CO2 
+!#endif
 
     PetscInt :: nsorb
     PetscInt :: neqsorb
@@ -257,9 +281,16 @@ module Reaction_Aux_module
     PetscBool, pointer :: total_sorb_mobile_print(:)
     PetscBool, pointer :: colloid_print(:)
     
-    ! immobile species
-    character(len=MAXWORDLENGTH), pointer :: imcomp_names(:)
-    
+    ! radioactive decay rxn
+    PetscInt :: nradiodecay_rxn
+    ! ids and stoichiometries for species involved in reaction
+    PetscInt, pointer :: radiodecayspecid(:,:)
+    PetscReal, pointer :: radiodecaystoich(:,:)
+    ! index of radiodecayspecid for species in forward
+    ! reaction equation 
+    PetscInt, pointer :: radiodecayforwardspecid(:)
+    PetscReal, pointer :: radiodecay_kf(:)
+
     ! general rxn
     PetscInt :: ngeneral_rxn
     ! ids and stoichiometries for species involved in reaction
@@ -296,7 +327,11 @@ module Reaction_Aux_module
     PetscReal :: minimum_porosity
     PetscBool :: update_mineral_surface_area
     PetscBool :: update_mnrl_surf_with_porosity
-    
+
+    PetscBool :: update_armor_mineral_surface
+    PetscInt :: update_armor_mineral_surface_flag
+
+
     PetscBool :: use_sandbox
     
   end type reaction_type
@@ -334,6 +369,8 @@ module Reaction_Aux_module
             AqueousSpeciesConstraintDestroy, &
             MineralConstraintCreate, &
             MineralConstraintDestroy, &
+            RadioactiveDecayRxnCreate, &
+            RadioactiveDecayRxnDestroy, &
             GeneralRxnCreate, &
             GeneralRxnDestroy, &
             KDRxnCreate, &
@@ -344,7 +381,8 @@ module Reaction_Aux_module
             ColloidConstraintDestroy, &
             IonExchangeRxnCreate, &
             IonExchangeCationCreate, &
-            ReactionDestroy
+            ReactionDestroy, &
+            LogKeh
              
 contains
 
@@ -379,8 +417,10 @@ function ReactionCreate()
   reaction%print_all_primary_species = PETSC_FALSE
   reaction%print_all_secondary_species = PETSC_FALSE
   reaction%print_all_gas_species = PETSC_FALSE
-  reaction%print_all_mineral_species = PETSC_FALSE
   reaction%print_pH = PETSC_FALSE
+  reaction%print_Eh = PETSC_FALSE
+  reaction%print_pe = PETSC_FALSE
+  reaction%print_O2 = PETSC_FALSE
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE
   reaction%print_total_sorb_mobile = PETSC_FALSE
@@ -410,6 +450,7 @@ function ReactionCreate()
   nullify(reaction%gas_species_list)
   nullify(reaction%colloid_list)
   nullify(reaction%ion_exchange_rxn_list)
+  nullify(reaction%radioactive_decay_rxn_list)
   nullify(reaction%general_rxn_list)
   nullify(reaction%kd_rxn_list)
   nullify(reaction%redox_species_list)
@@ -418,6 +459,7 @@ function ReactionCreate()
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralCreate()
   reaction%microbial => MicrobialCreate()
+  reaction%immobile => ImmobileCreate()
 #ifdef SOLID_SOLUTION  
   nullify(reaction%solid_solution_list)
 #endif
@@ -458,9 +500,9 @@ function ReactionCreate()
   nullify(reaction%eqgash2ostoich)
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
-#ifdef CHUAN_CO2  
-  reaction%scco2_eq_logK = 0.d0
-#endif
+!#ifdef CHUAN_CO2
+! reaction%scco2_eq_logK = 0.d0
+!#endif
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)
@@ -499,8 +541,6 @@ function ReactionCreate()
   nullify(reaction%coll_spec_to_pri_spec)
   nullify(reaction%colloid_mobile_fraction)
   
-  nullify(reaction%imcomp_names)
-  
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
   nullify(reaction%generalstoich)
@@ -512,6 +552,12 @@ function ReactionCreate()
   nullify(reaction%generalh2ostoich)
   nullify(reaction%general_kf)
   nullify(reaction%general_kr)
+  
+  reaction%nradiodecay_rxn = 0
+  nullify(reaction%radiodecayspecid)
+  nullify(reaction%radiodecaystoich)
+  nullify(reaction%radiodecayforwardspecid)
+  nullify(reaction%radiodecay_kf)
 
   reaction%neqkdrxn = 0
   nullify(reaction%eqkdspecid)
@@ -530,6 +576,10 @@ function ReactionCreate()
   reaction%minimum_porosity = 0.d0
   reaction%update_mineral_surface_area = PETSC_FALSE
   reaction%update_mnrl_surf_with_porosity = PETSC_FALSE
+
+  reaction%update_armor_mineral_surface = PETSC_FALSE
+  reaction%update_armor_mineral_surface_flag = 0
+
   reaction%use_sandbox = PETSC_FALSE
 
   ReactionCreate => reaction
@@ -715,6 +765,34 @@ function IonExchangeCationCreate()
   IonExchangeCationCreate => cation
   
 end function IonExchangeCationCreate
+
+! ************************************************************************** !
+!
+! RadioactiveDecayRxnCreate: Allocate and initialize a radioactive decay
+!                            reaction
+! author: Glenn Hammond
+! date: 01/07/14
+!
+! ************************************************************************** !
+function RadioactiveDecayRxnCreate()
+
+  implicit none
+    
+  type(radioactive_decay_rxn_type), pointer :: RadioactiveDecayRxnCreate
+
+  type(radioactive_decay_rxn_type), pointer :: rxn
+  
+  allocate(rxn)
+  rxn%id = 0
+  rxn%reaction = ''
+  rxn%rate_constant = 0.d0
+  rxn%print_me = PETSC_FALSE
+  nullify(rxn%dbaserxn)
+  nullify(rxn%next)
+  
+  RadioactiveDecayRxnCreate => rxn
+  
+end function RadioactiveDecayRxnCreate
 
 ! ************************************************************************** !
 !
@@ -957,7 +1035,7 @@ function GetPrimarySpeciesIDFromName(name,reaction,option)
 
   if (GetPrimarySpeciesIDFromName <= 0) then
     option%io_buffer = 'Species "' // trim(name) // &
-      '" not founds among primary species.'
+      '" not founds among primary species in GetPrimarySpeciesIDFromName().'
     call printErrMsg(option)
   endif
   
@@ -1224,7 +1302,7 @@ function GetImmobileCount(reaction)
   PetscInt :: GetImmobileCount
   type(reaction_type) :: reaction
 
-  GetImmobileCount = MicrobialGetBiomassCount(reaction%microbial)
+  GetImmobileCount = ImmobileGetCount(reaction%immobile)
   
 end function GetImmobileCount
 
@@ -1274,15 +1352,17 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
       if (dabs(logK(i) - 500.) < 1.d-10) then
         iflag = 1
         temp_int(i) = ZERO_INTEGER
-        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-                           trim(name)
-        call printWrnMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
       endif
     enddo
   enddo
+
+  if (iflag == 1) then
+    option%io_buffer = 'In ReactionFitLogKCoef: log K = 500 for ' // trim(name)
+    call printWrnMsg(option)
+  endif
 
   do j = 1, FIVE_INTEGER
     do k = j, FIVE_INTEGER
@@ -1460,6 +1540,31 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
  ! print *,'ReactionInterpolateLogK_hpt: ', pres,temp, logKs, coefs
 end subroutine ReactionInterpolateLogK_hpt
 
+
+! ************************************************************************** !
+!
+! Function logkeh: Maier-Kelly fit to equilibrium constant half-cell reaction
+! 2 H2O - 4 H+ - 4 e- = O2, to compute Eh and pe.
+! author: Peter Lichtner
+! date: 04/27/13
+!
+! ************************************************************************** !
+PetscReal function logkeh(tk)
+
+  implicit none
+
+  PetscReal, intent(in) :: tk
+
+  PetscReal, parameter :: cm1 = 6.745529048112373d0
+  PetscReal, parameter :: c0 = -48.295936593543715d0
+  PetscReal, parameter :: c1 = 0.0005578156078778505d0
+  PetscReal, parameter :: c2 = 27780.749538022003d0
+  PetscReal, parameter :: c3 = 4027.3376948579394d0
+
+  logkeh = cm1 * log(tk) + c0 + c1 * tk + c2 / tk + c3 / (tk * tk)
+
+end function logkeh
+
 ! ************************************************************************** !
 !
 ! SpeciesIndexDestroy: Deallocates a species index object
@@ -1595,6 +1700,31 @@ end subroutine IonExchangeRxnDestroy
 
 ! ************************************************************************** !
 !
+! RadioactiveDecayRxnDestroy: Deallocates a general reaction
+! author: Glenn Hammond
+! date: 01/07/14
+!
+! ************************************************************************** !
+subroutine RadioactiveDecayRxnDestroy(rxn)
+
+  implicit none
+    
+  type(radioactive_decay_rxn_type), pointer :: rxn
+
+  if (.not.associated(rxn)) return
+  
+  if (associated(rxn%dbaserxn)) &
+    call DatabaseRxnDestroy(rxn%dbaserxn)
+  nullify(rxn%dbaserxn)
+  nullify(rxn%next)
+
+  deallocate(rxn)  
+  nullify(rxn)
+
+end subroutine RadioactiveDecayRxnDestroy
+
+! ************************************************************************** !
+!
 ! GeneralRxnDestroy: Deallocates a general reaction
 ! author: Glenn Hammond
 ! date: 09/03/10
@@ -1719,6 +1849,8 @@ subroutine ReactionDestroy(reaction)
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
+  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
+                                               prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
 
   if (.not.associated(reaction)) return
@@ -1767,6 +1899,16 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%ion_exchange_rxn_list)
 
   ! general reactions
+  radioactive_decay_rxn => reaction%radioactive_decay_rxn_list
+  do
+    if (.not.associated(radioactive_decay_rxn)) exit
+    prev_radioactive_decay_rxn => radioactive_decay_rxn
+    radioactive_decay_rxn => radioactive_decay_rxn%next
+    call GeneralRxnDestroy(prev_general_rxn)
+  enddo    
+  nullify(reaction%radioactive_decay_rxn_list)
+  
+  ! general reactions
   general_rxn => reaction%general_rxn_list
   do
     if (.not.associated(general_rxn)) exit
@@ -1789,6 +1931,7 @@ subroutine ReactionDestroy(reaction)
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
   call MicrobialDestroy(reaction%microbial)
+  call ImmobileDestroy(reaction%immobile)
 #ifdef SOLID_SOLUTION  
   call SolidSolutionDestroy(reaction%solid_solution_list)
 #endif  
@@ -1801,7 +1944,7 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%redox_species_list)) &
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
   nullify(reaction%redox_species_list)
-
+  
   call DeallocateArray(reaction%primary_species_names)
   call DeallocateArray(reaction%secondary_species_names)
   call DeallocateArray(reaction%gas_species_names)
@@ -1856,7 +1999,10 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
   
-  call DeallocateArray(reaction%imcomp_names)
+  call DeallocateArray(reaction%radiodecayspecid)
+  call DeallocateArray(reaction%radiodecaystoich)
+  call DeallocateArray(reaction%radiodecayforwardspecid)
+  call DeallocateArray(reaction%radiodecay_kf)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

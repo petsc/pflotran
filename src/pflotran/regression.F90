@@ -2,11 +2,13 @@ module Regression_module
  
   use Output_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
  
@@ -95,7 +97,7 @@ end function RegressionVariableCreate
 subroutine RegressionRead(regression,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
 
@@ -116,7 +118,7 @@ subroutine RegressionRead(regression,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -129,7 +131,7 @@ subroutine RegressionRead(regression,input,option)
       case('VARIABLES') 
         count = 0
         do 
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
 
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -149,7 +151,7 @@ subroutine RegressionRead(regression,input,option)
         allocate(int_array(max_cells))
         count = 0
         do 
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
 
           count = count + 1
@@ -187,7 +189,7 @@ end subroutine RegressionRead
 subroutine RegressionCreateMapping(regression,realization)
 
   use Option_module
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Discretization_module
   
@@ -218,9 +220,28 @@ subroutine RegressionCreateMapping(regression,realization)
   
   grid => realization%patch%grid
   option => realization%option
-
+  
   ! natural cell ids
   if (associated(regression%natural_cell_ids)) then
+    ! ensure that natural ids are within problem domain
+    if (maxval(regression%natural_cell_ids) > grid%nmax) then
+      option%io_buffer = 'Natural IDs outside problem domain requested ' // &
+        'for regression output.  Removing non-existent IDs.'
+      call printWrnMsg(option)
+      count = 0
+      allocate(int_array(size(regression%natural_cell_ids)))
+      do i = 1, size(regression%natural_cell_ids)
+        if (regression%natural_cell_ids(i) <= grid%nmax) then
+          count = count + 1
+          int_array(count) = regression%natural_cell_ids(i)
+        endif
+      enddo
+      ! reallocate array
+      deallocate(regression%natural_cell_ids)
+      allocate(regression%natural_cell_ids(count))
+      regression%natural_cell_ids = int_array
+      deallocate(int_array)
+    endif
     call VecCreate(PETSC_COMM_SELF,regression%natural_cell_id_vec,ierr)
     if (option%myrank == option%io_rank) then
       call VecSetSizes(regression%natural_cell_id_vec, &
@@ -424,20 +445,31 @@ end subroutine RegressionCreateMapping
 subroutine RegressionOutput(regression,realization,flow_stepper, &
                             tran_stepper)
 
-  use Realization_module
+  use Realization_class
+#ifdef PROCESS_MODEL
+  use Timestepper_BE_class
+#else
   use Timestepper_module
+#endif
   use Option_module
   use Discretization_module
   use Output_module
   use Output_Aux_module
+  use Output_Common_module, only : OutputGetCellCenteredVelocities, &
+                                   OutputGetVarFromArray
   
   implicit none
   
   type(regression_type), pointer :: regression
   type(realization_type) :: realization
   ! these must be pointers as they can be null
+#ifdef PROCESS_MODEL
+  class(stepper_BE_type), pointer :: flow_stepper
+  class(stepper_BE_type), pointer :: tran_stepper  
+#else
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper  
+#endif
   
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
@@ -733,7 +765,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   endif
   if (associated(tran_stepper)) then
     call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr)
-    call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
+    endif
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- SOLUTION: Transport --'')')
       write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
@@ -746,7 +780,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
         tran_stepper%cumulative_time_step_cuts
       write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
-      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
+      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+        write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
+      endif
     endif
   endif
   

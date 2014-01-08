@@ -2,7 +2,59 @@ The tests in this directory are meant to test the regression test
 manager itself rather than testing pflotran. They should be run
 anytime someone is working on the test manager!
 
---- expected-fail.cfg ---
+All the tests are built on the unittest module from the python
+standard library.
+
+All testing described in this file should be run with python 2.7.z and
+at least one version of python 3.y.z. Generally we want to support
+python 2.7.x, 3.2 and 3.3
+
+To run all the tests with automatic test discovery.
+
+cd ${PFLOTRAN_DIR}/regression_tests
+python -m unittest discover --buffer --pattern 'test_rt_*.py'
+
+unit tests
+==========
+
+The unit test suite attempts to cover every branch and expected error
+condition in the critical code doing the comparison between current
+and gold regression files.
+
+To run the unit test suite:
+
+cd ${PFLOTRAN_DIR}/regression_tests
+./mtest/test_rt_unit.py
+-- or --
+python -m mtest.test_rt_unit
+
+
+functionality tests
+===================
+
+The functionality tests are tests that are designed to test the entire
+program execution, including calling pflotran. The current
+functionality tests are all part of the expected fail test suite
+described below.
+
+The functionality tests can be run in two ways:
+
+1) as a python unit test based module which imports the test manager
+as a module and calls the main function.
+
+cd ${PFLOTRAN_DIR}/regression_tests
+./mtest/test_rt_xfail.py
+-- or --
+python -m mtest.test_rt_xfail
+
+2) manually running the regression test manager on the command line.
+
+The advantage of method one is the automatic analysis reporting of
+the results.
+
+
+expected fail
+-------------
 
 One concern is that we want to verify that the regression test manager
 is actually reporting a failed test when it failed. The tests listed
@@ -12,8 +64,8 @@ The primary focus of this test suite is to setup tests that we expect
 to fail and verify that the test manager catches the correct
 failure. This is primairly done by modifying the contents of the gold
 standard files to create failures in specific places. These tests are
-name fail-XXXX. These tests should be run in verbose mode, and you
-should verify that the reported failure corresponds to the name of the
+name fail-XXXX. If the tests are run manually, you must read the test
+log to verify that the reported failure corresponds to the name of the
 test. For example the solution time test should fail in the wall time,
 while the residual 2-norm shoud fail in the residual 2-norm:
 
@@ -38,3 +90,40 @@ $ python3 regression-tests.py -e ../src/pflotran/pflotran --verbose -r mtest --c
 
 In this case, all performance tests should fail (because they are
 expected fail).
+
+
+
+code coverage
+=============
+
+The "coverage" python package can be used to generate code coverage
+reports for the internal regression test suite.
+
+unit tests only
+---------------
+
+cd ${PFLOTRAN_DIR}/regression_tests
+coverage-2.7 run --branch mtest/test_rt_unit.py
+coverage-2.7 html
+
+
+Total coverage from unit and xfail
+----------------------------------
+
+cd ${PFLOTRAN_DIR}/regression_tests
+coverage-2.7 erase
+coverage-2.7 run --branch mtest/test_rt_unit.py
+mv .coverage .coverage.unit
+coverage-2.7 run --branch mtest/test_rt_xfail.py
+mv .coverage .coverage.xfail
+coverage-2.7 combine
+coverage-2.7 html
+
+
+
+profiling
+=========
+
+The file rt_profile.py contains comment with an example command to run
+the regression test manager through the profiler. Running the script
+in rt_profile.py will generate a profile statistics report.

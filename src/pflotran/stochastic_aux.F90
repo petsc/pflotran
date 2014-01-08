@@ -2,11 +2,13 @@ module Stochastic_Aux_module
 
   use Simulation_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: stochastic_type
     PetscInt :: num_groups
@@ -47,7 +49,7 @@ end function StochasticCreate
 
 ! ************************************************************************** !
 !
-! DebugReadPflow: Reads debugging data from the input file
+! StochasticRead: Reads debugging data from the input file
 ! author: Glenn Hammond
 ! date: 02/04/09
 !
@@ -55,7 +57,7 @@ end function StochasticCreate
 subroutine StochasticRead(stochastic,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
     
@@ -68,7 +70,7 @@ subroutine StochasticRead(stochastic,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 

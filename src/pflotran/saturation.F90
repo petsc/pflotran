@@ -1,10 +1,12 @@
 module Saturation_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   public :: SaturationUpdateCoupler
  
@@ -20,8 +22,6 @@ contains
 ! ************************************************************************** !
 subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
                                    sat_func_id)
-
-  use water_eos_module
 
   use Option_module
   use Grid_module
@@ -51,7 +51,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
   condition => coupler%flow_condition
 
   ! in this case, the saturation is stored within concentration dataset
-  saturation = condition%saturation%flow_dataset%time_series%cur_value(1)
+  saturation = condition%saturation%dataset%rarray(1)
 
   do iconn = 1, coupler%connection_set%num_connections
     local_id = coupler%connection_set%id_dn(iconn)
@@ -130,14 +130,13 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
       coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
     else if (condition%pressure%itype == CONDUCTANCE_BC) then
       coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
-      coupler%flow_aux_real_var(2,iconn) = &
-        condition%pressure%flow_dataset%time_series%lame_aux_variable_remove_me
+      coupler%flow_aux_real_var(2,iconn) = condition%pressure%aux_real(1)
     else
       coupler%flow_aux_real_var(1,iconn) = pressure
     endif
 
     select case(option%iflowmode)
-      case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+      case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
         temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
@@ -197,14 +196,13 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
         coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
       else if (condition%pressure%itype == CONDUCTANCE_BC) then
         coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
-        coupler%flow_aux_real_var(2,num_faces + iconn) = &
-          condition%pressure%flow_dataset%time_series%lame_aux_variable_remove_me
+        coupler%flow_aux_real_var(2,num_faces + iconn) = condition%pressure%aux_real(1)
       else
         coupler%flow_aux_real_var(1,num_faces + iconn) = pressure
       endif
 
       select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+        case(TH_MODE,THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
            temperature = temperature_at_datum + &
                       temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                       temperature_gradient(Y_DIRECTION)*dist_y + &

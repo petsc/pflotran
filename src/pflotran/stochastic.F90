@@ -2,11 +2,13 @@ module Stochastic_module
 
   use Stochastic_Aux_module
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private
   
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
   public :: StochasticInit, &
             StochasticRun
@@ -24,7 +26,7 @@ subroutine StochasticInit(stochastic,option)
 
   use Simulation_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
 
@@ -41,6 +43,8 @@ subroutine StochasticInit(stochastic,option)
   character(len=MAXSTRINGLENGTH) :: filename
   type(input_type), pointer :: input
   PetscErrorCode :: ierr
+  
+  call StochasticReadCardFromInput(stochastic,option)
 
   ! query user for number of communicator groups and realizations
   string = '-num_groups'
@@ -61,7 +65,7 @@ subroutine StochasticInit(stochastic,option)
     string = &
       '# of realization ids read from file may be too few in StochasticInit()'
     do i = 1, stochastic%num_realizations
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       call InputReadStringErrorMsg(input,option,string)
       call InputReadInt(input,option,realization_ids_from_file(i))
       call InputErrorMsg(input,option,'realization id', &
@@ -94,7 +98,7 @@ subroutine StochasticInit(stochastic,option)
     stochastic%num_realizations = 1
   endif
   
-  call SimulationCreateProcessorGroups(option,stochastic%num_groups)
+  call OptionCreateProcessorGroups(option,stochastic%num_groups)
   
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -129,6 +133,43 @@ end subroutine StochasticInit
 
 ! ************************************************************************** !
 !
+! StochasticReadCardFromInput: Reads stochastic card from input file
+! author: Glenn Hammond
+! date: 02/04/09
+!
+! ************************************************************************** !
+subroutine StochasticReadCardFromInput(stochastic,option)
+
+  use Option_module
+  use Input_Aux_module
+  use Stochastic_Aux_module
+
+  implicit none
+  
+  type(stochastic_type) :: stochastic
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input
+  PetscBool :: print_warning
+  
+  input => InputCreate(IN_UNIT,option%input_filename,option)
+
+  ! MODE information
+  string = "STOCHASTIC"
+  print_warning = PETSC_FALSE
+  call InputFindStringInFile(input,option,string,print_warning)
+
+  if (.not.InputError(input)) then
+    call StochasticRead(stochastic,input,option)
+  endif
+  
+  call InputDestroy(input)
+
+end subroutine StochasticReadCardFromInput
+
+! ************************************************************************** !
+!
 ! StochasticRun: Runs a stochastic simulation
 ! author: Glenn Hammond
 ! date: 02/04/09
@@ -137,12 +178,15 @@ end subroutine StochasticInit
 subroutine StochasticRun(stochastic,option)
 
   use Simulation_module
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Option_module
   use Init_module
+  use PFLOTRAN_Factory_module
   use Logging_module
-  use Regression_module
+#ifdef GEOMECH
+  use Geomechanics_Logging_module
+#endif
 
   implicit none
 
@@ -151,30 +195,31 @@ subroutine StochasticRun(stochastic,option)
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
 
-  PetscLogDouble :: timex_wall(4)
+  type(stepper_type), pointer :: master_stepper
   PetscInt :: irealization
   type(simulation_type), pointer :: simulation
-  type(realization_type), pointer :: realization
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: init_status
   PetscErrorCode :: ierr
   PetscInt :: status
-
-  call OptionCheckCommandLine(option)
-
-  ! moved outside due to errors when allocating/deallocating  over and over
+  
+  call OptionInitPetsc(option)
   call LoggingCreate()
+#ifdef GEOMECH
+  call GeomechLoggingCreate()
+#endif
 
   do irealization = 1, stochastic%num_local_realizations
 
     call OptionInitRealization(option)
-    simulation => SimulationCreate(option)
-    realization => simulation%realization
 
+    ! Set group prefix based on id
     option%id = stochastic%realization_ids(irealization)
     write(string,'(i6)') option%id
     option%group_prefix = 'R' // trim(adjustl(string))
 
 #if 0
+    ! code for restarting stochastic runs; may no longer need this.
     string = 'restart' // trim(adjustl(option%group_prefix)) // '.chk.info'
     open(unit=86,file=string,status="old",iostat=status)
     ! if file found, cycle
@@ -184,58 +229,24 @@ subroutine StochasticRun(stochastic,option)
     endif
 #endif
 
-    call PetscGetTime(timex_wall(1), ierr)
-    option%start_time = timex_wall(1)
-
-    call Init(simulation)
-
 #ifdef SURFACE_FLOW
-    !call StepperRun(simulation%realization,simulation%flow_stepper, &
-    !                simulation%tran_stepper,simulation%surf_flow_stepper)
     option%io_buffer = 'Stochastic mode not tested for surface-flow'
     call printErrMsgByRank(option)
-#else
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
 #endif
 
-    call RegressionOutput(simulation%regression,simulation%realization, &
-                          simulation%flow_stepper,simulation%tran_stepper)
+    call PFLOTRANInitializePostPETSc(simulation,master_stepper,option, &
+                                     init_status)
+    call PFLOTRANRun(simulation,master_stepper,init_status)
+    call PFLOTRANFinalize(simulation,option)
 
     call SimulationDestroy(simulation)
 
-  ! Final Time
-    call PetscGetTime(timex_wall(2), ierr)
-    
-    if (option%myrank == option%io_rank) then
-
-      if (option%print_to_screen) then
-        write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-          (timex_wall(2)-timex_wall(1))/3600.d0
-      endif
-      if (option%print_to_file) then
-        write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-          (timex_wall(2)-timex_wall(1))/3600.d0
-      endif
-    endif
-
-    if (option%myrank == option%io_rank .and. option%print_to_file) &
-      close(option%fid_out)
-    if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
-      write(string,'(i6)') option%id
-      print *, 'Finished with ' // trim(adjustl(string)), irealization, &
-               ' of ', stochastic%num_local_realizations
-    endif
-
   enddo
   
-  ! moved outside due to errors when allocating/deallocating  over and over
   call LoggingDestroy()
-    
+#ifdef GEOMECH
+  call GeomechLoggingDestroy()
+#endif
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun

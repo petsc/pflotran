@@ -4,11 +4,13 @@ module Richards_Aux_module
   use Matrix_Buffer_module
 #endif
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   type, public :: richards_auxvar_type
   
@@ -181,7 +183,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
   use Option_module
   use Global_Aux_module
-  use water_eos_module
+  
+  use EOS_Water_module
   use Saturation_Function_module
   
   implicit none
@@ -222,7 +225,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   global_aux_var%temp = option%reference_temperature
  
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
-
+  
 !***************  Liquid phase properties **************************
   pw = option%reference_pressure
   ds_dp = 0.d0
@@ -253,13 +256,15 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
 #ifndef DONT_USE_WATEOS
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-              hw_dp,hw_dt,option%scale,ierr)
+!geh  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+!                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
+  call EOSWaterDensity(global_aux_var%temp(1),pw,dw_kg,dw_mol, &
+                       dw_dp,dw_dt,option%scale,ierr)
 #else
-  call density(global_aux_var%temp(1),pw,dw_kg)
+  call EOSWaterdensity(global_aux_var%temp(1),pw,dw_kg)
   pert = tol*pw
   pw_pert = pw+pert
-  call density(global_aux_var%temp(1),pw_pert,dw_kg_pert)
+  call EOSWaterdensity(global_aux_var%temp(1),pw_pert,dw_kg_pert)
   dw_dp = (dw_kg_pert-dw_kg)/pert
   ! dw_kg = kg/m^3
   ! dw_mol = kmol/m^3
@@ -268,12 +273,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   dw_dp = dw_dp/FMWH2O
 #endif
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(global_aux_var%temp(1),sat_pressure,ierr)
-!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
-  dvis_dpsat = -dvis_dp 
+  call EOSWaterSaturationPressure(global_aux_var%temp(1),sat_pressure,ierr)
+  !geh: 0.d0 passed in for derivative of pressure w/respect to temp
+  call EOSWaterViscosity(global_aux_var%temp(1),pw,sat_pressure,0.d0, &
+                         visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
+!geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
   if (.not.saturated) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
+    dvis_dpsat = 0.d0
     dw_dp = 0.d0
     hw_dp = 0.d0
   endif
@@ -313,38 +320,6 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   aux_var%kvr = kr/visl
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
 #endif
-
-#ifdef DASVYAT
-
-! global_aux_var%den = 55.3d-0
-! aux_var%kvr_x =  1123.055414382469
-! aux_var%kvr_y =  1123.055414382469
-! aux_var%kvr_z =  1123.055414382469
-! aux_var%kvr =  1123.055414382469
-! 
-! aux_var%dden_dp = 0.
- !aux_var%dkvr_x_dp = 0!.01*2*x(1)
- !aux_var%dkvr_y_dp = 0!.01*2*x(1)
-! aux_var%dkvr_z_dp = 0!.01*2*x(1)
-! aux_var%dkvr_dp = 0!.01*2*x(1)
-
-
-!aux_var%dsat_dp = 1e-2
-!global_aux_var%sat(1) = 1e-2*global_aux_var%pres(1)
-! aux_var%dsat_dp = 0
-! global_aux_var%sat(1) = 0.5
-
-!write(*,*) global_aux_var%den, global_aux_var%den_kg
-!write(*,*) aux_var%kvr_x 
-!write(*,*) aux_var%dden_dp 
-!write(*,*) aux_var%dkvr_z_dp
-!write(*,*) "pres", global_aux_var%pres(1), "dsdp", aux_var%dsat_dp, "s",global_aux_var%sat(1) &
-!           ,"den", global_aux_var%den, "dd_dp", aux_var%dden_dp
-!write(*,*) "kvr", aux_var%kvr_x, "dk_dp", aux_var%dkvr_x_dp
-!stop
-
-#endif
-
 
 end subroutine RichardsAuxVarCompute
 

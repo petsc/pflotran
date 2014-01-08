@@ -4,12 +4,8 @@
 ! use the PetscBagGetData() routine.
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
-
-! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
-! COMPATIBILITY ISSUES - geh.
-#define REVISION_NUMBER 5
-
 module Checkpoint_Header_module
+#ifndef PROCESS_MODEL
   implicit none
   private
   ! We manually specify the number of bytes required for the 
@@ -17,20 +13,23 @@ module Checkpoint_Header_module
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
   ! Currently:
   !  PetscReal: 8
-  !  PetscInt:  19
-  !  Total: 27 * 8 = 216
+  !  PetscInt:  20
+  !  Total: 28 * 8 = 224
+! IMPORTANT: If you change the contents of the header, you MUST update 
+! 'bagsize' or risk corrupting memory.
 #ifdef PetscSizeT
-  PetscSizeT, parameter :: bagsize = 216
+  PetscSizeT, parameter :: bagsize = 224
 #else
   ! PETSC_SIZEOF_SIZE_T isn't defined, so we just have to assume that it 
   ! is 8 bytes.  This is dangerous, but what can we do?
-  integer*8, parameter :: bagsize = 216
+  integer*8, parameter :: bagsize = 224
 #endif
   public :: bagsize
   type, public :: checkpoint_header_type
     integer*8 :: revision_number  ! increment this every time there is a change
     integer*8 :: plot_number      ! in the checkpoint file format
     integer*8 :: match_waypoint_flag
+    integer*8 :: times_per_h5_file
 
     integer*8 :: grid_discretization_type
 
@@ -59,19 +58,31 @@ module Checkpoint_Header_module
     real*8 :: tran_cumulative_solver_time  ! don't implement yet; will screw up restarts
     integer*8 :: checkpoint_activity_coefs
   end type checkpoint_header_type
+#endif
 end module Checkpoint_Header_module
 
 module Checkpoint_module
 
+#ifndef PROCESS_MODEL
   use Checkpoint_Header_module
+#endif
+
+  use PFLOTRAN_Constants_module
 
   implicit none
   
   private
 
+#ifndef PROCESS_MODEL
   public :: Checkpoint, Restart
+#endif
 
-#include "definitions.h"
+  public :: OpenCheckpointFile, &
+            CloseCheckpointFile, &
+            CheckpointFlowProcessModel, &
+            RestartFlowProcessModel
+
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"
@@ -83,6 +94,7 @@ module Checkpoint_module
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
+#ifndef PROCESS_MODEL
 Interface PetscBagGetData
 Subroutine PetscBagGetData(bag,ctx,ierr)
       use Checkpoint_Header_module
@@ -91,8 +103,11 @@ Subroutine PetscBagGetData(bag,ctx,ierr)
       PetscErrorCode ierr
 End Subroutine
 End Interface PetscBagGetData
+#endif      
 
 contains
+
+#ifndef PROCESS_MODEL
 
 subroutine Checkpoint(realization, &
                       flow_time_steps,flow_cumulative_newton_iterations, &
@@ -109,9 +124,10 @@ subroutine Checkpoint(realization, &
                       tran_num_newton_iterations, &
                       tran_cumulative_solver_time, &
                       tran_prev_dt, &
-                      id)
+                      id_string)
 
-  use Realization_module
+  use Realization_class
+  use Realization_Base_class, only : RealizationGetVariable
   use Reaction_Aux_module
   use Discretization_module
   use Option_module
@@ -121,7 +137,7 @@ subroutine Checkpoint(realization, &
   use Grid_module
   
   use Flash2_module
-  use MPHASE_module
+  use Mphase_module
   use Immis_module
   use Miscible_module
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
@@ -129,6 +145,7 @@ subroutine Checkpoint(realization, &
                                MINERAL_VOLUME_FRACTION
 
   use Reactive_Transport_module, only : RTCheckpointKineticSorption
+  use String_module, only : StringNull
 
   implicit none
 
@@ -150,13 +167,12 @@ subroutine Checkpoint(realization, &
   PetscInt :: tran_cumulative_linear_iterations
   PetscReal :: tran_cumulative_solver_time
   PetscReal :: tran_prev_dt
-  PetscInt, intent(in) :: id  ! id should not be altered within this subroutine
+  character(len=MAXWORDLENGTH), intent(in) :: id_string ! should not be altered
   
 !  PetscInt :: checkpoint_activity_coefs
 !  PetscInt :: match_waypoint_flag
 
   character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXWORDLENGTH) :: id_string
   PetscViewer :: viewer
   PetscBag :: bag
   type(checkpoint_header_type), pointer :: header
@@ -184,13 +200,13 @@ subroutine Checkpoint(realization, &
 
   global_vec = 0
   ! Open the checkpoint file.
-  call PetscGetTime(tstart,ierr)   
-  if (id < 0) then
-    filename = 'restart' // trim(option%group_prefix) // '.chk'
-  else 
-    write(id_string,'(i8)') id
+  call PetscTime(tstart,ierr)   
+  if (StringNull(id_string)) then
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '.chk' // trim(adjustl(id_string))
+               '-restart.chk'
+  else 
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '-' // trim(adjustl(id_string)) // '.chk'
   endif
   !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
   !     into the routines it calls so that PetscViewerBinarySkipInfo()
@@ -212,128 +228,11 @@ subroutine Checkpoint(realization, &
   call PetscBagCreate(option%mycomm,bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
-#if 0  
-  i = REVISION_NUMBER
-  call PetscBagRegisterInt(bag,header%revision_number,i, &
-                           "revision_number","revision_number",ierr)
-  ! Register variables that are passed into timestepper().
-  call PetscBagRegisterInt(bag,header%plot_number,output_option%plot_number, &
-                           "plot_number","plot_number",ierr)
-  match_waypoint_flag = ZERO_INTEGER
-  if (option%match_waypoint) then
-    match_waypoint_flag = ONE_INTEGER
-  endif
-  call PetscBagRegisterInt(bag,header%match_waypoint_flag,match_waypoint_flag, &
-                           "match_waypoint_flag","match_waypoint_flag",ierr)
-
-  call PetscBagRegisterInt(bag,header%grid_discretization_type, grid%itype,&
-                                "grid_discretization_type", "grid_discretization_type", ierr) 
-
-  ! FLOW
-
-  
-
-  call PetscBagRegisterInt(bag,header%nflowdof,option%nflowdof, &
-                           "nflowdof","Number of flow degrees of freedom",ierr)
-  call PetscBagRegisterInt(bag,header%flow_num_newton_iterations, &
-                           flow_num_newton_iterations, &
-                           "flow_num_newton_iterations", &
-                           "Number of flow Newton iterations in last SNES solve", &
-                           ierr)
-  call PetscBagRegisterInt(bag,header%flow_num_constant_time_steps, &
-                           flow_num_constant_time_steps, &
-                           "flow_num_constant_time_steps", &
-                           "flow_num_constant_time_steps",ierr)
-
-  ! TRANSPORT
-  call PetscBagRegisterInt(bag,header%tran_num_newton_iterations, &
-                           tran_num_newton_iterations, &
-                           "tran_num_newton_iterations", &
-                           "Number of transport Newton iterations in last SNES solve", &
-                           ierr)
-  call PetscBagRegisterInt(bag,header%tran_num_constant_time_steps, &
-                           tran_num_constant_time_steps, &
-                           "tran_num_constant_time_steps", &
-                           "tran_num_constant_time_steps",ierr)
-  
-  ! Register relevant components of the stepper.
-  ! FLOW
-  call PetscBagRegisterReal(bag,header%flow_time,option%flow_time,"flow_time", &
-                            "Flow Simulation time (seconds)",ierr)
-  call PetscBagRegisterReal(bag,header%flow_dt,option%flow_dt,"flow_dt", &
-                            "Current size of flow timestep (seconds)",ierr)
-  call PetscBagRegisterReal(bag,header%flow_prev_dt,flow_prev_dt,"flow_prev_dt", &
-                            "Previous size of flow timestep (seconds)",ierr)
-                            
-  call PetscBagRegisterInt(bag,header%flow_time_steps,flow_time_steps,"flow_steps", &
-                            "Total number of flow steps taken",ierr)
-  call PetscBagRegisterInt(bag,header%flow_cumulative_newton_iterations, &
-                           flow_cumulative_newton_iterations, &
-                           "flow_cumulative_newton_iterations", &
-                            "Total number of flow Newton steps taken",ierr)
-  call PetscBagRegisterInt(bag,header%flow_cumulative_time_step_cuts, &
-                           flow_cumulative_time_step_cuts, &
-                           "flow_cumulative_time_step_cuts", &
-                            "Total number of flow time step cuts",ierr)
-  call PetscBagRegisterInt(bag,header%flow_cumulative_linear_iterations, &
-                           flow_cumulative_linear_iterations, &
-                           "flow_cumulative_linear_iterations", &
-                            "Total number of flow linear iterations",ierr)
-  call PetscBagRegisterReal(bag,header%flow_cumulative_solver_time, &
-                            flow_cumulative_solver_time, &
-                            "flow_cumulative_solver_time", &
-                            "flow_cumulative_solver_time",ierr)
-                                                        
-  ! TRANSPORT
-  call PetscBagRegisterInt(bag,header%ntrandof,option%ntrandof, &
-                           "ntrandof", &
-                           "Number of transport degrees of freedom",ierr)
-  call PetscBagRegisterReal(bag,header%tran_time,option%tran_time,"tran_time", &
-                            "Transport Simulation time (seconds)",ierr)
-  call PetscBagRegisterReal(bag,header%tran_dt,option%tran_dt,"tran_dt", &
-                            "Current size of transport timestep (seconds)",ierr)
-  call PetscBagRegisterReal(bag,header%tran_prev_dt,tran_prev_dt,"tran_prev_dt", &
-                            "Previous size of transport timestep (seconds)",ierr)
-                            
-  call PetscBagRegisterInt(bag,header%tran_time_steps,tran_time_steps,"tran_steps", &
-                            "Total number of transport steps taken",ierr)
-  call PetscBagRegisterInt(bag,header%tran_cumulative_newton_iterations, &
-                           tran_cumulative_newton_iterations, &
-                           "tran_cumulative_newton_iterations", &
-                           "Total number of transport Newton steps taken",ierr)
-  call PetscBagRegisterInt(bag,header%tran_cumulative_time_step_cuts, &
-                           tran_cumulative_time_step_cuts, &
-                           "tran_cumulative_time_step_cuts", &
-                            "Total number of transport time step cuts",ierr)
-  call PetscBagRegisterInt(bag,header%tran_cumulative_linear_iterations, &
-                           tran_cumulative_linear_iterations, &
-                           "tran_cumulative_linear_iterations", &
-                            "Total number of transport linear iterations",ierr)
-  call PetscBagRegisterReal(bag,header%tran_cumulative_solver_time, &
-                            tran_cumulative_solver_time, &
-                            "tran_cumulative_solver_time", &
-                            "tran_cumulative_solver_time",ierr)
-
-  if (associated(realization%reaction)) then
-    if (realization%reaction%checkpoint_activity_coefs .and. &
-        realization%reaction%act_coef_update_frequency /= &
-        ACT_COEF_FREQUENCY_OFF) then
-      checkpoint_activity_coefs = ONE_INTEGER
-    else
-      checkpoint_activity_coefs = ZERO_INTEGER
-    endif
-  else
-    checkpoint_activity_coefs = ZERO_INTEGER
-  endif
-  call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs, &
-                           checkpoint_activity_coefs, &
-                           "checkpoint_activity_coefs", &
-                            "Flag indicating whether activity coefficients were checkpointed",ierr)                            
-#else
   call CheckpointRegisterBagHeader(bag,header)
   ! Revision # register in PetscBagRegister since it is default.  All other 
   ! header entities default to 0 or 0.d0
   header%plot_number = output_option%plot_number
+  header%times_per_h5_file = output_option%times_per_h5_file
   header%match_waypoint_flag = ZERO_INTEGER
   if (option%match_waypoint) then
     header%match_waypoint_flag = ONE_INTEGER
@@ -359,7 +258,10 @@ subroutine Checkpoint(realization, &
   header%flow_cumulative_newton_iterations = flow_cumulative_newton_iterations
   header%flow_cumulative_time_step_cuts = flow_cumulative_time_step_cuts
   header%flow_cumulative_linear_iterations = flow_cumulative_linear_iterations
-  header%flow_cumulative_solver_time = flow_cumulative_solver_time
+!!$  header%flow_cumulative_solver_time = flow_cumulative_solver_time
+  ! NOTE(bja, 2013-06) : zero out wall clock time so restart files
+  ! will be bit for bit identical
+  header%flow_cumulative_solver_time = 0.d0
                                                         
   ! TRANSPORT
   header%ntrandof = option%ntrandof
@@ -371,7 +273,10 @@ subroutine Checkpoint(realization, &
   header%tran_cumulative_newton_iterations = tran_cumulative_newton_iterations
   header%tran_cumulative_time_step_cuts = tran_cumulative_time_step_cuts
   header%tran_cumulative_linear_iterations = tran_cumulative_linear_iterations
-  header%tran_cumulative_solver_time = tran_cumulative_solver_time
+!!$ header%tran_cumulative_solver_time = tran_cumulative_solver_time
+  ! NOTE(bja, 2013-06) : zero out wall clock time so restart files
+  ! will be bit for bit identical
+  header%tran_cumulative_solver_time = 0.d0
 
   if (associated(realization%reaction)) then
     if (realization%reaction%checkpoint_activity_coefs .and. &
@@ -384,7 +289,7 @@ subroutine Checkpoint(realization, &
   else
     header%checkpoint_activity_coefs = ZERO_INTEGER
   endif
-#endif
+
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
   call PetscBagDestroy(bag, ierr)
@@ -405,7 +310,7 @@ subroutine Checkpoint(realization, &
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
@@ -463,12 +368,12 @@ subroutine Checkpoint(realization, &
         ACT_COEF_FREQUENCY_OFF) then
       ! allocated vector
       do i = 1, realization%reaction%naqcomp
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
       enddo
       do i = 1, realization%reaction%neqcplx
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    SECONDARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
       enddo
@@ -476,7 +381,7 @@ subroutine Checkpoint(realization, &
     ! mineral volume fractions for kinetic minerals
     if (realization%reaction%mineral%nkinmnrl > 0) then
       do i = 1, realization%reaction%mineral%nkinmnrl
-        call RealizationGetDataset(realization,global_vec, &
+        call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
         call VecView(global_vec,viewer,ierr)
       enddo
@@ -496,10 +401,10 @@ subroutine Checkpoint(realization, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(filename)
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a32)') trim(filename)
   call printMsg(option)
 
-  call PetscGetTime(tend,ierr) 
+  call PetscTime(tend,ierr) 
   write(option%io_buffer, &
         '("      Seconds to write to checkpoint file: ", f10.2)') tend-tstart
   call printMsg(option)
@@ -530,7 +435,8 @@ subroutine Restart(realization, &
                    transport_read, &
                    activity_coefs_read)
 
-  use Realization_module
+  use Realization_class
+  use Realization_Base_class, only : RealizationSetVariable
   use Discretization_module
   use Option_module
   use Output_Aux_module
@@ -539,7 +445,7 @@ subroutine Restart(realization, &
   use Grid_module
 
   use Flash2_module
-  use MPHASE_module
+  use Mphase_module
   use Immis_module
   use Miscible_module
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
@@ -596,7 +502,7 @@ subroutine Restart(realization, &
   global_vec = 0
   local_vec = 0
 
-  call PetscGetTime(tstart,ierr)
+  call PetscTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%restart_filename)
   call printMsg(option)
@@ -612,19 +518,33 @@ subroutine Restart(realization, &
   call CheckpointRegisterBagHeader(bag,header)
   call PetscBagLoad(viewer, bag, ierr)
   
-  if (header%revision_number /= REVISION_NUMBER) then
+  if (header%revision_number /= CHECKPOINT_REVISION_NUMBER) then
     write(string,*) header%revision_number
     option%io_buffer = 'The revision number # of checkpoint file (' // &
                        trim(option%restart_filename) // ', rev=' // &
                        trim(adjustl(string)) // &
                        ') does not match the current revision number' // &
                        ' of PFLOTRAN checkpoint files ('
-    write(string,*) REVISION_NUMBER
+    write(string,*) CHECKPOINT_REVISION_NUMBER
     option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // ').'
     call printErrMsg(option)
   endif
   
   output_option%plot_number = header%plot_number
+
+  ! Check the value of 'times_per_h5_file'
+  if (header%times_per_h5_file /= output_option%times_per_h5_file) then
+    write(string,*),header%times_per_h5_file
+    option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
+    call printMsg(option)
+    write(string,*),output_option%times_per_h5_file
+    option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
+    call printMsg(option)
+    option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &
+      'match that stored in checkpoint file. Correct the inputdeck.'
+    call printErrMsg(option)
+  endif
+  output_option%times_per_h5_file = header%times_per_h5_file
   option%match_waypoint = (header%match_waypoint_flag == ONE_INTEGER)
 
    if (header%grid_discretization_type /= grid%itype) then
@@ -690,7 +610,7 @@ subroutine Restart(realization, &
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
@@ -763,14 +683,14 @@ subroutine Restart(realization, &
         call VecLoad(global_vec,viewer,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
-        call RealizationSetDataset(realization,local_vec,LOCAL, &
+        call RealizationSetVariable(realization,local_vec,LOCAL, &
                                    PRIMARY_ACTIVITY_COEF,i)
       enddo
       do i = 1, realization%reaction%neqcplx
         call VecLoad(global_vec,viewer,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
-        call RealizationSetDataset(realization,local_vec,LOCAL, &
+        call RealizationSetVariable(realization,local_vec,LOCAL, &
                                    SECONDARY_ACTIVITY_COEF,i)
       enddo
     endif
@@ -780,7 +700,7 @@ subroutine Restart(realization, &
         ! have to load the vecs no matter what
         call VecLoad(global_vec,viewer,ierr)
         if (.not.option%no_restart_mineral_vol_frac) then
-          call RealizationSetDataset(realization,global_vec,GLOBAL, &
+          call RealizationSetVariable(realization,global_vec,GLOBAL, &
                                      MINERAL_VOLUME_FRACTION,i)
         endif
       enddo
@@ -805,7 +725,7 @@ subroutine Restart(realization, &
     call VecDestroy(local_vec,ierr)
   endif
   call PetscViewerDestroy(viewer, ierr)
-  call PetscGetTime(tend,ierr) 
+  call PetscTime(tend,ierr) 
 
   call PetscBagDestroy(bag, ierr)
 
@@ -836,7 +756,7 @@ subroutine CheckpointRegisterBagHeader(bag,header)
   PetscInt :: i
   PetscErrorCode :: ierr
   
-  i = REVISION_NUMBER
+  i = CHECKPOINT_REVISION_NUMBER
   call PetscBagRegisterInt(bag,header%revision_number,i, &
                            "revision_number", &
                            "revision_number", &
@@ -845,6 +765,10 @@ subroutine CheckpointRegisterBagHeader(bag,header)
   call PetscBagRegisterInt(bag,header%plot_number,0, &
                            "plot_number", &
                            "plot_number", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%times_per_h5_file,0, &
+                           "times_per_h5_file", &
+                           "times_per_h5_file", &
                            ierr)
   call PetscBagRegisterInt(bag,header%match_waypoint_flag,0, &
                            "match_waypoint_flag","match_waypoint_flag",ierr)
@@ -954,5 +878,291 @@ subroutine CheckpointRegisterBagHeader(bag,header)
                            ierr)                            
 
 end subroutine CheckpointRegisterBagHeader
+#endif
+
+! ************************************************************************** !
+!
+! OpenCheckpointFile: Opens checkpoint file; sets format
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
+
+  use Option_module
+  use String_module, only : StringNull
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  PetscViewer :: viewer
+  PetscInt :: id
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+  PetscErrorCode :: ierr
+  
+  character(len=MAXWORDLENGTH) :: id_string
+  character(len=MAXSTRINGLENGTH) :: filename
+
+  write(id_string,'(i8)') id
+  if (present(id_stamp)) then
+     if (.not. StringNull(id_stamp)) then
+        id_string = id_stamp
+     end if
+  else if (id < 0) then
+     id_string = 'restart'
+  end if
+  !else if (id >= 0) then --> use default id
+
+  filename = trim(option%global_prefix) // &
+       trim(option%group_prefix) // &
+       '-' // trim(adjustl(id_string)) // '.chk'
+
+  !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
+  !     into the routines it calls so that PetscViewerBinarySkipInfo()
+  !     can be called after PetscViewerSetType(), but before
+  !     PetscViewerFileSetName().  See note in PETSc docs.
+  !call PetscViewerBinaryOpen(option%mycomm, filename, FILE_MODE_WRITE, &
+  !                           viewer, ierr)
+  call PetscViewerCreate(option%mycomm,viewer,ierr)
+  call PetscViewerSetType(viewer,PETSCVIEWERBINARY,ierr)
+  call PetscViewerFileSetMode(viewer,FILE_MODE_WRITE,ierr)
+  call PetscViewerBinarySkipInfo(viewer,ierr)
+  call PetscViewerFileSetName(viewer,filename,ierr)
+  
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a64)') &
+    trim(adjustl(filename))
+  call printMsg(option)
+
+end subroutine OpenCheckpointFile
+
+! ************************************************************************** !
+!
+! CloseCheckpointFile: Closes checkpoint file
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine CloseCheckpointFile(viewer)
+
+  use Option_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+
+  call PetscViewerDestroy(viewer, ierr)  
+
+end subroutine CloseCheckpointFile
+
+! ************************************************************************** !
+!
+! CheckpointFlowProcessModel: Checkpoints flow process model vectors
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine CheckpointFlowProcessModel(viewer,realization)
+
+  use Option_module
+  use Realization_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  PetscViewer :: viewer
+  type(realization_type) :: realization
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+  
+  global_vec = 0
+  
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+    ! grid%flow_xx is the vector into which all of the primary variables are 
+    ! packed for the SNESSolve().
+    call VecView(field%flow_xx, viewer, ierr)
+
+
+    ! If we are running with multiple phases, we need to dump the vector 
+    ! that indicates what phases are present, as well as the 'var' vector 
+    ! that holds variables derived from the primary ones via the translator.
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+           FLASH2_MODE,G_MODE)
+        call DiscretizationLocalToGlobal(realization%discretization, &
+                                         field%iphas_loc,global_vec,ONEDOF)
+        call VecView(global_vec, viewer, ierr)
+       case default
+    end select 
+
+    ! Porosity and permeability.
+    ! (We only write diagonal terms of the permeability tensor for now, 
+    ! since we have yet to add the full-tensor formulation.)
+    call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+    call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+
+
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
+      call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call VecView(field%flow_xx_faces, viewer, ierr) 
+    end if
+
+  endif
+  
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif  
+  
+end subroutine CheckpointFlowProcessModel
+
+! ************************************************************************** !
+!
+! RestartFlowProcessModel: Restarts flow process model
+! author: Glenn Hammond
+! date: 07/26/13
+!
+! ************************************************************************** !
+subroutine RestartFlowProcessModel(viewer,realization)
+
+  use Option_module
+  use Realization_class
+  use Field_module
+  use Discretization_module
+  use Grid_module
+  
+  implicit none
+
+#include "finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  PetscViewer :: viewer
+  type(realization_type) :: realization
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  Vec :: global_vec
+  
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+  grid => realization%patch%grid
+  
+  global_vec = 0
+  
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+  ! Load the PETSc vectors.
+    call VecLoad(field%flow_xx,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                     field%flow_xx_loc,NFLOWDOF)
+    call VecCopy(field%flow_xx,field%flow_yy,ierr)  
+
+    select case(option%iflowmode)
+      case(MPH_MODE,TH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+           FLASH2_MODE,G_MODE)
+        call VecLoad(global_vec,viewer,ierr)      
+        call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                         field%iphas_loc,ONEDOF)
+        call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
+        call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                        field%iphas_old_loc,ONEDOF)
+        if (option%iflowmode == MPH_MODE) then
+        ! set vardof vec in mphase
+        endif
+        if (option%iflowmode == IMS_MODE) then
+        ! set vardof vec in mphase
+        endif
+        if (option%iflowmode == FLASH2_MODE) then
+        ! set vardof vec in mphase
+        endif
+ 
+      case default
+    end select
+    
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%porosity_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_xx_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_yy_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_zz_loc,ONEDOF)
+    
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        field%perm_xz_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        field%perm_xy_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_yz_loc,ONEDOF)
+
+      call VecLoad(field%flow_xx_faces, viewer,ierr)
+      call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, &
+                                         field%flow_xx_loc_faces, NFLOWDOF)
+      call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
+    end if
+    
+  endif
+  
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif  
+  
+end subroutine RestartFlowProcessModel
 
 end module Checkpoint_module

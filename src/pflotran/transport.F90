@@ -4,11 +4,13 @@ module Transport_module
   use Global_Aux_module
   use Matrix_Block_Aux_module  
 
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -122,7 +124,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
     diffusion(iphase) = disp_ave_over_dist*dabs(q) + &
                         stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
                         
-! Add the effect of temperature on diffusivity, Satish Karra, 10/29/2011
+! Add the effect of temperature on diffusivity, Satish Karra, LANL, 10/29/2011
 
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
     T_ref_inv = 1.d0/(25.d0 + 273.15d0)
@@ -164,7 +166,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
               disp_ave_over_dist*dabs(q) + &
               stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
 
-! Add the effect of temperature on diffusivity, Satish Karra, 11/1/2011
+! Add the effect of temperature on diffusivity, Satish Karra, LANL, 11/1/2011
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
           T_ref_inv = 1.d0/(25.d0 + 273.15d0)
           temp_up = global_aux_var_up%temp(1)      
@@ -216,7 +218,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   PetscInt :: iphase
   PetscReal :: stp_ave_over_dist
   PetscReal :: q
-  PetscReal :: sat_up, sat_dn
+  PetscReal :: sat_up
 
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
   PetscReal :: temp_up                 ! variable to store temperature at the boundary
@@ -228,48 +230,45 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   iphase = 1
   q = velocity(iphase)
   
+  ! we use upwind saturation as that is the saturation at the boundary face
   sat_up = global_aux_var_up%sat(iphase)
-  sat_dn = global_aux_var_dn%sat(iphase)
 
   select case(ibndtype)
     case(DIRICHLET_BC)
-      if (sat_up > eps .and. sat_dn > eps) then
-        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
-        
-        stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                            ((sat_up+sat_dn)*dist_dn)
-        
+      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
+      !         m^3 water/m^4 bulk
+
+      stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+
+      ! need to account for multiple phases
+      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
+                          stp_ave_over_dist* &
+                          rt_parameter%diffusion_coefficient(iphase)
+                          
+#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
+      T_ref_inv = 1.d0/(25.d0 + 273.15d0)
+      temp_up = global_aux_var_up%temp(1)      
+      diffusion(iphase) = diffusion(iphase) + &
+        stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
+        (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+        R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+#endif
+
+    case(DIRICHLET_ZERO_GRADIENT_BC)
+      if (q >= 0.d0) then
+        ! same as dirichlet above
+        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
+        !         m^3 water/m^4 bulk
+          
+        stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
                             stp_ave_over_dist* &
                             rt_parameter%diffusion_coefficient(iphase)
                             
-#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
-        T_ref_inv = 1.d0/(25.d0 + 273.15d0)
-        temp_up = global_aux_var_up%temp(1)      
-        diffusion(iphase) = diffusion(iphase) + &
-          stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
-          (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-          R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
-#endif
-      endif    
-
-    case(DIRICHLET_ZERO_GRADIENT_BC)
-      if (q >= 0.d0) then
-        ! same as dirichlet above
-        if (sat_up > eps .and. sat_dn > eps) then
-          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
-          
-          stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                              ((sat_up+sat_dn)*dist_dn)
-          
-          ! need to account for multiple phases
-          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
-                              stp_ave_over_dist* &
-                              rt_parameter%diffusion_coefficient(iphase)
-                              
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)  
         T_ref_inv = 1.d0/(25.d0 + 273.15d0)
         temp_up = global_aux_var_up%temp(1)      
@@ -278,8 +277,6 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
           R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
-
-        endif    
       endif
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
@@ -295,23 +292,40 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
       if (iphase > option%nphase) exit
       q = velocity(iphase)
       sat_up = global_aux_var_up%sat(iphase)
-      sat_dn = global_aux_var_dn%sat(iphase)
 
       select case(ibndtype)
         case(DIRICHLET_BC)
-          if (sat_up > eps .and. sat_dn > eps) then
-         !  units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
+          !  units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
+          ! m^3 water/m^4 bulk
          
-            stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                                ((sat_up+sat_dn)*dist_dn)
+          stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
             
-         !  need to account for multiple phases
-         !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            if ( iphase == 2) then
+          !  need to account for multiple phases
+          !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = 
+          !          m^3 water/m^2 bulk/sec
+          if ( iphase == 2) then
+            diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
+                                stp_ave_over_dist * &
+                                rt_parameter%diffusion_coefficient(iphase)
+                
+#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
+            T_ref_inv = 1.d0/(25.d0 + 273.15d0)
+            temp_up = global_aux_var_up%temp(1)      
+            diffusion(iphase) = diffusion(iphase) + &
+              stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
+              (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+              R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+#endif
+          endif    
+          
+        case(DIRICHLET_ZERO_GRADIENT_BC)
+          if (q >= 0.d0) then
+          ! same as dirichlet above
+            stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+            if (iphase == 2) then
               diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
                                   stp_ave_over_dist * &
                                   rt_parameter%diffusion_coefficient(iphase)
-                
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
               T_ref_inv = 1.d0/(25.d0 + 273.15d0)
               temp_up = global_aux_var_up%temp(1)      
@@ -320,31 +334,6 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
                 (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
                 R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
-            endif
-          endif    
-          
-        case(DIRICHLET_ZERO_GRADIENT_BC)
-          if (q >= 0.d0) then
-          ! same as dirichlet above
-            if (sat_up > eps .and. sat_dn > eps) then
-          !   units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-              stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
-                                  ((sat_up+sat_dn)*dist_dn)
-          !   need to account for multiple phases
-          !   units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              if (iphase == 2) then
-                diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
-                                    stp_ave_over_dist * &
-                                    rt_parameter%diffusion_coefficient(iphase)
-#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
-                T_ref_inv = 1.d0/(25.d0 + 273.15d0)
-                temp_up = global_aux_var_up%temp(1)      
-                diffusion(iphase) = diffusion(iphase) + &
-                  stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
-                  (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-                  R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
-#endif
-              endif
             endif 
           endif
         case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -391,12 +380,12 @@ subroutine TFlux(rt_parameter, &
   iphase = 1
   ndof = rt_parameter%naqcomp
   
+  Res = 0.d0
+  
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
-
-
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
@@ -471,6 +460,9 @@ subroutine TFlux_CD(rt_parameter, &
 
   iphase = 1
   ndof = rt_parameter%naqcomp
+  
+  Res_1 = 0.d0
+  Res_2 = 0.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
@@ -961,9 +953,7 @@ end subroutine TSrcSinkCoef
 subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     total_up2,rt_aux_var_up, & 
                     rt_aux_var_dn,total_dn2, & 
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif
                     option,flux)
 
   use Option_module
@@ -976,9 +966,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
   PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
   type(option_type) :: option
   PetscReal :: flux(rt_parameter%ncomp)
-#ifdef FORTRAN_2003_COMPLIANT  
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
-#endif
   PetscReal :: dist(-1:3)    ! list of distance vectors, size(-1:3,num_connections) where
                             !   -1 = fraction upwind
                             !   0 = magnitude of distance 
@@ -990,6 +978,8 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
   
   ndof = rt_parameter%naqcomp
 
+  flux = 0.d0
+  
   ! flux should be in mol/sec
   
   do iphase = 1, option%nphase
@@ -998,7 +988,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
     velocity_area = velocity(iphase)*area*1000.d0
     if (velocity_area >= 0.d0) then
       ! mol/sec = L/sec * mol/L
-      flux = velocity_area*rt_aux_var_up%total(:,iphase)
+      flux = velocity_area*rt_aux_var_up%total(1:rt_parameter%naqcomp,iphase)
       if (associated(total_up2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1012,17 +1002,13 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
           endif
           ! mol/sec = L/sec * mol/L
           correction = 0.5d0*velocity_area*(1.d0-nu)* &
-#ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
-#else
-                       TFluxLimiter(theta)* &
-#endif
                        dc
           flux(idof) = flux(idof) + correction
         enddo
       endif
     else
-      flux = velocity_area*rt_aux_var_dn%total(:,iphase)
+      flux = velocity_area*rt_aux_var_dn%total(1:rt_parameter%naqcomp,iphase)
       if (associated(total_dn2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1035,11 +1021,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     dc
           endif
           correction = 0.5d0*velocity_area*(1.d0+nu)* &
-#ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
-#else
-                       TFluxLimiter(theta)* &
-#endif
                        dc
           flux(idof) = flux(idof) + correction
         enddo

@@ -5,11 +5,13 @@ module Surface_Complexation_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
   
   private 
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
@@ -33,7 +35,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -68,7 +70,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
   temp_srfcplx_count = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
@@ -87,7 +89,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
       case('COMPLEX_KINETICS')
         nullify(prev_srfcplx)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
                       
@@ -97,7 +99,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
             'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
                         
           do
-            call InputReadFlotranString(input,option)
+            call InputReadPflotranString(input,option)
             call InputReadStringErrorMsg(input,option,card)
             if (InputCheckExit(input,option)) exit
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -165,7 +167,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
       case('COMPLEXES')
         nullify(prev_srfcplx)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
                       
@@ -363,7 +365,7 @@ subroutine SrfCplxProcessConstraint(surface_complexation,constraint_name, &
                                     constraint,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module  
   
@@ -457,17 +459,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     nullify(colloid_matrix_block_ptr)
     nullify(colloid_array_ptr)
   endif
-  
-#ifdef TEMP_DEPENDENT_LOGK
-  !TODO(geh): move this outside so it is called only once per cell
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                 surface_complexation%srfcplx_logK, &
-                                 global_auxvar%temp(iphase), &
-                                 surface_complexation%nsrfcplx)
-  endif
-! surface reaction in hpt option not functional yet .Chuan 12/29/11 
-#endif  
 
   ! Surface Complexation
   do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
@@ -523,19 +514,6 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
 
   nullify(null_array_ptr)
   nullify(null_matrix_block)
-  
-#ifdef TEMP_DEPENDENT_LOGK
-!TODO(geh): move this outside the surface complexation routines so that 
-!           coefficients/equilibrium constants are calculated only once
-!           instead of over and over.
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                 surface_complexation%srfcplx_logK, &
-                                 global_auxvar%temp(iphase), &
-                                 surface_complexation%nsrfcplx)
-! surface reaction in hpt option not functional yet .Chuan 12/29/11 
-  endif
-#endif  
 
   ! Surface Complexation
   do ikinmrrxn = 1, surface_complexation%nkinmrsrfcplxrxn
@@ -600,21 +578,6 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
   nullify(null_array_ptr)
   nullify(null_matrix_block)
-  
-#ifdef NEW_SRFCPLX_RXN    
-  ln_conc = log(rt_auxvar%pri_molal)
-  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-#endif
-  
-#ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
-                                 surface_complexation%srfcplx_logK, &
-                                 global_auxvar%temp(iphase), &
-                                 surface_complexation%nsrfcplx)
-! surface reaction in hpt option not functional yet .Chuan 12/29/11 
-  endif
-#endif  
 
   ! only zero out the zero index.  The other indices hold values from 
   ! the previous time step

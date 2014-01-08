@@ -45,30 +45,67 @@ module Variables_module
   PetscInt, parameter, public :: MINERAL_SURFACE_AREA =    35
   PetscInt, parameter, public :: MINERAL_SATURATION_INDEX =36
   PetscInt, parameter, public :: PH =                      37
-  PetscInt, parameter, public :: SURFACE_CMPLX =           38
-  PetscInt, parameter, public :: SURFACE_CMPLX_FREE =      39
-  PetscInt, parameter, public :: SURFACE_SITE_DENSITY =    40
-  PetscInt, parameter, public :: KIN_SURFACE_CMPLX =       41
-  PetscInt, parameter, public :: KIN_SURFACE_CMPLX_FREE =  42
-  PetscInt, parameter, public :: PRIMARY_ACTIVITY_COEF =   43
-  PetscInt, parameter, public :: SECONDARY_ACTIVITY_COEF = 44
-  PetscInt, parameter, public :: SC_FUGA_COEFF =           45
-  PetscInt, parameter, public :: PRIMARY_KD =              46
-  PetscInt, parameter, public :: TOTAL_SORBED =            47
-  PetscInt, parameter, public :: TOTAL_SORBED_MOBILE =     48
-  PetscInt, parameter, public :: COLLOID_MOBILE =          49
-  PetscInt, parameter, public :: COLLOID_IMMOBILE =        50
-  PetscInt, parameter, public :: AGE =                     51
-  PetscInt, parameter, public :: STATE =                   52
-  PetscInt, parameter, public :: PROCESSOR_ID =            53
-  PetscInt, parameter, public :: ICE_SATURATION =          54
-  PetscInt, parameter, public :: TOTAL_BULK =              55
-  PetscInt, parameter, public :: ICE_DENSITY =             56
-  PetscInt, parameter, public :: GAS_PRESSURE =            57
-  PetscInt, parameter, public :: SECONDARY_TEMPERATURE =   58
-  PetscInt, parameter, public :: SECONDARY_CONCENTRATION = 59
-  PetscInt, parameter, public :: SEC_MIN_VOLFRAC =         60
+  PetscInt, parameter, public :: IMMOBILE_SPECIES =        38
+  PetscInt, parameter, public :: SURFACE_CMPLX =           39
+  PetscInt, parameter, public :: SURFACE_CMPLX_FREE =      40
+  PetscInt, parameter, public :: SURFACE_SITE_DENSITY =    41
+  PetscInt, parameter, public :: KIN_SURFACE_CMPLX =       42
+  PetscInt, parameter, public :: KIN_SURFACE_CMPLX_FREE =  43
+  PetscInt, parameter, public :: PRIMARY_ACTIVITY_COEF =   44
+  PetscInt, parameter, public :: SECONDARY_ACTIVITY_COEF = 45
+  PetscInt, parameter, public :: SC_FUGA_COEFF =           46
+  PetscInt, parameter, public :: PRIMARY_KD =              47
+  PetscInt, parameter, public :: TOTAL_SORBED =            48
+  PetscInt, parameter, public :: TOTAL_SORBED_MOBILE =     49
+  PetscInt, parameter, public :: COLLOID_MOBILE =          50
+  PetscInt, parameter, public :: COLLOID_IMMOBILE =        51
+  PetscInt, parameter, public :: AGE =                     52
+  PetscInt, parameter, public :: STATE =                   53
+  PetscInt, parameter, public :: PROCESSOR_ID =            54
+  PetscInt, parameter, public :: ICE_SATURATION =          55
+  PetscInt, parameter, public :: TOTAL_BULK =              56
+  PetscInt, parameter, public :: ICE_DENSITY =             57
+  PetscInt, parameter, public :: GAS_PRESSURE =            58
+  PetscInt, parameter, public :: SECONDARY_TEMPERATURE =   59
+  PetscInt, parameter, public :: SECONDARY_CONCENTRATION = 60
+  PetscInt, parameter, public :: SEC_MIN_VOLFRAC =         61
 
-  PetscInt, parameter, public :: SURFACE_FLOW_PRESSURE =   61
+  PetscInt, parameter, public :: SURFACE_LIQUID_HEAD        = 62
+  PetscInt, parameter, public :: SURFACE_LIQUID_TEMPERATURE = 63
+  PetscInt, parameter, public :: SURFACE_LIQUID_DENSITY     = 64
+
+  PetscInt, parameter, public :: EH = 65
+  PetscInt, parameter, public :: PE = 66
+  PetscInt, parameter, public :: O2 = 67
+
+  PetscInt, parameter, public :: PERMEABILITY_XY =         68
+  PetscInt, parameter, public :: PERMEABILITY_YZ =         69
+  PetscInt, parameter, public :: PERMEABILITY_XZ =         70
+  
+  PetscInt, parameter, public :: GEOMECH_DISP_X          = 71
+  PetscInt, parameter, public :: GEOMECH_DISP_Y          = 72
+  PetscInt, parameter, public :: GEOMECH_DISP_Z          = 73
+  PetscInt, parameter, public :: STRAIN_XX               = 74
+  PetscInt, parameter, public :: STRAIN_YY               = 75
+  PetscInt, parameter, public :: STRAIN_ZZ               = 76
+  PetscInt, parameter, public :: STRAIN_XY               = 77
+  PetscInt, parameter, public :: STRAIN_YZ               = 78
+  PetscInt, parameter, public :: STRAIN_ZX               = 79
+  PetscInt, parameter, public :: STRESS_XX               = 80
+  PetscInt, parameter, public :: STRESS_YY               = 81
+  PetscInt, parameter, public :: STRESS_ZZ               = 82
+  PetscInt, parameter, public :: STRESS_XY               = 83
+  PetscInt, parameter, public :: STRESS_YZ               = 84
+  PetscInt, parameter, public :: STRESS_ZX               = 85
+  PetscInt, parameter, public :: GEOMECH_MATERIAL_ID     = 86
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_X      = 87 
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_Y      = 88
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_Z      = 89
+
+  PetscInt, parameter, public :: VOLUME                  = 90
+  PetscInt, parameter, public :: TORTUOSITY              = 91
+
+!  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
+!  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
 
 end module Variables_module

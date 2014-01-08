@@ -1,10 +1,12 @@
 module Solver_module
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -13,7 +15,15 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
+#include "finclude/petscts.h"
+! If the PETSc release is 3.3 or lower, then include petscpcmg.h.
+! If using an older version of petsc-dev and petscpcmg.h is required, 
+! it can be used by having the makefile turn on HAVE_PETSCPCMG_H.
+#if (((PETSC_VERSION_RELEASE) && ((PETSC_VERSION_MAJOR<3) || ((PETSC_VERSION_MAJOR==3) && (PETSC_VERSION_MINOR<=3)))) || (HAVE_PETSCPCMG_H))
 #include "finclude/petscpcmg.h"
+#endif
+
+!#include "finclude/petscpcmg.h"
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
@@ -30,6 +40,7 @@ module Solver_module
     PetscReal :: newton_stomp_tol  ! tolerance based on STOMP convergence
     PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
     PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
+    PetscReal :: newton_inf_res_tol_sec  ! infinity tolerance for secondary continuum residual
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
     PetscReal :: max_norm          ! maximum norm for divergence
@@ -59,6 +70,7 @@ module Solver_module
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
+    TS    :: ts
     
     PetscBool :: inexact_newton
 
@@ -76,6 +88,7 @@ module Solver_module
             SolverReadNewton, &
             SolverCreateSNES, &
             SolverSetSNESOptions, &
+            SolverCreateTS, &
             SolverPrintNewtonInfo, &
             SolverPrintLinearInfo, &
             SolverCheckCommandLine
@@ -104,20 +117,21 @@ function SolverCreate()
   
   ! initialize to default values
   solver%itype = NULL_CLASS
-  solver%linear_atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%linear_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%linear_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_atol = PETSC_DEFAULT_REAL
+  solver%linear_rtol = PETSC_DEFAULT_REAL
+  solver%linear_dtol = PETSC_DEFAULT_REAL
   solver%linear_maxit = PETSC_DEFAULT_INTEGER
-  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_REAL
   
-  solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION 
+  solver%newton_atol = PETSC_DEFAULT_REAL
+  solver%newton_rtol = PETSC_DEFAULT_REAL
+  solver%newton_stol = PETSC_DEFAULT_REAL
+  solver%newton_dtol = PETSC_DEFAULT_REAL 
   solver%max_norm = 1.d20     ! set to a large value
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
+  solver%newton_inf_res_tol_sec = 1.d-10
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
 
@@ -139,6 +153,7 @@ function SolverCreate()
   solver%pc_type = ""
   solver%ksp = 0
   solver%pc = 0
+  solver%ts = 0
   
   solver%inexact_newton = PETSC_FALSE
   
@@ -190,12 +205,7 @@ subroutine SolverSetSNESOptions(solver)
   
   type(solver_type) :: solver
 
-#ifndef HAVE_SNES_API_3_2  
   SNESLineSearch :: linesearch
-#else
-  ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
-  PetscReal :: alpha, maxstep, steptol
-#endif
   PetscErrorCode :: ierr
   PetscInt :: i
   
@@ -217,7 +227,7 @@ subroutine SolverSetSNESOptions(solver)
   call PCGetType(solver%pc,solver%pc_type,ierr)
   
   if ((solver%pc_type == PCLU .or. solver%pc_type == PCILU) .and. &
-      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
     call PCFactorSetZeroPivot(solver%pc,solver%linear_lu_zero_pivot_tol,ierr)
   endif
 
@@ -247,16 +257,11 @@ subroutine SolverSetSNESOptions(solver)
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes,ierr) 
 
-#ifndef HAVE_SNES_API_3_2
-  call SNESGetSNESLineSearch(solver%snes, linesearch, ierr)
+  call SNESGetLineSearch(solver%snes, linesearch, ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
-          PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
-          PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &
+          PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
+          PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL, &
           PETSC_DEFAULT_INTEGER, ierr)
-#else   
-  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol,ierr)  
-  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%newton_stol,ierr)  
-#endif
 
   call SNESGetTolerances(solver%snes,solver%newton_atol,solver%newton_rtol, &
                          solver%newton_stol,solver%newton_maxit, &
@@ -268,6 +273,28 @@ subroutine SolverSetSNESOptions(solver)
 end subroutine SolverSetSNESOptions
   
 ! ************************************************************************** !
+!> This routine creates PETSc TS object.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 01/18/13
+! ************************************************************************** !
+subroutine SolverCreateTS(solver,comm)
+
+  implicit none
+  
+  type(solver_type) :: solver
+
+  PetscMPIInt :: comm
+  PetscErrorCode :: ierr
+  
+  call TSCreate(comm,solver%ts,ierr)
+  call TSSetFromOptions(solver%ts,ierr)
+
+end subroutine SolverCreateTS
+
+! ************************************************************************** !
 !
 ! SolverReadLinear: Reads parameters associated with linear solver
 ! author: Glenn Hammond
@@ -276,7 +303,7 @@ end subroutine SolverSetSNESOptions
 ! ************************************************************************** !
 subroutine SolverReadLinear(solver,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -300,7 +327,7 @@ subroutine SolverReadLinear(solver,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -355,9 +382,9 @@ subroutine SolverReadLinear(solver,input,option)
             solver%pc_type = PCBJACOBI
           case('ASM','ADDITIVE_SCHWARZ')
             solver%pc_type = PCASM
-         case('HYPRE')
+          case('HYPRE')
             solver%pc_type = PCHYPRE
-         case('SHELL')
+          case('SHELL')
             solver%pc_type = PCSHELL
           case default
             option%io_buffer  = 'Preconditioner type: ' // trim(word) // ' unknown.'
@@ -366,7 +393,7 @@ subroutine SolverReadLinear(solver,input,option)
 
       case('HYPRE_OPTIONS')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
           call InputReadWord(input,option,keyword,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','LINEAR SOLVER, HYPRE options')   
@@ -596,7 +623,7 @@ end subroutine SolverReadLinear
 ! ************************************************************************** !
 subroutine SolverReadNewton(solver,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -610,8 +637,8 @@ subroutine SolverReadNewton(solver,input,option)
 
   input%ierr = 0
   do
-  
-    call InputReadFlotranString(input,option)
+
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -671,6 +698,20 @@ subroutine SolverReadNewton(solver,input,option)
         option%check_stomp_norm = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_stomp_tol)
         call InputDefaultMsg(input,option,'newton_stomp_tol')
+
+      case('ITOL_SEC','ITOL_RES_SEC','INF_TOL_SEC')
+        if (.not.option%use_mc) then
+          option%io_buffer = 'NEWTON ITOL_SEC not supported without ' // &
+            'MULTIPLE_CONTINUUM keyword.'
+          call printErrMsg(option)
+        endif
+        if (.not.solver%itype == TRANSPORT_CLASS) then
+          option%io_buffer = 'NEWTON ITOL_SEC supported in ' // &
+            'TRANSPORT only.'
+          call printErrMsg(option)        
+        endif         
+        call InputReadDouble(input,option,solver%newton_inf_res_tol_sec)
+        call InputDefaultMsg(input,option,'newton_inf_res_tol_sec')
    
       case('MAXIT')
         call InputReadInt(input,option,solver%newton_maxit)
@@ -767,7 +808,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(*,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(*,'("    maxit:",i7)') solver%linear_maxit
     if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
       write(*,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
     endif
   endif
@@ -783,7 +824,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(fid,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(fid,'("    maxit:",i7)') solver%linear_maxit
     if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
       write(fid,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
     endif
   endif
@@ -941,13 +982,13 @@ subroutine SolverCheckCommandLine(solver)
 
   ! Parse the options to determine if the matrix type has been specified.
   call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present,ierr)
-  if (is_present) solver%J_mat_type = mat_type
+  if (is_present) solver%J_mat_type = trim(mat_type)
   
   call PetscOptionsGetString(prefix, '-pre_mat_type', mat_type, is_present,ierr)
-  if (is_present) solver%Jpre_mat_type = mat_type
+  if (is_present) solver%Jpre_mat_type = trim(mat_type)
 
   ! Parse the options for the Galerkin multigrid solver.
-  ! Users can specify the number of levels of coarsening via the 
+  ! Users can specify the number of levels of coarsening via the
   ! 'galerkin_mg N' option, which will set the number of levels in the 
   ! x, y, and z directions all to N.  For semi-coarsening, however, 
   ! it is possible to set the number of levels in each direction 
@@ -1017,6 +1058,7 @@ subroutine SolverDestroy(solver)
     call MatFDColoringDestroy(solver%matfdcoloring,ierr)
 
   if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
+  if (solver%ts /= 0) call TSDestroy(solver%ts,ierr)
 
   solver%ksp = 0
   solver%pc = 0

@@ -1,4 +1,4 @@
-  module span_wagner_module
+  module co2_span_wagner_module
 
 
   ! module contains only 1 interface with other part, read as:
@@ -10,9 +10,11 @@
   !     P [MPa]       T [K]         
   !     rho [kg/m^3] Energy [MJ/kg] Enthalpy [MJ/kg] Vis [Pa s]
 
+  use PFLOTRAN_Constants_module
+
       implicit none
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
       save
       
@@ -43,7 +45,9 @@
 
       contains
     
-subroutine initialize_span_wagner(itable,myrank)
+subroutine initialize_span_wagner(itable,myrank,option)
+
+      use Option_module
 
       implicit none
       PetscInt, optional :: itable
@@ -61,6 +65,8 @@ subroutine initialize_span_wagner(itable,myrank)
       
       PetscReal :: temparray(15)
       PetscInt :: status
+      
+      type(option_type) :: option
       
       tab = char(9)
       q = '","'
@@ -300,7 +306,8 @@ subroutine initialize_span_wagner(itable,myrank)
          !  1 p,     2  T
          !  3 rho    4 dddt,  5 dddp,
          !  6 fg,    7 dfgdp, 8 dfgdt
-         !  9 eng,  10 ent,  11 dhdt,  12 dhdp,
+         !  9 eng,  
+         ! 10 ent,  11 dhdt,  12 dhdp,
          ! 13 visc, 14 dvdt, 15 dvdp
           
     tmp2=0.D0    
@@ -402,55 +409,62 @@ subroutine initialize_span_wagner(itable,myrank)
     enddo
   endif
   
+  if (len_trim(option%co2_database_filename) < 2) then
+    option%io_buffer = 'CO2 database filename not included in input deck.'
+    call printErrMsg(option)
+  endif
+  
   if (myrank == 0) then
     if (iitable == 1) then
       print *,'Writing Table lookup file ...'
-      if (myrank==0) print *,'--> open co2data.dat'
-      open(unit=122,file='co2data.dat',status='unknown',iostat=status)
+      if (myrank==0) print *,'--> open CO2 database file: ', &
+                             trim(option%co2_database_filename)
+      open(unit=IUNIT_TEMP,file=option%co2_database_filename,status='unknown',iostat=status)
       if (status /= 0) then
-        print *, 'file: co2data.dat not found.  Copy from pflotran/database directory.'
+        print *, 'file: ', trim(option%co2_database_filename), ' not found.'
         stop
       endif
-      write(122,'(''TITLE= "'',''co2data.dat'',''"'')')
-      write(122,'(''VARIABLES= "'',a6,100(a3,a6))') &
+      write(IUNIT_TEMP,'(''TITLE= "'',''co2data.dat'',''"'')')
+      write(IUNIT_TEMP,'(''VARIABLES= "'',a6,100(a3,a6))') &
           'p',q,'T',q,'d',q,'dddT',q,'dddp',q,'fg',q,'dfgdp',q,'dfgdT',q, &
           'u',q,'h',q,'dhdT',q,'dhdp',q,'vis',q,'dvdT',q,'dvdp','"'
-      write(122,'(''ZONE T= "'',''",'','' I='',i4,'' , J='',i4)') ntab_t+1,ntab_p+1
+      write(IUNIT_TEMP,'(''ZONE T= "'',''",'','' I='',i4,'' , J='',i4)') ntab_t+1,ntab_p+1
       do i = 0, ntab_p
         tmp=tmp2
         pl = p0_tab + dp_tab * real(i)
         do j = 0, ntab_t
           tl = t0_tab + dt_tab * real(j)
-          write(122,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
+          write(IUNIT_TEMP,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
         enddo
       enddo
-      close (122)
+      close (IUNIT_TEMP)
     endif
   endif
   
   if (iitable == 2) then
     if (myrank == 0) print *,'Reading Table ...'
-    if (myrank == 0) print *,'--> open co2data0.dat'
-    open(unit = 122,file='co2data0.dat',status='old',iostat=status)
+    if (myrank == 0) print *,'--> CO2 database file: ', &
+                             trim(option%co2_database_filename)
+    open(unit = IUNIT_TEMP,file=option%co2_database_filename,status='old',iostat=status)
     if (status /= 0) then
-      print *, 'file: co2data0.dat not found.  Copy from pflotran/database directory.'
+      print *, 'file: ', trim(option%co2_database_filename), ' not found.'
       stop
     endif
-!   open(unit=122,file='co2data0.dat',status='old')
-    read(122,*)
-    read(122,*)
-    read(122,*)
+!   open(unit=IUNIT_TEMP,file='co2data0.dat',status='old')
+    read(IUNIT_TEMP,*)
+    read(IUNIT_TEMP,*)
+    read(IUNIT_TEMP,*)
     do i = 0, ntab_p
       do j = 0, ntab_t
 #ifdef PC_BUG
-        read(122,'(1p15e14.6)') temparray
+        read(IUNIT_TEMP,'(1p15e14.6)') temparray
         co2_prop_spwag(i,j,1:15) = temparray(:)
 #else
-        read(122,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
+        read(IUNIT_TEMP,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
 #endif
       enddo
     enddo
-    close (122)
+    close (IUNIT_TEMP)
   endif
 
 end subroutine initialize_span_wagner
@@ -479,19 +493,22 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
       p=pl;t=tl;iitable=0
       if(present(itable)) iitable=itable
 
-!     units: 
-!     P      : MPa
-!     T      : K
-!     h(ent) : MJ/Kg
-!     e(eng) : MJ/Kg
-!     dhdt   : MJ/kg/C
-!     dhdp   : MJ/Kg/MPa
-!     rho    : kg/m3
-!     dddt   : kg/m3/C
-!     dddp   : kg/m3/MPa
-!     visc   : Pa.s
-!     dvdt   : Pa.s/C
-!     dvdp   : Pa.s/Mpa
+!     co2data0.dat - units: 
+!      1-P      : MPa
+!      2-T      : K
+!      3-d (den): kg/m^3
+!      4-dddT   : kg/m3/C
+!      5-dddp   : kg/m3/MPa
+!      6-fg     : -
+!      7-dfgdp  : 1/MPa
+!      8-dfgdT  : 1/C
+!      9-u(eng) : MJ/Kg
+!     10-h(ent) : MJ/Kg
+!     11-dhdT   : MJ/kg/C
+!     12-dhdp   : MJ/Kg/MPa
+!     13-vis    : Pa.s
+!     14-dvdT   : Pa.s/C
+!     15-dvdp   : Pa.s/Mpa
 
 !     print *,'span_wag: ',p,t,tc,pc,rg,iitable
 
@@ -508,7 +525,8 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
   tmp = (t - t0_tab) / dt_tab; j1 = floor(tmp); j2 = ceiling(tmp); jindex=tmp 
 
   if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
-    print  *,' Out of Table Bounds (Span-Wagner): ', 'p (in Mpa) =',p,' t (in K) =',t,' i=',iindex,' j=',jindex
+    print  *,' Out of Table Bounds (Span-Wagner): ', 'p [MPa] =',p, &
+    ' t [C] =',t-273.15,' i=',iindex,' j=',jindex
 !geh    isucc=0
     iflag = -1
     return
@@ -1393,6 +1411,10 @@ end subroutine vappr
       
 subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
 
+! Fenghour, A., W. A. Wakeham, and V. Vesovic,
+! The viscosity of carbon dioxide,
+! J. Phys. Chem. Ref. Data, 27(1), 31−44, 1998.
+
       implicit none
       PetscReal :: p, t, rho
       PetscReal :: xsection1, xsection2, drhodt, drhodp,dmudp,dmudt
@@ -1510,4 +1532,4 @@ subroutine dissco2(p,t,mco2,fg,mol)
 
 end subroutine dissco2
 
-end module span_wagner_module
+end module co2_span_wagner_module

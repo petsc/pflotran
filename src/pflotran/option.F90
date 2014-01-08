@@ -2,11 +2,13 @@ module Option_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
 
   type, public :: option_type 
@@ -33,7 +35,7 @@ module Option_module
     
     PetscInt :: reactive_transport_coupling
 
-#if defined(PARALLELIO_LIB)
+#if defined(SCORPIO)
     PetscMPIInt :: ioread_group_id, iowrite_group_id
 #endif
 
@@ -41,6 +43,7 @@ module Option_module
   
     PetscInt :: fid_out
     
+    character(len=MAXWORDLENGTH) :: simulation_mode
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
@@ -56,6 +59,8 @@ module Option_module
     PetscInt :: rt_idof
     PetscInt :: nmechdof
     PetscInt :: nsec_cells
+    PetscBool :: use_th_freezing
+
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
@@ -63,6 +68,18 @@ module Option_module
     PetscReal :: surf_flow_time, surf_flow_dt
     PetscReal :: surf_subsurf_coupling_time
     PetscReal :: surf_subsurf_coupling_flow_dt
+    PetscReal :: surf_restart_time
+    PetscBool :: surf_restart_flag
+    character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
+    character(len=MAXSTRINGLENGTH) :: surf_restart_filename
+#endif
+
+#ifdef GEOMECH
+    PetscInt  :: ngeomechdof
+    PetscInt  :: n_stress_strain_dof
+    PetscReal :: geomech_time
+    PetscInt  :: geomech_subsurf_coupling
+    PetscReal :: geomech_gravity(3)
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -77,17 +94,23 @@ module Option_module
     PetscBool :: variables_swapped
     
     PetscInt :: iflag
+    PetscInt :: status
+    !geh: remove once legacy code is gone.
     PetscBool :: init_stage
-    PetscBool :: print_screen_flag
-    PetscBool :: print_file_flag
+    ! these flags are for printing outside of time step loop
     PetscBool :: print_to_screen
     PetscBool :: print_to_file
+    ! these flags are for printing within time step loop where printing may
+    ! need to be temporarily turned off to accommodate periodic screen outout.
+    PetscBool :: print_screen_flag
+    PetscBool :: print_file_flag
     PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
     PetscReal :: uniform_velocity(3)
     PetscBool :: store_solute_fluxes
+    PetscBool :: store_flowrate
 
     ! Program options
     PetscBool :: use_matrix_free  ! If true, do not form the Jacobian.
@@ -95,7 +118,9 @@ module Option_module
     PetscBool :: use_isothermal
     PetscBool :: use_mc           ! If true, multiple continuum formulation is used.
     PetscBool :: set_secondary_init_temp  ! If true, then secondary init temp is different from prim. init temp
-    PetscBool :: set_secondary_init_conc  ! If true, then secondary init conc is different from prim. init conc.
+    PetscBool :: set_secondary_init_conc
+    
+    PetscBool :: update_flow_perm ! If true, permeability changes due to pressure    
     
     PetscBool :: use_ice_new      ! use new formulation for ice partitioning
     character(len=MAXWORDLENGTH) :: generalized_grid
@@ -104,7 +129,9 @@ module Option_module
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt ! The size of the time step.
+    PetscReal :: dt
     PetscBool :: match_waypoint
+    PetscReal :: refactor_dt
   
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
@@ -131,9 +158,9 @@ module Option_module
     PetscReal :: stomp_norm
     PetscBool :: check_stomp_norm
     
-    PetscReal :: minimum_hydrostatic_pressure
+    PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
     
-!   PetscBool :: update_mnrl_surf_with_porosity
+    PetscReal :: minimum_hydrostatic_pressure
     
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
@@ -143,6 +170,7 @@ module Option_module
 !   table lookup
     PetscInt :: itable
     PetscInt :: co2eos
+    character(len=MAXSTRINGLENGTH) :: co2_database_filename
 
     PetscBool :: restart_flag
     PetscReal :: restart_time
@@ -159,6 +187,7 @@ module Option_module
     
     PetscBool :: numerical_derivatives_flow
     PetscBool :: numerical_derivatives_rxn
+    PetscBool :: numerical_derivatives_multi_coupling
     PetscBool :: compute_statistics
     PetscBool :: compute_mass_balance_new
     PetscBool :: use_touch_options
@@ -169,20 +198,32 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: initialize_transport_filename
         
+    character(len=MAXSTRINGLENGTH) :: input_prefix
     character(len=MAXSTRINGLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
     
     PetscBool :: steady_state
-    
     PetscBool :: use_matrix_buffer
     PetscBool :: force_newton_iteration
-  
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
-    
     PetscBool :: use_upwinding
+    PetscBool :: out_of_table
     
+    PetscBool :: use_process_model
+        
+    ! Specify secondary continuum solver
+    PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
+    PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
+    PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
+    
+    PetscInt :: subsurface_simulation_type
+
   end type option_type
+  
+  PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
+  PetscInt, parameter, public :: MULTISIMULATION_SIM_TYPE = 2
+  PetscInt, parameter, public :: STOCHASTIC_SIM_TYPE = 3
   
   interface printMsg
     module procedure printMsg1
@@ -214,6 +255,11 @@ module Option_module
     module procedure printWrnMsg2
   end interface
 
+  interface OptionInitMPI
+    module procedure OptionInitMPI1
+    module procedure OptionInitMPI2
+  end interface
+
   public :: OptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
@@ -222,12 +268,20 @@ module Option_module
             printMsg, &
             printMsgAnyRank, &
             printMsgByRank, &
+            printVerboseMsg, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
             OptionInitRealization, &
             OptionMeanVariance, &
             OptionMaxMinMeanVariance, &
+            OptionInitMPI, &
+            OptionInitPetsc, &
+            OptionDivvyUpSimulations, &
+            OptionCreateProcessorGroups, &
+            OptionBeginTiming, &
+            OptionEndTiming, &
+            OptionFinalize, &
             OptionDestroy
 
 contains
@@ -288,8 +342,9 @@ subroutine OptionInitAll(option)
   option%mygroup = 0
   option%mygroup_id = 0
   
-  option%global_prefix = 'pflotran'
+  option%input_prefix = 'pflotran'
   option%group_prefix = ''
+  option%global_prefix = ''
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
@@ -309,6 +364,12 @@ subroutine OptionInitAll(option)
 
   option%use_upwinding = PETSC_TRUE
 
+  option%out_of_table = PETSC_FALSE
+  
+  option%simulation_mode = 'SUBSURFACE'
+  option%use_process_model = PETSC_FALSE
+  option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
+ 
   call OptionInitRealization(option)
 
 end subroutine OptionInitAll
@@ -330,7 +391,7 @@ subroutine OptionInitRealization(option)
   ! These variables should be initialized once at the beginning of every 
   ! PFLOTRAN realization or simulation of a single realization
     
-  option%fid_out = 0
+  option%fid_out = OUT_UNIT
 
   option%iflag = 0
   option%io_buffer = ''
@@ -340,20 +401,38 @@ subroutine OptionInitRealization(option)
   option%use_mc = PETSC_FALSE
   option%set_secondary_init_temp = PETSC_FALSE
   option%use_ice_new = PETSC_FALSE
+  option%set_secondary_init_conc = PETSC_FALSE
+  
+  option%update_flow_perm = PETSC_FALSE
   
   option%flowmode = ""
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
   option%nmechdof = 0
   option%nsec_cells = 0
+  option%use_th_freezing = PETSC_FALSE
+
 #ifdef SURFACE_FLOW
-   option%nsurfflowdof = 0
-   option%subsurf_surf_coupling = DECOUPLED
-   option%surface_flow_formulation = KINEMATIC_WAVE
-   option%surf_flow_dt = 0.d0
-   option%surf_flow_time =0.d0
-   option%surf_subsurf_coupling_time = 0.d0
-   option%surf_subsurf_coupling_flow_dt = 0.d0
+  option%nsurfflowdof = 0
+  option%subsurf_surf_coupling = DECOUPLED
+  option%surface_flow_formulation = KINEMATIC_WAVE
+  option%surf_flow_dt = 0.d0
+  option%surf_flow_time =0.d0
+  option%surf_subsurf_coupling_time = 0.d0
+  option%surf_subsurf_coupling_flow_dt = 0.d0
+  option%surf_initialize_flow_filename = ""
+  option%surf_restart_filename = ""
+  option%surf_restart_flag = PETSC_FALSE
+  option%surf_restart_time = -999.0
+#endif
+
+#ifdef GEOMECH
+  option%ngeomechdof = 0
+  option%n_stress_strain_dof = 0
+  option%geomech_time = 0.d0
+  option%geomech_subsurf_coupling = 0 
+  option%geomech_gravity(:) = 0.d0
+  option%geomech_gravity(3) = -9.8068d0    ! m/s^2
 #endif
 
   option%tranmode = ""
@@ -397,6 +476,8 @@ subroutine OptionInitRealization(option)
   option%temperature_change_limit = 0.d0
   option%stomp_norm = 0.d0
   option%check_stomp_norm = PETSC_FALSE
+  
+  option%infnorm_res_sec = 0.d0
   
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE
@@ -451,8 +532,13 @@ subroutine OptionInitRealization(option)
   
   option%numerical_derivatives_flow = PETSC_FALSE
   option%numerical_derivatives_rxn = PETSC_FALSE
+  option%numerical_derivatives_multi_coupling = PETSC_FALSE
   option%compute_statistics = PETSC_FALSE
   option%compute_mass_balance_new = PETSC_FALSE
+  option%store_flowrate = PETSC_FALSE
+#ifdef STORE_FLOWRATES
+  option%store_flowrate = PETSC_TRUE
+#endif
 
   option%use_touch_options = PETSC_FALSE
   option%overwrite_restart_transport = PETSC_FALSE
@@ -465,6 +551,8 @@ subroutine OptionInitRealization(option)
   option%tran_weight_t1 = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
+  option%dt = 0.d0
+  option%refactor_dt = 0.d0
   option%match_waypoint = PETSC_FALSE
 
   option%io_handshake_buffer_size = 0
@@ -474,19 +562,22 @@ subroutine OptionInitRealization(option)
   
   option%steady_state = PETSC_FALSE
   
-  option%itable=0
-  option%co2eos=EOS_SPAN_WAGNER
+  option%itable = 0
+  option%co2eos = EOS_SPAN_WAGNER
+  option%co2_database_filename = ''
 
 ! option%idt_switch = 1
   option%idt_switch = -1
 
   option%use_matrix_buffer = PETSC_FALSE
+  option%status = PROCEED 
   option%init_stage = PETSC_FALSE 
   option%force_newton_iteration = PETSC_FALSE
-
   option%mimetic = PETSC_FALSE
- 
   option%variables_swapped = PETSC_FALSE
+  option%print_explicit_primal_grid = PETSC_FALSE
+  option%print_explicit_dual_grid = PETSC_FALSE  
+  option%secondary_continuum_solver = 1
   
 end subroutine OptionInitRealization
 
@@ -532,9 +623,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr)
   if (option_found) option%flowmode = "thc"     
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thmc", &
-                           option_found, ierr)
-  if (option_found) option%flowmode = "thmc"     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)
@@ -544,12 +632,6 @@ subroutine OptionCheckCommandLine(option)
                            option_found, ierr)
   if (option_found) option%flowmode = "flash2"                           
  
- 
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
-                          temp_int,option_found, ierr)
-  if (option_found) option%id = temp_int
-
 end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !
@@ -785,6 +867,25 @@ end subroutine printMsgByRank2
  
 ! ************************************************************************** !
 !
+! printVerboseMsg: Prints the message from p0
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine printVerboseMsg(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  if (option%verbosity > 0) then
+    call printMsg(option,option%io_buffer)
+  endif
+  
+end subroutine printVerboseMsg
+
+! ************************************************************************** !
+!
 ! OptionCheckTouch: Users can steer the code by touching files.
 ! author: Glenn Hammond
 ! date: 03/04/08
@@ -935,6 +1036,264 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
   
 end subroutine OptionMeanVariance
 
+! ************************************************************************** !
+!
+! OptionInitMPI1: Initializes base MPI communicator
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine OptionInitMPI1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  call MPI_Init(ierr)
+  call OptionInitMPI2(option,MPI_COMM_WORLD)
+
+end subroutine OptionInitMPI1
+
+! ************************************************************************** !
+!
+! OptionInitMPI2: Initializes base MPI communicator
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine OptionInitMPI2(option,communicator)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscMPIInt :: communicator
+  PetscErrorCode :: ierr
+  
+  option%global_comm = communicator
+  call MPI_Comm_rank(communicator,option%global_rank, ierr)
+  call MPI_Comm_size(communicator,option%global_commsize,ierr)
+  call MPI_Comm_group(communicator,option%global_group,ierr)
+  option%mycomm = option%global_comm
+  option%myrank = option%global_rank
+  option%mycommsize = option%global_commsize
+  option%mygroup = option%global_group
+
+end subroutine OptionInitMPI2
+
+! ************************************************************************** !
+!
+! OptionInitPetsc: Initialization of PETSc.
+! author: Glenn Hammond
+! date: 06/07/13
+!
+! ************************************************************************** !
+subroutine OptionInitPetsc(option)
+
+  use Logging_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode :: ierr
+  
+  PETSC_COMM_WORLD = option%mycomm
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  
+  if (option%verbosity > 0) then 
+    call PetscLogBegin(ierr)
+    string = '-log_summary'
+    call PetscOptionsInsertString(string, ierr)
+  endif 
+
+#ifdef PROCESS_MODEL
+  call LoggingCreate()
+#endif
+
+end subroutine OptionInitPetsc
+
+! ************************************************************************** !
+!
+! OptionBeginTiming: Start outer timing.
+! author: Glenn Hammond
+! date: 06/07/13
+!
+! ************************************************************************** !
+subroutine OptionBeginTiming(option)
+
+  use Logging_module
+  
+  implicit none
+  
+#include "finclude/petsclog.h"
+  
+  type(option_type) :: option
+  
+  PetscLogDouble :: timex_wall
+  PetscErrorCode :: ierr
+  
+  call PetscTime(timex_wall, ierr)
+  option%start_time = timex_wall
+  
+end subroutine OptionBeginTiming
+
+! ************************************************************************** !
+!
+! OptionEndTiming: End timing.
+! author: Glenn Hammond
+! date: 06/07/13
+!
+! ************************************************************************** !
+subroutine OptionEndTiming(option)
+
+  use Logging_module
+  
+  implicit none
+  
+#include "finclude/petsclog.h"
+  
+  type(option_type) :: option
+  
+  PetscLogDouble :: timex_wall
+  PetscErrorCode :: ierr
+  
+  ! Final Time
+  call PetscTime(timex_wall, ierr)
+    
+  if (option%myrank == option%io_rank) then
+
+    if (option%print_to_screen) then
+      write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+        timex_wall-option%start_time, &
+        (timex_wall-option%start_time)/60.d0, &
+        (timex_wall-option%start_time)/3600.d0
+    endif
+    if (option%print_to_file) then
+      write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+        timex_wall-option%start_time, &
+        (timex_wall-option%start_time)/60.d0, &
+        (timex_wall-option%start_time)/3600.d0
+    endif
+  endif
+
+end subroutine OptionEndTiming
+
+! ************************************************************************** !
+!
+! OptionDivvyUpSimulations: Divides simulation in to multple simulations with
+!                           multiple input decks
+! author: Glenn Hammond
+! date: 06/06/13
+!
+! ************************************************************************** !
+subroutine OptionDivvyUpSimulations(option,filenames)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
+  
+  i = size(filenames) 
+  call OptionCreateProcessorGroups(option,i)
+  option%input_filename = filenames(option%mygroup_id)
+  i = index(option%input_filename,'.',PETSC_TRUE)
+  if (i > 1) then
+    i = i-1
+  else
+    ! for some reason len_trim doesn't work on MS Visual Studio in 
+    ! this location
+    i = len(trim(option%input_filename)) 
+  endif
+  option%global_prefix = option%input_filename(1:i)
+  write(string,*) option%mygroup_id
+  option%group_prefix = 'G' // trim(adjustl(string))
+  
+end subroutine OptionDivvyUpSimulations
+
+! ************************************************************************** !
+!
+! OptionCreateProcessorGroups: Splits MPI_COMM_WORLD into N separate
+!                              processor groups
+! author: Glenn Hammond
+! date: 08/11/09
+!
+! ************************************************************************** !
+subroutine OptionCreateProcessorGroups(option,num_groups)
+
+  implicit none
+
+  type(option_type) :: option
+  PetscInt :: num_groups
+
+  PetscInt :: local_commsize
+  PetscInt :: offset, delta, remainder
+  PetscInt :: igroup
+  PetscMPIInt :: mycolor_mpi, mykey_mpi
+  PetscErrorCode :: ierr
+
+  local_commsize = option%global_commsize / num_groups
+  remainder = option%global_commsize - num_groups * local_commsize
+  offset = 0
+  do igroup = 1, num_groups
+    delta = local_commsize
+    if (igroup < remainder) delta = delta + 1
+    if (option%global_rank >= offset .and. &
+        option%global_rank < offset + delta) exit
+    offset = offset + delta
+  enddo
+  mycolor_mpi = igroup
+  option%mygroup_id = igroup
+  mykey_mpi = option%global_rank - offset
+  call MPI_Comm_split(MPI_COMM_WORLD,mycolor_mpi,mykey_mpi,option%mycomm,ierr)
+  call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
+
+  call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
+  call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
+
+end subroutine OptionCreateProcessorGroups
+
+! ************************************************************************** !
+!
+! OptionFinalize: End the simulation.
+! author: Glenn Hammond
+! date: 06/07/13
+!
+! ************************************************************************** !
+subroutine OptionFinalize(option)
+
+  use Logging_module
+
+  implicit none
+  
+  type(option_type), pointer :: option
+  
+  PetscErrorCode :: ierr
+  
+  ! pushed in FinalizeRun()
+  call PetscLogStagePop(ierr)
+#ifdef PROCESS_MODEL
+  call LoggingDestroy()
+#endif
+  call PetscOptionsSetValue('-options_left','no',ierr)
+  ! list any PETSc objects that have not been freed - for debugging
+  call PetscOptionsSetValue('-objects_left','yes',ierr)
+  call MPI_Barrier(option%global_comm,ierr)
+  call OptionDestroy(option)
+  call PetscFinalize(ierr)
+  call MPI_Finalize(ierr)
+  call exit(86)
+  
+end subroutine OptionFinalize
+  
 ! ************************************************************************** !
 !
 ! OptionDestroy: Deallocates an option

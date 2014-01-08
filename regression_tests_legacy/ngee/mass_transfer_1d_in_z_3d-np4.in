@@ -1,0 +1,161 @@
+:Description: 1D soil layer model for testing coupling with mass transfer
+:             source/sink.
+
+PROC 2 2 1
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS
+    5
+    13
+    21
+    29
+    37
+  /
+END
+
+:=========================== flow mode ========================================
+: Uniform velocity (see below). No flow mode specified.
+
+:=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+  /
+  IMMOBILE_SPECIES
+    A(im)
+    B(im)
+    C(im)
+  /
+  DATABASE ./ABC_database.dat
+  ACTIVITY_COEFFICIENTS TIMESTEP
+  OUTPUT
+    all
+  /
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER ITERATIVE
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 2 2 10
+  DXYZ
+    1.d0
+    1.d0
+    0.1d0 0.2d0 0.3d0 0.4d0 0.5d0 0.6d0 0.7d0 0.8d0 0.9d0 1.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 0.d0
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+:=========================== output options ===================================
+OUTPUT
+:  PERIODIC TIME 0.25d0 y
+:  FORMAT TECPLOT POINT
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 5.d-2 y
+END
+
+:=========================== regions ==========================================
+REGION all
+  BLOCK 1 2 1 2 1 10
+END
+
+REGION bottom
+  FACE bottom
+  BLOCK 1 2 1 2 1 1 
+END
+
+REGION top
+  FACE top
+  BLOCK 1 2 1 2 1 10
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION background_conc
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial_constraint
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial_constraint
+  CONCENTRATIONS
+    A(aq)  1.d-4      F
+  /
+  IMMOBILE
+    A(im)  1.d-6
+    B(im)  1.d-10
+    C(im)  1.d-5
+  /
+END
+
+:=========================== datasets =========================================
+DATASET GLOBAL A(im)
+  FILENAME mass_transfer_1d_in_z_3d_data.h5
+  HDF5_DATASET_NAME A(im)
+END
+
+DATASET GLOBAL B(im)
+  FILENAME mass_transfer_1d_in_z_3d_data.h5
+  HDF5_DATASET_NAME B(im)
+END
+
+DATASET GLOBAL C(im)
+  FILENAME mass_transfer_1d_in_z_3d_data.h5
+  HDF5_DATASET_NAME C(im)
+END
+
+:=========================== mass transfer ====================================
+RT_MASS_TRANSFER A(im)
+  IDOF 2
+  DATASET A(im)
+END
+
+RT_MASS_TRANSFER B(im)
+  IDOF 3
+  DATASET B(im)
+END
+
+RT_MASS_TRANSFER C(im)
+  IDOF 4
+  DATASET C(im)
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION background_conc
+  REGION all
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+

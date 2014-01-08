@@ -6,11 +6,13 @@ module Strata_module
   use Surface_Material_module
 #endif
  
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
  
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
  
   type, public :: strata_type
@@ -160,7 +162,7 @@ end subroutine StrataInitList
 ! ************************************************************************** !
 subroutine StrataRead(strata,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -176,7 +178,7 @@ subroutine StrataRead(strata,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if (InputCheckExit(input,option)) exit  
 
@@ -196,7 +198,7 @@ subroutine StrataRead(strata,input,option)
           call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
           call InputErrorMsg(input,option,'material property name','STRATA')
         endif
-        strata%material_property_name = string
+        strata%material_property_name = trim(string)
         strata%material_property_filename = string
       case('INACTIVE')
         strata%active = PETSC_FALSE

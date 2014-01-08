@@ -2,16 +2,18 @@ module Region_module
  
   use Geometry_module
   
+  use PFLOTRAN_Constants_module
+
   implicit none
 
   private
 
-#include "definitions.h"
+#include "finclude/petscsys.h"
 
   PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2
 
-  type, public :: block_type
+  type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
     type(block_type), pointer :: next
   end type block_type
@@ -234,6 +236,8 @@ end function RegionCreateWithList
 ! ************************************************************************** !
 function RegionCreateWithRegion(region)
 
+  use Unstructured_Cell_module
+
   implicit none
   
   type(region_type), pointer :: RegionCreateWithRegion
@@ -374,9 +378,10 @@ end subroutine RegionAddToList
 ! ************************************************************************** !
 subroutine RegionRead(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
+  use Structured_Grid_module
   
   implicit none
   
@@ -389,7 +394,7 @@ subroutine RegionRead(region,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     
@@ -403,7 +408,7 @@ subroutine RegionRead(region,input,option)
         call InputReadInt(input,option,region%i1) 
         if (InputError(input)) then
           input%ierr = 0
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'REGION')
           call InputReadInt(input,option,region%i1) 
         endif
@@ -423,7 +428,7 @@ subroutine RegionRead(region,input,option)
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
         if (InputError(input)) then
           input%ierr = 0
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,'REGION')
           call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x)
         endif
@@ -481,7 +486,7 @@ subroutine RegionRead(region,input,option)
           case('TOP')
             region%iface = TOP_FACE
         end select
-    case('GRID','SURF_GRID')
+      case('GRID','SURF_GRID')
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'GRID','REGION')
         call StringToUpper(word)
@@ -493,7 +498,7 @@ subroutine RegionRead(region,input,option)
           case default
             option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
           call printErrMsg(option)
-      end select
+        end select
       case default
         option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
         call printErrMsg(option)
@@ -511,7 +516,7 @@ end subroutine RegionRead
 ! ************************************************************************** !
 subroutine RegionReadFromFilename(region,option,filename)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   
@@ -537,10 +542,11 @@ end subroutine RegionReadFromFilename
 ! ************************************************************************** !
 subroutine RegionReadFromFileId(region,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use Utility_module
   use Logging_module
+  use Unstructured_Cell_module
   
   implicit none
   
@@ -607,7 +613,7 @@ subroutine RegionReadFromFileId(region,input,option)
   continuation_flag = PETSC_TRUE
   do
     if (.not.continuation_flag) exit
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     continuation_flag = PETSC_FALSE
     if (index(input%buf,backslash) > 0) &
@@ -633,7 +639,7 @@ subroutine RegionReadFromFileId(region,input,option)
   !  3) Contains vertex ids that make up the face: MORE than two entries per
   !     line
   count = 0
-  call InputReadFlotranString(input, option)
+  call InputReadPflotranString(input, option)
   do 
     call InputReadInt(input, option, temp_int)
     if (InputError(input)) exit
@@ -651,7 +657,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (.not.InputError(input)) then
@@ -691,7 +697,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input, option)
+      call InputReadPflotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
       if (InputError(input)) exit
@@ -743,7 +749,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Read the data
     do
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       if (InputError(input)) exit
       call InputReadInt(input,option,temp_int)
       if (InputError(input)) exit
@@ -809,7 +815,7 @@ subroutine RegionReadFromFileId(region,input,option)
 #if 0  
   count = 1
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     call InputReadInt(input,option,temp_int)
     if (.not.InputError(input)) then
@@ -846,7 +852,7 @@ end subroutine RegionReadFromFileId
 ! ************************************************************************** !
 subroutine RegionReadSideSet(sideset,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -857,8 +863,8 @@ subroutine RegionReadSideSet(sideset,filename,option)
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: num_faces_local_save
   PetscInt :: num_faces_local
   PetscInt :: num_to_read
@@ -888,15 +894,15 @@ subroutine RegionReadSideSet(sideset,filename,option)
 ! type vert1 vert2 ... vertn  ! for face num_faces
 ! -----------------------------------------------------------------
 
-  card = 'Unstructured Sideset'
+  hint = 'Unstructured Sideset'
 
-  call InputReadFlotranString(input,option)
+  call InputReadPflotranString(input,option)
   string = 'unstructured sideset'
-  call InputReadStringErrorMsg(input,option,card)  
+  call InputReadStringErrorMsg(input,option,hint)  
 
   ! read num_faces
   call InputReadInt(input,option,sideset%nfaces)
-  call InputErrorMsg(input,option,'number of faces',card)
+  call InputErrorMsg(input,option,'number of faces',hint)
 
   ! divide faces across ranks
   num_faces_local = sideset%nfaces/option%mycommsize 
@@ -923,10 +929,10 @@ subroutine RegionReadSideSet(sideset,filename,option)
 
       do iface = 1, num_to_read
         ! read in the vertices defining the cell face
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadPflotranString(input,option)
+        call InputReadStringErrorMsg(input,option,hint)  
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'face type',card)
+        call InputErrorMsg(input,option,'face type',hint)
         call StringToUpper(word)
         select case(word)
           case('Q')
@@ -940,7 +946,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
         end select
         do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,iface))
-          call InputErrorMsg(input,option,'vertex id',card)
+          call InputErrorMsg(input,option,'vertex id',hint)
         enddo
       enddo
       ! if the faces reside on io_rank
@@ -1000,7 +1006,7 @@ end subroutine RegionReadSideSet
 ! ************************************************************************** !
 subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -1012,8 +1018,8 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
   type(option_type) :: option
   
   type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: card, word
+  character(len=MAXSTRINGLENGTH) :: string, hint
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: fileid
   
   PetscInt :: num_connections
@@ -1043,18 +1049,18 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 ! -----------------------------------------------------------------
 
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
 
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
-    card = trim(word)
+    hint = trim(word)
   
     select case(word)
       case('CONNECTIONS')
-        card = 'Explicit Unstructured Grid CONNECTIONS'
+        hint = 'Explicit Unstructured Grid CONNECTIONS'
         call InputReadInt(input,option,num_connections)
-        call InputErrorMsg(input,option,'number of connections',card)
+        call InputErrorMsg(input,option,'number of connections',hint)
         
         allocate(cell_ids(num_connections))
         cell_ids = 0
@@ -1067,22 +1073,22 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
           explicit_faceset%face_centroids(iconn)%z = 0.d0
         enddo
         do iconn = 1, num_connections
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,hint)  
           call InputReadInt(input,option,cell_ids(iconn))
-          call InputErrorMsg(input,option,'cell id',card)
+          call InputErrorMsg(input,option,'cell id',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_centroids(iconn)%x)
-          call InputErrorMsg(input,option,'face x coordinate',card)
+          call InputErrorMsg(input,option,'face x coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_centroids(iconn)%y)
-          call InputErrorMsg(input,option,'face y coordinate',card)
+          call InputErrorMsg(input,option,'face y coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_centroids(iconn)%z)
-          call InputErrorMsg(input,option,'face z coordinate',card)
+          call InputErrorMsg(input,option,'face z coordinate',hint)
           call InputReadDouble(input,option, &
                                explicit_faceset%face_areas(iconn))
-          call InputErrorMsg(input,option,'face area',card)
+          call InputErrorMsg(input,option,'face area',hint)
         enddo
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
