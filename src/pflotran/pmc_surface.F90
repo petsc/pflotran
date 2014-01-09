@@ -31,14 +31,14 @@ module PMC_Surface_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 function PMCSurfaceCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   implicit none
   
@@ -56,14 +56,14 @@ function PMCSurfaceCreate()
 end function PMCSurfaceCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   implicit none
   
@@ -79,14 +79,14 @@ subroutine PMCSurfaceInit(this)
 end subroutine PMCSurfaceInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Timestepper_Base_class
   use Output_module, only : Output
@@ -251,14 +251,14 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 end subroutine PMCSurfaceRunToTime
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceAccumulateAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_module
@@ -292,14 +292,14 @@ subroutine PMCSurfaceAccumulateAuxData(this)
 end subroutine PMCSurfaceAccumulateAuxData
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceGetAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_module
@@ -369,15 +369,15 @@ subroutine PMCSurfaceGetAuxData(this)
 end subroutine PMCSurfaceGetAuxData
 
 ! ************************************************************************** !
-!> This routine extracts data from surface flow model and stores it sim-aux,
-!! which will be required by the subsurface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceSetAuxData(this)
+  ! 
+  ! This routine extracts data from surface flow model and stores it sim-aux,
+  ! which will be required by the subsurface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -545,15 +545,15 @@ subroutine PMCSurfaceSetAuxData(this)
 end subroutine PMCSurfaceSetAuxData
 
 ! ************************************************************************** !
-!> This routine is called to set values in sim_aux PETSc vectors after restart
-!! checkpoint files is read.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/23/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceGetAuxDataAfterRestart(this)
+  ! 
+  ! This routine is called to set values in sim_aux PETSc vectors after restart
+  ! checkpoint files is read.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/23/13
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_Aux_module
@@ -678,14 +678,14 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 end subroutine PMCSurfaceGetAuxDataAfterRestart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 recursive subroutine PMCSurfaceFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Option_module
   
@@ -701,14 +701,14 @@ recursive subroutine PMCSurfaceFinalizeRun(this)
 end subroutine PMCSurfaceFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 recursive subroutine Destroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Utility_module, only: DeallocateArray
   use Option_module

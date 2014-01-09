@@ -29,13 +29,14 @@ module Output_HDF5_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputHDF5Init: Initializes module variables for HDF5 output
-! author: Glenn Hammond
-! date: 01/16/13
-!
-! ************************************************************************** !
+
 subroutine OutputHDF5Init(num_steps)
+  ! 
+  ! Initializes module variables for HDF5 output
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/13
+  ! 
 
   use Option_module
 
@@ -52,13 +53,14 @@ subroutine OutputHDF5Init(num_steps)
 end subroutine OutputHDF5Init
 
 ! ************************************************************************** !
-!
-! OutputHDF5: Print to HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputHDF5(realization_base,var_list_type)
+  ! 
+  ! Print to HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -450,14 +452,14 @@ subroutine OutputHDF5(realization_base,var_list_type)
 end subroutine OutputHDF5
 
 ! ************************************************************************** !
-!> This subroutine prints a HDF5 file.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/31/12
-! ************************************************************************** !
+
 subroutine OutputHDF5UGrid(realization_base)
+  ! 
+  ! This subroutine prints a HDF5 file.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/31/12
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -768,14 +770,14 @@ subroutine OutputHDF5UGrid(realization_base)
 end subroutine OutputHDF5UGrid
 
 ! ************************************************************************** !
-!> This routine writes unstructured grid data in HDF5 XDMF format.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/2012
-! ************************************************************************** !
+
 subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
+  ! 
+  ! This routine writes unstructured grid data in HDF5 XDMF format.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/2012
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -1094,14 +1096,15 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 end subroutine OutputHDF5UGridXDMF
 
 ! ************************************************************************** !
-!
-! OutputHDF5UGridXDMFExplicit: This subroutine prints the explicit
-! unstructured grid information in xdmf format
-! Author: Satish Karra, LANL
-! Date: 07/17/2013
-!
-! ************************************************************************** !
+
 subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
+  ! 
+  ! This subroutine prints the explicit
+  ! unstructured grid information in xdmf format
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/17/2013
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -1412,16 +1415,16 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
 end subroutine OutputHDF5UGridXDMFExplicit
 
 ! ************************************************************************** !
-!> This subroutine creates an ID for HDF5 filename for:
-!! - Instantaneous, or
-!! - Temporally averaged variables.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/10/13
-! ************************************************************************** !  
+
 function OutputHDF5FilenameID(output_option,option,var_list_type)
+  ! 
+  ! This subroutine creates an ID for HDF5 filename for:
+  ! - Instantaneous, or
+  ! - Temporally averaged variables.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/10/13
+  ! 
 
   use Option_module
   
@@ -1460,14 +1463,16 @@ function OutputHDF5FilenameID(output_option,option,var_list_type)
 end function OutputHDF5FilenameID
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!
-! WriteHDF5FluxVelocities: Print flux velocities to HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_id)
+  ! 
+  ! Print flux velocities to HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -1637,13 +1642,14 @@ subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_i
 end subroutine WriteHDF5FluxVelocities
 
 ! ************************************************************************** !
-!
-! WriteHDF5Coordinates: Writes structured coordinates to HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
+  ! 
+  ! Writes structured coordinates to HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use hdf5
   use Option_module
@@ -1742,14 +1748,14 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
 end subroutine WriteHDF5Coordinates
 
 ! ************************************************************************** !
-!> This subroutine writes unstructured coordinates to HDF5 file
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/31/12
-! ************************************************************************** !
+
 subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
+  ! 
+  ! This subroutine writes unstructured coordinates to HDF5 file
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/31/12
+  ! 
 
   use hdf5
   use Grid_module
@@ -2052,14 +2058,14 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 end subroutine WriteHDF5CoordinatesUGrid
 
 ! ************************************************************************** !
-!> This routine writes unstructured coordinates to HDF5 file in XDMF format
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/2012
-! ************************************************************************** !
+
 subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
+  ! 
+  ! This routine writes unstructured coordinates to HDF5 file in XDMF format
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/2012
+  ! 
 
   use hdf5
   use Realization_Base_class, only : realization_base_type
@@ -2582,14 +2588,15 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 end subroutine WriteHDF5CoordinatesUGridXDMF
 
 ! ************************************************************************** !
-!
-! WriteHDF5CoordinatesUGridXDMFExplicit: Writes the coordinates of
-! explicit grid to HDF5 file
-! Author: Satish Karra, LANL
-! Date: 07/17/2013
-!
-! ************************************************************************** !
+
 subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id)
+  ! 
+  ! Writes the coordinates of
+  ! explicit grid to HDF5 file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/17/2013
+  ! 
 
   use hdf5
   use Realization_Base_class, only : realization_base_type
@@ -2860,14 +2867,14 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
 end subroutine WriteHDF5CoordinatesUGridXDMFExplicit
 
 ! ************************************************************************** !
-!> This routine writes (mass/energy) flowrate for unstructured grid.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/19/2013
-! ************************************************************************** !
+
 subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type)
+  ! 
+  ! This routine writes (mass/energy) flowrate for unstructured grid.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/19/2013
+  ! 
 
   use hdf5
   use Realization_Base_class, only : realization_base_type

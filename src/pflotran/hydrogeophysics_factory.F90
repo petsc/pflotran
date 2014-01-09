@@ -15,13 +15,14 @@ module Hydrogeophysics_Factory_module
 contains
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsInitialize: Sets up hydrogeophysics simulation 
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsInitialize(simulation_base,option)
+  ! 
+  ! Sets up hydrogeophysics simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   use Hydrogeophysics_Wrapper_module
@@ -289,14 +290,15 @@ print *, option%myrank, int_array
 end subroutine HydrogeophysicsInitialize
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsInitializePostPetsc: Sets up hydrogeophysics simulation 
-!                                     framework after to PETSc initialization
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsInitPostPetsc(simulation, option)
+  ! 
+  ! HydrogeophysicsInitializePostPetsc: Sets up hydrogeophysics simulation
+  ! framework after to PETSc initialization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Simulation_module
   use Subsurface_Factory_module
@@ -331,13 +333,14 @@ subroutine HydrogeophysicsInitPostPetsc(simulation, option)
 end subroutine HydrogeophysicsInitPostPetsc
 
 ! ************************************************************************** !
-!
-! HydrogeoInitCommandLineSettings: Initializes hydrogeophysics settings
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeoInitCommandLineSettings(option)
+  ! 
+  ! Initializes hydrogeophysics settings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   use Input_Aux_module

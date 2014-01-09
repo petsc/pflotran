@@ -40,13 +40,14 @@ module THC_module
 contains
 
 ! ************************************************************************** !
-!
-! THCTimeCut: Resets arrays for time step cut
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
  
   use Realization_class
   use Option_module
@@ -68,15 +69,13 @@ subroutine THCTimeCut(realization)
  
 end subroutine THCTimeCut
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! THCSetup: 
-! author: ???
-! date: 02/22/08
-!
-! ************************************************************************** !
 subroutine THCSetup(realization)
+  ! 
+  ! Author: ???
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -96,15 +95,16 @@ subroutine THCSetup(realization)
   call THCSetPlotVariables(realization)
 
 end subroutine THCSetup
-  
+
 ! ************************************************************************** !
-!
-! THCSetupPatch: Creates arrays for auxiliary variables
-! author: ???
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine THCSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: ???
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -332,13 +332,14 @@ subroutine THCSetupPatch(realization)
 end subroutine THCSetupPatch
 
 ! ************************************************************************** !
-!
-! THCCheckUpdatePre: Checks update prior to update
-! author: Satish Karra, LANL
-! date: 08/02/12
-!
-! ************************************************************************** !
+
 subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
+  ! 
+  ! Checks update prior to update
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 08/02/12
+  ! 
 
   use Realization_class
   use Grid_module
@@ -485,14 +486,15 @@ subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
 end subroutine THCCheckUpdatePre
 
 ! ************************************************************************** !
-!
-! THCCheckUpdatePost: Checks update after each update
-! author: Satish Karra, LANL
-! date: 07/25/12
-!
-! ************************************************************************** !
+
 subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                    P1_changed,realization,ierr)
+  ! 
+  ! Checks update after each update
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/25/12
+  ! 
 
   use Realization_class
   use Grid_module
@@ -592,14 +594,15 @@ subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 end subroutine THCCheckUpdatePost
 
 ! ************************************************************************** !
-!
-! THComputeMassBalance: 
-!                        
-! author: Jitendra Kumar 
-! date: 07/21/2010
-! Adapted from RichardsComputeMassBalance: need to be checked
-! ************************************************************************** !
+
 subroutine THCComputeMassBalance(realization, mass_balance)
+  ! 
+  ! THComputeMassBalance:
+  ! Adapted from RichardsComputeMassBalance: need to be checked
+  ! 
+  ! Author: Jitendra Kumar
+  ! Date: 07/21/2010
+  ! 
 
   use Realization_class
   use Patch_module
@@ -622,14 +625,15 @@ subroutine THCComputeMassBalance(realization, mass_balance)
 end subroutine THCComputeMassBalance    
 
 ! ************************************************************************** !
-!
-! THComputeMassBalancePatch: 
-!                        
-! author: Jitendra Kumar 
-! date: 07/21/2010
-! Adapted from RichardsComputeMassBalancePatch: need to be checked
-! ************************************************************************** !
+
 subroutine THCComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! THComputeMassBalancePatch:
+  ! Adapted from RichardsComputeMassBalancePatch: need to be checked
+  ! 
+  ! Author: Jitendra Kumar
+  ! Date: 07/21/2010
+  ! 
  
   use Realization_class
   use Option_module
@@ -682,13 +686,14 @@ subroutine THCComputeMassBalancePatch(realization,mass_balance)
 end subroutine THCComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! THCZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra, LANL
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine THCZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 12/13/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -729,13 +734,14 @@ subroutine THCZeroMassBalDeltaPatch(realization)
 end subroutine THCZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! THCUpdateMassBalancePatch: Updates mass balance
-! author: ???
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine THCUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: ???
+  ! Date: 12/13/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -780,14 +786,15 @@ subroutine THCUpdateMassBalancePatch(realization)
 end subroutine THCUpdateMassBalancePatch
 
 ! ************************************************************************** !
-!
-! THCUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the THC problem
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCUpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the THC problem
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -807,14 +814,15 @@ subroutine THCUpdateAuxVars(realization)
 end subroutine THCUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! THCUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the THC problem
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCUpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the THC problem
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1016,13 +1024,14 @@ subroutine THCUpdateAuxVarsPatch(realization)
 end subroutine THCUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! THCInitializeTimestep: Update data in module prior to time step
-! author: ???
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine THCInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: ???
+  ! Date: 02/20/08
+  ! 
 
   use Realization_class
   
@@ -1035,13 +1044,14 @@ subroutine THCInitializeTimestep(realization)
 end subroutine THCInitializeTimestep
 
 ! ************************************************************************** !
-!
-! THCUpdateSolution: Updates data in module after a successful time step
-! author: ???
-! date: 02/13/08
-!
-! ************************************************************************** !
+
 subroutine THCUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: ???
+  ! Date: 02/13/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -1071,14 +1081,15 @@ subroutine THCUpdateSolution(realization)
 end subroutine THCUpdateSolution
 
 ! ************************************************************************** !
-!
-! THCUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step
-! author: Satish Karra, LANL
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine THCUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 12/13/11
+  ! 
 
   use Realization_class
     
@@ -1093,14 +1104,15 @@ subroutine THCUpdateSolutionPatch(realization)
 end subroutine THCUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! THCUpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCUpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1120,14 +1132,15 @@ subroutine THCUpdateFixedAccumulation(realization)
 end subroutine THCUpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! THCUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1241,13 +1254,14 @@ subroutine THCUpdateFixedAccumPatch(realization)
 end subroutine THCUpdateFixedAccumPatch
 
 ! ************************************************************************** !
-!
-! THCNumericalJacobianTest: Computes the a test numerical jacobian
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCNumericalJacobianTest(xx,realization)
+  ! 
+  ! Computes the a test numerical jacobian
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1332,16 +1346,17 @@ subroutine THCNumericalJacobianTest(xx,realization)
 end subroutine THCNumericalJacobianTest
 
 ! ************************************************************************** !
-!
-! THCAccumDerivative: Computes derivatives of the accumulation 
-!                                 term for the Jacobian
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
                               rock_dencpr,option,sat_func, &
                               vol_frac_prim,J)
+  ! 
+  ! Computes derivatives of the accumulation
+  ! term for the Jacobian
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
   use Saturation_Function_module
@@ -1568,15 +1583,16 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 end subroutine THCAccumDerivative
 
 ! ************************************************************************** !
-!
-! THCAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
                            rock_dencpr,option,vol_frac_prim,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
   
@@ -1649,13 +1665,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
 end subroutine THCAccumulation
 
 ! ************************************************************************** !
-!
-! THCFluxDerivative: Computes the derivatives of the internal flux terms
-!                         for the Jacobian
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** ! 
+
 subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              sir_up,dd_up,perm_up,Dk_up, &
                              aux_var_dn,global_aux_var_dn,por_dn,tor_dn, &
@@ -1666,6 +1676,13 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                              Jup,Jdn)
+  ! 
+  ! Computes the derivatives of the internal flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
                              
   use Option_module 
   use Saturation_Function_module             
@@ -2251,12 +2268,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 end subroutine THCFluxDerivative
 
 ! ************************************************************************** !
-!
-! THCFlux: Computes the internal flux terms for the residual
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** ! 
+
 subroutine THCFlux(aux_var_up,global_aux_var_up, &
                   por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                   aux_var_dn,global_aux_var_dn, &
@@ -2266,6 +2278,12 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                   Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
                   
   use Option_module                              
   
@@ -2449,19 +2467,20 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
 end subroutine THCFlux
 
 ! ************************************************************************** !
-!
-! THCBCFluxDerivative: Computes the derivatives of the boundary flux 
-!                           terms for the Jacobian
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                               aux_var_up,global_aux_var_up, &
                               aux_var_dn,global_aux_var_dn, &
                               por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                               area,dist_gravity,option, &
                               sat_func_dn,Diff_dn,Jdn)
+  ! 
+  ! Computes the derivatives of the boundary flux
+  ! terms for the Jacobian
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
   use Option_module
   use Saturation_Function_module
   
@@ -2867,17 +2886,18 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
 end subroutine THCBCFluxDerivative
 
 ! ************************************************************************** !
-!
-! THCBCFlux: Computes the  boundary flux terms for the residual
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     aux_var_dn,global_aux_var_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
                     Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
   use Option_module
    
   use EOS_Water_module
@@ -3076,13 +3096,14 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
 end subroutine THCBCFlux
 
 ! ************************************************************************** !
-!
-! THCResidual: Computes the residual equation 
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3130,13 +3151,14 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
 end subroutine THCResidual
 
 ! ************************************************************************** !
-!
-! THCResidualPatch: Computes the residual equation at patch level
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCResidualPatch(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation at patch level
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   
 
@@ -3615,13 +3637,14 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 end subroutine THCResidualPatch
 
 ! ************************************************************************** !
-!
-! THCJacobian: Computes the Jacobian
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3687,13 +3710,14 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine THCJacobian
 
 ! ************************************************************************** !
-!
-! THCJacobianPatch: Computes the Jacobian
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
        
   
 
@@ -4167,13 +4191,14 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 end subroutine THCJacobianPatch
 
 ! ************************************************************************** !
-!
-! THCCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine THCCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
 
   use Patch_module
   use Grid_module
@@ -4267,13 +4292,14 @@ subroutine THCCreateZeroArray(patch,option)
 end subroutine THCCreateZeroArray
 
 ! ************************************************************************** !
-!
-! THCMaxChange: Computes the maximum change in the solution vector
-! author: ???
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine THCMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: ???
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -4302,13 +4328,14 @@ subroutine THCMaxChange(realization)
 end subroutine THCMaxChange
 
 ! ************************************************************************** !
-!
-! THCResidualToMass: Computes mass balance from residual equation
-! author: ???
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine THCResidualToMass(realization)
+  ! 
+  ! Computes mass balance from residual equation
+  ! 
+  ! Author: ???
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -4364,14 +4391,15 @@ subroutine THCResidualToMass(realization)
 end subroutine THCResidualToMass
 
 ! ************************************************************************** !
-!
-! THCLiteGetTecplotHeader: Returns THC contribution to 
-!                               Tecplot file header
-! author: ???
-! date: 02/13/08
-!
-! ************************************************************************** !
+
 function THCGetTecplotHeader(realization,icolumn)
+  ! 
+  ! THCLiteGetTecplotHeader: Returns THC contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: ???
+  ! Date: 02/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -4490,13 +4518,14 @@ function THCGetTecplotHeader(realization,icolumn)
 end function THCGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! THCSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine THCSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -4608,19 +4637,18 @@ subroutine THCSetPlotVariables(realization)
 end subroutine THCSetPlotVariables
 
 ! ************************************************************************** !
-! 
-! THCComputeGradient: Computes the gradient of temperature (for now) using
-! least square fit of values from neighboring cells
-! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
-! for incompressible linear elasticity, CMAME
-! Author: Satish Karra, LANL
-! Date: 2/20/12
-!
-! ************************************************************************** !
-
 
 subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
                               option) 
+  ! 
+  ! Computes the gradient of temperature (for now) using
+  ! least square fit of values from neighboring cells
+  ! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method
+  ! for incompressible linear elasticity, CMAME
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 2/20/12
+  ! 
 
 
   use Grid_module
@@ -4672,18 +4700,18 @@ subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
   
 end subroutine THCComputeGradient
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! THCSecondaryHeat: Calculates the source term contribution due to secondary
-! continuum in the primary continuum residual 
-! author: Satish Karra, LANL
-! date: 06/2/12
-!
-! ************************************************************************** !
 subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
                             therm_conductivity,dencpr, &
                             option,res_heat)
+  ! 
+  ! Calculates the source term contribution due to secondary
+  ! continuum in the primary continuum residual
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/2/12
+  ! 
                             
   use Option_module 
   use Global_Aux_module
@@ -4768,17 +4796,18 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
 end subroutine THCSecondaryHeat
 
 ! ************************************************************************** !
-!
-! THCSecondaryHeatJacobian: Calculates the source term jacobian contribution 
-! due to secondary continuum in the primary continuum residual 
-! author: Satish Karra, LANL
-! date: 06/6/12
-!
-! ************************************************************************** !
+
 subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                                     therm_conductivity, &
                                     dencpr, &
                                     option,jac_heat)
+  ! 
+  ! Calculates the source term jacobian contribution
+  ! due to secondary continuum in the primary continuum residual
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/6/12
+  ! 
                                     
   use Option_module 
   use Global_Aux_module
@@ -4855,13 +4884,14 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
 end subroutine THCSecondaryHeatJacobian                                  
 
 ! ************************************************************************** !
-!
-! THCDestroy: Deallocates variables associated with Richard
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine THCDestroy(patch)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   use Patch_module
 

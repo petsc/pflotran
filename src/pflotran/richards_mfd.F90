@@ -36,7 +36,7 @@ module Richards_MFD_module
 contains
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine RichardsCheckMassBalancePatch(realization)
 
   use Connection_module
@@ -145,13 +145,14 @@ subroutine RichardsCheckMassBalancePatch(realization)
 end subroutine RichardsCheckMassBalancePatch
 
 ! ************************************************************************** !
-!
-! RichardsUpdateCellPressure: Computes cell-centered pressures 
-! author: Daniil Svyatskiy
-! date: 12/01/10
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateCellPressure(realization)
+  ! 
+  ! Computes cell-centered pressures
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 12/01/10
+  ! 
 
   use Realization_class
 
@@ -165,17 +166,13 @@ subroutine RichardsUpdateCellPressure(realization)
 end subroutine RichardsUpdateCellPressure 
 
 ! ! ************************************************************************** !
-! !
-! ! RichardsInitialPressureReconstructionPatch: Computes cell-centered pressures and 
-! ! author: Daniil Svyatskiy
-! ! date: 12/01/10
-! !
-! ! ************************************************************************** !
-! 
 ! 
 ! subroutine RichardsInitialPressureReconstructionPatch(realization)
-! 
-! 
+! !
+! ! Computes cell-centered pressures
+! ! Author: Daniil Svyatskiy
+! ! Date: 12/01/10
+! !
 !   use Realization_class
 !   use Discretization_module
 !   use Patch_module
@@ -304,14 +301,14 @@ end subroutine RichardsUpdateCellPressure
 ! end subroutine RichardsInitialPressureReconstructionPatch
 
 ! ************************************************************************** !
-!
-! RichardsUpdateCellPressurePatch: Computes cell-centered pressures 
-! author: Daniil Svyatskiy
-! date: 12/01/10
-!
-! ************************************************************************** !
 
 subroutine RichardsUpdateCellPressurePatch(realization)
+  ! 
+  ! Computes cell-centered pressures
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 12/01/10
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -419,15 +416,15 @@ subroutine RichardsUpdateCellPressurePatch(realization)
 end subroutine RichardsUpdateCellPressurePatch
 
 ! ************************************************************************** !
-!
-! RichardsUpdateAuxVarsPatchMFDLP: Computes  updates the auxiliary variables associated with 
-!                        the Richards problem for LP formulation
-! author: Daniil Svyatskiy
-! date: 07/29/10
-!
-! ************************************************************************** !
 
 subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
+  ! 
+  ! Computes  updates the auxiliary variables associated with
+  ! the Richards problem for LP formulation
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 07/29/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -552,13 +549,14 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
 end subroutine RichardsUpdateAuxVarsPatchMFDLP
 
 ! ************************************************************************** !
-!
-! RichardsResidualMFD: Computes the residual equation for MFD discretization
-! author: Daniil Svyatskiy
-! date: 05/26/10
-!
-! ************************************************************************** !
+
 subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation for MFD discretization
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 05/26/10
+  ! 
 
   use Logging_module
   use Realization_class
@@ -660,9 +658,8 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   
 end subroutine RichardsResidualMFD
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
 subroutine RichardsResidualMFDLP(snes,xx,r,realization,ierr)
 
 use Logging_module
@@ -781,14 +778,15 @@ use Logging_module
 end subroutine RichardsResidualMFDLP
 
 ! ************************************************************************** !
-!
-! RichardsResidualPatchMFD1: Computes flux and accumulation 
-!   terms of the residual equation 
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes flux and accumulation
+  ! terms of the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   
   use Logging_module
@@ -967,14 +965,15 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 end subroutine RichardsResidualPatchMFD1
 
 ! ************************************************************************** !
-!
-! RichardsResidualPatchMFD2: Computes the boundary and source/sink terms of 
-!   the residual equation for MFD discretization
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the boundary and source/sink terms of
+  ! the residual equation for MFD discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   
   use Logging_module
@@ -1221,16 +1220,16 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
 end subroutine RichardsResidualPatchMFD2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RichardsResidualPatchMFD1: Computes flux and accumulation 
-!   terms of the residual equation 
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
 subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
+  ! 
+  ! RichardsResidualPatchMFD1: Computes flux and accumulation
+  ! terms of the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   
   use Logging_module
@@ -1461,14 +1460,15 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 end subroutine RichardsResidualPatchMFDLP1
 
 ! ************************************************************************** !
-!
-! RichardsResidualPatchMFDLP2: Computes the boundary and source/sink terms of 
-!   the residual equation for MFD discretization
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the boundary and source/sink terms of
+  ! the residual equation for MFD discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   
   use Logging_module
@@ -1746,13 +1746,14 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 end subroutine RichardsResidualPatchMFDLP2
 
 ! ************************************************************************** !
-!
-! RichardsJacobian: Computes the Jacobian for MFD Discretization
-! author: Daniil Svyatskiy
-! date: 09/17/10
-!
-! ************************************************************************** !
+
 subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! RichardsJacobian: Computes the Jacobian for MFD Discretization
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 09/17/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1822,9 +1823,8 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
   
 end subroutine RichardsJacobianMFD
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
 subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
@@ -1911,16 +1911,17 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
 
 end subroutine RichardsJacobianMFDLP
-                
+
 ! ************************************************************************** !
-!
-! RichardsJacobianPatch1: Computes local condensed matrices
-!   for the Jacobian
-! author: Daniil Svyatskiy
-! date: 09/17/10
-!
-! ************************************************************************** !
+
 subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! RichardsJacobianPatch1: Computes local condensed matrices
+  ! for the Jacobian
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 09/17/10
+  ! 
        
   
   use MFD_Aux_module
@@ -2109,14 +2110,15 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 end subroutine RichardsJacobianPatchMFD
 
 ! ************************************************************************** !
-!
-! RichardsJacobianPatch1: Computes local condensed matrices
-!   for the Jacobian
-! author: Daniil Svyatskiy
-! date: 09/17/10
-!
-! ************************************************************************** !
+
 subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! RichardsJacobianPatch1: Computes local condensed matrices
+  ! for the Jacobian
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 09/17/10
+  ! 
        
   
   use MFD_Aux_module

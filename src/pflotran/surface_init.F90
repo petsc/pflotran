@@ -24,15 +24,14 @@ module Surface_Init_module
 contains
 
 ! ************************************************************************** !
-!> This routine reads the required input file cards related to surface flows
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/18/12
-! ************************************************************************** !
 
 subroutine SurfaceInitReadRequiredCards(surf_realization)
+  ! 
+  ! This routine reads the required input file cards related to surface flows
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/18/12
+  ! 
 
   use Option_module
   use Discretization_module
@@ -96,15 +95,15 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
 end subroutine SurfaceInitReadRequiredCards
 
 ! ************************************************************************** !
-!> This routine reads required surface flow data from the input file
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 subroutine SurfaceInit(surf_realization,input,option)
+  ! 
+  ! This routine reads required surface flow data from the input file
+  ! grids.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -189,15 +188,15 @@ subroutine SurfaceInit(surf_realization,input,option)
 end subroutine SurfaceInit
 
 ! ************************************************************************** !
-!> This routine reads surface flow data from the input file
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
+  ! 
+  ! This routine reads surface flow data from the input file
+  ! grids.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -856,16 +855,15 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 end subroutine SurfaceInitReadInput
 
 ! ************************************************************************** !
-!> This routine assigns surface material properties to associated regions in
-!! the model (similar to assignMaterialPropToRegions)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/13/12
-! ************************************************************************** !
 
 subroutine SurfaceInitMatPropToRegions(surf_realization)
+  ! 
+  ! This routine assigns surface material properties to associated regions in
+  ! the model (similar to assignMaterialPropToRegions)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/13/12
+  ! 
 
   use Surface_Realization_class
   use Discretization_module
@@ -1034,14 +1032,14 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
 end subroutine SurfaceInitMatPropToRegions
 
 ! ************************************************************************** !
-!> This routine reads surface region files
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/20/12
-! ************************************************************************** !
+
 subroutine SurfaceInitReadRegionFiles(surf_realization)
+  ! 
+  ! This routine reads surface region files
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/20/12
+  ! 
 
   use Surface_Realization_class
   use Region_module

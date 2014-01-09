@@ -59,14 +59,14 @@ module PM_Surface_Flow_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 function PMSurfaceFlowCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   implicit none
 
@@ -87,14 +87,14 @@ function PMSurfaceFlowCreate()
 end function PMSurfaceFlowCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Discretization_module
   use Unstructured_Communicator_class
@@ -118,14 +118,14 @@ subroutine PMSurfaceFlowInit(this)
 end subroutine PMSurfaceFlowInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowPreSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   implicit none
 
@@ -138,14 +138,14 @@ subroutine PMSurfaceFlowPreSolve(this)
 end subroutine PMSurfaceFlowPreSolve
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowSetRealization(this, surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Surface_Realization_class
   use Grid_module
@@ -164,14 +164,14 @@ subroutine PMSurfaceFlowSetRealization(this, surf_realization)
 end subroutine PMSurfaceFlowSetRealization
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 recursive subroutine PMSurfaceFlowInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Surface_Flow_module, only : SurfaceFlowUpdateSolution
 
@@ -182,14 +182,14 @@ recursive subroutine PMSurfaceFlowInitializeRun(this)
 end subroutine PMSurfaceFlowInitializeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 recursive subroutine PMSurfaceFlowFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   implicit none
 
@@ -208,14 +208,14 @@ recursive subroutine PMSurfaceFlowFinalizeRun(this)
 end subroutine PMSurfaceFlowFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowUpdateSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Surface_Flow_module, only : SurfaceFlowUpdateSolution
   use Condition_module
@@ -242,14 +242,14 @@ subroutine PMSurfaceFlowUpdateSolution(this)
 end subroutine PMSurfaceFlowUpdateSolution
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Surface_Flow_module, only : SurfaceFlowRHSFunction
 
@@ -268,15 +268,15 @@ subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
 end subroutine PMSurfaceFlowRHSFunction
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Surface_Flow_module, only : SurfaceFlowComputeMaxDt
 
@@ -300,16 +300,15 @@ subroutine PMSurfaceFlowUpdateTimestep(this,dt,dt_max,iacceleration, &
 
 end subroutine PMSurfaceFlowUpdateTimestep
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
 subroutine PMSurfaceFlowDTExplicit(this,dt_max)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Surface_Flow_module, only : SurfaceFlowComputeMaxDt
 
@@ -330,14 +329,14 @@ subroutine PMSurfaceFlowDTExplicit(this,dt_max)
 end subroutine PMSurfaceFlowDTExplicit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowPostSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
   use Discretization_module
   use Surface_Field_module
@@ -374,14 +373,14 @@ subroutine PMSurfaceFlowPostSolve(this)
 end subroutine PMSurfaceFlowPostSolve
 
 ! ************************************************************************** !
-!> This routine checkpoints data associated with surface-flow PM
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine PMSurfaceCheckpoint(this,viewer)
+  ! 
+  ! This routine checkpoints data associated with surface-flow PM
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Surface_Checkpoint_module
 
@@ -396,14 +395,14 @@ subroutine PMSurfaceCheckpoint(this,viewer)
 end subroutine PMSurfaceCheckpoint
 
 ! ************************************************************************** !
-!> This routine reads checkpoint data associated with surface-flow PM
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine PMSurfaceRestart(this,viewer)
+  ! 
+  ! This routine reads checkpoint data associated with surface-flow PM
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Surface_Checkpoint_module
   use Surface_Flow_module, only : SurfaceFlowUpdateAuxVars
@@ -421,14 +420,14 @@ subroutine PMSurfaceRestart(this,viewer)
 end subroutine PMSurfaceRestart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/11/13
-! ************************************************************************** !
+
 subroutine PMSurfaceFlowDestroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/11/13
+  ! 
 
 !  use Surface_Flow_module, only : SurfaceFlowDestroy
 

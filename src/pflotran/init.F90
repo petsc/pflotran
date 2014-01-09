@@ -21,13 +21,14 @@ module Init_module
 contains
 
 ! ************************************************************************** !
-!
-! Init: Initializes pflotran
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine Init(simulation)
+  ! 
+  ! Initializes pflotran
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Simulation_module
   use Option_module
@@ -1237,13 +1238,14 @@ subroutine Init(simulation)
 end subroutine Init
 
 ! ************************************************************************** !
-!
-! InitReadInputFilenames: Reads filenames for multi-simulation runs
-! author: Glenn Hammond
-! date: 08/11/09
-!
-! ************************************************************************** !
+
 subroutine InitReadInputFilenames(option,filenames)
+  ! 
+  ! Reads filenames for multi-simulation runs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1304,13 +1306,14 @@ subroutine InitReadInputFilenames(option,filenames)
 end subroutine InitReadInputFilenames
 
 ! ************************************************************************** !
-!
-! InitReadRequiredCardsFromInput: Reads pflow input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitReadRequiredCardsFromInput(realization)
+  ! 
+  ! Reads pflow input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   use Discretization_module
@@ -1450,13 +1453,14 @@ subroutine InitReadRequiredCardsFromInput(realization)
 end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
-!
-! InitReadInput: Reads pflow input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitReadInput(simulation)
+  ! 
+  ! Reads pflow input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Simulation_module
   use Option_module
@@ -2743,13 +2747,14 @@ subroutine InitReadInput(simulation)
 end subroutine InitReadInput
 
 ! ************************************************************************** !
-!
-! setFlowMode: Sets the flow mode (richards, vadose, mph, etc.)
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine setFlowMode(option)
+  ! 
+  ! Sets the flow mode (richards, vadose, mph, etc.)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   use Option_module
   use String_module
@@ -2841,14 +2846,15 @@ subroutine setFlowMode(option)
 end subroutine setFlowMode
 
 ! ************************************************************************** !
-!
-! assignMaterialPropToRegions: Assigns material properties to 
-!                                    associated regions in the model
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine assignMaterialPropToRegions(realization)
+  ! 
+  ! Assigns material properties to
+  ! associated regions in the model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3126,13 +3132,14 @@ subroutine assignMaterialPropToRegions(realization)
 end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !
-!
-! verifyAllCouplers: Verifies the connectivity of a coupler
-! author: Glenn Hammond
-! date: 1/8/08
-!
-! ************************************************************************** !
+
 subroutine verifyAllCouplers(realization)
+  ! 
+  ! Verifies the connectivity of a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/8/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3158,13 +3165,14 @@ subroutine verifyAllCouplers(realization)
 end subroutine verifyAllCouplers
 
 ! ************************************************************************** !
-!
-! verifyCoupler: Verifies the connectivity of a coupler
-! author: Glenn Hammond
-! date: 1/8/08
-!
-! ************************************************************************** !
+
 subroutine verifyCoupler(realization,patch,coupler_list)
+  ! 
+  ! Verifies the connectivity of a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/8/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3247,13 +3255,14 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 end subroutine verifyCoupler
 
 ! ************************************************************************** !
-!
-! readRegionFiles: Reads in grid cell ids stored in files
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 subroutine readRegionFiles(realization)
+  ! 
+  ! Reads in grid cell ids stored in files
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   use Realization_class
   use Region_module
@@ -3301,13 +3310,14 @@ subroutine readRegionFiles(realization)
 end subroutine readRegionFiles
 
 ! ************************************************************************** !
-!
-! readMaterialsFromFile: Reads in grid cell materials
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 subroutine readMaterialsFromFile(realization,realization_dependent,filename)
+  ! 
+  ! Reads in grid cell materials
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -3389,13 +3399,14 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 end subroutine readMaterialsFromFile
 
 ! ************************************************************************** !
-!
-! readPermeabilitiesFromFile: Reads in grid cell permeabilities
-! author: Glenn Hammond
-! date: 01/19/09
-!
-! ************************************************************************** !
+
 subroutine readPermeabilitiesFromFile(realization,material_property)
+  ! 
+  ! Reads in grid cell permeabilities
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/19/09
+  ! 
 
   use Realization_class
   use Field_module
@@ -3588,13 +3599,14 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 end subroutine readPermeabilitiesFromFile
 
 ! ************************************************************************** !
-!
-! readVectorFromFile: Reads data from a file into an associated vector
-! author: Glenn Hammond
-! date: 03/18/08
-!
-! ************************************************************************** !
+
 subroutine readVectorFromFile(realization,vector,filename,vector_type)
+  ! 
+  ! Reads data from a file into an associated vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3703,13 +3715,14 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
 end subroutine readVectorFromFile
 
 ! ************************************************************************** !
-!
-! readFlowInitialCondition: Assigns flow initial condition from HDF5 file
-! author: Glenn Hammond
-! date: 03/05/10
-!
-! ************************************************************************** !
+
 subroutine readFlowInitialCondition(realization,filename)
+  ! 
+  ! Assigns flow initial condition from HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -3794,16 +3807,16 @@ subroutine readFlowInitialCondition(realization,filename)
 
 end subroutine readFlowInitialCondition
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! readTransportInitialCondition: Assigns transport initial condition from 
-!                                HDF5 file
-! author: Glenn Hammond
-! date: 03/05/10
-!
-! ************************************************************************** !
 subroutine readTransportInitialCondition(realization,filename)
+  ! 
+  ! Assigns transport initial condition from
+  ! HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -3888,14 +3901,15 @@ subroutine readTransportInitialCondition(realization,filename)
 end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
-!
-! Create_IOGroups: Create sub-communicators that are used in initialization 
-!                  and output HDF5 routines. 
-! author: Vamsi Sripathi
-! date: 07/14/09
-!
-! ************************************************************************** !
+
 subroutine Create_IOGroups(option)
+  ! 
+  ! Create sub-communicators that are used in initialization
+  ! and output HDF5 routines.
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: 07/14/09
+  ! 
 
   use Option_module
   use Logging_module
@@ -3968,13 +3982,14 @@ subroutine Create_IOGroups(option)
 end subroutine Create_IOGroups
 
 ! ************************************************************************** !
-!
-! InitPrintPFLOTRANHeader: Initializes pflotran
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitPrintPFLOTRANHeader(option,fid)
+  ! 
+  ! Initializes pflotran
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   
@@ -3989,13 +4004,14 @@ subroutine InitPrintPFLOTRANHeader(option,fid)
 end subroutine InitPrintPFLOTRANHeader
 
 ! ************************************************************************** !
-!
-! InitReadVelocityField: Reads fluxes in for transport with no flow.
-! author: Glenn Hammond
-! date: 02/05/13
-!
-! ************************************************************************** !
+
 subroutine InitReadVelocityField(realization)
+  ! 
+  ! Reads fluxes in for transport with no flow.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/13
+  ! 
 
   use Realization_class
   use Patch_module

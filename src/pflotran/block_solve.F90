@@ -9,7 +9,9 @@ module Block_Solve_module
             bl3dsolb
       
 contains
-      
+
+! ************************************************************************** !
+
 subroutine bl3dfac(n, k, E, D, F, pivot)
 
 !	This version of bl3dfac dated March 15, 2000.
@@ -147,7 +149,7 @@ subroutine bl3dfac(n, k, E, D, F, pivot)
   
 end subroutine bl3dfac
 
-!************************ END OF bl3dfac ********************************
+! ************************************************************************** !
 
 subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
 
@@ -328,8 +330,7 @@ subroutine bl3dsol(n, k, E, D, F, pivot, nrhs, rhs)
       
 end subroutine bl3dsol
 
-!************************ END OF bl3dsol ********************************
-
+! ************************************************************************** !
 
 subroutine bl3dsolf(n, k, E, D, F, pivot, nrhs, rhs)
 
@@ -456,6 +457,8 @@ subroutine bl3dsolf(n, k, E, D, F, pivot, nrhs, rhs)
       return
 
 end subroutine bl3dsolf
+
+! ************************************************************************** !
 
 subroutine bl3dsolb(n, k, E, D, F, pivot, nrhs, rhs)
 

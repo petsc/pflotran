@@ -49,13 +49,14 @@ module Observation_module
 contains
 
 ! ************************************************************************** !
-!
-! ObservationCreate1: Create object that stores observation regions
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 function ObservationCreate1()
+  ! 
+  ! Create object that stores observation regions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   implicit none
   
@@ -81,13 +82,14 @@ function ObservationCreate1()
 end function ObservationCreate1
 
 ! ************************************************************************** !
-!
-! ObservationCreate: Create object that stores observation regions
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 function ObservationCreateFromObservation(observation)
+  ! 
+  ! ObservationCreate: Create object that stores observation regions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   implicit none
   
@@ -115,13 +117,14 @@ function ObservationCreateFromObservation(observation)
 end function ObservationCreateFromObservation
 
 ! ************************************************************************** !
-!
-! ObservationRead: Reads observation data from the input file
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 subroutine ObservationRead(observation,input,option)
+  ! 
+  ! Reads observation data from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -197,13 +200,14 @@ subroutine ObservationRead(observation,input,option)
 end subroutine ObservationRead
 
 ! ************************************************************************** !
-!
-! ObservationInitList: Initializes a observation list
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 subroutine ObservationInitList(list)
+  ! 
+  ! Initializes a observation list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   implicit none
 
@@ -217,13 +221,14 @@ subroutine ObservationInitList(list)
 end subroutine ObservationInitList
 
 ! ************************************************************************** !
-!
-! ObservationAddToList: Adds a new observation to a observation list
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 subroutine ObservationAddToList(new_observation,list)
+  ! 
+  ! Adds a new observation to a observation list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   implicit none
   
@@ -239,13 +244,14 @@ subroutine ObservationAddToList(new_observation,list)
 end subroutine ObservationAddToList
 
 ! ************************************************************************** !
-!
-! ObservationRemoveFromList: Removes a observation from a observation list
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 subroutine ObservationRemoveFromList(observation,list)
+  ! 
+  ! Removes a observation from a observation list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   implicit none
   
@@ -279,14 +285,15 @@ subroutine ObservationRemoveFromList(observation,list)
 end subroutine ObservationRemoveFromList
 
 ! ************************************************************************** !
-!
-! ObservationGetPtrFromList: Returns a pointer to the observation matching &
-!                             observation_name
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 function ObservationGetPtrFromList(observation_name,observation_list)
+  ! 
+  ! Returns a pointer to the observation matching &
+  ! observation_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use String_module
 
@@ -317,13 +324,14 @@ function ObservationGetPtrFromList(observation_name,observation_list)
 end function ObservationGetPtrFromList
 
 ! ************************************************************************** !
-!
-! ObservationDestroyList: Deallocates a list of observations
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 subroutine ObservationDestroyList(observation_list)
+  ! 
+  ! Deallocates a list of observations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   implicit none
   
@@ -353,13 +361,14 @@ subroutine ObservationDestroyList(observation_list)
 end subroutine ObservationDestroyList
 
 ! ************************************************************************** !
-!
-! ObservationDestroy: Deallocates a observation
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine ObservationDestroy(observation)
+  ! 
+  ! Deallocates a observation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   

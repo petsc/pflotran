@@ -88,14 +88,14 @@ private
 contains
 
 ! ************************************************************************** !
-!> This routine allocates and initializes a new SurfaceRealization object
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/16/12
-! ************************************************************************** !
+
 function SurfRealizCreate(option)
+  ! 
+  ! This routine allocates and initializes a new SurfaceRealization object
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/16/12
+  ! 
 
   implicit none
 
@@ -137,14 +137,14 @@ function SurfRealizCreate(option)
 end function SurfRealizCreate
 
 ! ************************************************************************** !
-!> This routine adds a copy of a coupler to a list
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/10/12
-! ************************************************************************** !
+
 subroutine SurfRealizAddCoupler(surf_realization,coupler)
+  ! 
+  ! This routine adds a copy of a coupler to a list
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/10/12
+  ! 
 
   use Coupler_module
 
@@ -178,15 +178,15 @@ subroutine SurfRealizAddCoupler(surf_realization,coupler)
 end subroutine SurfRealizAddCoupler
 
 ! ************************************************************************** !
-!> This routine sets connectivity and pointers for couplers related to 
-!! surface flow.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/17/12
-! ************************************************************************** !
+
 subroutine SurfRealizProcessCouplers(surf_realization)
+  ! 
+  ! This routine sets connectivity and pointers for couplers related to
+  ! surface flow.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/17/12
+  ! 
 
   use Option_module
 
@@ -207,14 +207,14 @@ subroutine SurfRealizProcessCouplers(surf_realization)
 end subroutine SurfRealizProcessCouplers
 
 ! ************************************************************************** !
-!> This routine sets up linkeage between surface material properties
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/17/12
-! ************************************************************************** !
+
 subroutine SurfRealizProcessMatProp(surf_realization)
+  ! 
+  ! This routine sets up linkeage between surface material properties
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/17/12
+  ! 
 
   use String_module
   
@@ -252,17 +252,15 @@ subroutine SurfRealizProcessMatProp(surf_realization)
 end subroutine SurfRealizProcessMatProp
 
 ! ************************************************************************** !
-!
-!> This routine localizes surface regions within each patch
-!! (similar to RealizationLocalizeRegions)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/17/12
-!
-! ************************************************************************** !
+
 subroutine SurfRealizLocalizeRegions(surf_realization)
+  ! 
+  ! This routine localizes surface regions within each patch
+  ! (similar to RealizationLocalizeRegions)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/17/12
+  ! 
 
   use Option_module
   use String_module
@@ -290,16 +288,15 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
  
 end subroutine SurfRealizLocalizeRegions
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine adds a copy of a strata to a list
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/17/12
-! ************************************************************************** !
 subroutine SurfRealizAddStrata(surf_realization,strata)
+  ! 
+  ! This routine adds a copy of a strata to a list
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/17/12
+  ! 
 
   use Strata_module
 
@@ -325,14 +322,14 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
 end subroutine SurfRealizAddStrata
 
 ! ************************************************************************** !
-!> This routine creates grid
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/17/12
-! ************************************************************************** !
+
 subroutine SurfRealizCreateDiscretization(surf_realization)
+  ! 
+  ! This routine creates grid
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/17/12
+  ! 
 
   use Grid_module
   use Unstructured_Grid_Aux_module, only : UGridMapIndices
@@ -476,14 +473,14 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
 end subroutine SurfRealizCreateDiscretization
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/19/12
-! ************************************************************************** !
+
 subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/19/12
+  ! 
 
   use Option_module
 
@@ -503,14 +500,14 @@ subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
 end subroutine SurfRealizPassFieldPtrToPatches
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/19/12
-! ************************************************************************** !
+
 subroutine SurfRealizProcessConditions(surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/19/12
+  ! 
 
   implicit none
   
@@ -526,15 +523,15 @@ subroutine SurfRealizProcessConditions(surf_realization)
 end subroutine SurfRealizProcessConditions
 
 ! ************************************************************************** !
-!> This routine takes an F90 array that is ghosted and updates the ghosted
-!! values (similar to RealLocalToLocalWithArray)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/13/12
-! ************************************************************************** !
+
 subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
+  ! 
+  ! This routine takes an F90 array that is ghosted and updates the ghosted
+  ! values (similar to RealLocalToLocalWithArray)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/13/12
+  ! 
 
   use Grid_module
   use Surface_Field_module
@@ -580,14 +577,14 @@ subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
 end subroutine SurfRealizLocalToLocalWithArray
 
 ! ************************************************************************** !
-!> This routine sets linkage of flow conditions to dataset
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/20/12
-! ************************************************************************** !
+
 subroutine SurfRealizProcessFlowConditions(surf_realization)
+  ! 
+  ! This routine sets linkage of flow conditions to dataset
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/20/12
+  ! 
 
   use Dataset_Base_class
   use Dataset_module
@@ -640,14 +637,14 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
 end subroutine SurfRealizProcessFlowConditions
 
 ! ************************************************************************** !
-!> This routine initializez coupler auxillary variables within list
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/21/12
-! ************************************************************************** !
+
 subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
+  ! 
+  ! This routine initializez coupler auxillary variables within list
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/21/12
+  ! 
 
   use Option_module
 
@@ -672,15 +669,15 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
 end subroutine SurfRealizInitAllCouplerAuxVars
 
 ! ************************************************************************** !
-!> This routine updates auxiliary variables associated with couplers in the
-!! list.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 04/18/13
-! ************************************************************************** !
+
 subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
+  ! 
+  ! This routine updates auxiliary variables associated with couplers in the
+  ! list.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/18/13
+  ! 
 
   use Option_module
 
@@ -695,20 +692,19 @@ subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
 end subroutine SurfRealizAllCouplerAuxVars
 
 ! ************************************************************************** !
-!> This routine creates vector scatter contexts between surface and subsurface 
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! Algorithm:
-!!  - It uses a similar logic of Matrix-Vector multiplication used in 
-!!    UGridMapSideSet() subroutine. The algorithm here is extended to use 
-!!    Matrix-Matrix mulitplication
-!!
-!! date: 01/17/12
-! ************************************************************************** !
+
 subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
+  ! 
+  ! This routine creates vector scatter contexts between surface and subsurface
+  ! grids.
+  ! Algorithm:
+  ! - It uses a similar logic of Matrix-Vector multiplication used in
+  ! UGridMapSideSet() subroutine. The algorithm here is extended to use
+  ! Matrix-Matrix mulitplication
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 01/17/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1010,17 +1006,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 end subroutine SurfRealizMapSurfSubsurfGrids
 
 ! ************************************************************************** !
-!
-!> This subroutine creates a single vector scatter context
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! Algorithm:
-!!  - 
-!!
-!! date: 01/18/12
-! ************************************************************************** !
+
 subroutine SurfRealizMapSurfSubsurfGrid( &
               realization, &       !<
               surf_realization, &  !<
@@ -1028,6 +1014,13 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
               source_grid_flag, &  !< To identify a surface or subsurface grid
               source_petsc_ids &   !< MPI-Vector containing cell ids in PETSc order
               )
+  ! 
+  ! This subroutine creates a single vector scatter context
+  ! Algorithm:
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 01/18/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1235,14 +1228,14 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
 end subroutine SurfRealizMapSurfSubsurfGrid
 
 ! ************************************************************************** !
-!> This routine destroys SurfRealiz object
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/16/12
-! ************************************************************************** !
+
 subroutine SurfRealizDestroy(surf_realization)
+  ! 
+  ! This routine destroys SurfRealiz object
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/16/12
+  ! 
 
   implicit none
   
@@ -1270,16 +1263,15 @@ subroutine SurfRealizDestroy(surf_realization)
 
 end subroutine SurfRealizDestroy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine updates parameters in realization (eg. conditions, bcs, srcs)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/22/12
-! ************************************************************************** !
 subroutine SurfRealizUpdate(surf_realization)
+  ! 
+  ! This routine updates parameters in realization (eg. conditions, bcs, srcs)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/22/12
+  ! 
 
   implicit none
   
@@ -1297,15 +1289,15 @@ subroutine SurfRealizUpdate(surf_realization)
 end subroutine SurfRealizUpdate
 
 ! ************************************************************************** !
-!> This routine extracts variables indexed by ivar and isubvar from surface
-!! realization.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/22/12
-! ************************************************************************** !
+
 subroutine SurfRealizGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
+  ! 
+  ! This routine extracts variables indexed by ivar and isubvar from surface
+  ! realization.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/22/12
+  ! 
 
   use Option_module
   use Surface_Field_module
@@ -1328,15 +1320,15 @@ subroutine SurfRealizGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
 end subroutine SurfRealizGetVariable
 
 ! ************************************************************************** !
-!> This routine creates waypoints assocated with source/sink, boundary 
-!! condition, etc. and adds to a list
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/15/13
-! ************************************************************************** !
+
 subroutine SurfRealizAddWaypointsToList(surf_realization)
+  ! 
+  ! This routine creates waypoints assocated with source/sink, boundary
+  ! condition, etc. and adds to a list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/15/13
+  ! 
 
   use Option_module
   use Waypoint_module

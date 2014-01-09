@@ -5,7 +5,9 @@
   public
   
   contains
-  
+
+! ************************************************************************** !
+
 subroutine spline(x,y,n,y2)
 
 
@@ -45,6 +47,8 @@ subroutine spline(x,y,n,y2)
       return
       end subroutine spline
 
+! ************************************************************************** !
+
 subroutine splint(xa,ya,y2a,n,x,y)
 
 !     cubic spline interpolation.
@@ -82,7 +86,9 @@ subroutine splint(xa,ya,y2a,n,x,y)
 
       return
       end subroutine splint
-      
+
+! ************************************************************************** !
+
 subroutine locate(xx,n,x,j)
 
 !     given an array xx of length n, and given a value x, returns a

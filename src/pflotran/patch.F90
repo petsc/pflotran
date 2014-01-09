@@ -119,13 +119,14 @@ module Patch_module
 contains
 
 ! ************************************************************************** !
-!
-! PatchCreate: Allocates and initializes a new Patch object
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 function PatchCreate()
+  ! 
+  ! Allocates and initializes a new Patch object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -192,13 +193,14 @@ function PatchCreate()
 end function PatchCreate
 
 ! ************************************************************************** !
-!
-! PatchListCreate: Creates a patch list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 function PatchCreateList()
+  ! 
+  ! PatchListCreate: Creates a patch list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
 
@@ -217,13 +219,14 @@ function PatchCreateList()
 end function PatchCreateList
 
 ! ************************************************************************** !
-!
-! PatchAddToList: Adds a new patch to list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchAddToList(new_patch,patch_list)
+  ! 
+  ! Adds a new patch to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -240,14 +243,15 @@ subroutine PatchAddToList(new_patch,patch_list)
 end subroutine PatchAddToList
 
 ! ************************************************************************** !
-!
-! PatchConvertListToArray: Creates an array of pointers to the 
-!                               patchs in the patch list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchConvertListToArray(patch_list)
+  ! 
+  ! Creates an array of pointers to the
+  ! patchs in the patch list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -269,13 +273,14 @@ subroutine PatchConvertListToArray(patch_list)
 end subroutine PatchConvertListToArray
 
 ! ************************************************************************** !
-!
-! PatchLocalizeRegions: Localizes regions within each patch
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchLocalizeRegions(patch,regions,option)
+  ! 
+  ! Localizes regions within each patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Region_module
@@ -304,14 +309,15 @@ subroutine PatchLocalizeRegions(patch,regions,option)
 end subroutine PatchLocalizeRegions
 
 ! ************************************************************************** !
-!
-! PatchProcessCouplers: Assigns conditions and regions to couplers
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                 option)
+  ! 
+  ! Assigns conditions and regions to couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Material_module
@@ -680,14 +686,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
 end subroutine PatchProcessCouplers
 
 ! ************************************************************************** !
-!
-! PatchInitAllCouplerAuxVars: Initializes coupler auxillary variables 
-!                                within list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchInitAllCouplerAuxVars(patch,option)
+  ! 
+  ! Initializes coupler auxillary variables
+  ! within list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Reaction_Aux_module
@@ -716,14 +723,15 @@ subroutine PatchInitAllCouplerAuxVars(patch,option)
 end subroutine PatchInitAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! PatchInitCouplerAuxVars: Initializes coupler auxillary variables 
-!                                within list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
+  ! 
+  ! Initializes coupler auxillary variables
+  ! within list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Connection_module
@@ -880,14 +888,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
 end subroutine PatchInitCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! PatchUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
+  ! 
+  ! Updates auxiliary variables associated
+  ! with couplers in list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   
@@ -910,15 +919,16 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in list
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                                      option)
+  ! 
+  ! Updates auxiliary variables associated
+  ! with couplers in list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
   use Option_module
   use Condition_module
   use Hydrostatic_module
@@ -981,14 +991,15 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 end subroutine PatchUpdateCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsG: Updates flow auxiliary variables associated
-!                             with a coupler for G_MODE
-! author: Glenn Hammond
-! date: 11/26/13
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for G_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/13
+  ! 
 
   use Option_module
   use Condition_module
@@ -1154,14 +1165,15 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsG
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsMPH: Updates flow auxiliary variables associated
-!                               with a coupler for MPH_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for MPH_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1259,14 +1271,15 @@ subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsMPH
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsIMS: Updates flow auxiliary variables associated
-!                               with a coupler for IMS_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for IMS_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1364,14 +1377,15 @@ subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsIMS
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsFLASH2: Updates flow auxiliary variables associated
-!                                  with a coupler for FLASH2_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for FLASH2_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1469,14 +1483,15 @@ subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsFLASH2
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsTHC: Updates flow auxiliary variables associated
-!                               with a coupler for THC_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsTHC(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for THC_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1574,14 +1589,15 @@ subroutine PatchUpdateCouplerAuxVarsTHC(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsTHC
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsTH: Updates flow auxiliary variables associated
-!                              with a coupler for TH_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for TH_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1728,14 +1744,15 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsTH
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsMIS: Updates flow auxiliary variables associated
-!                               with a coupler for MIS_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for MIS_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1809,14 +1826,15 @@ subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsMIS
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerAuxVarsRich: Updates flow auxiliary variables associated
-!                             with a coupler for RICHARDS_MODE
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for RICHARDS_MODE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Condition_module
@@ -1897,13 +1915,14 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
 end subroutine PatchUpdateCouplerAuxVarsRich
 
 ! ************************************************************************** !
-!
-! PatchUpdateCouplerFromDataset: Updates auxiliary variables from dataset.
-! author: Glenn Hammond
-! date: 11/26/07
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
+  ! 
+  ! Updates auxiliary variables from dataset.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/26/07
+  ! 
 
   use Option_module
   use Grid_module
@@ -1937,13 +1956,14 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
 end subroutine PatchUpdateCouplerFromDataset
 
 ! ************************************************************************** !
-!
-! PatchScaleSourceSink: Scales select source/sinks based on perms*volume
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine PatchScaleSourceSink(patch,source_sink,option)
+  ! 
+  ! Scales select source/sinks based on perms*volume
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
   use Field_module
@@ -2078,15 +2098,15 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 end subroutine PatchScaleSourceSink
 
 ! ************************************************************************** !
-!> This subroutine updates aux vars for distributed copuler_type
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 10/03/2012
-! ************************************************************************** !
+
 subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
                                           sum_connection,isub_condition,option)
+  ! 
+  ! This subroutine updates aux vars for distributed copuler_type
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 10/03/2012
+  ! 
 
   use Option_module
   use Field_module
@@ -2185,14 +2205,14 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
 end subroutine PatchUpdateHetroCouplerAuxVars
 
 ! ************************************************************************** !
-!> This routine creates dataset-map for flow condition
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 10/26/12
-! ************************************************************************** !
+
 subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,ncells,option)
+  ! 
+  ! This routine creates dataset-map for flow condition
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 10/26/12
+  ! 
 
   use Grid_module
   use Dataset_Map_HDF5_class
@@ -2323,13 +2343,14 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
 end subroutine PatchCreateFlowConditionDatasetMap
 
 ! ************************************************************************** !
-!
-! PatchInitConstraints: Initializes constraint concentrations
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
+
 subroutine PatchInitConstraints(patch,reaction,option)
+  ! 
+  ! Initializes constraint concentrations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/08
+  ! 
 
   use Reaction_Aux_module
     
@@ -2351,14 +2372,15 @@ subroutine PatchInitConstraints(patch,reaction,option)
 end subroutine PatchInitConstraints
 
 ! ************************************************************************** !
-!
-! PatchInitCouplerConstraints: Initializes constraint concentrations
-!                              for a given coupler
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
+
 subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
+  ! 
+  ! Initializes constraint concentrations
+  ! for a given coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/08
+  ! 
 
   use Reaction_module
   use Reactive_Transport_Aux_module
@@ -2456,14 +2478,15 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
 end subroutine PatchInitCouplerConstraints
 
 ! ************************************************************************** !
-!
-! PatchUpdateUniformVelocity: Assigns uniform velocity in connection list
-!                        darcy velocities
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine PatchUpdateUniformVelocity(patch,velocity,option)
+  ! 
+  ! Assigns uniform velocity in connection list
+  ! darcy velocities
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Option_module
   use Coupler_module
@@ -2516,13 +2539,14 @@ subroutine PatchUpdateUniformVelocity(patch,velocity,option)
 end subroutine PatchUpdateUniformVelocity
 
 ! ************************************************************************** !
-!
-! PatchAuxVarsUpToDate: Checks to see if aux vars are up to date
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 function PatchAuxVarsUpToDate(patch)
+  ! 
+  ! Checks to see if aux vars are up to date
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Grid_module
   use Option_module
@@ -2565,14 +2589,15 @@ function PatchAuxVarsUpToDate(patch)
 end function PatchAuxVarsUpToDate
 
 ! ************************************************************************** !
-!
-! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
+  ! 
+  ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Grid_module
   use Option_module
@@ -3551,16 +3576,17 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
 end subroutine PatchGetVariable1
 
 ! ************************************************************************** !
-!
-! PatchGetVariableValueAtCell: Returns variables indexed by ivar,
-!                             isubvar, local id from Reactive Transport type
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                                     output_option, &
                                     ivar,isubvar,ghosted_id,isubvar1)
+  ! 
+  ! Returns variables indexed by ivar,
+  ! isubvar, local id from Reactive Transport type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Grid_module
   use Option_module
@@ -4164,13 +4190,14 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
 end function PatchGetVariableValueAtCell
 
 ! ************************************************************************** !
-!
-! PatchSetVariable: Sets variables indexed by ivar and isubvar within a patch
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
+  ! 
+  ! Sets variables indexed by ivar and isubvar within a patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Grid_module
   use Option_module
@@ -5006,13 +5033,14 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
 end subroutine PatchSetVariable
 
 ! ************************************************************************** !
-!
-! PatchCountCells: Counts # of active and inactive grid cells 
-! author: Glenn Hammond
-! date: 06/01/10
-!
-! ************************************************************************** !
+
 subroutine PatchCountCells(patch,total_count,active_count)
+  ! 
+  ! Counts # of active and inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/01/10
+  ! 
 
   use Option_module
 
@@ -5038,14 +5066,15 @@ subroutine PatchCountCells(patch,total_count,active_count)
 end subroutine PatchCountCells
 
 ! ************************************************************************** !
-!
-! PatchCalculateCFL1Timestep: Calculates largest time step to preserves a 
-!                                CFL # of 1 in a patch
-! author: Glenn Hammond
-! date: 10/06/11
-!
-! ************************************************************************** !
+
 subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
+  ! 
+  ! Calculates largest time step to preserves a
+  ! CFL # of 1 in a patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/06/11
+  ! 
 
   use Option_module
   use Connection_module
@@ -5155,13 +5184,14 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
 end subroutine PatchCalculateCFL1Timestep
 
 ! ************************************************************************** !
-!
-! PatchGetVarNameFromKeyword: Returns the name of variable defined by keyword
-! author: Glenn Hammond
-! date: 07/28/11
-!
-! ************************************************************************** !
+
 function PatchGetVarNameFromKeyword(keyword,option)
+  ! 
+  ! Returns the name of variable defined by keyword
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/28/11
+  ! 
  
   use Option_module
 
@@ -5187,14 +5217,15 @@ function PatchGetVarNameFromKeyword(keyword,option)
 end function PatchGetVarNameFromKeyword
 
 ! ************************************************************************** !
-!
-! PatchGetIvarsFromKeyword: Returns the ivar and isubvars for extracting
-!                            datasets using PatchGet/PatchSet routines
-! author: Glenn Hammond
-! date: 07/28/11
-!
-! ************************************************************************** !
+
 subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
+  ! 
+  ! Returns the ivar and isubvars for extracting
+  ! datasets using PatchGet/PatchSet routines
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/28/11
+  ! 
  
   use Option_module
   use Variables_module
@@ -5221,13 +5252,14 @@ subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
 end subroutine
 
 ! ************************************************************************** !
-!
-! PatchDestroyList: Deallocates a patch list and array of patches
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine PatchDestroyList(patch_list)
+  ! 
+  ! Deallocates a patch list and array of patches
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -5258,13 +5290,14 @@ subroutine PatchDestroyList(patch_list)
 end subroutine PatchDestroyList
 
 ! ************************************************************************** !
-!
-! PatchDestroy: Deallocates a patch object
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine PatchDestroy(patch)
+  ! 
+  ! Deallocates a patch object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Utility_module, only : DeallocateArray
 
@@ -5331,15 +5364,17 @@ subroutine PatchDestroy(patch)
 end subroutine PatchDestroy
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!
-! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
+  ! 
+  ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Grid_module
   use Option_module

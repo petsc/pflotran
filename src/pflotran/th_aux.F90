@@ -77,15 +77,15 @@ module TH_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! THAuxCreate: Allocate and initialize auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
 function THAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -121,13 +121,14 @@ function THAuxCreate(option)
 end function THAuxCreate
 
 ! ************************************************************************** !
-!
-! THAuxVarInit: Initialize auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine THAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -176,13 +177,14 @@ subroutine THAuxVarInit(aux_var,option)
 end subroutine THAuxVarInit
 
 ! ************************************************************************** !
-!
-! THAuxVarCopy: Copies an auxiliary variable
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine THAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
 
@@ -234,14 +236,15 @@ subroutine THAuxVarCopy(aux_var,aux_var2,option)
 end subroutine THAuxVarCopy
 
 ! ************************************************************************** !
-!
-! THAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: ???
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
                             iphase,saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: ???
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Global_Aux_module
@@ -368,16 +371,16 @@ subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
 end subroutine THAuxVarCompute
 
 ! ************************************************************************** !
-! 
-! THAuxVarComputeIce: Computes auxillary variables for each grid cell when
-!                      ice and vapor phases are present
-! author: Satish Karra, LANL
-! Date: 11/16/11
-!
-! ************************************************************************** !
 
 subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                saturation_function, por, perm, option)
+  ! 
+  ! Computes auxillary variables for each grid cell when
+  ! ice and vapor phases are present
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/16/11
+  ! 
 
 !sk: Not sure if we need por, perm
 
@@ -534,13 +537,14 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 end subroutine THAuxVarComputeIce
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a TH auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine AuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a TH auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -554,13 +558,14 @@ subroutine AuxVarDestroy(aux_var)
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! THAuxDestroy: Deallocates a TH auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine THAuxDestroy(aux)
+  ! 
+  ! Deallocates a TH auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 

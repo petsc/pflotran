@@ -17,17 +17,18 @@ module Hydrogeophysics_Wrapper_module
 contains
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsWrapperInit: Initializes the hydrogeophysics module
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsWrapperInit(option, &
                                       pflotran_solution_vec_mpi_, &
                                       pflotran_solution_vec_seq_, &
                                       pflotran_scatter_, &
                                       pf_e4d_master_comm)
+  ! 
+  ! Initializes the hydrogeophysics module
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
   
   use Option_module
 
@@ -70,14 +71,15 @@ subroutine HydrogeophysicsWrapperInit(option, &
 end subroutine HydrogeophysicsWrapperInit
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsWrapperStart: Starts the hydrogeophysics forward simulation 
-!                              loop
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsWrapperStart(option)
+  ! 
+  ! Starts the hydrogeophysics forward simulation
+  ! loop
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
   
   use Option_module
 
@@ -90,14 +92,15 @@ subroutine HydrogeophysicsWrapperStart(option)
 end subroutine HydrogeophysicsWrapperStart
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsWrapperStep: Performs a forward simulation
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsWrapperStep(time,solution_mpi,solution_seq, &
                                       scatter,comm,option)
+  ! 
+  ! Performs a forward simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
   use Option_module
 
   implicit none
@@ -133,14 +136,15 @@ subroutine HydrogeophysicsWrapperStep(time,solution_mpi,solution_seq, &
 end subroutine HydrogeophysicsWrapperStep
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsWrapperStop: Stops the hydrogeophysics forward simulation 
-!                             loop
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsWrapperStop(option,comm)
+  ! 
+  ! Stops the hydrogeophysics forward simulation
+  ! loop
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
   
   use Option_module
 
@@ -159,15 +163,15 @@ subroutine HydrogeophysicsWrapperStop(option,comm)
 end subroutine HydrogeophysicsWrapperStop
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsWrapperDestroy: Destroys the contents of the hydrogeophysics 
-!                                module
-! author: Glenn Hammond
-! date: 07/02/13
-!
-!
-! ************************************************************************** !
+
 recursive subroutine HydrogeophysicsWrapperDestroy(option)
+  ! 
+  ! Destroys the contents of the hydrogeophysics
+  ! module
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   use Option_module
 

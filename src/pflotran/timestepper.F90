@@ -102,13 +102,14 @@ module Timestepper_module
 contains
 
 ! ************************************************************************** !
-!
-! TimestepperCreate: Allocates and initializes a new Timestepper object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function TimestepperCreate()
+  ! 
+  ! Allocates and initializes a new Timestepper object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -170,13 +171,14 @@ function TimestepperCreate()
 end function TimestepperCreate 
 
 ! ************************************************************************** !
-!
-! TimestepperReset: Resets time stepper back to initial settings
-! author: Glenn Hammond
-! date: 01/27/11
-!
-! ************************************************************************** !
+
 subroutine TimestepperReset(stepper,dt_min)
+  ! 
+  ! Resets time stepper back to initial settings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/27/11
+  ! 
 
   implicit none
 
@@ -206,13 +208,14 @@ subroutine TimestepperReset(stepper,dt_min)
 end subroutine TimestepperReset
 
 ! ************************************************************************** !
-!
-! TimestepperRead: Reads parameters associated with time stepper
-! author: Glenn Hammond
-! date: 02/23/08
-!
-! ************************************************************************** !
+
 subroutine TimestepperRead(stepper,input,option)
+  ! 
+  ! Reads parameters associated with time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/08
+  ! 
 
   use Option_module
   use String_module
@@ -322,25 +325,26 @@ subroutine TimestepperRead(stepper,input,option)
 end subroutine TimestepperRead
 
 #ifndef PROCESS_MODEL
-! ************************************************************************** !
-!
-! TimestepperInitializeRun: Initializes timestepping run the time step loop
-! author: Glenn Hammond
-! date: 03/11/13
-!
-! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine TimestepperInitializeRun(realization,surf_realization, &
                                     master_stepper,flow_stepper, &
                                     tran_stepper, &
                                     surf_flow_stepper, &
                                     init_status)
 #else
+
 subroutine TimestepperInitializeRun(realization,master_stepper, &
                                     flow_stepper,tran_stepper, &
                                     init_status)
 #endif
-
+!
+! Initializes timestepping run the time step loop
+! Author: Glenn Hammond
+! Date: 03/11/13
+!
   use Realization_class
 
   use Option_module
@@ -588,21 +592,22 @@ subroutine TimestepperInitializeRun(realization,master_stepper, &
 
 end subroutine TimestepperInitializeRun
 
-! ************************************************************************** !
-!
-! TimestepperExecuteRun: Runs the time step loop
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine TimestepperExecuteRun(realization,surf_realization,master_stepper, &
                                  flow_stepper,tran_stepper,surf_flow_stepper)
 #else
+
 subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
                                  tran_stepper)
 #endif
-
+!
+! Runs the time step loop
+! Author: Glenn Hammond
+! Date: 10/25/07
+!
   use Realization_class
 
   use Option_module
@@ -1008,23 +1013,23 @@ subroutine TimestepperExecuteRun(realization,master_stepper,flow_stepper, &
 
 end subroutine TimestepperExecuteRun
 
-! ************************************************************************** !
-!
-! TimestepperFinalizeRun: Finalizes timestepping runs the time step loop
-! author: Glenn Hammond
-! date: 03/11/13
-!
-! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine TimestepperFinalizeRun(realization,surf_realization, &
                                   master_stepper,flow_stepper,tran_stepper, &
                                   surf_flow_stepper)
 #else
+
 subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
                                   tran_stepper)
 #endif
-
-
+!
+! Finalizes timestepping runs the time step loop
+! Author: Glenn Hammond
+! Date: 03/11/13
+!
   use Realization_class
 
   use Option_module
@@ -1128,13 +1133,14 @@ subroutine TimestepperFinalizeRun(realization,master_stepper,flow_stepper, &
 end subroutine TimestepperFinalizeRun
 
 ! ************************************************************************** !
-!
-! StepperUpdateDT: Updates time step
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
+
 subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
+  ! 
+  ! Updates time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
 
   use Option_module
   
@@ -1383,15 +1389,16 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 end subroutine StepperUpdateDT
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!> This subroutine sets updates dt for surface flow.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/31/12
-! ************************************************************************** !
+
 subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+  ! 
+  ! This subroutine sets updates dt for surface flow.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/31/12
+  ! 
 
   use Option_module
   
@@ -1462,14 +1469,12 @@ subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
 end subroutine StepperUpdateSurfaceFlowDT
 
 ! ************************************************************************** !
-!> This routine the maximum allowable dt for surface flow
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
+
 subroutine StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,option)
+  ! 
+  ! This routine the maximum allowable dt for surface flow
+  ! Author: Gautam Bisht, LBNL
+  ! 
 
   use Surface_Realization_class
   use Surface_Flow_module
@@ -1500,15 +1505,17 @@ subroutine StepperUpdateSurfaceFlowDTExplicit(realization,surf_realization,optio
 
 end subroutine StepperUpdateSurfaceFlowDTExplicit
 #endif
+
 ! ************************************************************************** !
-!
-! StepperUpdateDTMax: Updates maximum time step specified by the current
-!                     waypoint after the completion of a time step
-! author: Glenn Hammond
-! date: 05/23/12
-!
-! ************************************************************************** !
+
 subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
+  ! 
+  ! Updates maximum time step specified by the current
+  ! waypoint after the completion of a time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/23/12
+  ! 
 
   use Option_module
   
@@ -1557,14 +1564,15 @@ subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
 end subroutine StepperUpdateDTMax
 
 ! ************************************************************************** !
-!
-! StepperSetTargetTimes: Sets target time for flow and transport solvers
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
+
 subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 #ifdef SURFACE_FLOW
+  ! 
+  ! Sets target time for flow and transport solvers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
                                  surf_flow_stepper, &
 #endif
                                  option,plot_flag, &
@@ -1757,17 +1765,18 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 end subroutine StepperSetTargetTimes
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!> This subroutine sets target time for surface flow.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/31/12
-! ************************************************************************** !
+
 subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                  option,surf_plot_flag, &
                                  transient_plot_flag,checkpoint_flag)
+  ! 
+  ! This subroutine sets target time for surface flow.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/31/12
+  ! 
 
   use Option_module
 
@@ -1826,17 +1835,18 @@ end subroutine StepperSetSurfaceFlowTargetTimes
 #endif
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!> This subroutine sets target time for model coupling.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/31/12
-! ************************************************************************** !
+
 subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
                                         option,plot_flag,transient_plot_flag, &
                                         surf_plot_flag,checkpoint_flag)
+  ! 
+  ! This subroutine sets target time for model coupling.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/31/12
+  ! 
 
   use Option_module
 
@@ -1912,13 +1922,14 @@ end subroutine SetSurfaceSubsurfaceCouplingTime
 #endif
 
 ! ************************************************************************** !
-!
-! StepperStepFlowDT: Steps forward one step in time
-! author: Glenn Hammond
-! date: 02/19/08, 03/11/13
-!
-! ************************************************************************** !
+
 subroutine StepperStepFlowDT(realization,stepper,failure)
+  ! 
+  ! Steps forward one step in time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08, 03/11/13
+  ! 
 
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
@@ -2250,13 +2261,14 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
 end subroutine StepperStepFlowDT
 
 ! ************************************************************************** !
-!
-! FlowStepperStepToSteadyState: Steps forward one step in time
-! author: Glenn Hammond
-! date: 03/12/13
-!
-! ************************************************************************** !
+
 subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
+  ! 
+  ! Steps forward one step in time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/13
+  ! 
 
   use Global_module
   use Output_module, only : Output
@@ -2399,14 +2411,16 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
 end subroutine FlowStepperStepToSteadyState
 
 #if 0
+
 ! ************************************************************************** !
-!
-! StepperStepFlowDT: Steps forward one step in time
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
+
 subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
+  ! 
+  ! Steps forward one step in time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
 
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
@@ -2872,15 +2886,16 @@ end subroutine StepperStepFlowDT
 #endif
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!> This subroutine steps forward surface-flow one step in time.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/02/13
-! ************************************************************************** !
+
 subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
+  ! 
+  ! This subroutine steps forward surface-flow one step in time.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/02/13
+  ! 
   
   use Surface_Realization_class
   use Surface_Flow_module
@@ -2973,15 +2988,16 @@ end subroutine StepperStepSurfaceFlowExplicitDT
 #endif
 
 ! ************************************************************************** !
-!
-! StepperStepTransportDT_GI: Steps forward one step in time
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
+
 subroutine StepperStepTransportDT_GI(realization,stepper, &
                                      steady_flow,flow_t0,flow_t1, &
                                      failure)
+  ! 
+  ! Steps forward one step in time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
   
   use Reactive_Transport_module
   use Output_module, only : Output
@@ -3238,16 +3254,18 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   ! option%tran_time is updated outside this subroutine
 
 end subroutine StepperStepTransportDT_GI
+
 ! ************************************************************************** !
-!
-! StepperStepTransportDT_OS: Steps forward one step in time (operator split)
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
+
 subroutine StepperStepTransportDT_OS(realization,stepper, &
                                      steady_flow, flow_t0,flow_t1, &
                                      failure)
+  ! 
+  ! Steps forward one step in time (operator split)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
 
   use Reactive_Transport_module, only : RTUpdateRHSCoefs, RTUpdateAuxVars, &
         RTCalculateRHS_t0, RTUpdateTransportCoefs, RTCalculateRHS_t1, &
@@ -3483,13 +3501,14 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 end subroutine StepperStepTransportDT_OS
 
 ! ************************************************************************** !
-!
-! StepperRunSteadyState: Solves steady state solution for flow and transport
-! author: Glenn Hammond
-! date: 03/10/09
-!
-! ************************************************************************** !
+
 subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+  ! 
+  ! Solves steady state solution for flow and transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/09
+  ! 
 
   use Realization_class
 
@@ -3625,15 +3644,16 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
 
 
 end subroutine StepperRunSteadyState
- 
+
 ! ************************************************************************** !
-!
-! StepperSolveFlowSteadyState: Solves the steady-state flow equation
-! author: Glenn Hammond
-! date: 03/10/09
-!
-! ************************************************************************** !
+
 subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
+  ! 
+  ! Solves the steady-state flow equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/09
+  ! 
 
   use Global_module, only : GlobalUpdateAuxVars
   
@@ -3749,13 +3769,14 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 end subroutine StepperSolveFlowSteadyState
 
 ! ************************************************************************** !
-!
-! StepperSolveTranSteadyState: Steps forward one step in time
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
+
 subroutine StepperSolveTranSteadyState(realization,stepper,failure)
+  ! 
+  ! Steps forward one step in time
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
   
   use Realization_class
   use Discretization_module
@@ -3860,19 +3881,21 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 
 end subroutine StepperSolveTranSteadyState
 
-! ************************************************************************** !
-!
-! StepperUpdateSolution: Updates the solution variables
-! author: Glenn Hammond
-! date: 02/19/08 
-!
-! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine StepperUpdateSolution(realization,surf_realization,update_kinetics)
+
 #else
+
 subroutine StepperUpdateSolution(realization,update_kinetics)
 #endif
-
+!
+! StepperUpdateSolution: Updates the solution variables
+! Author: Glenn Hammond
+! Date: 02/19/08 
+!
   use Realization_class
   use Option_module
 #ifdef SURFACE_FLOW
@@ -3904,13 +3927,14 @@ subroutine StepperUpdateSolution(realization,update_kinetics)
 end subroutine StepperUpdateSolution
 
 ! ************************************************************************** !
-!
-! StepperUpdateFlowSolution: Updates the flow solution variables
-! author: Glenn Hammond
-! date: 02/19/08 
-!
-! ************************************************************************** !
+
 subroutine StepperUpdateFlowSolution(realization)
+  ! 
+  ! Updates the flow solution variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
   
   use Flash2_module, only: Flash2UpdateSolution
   use Mphase_module, only: MphaseUpdateSolution
@@ -3956,15 +3980,16 @@ subroutine StepperUpdateFlowSolution(realization)
 end subroutine StepperUpdateFlowSolution
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!> This subroutine updates the surface flow solution variables
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/22/12
-! ************************************************************************** !
+
 subroutine StepperUpdateSurfaceFlowSolution(surf_realization)
+  ! 
+  ! This subroutine updates the surface flow solution variables
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/22/12
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_module
@@ -3992,15 +4017,15 @@ subroutine StepperUpdateSurfaceFlowSolution(surf_realization)
 end subroutine StepperUpdateSurfaceFlowSolution
 #endif
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! StepperUpdateTransportSolution: Updates the transport solution variables
-! author: Glenn Hammond
-! date: 02/19/08 
-!
-! ************************************************************************** !
 subroutine StepperUpdateTransportSolution(realization,update_kinetics)
+  ! 
+  ! Updates the transport solution variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/19/08
+  ! 
 
   use Realization_class
   use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
@@ -4030,13 +4055,14 @@ subroutine StepperUpdateTransportSolution(realization,update_kinetics)
 end subroutine StepperUpdateTransportSolution
 
 ! ************************************************************************** !
-!
-! StepperJumpStart: Sets kinetic sorbed concentrations
-! author: Glenn Hammond
-! date: 08/05/09 
-!
-! ************************************************************************** !
+
 subroutine StepperJumpStart(realization)
+  ! 
+  ! Sets kinetic sorbed concentrations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   use Realization_class
   use Reactive_Transport_module, only : RTJumpStartKineticSorption
@@ -4050,13 +4076,14 @@ subroutine StepperJumpStart(realization)
 end subroutine StepperJumpStart
 
 ! ************************************************************************** !
-!
-! StepperUpdateFlowAuxVars: Updates the flow auxiliary variables
-! author: Glenn Hammond
-! date: 10/11/08 
-!
-! ************************************************************************** !
+
 subroutine StepperUpdateFlowAuxVars(realization)
+  ! 
+  ! Updates the flow auxiliary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/08
+  ! 
   
   use Flash2_module, only: Flash2UpdateAuxVars
   use Mphase_module, only: MphaseUpdateAuxVars
@@ -4103,13 +4130,14 @@ subroutine StepperUpdateFlowAuxVars(realization)
 end subroutine StepperUpdateFlowAuxVars
 
 ! ************************************************************************** !
-!
-! StepperUpdateTranAuxVars: Updates the flow auxiliary variables
-! author: Glenn Hammond
-! date: 10/11/08 
-!
-! ************************************************************************** !
+
 subroutine StepperUpdateTranAuxVars(realization)
+  ! 
+  ! Updates the flow auxiliary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/08
+  ! 
   
   use Reactive_Transport_module, only : RTUpdateAuxVars
   use Realization_class
@@ -4124,13 +4152,14 @@ subroutine StepperUpdateTranAuxVars(realization)
 end subroutine StepperUpdateTranAuxVars
 
 ! ************************************************************************** !
-!
-! StepperSandbox: Sandbox for temporary miscellaneous operations
-! author: Glenn Hammond
-! date: 06/27/11
-!
-! ************************************************************************** !
+
 subroutine StepperSandbox(realization)
+  ! 
+  ! Sandbox for temporary miscellaneous operations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/27/11
+  ! 
   
   use Reactive_Transport_module, only : RTUpdateAuxVars
   use Realization_class
@@ -4234,13 +4263,14 @@ subroutine StepperSandbox(realization)
 end subroutine StepperSandbox
 
 ! ************************************************************************** !
-!
-! StepperCheckpoint: Calls appropriate routines to write a checkpoint file
-! author: Glenn Hammond
-! date: 03/07/08 
-!
-! ************************************************************************** !
+
 subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id, id_stamp)
+  ! 
+  ! Calls appropriate routines to write a checkpoint file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/08
+  ! 
 
   use Realization_class
   use Checkpoint_module
@@ -4312,15 +4342,16 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id, id_stamp)
 end subroutine StepperCheckpoint
 
 ! ************************************************************************** !
-!
-! TimestepperRestart: Calls appropriate routines to read checkpoint file and
-!                     restart
-! author: Glenn Hammond
-! date: 03/07/08 
-!
-! ************************************************************************** !
+
 subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
                               flow_read,transport_read,activity_coefs_read)
+  ! 
+  ! Calls appropriate routines to read checkpoint file and
+  ! restart
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/08
+  ! 
 
   use Realization_class
   use Checkpoint_module
@@ -4434,15 +4465,16 @@ subroutine TimestepperRestart(realization,flow_stepper,tran_stepper, &
 end subroutine TimestepperRestart
 
 #ifdef SURFACE_FLOW
+
 ! ************************************************************************** !
-!> This subroutine writes a checkpoint file for surface-flow.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/11/13
-! ************************************************************************** !
+
 subroutine StepperCheckpointSurface(surf_realization, flow_stepper, id)
+  ! 
+  ! This subroutine writes a checkpoint file for surface-flow.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/11/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Checkpoint_module
@@ -4463,17 +4495,16 @@ subroutine StepperCheckpointSurface(surf_realization, flow_stepper, id)
 end subroutine StepperCheckpointSurface
 
 ! ************************************************************************** !
-!> This subroutine reads a checkpoint file and restarts surface-flow
-!! simulation.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/11/13
-! ************************************************************************** !
 
 subroutine TimestepperRestartSurface(surf_realization,surf_flow_stepper, &
                                      surf_flow_read)
+  ! 
+  ! This subroutine reads a checkpoint file and restarts surface-flow
+  ! simulation.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/11/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Checkpoint_module
@@ -4515,13 +4546,14 @@ end subroutine TimestepperRestartSurface
 #endif
 
 ! ************************************************************************** !
-!
-! TimestepperGetTranWeight: Sets the weights at t0 or t1 for transport
-! author: Glenn Hammond
-! date: 01/17/11
-!
-! ************************************************************************** !
+
 subroutine TimestepperSetTranWeights(option,flow_t0,flow_t1)
+  ! 
+  ! TimestepperGetTranWeight: Sets the weights at t0 or t1 for transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/11
+  ! 
 
   use Option_module
 
@@ -4540,13 +4572,14 @@ subroutine TimestepperSetTranWeights(option,flow_t0,flow_t1)
 end subroutine TimestepperSetTranWeights
 
 ! ************************************************************************** !
-!
-! TimestepperCheckCFLLimit: Checks CFL limit specified by the user
-! author: Glenn Hammond
-! date: 01/17/11
-!
-! ************************************************************************** !
+
 subroutine TimestepperCheckCFLLimit(stepper,realization)
+  ! 
+  ! Checks CFL limit specified by the user
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/11
+  ! 
 
   use Realization_class
   
@@ -4563,13 +4596,14 @@ subroutine TimestepperCheckCFLLimit(stepper,realization)
 end subroutine TimestepperCheckCFLLimit
 
 ! ************************************************************************** !
-!
-! TimestepperEnforceCFLLimit: Enforces a CFL limit specified by the user
-! author: Glenn Hammond
-! date: 01/17/11
-!
-! ************************************************************************** !
+
 subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
+  ! 
+  ! Enforces a CFL limit specified by the user
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/11
+  ! 
 
   use Option_module
   use Output_Aux_module
@@ -4596,13 +4630,14 @@ end subroutine TimestepperEnforceCFLLimit
 #endif ! ifndef PROCESS_MODEL
 
 ! ************************************************************************** !
-!
-! TimestepperPrintInfo: Prints information about time stepper
-! author: Glenn Hammond
-! date: 02/23/08
-!
-! ************************************************************************** !
+
 subroutine TimestepperPrintInfo(stepper,fid,header,option)
+  ! 
+  ! Prints information about time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/08
+  ! 
 
   use Option_module
   
@@ -4640,13 +4675,14 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
 end subroutine TimestepperPrintInfo
 
 ! ************************************************************************** !
-!
-! TimestepperDestroy: Deallocates a time stepper
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine TimestepperDestroy(stepper)
+  ! 
+  ! Deallocates a time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   

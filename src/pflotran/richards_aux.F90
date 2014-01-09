@@ -58,15 +58,15 @@ module Richards_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RichardsAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
 function RichardsAuxCreate()
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -102,13 +102,14 @@ function RichardsAuxCreate()
 end function RichardsAuxCreate
 
 ! ************************************************************************** !
-!
-! RichardsAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RichardsAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -137,13 +138,14 @@ subroutine RichardsAuxVarInit(aux_var,option)
 end subroutine RichardsAuxVarInit
 
 ! ************************************************************************** !
-!
-! RichardsAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
 
@@ -170,16 +172,17 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%dden_dp = aux_var%dden_dp
  
 end subroutine RichardsAuxVarCopy
-  
+
 ! ************************************************************************** !
-!
-! RichardsAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
                                  saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Global_Aux_module
@@ -324,13 +327,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 end subroutine RichardsAuxVarCompute
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine AuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -339,13 +343,14 @@ subroutine AuxVarDestroy(aux_var)
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RichardsAuxDestroy(aux)
+  ! 
+  ! Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 

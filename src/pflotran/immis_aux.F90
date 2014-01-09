@@ -81,17 +81,16 @@ type, public :: Immis_auxvar_elem_type
             ImmisAuxVarInit, ImmisAuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! ImmisAuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function ImmisAuxCreate()
+  ! 
+  ! ImmisAuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -123,16 +122,15 @@ function ImmisAuxCreate()
   
 end function ImmisAuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! ImmisAuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -183,13 +181,14 @@ subroutine ImmisAuxVarInit(aux_var,option)
 end subroutine ImmisAuxVarInit
 
 ! ************************************************************************** !
-!
-! ImmisAuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
+
 subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
@@ -228,17 +227,17 @@ subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine ImmisAuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! ImmisAuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
                                    fluid_properties,option)
+  ! 
+  ! ImmisAuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   use EOS_Water_module
@@ -435,7 +434,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
 end subroutine ImmisAuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
                                     fluid_properties,option)
@@ -466,13 +465,14 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
 end subroutine ImmisAuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxVarDestroy(aux_var)
+  ! 
+  ! AuxVarDestroy: Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -499,13 +499,14 @@ subroutine ImmisAuxVarDestroy(aux_var)
 end subroutine ImmisAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxDestroy(aux, option)
+  ! 
+  ! RichardsAuxDestroy: Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   implicit none

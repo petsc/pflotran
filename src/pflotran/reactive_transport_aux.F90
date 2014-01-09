@@ -130,15 +130,15 @@ module Reactive_Transport_Aux_module
             
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RTAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
 function RTAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -191,13 +191,14 @@ function RTAuxCreate(option)
 end function RTAuxCreate
 
 ! ************************************************************************** !
-!
-! RTAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTAuxVarInit(aux_var,reaction,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   use Reaction_Aux_module
@@ -374,13 +375,14 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
-!
-! RTAuxVarCopy: Copys an auxiliary object
-! author: Glenn Hammond
-! date: 09/05/08
-!
-! ************************************************************************** !
+
 subroutine RTAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copys an auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/05/08
+  ! 
 
   use Option_module
 
@@ -476,13 +478,14 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 end subroutine RTAuxVarCopy
 
 ! ************************************************************************** !
-!
-! RTAuxVarSingleDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine RTAuxVarSingleDestroy(aux_var)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -495,15 +498,16 @@ subroutine RTAuxVarSingleDestroy(aux_var)
   nullify(aux_var)  
 
 end subroutine RTAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!
-! RTAuxVarArrayDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine RTAuxVarArrayDestroy(aux_vars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -520,15 +524,16 @@ subroutine RTAuxVarArrayDestroy(aux_vars)
   nullify(aux_vars)
 
 end subroutine RTAuxVarArrayDestroy
-  
+
 ! ************************************************************************** !
-!
-! RTAuxVarStrip: Deallocates all members of single auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTAuxVarStrip(aux_var)
+  ! 
+  ! Deallocates all members of single auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -591,13 +596,14 @@ subroutine RTAuxVarStrip(aux_var)
 end subroutine RTAuxVarStrip
 
 ! ************************************************************************** !
-!
-! RTAuxDestroy: Deallocates a reactive transport auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTAuxDestroy(aux)
+  ! 
+  ! Deallocates a reactive transport auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   

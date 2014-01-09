@@ -30,13 +30,14 @@ module MFD_module
 contains
 
 ! ************************************************************************** !
-!
-! MFDCreateJacobian: Creates a Jacobian matrix for  the faced based dof
-! author: Daniil Svyatskiy 
-! date: 05/14/10
-!
-! ************************************************************************** !
+
 subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
+  ! 
+  ! Creates a Jacobian matrix for  the faced based dof
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 05/14/10
+  ! 
 
  use Option_module
  use Grid_module
@@ -147,7 +148,7 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
 end subroutine MFDCreateJacobian
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 
   use Option_module
@@ -386,7 +387,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 end subroutine MFDCreateJacobianLP
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDInitializeMassMatrices(grid, field, &
                                              mfd_aux, option)
 
@@ -460,7 +461,7 @@ subroutine MFDInitializeMassMatrices(grid, field, &
 end subroutine MFDInitializeMassMatrices
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
                                        sq_faces, option)
 
@@ -505,9 +506,8 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
 end subroutine MFDAuxGenerateStiffMatrix
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
 subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, &
                                        rich_aux_var, global_aux_var, Accum, &
                                        porosity, volume, pres, face_pres, bnd,&
@@ -669,7 +669,7 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 end subroutine MFDAuxGenerateRhs
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, &
                                        rich_aux_var, global_aux_var, Accum, &
                                        porosity, volume, pres, face_pres, bnd,&
@@ -860,7 +860,7 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 end subroutine MFDAuxGenerateRhs_LP
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxJacobianLocal( grid, aux_var, &
                                        rich_aux_var, global_aux_var,  &
                                        sq_faces, option, J)
@@ -909,7 +909,7 @@ subroutine MFDAuxJacobianLocal( grid, aux_var, &
 end subroutine MFDAuxJacobianLocal
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxJacobianLocal_LP( grid, aux_var, &
                                        rich_aux_var, global_aux_var,  &
                                        sq_faces, option, J)
@@ -950,9 +950,8 @@ subroutine MFDAuxJacobianLocal_LP( grid, aux_var, &
 
 end subroutine MFDAuxJacobianLocal_LP
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
 subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_aux_var, Accum, &
                                        sq_faces, option, xx)
 
@@ -1002,9 +1001,8 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
 end subroutine MFDAuxReconstruct
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! ************************************************************************** !
 subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_aux_var,&
                                 option, pressure)
 
@@ -1035,7 +1033,7 @@ subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_aux_var,&
 end subroutine MFDAuxUpdateCellPressure
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, PermTensor, rich_aux_var, global_aux_var, &
                                        sq_faces, bnd, neigh_den, neig_kvr,  neig_pres, option)
 
@@ -1155,7 +1153,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 end subroutine MFDAuxFluxes
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
 
   use Option_module
@@ -1205,7 +1203,7 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
 end subroutine MFDComputeDensity
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTensor, option)
 
 
@@ -1258,13 +1256,14 @@ subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTen
 end subroutine MFDAuxComputeGeometricValues
 
 ! ************************************************************************** !
-!
-! MFDAuxGenerateMassMatrixInv: Create a mass matrix for cell
-! author: Daniil Svyatskiy
-! date: 05/25/10
-!
-! ************************************************************************** !
+
 subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, PermTensor, option)
+  ! 
+  ! Create a mass matrix for cell
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 05/25/10
+  ! 
 
  use Grid_module
  use Option_module

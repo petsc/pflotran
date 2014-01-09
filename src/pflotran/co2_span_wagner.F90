@@ -44,7 +44,9 @@
       private
 
       contains
-    
+
+! ************************************************************************** !
+
 subroutine initialize_span_wagner(itable,myrank,option)
 
       use Option_module
@@ -468,7 +470,9 @@ subroutine initialize_span_wagner(itable,myrank,option)
   endif
 
 end subroutine initialize_span_wagner
-      
+
+! ************************************************************************** !
+
 subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
       eng,ent,dhdt,dhdp,visc,dvdt,dvdp,iflag,itable)
       
@@ -713,7 +717,7 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
       
 end subroutine co2_span_wagner
 
-
+! ************************************************************************** !
 
 subroutine guess(lguess,uguess)
 
@@ -823,6 +827,8 @@ subroutine guess(lguess,uguess)
 
 end subroutine guess
 
+! ************************************************************************** !
+
 subroutine co2den(den,f,df)
      
     IMPLICIT NONE
@@ -840,6 +846,8 @@ subroutine co2den(den,f,df)
       return
 end subroutine co2den
 
+! ************************************************************************** !
+
       PetscReal function psi(i,del2,tau2)
       implicit none
 !     PetscReal :: psi
@@ -852,6 +860,8 @@ end subroutine co2den
       psi=exp(psi)
 
       end function psi
+
+! ************************************************************************** !
 
 subroutine dphiodtau(dr,del2,tau2)
       implicit none
@@ -874,6 +884,8 @@ subroutine dphiodtau(dr,del2,tau2)
 
 end subroutine dphiodtau
 
+! ************************************************************************** !
+
 subroutine dphiodtautau(dr,del2,tau2)
 
       implicit none
@@ -893,6 +905,8 @@ subroutine dphiodtautau(dr,del2,tau2)
       dr = dihelm_dtautau
 
 end subroutine dphiodtautau
+
+! ************************************************************************** !
 
 subroutine phir(r_helm,del2,tau2)
 
@@ -935,6 +949,8 @@ subroutine phir(r_helm,del2,tau2)
       return
 end subroutine phir
 
+! ************************************************************************** !
+
 subroutine dphirddel(dr,del2,tau2)
 
 !     Span & Wagner (1996) Table 32
@@ -974,6 +990,8 @@ subroutine dphirddel(dr,del2,tau2)
       dr = derdr_helm
       
 end subroutine dphirddel
+
+! ************************************************************************** !
 
 subroutine dphirdddel(dpdd,del2,tau2)
       implicit none
@@ -1028,7 +1046,9 @@ subroutine dphirdddel(dpdd,del2,tau2)
       dpdd = derdr_helm
       
 end subroutine dphirdddel
-      
+
+! ************************************************************************** !
+
 subroutine dphirdtau(dpdtau,del2,tau2)
 
       implicit none
@@ -1067,6 +1087,8 @@ subroutine dphirdtau(dpdtau,del2,tau2)
       dpdtau = derdr_helm
       
 end subroutine dphirdtau
+
+! ************************************************************************** !
 
 subroutine dphirdtautau(dpdtt,del2,tau2)
 
@@ -1112,6 +1134,8 @@ subroutine dphirdtautau(dpdtt,del2,tau2)
       dpdtt = derdr_helm
       
 end subroutine dphirdtautau
+
+! ************************************************************************** !
 
 subroutine dphirddeldtau(dpddt,del2,tau2)
 
@@ -1161,6 +1185,8 @@ subroutine dphirddeldtau(dpddt,del2,tau2)
       
 end subroutine dphirddeldtau
 
+! ************************************************************************** !
+
 function dpsiddel(i,del2,tau2)
       implicit none
       PetscReal :: dpsiddel
@@ -1174,6 +1200,8 @@ function dpsiddel(i,del2,tau2)
 
       end function dpsiddel
 
+! ************************************************************************** !
+
       function d2psiddel2(i,del2,tau2)
       implicit none
       PetscReal :: d2psiddel2
@@ -1185,6 +1213,8 @@ function dpsiddel(i,del2,tau2)
 
       end function d2psiddel2
 
+! ************************************************************************** !
+
       function dpsidtau(i,del2,tau2)
       implicit none
       PetscReal :: dpsidtau
@@ -1195,6 +1225,8 @@ function dpsiddel(i,del2,tau2)
       dpsidtau = -2.d0*capd(i)*(tau2-1.d0)*psi1
 
       end function dpsidtau
+
+! ************************************************************************** !
 
       function d2psidtau2(i,del2,tau2)
       implicit none
@@ -1208,6 +1240,8 @@ function dpsiddel(i,del2,tau2)
 
       end function d2psidtau2
 
+! ************************************************************************** !
+
       function d2psiddeltau(i,del2,tau2)
       implicit none
       PetscReal :: d2psiddeltau
@@ -1219,6 +1253,8 @@ function dpsiddel(i,del2,tau2)
 
       end function d2psiddeltau
 
+! ************************************************************************** !
+
       function theta(i,del2,tau2)
       implicit none
       PetscReal :: theta
@@ -1229,6 +1265,8 @@ function dpsiddel(i,del2,tau2)
 
       end function theta
 
+! ************************************************************************** !
+
       function capdel(i,del2,tau2)
       implicit none
       PetscReal :: capdel
@@ -1238,6 +1276,8 @@ function dpsiddel(i,del2,tau2)
       theta1=theta(i,del2,tau2)
       capdel=theta1*theta1+capb(i)*(((del2-1.d0)**2)**aco2(i))
       end function capdel
+
+! ************************************************************************** !
 
       function dcapdelddel(i,del2,tau2)
       implicit none
@@ -1253,6 +1293,8 @@ function dpsiddel(i,del2,tau2)
       (((del2-1.d0)**2)**(aco2(i)-1.d0))))
 
       end function dcapdelddel
+
+! ************************************************************************** !
 
       function d2capdelddel2(i,del2,tau2) ! d^2 Delta/d delta^2
       implicit none
@@ -1279,6 +1321,8 @@ function dpsiddel(i,del2,tau2)
 
       end function d2capdelddel2
 
+! ************************************************************************** !
+
       function ddelbiddel(i,del2,tau2)
       implicit none
       PetscReal :: ddelbiddel
@@ -1290,6 +1334,8 @@ function dpsiddel(i,del2,tau2)
       ddelbiddel=bco2(i)*(capdel1**(bco2(i)-1.d0))*ddd
 
       end function ddelbiddel
+
+! ************************************************************************** !
 
       function d2delbiddel2(i,del2,tau2)
       implicit none
@@ -1305,6 +1351,8 @@ function dpsiddel(i,del2,tau2)
 
       end function d2delbiddel2
 
+! ************************************************************************** !
+
       function ddelbidtau(i,del2,tau2)
       implicit none
       PetscReal :: ddelbidtau
@@ -1317,6 +1365,8 @@ function dpsiddel(i,del2,tau2)
       ddelbidtau=-2.d0*theta1*bco2(i)*capdel1**(bco2(i)-1.d0)
 
       end function ddelbidtau
+
+! ************************************************************************** !
 
       function d2delbidtau2(i,del2,tau2)
       implicit none
@@ -1331,6 +1381,8 @@ function dpsiddel(i,del2,tau2)
       (theta1**2)*bco2(i)*(bco2(i)-1.d0)*(capdel1**(bco2(i)-2.d0)))
 
       end function d2delbidtau2
+
+! ************************************************************************** !
 
       function d2delbiddeltau(i,del2,tau2)
       implicit none
@@ -1351,6 +1403,8 @@ function dpsiddel(i,del2,tau2)
       d2delbiddeltau=tmp3
 
 end function d2delbiddeltau
+
+! ************************************************************************** !
 
 subroutine vappr(tm,ps,dertp,derpt,ifl1)
 
@@ -1408,7 +1462,9 @@ subroutine vappr(tm,ps,dertp,derpt,ifl1)
       endif
       
 end subroutine vappr
-      
+
+! ************************************************************************** !
+
 subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
 
 ! Fenghour, A., W. A. Wakeham, and V. Vesovic,
@@ -1485,6 +1541,8 @@ subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
       dmudp = dp_zerodenmu + (dp_excessmu*drhodp)
 
 end subroutine viscosity
+
+! ************************************************************************** !
 
 subroutine dissco2(p,t,mco2,fg,mol)
 

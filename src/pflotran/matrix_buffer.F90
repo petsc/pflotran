@@ -39,13 +39,14 @@ module Matrix_Buffer_module
 contains
 
 ! ************************************************************************** !
-!
-! MatrixBufferCreate: Creates a matrix object
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 function MatrixBufferCreate()
+  ! 
+  ! Creates a matrix object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
   
   implicit none
 
@@ -66,13 +67,14 @@ function MatrixBufferCreate()
 end function MatrixBufferCreate
 
 ! ************************************************************************** !
-!
-! MatrixBufferInit: Initializes matrix buffer object
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferInit(A,matrix_buffer,grid)
+  ! 
+  ! Initializes matrix buffer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
 
   use Structured_Grid_module
 
@@ -150,13 +152,14 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
 end subroutine MatrixBufferInit
 
 ! ************************************************************************** !
-!
-! MatrixBufferZero: Zeros matrix buffer values
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferZero(matrix_buffer)
+  ! 
+  ! Zeros matrix buffer values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
 
   implicit none
   
@@ -167,13 +170,14 @@ subroutine MatrixBufferZero(matrix_buffer)
 end subroutine MatrixBufferZero
 
 ! ************************************************************************** !
-!
-! MatrixBufferAdd: Adds values to matrix buffer object
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferAdd(matrix_buffer,irow,icol,value)
+  ! 
+  ! Adds values to matrix buffer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
 
   implicit none
   
@@ -208,14 +212,15 @@ subroutine MatrixBufferAdd(matrix_buffer,irow,icol,value)
 end subroutine MatrixBufferAdd
 
 ! ************************************************************************** !
-!
-! MatrixBufferZeroRows: Zeros rows in a matrix buffer object, placing 1
-!                       on the diagonal
-! author: Glenn Hammond
-! date: 05/14/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferZeroRows(matrix_buffer,nrows,rows)
+  ! 
+  ! Zeros rows in a matrix buffer object, placing 1
+  ! on the diagonal
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/14/09
+  ! 
 
   implicit none
   
@@ -242,13 +247,14 @@ subroutine MatrixBufferZeroRows(matrix_buffer,nrows,rows)
 end subroutine MatrixBufferZeroRows
 
 ! ************************************************************************** !
-!
-! MatrixBufferSetValues: Sets values in PETSc matrix
-! author: Glenn Hammond
-! date: 05/14/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferSetValues(A,matrix_buffer)
+  ! 
+  ! Sets values in PETSc matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/14/09
+  ! 
 
   implicit none
 
@@ -265,13 +271,14 @@ subroutine MatrixBufferSetValues(A,matrix_buffer)
 end subroutine MatrixBufferSetValues
 
 ! ************************************************************************** !
-!
-! MatrixBufferSetValuesHypre: Sets values in PETSc Hypre matrix
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferSetValuesHypre(A,matrix_buffer)
+  ! 
+  ! Sets values in PETSc Hypre matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
 
   implicit none
 
@@ -289,13 +296,14 @@ subroutine MatrixBufferSetValuesHypre(A,matrix_buffer)
 end subroutine MatrixBufferSetValuesHypre
 
 ! ************************************************************************** !
-!
-! MatrixBufferSetValues: Sets values in PETSc Aij matrix
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferSetValuesAij(A,matrix_buffer)
+  ! 
+  ! MatrixBufferSetValues: Sets values in PETSc Aij matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
 
   implicit none
 
@@ -317,13 +325,14 @@ subroutine MatrixBufferSetValuesAij(A,matrix_buffer)
 end subroutine MatrixBufferSetValuesAij
 
 ! ************************************************************************** !
-!
-! MatrixBufferDestroy: Destroys a matrix buffer object
-! author: Glenn Hammond
-! date: 05/13/09
-!
-! ************************************************************************** !
+
 subroutine MatrixBufferDestroy(matrix_buffer)
+  ! 
+  ! Destroys a matrix buffer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/13/09
+  ! 
 
   implicit none
   

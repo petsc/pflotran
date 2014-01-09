@@ -18,14 +18,15 @@ module Solid_Solution_module
 contains
 
 ! ************************************************************************** !
-!
-! SolidSolutionReadFromInputFile: Reads solid solution from the input file
-! author: Glenn Hammond
-! date: 08/16/12
-!
-! ************************************************************************** !
+
 subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
                                           option)
+  ! 
+  ! Reads solid solution from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
 
   use Option_module
   use String_module
@@ -128,15 +129,16 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
 end subroutine SolidSolutionReadFromInputFile
 
 ! ************************************************************************** !
-!
-! SolidSolutionReadFromDatabase: Reads solid solution from the database
-! author: Glenn Hammond
-! date: 08/20/12
-!
-! ************************************************************************** !
+
 subroutine SolidSolutionLinkNamesToIDs(solid_solution_list, &
                                        mineral_reaction, &
                                        option)
+  ! 
+  ! SolidSolutionReadFromDatabase: Reads solid solution from the database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/20/12
+  ! 
   use Option_module
   use String_module
   use Mineral_Aux_module
@@ -170,14 +172,16 @@ subroutine SolidSolutionLinkNamesToIDs(solid_solution_list, &
 end subroutine SolidSolutionLinkNamesToIDs
 
 #if 0
+
 ! ************************************************************************** !
-!
-! SolidSolutionReadFromDatabase: Reads solid solution from the database
-! author: Glenn Hammond
-! date: 08/20/12
-!
-! ************************************************************************** !
+
 subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
+  ! 
+  ! Reads solid solution from the database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/20/12
+  ! 
 
   use Option_module
   use String_module

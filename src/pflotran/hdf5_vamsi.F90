@@ -46,16 +46,17 @@ contains
 #if defined(PETSC_HAVE_HDF5)
 
 ! ************************************************************************** !
-!
-! HDF5MapLocToNatIndicesVamsi: Set up indices array that maps local cells to 
-!                               entries in HDF5 grid cell vectors
-! author: Vamsi Sripath
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
                                         dataset_name,dataset_size, &
                                         indices,num_indices)
+  ! 
+  ! Set up indices array that maps local cells to
+  ! entries in HDF5 grid cell vectors
+  ! 
+  ! Author: Vamsi Sripath
+  ! Date: ??/??/09
+  ! 
 
   use hdf5
   
@@ -226,17 +227,18 @@ subroutine HDF5MapLocToNatIndicesVamsi(grid,option,file_id, &
 ! End of Vamsi's HDF5 Mechanism  
 
 end subroutine HDF5MapLocToNatIndicesVamsi
-   
+
 ! ************************************************************************** !
-!
-! HDF5ReadIntegerArrayVamsi: Read in local integer values from hdf5 global file
-! author: Vamsi Sripathi
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadIntegerArrayVamsi(option,file_id,dataset_name, &
                                      dataset_size, &
                                      indices,num_indices,integer_array)
+  ! 
+  ! Read in local integer values from hdf5 global file
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: ??/??/09
+  ! 
 
   use hdf5
   
@@ -379,16 +381,17 @@ subroutine HDF5ReadIntegerArrayVamsi(option,file_id,dataset_name, &
 end subroutine HDF5ReadIntegerArrayVamsi
 
 ! ************************************************************************** !
-!
-! HDF5WriteStructuredDataSetVamsi: Writes data from an array into HDF5 file
-! author: Vamsi Sripathi
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5WriteStructuredDataSetVamsi(name,array,file_id,data_type,option, &
                                       nx_global,ny_global,nz_global, &
                                       nx_local,ny_local,nz_local, &
                                       istart_local,jstart_local,kstart_local)
+  ! 
+  ! Writes data from an array into HDF5 file
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: ??/??/09
+  ! 
 
   use hdf5
   use Option_module
@@ -659,14 +662,15 @@ subroutine HDF5WriteStructuredDataSetVamsi(name,array,file_id,data_type,option, 
 end subroutine HDF5WriteStructuredDataSetVamsi
 
 ! ************************************************************************** !
-!
-! HDF5ReadIndicesVamsi: Reads cell indices from an hdf5 dataset
-! author: Vamsi Sripathi
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadIndicesVamsi(grid,option,file_id,dataset_name,dataset_size, &
                            indices)
+  ! 
+  ! Reads cell indices from an hdf5 dataset
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: ??/??/09
+  ! 
 
   use hdf5
   
@@ -822,15 +826,16 @@ subroutine HDF5ReadIndicesVamsi(grid,option,file_id,dataset_name,dataset_size, &
 end subroutine HDF5ReadIndicesVamsi
 
 ! ************************************************************************** !
-!
-! HDF5ReadArrayVamsi: Read an hdf5 array into a Petsc Vec
-! author: Vamsi Sripathi
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
                          dataset_size, &
                          indices,global_vec,data_type)
+  ! 
+  ! Read an hdf5 array into a Petsc Vec
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: ??/??/09
+  ! 
                          
   use hdf5
   
@@ -1027,13 +1032,14 @@ end subroutine HDF5ReadArrayVamsi
 #endif !PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
-!
-! HDF5ReadRegionFromFileVamsi: Reads a region from an hdf5 file
-! author: Vamsi Sripathi
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
+  ! 
+  ! Reads a region from an hdf5 file
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: ??/??/09
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -1236,16 +1242,17 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
 end subroutine HDF5ReadRegionFromFileVamsi
 
 ! ************************************************************************** !
-!
-! HDF5ReadCellIndxIntArrayVamsi: Reads an array of integer values from an 
-!                                  hdf5 file
-! author: Vamsi Sripathi
-! date: ??/??/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
                                            group_name, &
                                            dataset_name,append_realization_id)
+  ! 
+  ! Reads an array of integer values from an
+  ! hdf5 file
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: ??/??/09
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -1389,17 +1396,18 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5,ierr)
                           
 end subroutine HDF5ReadCellIndxIntArrayVamsi
-    
+
 ! ************************************************************************** !
-!
-! HDF5ReadCellIndxRealArrayVamsi: Reads an array of real values from an hdf5 file
-! author: Glenn Hammond
-! date: 01/16/09, 02/18/09
-!
-! ************************************************************************** !
+
 subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
                                         group_name, &
                                         dataset_name,append_realization_id)
+  ! 
+  ! Reads an array of real values from an hdf5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/09, 02/18/09
+  ! 
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5

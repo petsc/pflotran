@@ -92,13 +92,14 @@ module Structured_Grid_module
 contains
 
 ! ************************************************************************** !
-!
-! StructGridCreate: Creates a structured grid object
-! author: Glenn Hammond
-! date: 10/22/07
-!
-! ************************************************************************** !
+
 function StructGridCreate()
+  ! 
+  ! Creates a structured grid object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/07
+  ! 
 
   implicit none
   
@@ -190,16 +191,17 @@ function StructGridCreate()
   StructGridCreate => structured_grid
   
 end function StructGridCreate
-  
+
 ! ************************************************************************** !
-!
-! StructGridCreateDMs: Creates structured distributed, parallel meshes/grids
-! author: Glenn Hammond
-! date: 10/22/07
-!
-! ************************************************************************** !
+
 subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                               stencil_type,option)
+  ! 
+  ! StructGridCreateDMs: Creates structured distributed, parallel meshes/grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/07
+  ! 
 
   use Option_module
         
@@ -240,14 +242,15 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
 end subroutine StructGridCreateDM
 
 ! ************************************************************************** !
-!
-! StructGridComputeLocalBounds: Computes the corners for the local portion
-!                               of the structured grid
-! author: Glenn Hammond
-! date: 03/13/08
-!
-! ************************************************************************** !
+
 subroutine StructGridComputeLocalBounds(structured_grid,da,option)
+  ! 
+  ! Computes the corners for the local portion
+  ! of the structured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/08
+  ! 
 
   use Option_module
   
@@ -297,13 +300,14 @@ subroutine StructGridComputeLocalBounds(structured_grid,da,option)
 end subroutine StructGridComputeLocalBounds
 
 ! ************************************************************************** !
-!
-! StructGridCreateVecFromDM: Creates a PETSc vector from a DM
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
+
 subroutine StructGridCreateVecFromDM(da,vector,vector_type)
+  ! 
+  ! Creates a PETSc vector from a DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/08/08
+  ! 
 
   implicit none
 
@@ -325,13 +329,14 @@ subroutine StructGridCreateVecFromDM(da,vector,vector_type)
 end subroutine StructGridCreateVecFromDM
 
 ! ************************************************************************** !
-!
-! StructGridReadDXYZ: Reads structured grid spacing from input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine StructGridReadDXYZ(structured_grid,input,option)
+  ! 
+  ! Reads structured grid spacing from input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -375,14 +380,15 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
 end subroutine StructGridReadDXYZ
 
 ! ************************************************************************** !
-!
-! StructGridReadArray: Reads structured grid spacing along an axis from  
-!                         input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine StructGridReadArray(a,n,input,option)
+  ! 
+  ! Reads structured grid spacing along an axis from
+  ! input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -438,14 +444,15 @@ subroutine StructGridReadArray(a,n,input,option)
 end subroutine StructGridReadArray
 
 ! ************************************************************************** !
-!
-! StructGridReadArrayNew: Reads structured grid spacing along an axis from  
-!                         input file
-! author: Glenn Hammond
-! date: 05/21/09
-!
-! ************************************************************************** !
+
 subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
+  ! 
+  ! Reads structured grid spacing along an axis from
+  ! input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/21/09
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -524,13 +531,14 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
 end subroutine StructGridReadArrayNew
 
 ! ************************************************************************** !
-!
-! StructGridComputeSpacing: Computes structured grid spacing
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine StructGridComputeSpacing(structured_grid,option)
+  ! 
+  ! Computes structured grid spacing
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   use Option_module
   
@@ -614,15 +622,16 @@ subroutine StructGridComputeSpacing(structured_grid,option)
 end subroutine StructGridComputeSpacing
 
 ! ************************************************************************** !
-!
-! StructGridComputeCoord: Computes structured coordinates in x,y,z
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine StructGridComputeCoord(structured_grid,option,origin_global, &
                                       grid_x,grid_y,grid_z, &
                                       x_min,x_max,y_min,y_max,z_min,z_max)
+  ! 
+  ! Computes structured coordinates in x,y,z
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   use Option_module
   
@@ -708,14 +717,15 @@ implicit none
 end subroutine StructGridComputeCoord
 
 ! ************************************************************************** !
-!
-! StructGridGetIJKFromCoordinate: Finds local, non-ghosted i,j,k indices for  
-!                                 grid cell encompassing coordinate
-! author: Glenn Hammond
-! date: 08/27/08
-!
-! ************************************************************************** !
+
 subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
+  ! 
+  ! Finds local, non-ghosted i,j,k indices for
+  ! grid cell encompassing coordinate
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/27/08
+  ! 
 
   use Option_module
   
@@ -795,14 +805,15 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
 end subroutine StructGridGetIJKFromCoordinate
 
 ! ************************************************************************** !
-!
-! StructGridGetIJKFromLocalID: Finds i,j,k indices for grid cell defined by 
-!                              local_id
-! author: Glenn Hammond
-! date: 04/11/08
-!
-! ************************************************************************** !
+
 subroutine StructGridGetIJKFromLocalID(structured_grid,local_id,i,j,k)
+  ! 
+  ! Finds i,j,k indices for grid cell defined by
+  ! local_id
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/11/08
+  ! 
 
   use Option_module
   
@@ -820,14 +831,15 @@ subroutine StructGridGetIJKFromLocalID(structured_grid,local_id,i,j,k)
 end subroutine StructGridGetIJKFromLocalID
 
 ! ************************************************************************** !
-!
-! StructGridGetIJKFromGhostedID: Finds i,j,k indices for grid cell defined by 
-!                                a ghosted id
-! author: Glenn Hammond
-! date: 04/11/08
-!
-! ************************************************************************** !
+
 subroutine StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
+  ! 
+  ! Finds i,j,k indices for grid cell defined by
+  ! a ghosted id
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/11/08
+  ! 
 
   use Option_module
   
@@ -845,14 +857,15 @@ subroutine StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
 end subroutine StructGridGetIJKFromGhostedID
 
 ! ************************************************************************** !
-!
-! StructGridGetLocalIDFromIJK: Finds local_id for grid cell defined by 
-!                              i,j,k indices
-! author: Glenn Hammond
-! date: 01/28/11
-!
-! ************************************************************************** !
+
 function StructGridGetLocalIDFromIJK(structured_grid,i,j,k)
+  ! 
+  ! Finds local_id for grid cell defined by
+  ! i,j,k indices
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/11
+  ! 
 
   use Option_module
   
@@ -870,14 +883,15 @@ function StructGridGetLocalIDFromIJK(structured_grid,i,j,k)
 end function StructGridGetLocalIDFromIJK
 
 ! ************************************************************************** !
-!
-! StructGridGetGhostedIDFromIJK: Finds ghosted_id for grid cell defined by 
-!                              i,j,k indices
-! author: Glenn Hammond
-! date: 01/28/11
-!
-! ************************************************************************** !
+
 function StructGridGetGhostedIDFromIJK(structured_grid,i,j,k)
+  ! 
+  ! Finds ghosted_id for grid cell defined by
+  ! i,j,k indices
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/11
+  ! 
 
   use Option_module
   
@@ -895,14 +909,15 @@ function StructGridGetGhostedIDFromIJK(structured_grid,i,j,k)
 end function StructGridGetGhostedIDFromIJK
 
 ! ************************************************************************** !
-!
-! StructGridComputeInternConnect: computes internal connectivity of a  
-!                               structured grid
-! author: Glenn Hammond
-! date: 10/17/07
-!
-! ************************************************************************** !
+
 function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
+  ! 
+  ! computes internal connectivity of a
+  ! structured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/17/07
+  ! 
 
   use Connection_module
   use Option_module
@@ -1252,16 +1267,16 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 
 end function StructGridComputeInternConnect
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! StructGridComputeBoundConnect: computes boundary connectivity of a  
-!                               structured grid
-! author: Daniil Svyatskiy
-! date: 02/04/10
-!
-! ************************************************************************** !
 function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
+  ! 
+  ! computes boundary connectivity of a
+  ! structured grid
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/04/10
+  ! 
 
   use Connection_module
   use Option_module
@@ -1521,14 +1536,15 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 end function StructGridComputeBoundConnect
 
 ! ************************************************************************** !
-!
-! StructGridPopulateConnection: Computes details of connection (area, dist, etc)
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface, &
                                         iconn,ghosted_id,option)
+  ! 
+  ! Computes details of connection (area, dist, etc)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   use Connection_module
   use Option_module
@@ -1684,13 +1700,14 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
 end subroutine StructGridPopulateConnection
 
 ! ************************************************************************** !
-!
-! StructGridComputeVolumes: Computes the volumes of cells in structured grid
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
+  ! 
+  ! Computes the volumes of cells in structured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Option_module
   
@@ -1763,16 +1780,17 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
 end subroutine StructGridComputeVolumes
 
 ! ************************************************************************** !
-!
-! StructGridMapIndices: maps global, local and natural indices of cells 
-!                          to each other
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
+
 subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
                                     nG2L,nL2G, &
                                     nG2A,ghosted_level,option)
+  ! 
+  ! maps global, local and natural indices of cells
+  ! to each other
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/07
+  ! 
 
   use Option_module
 
@@ -1946,18 +1964,19 @@ subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
 end subroutine StructGridMapIndices
 
 ! ************************************************************************** !
-!
-! StructGridGetGhostedNeighbors: Returns an array of neighboring cells
-! author: Glenn Hammond
-! date: 01/28/11
-!
-! ************************************************************************** !
+
 subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
                                          stencil_type, &
                                          stencil_width_i,stencil_width_j, &
                                          stencil_width_k,x_count,y_count, &
                                          z_count,ghosted_neighbors, &
                                          option)
+  ! 
+  ! Returns an array of neighboring cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/11
+  ! 
 
   use Option_module
 
@@ -2020,22 +2039,22 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
 
 end subroutine StructGridGetGhostedNeighbors
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! StructGridGetGhostedNeighborsCorners: Returns an array of neighboring cells
-! including the corner nodes
-! Note that the previous subroutine does not return the corner nodes
-! author: Satish Karra, LANL
-! date: 02/19/12
-!
-! ************************************************************************** !
 subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
                                          stencil_type, &
                                          stencil_width_i,stencil_width_j, &
                                          stencil_width_k, icount, &
                                          ghosted_neighbors, &
                                          option)
+  ! 
+  ! Returns an array of neighboring cells
+  ! including the corner nodes
+  ! Note that the previous subroutine does not return the corner nodes
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/19/12
+  ! 
 
   use Option_module
 
@@ -2087,13 +2106,14 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
 end subroutine StructGridGetGhostedNeighborsCorners
 
 ! ************************************************************************** !
-!
-! StructGridDestroy: Deallocates a structured grid
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine StructGridDestroy(structured_grid)
+  ! 
+  ! Deallocates a structured grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -2134,16 +2154,17 @@ subroutine StructGridDestroy(structured_grid)
 end subroutine StructGridDestroy
 
 ! ************************************************************************** !
-!
-! StructGridCreateTVDGhosts: Calculates the TVD ghost vector and the 
-!                            associated scatter context
-! author: Glenn Hammond
-! date: 01/28/11
-!
-! ************************************************************************** !
+
 subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
                                      dm_1dof, &
                                      ghost_vec,scatter_ctx,option)
+  ! 
+  ! Calculates the TVD ghost vector and the
+  ! associated scatter context
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/11
+  ! 
 
   use Option_module
 
@@ -2355,13 +2376,14 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
 end subroutine StructGridCreateTVDGhosts  
 
 ! ************************************************************************** !
-!
-! StructGetTVDGhostConnection: Returns id of tvd ghost cell for connection
-! author: Glenn Hammond
-! date: 02/10/11
-!
-! ************************************************************************** !
+
 function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
+  ! 
+  ! Returns id of tvd ghost cell for connection
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/10/11
+  ! 
 
   use Option_module
 
@@ -2497,15 +2519,15 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
 end function StructGetTVDGhostConnection
 
 ! ************************************************************************** !
-!> This routine saves indices (in ghosted order) of neighbors for all ghosted
-!! cells.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/24/12
-! ************************************************************************** !
+
 subroutine StructGridComputeNeighbors(structured_grid,nG2L,is_bnd_vec,option)
+  ! 
+  ! This routine saves indices (in ghosted order) of neighbors for all ghosted
+  ! cells.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/24/12
+  ! 
 
   use Option_module
 

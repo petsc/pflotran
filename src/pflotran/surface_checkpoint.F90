@@ -80,16 +80,16 @@ End Interface PetscBagGetData
 contains
 
 ! ************************************************************************** !
-!> This subroutine writes a checkpoint file for surface realization.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/11/13
-! ************************************************************************** !
+
 subroutine SurfaceCheckpoint(surf_realization, &
                              surf_flow_prev_dt, &
                              id)
+  ! 
+  ! This subroutine writes a checkpoint file for surface realization.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/11/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module
@@ -199,15 +199,15 @@ subroutine SurfaceCheckpoint(surf_realization, &
 end subroutine SurfaceCheckpoint
 
 ! ************************************************************************** !
-!> This subroutine restarts surface-realization simulation by reading a
-!! checkpoint file.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/11/13
-! ************************************************************************** !
+
 subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
+  ! 
+  ! This subroutine restarts surface-realization simulation by reading a
+  ! checkpoint file.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/11/13
+  ! 
 
 
   use Surface_Realization_class
@@ -345,15 +345,15 @@ subroutine SurfaceRestart(surf_realization, surf_flow_prev_dt, surf_flow_read)
 end subroutine SurfaceRestart
 
 ! ************************************************************************** !
-!> This subroutine registers entities within the PETSc bag to header for
-!! surface-realization.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/11/13
-! ************************************************************************** !
+
 subroutine SurfCheckpointRegisterBagHeader(bag,header)
+  ! 
+  ! This subroutine registers entities within the PETSc bag to header for
+  ! surface-realization.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/11/13
+  ! 
 
   implicit none
   
@@ -411,15 +411,15 @@ subroutine SurfCheckpointRegisterBagHeader(bag,header)
 end subroutine SurfCheckpointRegisterBagHeader
 
 ! ************************************************************************** !
-!> This subroutine writes a checkpoint file for surface realization using
-!! process model approach.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine SurfaceCheckpointProcessModel(viewer, surf_realization)
+  ! 
+  ! This subroutine writes a checkpoint file for surface realization using
+  ! process model approach.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module
@@ -472,15 +472,15 @@ subroutine SurfaceCheckpointProcessModel(viewer, surf_realization)
 end subroutine SurfaceCheckpointProcessModel
 
 ! ************************************************************************** !
-!> This subroutine reads a checkpoint file for surface realization using
-!! process model approach.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine SurfaceRestartProcessModel(viewer,surf_realization)
+  ! 
+  ! This subroutine reads a checkpoint file for surface realization using
+  ! process model approach.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module

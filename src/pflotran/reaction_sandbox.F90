@@ -36,13 +36,14 @@ module Reaction_Sandbox_module
 contains
 
 ! ************************************************************************** !
-!
-! RSandboxInit: Initializes the sandbox list
-! author: Glenn Hammond
-! date: 01/28/13
-!
-! ************************************************************************** !
+
 subroutine RSandboxInit(option)
+  ! 
+  ! Initializes the sandbox list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/13
+  ! 
   use Option_module
   implicit none
   type(option_type) :: option
@@ -55,14 +56,15 @@ subroutine RSandboxInit(option)
 end subroutine RSandboxInit
 
 ! ************************************************************************** !
-!
-! RSandboxSetup: Calls all the initialization routines for all reactions in
-!                the sandbox list
-! author: Glenn Hammond
-! date: 01/28/13
-!
-! ************************************************************************** !
+
 subroutine RSandboxSetup(reaction,option)
+  ! 
+  ! Calls all the initialization routines for all reactions in
+  ! the sandbox list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/13
+  ! 
 
   use Option_module
   use Reaction_Aux_module, only : reaction_type 
@@ -85,13 +87,14 @@ subroutine RSandboxSetup(reaction,option)
 end subroutine RSandboxSetup
 
 ! ************************************************************************** !
-!
-! RSandboxRead1: Reads input deck for reaction sandbox parameters
-! author: Glenn Hammond
-! date: 05/16/13
-!
-! ************************************************************************** !
+
 subroutine RSandboxRead1(input,option)
+  ! 
+  ! Reads input deck for reaction sandbox parameters
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/16/13
+  ! 
 
   use Option_module
   use String_module
@@ -108,13 +111,14 @@ subroutine RSandboxRead1(input,option)
 end subroutine RSandboxRead1
 
 ! ************************************************************************** !
-!
-! RSandboxRead: Reads input deck for reaction sandbox parameters
-! author: Glenn Hammond
-! date: 11/08/12
-!
-! ************************************************************************** !
+
 subroutine RSandboxRead2(local_sandbox_list,input,option)
+  ! 
+  ! RSandboxRead: Reads input deck for reaction sandbox parameters
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/08/12
+  ! 
 
   use Option_module
   use String_module
@@ -170,13 +174,14 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
 end subroutine RSandboxRead2
 
 ! ************************************************************************** !
-!
-! RSandboxSkipInput: Intelligently skips over REACTION_SANDBOX block
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine RSandboxSkipInput(input,option)
+  ! 
+  ! Intelligently skips over REACTION_SANDBOX block
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   use Option_module
   use String_module
@@ -197,14 +202,15 @@ subroutine RSandboxSkipInput(input,option)
 end subroutine RSandboxSkipInput
 
 ! ************************************************************************** !
-!
-! RSandbox: Evaluates reaction storing residual and/or Jacobian
-! author: Glenn Hammond
-! date: 11/08/12
-!
-! ************************************************************************** !
+
 subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
                     global_auxvar,porosity,volume,reaction,option)
+  ! 
+  ! Evaluates reaction storing residual and/or Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/08/12
+  ! 
 
   use Option_module
   use Reaction_Aux_module
@@ -240,13 +246,14 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
 end subroutine RSandbox
 
 ! ************************************************************************** !
-!
-! RSandboxDestroy1: Destroys master sandbox list
-! author: Glenn Hammond
-! date: 05/16/13
-!
-! ************************************************************************** !
+
 subroutine RSandboxDestroy1()
+  ! 
+  ! Destroys master sandbox list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/16/13
+  ! 
 
   implicit none
 
@@ -255,13 +262,14 @@ subroutine RSandboxDestroy1()
 end subroutine RSandboxDestroy1
 
 ! ************************************************************************** !
-!
-! RSandboxDestroy2: Destroys arbitrary sandbox list
-! author: Glenn Hammond
-! date: 11/08/12
-!
-! ************************************************************************** !
+
 subroutine RSandboxDestroy2(local_sandbox_list)
+  ! 
+  ! Destroys arbitrary sandbox list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/08/12
+  ! 
 
   implicit none
 

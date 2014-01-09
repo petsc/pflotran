@@ -35,15 +35,16 @@ module Richards_Common_module
 contains
 
 ! ************************************************************************** !
-!
-! RichardsAccumDerivative: Computes derivatives of the accumulation 
-!                                 term for the Jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
                                    option,sat_func,J)
+  ! 
+  ! Computes derivatives of the accumulation
+  ! term for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
   use Saturation_Function_module
@@ -122,15 +123,16 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
 end subroutine RichardsAccumDerivative
 
 ! ************************************************************************** !
-!
-! RichardsAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
                                 option,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
   
@@ -156,19 +158,20 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
 end subroutine RichardsAccumulation
 
 ! ************************************************************************** !
-!
-! RichardsFluxDerivative: Computes the derivatives of the internal flux terms
-!                         for the Jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** ! 
+
 subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
                                   area, dist, dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
+  ! 
+  ! Computes the derivatives of the internal flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
   use Option_module 
   use Saturation_Function_module                        
   
@@ -349,18 +352,19 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 end subroutine RichardsFluxDerivative
 
 ! ************************************************************************** !
-!
-! RichardsFlux: Computes the internal flux terms for the residual
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** ! 
+
 subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
                         area, dist, dist_gravity,upweight, &
                         option,v_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
   use Option_module                              
   
   implicit none
@@ -447,19 +451,20 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 end subroutine RichardsFlux
 
 ! ************************************************************************** !
-!
-! RichardsBCFluxDerivative: Computes the derivatives of the boundary flux 
-!                           terms for the Jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                                     rich_aux_var_up,global_aux_var_up, &
                                     rich_aux_var_dn,global_aux_var_dn, &
                                     por_dn,sir_dn,perm_dn, &
                                     area, dist,option, &
                                     sat_func_dn,Jdn)
+  ! 
+  ! Computes the derivatives of the boundary flux
+  ! terms for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
   use Option_module
   use Saturation_Function_module
 #ifdef SURFACE_FLOW
@@ -720,17 +725,18 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
 end subroutine RichardsBCFluxDerivative
 
 ! ************************************************************************** !
-!
-! RichardsBCFlux: Computes the  boundary flux terms for the residual
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsBCFlux(ibndtype,aux_vars, &
                           rich_aux_var_up, global_aux_var_up, &
                           rich_aux_var_dn, global_aux_var_dn, &
                           por_dn, sir_dn, perm_dn, &
                           area, dist, option,v_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
   use Option_module
 #ifdef SURFACE_FLOW
   use EOS_Water_module

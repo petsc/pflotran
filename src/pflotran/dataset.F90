@@ -28,14 +28,15 @@ module Dataset_module
 
 contains
 
-! *************************************************************************** !
-!
-! DatasetRead: Reads a dataset from the input file
-! author: Glenn Hammond
-! date: 03/26/12
-!
 ! ************************************************************************** !
+
 subroutine DatasetRead(input,dataset,option)
+  ! 
+  ! Reads a dataset from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/26/12
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -89,15 +90,16 @@ subroutine DatasetRead(input,dataset,option)
 
 end subroutine DatasetRead
 
-! *************************************************************************** !
-!
-! DatasetScreenForNonCellIndexed: Recasts datasets of dataset_common_hdf5_type
-!                                 to dataset_gridded_hdf5_type
-! author: Glenn Hammond
-! date: 03/26/12
-!
 ! ************************************************************************** !
+
 subroutine DatasetScreenForNonCellIndexed(datasets,option)
+  ! 
+  ! Recasts datasets of dataset_common_hdf5_type
+  ! to dataset_gridded_hdf5_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/26/12
+  ! 
 
   use Option_module
   
@@ -160,13 +162,14 @@ subroutine DatasetScreenForNonCellIndexed(datasets,option)
 end subroutine DatasetScreenForNonCellIndexed
 
 ! ************************************************************************** !
-!
-! DatasetVerify: Verifies that a dataset is intact and useable.
-! author: Glenn Hammond
-! date: 10/08/13
-!
-! ************************************************************************** !
+
 subroutine DatasetVerify(dataset,default_time_storage,option)
+  ! 
+  ! Verifies that a dataset is intact and useable.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/13
+  ! 
 
   use Time_Storage_module
   use Option_module
@@ -195,13 +198,14 @@ subroutine DatasetVerify(dataset,default_time_storage,option)
 end subroutine DatasetVerify
 
 ! ************************************************************************** !
-!
-! DatasetUpdate: Updates a dataset based on type
-! author: Glenn Hammond
-! date: 10/09/13
-!
-! ************************************************************************** !
+
 recursive subroutine DatasetUpdate(dataset,time,option)
+  ! 
+  ! Updates a dataset based on type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/09/13
+  ! 
 
   use Option_module
   
@@ -232,13 +236,14 @@ recursive subroutine DatasetUpdate(dataset,time,option)
 end subroutine DatasetUpdate
 
 ! ************************************************************************** !
-!
-! DatasetLoad: Loads a dataset based on type
-! author: Glenn Hammond
-! date: 06/03/13
-!
-! ************************************************************************** !
+
 recursive subroutine DatasetLoad(dataset,option)
+  ! 
+  ! Loads a dataset based on type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/03/13
+  ! 
 
   use DM_Kludge_module
   use Option_module
@@ -285,15 +290,16 @@ recursive subroutine DatasetLoad(dataset,option)
 end subroutine DatasetLoad
 
 ! ************************************************************************** !
-!
-! DatasetFindInList: Uses a dummy dataset with name to find the actual
-!                    dataset in a list of datasets
-! author: Glenn Hammond
-! date: 10/07/13
-!
-! ************************************************************************** !
+
 subroutine DatasetFindInList(list,dataset_base,default_time_storage, &
                              error_string,option)
+  ! 
+  ! Uses a dummy dataset with name to find the actual
+  ! dataset in a list of datasets
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/13
+  ! 
 
   use Dataset_Base_class
   use Dataset_Ascii_class
@@ -339,13 +345,14 @@ subroutine DatasetFindInList(list,dataset_base,default_time_storage, &
 end subroutine DatasetFindInList
 
 ! ************************************************************************** !
-!
-! DatasetIsTransient: Determines whether a dataset is transient
-! author: Glenn Hammond
-! date: 10/10/13
-!
-! ************************************************************************** !
+
 function DatasetIsTransient(dataset)
+  ! 
+  ! Determines whether a dataset is transient
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/10/13
+  ! 
 
   use Time_Storage_module
 
@@ -364,15 +371,15 @@ function DatasetIsTransient(dataset)
   
 end function DatasetIsTransient
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! DatasetPrint: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
 subroutine DatasetPrint(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -405,13 +412,14 @@ subroutine DatasetPrint(this,option)
 end subroutine DatasetPrint
 
 ! ************************************************************************** !
-!
-! DatasetGetClass: Returns a string defining the class of dataset
-! author: Glenn Hammond
-! date: 10/10/13
-!
-! ************************************************************************** !
+
 function DatasetGetClass(dataset)
+  ! 
+  ! Returns a string defining the class of dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/10/13
+  ! 
 
   use Option_module
 
@@ -441,13 +449,14 @@ function DatasetGetClass(dataset)
 end function DatasetGetClass
 
 ! ************************************************************************** !
-!
-! DatasetDestroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 recursive subroutine DatasetDestroy(dataset)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   implicit none
   

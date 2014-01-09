@@ -43,14 +43,14 @@ module Surface_TH_module
 contains
 
 ! ************************************************************************** !
-!> This routine sets up surface_TH_type
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSetup(surf_realization)
+  ! 
+  ! This routine sets up surface_TH_type
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -132,14 +132,14 @@ subroutine SurfaceTHSetup(surf_realization)
 end subroutine SurfaceTHSetup
 
 ! ************************************************************************** !
-!> This routine adds variables to be printed to list
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSetPlotVariables(surf_realization)
+  ! 
+  ! This routine adds variables to be printed to list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
   
   use Surface_Realization_class
   use Output_Aux_module
@@ -172,15 +172,15 @@ subroutine SurfaceTHSetPlotVariables(surf_realization)
 end subroutine SurfaceTHSetPlotVariables
 
 ! ************************************************************************** !
-!> This routine gets latest states (P,T) from subsurface model and updates
-!! boundary condition for surface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
+  ! 
+  ! This routine gets latest states (P,T) from subsurface model and updates
+  ! boundary condition for surface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -320,16 +320,16 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
 end subroutine SurfaceTHUpdateSurfBC
 
-! RTM: TODO: Figure out if this needs to be modified for surface freezing.
 ! ************************************************************************** !
-!> This routine updates source/sink term for the subsurface model
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
+  ! 
+  ! RTM: TODO: Figure out if this needs to be modified for surface freezing.
+  ! This routine updates source/sink term for the subsurface model
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -438,15 +438,15 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
 end subroutine SurfaceTHUpdateSubsurfSS
 
 ! ************************************************************************** !
-!> This routine creates a PETSc vector to data between surface and subsurface
-!! model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
+  ! 
+  ! This routine creates a PETSc vector to data between surface and subsurface
+  ! model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -543,14 +543,15 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
 end subroutine SurfaceTHCreateSurfSubsurfVec
 
 ! ************************************************************************** !
-!
-! This routine creates a MPI vector to exchanged data between surface and 
-! subsurface model.
-! author: Gautam Bisht, LBL
-! date: 07/29/13
-!
-! ************************************************************************** !
+
 subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
+  ! 
+  ! This routine creates a MPI vector to exchanged data between surface and
+  ! subsurface model.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/29/13
+  ! 
 
   use Grid_module
   use String_module
@@ -648,15 +649,15 @@ subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
 end subroutine SurfaceTHCreateSurfSubsurfVecNew
 
 ! ************************************************************************** !
-!> This routine computes the flux of water and energy from surface to 
-!! subsurface model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
+  ! 
+  ! This routine computes the flux of water and energy from surface to
+  ! subsurface model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -985,15 +986,15 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
 end subroutine SurfaceTHSurf2SubsurfFlux
 
 ! ************************************************************************** !
-!> This routine get soil properties of the top-most soil layer from the 
-!! subsurface domain.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
+  ! 
+  ! This routine get soil properties of the top-most soil layer from the
+  ! subsurface domain.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -1335,14 +1336,12 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
 end subroutine SurfaceTHGetSubsurfProp
 
 ! ************************************************************************** !
-!> This routine provides the function evaluation for PETSc TSSolve()
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
+
 subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
+  ! 
+  ! This routine provides the function evaluation for PETSc TSSolve()
+  ! Author: Gautam Bisht, LBNL
+  ! 
 
   use EOS_Water_module
   use Connection_module
@@ -1616,14 +1615,12 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 end subroutine SurfaceTHRHSFunction
 
 ! ************************************************************************** !
-!> This routine maximum allowable 'dt' for explicit time scheme.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
+
 subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
+  ! 
+  ! This routine maximum allowable 'dt' for explicit time scheme.
+  ! Author: Gautam Bisht, LBNL
+  ! 
 
   use EOS_Water_module
   use Connection_module
@@ -1780,14 +1777,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 end subroutine SurfaceTHComputeMaxDt
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceTHFlux(surf_aux_var_up, &
                          surf_global_aux_var_up, &
                          zc_up, &
@@ -1801,6 +1791,13 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
                          option, &
                          vel, &
                          Res)
+  ! 
+  ! This routine computes the internal flux term for under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
@@ -1921,13 +1918,7 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
 end subroutine SurfaceTHFlux
 
 ! ************************************************************************** !
-!> This routine computes flux for boundary cells.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHBCFlux(ibndtype, &
                            surf_aux_var, &
                            surf_global_aux_var, &
@@ -1937,6 +1928,12 @@ subroutine SurfaceTHBCFlux(ibndtype, &
                            option, &
                            vel, &
                            Res)
+  ! 
+  ! This routine computes flux for boundary cells.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
   
@@ -1996,14 +1993,14 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 end subroutine SurfaceTHBCFlux
 
 ! ************************************************************************** !
-!> This routine updates auxiliary variables
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateAuxVars(surf_realization)
+  ! 
+  ! This routine updates auxiliary variables
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -2157,14 +2154,14 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 end subroutine SurfaceTHUpdateAuxVars
 
 ! ************************************************************************** !
-!> This routine updates the temperature after TSSolve.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/25/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateTemperature(surf_realization)
+  ! 
+  ! This routine updates the temperature after TSSolve.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/25/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -2285,15 +2282,15 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
 end subroutine SurfaceTHUpdateTemperature
 
 ! ************************************************************************** !
-!> This routine updates the states for surface-model at the end of
-!! subsurface-model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/25/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
+  ! 
+  ! This routine updates the states for surface-model at the end of
+  ! subsurface-model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/25/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -2394,14 +2391,14 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
 end subroutine SurfaceTHUpdateSurfStateNew
 
 ! ************************************************************************** !
-!> This routine updates solution after a successful time step
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSolution(surf_realization)
+  ! 
+  ! This routine updates solution after a successful time step
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module

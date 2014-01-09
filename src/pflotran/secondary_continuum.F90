@@ -38,16 +38,17 @@ module Secondary_Continuum_module
 contains
 
 ! ************************************************************************** !
-!
-! SecondaryContinuumType: The area, volume, grid sizes for secondary continuum
-! are calculated based on the input dimensions and geometry
-! author: Satish Karra, LANL
-! date: 07/11/12
-!
-! ************************************************************************** !
+
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
             volm,dm1,dm2,aperture,epsilon,log_spacing,outer_spacing, &
             interfacial_area,option)
+  ! 
+  ! The area, volume, grid sizes for secondary continuum
+  ! are calculated based on the input dimensions and geometry
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/11/12
+  ! 
 
   use Option_module
 
@@ -312,13 +313,6 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 end subroutine SecondaryContinuumType
 
 ! ************************************************************************** !
-!
-! SecondaryContinuumSetProperties: The type, dimensions of the secondary
-! continuum are set 
-! author: Satish Karra, LANL
-! date: 07/17/12
-!
-! ************************************************************************** !
 
 subroutine SecondaryContinuumSetProperties(sec_continuum, &
                                            sec_continuum_name, & 
@@ -328,6 +322,13 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
                                            sec_continuum_radius, &
                                            sec_continuum_area, &
                                            option)
+  ! 
+  ! The type, dimensions of the secondary
+  ! continuum are set
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/17/12
+  ! 
                                     
   use Option_module
   use String_module
@@ -371,18 +372,18 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
 end subroutine SecondaryContinuumSetProperties  
 
 ! ************************************************************************** !
-!
-! SecondaryContinuumCalcLogSpacing: Given the matrix block size and the 
-! grid spacing of the outer mode secondary continuum cell, a geometric
-! series is assumed and the grid spacing of the rest of the cells is 
-! calculated
-! author: Satish Karra, LANL
-! date: 07/17/12
-!
-! ************************************************************************** !
 
 subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
                                             sec_num_cells,grid_spacing,option)
+  ! 
+  ! Given the matrix block size and the
+  ! grid spacing of the outer mode secondary continuum cell, a geometric
+  ! series is assumed and the grid spacing of the rest of the cells is
+  ! calculated
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/17/12
+  ! 
                                               
   use Option_module
   
@@ -436,14 +437,15 @@ subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
 end subroutine SecondaryContinuumCalcLogSpacing
 
 ! ************************************************************************** !
-!
-! SecondaryRTTimeCut: Resets secondary concentrations to previous time
-! step when there is a time cut
-! author: Satish Karra, LANL
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTTimeCut(realization)
+  ! 
+  ! Resets secondary concentrations to previous time
+  ! step when there is a time cut
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 05/29/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -480,15 +482,16 @@ subroutine SecondaryRTTimeCut(realization)
 end subroutine SecondaryRTTimeCut
 
 ! ************************************************************************** !
-!
-! SecondaryRTAuxVarInit: Initializes all the secondary continuum reactive
-!                        transport variables
-! author: Satish Karra, LANL
-! date: 02/05/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
                                  initial_condition,constraint,option)
+  ! 
+  ! Initializes all the secondary continuum reactive
+  ! transport variables
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/05/13
+  ! 
   
   use Coupler_module
   use Constraint_module
@@ -651,20 +654,20 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
       
 end subroutine SecondaryRTAuxVarInit  
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RTSecondaryTransportMulti:  Calculates the source term contribution due to 
-! secondary continuum in the primary continuum residual for multicomponent
-! system assuming only aqueous reaction
-! author: Satish Karra, LANL
-! date: 1/31/13
-!
-! ************************************************************************** !
 subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                                   global_aux_var,prim_vol, &
                                   reaction,diffusion_coefficient, &
                                   porosity,option,res_transport)
+  ! 
+  ! RTSecondaryTransportMulti:  Calculates the source term contribution due to
+  ! secondary continuum in the primary continuum residual for multicomponent
+  ! system assuming only aqueous reaction
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 1/31/13
+  ! 
                                
                             
   use Option_module 
@@ -1324,14 +1327,15 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 end subroutine SecondaryRTResJacMulti
 
 ! ************************************************************************** !
-!
-! SecondaryRTUpdateIterate: Checks update after the update is done
-! author: Satish Karra, LANL
-! date: 02/22/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
                                     P1_changed,realization,ierr)
+  ! 
+  ! Checks update after the update is done
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/22/13
+  ! 
 
   use Realization_class
   use Option_module
@@ -1411,16 +1415,17 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
 end subroutine SecondaryRTUpdateIterate
 
 ! ************************************************************************** !
-!
-! SecondaryRTUpdateEquilState: Updates the equilibrium secondary continuum 
-!                              variables 
-! at the end of time step
-! author: Satish Karra, LANL; Glenn Hammond (modification)
-! date: 02/22/13; 06/27/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTUpdateEquilState(sec_transport_vars,global_aux_vars, &
                                        reaction,option) 
+  ! 
+  ! Updates the equilibrium secondary continuum
+  ! variables
+  ! at the end of time step
+  ! 
+  ! Author: Satish Karra, LANL; Glenn Hammond (modification)
+  ! Date: 02/22/13; 06/27/13
+  ! 
                                      
 
   use Option_module
@@ -1457,15 +1462,16 @@ subroutine SecondaryRTUpdateEquilState(sec_transport_vars,global_aux_vars, &
 end subroutine SecondaryRTUpdateEquilState
 
 ! ************************************************************************** !
-!
-! SecondaryRTUpdateKineticState: Updates the kinetic secondary continuum 
-!                                variables at the end of time step
-! author: Satish Karra, LANL; Glenn Hammond (modification)
-! date: 02/22/13; 06/27/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
                                          reaction,porosity,option) 
+  ! 
+  ! Updates the kinetic secondary continuum
+  ! variables at the end of time step
+  ! 
+  ! Author: Satish Karra, LANL; Glenn Hammond (modification)
+  ! Date: 02/22/13; 06/27/13
+  ! 
                                      
 
   use Option_module
@@ -1517,17 +1523,18 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
 end subroutine SecondaryRTUpdateKineticState
 
 ! ************************************************************************** !
-!
-! SecondaryRTCheckResidual: The residual of the secondary domain are checked
-! to ensure convergence
-! author: Satish Karra, LANL
-! date: 1/31/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
                                     global_aux_var, &
                                     reaction,diffusion_coefficient, &
                                     porosity,option,inf_norm_sec)
+  ! 
+  ! The residual of the secondary domain are checked
+  ! to ensure convergence
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 1/31/13
+  ! 
                                     
   use Option_module 
   use Global_Aux_module
@@ -1669,16 +1676,17 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
 end subroutine SecondaryRTCheckResidual                                    
 
 ! ************************************************************************** !
-!
-! SecondaryRTAuxVarComputeMulti: Updates the secondary continuum 
-! concentrations at end of each time step for multicomponent system
-! author: Satish Karra, LANL
-! date: 2/1/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
                                          global_aux_var,reaction, &
                                          option)
+  ! 
+  ! Updates the secondary continuum
+  ! concentrations at end of each time step for multicomponent system
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 2/1/13
+  ! 
                                
                             
   use Option_module 
@@ -1767,16 +1775,17 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars, &
 end subroutine SecondaryRTAuxVarComputeMulti
 
 ! ************************************************************************** !
-! 
-! THCSecHeatAuxVarCompute: Computes secondary auxillary variables for each
-!                            grid cell for heat transfer only
-! author: Satish Karra, LANL
-! Date: 06/5/12
-!
-! ************************************************************************** !
+
 subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
                                    therm_conductivity,dencpr, &
                                    option)
+  ! 
+  ! Computes secondary auxillary variables for each
+  ! grid cell for heat transfer only
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/5/12
+  ! 
 
   use Option_module 
   use Global_Aux_module
@@ -1862,16 +1871,17 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
 end subroutine THCSecHeatAuxVarCompute
 
 ! ************************************************************************** !
-! 
-! THSecHeatAuxVarCompute: Computes secondary auxillary variables for each
-!                            grid cell for heat transfer only
-! author: Satish Karra, LANL
-! Date: 06/5/12
-!
-! ************************************************************************** !
+
 subroutine THSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
                                    therm_conductivity,dencpr, &
                                    option)
+  ! 
+  ! Computes secondary auxillary variables for each
+  ! grid cell for heat transfer only
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/5/12
+  ! 
 
   use Option_module 
   use Global_Aux_module
@@ -1956,18 +1966,18 @@ subroutine THSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
             
 end subroutine THSecHeatAuxVarCompute
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-! 
-! MphaseSecHeatAuxVarCompute: Computes secondary auxillary variables in each
-!                             grid cell for heat transfer only
-! author: Satish Karra, LANL
-! Date: 06/28/12
-!
-! ************************************************************************** !
 subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,aux_var,global_aux_var, &
                                    therm_conductivity,dencpr, &
                                    option)
+  ! 
+  ! Computes secondary auxillary variables in each
+  ! grid cell for heat transfer only
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/28/12
+  ! 
 
   use Option_module 
   use Global_Aux_module

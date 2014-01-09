@@ -53,13 +53,14 @@ module PM_Mphase_class
 contains
 
 ! ************************************************************************** !
-!
-! PMMphaseCreate: Creates Mphase process models shell
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMMphaseCreate()
+  ! 
+  ! Creates Mphase process models shell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -85,13 +86,14 @@ function PMMphaseCreate()
 end function PMMphaseCreate
 
 ! ************************************************************************** !
-!
-! PMMphaseInit: Initializes variables associated with Richard
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseInit(this)
+  ! 
+  ! Initializes variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -122,13 +124,12 @@ subroutine PMMphaseInit(this)
 end subroutine PMMphaseInit
 
 ! ************************************************************************** !
-!
-! PMMphaseSetRealization: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseSetRealization(this,realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -156,13 +157,14 @@ subroutine PMMphaseSetRealization(this,realization)
 end subroutine PMMphaseSetRealization
 
 ! ************************************************************************** !
-! Should not need this as it is called in PreSolve.
-! PMMphaseInitializeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseInitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseInitializeTimestep
   use Global_module
@@ -196,13 +198,12 @@ subroutine PMMphaseInitializeTimestep(this)
 end subroutine PMMphaseInitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMMphasePreSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphasePreSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -217,13 +218,14 @@ subroutine PMMphasePreSolve(this)
 end subroutine PMMphasePreSolve
 
 ! ************************************************************************** !
-!
-! PMMphaseUpdatePostSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphasePostSolve(this)
+  ! 
+  ! PMMphaseUpdatePostSolve:
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -238,13 +240,12 @@ subroutine PMMphasePostSolve(this)
 end subroutine PMMphasePostSolve
 
 ! ************************************************************************** !
-!
-! PMMphaseFinalizeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseFinalizeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseMaxChange
   use Global_module
@@ -278,13 +279,12 @@ subroutine PMMphaseFinalizeTimestep(this)
 end subroutine PMMphaseFinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMMphaseAcceptSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMMphaseAcceptSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -301,14 +301,13 @@ function PMMphaseAcceptSolution(this)
 end function PMMphaseAcceptSolution
 
 ! ************************************************************************** !
-!
-! PMMphaseUpdateTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -368,13 +367,14 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMMphaseUpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMMphaseInitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMMphaseInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Mphase_module, only : MphaseUpdateSolution
 
@@ -400,13 +400,14 @@ recursive subroutine PMMphaseInitializeRun(this)
 end subroutine PMMphaseInitializeRun
 
 ! ************************************************************************** !
-!
-! PMMphaseFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMMphaseFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -425,13 +426,12 @@ recursive subroutine PMMphaseFinalizeRun(this)
 end subroutine PMMphaseFinalizeRun
 
 ! ************************************************************************** !
-!
-! PMMphaseResidual: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseResidual
 
@@ -457,13 +457,12 @@ subroutine PMMphaseResidual(this,snes,xx,r,ierr)
 end subroutine PMMphaseResidual
 
 ! ************************************************************************** !
-!
-! PMMphaseJacobian: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseJacobian
 
@@ -490,14 +489,14 @@ subroutine PMMphaseJacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMMphaseJacobian
     
 #if 0
+
 ! ************************************************************************** !
-!
-! PMMphaseCheckUpdatePre: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseCheckUpdatePre
 
@@ -519,16 +518,15 @@ subroutine PMMphaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMMphaseCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMMphaseCheckUpdatePost: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseCheckUpdatePost
 
@@ -556,13 +554,12 @@ end subroutine PMMphaseCheckUpdatePost
 #endif
 
 ! ************************************************************************** !
-!
-! PMMphaseTimeCut: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseTimeCut(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseTimeCut
 
@@ -579,15 +576,14 @@ subroutine PMMphaseTimeCut(this)
   call MphaseTimeCut(this%realization)
 
 end subroutine PMMphaseTimeCut
-    
+
 ! ************************************************************************** !
-!
-! PMMphaseUpdateSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseUpdateSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseUpdateSolution
   use Condition_module
@@ -617,13 +613,14 @@ subroutine PMMphaseUpdateSolution(this)
 end subroutine PMMphaseUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given MphaseMaxChange is called in PostSolve
-! PMMphaseMaxChange: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseMaxChange(this)
+  ! 
+  ! Not needed given MphaseMaxChange is called in PostSolve
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseMaxChange
 
@@ -638,15 +635,14 @@ subroutine PMMphaseMaxChange(this)
   call MphaseMaxChange(this%realization)
 
 end subroutine PMMphaseMaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMMphaseComputeMassBalance: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseComputeMassBalance
 
@@ -667,13 +663,14 @@ subroutine PMMphaseComputeMassBalance(this,mass_balance_array)
 end subroutine PMMphaseComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMMphaseCheckpoint: Checkpoints data associated with Mphase PM
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with Mphase PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Checkpoint_module
 
@@ -687,15 +684,15 @@ subroutine PMMphaseCheckpoint(this,viewer)
   
 end subroutine PMMphaseCheckpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMMphaseRestart: Restarts data associated with Mphase PM
-! author: Glenn Hammond
-! date: 07/30/13
-!
-! ************************************************************************** !
 subroutine PMMphaseRestart(this,viewer)
+  ! 
+  ! Restarts data associated with Mphase PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/30/13
+  ! 
 
   use Checkpoint_module
   use Mphase_module, only : MphaseUpdateAuxVars
@@ -713,13 +710,14 @@ subroutine PMMphaseRestart(this,viewer)
 end subroutine PMMphaseRestart
 
 ! ************************************************************************** !
-!
-! PMMphaseDestroy: Destroys Mphase process model
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMMphaseDestroy(this)
+  ! 
+  ! Destroys Mphase process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Mphase_module, only : MphaseDestroy
 

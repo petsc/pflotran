@@ -27,13 +27,14 @@ module Condition_Control_module
 contains
 
 ! ************************************************************************** !
-!
-! CondControlAssignFlowInitCond: Assigns flow initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlAssignFlowInitCond(realization)
+  ! 
+  ! Assigns flow initial conditions to model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -459,13 +460,14 @@ subroutine CondControlAssignFlowInitCond(realization)
 end subroutine CondControlAssignFlowInitCond
 
 ! ************************************************************************** !
-!
-! CondControlAssignTranInitCond: Assigns transport initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlAssignTranInitCond(realization)
+  ! 
+  ! Assigns transport initial conditions to model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -827,15 +829,16 @@ subroutine CondControlAssignTranInitCond(realization)
 end subroutine CondControlAssignTranInitCond
 
 ! ************************************************************************** !
-!
-! ConditionControlMapDatasetToVec: maps an external dataset to a PETSc vec
-!                                  representing values at each grid cell
-! author: Glenn Hammond
-! date: 03/23/12
-!
-! ************************************************************************** !
+
 subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                            mdof_vec,vec_type)
+  ! 
+  ! maps an external dataset to a PETSc vec
+  ! representing values at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/23/12
+  ! 
   use Realization_class
   use Option_module
   use Field_module
@@ -893,13 +896,14 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 end subroutine ConditionControlMapDatasetToVec
 
 ! ************************************************************************** !
-!
-! CondControlScaleSourceSink: Scales select source/sinks based on perms
-! author: Glenn Hammond
-! date: 09/03/08, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlScaleSourceSink(realization)
+  ! 
+  ! Scales select source/sinks based on perms
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/03/08, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -1054,6 +1058,9 @@ end subroutine CondControlScaleSourceSink
 
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
   use Surface_Realization_class

@@ -53,13 +53,14 @@ module PM_Flash2_class
 contains
 
 ! ************************************************************************** !
-!
-! PMFlash2Create: Creates Flash2 process models shell
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 function PMFlash2Create()
+  ! 
+  ! Creates Flash2 process models shell
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -85,13 +86,14 @@ function PMFlash2Create()
 end function PMFlash2Create
 
 ! ************************************************************************** !
-!
-! PMFlash2Init: Initializes variables associated with Richard
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2Init(this)
+  ! 
+  ! Initializes variables associated with Richard
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -122,13 +124,12 @@ subroutine PMFlash2Init(this)
 end subroutine PMFlash2Init
 
 ! ************************************************************************** !
-!
-! PMFlash2SetRealization: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2SetRealization(this,realization)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -156,13 +157,14 @@ subroutine PMFlash2SetRealization(this,realization)
 end subroutine PMFlash2SetRealization
 
 ! ************************************************************************** !
-! Should not need this as it is called in PreSolve.
-! PMFlash2InitializeTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2InitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2InitializeTimestep
   use Global_module
@@ -196,13 +198,12 @@ subroutine PMFlash2InitializeTimestep(this)
 end subroutine PMFlash2InitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMFlash2PreSolve: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2PreSolve(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Global_module
 
@@ -217,13 +218,14 @@ subroutine PMFlash2PreSolve(this)
 end subroutine PMFlash2PreSolve
 
 ! ************************************************************************** !
-!
-! PMFlash2UpdatePostSolve: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2PostSolve(this)
+  ! 
+  ! PMFlash2UpdatePostSolve:
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Global_module
 
@@ -238,13 +240,12 @@ subroutine PMFlash2PostSolve(this)
 end subroutine PMFlash2PostSolve
 
 ! ************************************************************************** !
-!
-! PMFlash2FinalizeTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2FinalizeTimestep(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2MaxChange
   use Global_module
@@ -278,13 +279,12 @@ subroutine PMFlash2FinalizeTimestep(this)
 end subroutine PMFlash2FinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMFlash2AcceptSolution: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 function PMFlash2AcceptSolution(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -301,14 +301,13 @@ function PMFlash2AcceptSolution(this)
 end function PMFlash2AcceptSolution
 
 ! ************************************************************************** !
-!
-! PMFlash2UpdateTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2UpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -368,13 +367,14 @@ subroutine PMFlash2UpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMFlash2UpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMFlash2InitializeRun: Initializes the time stepping
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMFlash2InitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2UpdateSolution
 
@@ -400,13 +400,14 @@ recursive subroutine PMFlash2InitializeRun(this)
 end subroutine PMFlash2InitializeRun
 
 ! ************************************************************************** !
-!
-! PMFlash2FinalizeRun: Finalizes the time stepping
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMFlash2FinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -425,13 +426,12 @@ recursive subroutine PMFlash2FinalizeRun(this)
 end subroutine PMFlash2FinalizeRun
 
 ! ************************************************************************** !
-!
-! PMFlash2Residual: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2Residual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2Residual
 
@@ -457,13 +457,12 @@ subroutine PMFlash2Residual(this,snes,xx,r,ierr)
 end subroutine PMFlash2Residual
 
 ! ************************************************************************** !
-!
-! PMFlash2Jacobian: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2Jacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2Jacobian
 
@@ -490,14 +489,14 @@ subroutine PMFlash2Jacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMFlash2Jacobian
     
 #if 0
+
 ! ************************************************************************** !
-!
-! PMFlash2CheckUpdatePre: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2CheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2CheckUpdatePre
 
@@ -519,16 +518,15 @@ subroutine PMFlash2CheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMFlash2CheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMFlash2CheckUpdatePost: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2CheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2CheckUpdatePost
 
@@ -556,13 +554,12 @@ end subroutine PMFlash2CheckUpdatePost
 #endif
 
 ! ************************************************************************** !
-!
-! PMFlash2TimeCut: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2TimeCut(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2TimeCut
 
@@ -579,15 +576,14 @@ subroutine PMFlash2TimeCut(this)
   call Flash2TimeCut(this%realization)
 
 end subroutine PMFlash2TimeCut
-    
+
 ! ************************************************************************** !
-!
-! PMFlash2UpdateSolution: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2UpdateSolution(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2UpdateSolution
   use Condition_module
@@ -617,13 +613,14 @@ subroutine PMFlash2UpdateSolution(this)
 end subroutine PMFlash2UpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given PMFlash2MaxChange is called in PostSolve
-! PMFlash2MaxChange: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2MaxChange(this)
+  ! 
+  ! Not needed given PMFlash2MaxChange is called in PostSolve
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2MaxChange
 
@@ -638,15 +635,14 @@ subroutine PMFlash2MaxChange(this)
   call Flash2MaxChange(this%realization)
 
 end subroutine PMFlash2MaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMFlash2ComputeMassBalance: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2ComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   !use Flash2_module, only : Flash2ComputeMassBalance
 
@@ -667,13 +663,14 @@ subroutine PMFlash2ComputeMassBalance(this,mass_balance_array)
 end subroutine PMFlash2ComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMFlash2Checkpoint: Checkpoints data associated with Flash2 PM
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2Checkpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with Flash2 PM
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Checkpoint_module
 
@@ -687,15 +684,15 @@ subroutine PMFlash2Checkpoint(this,viewer)
   
 end subroutine PMFlash2Checkpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMFlash2Restart: Restarts data associated with Flash2 PM
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
 subroutine PMFlash2Restart(this,viewer)
+  ! 
+  ! Restarts data associated with Flash2 PM
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Checkpoint_module
   use Flash2_module, only : Flash2UpdateAuxVars
@@ -713,13 +710,14 @@ subroutine PMFlash2Restart(this,viewer)
 end subroutine PMFlash2Restart
 
 ! ************************************************************************** !
-!
-! PMFlash2Destroy: Destroys Flash2 process model
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMFlash2Destroy(this)
+  ! 
+  ! Destroys Flash2 process model
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Flash2_module, only : Flash2Destroy
 

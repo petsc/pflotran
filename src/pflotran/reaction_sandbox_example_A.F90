@@ -40,13 +40,14 @@ module Reaction_Sandbox_Example_class
 contains
 
 ! ************************************************************************** !
-!
-! ExampleCreate: Allocates example reaction object.
-! author: John Doe (replace in all subroutine headers with name of developer) 
-! date: 00/00/00 (replace in all subroutine headers with current date)
-!
-! ************************************************************************** !
+
 function ExampleCreate()
+  ! 
+  ! Allocates example reaction object.
+  ! 
+  ! Author: John Doe (replace in all subroutine headers with name of developer)
+  ! Date: 00/00/00 (replace in all subroutine headers with current date)
+  ! 
 
   implicit none
   
@@ -63,13 +64,14 @@ function ExampleCreate()
 end function ExampleCreate
 
 ! ************************************************************************** !
-!
-! ExampleRead: Reads input deck for example reaction parameters (if any)
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
+
 subroutine ExampleRead(this,input,option)
+  ! 
+  ! Reads input deck for example reaction parameters (if any)
+  ! 
+  ! Author: John Doe
+  ! Date: 00/00/00
+  ! 
 
   use Option_module
   use String_module
@@ -137,14 +139,15 @@ subroutine ExampleRead(this,input,option)
 end subroutine ExampleRead
 
 ! ************************************************************************** !
-!
-! ExampleSetup: Sets up the example reaction either with parameters either
-!                read from the input deck or hardwired.
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
+
 subroutine ExampleSetup(this,reaction,option)
+  ! 
+  ! Sets up the example reaction either with parameters either
+  ! read from the input deck or hardwired.
+  ! 
+  ! Author: John Doe
+  ! Date: 00/00/00
+  ! 
 
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Option_module
@@ -164,15 +167,16 @@ subroutine ExampleSetup(this,reaction,option)
 end subroutine ExampleSetup
 
 ! ************************************************************************** !
-!
-! ExampleReact: Evaluates reaction storing residual and/or Jacobian
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
+
 subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
                          rt_auxvar,global_auxvar,porosity,volume,reaction, &
                          option)
+  ! 
+  ! Evaluates reaction storing residual and/or Jacobian
+  ! 
+  ! Author: John Doe
+  ! Date: 00/00/00
+  ! 
 
   use Option_module
   use Reaction_Aux_module
@@ -223,14 +227,15 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
 end subroutine ExampleReact
 
 ! ************************************************************************** !
-!
-! ExampleDestroy: Destroys allocatable or pointer objects created in this 
-!                  module
-! author: John Doe
-! date: 00/00/00
-!
-! ************************************************************************** !
+
 subroutine ExampleDestroy(this)
+  ! 
+  ! Destroys allocatable or pointer objects created in this
+  ! module
+  ! 
+  ! Author: John Doe
+  ! Date: 00/00/00
+  ! 
 
   implicit none
   

@@ -81,17 +81,16 @@ type, public :: Flash2_auxvar_elem_type
             Flash2AuxVarInit, Flash2AuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! Flash2AuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function Flash2AuxCreate()
+  ! 
+  ! Flash2AuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -120,16 +119,15 @@ function Flash2AuxCreate()
   
 end function Flash2AuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! Flash2AuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -180,13 +178,14 @@ subroutine Flash2AuxVarInit(aux_var,option)
 end subroutine Flash2AuxVarInit
 
 ! ************************************************************************** !
-!
-! Flash2AuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
+
 subroutine Flash2AuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
@@ -224,17 +223,17 @@ subroutine Flash2AuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine Flash2AuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
              saturation_function,fluid_properties,option,xphico2)
+  ! 
+  ! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   use Global_Aux_module  
@@ -492,7 +491,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 end subroutine Flash2AuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_function, &
                                     fluid_properties,option)
@@ -525,13 +524,14 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
 end subroutine Flash2AuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxVarDestroy(aux_var)
+  ! 
+  ! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -558,13 +558,14 @@ subroutine Flash2AuxVarDestroy(aux_var)
 end subroutine Flash2AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxDestroy(aux, option)
+  ! 
+  ! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   implicit none

@@ -8,6 +8,8 @@
 
   contains
 
+! ************************************************************************** !
+
   FUNCTION rtsafe(funcd,x1,x2,xacc)
 
   IMPLICIT NONE
@@ -73,7 +75,9 @@
   end do
   print *,'rtsafe: exceeded maximum iterations'
   END FUNCTION rtsafe
-  
+
+! ************************************************************************** !
+
 subroutine bracket(func,x1,x2)
   
   implicit none

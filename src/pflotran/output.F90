@@ -47,13 +47,14 @@ module Output_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputInit: Initializes variables
-! author: Glenn Hammond
-! date: 01/22/09
-!
-! ************************************************************************** !
+
 subroutine OutputInit(num_steps)
+  ! 
+  ! Initializes variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/22/09
+  ! 
 
   use Option_module
   use Output_Common_module
@@ -69,13 +70,14 @@ subroutine OutputInit(num_steps)
 end subroutine OutputInit
 
 ! ************************************************************************** !
-!
-! Output: Main driver for all output subroutines
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine Output(realization_base,plot_flag,transient_plot_flag)
+  ! 
+  ! Main driver for all output subroutines
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
@@ -233,13 +235,14 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
 end subroutine Output
 
 ! ************************************************************************** !
-!
-! OutputMAD: Print to HDF5 file for MAD final output
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputMAD(realization_base)
+  ! 
+  ! Print to HDF5 file for MAD final output
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -377,13 +380,12 @@ subroutine OutputMAD(realization_base)
 end subroutine OutputMAD
 
 ! ************************************************************************** !
-!
-! ComputeFlowCellVelocityStats: 
-! author: Glenn Hammond
-! date: 03/11/08
-!
-! ************************************************************************** !
+
 subroutine ComputeFlowCellVelocityStats(realization_base)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/11/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -537,13 +539,14 @@ subroutine ComputeFlowCellVelocityStats(realization_base)
 end subroutine ComputeFlowCellVelocityStats
 
 ! ************************************************************************** !
-!
-! ComputeFlowFluxVelocityStats: Print flux statistics
-! author: Glenn Hammond
-! date: 03/11/08
-!
-! ************************************************************************** !
+
 subroutine ComputeFlowFluxVelocityStats(realization_base)
+  ! 
+  ! Print flux statistics
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/11/08
+  ! 
 !geh - specifically, the flow velocities at the interfaces between cells
  
   use Realization_Base_class, only : realization_base_type
@@ -666,17 +669,18 @@ subroutine ComputeFlowFluxVelocityStats(realization_base)
 end subroutine ComputeFlowFluxVelocityStats
 
 ! ************************************************************************** !
-!
-! OutputPrintCouplers: Prints values of auxiliary variables associated with
-!                      couplers (boundary and initial conditions, source
-!                      sinks).  Note that since multiple connections for
-!                      couplers can exist for a single cell, the latter will
-!                      overwrite the former.
-! author: Glenn Hammond
-! date: 11/02/11
-!
-! ************************************************************************** !
+
 subroutine OutputPrintCouplers(realization_base,istep)
+  ! 
+  ! Prints values of auxiliary variables associated with
+  ! couplers (boundary and initial conditions, source
+  ! sinks).  Note that since multiple connections for
+  ! couplers can exist for a single cell, the latter will
+  ! overwrite the former.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/11
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Coupler_module
@@ -767,14 +771,14 @@ subroutine OutputPrintCouplers(realization_base,istep)
 end subroutine OutputPrintCouplers
 
 ! ************************************************************************** !
-!> This routine temporally averages variables and outputs thems
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/10/13
-! ************************************************************************** !
+
 subroutine OutputAvegVars(realization_base)
+  ! 
+  ! This routine temporally averages variables and outputs thems
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/10/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg

@@ -19,13 +19,14 @@ module PFLOTRAN_Factory_module
 contains
 
 ! ************************************************************************** !
-!
-! PFLOTRANInitialize: Sets up PFLOTRAN subsurface simulation 
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 subroutine PFLOTRANInitialize(option)
+  ! 
+  ! Sets up PFLOTRAN subsurface simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -42,17 +43,16 @@ subroutine PFLOTRANInitialize(option)
 
 end subroutine PFLOTRANInitialize
 
-! ************************************************************************** !
-!
-! PFLOTRANInitializePrePetsc: Sets up PFLOTRAN subsurface simulation 
-!                             framework prior to PETSc initialization
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
+! ************************************************************************** !
 
+subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
+!
+! Sets up PFLOTRAN subsurface simulation framework prior to PETSc 
+!   initialization
+! Author: Glenn Hammond
+! Date: 06/07/13
+!
   use Option_module
   use Input_Aux_module
   use Multi_Simulation_module
@@ -61,6 +61,9 @@ subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
   
   type(multi_simulation_type), pointer :: multisimulation
 #else
+
+! ************************************************************************** !
+
 subroutine PFLOTRANInitializePrePetsc(option)
 
   use Option_module
@@ -91,17 +94,15 @@ subroutine PFLOTRANInitializePrePetsc(option)
   
 end subroutine PFLOTRANInitializePrePetsc
 
-! ************************************************************************** !
-!
-! PFLOTRANInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
-!                              framework after PETSc initialization
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
+! ************************************************************************** !
 
+subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
+!
+! Sets up PFLOTRAN subsurface simulation framework after PETSc initialization
+! Author: Glenn Hammond
+! Date: 06/17/13
+!
   use Option_module
   use Multi_Simulation_module
   
@@ -115,6 +116,9 @@ subroutine PFLOTRANInitializePostPetsc(multisimulation,option)
   call OptionBeginTiming(option)
   
 #else
+
+! ************************************************************************** !
+
 subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
                                        init_status)
 
@@ -164,14 +168,16 @@ subroutine PFLOTRANInitializePostPetsc(simulation, master_stepper, option, &
 end subroutine PFLOTRANInitializePostPetsc
 
 #ifndef PROCESS_MODEL
+
 ! ************************************************************************** !
-!
-! PFLOTRANRun: Runs the PFLOTRAN simulation
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine PFLOTRANRun(simulation, master_stepper, init_status)
+  ! 
+  ! Runs the PFLOTRAN simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Simulation_module
   use Timestepper_module
@@ -231,16 +237,16 @@ subroutine PFLOTRANRun(simulation, master_stepper, init_status)
 end subroutine PFLOTRANRun
 #endif
 
-! ************************************************************************** !
-!
-! PFLOTRANFinalize: Destroys PFLOTRAN subsurface simulation framework
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
 #ifdef PROCESS_MODEL
-subroutine PFLOTRANFinalize(option)
 
+! ************************************************************************** !
+
+subroutine PFLOTRANFinalize(option)
+!
+! Destroys PFLOTRAN subsurface simulation framework
+! Author: Glenn Hammond
+! Date: 06/07/13
+!
   use Option_module
   
   implicit none
@@ -252,6 +258,9 @@ subroutine PFLOTRANFinalize(option)
     close(option%fid_out)
   endif
 #else
+
+! ************************************************************************** !
+
 subroutine PFLOTRANFinalize(simulation,option)
 
   use Simulation_module
@@ -276,13 +285,14 @@ subroutine PFLOTRANFinalize(simulation,option)
 end subroutine PFLOTRANFinalize
 
 ! ************************************************************************** !
-!
-! PFLOTRANInitCommandLineSettings: Initializes PFLOTRAN output filenames, etc.
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine PFLOTRANInitCommandLineSettings(option)
+  ! 
+  ! Initializes PFLOTRAN output filenames, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   use Option_module
   use Input_Aux_module

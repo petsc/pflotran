@@ -35,13 +35,14 @@ module Uniform_Velocity_module
 contains
 
 ! ************************************************************************** !
-!
-! UniformVelocityDatasetCreate: Creates a velocity data set
-! author: Glenn Hammond
-! date: 06/02/09
-!
-! ************************************************************************** !
+
 function UniformVelocityDatasetCreate()
+  ! 
+  ! Creates a velocity data set
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/09
+  ! 
 
   implicit none
   
@@ -66,13 +67,14 @@ function UniformVelocityDatasetCreate()
 end function UniformVelocityDatasetCreate
 
 ! ************************************************************************** !
-!
-! UniformVelocityDatasetRead: Reads a velocity data set from the input file
-! author: Glenn Hammond
-! date: 06/02/09
-!
-! ************************************************************************** !
+
 subroutine UniformVelocityDatasetRead(dataset,input,option)
+  ! 
+  ! Reads a velocity data set from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -155,14 +157,15 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
 end subroutine UniformVelocityDatasetRead
 
 ! ************************************************************************** !
-!
-! UniVelocityDatasetReadValues: Read the value(s) of a velocity data set
-! author: Glenn Hammond
-! date: 06/02/09
-!
-! ************************************************************************** !
+
 subroutine UniVelocityDatasetReadValues(input,option,keyword,string,dataset, &
                                         units)
+  ! 
+  ! Read the value(s) of a velocity data set
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/09
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -245,13 +248,14 @@ subroutine UniVelocityDatasetReadValues(input,option,keyword,string,dataset, &
 end subroutine UniVelocityDatasetReadValues
 
 ! ************************************************************************** !
-!
-! UniVelocityDatasetReadFromFile: Read values from a external file
-! author: Glenn Hammond
-! date: 10/31/07
-!
-! ************************************************************************** !
+
 subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
+  ! 
+  ! Read values from a external file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/31/07
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -345,13 +349,14 @@ subroutine UniVelocityDatasetReadFromFile(input,dataset,option)
 end subroutine UniVelocityDatasetReadFromFile
 
 ! ************************************************************************** !
-!
-! UniformVelocityDatasetVerify: Verifies the data in a dataset
-! author: Glenn Hammond
-! date: 02/04/08
-!
-! ************************************************************************** !
+
 subroutine UniformVelocityDatasetVerify(option, dataset)
+  ! 
+  ! Verifies the data in a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/08
+  ! 
   use Option_module
 
   implicit none
@@ -399,13 +404,14 @@ subroutine UniformVelocityDatasetVerify(option, dataset)
 end subroutine UniformVelocityDatasetVerify
 
 ! ************************************************************************** !
-!
-! UniformVelocityDatasetUpdate: Updates a velocity dataset
-! author: Glenn Hammond
-! date: 06/02/09
-!
-! ************************************************************************** !
+
 subroutine UniformVelocityDatasetUpdate(option,time,dataset)
+  ! 
+  ! Updates a velocity dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/09
+  ! 
 
   use Option_module
   
@@ -486,13 +492,14 @@ subroutine UniformVelocityDatasetUpdate(option,time,dataset)
 end subroutine UniformVelocityDatasetUpdate
 
 ! ************************************************************************** !
-!
-! UniformVelocityDatasetDestroy: Destroys a velocity dataset
-! author: Glenn Hammond
-! date: 06/02/09
-!
-! ************************************************************************** !
+
 subroutine UniformVelocityDatasetDestroy(dataset)
+  ! 
+  ! Destroys a velocity dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/09
+  ! 
 
   implicit none
   

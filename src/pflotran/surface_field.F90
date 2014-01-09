@@ -73,13 +73,14 @@ module Surface_Field_module
 contains
 
 ! ************************************************************************** !
-!
-! SurfaceFieldCreate: Allocates and initializes a new surface Field object
-! author: Gautam Bisht
-! date: 01/17/2012
-!
-! ************************************************************************** !
+
 function SurfaceFieldCreate()
+  ! 
+  ! Allocates and initializes a new surface Field object
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 01/17/2012
+  ! 
 
   implicit none
   
@@ -143,13 +144,14 @@ function SurfaceFieldCreate()
 end function SurfaceFieldCreate
 
 ! ************************************************************************** !
-!
-! SurfaceFieldDestroy: Deallocates a field object
-! author: Gautam Bisht
-! date: 01/17/2012
-!
-! ************************************************************************** !
+
 subroutine SurfaceFieldDestroy(surface_field)
+  ! 
+  ! Deallocates a field object
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 01/17/2012
+  ! 
 
   implicit none
   

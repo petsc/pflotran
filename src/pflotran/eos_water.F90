@@ -156,8 +156,9 @@ module EOS_Water_module
             EOSWaterSetDensityExponential
  
   contains
-  
+
 ! ************************************************************************** !
+
 subroutine EOSWaterInit()
 
   implicit none
@@ -180,6 +181,7 @@ subroutine EOSWaterInit()
 end subroutine EOSWaterInit
 
 ! ************************************************************************** !
+
 subroutine EOSWaterVerify(ierr,error_string)
 
   implicit none
@@ -236,6 +238,7 @@ subroutine EOSWaterVerify(ierr,error_string)
 end subroutine EOSWaterVerify
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSetDensityIFC67()
 
   implicit none
@@ -246,6 +249,7 @@ subroutine EOSWaterSetDensityIFC67()
 end subroutine EOSWaterSetDensityIFC67
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSetEnthalpyIFC67()
 
   implicit none
@@ -256,6 +260,7 @@ subroutine EOSWaterSetEnthalpyIFC67()
 end subroutine EOSWaterSetEnthalpyIFC67
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSetDensityConstant(density)
 
   implicit none
@@ -269,6 +274,7 @@ subroutine EOSWaterSetDensityConstant(density)
 end subroutine EOSWaterSetDensityConstant
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSetEnthalpyConstant(enthalpy)
 
   implicit none
@@ -282,6 +288,7 @@ subroutine EOSWaterSetEnthalpyConstant(enthalpy)
 end subroutine EOSWaterSetEnthalpyConstant
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSetViscosityConstant(viscosity)
 
   implicit none
@@ -294,6 +301,7 @@ subroutine EOSWaterSetViscosityConstant(viscosity)
 end subroutine EOSWaterSetViscosityConstant
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSetDensityExponential(density0,pressure0, &
                                          water_compressibility)
 
@@ -312,6 +320,7 @@ subroutine EOSWaterSetDensityExponential(density0,pressure0, &
 end subroutine EOSWaterSetDensityExponential
 
 ! ************************************************************************** !
+
 subroutine EOSWaterViscosityNoDerive(T, P, PS, VW, ierr)
 
   implicit none
@@ -330,6 +339,7 @@ subroutine EOSWaterViscosityNoDerive(T, P, PS, VW, ierr)
 end subroutine EOSWaterViscosityNoDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterViscosityDerive(T, P, PS, dPS_dT, VW, dWV_dT, dWV_dP, &
                                    dWV_dPS, ierr)
 
@@ -347,6 +357,7 @@ subroutine EOSWaterViscosityDerive(T, P, PS, dPS_dT, VW, dWV_dT, dWV_dP, &
 end subroutine EOSWaterViscosityDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, VW, calculate_derivatives, &
                               dWV_dT, dWV_dP, dWV_dPS, ierr)
 
@@ -389,6 +400,7 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, VW, calculate_derivatives, &
 end subroutine EOSWaterViscosity1
 
 ! ************************************************************************** !
+
 subroutine EOSWaterViscosityConstant(T, P, PS, dPS_dT, VW, &
                                      calculate_derivatives, &
                                      dWV_dT, dWV_dP, dWV_dPS, ierr)
@@ -414,6 +426,7 @@ subroutine EOSWaterViscosityConstant(T, P, PS, dPS_dT, VW, &
 end subroutine EOSWaterViscosityConstant
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSatPresNoDerive(T, PS, ierr)
 
   implicit none
@@ -429,6 +442,7 @@ subroutine EOSWaterSatPresNoDerive(T, PS, ierr)
 end subroutine EOSWaterSatPresNoDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSatPresDerive(T, PS, dPS_dT, ierr)
 
   implicit none
@@ -442,6 +456,7 @@ subroutine EOSWaterSatPresDerive(T, PS, dPS_dT, ierr)
 end subroutine EOSWaterSatPresDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSaturationPressure1(T, PS, calculate_derivatives, dPS_dT, &
                                        ierr)
 
@@ -495,6 +510,7 @@ subroutine EOSWaterSaturationPressure1(T, PS, calculate_derivatives, dPS_dT, &
 end subroutine EOSWaterSaturationPressure1  
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityNoDerive(t,p,dw,dwmol,scale,ierr)
 
   implicit none
@@ -513,6 +529,7 @@ subroutine EOSWaterDensityNoDerive(t,p,dw,dwmol,scale,ierr)
 end subroutine EOSWaterDensityNoDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityDerive(t,p,dw,dwmol, &
                                  dwp,dwt,scale,ierr)
   implicit none
@@ -529,6 +546,7 @@ subroutine EOSWaterDensityDerive(t,p,dw,dwmol, &
 end subroutine EOSWaterDensityDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterEnthalpyNoDerive(t,p,hw,scale,ierr)
 
   implicit none
@@ -546,6 +564,7 @@ subroutine EOSWaterEnthalpyNoDerive(t,p,hw,scale,ierr)
 end subroutine EOSWaterEnthalpyNoDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterEnthalpyDerive(t,p,hw,hwp,hwt,scale,ierr)
   implicit none
 
@@ -560,6 +579,7 @@ subroutine EOSWaterEnthalpyDerive(t,p,hw,hwp,hwt,scale,ierr)
 end subroutine EOSWaterEnthalpyDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDenEnthNoDerive(t,p,dw,dwmol,hw,scale,ierr)
 
   implicit none
@@ -579,6 +599,7 @@ subroutine EOSWaterDenEnthNoDerive(t,p,dw,dwmol,hw,scale,ierr)
 end subroutine EOSWaterDenEnthNoDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDenEnthDerive(t,p,dw,dwmol,hw, &
                                  dwp,dwt,hwp,hwt,scale,ierr)
   implicit none
@@ -596,6 +617,7 @@ subroutine EOSWaterDenEnthDerive(t,p,dw,dwmol,hw, &
 end subroutine EOSWaterDenEnthDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityEnthalpyGeneral(t,p,dw,dwmol,hw, &
                                         calculate_derivatives, &
                                         dwp,dwt,hwp,hwt,scale,ierr)
@@ -619,6 +641,7 @@ subroutine EOSWaterDensityEnthalpyGeneral(t,p,dw,dwmol,hw, &
 end subroutine EOSWaterDensityEnthalpyGeneral
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
                                         calculate_derivatives, &
                                         dwp,dwt,hwp,hwt,scale,ierr)
@@ -893,6 +916,7 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
 end subroutine EOSWaterDensityEnthalpyIFC67
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
                                 calculate_derivatives, &
                                 dwp,dwt,scale,ierr)
@@ -1051,6 +1075,7 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
 end subroutine EOSWaterDensityIFC67
 
 ! ************************************************************************** !
+
 subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
                                  calculate_derivatives, &
                                  hwp,hwt,scale,ierr)
@@ -1313,6 +1338,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
 end subroutine EOSWaterEnthalpyIFC67
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityConstant(t,p,dw,dwmol, &
                                    calculate_derivatives, &
                                    dwp,dwt,scale,ierr)
@@ -1334,6 +1360,7 @@ subroutine EOSWaterDensityConstant(t,p,dw,dwmol, &
 end subroutine EOSWaterDensityConstant
 
 ! ************************************************************************** !
+
 subroutine EOSWaterEnthalpyConstant(t,p,hw, &
                                     calculate_derivatives, &
                                     hwp,hwt,scale,ierr)
@@ -1354,6 +1381,7 @@ subroutine EOSWaterEnthalpyConstant(t,p,hw, &
 end subroutine EOSWaterEnthalpyConstant
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityExponential(t,p,dw,dwmol, &
                                       calculate_derivatives, &
                                       dwp,dwt,scale,ierr)
@@ -1381,6 +1409,7 @@ subroutine EOSWaterDensityExponential(t,p,dw,dwmol, &
 end subroutine EOSWaterDensityExponential
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
 
   implicit none
@@ -1400,6 +1429,7 @@ subroutine EOSWaterSteamDenEnthNoDerive(t,p,pa,dg,dgmol,hg,scale,ierr)
 end subroutine EOSWaterSteamDenEnthNoDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSteamDenEnthDerive(t,p,pa,dg,dgmol,hg, &
                                       dgp,dgt,hgp,hgt,scale,ierr)
   implicit none
@@ -1417,6 +1447,7 @@ subroutine EOSWaterSteamDenEnthDerive(t,p,pa,dg,dgmol,hg, &
 end subroutine EOSWaterSteamDenEnthDerive
 
 ! ************************************************************************** !
+
 subroutine EOSWaterSteamDensityEnthalpy1(t,p,pa,dg,dgmol,hg, &
                                          calculate_derivatives, &
                                          dgp,dgt,hgp,hgt,scale,ierr)
@@ -1724,6 +1755,7 @@ subroutine EOSWaterSteamDensityEnthalpy1(t,p,pa,dg,dgmol,hg, &
 end subroutine EOSWaterSteamDensityEnthalpy1
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDuanMixture(t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
 
 ! Duan et al. (2008) Energy and Fuels, v 22, 1666-1674.
@@ -1753,6 +1785,7 @@ subroutine EOSWaterDuanMixture(t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
 end subroutine EOSWaterDuanMixture
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityNaCl(t,p,xnacl,dnacl)
 
   ! density: Batzle & Wang (1992)
@@ -1778,6 +1811,7 @@ subroutine EOSWaterDensityNaCl(t,p,xnacl,dnacl)
 end subroutine EOSWaterDensityNaCl
 
 ! ************************************************************************** !
+
 subroutine EOSWaterViscosityNaCl (t,p,xnacl,visnacl)
 
   !viscosity: Kestin et al. (1981)
@@ -1820,8 +1854,8 @@ subroutine EOSWaterViscosityNaCl (t,p,xnacl,visnacl)
 
 end subroutine EOSWaterViscosityNaCl
 
-
 ! ************************************************************************** !
+
 subroutine EOSWaterSaturationTemperature(ts,ps,t_ps,ts_guess,ierr)
 
   !  This function calculates saturation temperature for a given Ps c  
@@ -1902,6 +1936,7 @@ subroutine EOSWaterSaturationTemperature(ts,ps,t_ps,ts_guess,ierr)
 end subroutine EOSWaterSaturationTemperature
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
   ! Subroutine to calculate the density of ice at given temperature
   ! and pressure
@@ -1924,6 +1959,7 @@ subroutine EOSWaterDensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
 end subroutine EOSWaterDensityIce
 
 ! ************************************************************************** !
+
 subroutine EOSWaterInternalEnergyIce(T, u_ice, du_ice_dT)
   ! Subroutine to calculate the internal energy of ice at given temperature and 
   ! pressure
@@ -1950,13 +1986,14 @@ subroutine EOSWaterInternalEnergyIce(T, u_ice, du_ice_dT)
 end subroutine EOSWaterInternalEnergyIce
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
                                     h_MJ_kmol, &
                                     calculate_derivatives, dden_water_dp, &
                                     dden_water_dt, dh_dp, dh_dt, ierr)
 ! wateos_simple: Simple water equation of state from Scott Painter
-! author: Satish Karra, LANL
-! date: 02/1/12
+! Author: Satish Karra, LANL
+! Date: 02/1/12
 ! T in C, P in Pa
   implicit none
 
@@ -2018,6 +2055,7 @@ subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
 end subroutine EOSWaterDensityEnthalpy2
 
 ! ************************************************************************** !
+
 subroutine EOSWaterDensityGautam (tc,p,d)
   !-units: tc - degrees c, p - pascals, d - kg/m^3
   !-compute density and internal energy of liquid water as

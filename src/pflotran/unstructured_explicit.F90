@@ -29,13 +29,14 @@ module Unstructured_Explicit_module
 contains
 
 ! ************************************************************************** !
-!
-! UGridExplicitRead: Reads an explicit unstructured grid in parallel
-! author: Glenn Hammond
-! date: 10/03/12
-!
-! ************************************************************************** !
+
 subroutine UGridExplicitRead(unstructured_grid,filename,option)
+  ! 
+  ! Reads an explicit unstructured grid in parallel
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/12
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -418,14 +419,15 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
 end subroutine UGridExplicitRead
 
 ! ************************************************************************** !
-!
-! UGridExplicitDecompose: Decomposes an explicit unstructured grid across 
-!                         ranks
-! author: Glenn Hammond
-! date: 05/17/12
-!
-! ************************************************************************** !
+
 subroutine UGridExplicitDecompose(ugrid,option)
+  ! 
+  ! Decomposes an explicit unstructured grid across
+  ! ranks
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/17/12
+  ! 
 
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
@@ -1186,14 +1188,15 @@ subroutine UGridExplicitDecompose(ugrid,option)
 end subroutine UGridExplicitDecompose
 
 ! ************************************************************************** !
-!
-! UGridExplicitSetCellCentroids: Sets the centroid of each grid cell
-! author: Glenn Hammond
-! date: 05/17/12
-!
-! ************************************************************************** !
+
 subroutine UGridExplicitSetCellCentroids(explicit_grid,x,y,z, &
                                          x_min,x_max,y_min,y_max,z_min,z_max)
+  ! 
+  ! Sets the centroid of each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/17/12
+  ! 
 
   use Option_module
 
@@ -1219,16 +1222,17 @@ subroutine UGridExplicitSetCellCentroids(explicit_grid,x,y,z, &
   z_max = maxval(z)
       
 end subroutine UGridExplicitSetCellCentroids
-      
+
 ! ************************************************************************** !
-!
-! UGridExplicitSetInternConnect: Sets up the internal connectivity within  
-!                                the connectivity object
-! author: Glenn Hammond
-! date: 05/17/12
-!
-! ************************************************************************** !
+
 function UGridExplicitSetInternConnect(explicit_grid,option)
+  ! 
+  ! Sets up the internal connectivity within
+  ! the connectivity object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/17/12
+  ! 
 
   use Utility_module
   use Connection_module
@@ -1285,13 +1289,14 @@ function UGridExplicitSetInternConnect(explicit_grid,option)
 end function UGridExplicitSetInternConnect
 
 ! ************************************************************************** !
-!
-! UGridExplicitComputeVolumes: Sets the volume of each grid cell
-! author: Glenn Hammond
-! date: 05/17/12
-!
-! ************************************************************************** !
+
 subroutine UGridExplicitComputeVolumes(ugrid,option,volume)
+  ! 
+  ! Sets the volume of each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/17/12
+  ! 
 
   use Option_module
 
@@ -1318,15 +1323,16 @@ subroutine UGridExplicitComputeVolumes(ugrid,option,volume)
 end subroutine UGridExplicitComputeVolumes
 
 ! ************************************************************************** !
-!
-! UGridExplicitSetBoundaryConnect: Sets up the boundary connectivity within  
-!                                  the connectivity object
-! author: Glenn Hammond
-! date: 05/18/12
-!
-! ************************************************************************** !
+
 function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
                                          face_centroids,face_areas,option)
+  ! 
+  ! Sets up the boundary connectivity within
+  ! the connectivity object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/18/12
+  ! 
 
   use Utility_module
   use Connection_module
@@ -1376,14 +1382,15 @@ function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
 end function UGridExplicitSetBoundaryConnect
 
 ! ************************************************************************** !
-!
-! UGridExplicitSetConnections: Sets up the connectivity for a region
-! author: Glenn Hammond
-! date: 05/18/12
-!
-! ************************************************************************** !
+
 function UGridExplicitSetConnections(explicit_grid,cell_ids,connection_type, &
                                      option)
+  ! 
+  ! Sets up the connectivity for a region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/18/12
+  ! 
 
   use Utility_module
   use Connection_module
