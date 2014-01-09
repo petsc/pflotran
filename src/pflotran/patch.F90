@@ -1650,7 +1650,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call HydrostaticUpdateCoupler(coupler,option,patch%grid)
       case(HET_DIRICHLET)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
-                flow_condition%temperature%dataset, &
+                flow_condition%pressure%dataset, &
                 num_connections,TH_PRESSURE_DOF,option)
       case(HET_SURF_SEEPAGE_BC)
         ! Do nothing, since this BC type is only used for coupling of
