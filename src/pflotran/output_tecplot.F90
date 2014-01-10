@@ -164,27 +164,43 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
       string2 = trim(string2) // &
               ', DATAPACKING=POINT'
     case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
-      if ((realization_base%discretization%itype == STRUCTURED_GRID).or. &
-          (realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
-        string2 = ', I=' // &
-                  trim(StringFormatInt(grid%structured_grid%nx+1)) // &
-                  ', J=' // &
-                  trim(StringFormatInt(grid%structured_grid%ny+1)) // &
-                  ', K=' // &
-                  trim(StringFormatInt(grid%structured_grid%nz+1))
-      else if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
-        string2 = ', N=' // &
-                  trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
-                  ', ELEMENTS=' // &
-                  trim(StringFormatInt(grid%unstructured_grid%nmax))
-        string2 = trim(string2) // ', ZONETYPE=FEBRICK'
-      else
-        string2 = ', N=' // &
-                  trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
-                  ', ELEMENTS=' // &
-                  trim(StringFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
-        string2 = trim(string2) // ', ZONETYPE=FEBRICK'
-      endif  
+      select case (grid%itype)
+        case (STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+          string2 = ', I=' // &
+                    trim(StringFormatInt(grid%structured_grid%nx+1)) // &
+                    ', J=' // &
+                    trim(StringFormatInt(grid%structured_grid%ny+1)) // &
+                    ', K=' // &
+                    trim(StringFormatInt(grid%structured_grid%nz+1))
+        case (IMPLICIT_UNSTRUCTURED_GRID)
+          string2 = ', N=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                    ', ELEMENTS=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%nmax))
+          string2 = trim(string2) // ', ZONETYPE=FEBRICK'
+        case (EXPLICIT_UNSTRUCTURED_GRID)
+          string2 = ', N=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
+                    ', ELEMENTS=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
+          string2 = trim(string2) // ', ZONETYPE=FEBRICK'
+        case (POLYHEDRA_UNSTRUCTURED_GRID)
+          string2 = ', NODES=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                    ', FACES=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_ufaces_global)) // &
+                    ', ELEMENTS=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%nmax)) // &
+                    ', TotalNumFaceNodes=' // &
+                    trim(StringFormatInt(grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_global)) // &
+                    ', NumConnectedBoundaryFaces=0' // &
+                    ', TotalNumBoundaryConnections=0'
+          string2 = trim(string2) // ', ZONETYPE=FEPOLYHEDRON'
+        case default
+          option%io_buffer = 'Extend OutputTecplotZoneHeader() for grid%ctype ' // &
+            trim(grid%ctype)
+          call printErrMsg(option)
+      end select
       
       if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
         string3 = ', VARLOCATION=(NODAL)'
@@ -268,7 +284,7 @@ subroutine OutputTecplotBlock(realization_base)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)  
   call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
-                                  option)  
+                                  option)
 
   ! write out coordinates
   if (realization_base%discretization%itype == STRUCTURED_GRID .or. &
@@ -309,7 +325,11 @@ subroutine OutputTecplotBlock(realization_base)
         EXPLICIT_UNSTRUCTURED_GRID) then
     call WriteTecplotExpGridElements(OUTPUT_UNIT,realization_base)
   endif
-    
+
+  if (realization_base%discretization%grid%itype == POLYHEDRA_UNSTRUCTURED_GRID) then
+    call WriteTecplotPolyUGridElements(OUTPUT_UNIT,realization_base)
+  endif
+
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
   if (output_option%print_tecplot_velocities) then
@@ -1349,74 +1369,78 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
 
 1000 format(es13.6,1x)
 
-  if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
-    call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
-                      grid%unstructured_grid%num_vertices_global, &
-                      global_vertex_vec,ierr)
-    call VecGetLocalSize(global_vertex_vec,local_size,ierr)
-    call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
-    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-    call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
-                             local_size)
-    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+  select case (grid%itype)
+    case (IMPLICIT_UNSTRUCTURED_GRID, POLYHEDRA_UNSTRUCTURED_GRID)
+      call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+      grid%unstructured_grid%num_vertices_global, &
+      global_vertex_vec,ierr)
+      call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+      call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+      write(fid,'(a)'),'# vertex x-coordinate'
+      call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
+      local_size)
+      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-    call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
-    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-    call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
-                             local_size)
-    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+      write(fid,'(a)'),'# vertex y-coordinate'
+      call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
+      local_size)
+      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-    call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
-    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-    call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
-                             local_size)
-    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+      call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+      call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+      write(fid,'(a)'),'# vertex z-coordinate'
+      call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
+      local_size)
+      call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-    call VecDestroy(global_vertex_vec, ierr)
-  else
-    if (option%myrank == option%io_rank) then
-      if (option%print_explicit_primal_grid) then
-      num_cells = grid%unstructured_grid%explicit_grid%num_cells_global
-      count = 0
-      do icell = 1, num_cells
-        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
-                                     vertex_coordinates(icell)%x
-        count = count + 1
-        if (mod(count,10) == 0) then
-          write(fid,'(a)') ""
-          count = 0
+      call VecDestroy(global_vertex_vec, ierr)
+    case (EXPLICIT_UNSTRUCTURED_GRID)
+      if (option%myrank == option%io_rank) then
+        if (option%print_explicit_primal_grid) then
+        num_cells = grid%unstructured_grid%explicit_grid%num_cells_global
+        count = 0
+        do icell = 1, num_cells
+          write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                       vertex_coordinates(icell)%x
+          count = count + 1
+          if (mod(count,10) == 0) then
+            write(fid,'(a)') ""
+            count = 0
+          endif
+        enddo
+        if (count /= 0) write(fid,'(a)') ""
+        count = 0
+        do icell = 1, num_cells
+          write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                       vertex_coordinates(icell)%y
+          count = count + 1
+          if (mod(count,10) == 0) then
+            write(fid,'(a)') ""
+            count = 0
+          endif
+        enddo
+        if (count /= 0) write(fid,'(a)') ""
+        count = 0
+        do icell = 1, num_cells
+          write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
+                                       vertex_coordinates(icell)%z
+          count = count + 1
+          if (mod(count,10) == 0) then
+            write(fid,'(a)') ""
+            count = 0
+          endif
+        enddo
+        if (count /= 0) write(fid,'(a)') ""
+        elseif (option%print_explicit_dual_grid) then
+          write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+        else 
+          write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
         endif
-      enddo
-      if (count /= 0) write(fid,'(a)') ""
-      count = 0
-      do icell = 1, num_cells
-        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
-                                     vertex_coordinates(icell)%y
-        count = count + 1
-        if (mod(count,10) == 0) then
-          write(fid,'(a)') ""
-          count = 0
-        endif
-      enddo
-      if (count /= 0) write(fid,'(a)') ""
-      count = 0
-      do icell = 1, num_cells
-        write(fid,1000,advance='no') grid%unstructured_grid%explicit_grid% &
-                                     vertex_coordinates(icell)%z
-        count = count + 1
-        if (mod(count,10) == 0) then
-          write(fid,'(a)') ""
-          count = 0
-        endif
-      enddo
-      if (count /= 0) write(fid,'(a)') ""      
-      elseif (option%print_explicit_dual_grid) then
-        write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
-      else 
-        write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
       endif
-    endif
-  endif
+  end select
 
 end subroutine WriteTecplotUGridVertices
 
@@ -2504,5 +2528,68 @@ subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
   endif 
   
 end subroutine WriteTecplotHeaderSec
+
+! ************************************************************************** !
+!> This routine writes polyhedra unstructured grid elements.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 12/29/13
+! ************************************************************************** !
+subroutine WriteTecplotPolyUGridElements(fid,realization_base)
+
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  Vec :: global_cconn_vec
+  type(ugdm_type), pointer :: ugdm_element
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  patch => realization_base%patch
+  grid => patch%grid
+  option => realization_base%option
+
+  write(fid,'(a)'),'# number of vertices/nodes per face'
+  call WriteTecplotDataSetNumPerLine(fid, realization_base, &
+                        grid%unstructured_grid%polyhedra_grid%uface_nverts*1.d0, &
+                        TECPLOT_INTEGER, &
+                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+                        10)
+
+  write(fid,'(a)'),'# id of vertices/nodes forming a face'
+  call WriteTecplotDataSetNumPerLine(fid, realization_base, &
+                        grid%unstructured_grid%polyhedra_grid%uface_natvertids*1.d0, &
+                        TECPLOT_INTEGER, &
+                        grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_local, &
+                        4)
+
+  write(fid,'(a)'),'# id of control-volume/element left of a face'
+  call WriteTecplotDataSetNumPerLine(fid, realization_base, &
+                        grid%unstructured_grid%polyhedra_grid%uface_left_natcellids*1.d0, &
+                        TECPLOT_INTEGER, &
+                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+                        10)
+
+  write(fid,'(a)'),'# id of control-volume/element right of a face'
+  call WriteTecplotDataSetNumPerLine(fid, realization_base, &
+                        grid%unstructured_grid%polyhedra_grid%uface_right_natcellids*1.d0, &
+                        TECPLOT_INTEGER, &
+                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+                        10)
+
+end subroutine WriteTecplotPolyUGridElements
 
 end module Output_Tecplot_module

@@ -24,7 +24,8 @@ module Unstructured_Polyhedra_module
             UGridPolyhedraComputeInternConnect, &
             UGridPolyhedraComputeVolumes, &
             UGridPolyhedraPopulateConnection, &
-            UGridPolyhedraGetCellsInRectangle
+            UGridPolyhedraGetCellsInRectangle, &
+            UGridPolyhedraComputeOutputInfo
 
 contains
 
@@ -388,6 +389,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
                   option%mycomm,ierr)
   num_vertices = temp_int
   pgrid%num_vertices_global = num_vertices
+  ugrid%num_vertices_global = num_vertices
 
    ! divide cells across ranks
   num_vertices_local = num_vertices/option%mycommsize 
@@ -1475,19 +1477,13 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   PetscBool:: face_found
   PetscBool:: vertex_found
   PetscBool :: cell_found
-  !PetscBool :: match_found
     
   PetscReal :: v1(3), v2(3), v3(3)
   PetscReal :: n1(3), n2(3), n_up_dn(3)
-  !PetscReal :: vcross(3), magnitude
-  !PetscReal :: area1, area2
   PetscReal :: dist_up, dist_dn
-  !PetscInt :: ivert
-  
+
   type(plane_type) :: plane1
-  !, plane2
   type(point_type) :: point1, point2, point3
-  !, point4
   type(point_type) :: point_up, point_dn
   type(point_type) :: intercept1, intercept2, intercept
 
@@ -1763,6 +1759,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
       endif
     enddo
   enddo
+  deallocate(temp_int)
 
   do ghosted_id = 1, ugrid%ngmax
     do ivertex = 1, ugrid%cell_vertices(0,ghosted_id)
@@ -1958,7 +1955,6 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   enddo
   close(86)
 
-
   write(string,*) option%myrank
   string = 'poly_cell_vertids' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
@@ -2100,7 +2096,7 @@ subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
       point%y = v2(2)
       point%z = v2(3)
 
-      face_id = ugrid%cell_to_face_ghosted(iface_cell, ghosted_id)
+      !face_id = ugrid%cell_to_face_ghosted(iface_cell, ghosted_id)
       face_id = pgrid%cell_faceids(iface_cell, ghosted_id)
       intercept%x = pgrid%face_centroids(face_id)%x
       intercept%y = pgrid%face_centroids(face_id)%y
@@ -2192,7 +2188,7 @@ subroutine UGridPolyhedraGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, 
       num_vertices = pgrid%face_nverts(ghosted_id)
       in_rectangle = PETSC_TRUE
       do ivertex = 1, num_vertices
-        vertex_id = pgrid%face_vertids(ivertex,face_id)
+        !vertex_id = pgrid%face_vertids(ivertex,face_id)
         vertex_id = ugrid%face_to_vertex(ivertex,face_id)
         point = ugrid%vertices(vertex_id)
         if (point%x < x_min_adj .or. &
@@ -2230,5 +2226,215 @@ subroutine UGridPolyhedraGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, 
   nullify(temp_face_array)
 
 end subroutine UGridPolyhedraGetCellsInRectangle
+
+! ************************************************************************** !
+!> This routine computes informations later required to write tecplot output
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 12/29/13
+! ************************************************************************** !
+subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+  type(unstructured_grid_type) :: ugrid
+  type(option_type) :: option
+  PetscInt, pointer :: nL2G(:)
+  PetscInt, pointer :: nG2L(:)
+  PetscInt, pointer :: nG2A(:)
+
+  type(unstructured_polyhedra_type), pointer :: pgrid
+
+  Vec :: nat_cv_proc_rank
+  Vec :: ghosted_cv_proc_rank
+  VecScatter :: vec_scat
+  IS :: is_scatter
+  IS :: is_gather
+
+  Vec :: ghosted_vec
+  Vec :: natural_vec
+
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscInt :: iface
+  PetscInt :: ivertex
+  PetscInt :: count
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: dual_id
+  PetscInt :: face_id
+  PetscInt :: vertex_id
+
+  PetscInt :: pgridface_id
+
+  PetscInt, allocatable :: int_array(:)
+  PetscReal, allocatable :: real_array(:)
+  PetscScalar,pointer :: v_loc_p(:)
+
+  PetscErrorCode :: ierr
+
+  pgrid => ugrid%polyhedra_grid
+
+  pgrid%ugrid_num_faces_local = size(ugrid%face_to_cell_ghosted,2)
+  allocate(pgrid%ugridf2pgridf(pgrid%ugrid_num_faces_local))
+  pgrid%ugridf2pgridf = 0
+
+  ! Initialize mapping of faces between unstructured_grid and polyhedra_grid
+  do ghosted_id = 1, ugrid%ngmax
+    do iface = 1, pgrid%cell_nfaces(ghosted_id)
+      face_id = ugrid%cell_to_face_ghosted(iface, ghosted_id)
+
+      if (pgrid%ugridf2pgridf(face_id) == 0) then ! mapping not initialized
+        pgrid%ugridf2pgridf(face_id) = pgrid%cell_faceids(iface, ghosted_id)
+      else
+        ! iface-th of ghosted_id-cell is an internal face shared by:
+        ! - two local control volumes, or
+        ! - a local and ghosted control volume
+
+        ! Determine if ghosted_id is the upwind control volume.
+        if (ugrid%face_to_cell_ghosted(1, face_id) == ghosted_id) then
+          ! Map ugrid face to corresponding face of upwind control volume
+          ! in pgrid. Upwind control volume is choosen because the order of
+          ! vertices forming a face is required for output. Also, unit normal
+          ! vector point from upwind-to-downwind control volume.
+          pgrid%ugridf2pgridf(face_id) = pgrid%cell_faceids(iface, ghosted_id)
+        endif
+      endif
+    enddo
+  enddo
+
+  ! Find number of global unique faces. This is required for output
+  call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DETERMINE, nat_cv_proc_rank, ierr)
+  call VecCreateMPI(option%mycomm, ugrid%ngmax, PETSC_DETERMINE, ghosted_cv_proc_rank, ierr)
+
+  ! Populate a vector that contains rank of procoessor on which a given
+  ! control volume is active.
+  allocate(int_array(ugrid%nlmax))
+  allocate(real_array(ugrid%nlmax))
+  do local_id = 1,ugrid%nlmax
+    int_array(local_id) = nG2A(nL2G(local_id))
+    real_array(local_id) = option%myrank
+  enddo
+  int_array = int_array - 1
+
+  call VecSetValues(nat_cv_proc_rank, ugrid%nlmax, int_array, real_array, INSERT_VALUES, &
+                    ierr)
+  call VecAssemblyBegin(nat_cv_proc_rank, ierr)
+  call VecAssemblyEnd(nat_cv_proc_rank, ierr)
+  deallocate(int_array)
+  deallocate(real_array)
+
+  ! Find processor rank for ghost control volumes by scattering data stored in
+  ! vector nat_cv_proc_rank.
+  allocate(int_array(ugrid%ngmax))
+
+  do ghosted_id = 1, ugrid%ngmax
+    int_array(ghosted_id) = nG2A(ghosted_id)
+  enddo
+  int_array = int_array - 1
+  call ISCreateBlock(option%mycomm, 1, ugrid%ngmax, int_array, PETSC_COPY_VALUES, &
+                      is_scatter, ierr)
+
+  call VecGetOwnershipRange(ghosted_cv_proc_rank, istart, iend, ierr)
+  do ghosted_id = 1, ugrid%ngmax
+    int_array(ghosted_id) = ghosted_id + istart
+  enddo
+  int_array = int_array - 1
+  call ISCreateBlock(option%mycomm, 1, ugrid%ngmax, int_array, PETSC_COPY_VALUES, &
+                      is_gather, ierr)
+
+  call VecScatterCreate(nat_cv_proc_rank, is_scatter, ghosted_cv_proc_rank, is_gather, &
+                        vec_scat, ierr)
+  call ISDestroy(is_scatter, ierr)
+  call ISDestroy(is_gather, ierr)
+  deallocate(int_array)
+
+  call VecScatterBegin(vec_scat, nat_cv_proc_rank, ghosted_cv_proc_rank, &
+                        INSERT_VALUES, SCATTER_FORWARD, ierr)
+  call VecScatterEnd(vec_scat, nat_cv_proc_rank, ghosted_cv_proc_rank, &
+                      INSERT_VALUES, SCATTER_FORWARD, ierr)
+  call VecScatterDestroy(vec_scat, ierr)
+
+  ! Find the number of unique faces
+  allocate(pgrid%uface_localids(pgrid%ugrid_num_faces_local))
+  allocate(pgrid%uface_nverts(pgrid%ugrid_num_faces_local))
+  allocate(pgrid%uface_left_natcellids(pgrid%ugrid_num_faces_local))
+  allocate(pgrid%uface_right_natcellids(pgrid%ugrid_num_faces_local))
+
+  call VecGetArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr)
+  pgrid%num_ufaces_local = 0
+  pgrid%uface_nverts = 0
+  do iface = 1, pgrid%ugrid_num_faces_local
+    ghosted_id = ugrid%face_to_cell_ghosted(1, iface)
+    dual_id = ugrid%face_to_cell_ghosted(2, iface)
+    local_id = nG2L(ghosted_id)
+
+    if (ghosted_id > ugrid%nlmax) cycle
+
+    if (dual_id == 0) then
+      pgrid%num_ufaces_local = pgrid%num_ufaces_local + 1
+      pgridface_id = pgrid%ugridf2pgridf(iface)
+      pgrid%uface_localids(pgrid%num_ufaces_local) = pgridface_id
+      pgrid%uface_nverts(pgrid%num_ufaces_local) = pgrid%face_nverts(pgridface_id)
+      pgrid%uface_left_natcellids(pgrid%num_ufaces_local) = nG2A(ghosted_id)
+      pgrid%uface_right_natcellids(pgrid%num_ufaces_local) = 0
+      pgrid%num_verts_of_ufaces_local = pgrid%num_verts_of_ufaces_local + pgrid%face_nverts(pgridface_id)
+    else
+      if (nG2L(dual_id) == 0) then
+        if (v_loc_p(dual_id) >= option%myrank) then
+          pgrid%num_ufaces_local = pgrid%num_ufaces_local + 1
+          pgridface_id = pgrid%ugridf2pgridf(iface)
+          pgrid%uface_localids(pgrid%num_ufaces_local) = pgridface_id
+          pgrid%uface_nverts(pgrid%num_ufaces_local) = pgrid%face_nverts(pgridface_id)
+          pgrid%uface_left_natcellids(pgrid%num_ufaces_local) = nG2A(ghosted_id)
+          pgrid%uface_right_natcellids(pgrid%num_ufaces_local) = nG2A(dual_id)
+          pgrid%num_verts_of_ufaces_local = pgrid%num_verts_of_ufaces_local + pgrid%face_nverts(pgridface_id)
+        endif
+      else
+        pgrid%num_ufaces_local = pgrid%num_ufaces_local + 1
+        pgridface_id = pgrid%ugridf2pgridf(iface)
+        pgrid%uface_localids(pgrid%num_ufaces_local) = pgridface_id
+        pgrid%uface_nverts(pgrid%num_ufaces_local) = pgrid%face_nverts(pgridface_id)
+        pgrid%num_verts_of_ufaces_local = pgrid%num_verts_of_ufaces_local + pgrid%face_nverts(pgridface_id)
+        pgrid%uface_left_natcellids(pgrid%num_ufaces_local) = nG2A(ghosted_id)
+        pgrid%uface_right_natcellids(pgrid%num_ufaces_local) = nG2A(dual_id)
+      endif
+    endif
+  enddo
+  call VecRestoreArrayF90(ghosted_cv_proc_rank, v_loc_p, ierr)
+
+  call VecDestroy(ghosted_cv_proc_rank, ierr)
+
+
+  call MPI_Allreduce(pgrid%num_ufaces_local, pgrid%num_ufaces_global, &
+                      ONE_INTEGER_MPI, MPI_INTEGER, MPI_SUM, option%mycomm, ierr)
+  call MPI_Allreduce(pgrid%num_verts_of_ufaces_local, pgrid%num_verts_of_ufaces_global, &
+                      ONE_INTEGER_MPI, MPI_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  allocate(pgrid%uface_natvertids(pgrid%num_verts_of_ufaces_local))
+  count = 0
+  do iface = 1, pgrid%num_ufaces_local
+
+    face_id = pgrid%uface_localids(iface)
+
+    do ivertex = 1, pgrid%uface_nverts(iface)
+      vertex_id = pgrid%face_vertids(ivertex, face_id)
+      count = count + 1
+      pgrid%uface_natvertids(count) = ugrid%vertex_ids_natural(vertex_id)
+    enddo
+  enddo
+
+end subroutine UGridPolyhedraComputeOutputInfo
 
 end module Unstructured_Polyhedra_module

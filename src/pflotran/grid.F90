@@ -333,6 +333,8 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
         UGridPolyhedraComputeInternConnect(grid%unstructured_grid, &
                                            grid%x, grid%y, grid%z, &
                                            option)
+      call UGridPolyhedraComputeOutputInfo(grid%unstructured_grid, grid%nL2G, grid%nG2L, &
+                                            grid%nG2A, option)
   end select
   
   allocate(grid%internal_connection_set_list)

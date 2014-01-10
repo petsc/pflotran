@@ -103,6 +103,17 @@ module Unstructured_Grid_Aux_module
     PetscInt :: max_nface_per_cell
     PetscInt :: max_nvert_per_face
     PetscInt :: max_nvert_per_cell
+    PetscInt :: num_ufaces_local
+    PetscInt :: num_ufaces_global
+    PetscInt :: num_verts_of_ufaces_local
+    PetscInt :: num_verts_of_ufaces_global
+    PetscInt, pointer :: uface_localids(:)
+    PetscInt, pointer :: uface_nverts(:)
+    PetscInt, pointer :: uface_natvertids(:)
+    PetscInt, pointer :: uface_left_natcellids(:)
+    PetscInt, pointer :: uface_right_natcellids(:)
+    PetscInt, pointer :: ugridf2pgridf(:)
+    PetscInt :: ugrid_num_faces_local
   end type unstructured_polyhedra_type
 
   type, public :: ugdm_type
@@ -314,6 +325,11 @@ function UGridPolyhedraCreate()
   polyhedra_grid%max_nface_per_cell = 0
   polyhedra_grid%max_nvert_per_face = 0
   polyhedra_grid%max_nvert_per_cell = 0
+  polyhedra_grid%num_ufaces_local = 0
+  polyhedra_grid%num_ufaces_global = 0
+  polyhedra_grid%num_verts_of_ufaces_local = 0
+  polyhedra_grid%num_verts_of_ufaces_global = 0
+  polyhedra_grid%ugrid_num_faces_local = 0
 
   nullify(polyhedra_grid%cell_ids)
   nullify(polyhedra_grid%cell_nfaces)
@@ -329,6 +345,12 @@ function UGridPolyhedraCreate()
   nullify(polyhedra_grid%face_areas)
   nullify(polyhedra_grid%face_centroids)
   nullify(polyhedra_grid%vertex_coordinates)
+  nullify(polyhedra_grid%uface_localids)
+  nullify(polyhedra_grid%uface_nverts)
+  nullify(polyhedra_grid%uface_natvertids)
+  nullify(polyhedra_grid%uface_left_natcellids)
+  nullify(polyhedra_grid%uface_right_natcellids)
+  nullify(polyhedra_grid%ugridf2pgridf)
 
   UGridPolyhedraCreate => polyhedra_grid
 
@@ -894,6 +916,7 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,nG2P,option)
                             unstructured_grid%ngmax, &
                             nG2A,ierr)
   nG2A = nG2A + 1 ! 1-based
+
 
 #if MFD_UGRID
   allocate(nG2P(unstructured_grid%ngmax))
@@ -1759,6 +1782,19 @@ subroutine UGridPolyhedraDestroy(polyhedra_grid)
   if (associated(polyhedra_grid%vertex_coordinates)) &
     deallocate(polyhedra_grid%vertex_coordinates)
   nullify(polyhedra_grid%vertex_coordinates)
+  if (associated(polyhedra_grid%ugridf2pgridf)) deallocate(polyhedra_grid%ugridf2pgridf)
+  nullify(polyhedra_grid%ugridf2pgridf)
+
+  if (associated(polyhedra_grid%uface_localids)) deallocate(polyhedra_grid%uface_localids)
+  nullify(polyhedra_grid%uface_localids)
+  if (associated(polyhedra_grid%uface_nverts)) deallocate(polyhedra_grid%uface_nverts)
+  nullify(polyhedra_grid%uface_nverts)
+  if (associated(polyhedra_grid%uface_natvertids)) deallocate(polyhedra_grid%uface_natvertids)
+  nullify(polyhedra_grid%uface_natvertids)
+  if (associated(polyhedra_grid%uface_left_natcellids)) deallocate(polyhedra_grid%uface_left_natcellids)
+  nullify(polyhedra_grid%uface_left_natcellids)
+  if (associated(polyhedra_grid%uface_right_natcellids)) deallocate(polyhedra_grid%uface_right_natcellids)
+  nullify(polyhedra_grid%uface_right_natcellids)
 
   deallocate(polyhedra_grid)
   nullify(polyhedra_grid)

@@ -39,6 +39,11 @@ SATURATION_FUNCTION default
   ALPHA 1.d-4
 END
 
+:=========================== output options ===================================
+OUTPUT
+FORMAT TECPLOT BLOCK
+END
+
 :=========================== times ============================================
 TIME
   :FINAL_TIME 40.d0 d
