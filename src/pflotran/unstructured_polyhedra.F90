@@ -30,14 +30,14 @@ module Unstructured_Polyhedra_module
 contains
 
 ! ************************************************************************** !
-!> This routine reads unstructured polyhedra grid in ASCII.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 09/29/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraRead(ugrid, filename, option)
+  ! 
+  ! This routine reads unstructured polyhedra grid in ASCII.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 09/29/13
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -475,14 +475,14 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
 end subroutine UGridPolyhedraRead
 
 ! ************************************************************************** !
-!> This routine decomposes a polyhedra grid across ranks.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 09/29/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraDecompose(ugrid, option)
+  ! 
+  ! This routine decomposes a polyhedra grid across ranks.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 09/29/13
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -1364,15 +1364,15 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
 end subroutine UGridPolyhedraDecompose
 
 ! ************************************************************************** !
-!> This routine set cell centroids for local+ghosted control volumes.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 12/28/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraSetCellCentroids(pgrid,x,y,z, &
                                          x_min,x_max,y_min,y_max,z_min,z_max,option)
+  ! 
+  ! This routine set cell centroids for local+ghosted control volumes.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 12/28/13
+  ! 
 
   use Option_module
   type(unstructured_polyhedra_type), pointer :: pgrid
@@ -1407,16 +1407,16 @@ subroutine UGridPolyhedraSetCellCentroids(pgrid,x,y,z, &
 end subroutine UGridPolyhedraSetCellCentroids
 
 ! ************************************************************************** !
-!> This routine compute internal connectivity of an unstrucutred polyhedra
-!! grid.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 12/28/13
-! ************************************************************************** !
+
 function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
                                              grid_y, grid_z, option)
+  ! 
+  ! This routine compute internal connectivity of an unstrucutred polyhedra
+  ! grid.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 12/28/13
+  ! 
 
   use Connection_module
   use Option_module
@@ -2004,14 +2004,14 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
 end function UGridPolyhedraComputeInternConnect
 
 ! ************************************************************************** !
-!> This routine sets volumes of local control volumes.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 12/28/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraComputeVolumes(ugrid, option, volume)
+  ! 
+  ! This routine sets volumes of local control volumes.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 12/28/13
+  ! 
 
   use Option_module
 
@@ -2038,15 +2038,15 @@ subroutine UGridPolyhedraComputeVolumes(ugrid, option, volume)
 end subroutine UGridPolyhedraComputeVolumes
 
 ! ************************************************************************** !
-!> This routine computes details about boundary connections (area, dist, etc)
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 12/28/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
                                              iconn, ghosted_id, option)
+  ! 
+  ! This routine computes details about boundary connections (area, dist, etc)
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 12/28/13
+  ! 
 
   use Connection_module
   use Utility_module, only : DotProduct
@@ -2124,16 +2124,16 @@ subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
 end subroutine UGridPolyhedraPopulateConnection
 
 ! ************************************************************************** !
-!> This routine returns cells that are within a cube.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 12/28/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, z_max, &
                                               ugrid, option, num_cells, &
                                               cell_ids, cell_face_ids)
+  ! 
+  ! This routine returns cells that are within a cube.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 12/28/13
+  ! 
   use Option_module
   use Utility_module, only : reallocateIntArray
   
@@ -2228,14 +2228,14 @@ subroutine UGridPolyhedraGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, 
 end subroutine UGridPolyhedraGetCellsInRectangle
 
 ! ************************************************************************** !
-!> This routine computes informations later required to write tecplot output
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 12/29/13
-! ************************************************************************** !
+
 subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
+  ! 
+  ! This routine computes informations later required to write tecplot output
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 12/29/13
+  ! 
 
   use Option_module
 
