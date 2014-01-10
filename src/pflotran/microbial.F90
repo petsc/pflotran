@@ -16,13 +16,14 @@ module Microbial_module
 contains
 
 ! ************************************************************************** !
-!
-! MicrobialRead: Reads chemical species
-! author: Glenn Hammond
-! date: 08/16/12
-!
-! ************************************************************************** !
+
 subroutine MicrobialRead(microbial,input,option)
+  ! 
+  ! Reads chemical species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
 
   use Option_module
   use String_module
@@ -144,14 +145,15 @@ subroutine MicrobialRead(microbial,input,option)
 end subroutine MicrobialRead
 
 ! ************************************************************************** !
-!
-! RMicrobial: Computes the microbial reaction
-! author: Glenn Hammond
-! date: 10/31/12
-!
-! ************************************************************************** !
+
 subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                       global_auxvar,porosity,volume,reaction,option)
+  ! 
+  ! Computes the microbial reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/31/12
+  ! 
 
   use Option_module, only : option_type, printErrMsg
   use Reactive_Transport_Aux_module, only : reactive_transport_auxvar_type

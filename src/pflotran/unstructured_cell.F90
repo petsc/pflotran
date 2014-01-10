@@ -61,13 +61,14 @@ module Unstructured_Cell_module
 contains
 
 ! ************************************************************************** !
-!
-! UCellComputeCentroid: Computes the centroid a grid cell
-! author: Glenn Hammond
-! date: 10/30/09
-!
-! ************************************************************************** !
+
 function UCellComputeCentroid(cell_type,vertices,option)
+  ! 
+  ! Computes the centroid a grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
 
   use Option_module
 
@@ -128,13 +129,14 @@ function UCellComputeCentroid(cell_type,vertices,option)
 end function UCellComputeCentroid
 
 ! ************************************************************************** !
-!
-! UCellComputeVolume: Computes the volume a grid cell
-! author: Glenn Hammond
-! date: 11/06/09
-!
-! ************************************************************************** !
+
 function UCellComputeVolume(cell_type,vertices,option)
+  ! 
+  ! Computes the volume a grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/06/09
+  ! 
 
   use Utility_module, only : DotProduct, CrossProduct
   use Option_module
@@ -214,13 +216,14 @@ function UCellComputeVolume(cell_type,vertices,option)
 end function UCellComputeVolume
 
 ! ************************************************************************** !
-!
-! UCellComputeArea: Computes the area a 2D grid cell
-! author: Gautam Bisht
-! date: 03/17/12
-!
-! ************************************************************************** !
+
 function UCellComputeArea(cell_type,vertices,option)
+  ! 
+  ! Computes the area a 2D grid cell
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 03/17/12
+  ! 
 
   use Utility_module, only : DotProduct, CrossProduct
   use Option_module
@@ -280,14 +283,15 @@ function UCellComputeArea(cell_type,vertices,option)
 end function UCellComputeArea
 
 ! ************************************************************************** !
-!
-! UCellComputeVolumeOfTetrahedron: Computes the voluem of a tetrahedron
-!                                  given four points
-! author: Glenn Hammond
-! date: 12/06/11
-!
-! ************************************************************************** !
+
 function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
+  ! 
+  ! Computes the voluem of a tetrahedron
+  ! given four points
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/06/11
+  ! 
 
   use Utility_module, only : DotProduct, CrossProduct
 
@@ -338,13 +342,14 @@ function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
 end function UCellComputeVolumeOfTetrahedron
 
 ! ************************************************************************** !
-!
-! UCellComputePlane: Computes the plane intersected by 3 points
-! author: Glenn Hammond
-! date: 10/30/09
-!
-! ************************************************************************** !
+
 subroutine UCellComputePlane(plane,point1,point2,point3)
+  ! 
+  ! Computes the plane intersected by 3 points
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
 
   implicit none
   
@@ -373,13 +378,14 @@ subroutine UCellComputePlane(plane,point1,point2,point3)
 end subroutine UCellComputePlane
 
 ! ************************************************************************** !
-!
-! UCellProjectPointOntoPlane: Computes the intercept of a point with a plane
-! author: Glenn Hammond
-! date: 11/22/11
-!
-! ************************************************************************** !
+
 subroutine UCellProjectPointOntoPlane(plane,point,intercept)
+  ! 
+  ! Computes the intercept of a point with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/22/11
+  ! 
 
   implicit none
   
@@ -402,13 +408,14 @@ subroutine UCellProjectPointOntoPlane(plane,point,intercept)
 end subroutine UCellProjectPointOntoPlane
 
 ! ************************************************************************** !
-!
-! UCellGetPlaneIntercept: Computes the intercept of a line with a plane
-! author: Glenn Hammond
-! date: 10/30/09
-!
-! ************************************************************************** !
+
 subroutine UCellGetPlaneIntercept(plane,point1,point2,intercept)
+  ! 
+  ! Computes the intercept of a line with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
 
   implicit none
   
@@ -438,13 +445,14 @@ subroutine UCellGetPlaneIntercept(plane,point1,point2,intercept)
 end subroutine UCellGetPlaneIntercept
 
 ! ************************************************************************** !
-!
-! UCellComputeDistanceFromPlane: Computes the intercept of a line with a plane
-! author: Glenn Hammond
-! date: 10/24/11
-!
-! ************************************************************************** !
+
 function UCellComputeDistanceFromPlane(plane,point)
+  ! 
+  ! Computes the intercept of a line with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
 
   implicit none
   
@@ -459,13 +467,14 @@ function UCellComputeDistanceFromPlane(plane,point)
 end function UCellComputeDistanceFromPlane
 
 ! ************************************************************************** !
-!
-! UCellGetNVertices: Returns number of vertices in a cell
-! author: Glenn Hammond
-! date: 10/24/11
-!
-! ************************************************************************** !
+
 function UCellGetNVertices(cell_type,option)
+  ! 
+  ! Returns number of vertices in a cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
 
   use Option_module
   implicit none
@@ -493,13 +502,14 @@ function UCellGetNVertices(cell_type,option)
 end function UCellGetNVertices
 
 ! ************************************************************************** !
-!
-! UCellGetNEdges: Returns number of edges in a cell
-! author: Glenn Hammond
-! date: 01/17/12
-!
-! ************************************************************************** !
+
 function UCellGetNEdges(cell_type)
+  ! 
+  ! Returns number of edges in a cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/12
+  ! 
 
   implicit none
   
@@ -524,13 +534,14 @@ function UCellGetNEdges(cell_type)
 end function UCellGetNEdges
 
 ! ************************************************************************** !
-!
-! UCellGetNFaces: Returns number of faces in a cell
-! author: Glenn Hammond
-! date: 10/24/11
-!
-! ************************************************************************** !
+
 function UCellGetNFaces(cell_type,option)
+  ! 
+  ! Returns number of faces in a cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
 
   use Option_module
   implicit none
@@ -558,13 +569,14 @@ function UCellGetNFaces(cell_type,option)
 end function UCellGetNFaces
 
 ! ************************************************************************** !
-!
-! UCellGetNFaceVertices: Returns number of vertices in a cell face
-! author: Glenn Hammond
-! date: 10/24/11
-!
-! ************************************************************************** !
+
 function UCellGetNFaceVertices(cell_type,iface,option)
+  ! 
+  ! Returns number of vertices in a cell face
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
 
   use Option_module
   implicit none
@@ -603,13 +615,14 @@ function UCellGetNFaceVertices(cell_type,iface,option)
 end function UCellGetNFaceVertices
 
 ! ************************************************************************** !
-!
-! UCellGetFaceType: Returns type of cell face
-! author: Glenn Hammond
-! date: 10/24/11
-!
-! ************************************************************************** !
+
 function UCellGetFaceType(cell_type,iface,option)
+  ! 
+  ! Returns type of cell face
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
 
   use Option_module
   implicit none
@@ -648,13 +661,14 @@ function UCellGetFaceType(cell_type,iface,option)
 end function UCellGetFaceType
 
 ! ************************************************************************** !
-!
-! UCellTypeToWord: Returns type of cell as a string
-! author: Glenn Hammond
-! date: 12/09/11
-!
-! ************************************************************************** !
+
 function UCellTypeToWord(cell_type,option)
+  ! 
+  ! Returns type of cell as a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/09/11
+  ! 
 
   use Option_module
   implicit none
@@ -681,13 +695,14 @@ function UCellTypeToWord(cell_type,option)
 end function UCellTypeToWord
 
 ! ************************************************************************** !
-!
-! UCellFaceTypeToWord: Returns type of cell face as a string
-! author: Glenn Hammond
-! date: 12/09/11
-!
-! ************************************************************************** !
+
 function UCellFaceTypeToWord(face_type,option)
+  ! 
+  ! Returns type of cell face as a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/09/11
+  ! 
 
   use Option_module
   implicit none
@@ -710,15 +725,16 @@ function UCellFaceTypeToWord(face_type,option)
 end function UCellFaceTypeToWord
 
 ! ************************************************************************** !
-!
-! UCellGetNFaceVertsandVerts: returns the numbber of vertices for a face and
-!                             the vertices
-! author: Glenn Hammond
-! date: 12/06/11
-!
-! ************************************************************************** !
+
 subroutine UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
                                       vertex_ids)
+  ! 
+  ! returns the numbber of vertices for a face and
+  ! the vertices
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/06/11
+  ! 
   use Option_module
   
   implicit none
@@ -735,13 +751,14 @@ subroutine UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
 end subroutine UCellGetNFaceVertsandVerts
 
 ! ************************************************************************** !
-!
-! UCellGetFaceVertices: returns vertex ids of a face
-! author: Glenn Hammond
-! date: 11/24/11
-!
-! ************************************************************************** !
+
 subroutine UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
+  ! 
+  ! returns vertex ids of a face
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/24/11
+  ! 
 
   use Option_module
   
@@ -905,13 +922,14 @@ subroutine UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
 end subroutine UCellGetFaceVertices
 
 ! ************************************************************************** !
-!
-! UCellGetEdgeVertices: returns vertex ids of an edge
-! author: Glenn Hammond
-! date: 01/17/12
-!
-! ************************************************************************** !
+
 subroutine UCellGetEdgeVertices(cell_type,iedge,vertex_ids)
+  ! 
+  ! returns vertex ids of an edge
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/12
+  ! 
 
   implicit none
   
@@ -1071,13 +1089,14 @@ subroutine UCellGetEdgeVertices(cell_type,iedge,vertex_ids)
 end subroutine UCellGetEdgeVertices
 
 ! ************************************************************************** !
-!
-! UCellGetEdgeLength: returns length of an edge
-! author: Glenn Hammond
-! date: 01/17/12
-!
-! ************************************************************************** !
+
 function UCellGetEdgeLength(cell_type,iedge,vertices)
+  ! 
+  ! returns length of an edge
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/12
+  ! 
 
   implicit none
   
@@ -1100,13 +1119,14 @@ function UCellGetEdgeLength(cell_type,iedge,vertices)
 end function UCellGetEdgeLength
 
 ! ************************************************************************** !
-!
-! UCellQuality: returns vertex ids of a face
-! author: Glenn Hammond
-! date: 01/17/12
-!
-! ************************************************************************** !
+
 function UCellQuality(cell_type,vertices,option)
+  ! 
+  ! returns vertex ids of a face
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/12
+  ! 
 
   use Option_module
 
@@ -1135,13 +1155,14 @@ function UCellQuality(cell_type,vertices,option)
 end function UCellQuality
 
 ! ************************************************************************** !
-!
-! UCellGetLineIntercept: Computes the intercept of a point with a line
-! author: Gautam Bisht
-! date: 02/26/12
-!
-! ************************************************************************** !
+
 subroutine UCellGetLineIntercept(line_start,line_end,point,intercept)
+  ! 
+  ! Computes the intercept of a point with a line
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 02/26/12
+  ! 
 
   implicit none
   type(point_type) :: line_start

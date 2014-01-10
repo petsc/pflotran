@@ -1,6 +1,6 @@
 :Description: 1D test problem for THC mode
 :===================== THC mode ===============================================
-MODE TH
+MODE TH no_freezing
 
 :=========================== regression =======================================
 REGRESSION
@@ -119,7 +119,7 @@ END
 OUTPUT
 :  TIMES y 100. 250. 500. 1000. 5000. 1.e4
 :  SCREEN PERIODIC 1
-  PERIODIC_OBSERVATION TIMESTEP 1 
+:  PERIODIC_OBSERVATION TIMESTEP 1 
   PRINT_COLUMN_IDS
   FORMAT TECPLOT POINT
   FORMAT HDF5
@@ -247,4 +247,4 @@ CONSTRAINT inlet_constraint
 END
 
 :=========================== checkpoint / restart =============================
-CHECKPOINT 10
+:CHECKPOINT 10

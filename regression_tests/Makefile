@@ -41,6 +41,7 @@ STANDARD_CFG = \
 	default/543/543.cfg \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
+	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
@@ -48,7 +49,8 @@ STANDARD_CFG = \
 	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
-	shortcourse/copper_leaching/cu_leaching.cfg
+	shortcourse/copper_leaching/cu_leaching.cfg \
+	wipp/nuts/nuts.cfg
 
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
@@ -68,11 +70,13 @@ GEOCHEMISTRY_CFG = \
 	default/multicontinuum/multicontinuum.cfg \
 	ngee/ngee.cfg \
 	shortcourse/1D_Calcite/calcite.cfg \
-	shortcourse/copper_leaching/cu_leaching.cfg
+	shortcourse/copper_leaching/cu_leaching.cfg \
+	wipp/nuts/nuts.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
 	default/condition/condition.cfg \
+	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg

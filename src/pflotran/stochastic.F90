@@ -16,13 +16,14 @@ module Stochastic_module
 contains
 
 ! ************************************************************************** !
-!
-! StochasticInit: Initializes a stochastic simulation
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
+
 subroutine StochasticInit(stochastic,option)
+  ! 
+  ! Initializes a stochastic simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09
+  ! 
 
   use Simulation_module
   use Option_module
@@ -132,13 +133,14 @@ subroutine StochasticInit(stochastic,option)
 end subroutine StochasticInit
 
 ! ************************************************************************** !
-!
-! StochasticReadCardFromInput: Reads stochastic card from input file
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
+
 subroutine StochasticReadCardFromInput(stochastic,option)
+  ! 
+  ! Reads stochastic card from input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -169,13 +171,14 @@ subroutine StochasticReadCardFromInput(stochastic,option)
 end subroutine StochasticReadCardFromInput
 
 ! ************************************************************************** !
-!
-! StochasticRun: Runs a stochastic simulation
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
+
 subroutine StochasticRun(stochastic,option)
+  ! 
+  ! Runs a stochastic simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09
+  ! 
 
   use Simulation_module
   use Realization_class

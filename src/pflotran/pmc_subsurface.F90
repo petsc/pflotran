@@ -24,14 +24,15 @@ module PMC_Subsurface_class
 contains
 
 ! ************************************************************************** !
-!
-! PMCSubsurfaceCreate: Allocates and initializes a new process_model_coupler 
-!                      object.
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMCSubsurfaceCreate()
+  ! 
+  ! Allocates and initializes a new process_model_coupler
+  ! object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -51,13 +52,14 @@ function PMCSubsurfaceCreate()
 end function PMCSubsurfaceCreate
 
 ! ************************************************************************** !
-!
-! PMCSubsurfaceInit: Initializes a new process model coupler object.
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceInit(this)
+  ! 
+  ! Initializes a new process model coupler object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   implicit none
   
@@ -74,13 +76,12 @@ subroutine PMCSubsurfaceInit(this)
 end subroutine PMCSubsurfaceInit
 
 ! ************************************************************************** !
-!
-! PMCSubsurfaceGetAuxData:
-! author: Gautam Bisht
-! date: 10/24/13
-!
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceGetAuxData(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 10/24/13
+  ! 
 
   implicit none
 
@@ -91,13 +92,12 @@ subroutine PMCSubsurfaceGetAuxData(this)
 end subroutine PMCSubsurfaceGetAuxData
 
 ! ************************************************************************** !
-!
-! PMCSubsurfaceSetAuxData:
-! author: Gautam Bisht
-! date: 10/24/13
-!
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceSetAuxData(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 10/24/13
+  ! 
 
   implicit none
 
@@ -108,14 +108,14 @@ subroutine PMCSubsurfaceSetAuxData(this)
 end subroutine PMCSubsurfaceSetAuxData
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/22/13
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/22/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -126,7 +126,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 !  use Realization_Base_class
   use Realization_class
   use String_module
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -195,8 +195,8 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                                pmc%sim_aux%surf_head, &
                                pmc%sim_aux%subsurf_pres_top_bc, &
                                INSERT_VALUES,SCATTER_FORWARD,ierr)
-            call density(option%reference_temperature, option%reference_pressure, &
-                         den)
+            call EOSWaterdensity(option%reference_temperature, &
+                                 option%reference_pressure, den)
 
             coupler_list => patch%source_sinks
             coupler => coupler_list%first
@@ -299,8 +299,8 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
                     ! The pressure value needed to computed density should
                     ! be surf_press and not reference_pressure. But,
                     ! surf_pressure depends on density.
-                    call density(temp_p(iconn), option%reference_pressure, &
-                                 den)
+                    call EOSWaterdensity(temp_p(iconn), option%reference_pressure, &
+                                         den)
 
                     surfpress = head_p(iconn)*(abs(option%gravity(3)))*den + &
                                 option%reference_pressure
@@ -354,14 +354,14 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 end subroutine PMCSubsurfaceGetAuxDataFromSurf
 
 ! ************************************************************************** !
-!> This routine sets auxiliary to be exchanged between process-models.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSubsurfaceSetAuxDataForSurf(this)
+  ! 
+  ! This routine sets auxiliary to be exchanged between process-models.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Grid_module
   use String_module
@@ -372,7 +372,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   use Field_module
   use Connection_module
   use Realization_Base_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
   
@@ -470,8 +470,8 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
             coupler => coupler%next
           enddo
 
-          call density(option%reference_temperature, option%reference_pressure, &
-                       den)
+          call EOSWaterdensity(option%reference_temperature, option%reference_pressure, &
+                               den)
           coupler_list => patch%boundary_conditions
           coupler => coupler_list%first
           do
@@ -527,15 +527,15 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
 end subroutine PMCSubsurfaceSetAuxDataForSurf
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMCSubsurfaceFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
 recursive subroutine PMCSubsurfaceFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Option_module
   
@@ -552,13 +552,14 @@ recursive subroutine PMCSubsurfaceFinalizeRun(this)
 end subroutine PMCSubsurfaceFinalizeRun
 
 ! ************************************************************************** !
-!
-! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 recursive subroutine Destroy(this)
+  ! 
+  ! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Utility_module, only: DeallocateArray
   use Option_module

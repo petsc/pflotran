@@ -21,13 +21,14 @@ module Init_module
 contains
 
 ! ************************************************************************** !
-!
-! Init: Initializes pflotran
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine Init(simulation)
+  ! 
+  ! Initializes pflotran
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Simulation_module
   use Option_module
@@ -40,7 +41,6 @@ subroutine Init(simulation)
   use Field_module
   use Connection_module   
   use Coupler_module
-  use General_Grid_module
   use Debug_module
   use Convergence_module
   use Waypoint_module
@@ -69,7 +69,9 @@ subroutine Init(simulation)
   
   use Global_module
   use Variables_module
-  use Water_EOS_module
+  
+  use EOS_module
+  use EOS_Water_module
 !  use Utility_module
   use Output_module
   use Output_Aux_module
@@ -120,7 +122,7 @@ subroutine Init(simulation)
   PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
-  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscReal :: dum1
   PetscReal :: min_value
   SNESLineSearch :: linesearch
 #ifdef SURFACE_FLOW
@@ -162,6 +164,9 @@ subroutine Init(simulation)
   
   nullify(flow_solver)
   nullify(tran_solver)
+
+  ! sets pointers to EOS procedures
+  call EOSInit()
   
   if (OptionPrintToScreen(option)) then
     temp_int = 6
@@ -275,11 +280,12 @@ subroutine Init(simulation)
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
-    call wateos(option%reference_temperature,option%reference_pressure, &
-                option%reference_water_density,r1,r2,r3,r4,r5,r6, &
-                option%scale,ierr)
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         option%reference_water_density, &
+                         dum1,option%scale, ierr)    
 #else
-    call density(option%reference_temperature,option%reference_pressure, &
+    call EOSWaterdensity(option%reference_temperature,option%reference_pressure, &
                  option%reference_water_density)
 #endif                 
   endif
@@ -819,13 +825,6 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
-  ! should we still support this
-  if (option%use_generalized_grid) then 
-    call printMsg(option,'Reading structured grid from hdf5')
-    if (.not.associated(patch%imat)) &
-      allocate(patch%imat(grid%ngmax))  ! allocate material id array
-    call ReadStructuredGridHDF5(realization)
-  endif
   call PetscLogEventEnd(logging%event_setup,ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
@@ -1239,13 +1238,14 @@ subroutine Init(simulation)
 end subroutine Init
 
 ! ************************************************************************** !
-!
-! InitReadInputFilenames: Reads filenames for multi-simulation runs
-! author: Glenn Hammond
-! date: 08/11/09
-!
-! ************************************************************************** !
+
 subroutine InitReadInputFilenames(option,filenames)
+  ! 
+  ! Reads filenames for multi-simulation runs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1306,13 +1306,14 @@ subroutine InitReadInputFilenames(option,filenames)
 end subroutine InitReadInputFilenames
 
 ! ************************************************************************** !
-!
-! InitReadRequiredCardsFromInput: Reads pflow input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitReadRequiredCardsFromInput(realization)
+  ! 
+  ! Reads pflow input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   use Discretization_module
@@ -1452,13 +1453,14 @@ subroutine InitReadRequiredCardsFromInput(realization)
 end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
-!
-! InitReadInput: Reads pflow input file
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitReadInput(simulation)
+  ! 
+  ! Reads pflow input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Simulation_module
   use Option_module
@@ -1496,6 +1498,7 @@ subroutine InitReadInput(simulation)
   use Output_Aux_module
   use Output_Tecplot_module
   use Mass_Transfer_module
+  use EOS_module
   
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
@@ -1629,6 +1632,26 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('MODE')
+         call InputReadWord(input, option, word, PETSC_FALSE)
+         call StringToUpper(word)
+         if ('TH' == trim(word) .or. 'THC' == trim(word)) then
+            call InputReadWord(input, option, word, PETSC_TRUE)
+            call InputErrorMsg(input, option, 'th(c) freezing mode', 'mode th(c)')
+            call StringToUpper(word)
+            if ('FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_TRUE
+               option%io_buffer = ' TH(C): using FREEZING submode!'
+               call printMsg(option)
+            else if ('NO_FREEZING' == trim(word)) then
+               option%use_th_freezing = PETSC_FALSE
+               option%io_buffer = ' TH(C): using NO_FREEZING submode!'
+               call printMsg(option)
+            else
+               ! NOTE(bja, 2013-12) use_th_freezing defaults to false, can skip this....
+               option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
+               call printErrMsg(option)
+            endif
+         endif
 
 !....................
       case ('GRID')
@@ -1698,11 +1721,6 @@ subroutine InitReadInput(simulation)
         call InputReadDouble(input,option,option%dcmxe)
         call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
         
-!....................
-      case ('GENERALIZED_GRID')
-        option%use_generalized_grid = PETSC_TRUE
-        call InputReadWord(input,option,option%generalized_grid,PETSC_TRUE)
-
 !....................
       case ('PROC')
       
@@ -1884,6 +1902,11 @@ subroutine InitReadInput(simulation)
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
         
+!......................
+
+      case('ICE_NEW')
+        option%use_ice_new = PETSC_TRUE        
+      
 !......................
 
       case('UPDATE_FLOW_PERMEABILITY')
@@ -2154,6 +2177,10 @@ subroutine InitReadInput(simulation)
         call FluidPropertyAddToList(fluid_property,realization%fluid_properties)
         nullify(fluid_property)
         
+!....................
+
+      case ('EOS')
+        call EOSRead(input,option)
 !....................
 
       case ('SATURATION_FUNCTION')
@@ -2720,13 +2747,14 @@ subroutine InitReadInput(simulation)
 end subroutine InitReadInput
 
 ! ************************************************************************** !
-!
-! setFlowMode: Sets the flow mode (richards, vadose, mph, etc.)
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine setFlowMode(option)
+  ! 
+  ! Sets the flow mode (richards, vadose, mph, etc.)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   use Option_module
   use String_module
@@ -2818,14 +2846,15 @@ subroutine setFlowMode(option)
 end subroutine setFlowMode
 
 ! ************************************************************************** !
-!
-! assignMaterialPropToRegions: Assigns material properties to 
-!                                    associated regions in the model
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine assignMaterialPropToRegions(realization)
+  ! 
+  ! Assigns material properties to
+  ! associated regions in the model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3103,13 +3132,14 @@ subroutine assignMaterialPropToRegions(realization)
 end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !
-!
-! verifyAllCouplers: Verifies the connectivity of a coupler
-! author: Glenn Hammond
-! date: 1/8/08
-!
-! ************************************************************************** !
+
 subroutine verifyAllCouplers(realization)
+  ! 
+  ! Verifies the connectivity of a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/8/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3135,13 +3165,14 @@ subroutine verifyAllCouplers(realization)
 end subroutine verifyAllCouplers
 
 ! ************************************************************************** !
-!
-! verifyCoupler: Verifies the connectivity of a coupler
-! author: Glenn Hammond
-! date: 1/8/08
-!
-! ************************************************************************** !
+
 subroutine verifyCoupler(realization,patch,coupler_list)
+  ! 
+  ! Verifies the connectivity of a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/8/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3224,13 +3255,14 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 end subroutine verifyCoupler
 
 ! ************************************************************************** !
-!
-! readRegionFiles: Reads in grid cell ids stored in files
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 subroutine readRegionFiles(realization)
+  ! 
+  ! Reads in grid cell ids stored in files
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   use Realization_class
   use Region_module
@@ -3278,13 +3310,14 @@ subroutine readRegionFiles(realization)
 end subroutine readRegionFiles
 
 ! ************************************************************************** !
-!
-! readMaterialsFromFile: Reads in grid cell materials
-! author: Glenn Hammond
-! date: 1/03/08
-!
-! ************************************************************************** !
+
 subroutine readMaterialsFromFile(realization,realization_dependent,filename)
+  ! 
+  ! Reads in grid cell materials
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/03/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -3366,13 +3399,14 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 end subroutine readMaterialsFromFile
 
 ! ************************************************************************** !
-!
-! readPermeabilitiesFromFile: Reads in grid cell permeabilities
-! author: Glenn Hammond
-! date: 01/19/09
-!
-! ************************************************************************** !
+
 subroutine readPermeabilitiesFromFile(realization,material_property)
+  ! 
+  ! Reads in grid cell permeabilities
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/19/09
+  ! 
 
   use Realization_class
   use Field_module
@@ -3565,13 +3599,14 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 end subroutine readPermeabilitiesFromFile
 
 ! ************************************************************************** !
-!
-! readVectorFromFile: Reads data from a file into an associated vector
-! author: Glenn Hammond
-! date: 03/18/08
-!
-! ************************************************************************** !
+
 subroutine readVectorFromFile(realization,vector,filename,vector_type)
+  ! 
+  ! Reads data from a file into an associated vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -3680,13 +3715,14 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
 end subroutine readVectorFromFile
 
 ! ************************************************************************** !
-!
-! readFlowInitialCondition: Assigns flow initial condition from HDF5 file
-! author: Glenn Hammond
-! date: 03/05/10
-!
-! ************************************************************************** !
+
 subroutine readFlowInitialCondition(realization,filename)
+  ! 
+  ! Assigns flow initial condition from HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -3771,16 +3807,16 @@ subroutine readFlowInitialCondition(realization,filename)
 
 end subroutine readFlowInitialCondition
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! readTransportInitialCondition: Assigns transport initial condition from 
-!                                HDF5 file
-! author: Glenn Hammond
-! date: 03/05/10
-!
-! ************************************************************************** !
 subroutine readTransportInitialCondition(realization,filename)
+  ! 
+  ! Assigns transport initial condition from
+  ! HDF5 file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -3865,14 +3901,15 @@ subroutine readTransportInitialCondition(realization,filename)
 end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
-!
-! Create_IOGroups: Create sub-communicators that are used in initialization 
-!                  and output HDF5 routines. 
-! author: Vamsi Sripathi
-! date: 07/14/09
-!
-! ************************************************************************** !
+
 subroutine Create_IOGroups(option)
+  ! 
+  ! Create sub-communicators that are used in initialization
+  ! and output HDF5 routines.
+  ! 
+  ! Author: Vamsi Sripathi
+  ! Date: 07/14/09
+  ! 
 
   use Option_module
   use Logging_module
@@ -3945,13 +3982,14 @@ subroutine Create_IOGroups(option)
 end subroutine Create_IOGroups
 
 ! ************************************************************************** !
-!
-! InitPrintPFLOTRANHeader: Initializes pflotran
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine InitPrintPFLOTRANHeader(option,fid)
+  ! 
+  ! Initializes pflotran
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   
@@ -3966,13 +4004,14 @@ subroutine InitPrintPFLOTRANHeader(option,fid)
 end subroutine InitPrintPFLOTRANHeader
 
 ! ************************************************************************** !
-!
-! InitReadVelocityField: Reads fluxes in for transport with no flow.
-! author: Glenn Hammond
-! date: 02/05/13
-!
-! ************************************************************************** !
+
 subroutine InitReadVelocityField(realization)
+  ! 
+  ! Reads fluxes in for transport with no flow.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/13
+  ! 
 
   use Realization_class
   use Patch_module

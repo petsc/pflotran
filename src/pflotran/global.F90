@@ -16,13 +16,12 @@ module Global_module
 contains
 
 ! ************************************************************************** !
-!
-! GlobalSetup: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine GlobalSetup(realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -112,13 +111,14 @@ subroutine GlobalSetup(realization)
 end subroutine GlobalSetup
 
 ! ************************************************************************** !
-!
-! GlobalSetAuxVarScalar: Sets values of auxvar data using a scalar value. 
-! author: Glenn Hammond
-! date: 11/19/08
-!
-! ************************************************************************** !
+
 subroutine GlobalSetAuxVarScalar(realization,value,ivar)
+  ! 
+  ! Sets values of auxvar data using a scalar value.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/19/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -178,13 +178,14 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
 end subroutine GlobalSetAuxVarScalar
 
 ! ************************************************************************** !
-!
-! GlobalSetAuxVarVecLoc: Sets values of auxvar data using a vector. 
-! author: Glenn Hammond
-! date: 11/19/08
-!
-! ************************************************************************** !
+
 subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/19/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -384,14 +385,15 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 end subroutine GlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
-!
-! GlobalUpdateDenAndSat: Updates the densities and saturations in auxiliary 
-!                    variables associated with reactive transport
-! author: Glenn Hammond
-! date: 11/03/08
-!
-! ************************************************************************** !
+
 subroutine GlobalUpdateDenAndSat(realization,weight)
+  ! 
+  ! Updates the densities and saturations in auxiliary
+  ! variables associated with reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/03/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -462,14 +464,15 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
 end subroutine GlobalUpdateDenAndSat
 
 ! ************************************************************************** !
-!
-! GlobalUpdateAuxVars: Updates global aux var variables for use in 
-!                                 reactive transport
-! author: Glenn Hammond
-! date: 01/14/09
-!
-! ************************************************************************** !
+
 subroutine GlobalUpdateAuxVars(realization,time_level,time)
+  ! 
+  ! Updates global aux var variables for use in
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/09
+  ! 
 
   use Realization_class
   use Realization_Base_class, only : RealizationGetVariable

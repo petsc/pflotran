@@ -1,0 +1,150 @@
+:Description: Tracer adsorption decay test case
+
+REGRESSION
+  CELLS
+    1
+  /
+END
+
+:=========================== useful tranport parameters ==================
+REFERENCE_DENSITY  997.d0   ! water density kg/m^3 
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer1
+    Tracer2
+  /
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer1
+        TYPE LINEAR
+        DISTRIBUTION_COEFFICIENT 2.3928d5 ! 0.1 m^3 brine / kg solid
+                                          ! 997 kg brine / m^3 brine
+                                          ! 2400 kg solid/m^3 bulk
+      /
+      Tracer2
+        TYPE LINEAR
+        DISTRIBUTION_COEFFICIENT 0.d0   ! 0.1 m^3 liquid / kg solid
+      /
+    /
+  /
+: First order decay of Tracer2 to Tracer3
+  RADIOACTIVE_DECAY_REACTION
+    REACTION Tracer1 <-> Tracer2 
+    RATE_CONSTANT  8.0225d-7   ! half life of 8.64d+5 seconds
+#    HALF_LIFE  864003.964552d0 
+#    HALF_LIFE  0.027397385989d0 y
+  /
+  DATABASE ../../../database/hanford.dat
+  OUTPUT
+    all
+  /
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    20.d0 20.d0 20.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY rock1
+  ID 1
+  POROSITY 0.2d0
+END
+
+:=========================== observation points ===============================
+OBSERVATION
+  REGION all
+END
+
+:=========================== output options ===================================
+OUTPUT
+  :TIMES y 5. 10. 15. 20.
+:  PERIODIC TIME  8.64d3 s
+  PERIODIC_OBSERVATION TIMESTEP 1
+:  FORMAT TECPLOT POINT
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 8.64d5 s
+  INITIAL_TIMESTEP_SIZE 8.64d3 s
+  MAXIMUM_TIMESTEP_SIZE 8.64d3 s
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    20.d0 20.d0 20.d0
+  /
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+:  TYPE equilibrium
+  CONSTRAINT_LIST
+    0.d0 initial_constraint
+  /
+END
+
+TRANSPORT_CONDITION inlet_conc
+:  TYPE dirichlet_zero_gradient
+:  TYPE equilibrium
+  TYPE mole_rate
+  CONSTRAINT_LIST
+    0.d0 inlet_constraint
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial_constraint
+  CONCENTRATIONS
+    Tracer1      1.d-90      T
+    Tracer2      1.d-90      T
+  /
+END
+
+CONSTRAINT inlet_constraint
+  CONCENTRATIONS
+    Tracer1    0.008d0      T  ! 0.008 kg/s 
+    Tracer2    1.0d-90      T
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+SOURCE_SINK inlet
+  TRANSPORT_CONDITION inlet_conc
+  REGION all
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL rock1
+END
+
+

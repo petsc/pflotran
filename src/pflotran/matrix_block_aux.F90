@@ -37,13 +37,14 @@ module Matrix_Block_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
+
 function MatrixBlockAuxVarCreate(option)
+  ! 
+  ! MatrixBlockAuxCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
@@ -62,13 +63,14 @@ function MatrixBlockAuxVarCreate(option)
 end function MatrixBlockAuxVarCreate
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarInit1: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
+
 subroutine MatrixBlockAuxVarInit1(aux_var,dim1,dim2,dim3,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
@@ -87,13 +89,14 @@ subroutine MatrixBlockAuxVarInit1(aux_var,dim1,dim2,dim3,option)
 end subroutine MatrixBlockAuxVarInit1
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarInit2: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
+
 subroutine MatrixBlockAuxVarInit2(aux_var,matrix_info,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
@@ -109,13 +112,14 @@ subroutine MatrixBlockAuxVarInit2(aux_var,matrix_info,option)
 end subroutine MatrixBlockAuxVarInit2
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarCopy: Copys an auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
+
 subroutine MatrixBlockAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copys an auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
@@ -129,13 +133,14 @@ subroutine MatrixBlockAuxVarCopy(aux_var,aux_var2,option)
 end subroutine MatrixBlockAuxVarCopy
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarDestroy: Deallocates a matrix block auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
+
 subroutine MatrixBlockAuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a matrix block auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   implicit none
 
@@ -152,13 +157,14 @@ subroutine MatrixBlockAuxVarDestroy(aux_var)
 end subroutine MatrixBlockAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MatrixBlockInfoCreate: Allocate and initialize matrix block info object
-! author: Glenn Hammond
-! date: 03/09/2010
-!
-! ************************************************************************** !
+
 function MatrixBlockInfoCreate(dim1,dim2,dim3,option)
+  ! 
+  ! Allocate and initialize matrix block info object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/2010
+  ! 
 
   use Option_module
 
@@ -182,15 +188,15 @@ function MatrixBlockInfoCreate(dim1,dim2,dim3,option)
   
 end function MatrixBlockInfoCreate
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MatrixBlockInfoDestroy: Deallocates a matrix block info object
-! author: Glenn Hammond
-! date: 03/08/2010
-!
-! ************************************************************************** !
 subroutine MatrixBlockInfoDestroy(matrix_info)
+  ! 
+  ! Deallocates a matrix block info object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/08/2010
+  ! 
 
   implicit none
 

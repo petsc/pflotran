@@ -81,17 +81,16 @@ type, public :: Immis_auxvar_elem_type
             ImmisAuxVarInit, ImmisAuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! ImmisAuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function ImmisAuxCreate()
+  ! 
+  ! ImmisAuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -123,16 +122,15 @@ function ImmisAuxCreate()
   
 end function ImmisAuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! ImmisAuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -183,13 +181,14 @@ subroutine ImmisAuxVarInit(aux_var,option)
 end subroutine ImmisAuxVarInit
 
 ! ************************************************************************** !
-!
-! ImmisAuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
+
 subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
@@ -228,20 +227,20 @@ subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine ImmisAuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! ImmisAuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
                                    fluid_properties,option)
+  ! 
+  ! ImmisAuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
   use co2_span_wagner_module
@@ -306,7 +305,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
 
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err = 1.D0
     p2 = p
 
@@ -374,7 +373,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 
-  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
 
   aux_var%h(1) = hw
   aux_var%u(1) = aux_var%h(1) - pw /dw_mol*option%scale
@@ -383,9 +382,9 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
   xm_nacl = option%m_nacl*FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-  call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
+  call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
   dw_kg = dw_kg * 1D3
-  call nacl_vis(t,p*1D-6,xm_nacl,visl)
+  call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
 
 !FEHM mixing ****************************
 ! den(1) = xmol(2)*dg + xmol(1)*dw_mol
@@ -435,13 +434,13 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
 end subroutine ImmisAuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
-  use Water_EOS_module
+  
   use Saturation_Function_module
   use Fluid_module
   
@@ -466,13 +465,14 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
 end subroutine ImmisAuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxVarDestroy(aux_var)
+  ! 
+  ! AuxVarDestroy: Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -499,13 +499,14 @@ subroutine ImmisAuxVarDestroy(aux_var)
 end subroutine ImmisAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxDestroy(aux, option)
+  ! 
+  ! RichardsAuxDestroy: Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   implicit none

@@ -91,15 +91,15 @@ module General_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
 function GeneralAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -136,13 +136,14 @@ function GeneralAuxCreate(option)
 end function GeneralAuxCreate
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -176,13 +177,14 @@ subroutine GeneralAuxVarInit(aux_var,option)
 end subroutine GeneralAuxVarInit
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !  
+
 subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -204,21 +206,22 @@ subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%pert = aux_var%pert
 
 end subroutine GeneralAuxVarCopy
-  
+
 ! ************************************************************************** !
-!
-! GeneralAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                                 saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
   use Gas_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module
   
   implicit none
@@ -296,7 +299,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(lid) = 1.d0
       gen_aux_var%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,P_sat,ierr)
+      call EOSWaterSaturationPressure(gen_aux_var%temp,P_sat,ierr)
       !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
       !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
       call Henry_air_noderiv(dummy,gen_aux_var%temp, &
@@ -332,7 +335,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       
       P_sat = gen_aux_var%pres(vpid)
       guess = gen_aux_var%temp
-      call Tsat(gen_aux_var%temp,P_sat,dummy,guess,ierr)
+      call EOSWaterSaturationTemperature(gen_aux_var%temp,P_sat,dummy, &
+                                         guess,ierr)
       
       call SatFuncGetCapillaryPressure(gen_aux_var%pres(cpid), &
                                        gen_aux_var%sat(lid), &
@@ -356,9 +360,9 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
   ! Liquid phase thermodynamic properties
   ! must use pres_max as the pressure, not %pres(lid)
-  call wateos_noderiv(gen_aux_var%temp,pres_max, &
-                      gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
-                      gen_aux_var%H(lid),option%scale,ierr)
+  call EOSWaterDensityEnthalpy(gen_aux_var%temp,pres_max, &
+                               gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
+                               gen_aux_var%H(lid),option%scale,ierr)
 
   ! MJ/kmol comp
   gen_aux_var%U(lid) = gen_aux_var%H(lid) - &
@@ -369,9 +373,12 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   ! Gas phase thermodynamic properties
   call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
                             option%scale,den_air,h_air,u)
-  call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
-                gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
-                h_wat_vap,hgp,hgt,option%scale,ierr)      
+!  call steameos(gen_aux_var%temp,gen_aux_var%pres(gid), &
+!                gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
+!                h_wat_vap,hgp,hgt,option%scale,ierr) 
+  call EOSWaterSteamDensityEnthalpy(gen_aux_var%temp,gen_aux_var%pres(gid), &
+                                    gen_aux_var%pres(apid),den_kg_wat_vap, &
+                                    den_wat_vap,h_wat_vap,option%scale,ierr)
   
   gen_aux_var%den(gid) = den_wat_vap + den_air
   gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
@@ -393,8 +400,8 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
     ! this does not need to be calculated for LIQUID_STATE (=1)
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
-    call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                      P_sat,visl,ierr)
+    call EOSWaterViscosity(gen_aux_var%temp,gen_aux_var%pres(lid), &
+                           P_sat,visl,ierr)
     gen_aux_var%kvr(lid) = krl/visl
   endif
 
@@ -410,21 +417,21 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
 end subroutine GeneralAuxVarCompute
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralUpdateState: Updates the state and swaps primary variables
-! author: Glenn Hammond
-! date: 05/25/11
-!
-! ************************************************************************** !
 subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
                                     saturation_function,por,perm,ghosted_id, &
                                     option)
+  ! 
+  ! GeneralUpdateState: Updates the state and swaps primary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/25/11
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use Saturation_Function_module
   
@@ -462,7 +469,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
   gen_aux_var%istate_store(PREV_IT) = global_aux_var%istate
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-      call psat(gen_aux_var%temp,P_sat,ierr)
+      call EOSWaterSaturationPressure(gen_aux_var%temp,P_sat,ierr)
       if (gen_aux_var%pres(vpid) <= P_sat) then
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
@@ -482,7 +489,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
-      call psat(gen_aux_var%temp,P_sat,ierr)
+      call EOSWaterSaturationPressure(gen_aux_var%temp,P_sat,ierr)
       if (gen_aux_var%pres(vpid) >= P_sat) then
 #ifdef DEBUG_GENERAL
         call GeneralPrintAuxVars(gen_aux_var,global_aux_var,ghosted_id, &
@@ -542,14 +549,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 end subroutine GeneralAuxVarUpdateState
 
 ! ************************************************************************** !
-!
-! GeneralPrintAuxVars: Prints out the contents of an auxvar
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
                                string,option)
+  ! 
+  ! Prints out the contents of an auxvar
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -613,14 +621,15 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
 end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
-!
-! GeneralOutputAuxVars1: Prints out the contents of an auxvar to a file
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
                                 string,option)
+  ! 
+  ! Prints out the contents of an auxvar to a file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -715,13 +724,14 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
 end subroutine GeneralOutputAuxVars1
 
 ! ************************************************************************** !
-!
-! GeneralOutputAuxVars2: Prints out the contents of an auxvar to a file
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
+  ! 
+  ! Prints out the contents of an auxvar to a file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -811,13 +821,14 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
 end subroutine GeneralOutputAuxVars2
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarSingleDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarSingleDestroy(aux_var)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -830,15 +841,16 @@ subroutine GeneralAuxVarSingleDestroy(aux_var)
   nullify(aux_var)  
 
 end subroutine GeneralAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!
-! GeneralAuxVarArray1Destroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarArray1Destroy(aux_vars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -857,13 +869,14 @@ subroutine GeneralAuxVarArray1Destroy(aux_vars)
 end subroutine GeneralAuxVarArray1Destroy
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarArray2Destroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarArray2Destroy(aux_vars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -884,13 +897,14 @@ subroutine GeneralAuxVarArray2Destroy(aux_vars)
 end subroutine GeneralAuxVarArray2Destroy
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarDestroy: Deallocates a general auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarStrip(aux_var)
+  ! 
+  ! GeneralAuxVarDestroy: Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   implicit none
 
@@ -916,13 +930,14 @@ subroutine GeneralAuxVarStrip(aux_var)
 end subroutine GeneralAuxVarStrip
 
 ! ************************************************************************** !
-!
-! GeneralAuxDestroy: Deallocates a general auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxDestroy(aux)
+  ! 
+  ! Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   implicit none
 

@@ -31,14 +31,14 @@ module PMC_Surface_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 function PMCSurfaceCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   implicit none
   
@@ -56,14 +56,14 @@ function PMCSurfaceCreate()
 end function PMCSurfaceCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   implicit none
   
@@ -79,14 +79,14 @@ subroutine PMCSurfaceInit(this)
 end subroutine PMCSurfaceInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Timestepper_Base_class
   use Output_module, only : Output
@@ -187,7 +187,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     
     ! only print output for process models of depth 0
     ! TODO(GB): Modify OutputSurface()
-    !if (associated(this%Output)) then
+    if (associated(this%Output)) then
       if (this%timestepper%time_step_cut_flag) then
         plot_flag = PETSC_FALSE
       endif
@@ -207,15 +207,16 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       !                 transient_plot_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
-    !endif
+    endif
 
     if (this%is_master) then
-      if (checkpoint_flag) exit
-      if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
-        if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
-         checkpoint_flag = PETSC_TRUE
+      if (.not.checkpoint_flag) then
+        if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
+          if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
+           checkpoint_flag = PETSC_TRUE
+          endif
         endif
-      endif
+       endif
     else
       checkpoint_flag = PETSC_FALSE
     endif
@@ -250,14 +251,14 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 end subroutine PMCSurfaceRunToTime
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceAccumulateAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_module
@@ -291,14 +292,14 @@ subroutine PMCSurfaceAccumulateAuxData(this)
 end subroutine PMCSurfaceAccumulateAuxData
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceGetAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_module
@@ -368,15 +369,15 @@ subroutine PMCSurfaceGetAuxData(this)
 end subroutine PMCSurfaceGetAuxData
 
 ! ************************************************************************** !
-!> This routine extracts data from surface flow model and stores it sim-aux,
-!! which will be required by the subsurface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceSetAuxData(this)
+  ! 
+  ! This routine extracts data from surface flow model and stores it sim-aux,
+  ! which will be required by the subsurface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 08/21/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -544,21 +545,21 @@ subroutine PMCSurfaceSetAuxData(this)
 end subroutine PMCSurfaceSetAuxData
 
 ! ************************************************************************** !
-!> This routine is called to set values in sim_aux PETSc vectors after restart
-!! checkpoint files is read.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/23/13
-! ************************************************************************** !
+
 subroutine PMCSurfaceGetAuxDataAfterRestart(this)
+  ! 
+  ! This routine is called to set values in sim_aux PETSc vectors after restart
+  ! checkpoint files is read.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/23/13
+  ! 
 
   use Surface_Flow_module
   use Surface_TH_Aux_module
   use Surface_TH_module
   use Option_module
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -595,7 +596,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
         select case(this%option%iflowmode)
           case (RICHARDS_MODE)
 
-            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+            call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
@@ -628,7 +629,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             ! reference-temperature). Presently, SurfaceCheckpointProcessModel()
             ! does not output surface-water temperature for TH-Mode and the
             ! subroutine needs to be modified in future.
-            call density(this%option%reference_temperature,this%option%reference_pressure,den)
+            call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
 
             surf_aux_vars => pmc%surf_realization%patch%surf_aux%SurfaceTH%aux_vars
 
@@ -677,14 +678,14 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 end subroutine PMCSurfaceGetAuxDataAfterRestart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 recursive subroutine PMCSurfaceFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Option_module
   
@@ -700,14 +701,14 @@ recursive subroutine PMCSurfaceFinalizeRun(this)
 end subroutine PMCSurfaceFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 recursive subroutine Destroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Utility_module, only: DeallocateArray
   use Option_module

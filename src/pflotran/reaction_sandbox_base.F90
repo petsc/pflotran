@@ -115,7 +115,9 @@ module Reaction_Sandbox_Base_class
 #else
 
 contains
-  
+
+! ************************************************************************** !
+
   subroutine Base_Setup(this,reaction,option)
     
     use Option_module
@@ -129,6 +131,8 @@ contains
   
   end subroutine Base_Setup 
 
+! ************************************************************************** !
+
   subroutine Base_Read(this,input,option)
     
     use Option_module
@@ -141,7 +145,8 @@ contains
     type(option_type) :: option
   
   end subroutine Base_Read
-  
+
+! ************************************************************************** !
 
   subroutine Base_SkipBlock(this,input,option)
     
@@ -155,7 +160,9 @@ contains
     type(option_type) :: option
   
   end subroutine Base_SkipBlock   
-    
+
+! ************************************************************************** !
+
   subroutine Base_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
                         global_auxvar,porosity,volume,reaction,option)
     use Option_module
@@ -178,7 +185,9 @@ contains
     type(global_auxvar_type) :: global_auxvar
       
   end subroutine
-    
+
+! ************************************************************************** !
+
   subroutine Base_Destroy(this)
 
     implicit none

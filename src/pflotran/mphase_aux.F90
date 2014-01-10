@@ -82,17 +82,14 @@ module Mphase_Aux_module
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 function MphaseAuxCreate()
+  ! 
+  ! MphaseAuxVarCreate: Allocate and initialize auxiliary object
+  ! Author: Chuan Lu
+  ! 
 
   use Option_module
 
@@ -126,16 +123,13 @@ function MphaseAuxCreate()
   
 end function MphaseAuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! MphaseAuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 subroutine MphaseAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! Author: Chuan Lu
+  ! 
 
   use Option_module
 
@@ -186,14 +180,11 @@ subroutine MphaseAuxVarInit(aux_var,option)
 end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarCopy: Copies an auxiliary variable
-! author: 
-! date: 
-!
-! ************************************************************************** !  
-subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
 
+subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
   use Option_module
 
   implicit none
@@ -230,21 +221,19 @@ subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine MphaseAuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseAuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
 subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_function, &
                                    fluid_properties,option,xphico2)
+  ! 
+  ! MphaseAuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! Author: Chuan Lu
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
   use co2_span_wagner_module
@@ -272,7 +261,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: dg, dddp, dddt, m_na, m_cl, m_nacl
   PetscReal :: fg, dfgdp, dfgdt, xphi
   PetscReal :: eng, hg, dhdp, dhdt
-  PetscReal :: visg, dvdp, dvdt
+  PetscReal :: visg, dvdp, dvdt, dvdps
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
@@ -335,7 +324,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err = 1.D0
     p2 = p
 
@@ -429,7 +418,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     end select
     aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
-    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg*option%scale
@@ -454,10 +443,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   
     xm_nacl = m_nacl*FMWNACL
     xm_nacl = xm_nacl/(1.D3 + xm_nacl)
-    call nacl_den(t,p*1D-6,xm_nacl,dw_kg) 
+    call EOSWaterDensityNaCl(t,p*1D-6,xm_nacl,dw_kg) 
     dw_kg = dw_kg*1.D3
-!   call nacl_vis(t,p*1.D-6,xm_nacl,visl)
-    call VISW(t,pw,sat_pressure,visl,dvdt,dvdp,ierr)
+!   call EOSWaterViscosityNaCl(t,p*1.D-6,xm_nacl,visl)
+    call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,dvdps,ierr)
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
@@ -481,7 +470,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !duan mixing **************************
 #ifdef DUANDEN
 !                 units: t [C], p [MPa], dw_kg [kg/m^3]
-  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************
@@ -532,14 +521,14 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
 end subroutine MphaseAuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use Saturation_Function_module
   use Fluid_module
   
@@ -567,14 +556,11 @@ subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturati
 end subroutine MphaseAuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarElemDestroy: Deallocates a mphase auxiliary elment object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseAuxVarElemDestroy(aux_var_elem)
 
+subroutine MphaseAuxVarElemDestroy(aux_var_elem)
+  ! 
+  ! Deallocates a mphase auxiliary elment object
+  ! 
   implicit none
 
   type(mphase_auxvar_elem_type) :: aux_var_elem
@@ -601,14 +587,11 @@ subroutine MphaseAuxVarElemDestroy(aux_var_elem)
 end subroutine MphaseAuxVarElemDestroy
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarDestroy: Deallocates a mphase auxiliary object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseAuxVarDestroy(aux_var)
 
+subroutine MphaseAuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a mphase auxiliary object
+  ! 
   implicit none
 
   type(mphase_auxvar_type) :: aux_var
@@ -627,14 +610,11 @@ subroutine MphaseAuxVarDestroy(aux_var)
 end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MphaseAuxDestroy: Deallocates a mphase auxiliary object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseAuxDestroy(aux)
 
+subroutine MphaseAuxDestroy(aux)
+  ! 
+  ! Deallocates a mphase auxiliary object
+  ! 
   implicit none
 
   type(mphase_type), pointer :: aux

@@ -60,15 +60,16 @@ module Transport_module
 contains
 
 ! ************************************************************************** !
-!
-! TDiffusion: Computes diffusion term at cell interface
-! author: Glenn Hammond
-! date: 02/24/10
-!
-! ************************************************************************** !
+
 subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
                       global_aux_var_dn,por_dn,tor_dn,disp_dn,dist_dn, &
                       rt_parameter,option,velocity,diffusion)
+  ! 
+  ! Computes diffusion term at cell interface
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/24/10
+  ! 
 
   use Option_module
 
@@ -192,15 +193,16 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
 end subroutine TDiffusion
 
 ! ************************************************************************** !
-!
-! TDiffusionBC: Computes diffusion term at cell boundary interface
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
                         por_dn,tor_dn,disp_dn,dist_dn, &
                         rt_parameter,option,velocity,diffusion)
+  ! 
+  ! Computes diffusion term at cell boundary interface
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -344,18 +346,18 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
 
 end subroutine TDiffusionBC
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! TFlux: Computes flux term in residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
 subroutine TFlux(rt_parameter, &
                  rt_aux_var_up,global_aux_var_up, & 
                  rt_aux_var_dn,global_aux_var_dn, & 
                  coef_up,coef_dn,option,Res)
+  ! 
+  ! Computes flux term in residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -426,16 +428,17 @@ subroutine TFlux(rt_parameter, &
 end subroutine TFlux
 
 ! ************************************************************************** !
-!
-! TFlux: Computes flux term in residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine TFlux_CD(rt_parameter, &
                  rt_aux_var_up,global_aux_var_up, & 
                  rt_aux_var_dn,global_aux_var_dn, & 
                  coef_11,coef_12,coef_21,coef_22,option,Res_1,Res_2)
+  ! 
+  ! TFlux: Computes flux term in residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -517,16 +520,17 @@ subroutine TFlux_CD(rt_parameter, &
 end subroutine TFlux_CD
 
 ! ************************************************************************** !
-!
-! TFluxDerivative: Computes derivatives of flux term in residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine TFluxDerivative(rt_parameter, &
                            rt_aux_var_up,global_aux_var_up, & 
                            rt_aux_var_dn,global_aux_var_dn, & 
                            coef_up,coef_dn,option,J_up,J_dn)
+  ! 
+  ! Computes derivatives of flux term in residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -621,17 +625,18 @@ subroutine TFluxDerivative(rt_parameter, &
 end subroutine TFluxDerivative
 
 ! ************************************************************************** !
-!
-! TFluxDerivative: Computes derivatives of flux term in residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine TFluxDerivative_CD(rt_parameter, &
                            rt_aux_var_up,global_aux_var_up, & 
                            rt_aux_var_dn,global_aux_var_dn, & 
                            coef_11,coef_12,coef_21,coef_22,option, &
                            J_11,J_12,J_21,J_22)
+  ! 
+  ! TFluxDerivative: Computes derivatives of flux term in residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -739,13 +744,14 @@ subroutine TFluxDerivative_CD(rt_parameter, &
 end subroutine TFluxDerivative_CD
 
 ! ************************************************************************** !
-!
-! TFluxCoef: Computes flux coefficients for transport matrix
-! author: Glenn Hammond
-! date: 02/22/10
-!
-! ************************************************************************** !
+
 subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
+  ! 
+  ! Computes flux coefficients for transport matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/10
+  ! 
 
   use Option_module
 
@@ -826,14 +832,15 @@ subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
 end subroutine TFluxCoef
 
 ! ************************************************************************** !
-!
-! TFluxCoef_CD: Computes flux coefficients for transport matrix
-! author: Glenn Hammond
-! date: 02/22/10
-!
-! ************************************************************************** !
+
 subroutine TFluxCoef_CD(option,area,velocity,diffusion,fraction_upwind, &
                         T_11,T_12,T_21,T_22)
+  ! 
+  ! Computes flux coefficients for transport matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/10
+  ! 
 
   use Option_module
 
@@ -892,14 +899,15 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,fraction_upwind, &
 end subroutine TFluxCoef_CD
 
 ! ************************************************************************** !
-!
-! TSrcSinkCoef: Computes src/sink coefficients for transport matrix
-!               Here qsrc [m^3/sec] provided by flow.
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine TSrcSinkCoef(option,qsrc,tran_src_sink_type,T_in,T_out)
+  ! 
+  ! Computes src/sink coefficients for transport matrix
+  ! Here qsrc [m^3/sec] provided by flow.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
 
@@ -944,17 +952,18 @@ subroutine TSrcSinkCoef(option,qsrc,tran_src_sink_type,T_in,T_out)
 end subroutine TSrcSinkCoef
 
 ! ************************************************************************** !
-!
-! TFluxTVD: Computes TVD flux term
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     total_up2,rt_aux_var_up, & 
                     rt_aux_var_dn,total_dn2, & 
                     TFluxLimitPtr, &
                     option,flux)
+  ! 
+  ! Computes TVD flux term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   use Option_module
 
@@ -1032,13 +1041,14 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
 end subroutine TFluxTVD
 
 ! ************************************************************************** !
-!
-! TFluxLimiter: Applies flux limiter
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 function TFluxLimiter(theta)
+  ! 
+  ! Applies flux limiter
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   implicit none
   
@@ -1071,13 +1081,14 @@ function TFluxLimiter(theta)
 end function TFluxLimiter
 
 ! ************************************************************************** !
-!
-! TFluxLimitUpwind: Applies an upwind flux limiter
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 function TFluxLimitUpwind(theta)
+  ! 
+  ! Applies an upwind flux limiter
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   implicit none
   
@@ -1091,13 +1102,14 @@ function TFluxLimitUpwind(theta)
 end function TFluxLimitUpwind
 
 ! ************************************************************************** !
-!
-! TFluxLimitMinmod: Applies a minmod flux limiter
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 function TFluxLimitMinmod(theta)
+  ! 
+  ! Applies a minmod flux limiter
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   implicit none
   
@@ -1111,13 +1123,14 @@ function TFluxLimitMinmod(theta)
 end function TFluxLimitMinmod
 
 ! ************************************************************************** !
-!
-! TFluxLimitMC: Applies an MC flux limiter
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 function TFluxLimitMC(theta)
+  ! 
+  ! Applies an MC flux limiter
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   implicit none
   
@@ -1131,13 +1144,14 @@ function TFluxLimitMC(theta)
 end function TFluxLimitMC
 
 ! ************************************************************************** !
-!
-! TFluxLimitSuperBee: Applies an superbee flux limiter
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 function TFluxLimitSuperBee(theta)
+  ! 
+  ! Applies an superbee flux limiter
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   implicit none
   
@@ -1151,13 +1165,14 @@ function TFluxLimitSuperBee(theta)
 end function TFluxLimitSuperBee
 
 ! ************************************************************************** !
-!
-! TFluxLimitVanLeer: Applies an van Leer flux limiter
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 function TFluxLimitVanLeer(theta)
+  ! 
+  ! Applies an van Leer flux limiter
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   implicit none
   

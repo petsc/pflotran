@@ -74,13 +74,14 @@ module Field_module
 contains
 
 ! ************************************************************************** !
-!
-! FieldCreate: Allocates and initializes a new Field object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function FieldCreate()
+  ! 
+  ! Allocates and initializes a new Field object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -166,13 +167,14 @@ function FieldCreate()
 end function FieldCreate
 
 ! ************************************************************************** !
-!
-! FieldDestroy: Deallocates a field object
-! author: Glenn Hammond
-! date: 11/15/07
-!
-! ************************************************************************** !
+
 subroutine FieldDestroy(field)
+  ! 
+  ! Deallocates a field object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/15/07
+  ! 
 
   implicit none
   

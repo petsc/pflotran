@@ -12,7 +12,7 @@ module Simulation_Aux_module
 
   type,public :: simulation_aux_type
 
-    ! Note: These are LOCAL vectors (i.e. they do not contain ghost control 
+    ! Note: These are GLOBAL vectors (i.e. they do not contain ghost control
     !       volumes)
 
     ! Size of entire subsurface domain
@@ -49,14 +49,14 @@ module Simulation_Aux_module
 contains
 
 ! ************************************************************************** !
-!> This routine allocates auxillary object.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/20/13
-! ************************************************************************** !
+
 function SimAuxCreate()
+  ! 
+  ! This routine allocates auxillary object.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/20/13
+  ! 
 
   use Option_module
 
@@ -90,14 +90,14 @@ function SimAuxCreate()
 end function SimAuxCreate
 
 ! ************************************************************************** !
-!> This routine copies VectorScatter to an appropriate context.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 10/02/13
-! ************************************************************************** !
+
 subroutine SimAuxCopyVecScatter(aux, vscat, vscat_index)
+  ! 
+  ! This routine copies VectorScatter to an appropriate context.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 10/02/13
+  ! 
 
   implicit none
 
@@ -119,14 +119,14 @@ subroutine SimAuxCopyVecScatter(aux, vscat, vscat_index)
 end subroutine SimAuxCopyVecScatter
 
 ! ************************************************************************** !
-!> This routine creates 3D vectors related with subsurface-flow.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 10/02/13
-! ************************************************************************** !
+
 subroutine SimAuxCopySubsurfVec(aux, subsurf_vec)
+  ! 
+  ! This routine creates 3D vectors related with subsurface-flow.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 10/02/13
+  ! 
 
   implicit none
 
@@ -143,15 +143,15 @@ subroutine SimAuxCopySubsurfVec(aux, subsurf_vec)
 end subroutine SimAuxCopySubsurfVec
 
 ! ************************************************************************** !
-!> This routine creates vectors associated with surface of subsurface domain
-!! related with subsurface-flow.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 10/02/13
-! ************************************************************************** !
+
 subroutine SimAuxCopySubsurfTopBCVec(aux, subsurf_top_bc_vec)
+  ! 
+  ! This routine creates vectors associated with surface of subsurface domain
+  ! related with subsurface-flow.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 10/02/13
+  ! 
 
   implicit none
 
@@ -168,14 +168,14 @@ subroutine SimAuxCopySubsurfTopBCVec(aux, subsurf_top_bc_vec)
 end subroutine SimAuxCopySubsurfTopBCVec
 
 ! ************************************************************************** !
-!> This routine creates vectors associated with surface-flow.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 10/02/13
-! ************************************************************************** !
+
 subroutine SimAuxCopySurfVec(aux, surf_head_vec)
+  ! 
+  ! This routine creates vectors associated with surface-flow.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 10/02/13
+  ! 
 
   implicit none
 
@@ -192,14 +192,14 @@ subroutine SimAuxCopySurfVec(aux, surf_head_vec)
 end subroutine SimAuxCopySurfVec
 
 ! ************************************************************************** !
-!> This routine deallocates auxillary object.
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/20/13
-! ************************************************************************** !
+
 subroutine SimAuxDestroy(aux)
+  ! 
+  ! This routine deallocates auxillary object.
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/20/13
+  ! 
 
   implicit none
 

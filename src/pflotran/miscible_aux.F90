@@ -58,13 +58,14 @@ type, public :: Miscible_auxvar_elem_type
 contains
 
 ! ************************************************************************** !
-!
-! MiscibleAuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function MiscibleAuxCreate()
+  ! 
+  ! MiscibleAuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -99,16 +100,15 @@ function MiscibleAuxCreate()
   
 end function MiscibleAuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! MiscibleAuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -154,13 +154,14 @@ subroutine MiscibleAuxVarInit(aux_var,option)
 end subroutine MiscibleAuxVarInit
 
 ! ************************************************************************** !
-!
-! MiscibleAuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
+
 subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
@@ -184,13 +185,14 @@ subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
 end subroutine MiscibleAuxVarCopy
 
 ! ************************************************************************** !
-!
-! Water_glycol_density: Computes water-propylene glycol mixture density 
-! author: Chuan Lu
-! date: 12/12/11
-!
-! ************************************************************************** !
+
 subroutine Water_glycol_density(y,p,dkg)
+  ! 
+  ! Computes water-propylene glycol mixture density
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/12/11
+  ! 
   implicit none
   PetscReal y, p ! water mass fraction
   PetscReal dkg
@@ -204,15 +206,16 @@ subroutine Water_glycol_density(y,p,dkg)
 end subroutine Water_glycol_density
 
 ! ************************************************************************** !
-!
-! MiscibleAuxVarCompute_NINC: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
              fluid_properties,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   use Global_Aux_module  
@@ -289,14 +292,14 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 end subroutine MiscibleAuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine MiscibleAuxVarCompute_WINC(x,delx,aux_var,global_auxvar, &
                                     fluid_properties,option)
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use Fluid_module
   
   implicit none
@@ -321,16 +324,12 @@ subroutine MiscibleAuxVarCompute_WINC(x,delx,aux_var,global_auxvar, &
 
 end subroutine MiscibleAuxVarCompute_WINC
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleAuxVarElemDestroy: Deallocates a mphase auxiliary elment object
-! author: 
-! date: 
-!
-! ************************************************************************** !
 subroutine MiscibleAuxVarElemDestroy(aux_var_elem)
-
+  ! 
+  ! Deallocates a mphase auxiliary elment object
+  ! 
   implicit none
 
   type(miscible_auxvar_elem_type) :: aux_var_elem
@@ -357,14 +356,11 @@ subroutine MiscibleAuxVarElemDestroy(aux_var_elem)
 end subroutine MiscibleAuxVarElemDestroy
 
 ! ************************************************************************** !
-!
-! MiscibleAuxVarDestroy: Deallocates a miscible auxiliary object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MiscibleAuxVarDestroy(aux_var)
 
+subroutine MiscibleAuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a miscible auxiliary object
+  ! 
   implicit none
 
   type(miscible_auxvar_type) :: aux_var
@@ -383,14 +379,11 @@ subroutine MiscibleAuxVarDestroy(aux_var)
 end subroutine MiscibleAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MiscibleAuxDestroy: Deallocates a miscible auxiliary object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MiscibleAuxDestroy(aux)
 
+subroutine MiscibleAuxDestroy(aux)
+  ! 
+  ! Deallocates a miscible auxiliary object
+  ! 
   implicit none
 
   type(miscible_type), pointer :: aux

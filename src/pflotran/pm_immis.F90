@@ -53,13 +53,14 @@ module PM_Immis_class
 contains
 
 ! ************************************************************************** !
-!
-! PMImmisCreate: Creates Immiscible process models shell
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 function PMImmisCreate()
+  ! 
+  ! Creates Immiscible process models shell
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -85,13 +86,14 @@ function PMImmisCreate()
 end function PMImmisCreate
 
 ! ************************************************************************** !
-!
-! PMImmisInit: Initializes variables associated with Richard
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisInit(this)
+  ! 
+  ! Initializes variables associated with Richard
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -122,13 +124,12 @@ subroutine PMImmisInit(this)
 end subroutine PMImmisInit
 
 ! ************************************************************************** !
-!
-! PMImmisSetRealization: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisSetRealization(this,realization)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -156,13 +157,14 @@ subroutine PMImmisSetRealization(this,realization)
 end subroutine PMImmisSetRealization
 
 ! ************************************************************************** !
-! Should not need this as it is called in PreSolve.
-! PMImmisInitializeTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisInitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisInitializeTimestep
   use Global_module
@@ -196,13 +198,12 @@ subroutine PMImmisInitializeTimestep(this)
 end subroutine PMImmisInitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMImmisPreSolve: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisPreSolve(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Global_module
 
@@ -217,13 +218,14 @@ subroutine PMImmisPreSolve(this)
 end subroutine PMImmisPreSolve
 
 ! ************************************************************************** !
-!
-! PMImmisUpdatePostSolve: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisPostSolve(this)
+  ! 
+  ! PMImmisUpdatePostSolve:
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Global_module
 
@@ -238,13 +240,12 @@ subroutine PMImmisPostSolve(this)
 end subroutine PMImmisPostSolve
 
 ! ************************************************************************** !
-!
-! PMImmisFinalizeTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisFinalizeTimestep(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisMaxChange
   use Global_module
@@ -278,13 +279,12 @@ subroutine PMImmisFinalizeTimestep(this)
 end subroutine PMImmisFinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMImmisAcceptSolution: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 function PMImmisAcceptSolution(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -301,14 +301,13 @@ function PMImmisAcceptSolution(this)
 end function PMImmisAcceptSolution
 
 ! ************************************************************************** !
-!
-! PMImmisUpdateTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -368,13 +367,14 @@ subroutine PMImmisUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMImmisUpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMImmisInitializeRun: Initializes the time stepping
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMImmisInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisUpdateSolution
 
@@ -400,13 +400,14 @@ recursive subroutine PMImmisInitializeRun(this)
 end subroutine PMImmisInitializeRun
 
 ! ************************************************************************** !
-!
-! PMImmisFinalizeRun: Finalizes the time stepping
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMImmisFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -425,13 +426,12 @@ recursive subroutine PMImmisFinalizeRun(this)
 end subroutine PMImmisFinalizeRun
 
 ! ************************************************************************** !
-!
-! PMImmisResidual: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisResidual
 
@@ -457,13 +457,12 @@ subroutine PMImmisResidual(this,snes,xx,r,ierr)
 end subroutine PMImmisResidual
 
 ! ************************************************************************** !
-!
-! PMImmisJacobian: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisJacobian
 
@@ -490,14 +489,14 @@ subroutine PMImmisJacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMImmisJacobian
     
 #if 0
+
 ! ************************************************************************** !
-!
-! PMImmisCheckUpdatePre: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisCheckUpdatePre
 
@@ -519,16 +518,15 @@ subroutine PMImmisCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMImmisCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMImmisCheckUpdatePost: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisCheckUpdatePost
 
@@ -556,13 +554,12 @@ end subroutine PMImmisCheckUpdatePost
 #endif
 
 ! ************************************************************************** !
-!
-! PMImmisTimeCut: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisTimeCut(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisTimeCut
 
@@ -579,15 +576,14 @@ subroutine PMImmisTimeCut(this)
   call ImmisTimeCut(this%realization)
 
 end subroutine PMImmisTimeCut
-    
+
 ! ************************************************************************** !
-!
-! PMImmisUpdateSolution: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisUpdateSolution(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisUpdateSolution
   use Condition_module
@@ -617,13 +613,14 @@ subroutine PMImmisUpdateSolution(this)
 end subroutine PMImmisUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given PMImmisMaxChange is called in PostSolve
-! PMImmisMaxChange: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisMaxChange(this)
+  ! 
+  ! Not needed given PMImmisMaxChange is called in PostSolve
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisMaxChange
 
@@ -638,15 +635,14 @@ subroutine PMImmisMaxChange(this)
   call ImmisMaxChange(this%realization)
 
 end subroutine PMImmisMaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMImmisComputeMassBalance: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisComputeMassBalance
 
@@ -667,13 +663,14 @@ subroutine PMImmisComputeMassBalance(this,mass_balance_array)
 end subroutine PMImmisComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMImmisCheckpoint: Checkpoints data associated with Immiscible PM
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with Immiscible PM
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Checkpoint_module
 
@@ -687,15 +684,15 @@ subroutine PMImmisCheckpoint(this,viewer)
   
 end subroutine PMImmisCheckpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMImmisRestart: Restarts data associated with Immiscible PM
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
 subroutine PMImmisRestart(this,viewer)
+  ! 
+  ! Restarts data associated with Immiscible PM
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Checkpoint_module
   use Immis_module, only : ImmisUpdateAuxVars
@@ -713,13 +710,14 @@ subroutine PMImmisRestart(this,viewer)
 end subroutine PMImmisRestart
 
 ! ************************************************************************** !
-!
-! PMImmisDestroy: Destroys Immiscible process model
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMImmisDestroy(this)
+  ! 
+  ! Destroys Immiscible process model
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Immis_module, only : ImmisDestroy
 

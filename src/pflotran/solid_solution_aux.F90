@@ -44,15 +44,17 @@ module Solid_Solution_Aux_module
 contains
 
 #if 0
+
 ! ************************************************************************** !
-!
-! SolidSolutionReactionCreate: Allocate and initialize solid solution reaction
-!                              object
-! author: Glenn Hammond
-! date: 08/16/12
-!
-! ************************************************************************** !
+
 function SolidSolutionReactionCreate()
+  ! 
+  ! Allocate and initialize solid solution reaction
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
 
   implicit none
   
@@ -75,13 +77,14 @@ end function SolidSolutionReactionCreate
 #endif
 
 ! ************************************************************************** !
-!
-! SolidSolutionCreate: Allocate and initialize solid solution object
-! author: Glenn Hammond
-! date: 08/17/12
-!
-! ************************************************************************** !
+
 function SolidSolutionCreate()
+  ! 
+  ! Allocate and initialize solid solution object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/17/12
+  ! 
 
   implicit none
   
@@ -106,15 +109,17 @@ function SolidSolutionCreate()
 end function SolidSolutionCreate
 
 #if 0
+
 ! ************************************************************************** !
-!
-! StoichiometricSolidCreate: Allocate and initialize stoichiometric solid 
-!                            object
-! author: Glenn Hammond
-! date: 08/17/12
-!
-! ************************************************************************** !
+
 function StoichiometricSolidCreate()
+  ! 
+  ! Allocate and initialize stoichiometric solid
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/17/12
+  ! 
 
   implicit none
   
@@ -133,13 +138,14 @@ function StoichiometricSolidCreate()
 end function StoichiometricSolidCreate
 
 ! ************************************************************************** !
-!
-! StoichiometricSolidDestroy: Deallocates solid solution object
-! author: Glenn Hammond
-! date: 08/17/12
-!
-! ************************************************************************** !
+
 subroutine StoichiometricSolidDestroy(stoich_solid)
+  ! 
+  ! Deallocates solid solution object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/17/12
+  ! 
 
   implicit none
   
@@ -167,13 +173,14 @@ end subroutine StoichiometricSolidDestroy
 #endif
 
 ! ************************************************************************** !
-!
-! SolidSolutionDestroy: Deallocates solid solution object
-! author: Glenn Hammond
-! date: 08/17/12
-!
-! ************************************************************************** !
+
 recursive subroutine SolidSolutionDestroy(solid_solution)
+  ! 
+  ! Deallocates solid solution object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/17/12
+  ! 
 
   implicit none
   
@@ -211,14 +218,16 @@ recursive subroutine SolidSolutionDestroy(solid_solution)
 end subroutine SolidSolutionDestroy
 
 #if 0
+
 ! ************************************************************************** !
-!
-! SolidSolutionReactionDestroy: Deallocates a solid solution object
-! author: Glenn Hammond
-! date: 08/16/12
-!
-! ************************************************************************** !
+
 subroutine SolidSolutionReactionDestroy(solid_solution)
+  ! 
+  ! Deallocates a solid solution object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
 
   implicit none
 

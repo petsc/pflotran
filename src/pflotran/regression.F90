@@ -37,13 +37,14 @@ module Regression_module
 contains
 
 ! ************************************************************************** !
-!
-! RegressionCreate: Creates a regression object
-! author: Glenn Hammond
-! date: 10/11/12
-!
-! ************************************************************************** !
+
 function RegressionCreate()
+  ! 
+  ! Creates a regression object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/12
+  ! 
   
   implicit none
 
@@ -66,13 +67,14 @@ function RegressionCreate()
 end function RegressionCreate
 
 ! ************************************************************************** !
-!
-! RegressionVariableCreate: Creates a regression variable object
-! author: Glenn Hammond
-! date: 10/11/12
-!
-! ************************************************************************** !
+
 function RegressionVariableCreate()
+  ! 
+  ! Creates a regression variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/12
+  ! 
   
   implicit none
 
@@ -88,13 +90,14 @@ function RegressionVariableCreate()
 end function RegressionVariableCreate
 
 ! ************************************************************************** !
-!
-! RegressionRead: Reads in contents of a regression card
-! author: Glenn Hammond
-! date: 10/11/12
-! 
-! ************************************************************************** !
+
 subroutine RegressionRead(regression,input,option)
+  ! 
+  ! Reads in contents of a regression card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -179,14 +182,15 @@ subroutine RegressionRead(regression,input,option)
 end subroutine RegressionRead
 
 ! ************************************************************************** !
-!
-! RegressionCreateMapping: Creates mapping between a natural mpi vec and a 
-!                          sequential vec on io_rank
-! author: Glenn Hammond
-! date: 10/12/12
-!
-! ************************************************************************** !
+
 subroutine RegressionCreateMapping(regression,realization)
+  ! 
+  ! Creates mapping between a natural mpi vec and a
+  ! sequential vec on io_rank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/12/12
+  ! 
 
   use Option_module
   use Realization_class
@@ -436,14 +440,15 @@ subroutine RegressionCreateMapping(regression,realization)
 end subroutine RegressionCreateMapping
 
 ! ************************************************************************** !
-!
-! RegressionOutput: Prints regression output through the io_rank
-! author: Glenn Hammond
-! date: 10/12/12
-!
-! ************************************************************************** !
+
 subroutine RegressionOutput(regression,realization,flow_stepper, &
                             tran_stepper)
+  ! 
+  ! Prints regression output through the io_rank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/12/12
+  ! 
 
   use Realization_class
 #ifdef PROCESS_MODEL
@@ -791,13 +796,14 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
 end subroutine RegressionOutput
 
 ! ************************************************************************** !
-!
-! RegressionVariableDestroy: Destroys a regression variable object
-! author: Glenn Hammond
-! date: 10/11/12
-!
-! ************************************************************************** !
+
 recursive subroutine RegressionVariableDestroy(regression_variable)
+  ! 
+  ! Destroys a regression variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/12
+  ! 
 
   implicit none
   
@@ -813,13 +819,14 @@ recursive subroutine RegressionVariableDestroy(regression_variable)
 end subroutine RegressionVariableDestroy
 
 ! ************************************************************************** !
-!
-! RegressionDestroy: Destroys a regression object
-! author: Glenn Hammond
-! date: 10/11/12
-!
-! ************************************************************************** !
+
 subroutine RegressionDestroy(regression)
+  ! 
+  ! Destroys a regression object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/11/12
+  ! 
 
   use Utility_module
   

@@ -30,13 +30,14 @@ module Material_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! MaterialAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/02/11
-!
-! ************************************************************************** !
+
 function MaterialAuxCreate()
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/11
+  ! 
 
   use Option_module
 
@@ -58,13 +59,14 @@ function MaterialAuxCreate()
 end function MaterialAuxCreate
 
 ! ************************************************************************** !
-!
-! MaterialAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/02/11
-!
-! ************************************************************************** !
+
 subroutine MaterialAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/11
+  ! 
 
   use Option_module
 
@@ -76,13 +78,14 @@ subroutine MaterialAuxVarInit(aux_var,option)
 end subroutine MaterialAuxVarInit
 
 ! ************************************************************************** !
-!
-! MaterialAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 03/02/11
-!
-! ************************************************************************** !  
+
 subroutine MaterialAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/11
+  ! 
 
   use Option_module
 
@@ -94,13 +97,14 @@ subroutine MaterialAuxVarCopy(aux_var,aux_var2,option)
 end subroutine MaterialAuxVarCopy
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a material auxiliary object
-! author: Glenn Hammond
-! date: 03/02/11
-!
-! ************************************************************************** !
+
 subroutine AuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a material auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/11
+  ! 
 
   implicit none
 
@@ -109,13 +113,14 @@ subroutine AuxVarDestroy(aux_var)
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MaterialAuxDestroy: Deallocates a material auxiliary object
-! author: Glenn Hammond
-! date: 03/02/11
-!
-! ************************************************************************** !
+
 subroutine MaterialAuxDestroy(aux)
+  ! 
+  ! Deallocates a material auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/11
+  ! 
 
   implicit none
 

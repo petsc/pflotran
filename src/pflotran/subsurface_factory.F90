@@ -18,13 +18,14 @@ module Subsurface_Factory_module
 contains
 
 ! ************************************************************************** !
-!
-! SubsurfaceInitialize: Sets up PFLOTRAN subsurface simulation 
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceInitialize(simulation_base,option)
+  ! 
+  ! Sets up PFLOTRAN subsurface simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -49,14 +50,15 @@ subroutine SubsurfaceInitialize(simulation_base,option)
 end subroutine SubsurfaceInitialize
 
 ! ************************************************************************** !
-!
-! SubsurfaceInitializePostPetsc: Sets up PFLOTRAN subsurface simulation 
-!                                framework after to PETSc initialization
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceInitializePostPetsc(simulation, option)
+  ! 
+  ! Sets up PFLOTRAN subsurface simulation
+  ! framework after to PETSc initialization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Simulation_module
   use Option_module
@@ -82,14 +84,15 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 end subroutine SubsurfaceInitializePostPetsc
 
 ! ************************************************************************** !
-!
-! SubsurfInitCommandLineSettings: Initializes PFLTORAN subsurface output 
-!                                 filenames, etc.
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfInitCommandLineSettings(option)
+  ! 
+  ! Initializes PFLTORAN subsurface output
+  ! filenames, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -117,13 +120,12 @@ subroutine SubsurfInitCommandLineSettings(option)
 end subroutine SubsurfInitCommandLineSettings
 
 ! ************************************************************************** !
-!
-! HijackSimulation: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine HijackSimulation(simulation_old,simulation)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Simulation_module
   use Realization_class
@@ -321,13 +323,12 @@ subroutine HijackSimulation(simulation_old,simulation)
 end subroutine HijackSimulation
 
 ! ************************************************************************** !
-!
-! SubsurfaceJumpStart: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceJumpStart(simulation)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Realization_class
   use Option_module
@@ -514,13 +515,12 @@ subroutine SubsurfaceJumpStart(simulation)
 end subroutine SubsurfaceJumpStart
 
 ! ************************************************************************** !
-!
-! HijackTimestepper: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine HijackTimestepper(stepper_old,stepper_base)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Timestepper_BE_class
   use Timestepper_Base_class

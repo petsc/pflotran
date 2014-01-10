@@ -10,10 +10,9 @@ module oil_eos_module
   public Vis_oil, oil_eos
   
  contains
-  
 
-  
-  
+! ************************************************************************** !
+
 subroutine Vis_oil(p,t,viso, ierr)
   use PFLOTRAN_Constants_module
 
@@ -25,13 +24,15 @@ subroutine Vis_oil(p,t,viso, ierr)
    
   viso= vis0 
 end subroutine Vis_oil
- 
+
+! ************************************************************************** !
 
 subroutine PSAT_oil(t,psat,ierr)
   PetscReal t,psat
   PetscErrorCode :: ierr
 end subroutine PSAT_oil
 
+! ************************************************************************** !
 
 subroutine oil_eos(t,p, x_mid, x_heavy, denoil, h, scale, ierr)
     implicit none

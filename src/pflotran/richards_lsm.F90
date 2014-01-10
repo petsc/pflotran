@@ -32,14 +32,14 @@ module Richards_LSM_module
 contains
 
 ! ************************************************************************** !
-!> This routine computes the gradient of pressure using a least-square-method
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 11/24/12
-! ************************************************************************** !
+
 subroutine RichardsUpdateLSMAuxVarsPatch(realization)
+  ! 
+  ! This routine computes the gradient of pressure using a least-square-method
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 11/24/12
+  ! 
 
   use Realization_class
   use Patch_module
@@ -165,20 +165,7 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
 end subroutine RichardsUpdateLSMAuxVarsPatch
 
 ! ************************************************************************** !
-!> This routine computes the derivatives of the internal flux terms for the
-!! Jacobian, when least-squares-method is used to compute the gradients.
-!!
-!! NOTE: Each internal flux term, depends on states of 'up', 'down', and
-!!       neighbors of 'up' & 'down' cells. Thus, jacobian matrix should have
-!!       entries in multiple columns of the Jacobian matrix that corresponds
-!!       to neigboring cells for a given internal flux term. But, the entries
-!!       corresponding to neigboring cells are neglected presently.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/17/12
-! ************************************************************************** !
+
 subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
@@ -191,6 +178,18 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   x,y,z, &
                                   bnd_cell, &
                                   Jup,Jdn)
+  ! 
+  ! This routine computes the derivatives of the internal flux terms for the
+  ! Jacobian, when least-squares-method is used to compute the gradients.
+  ! NOTE: Each internal flux term, depends on states of 'up', 'down', and
+  ! neighbors of 'up' & 'down' cells. Thus, jacobian matrix should have
+  ! entries in multiple columns of the Jacobian matrix that corresponds
+  ! to neigboring cells for a given internal flux term. But, the entries
+  ! corresponding to neigboring cells are neglected presently.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/17/12
+  ! 
   use Option_module
   use Saturation_Function_module
 
@@ -350,14 +349,7 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 end subroutine RichardsLSMFluxDerivative
 
 ! ************************************************************************** !
-!> This routine computes the internal flux terms for the residual term using
-!! a least-square-method for gradient computation.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/10/12
-! ************************************************************************** !
+
 subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
                            por_up,sir_up,dd_up,perm_up, &
                            rich_aux_var_dn,global_aux_var_dn, &
@@ -367,6 +359,13 @@ subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
                            ghosted_id_up, ghosted_id_dn, cell_neighbors, &
                            bnd_cell, &
                            v_darcy,Res)
+  ! 
+  ! This routine computes the internal flux terms for the residual term using
+  ! a least-square-method for gradient computation.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/10/12
+  ! 
   use Option_module
 
   implicit none

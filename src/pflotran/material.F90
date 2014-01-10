@@ -30,10 +30,11 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: alpha    ! conductivity saturation relation exponent
-#ifdef ICE
+
+    ! ice properties
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
-#endif
+
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
@@ -87,13 +88,14 @@ module Material_module
 contains
 
 ! ************************************************************************** !
-!
-! MaterialPropertyCreate: Creates a material property
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function MaterialPropertyCreate()
+  ! 
+  ! Creates a material property
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
   
   implicit none
 
@@ -127,10 +129,10 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
   material_property%alpha = 0.45d0
-#ifdef ICE
+
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
-#endif
+
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
@@ -163,13 +165,14 @@ function MaterialPropertyCreate()
 end function MaterialPropertyCreate
 
 ! ************************************************************************** !
-!
-! MaterialPropertyRead: Reads in contents of a material_property card
-! author: Glenn Hammond
-! date: 01/13/09
-! 
-! ************************************************************************** !
+
 subroutine MaterialPropertyRead(material_property,input,option)
+  ! 
+  ! Reads in contents of a material_property card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -246,7 +249,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%alpha)
         call InputErrorMsg(input,option,'thermal conductivity exponent', &
                            'MATERIAL_PROPERTY')
-#ifdef ICE
       case('THERMAL_CONDUCTIVITY_FROZEN') 
         therm_k_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
@@ -259,7 +261,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%alpha_fr)
         call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
-#endif
       case('PORE_COMPRESSIBILITY') 
         call InputReadDouble(input,option, &
                              material_property%pore_compressibility)
@@ -547,32 +548,32 @@ subroutine MaterialPropertyRead(material_property,input,option)
                            ') not recognized in material_property'    
         call printErrMsg(option)
     end select 
-  
-  enddo  
+  enddo
 
-#ifdef ICE
   if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
-    if (.not.therm_k_frz) then
-      option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN not set in inputdeck'
-      call printErrMsg(option)
-    endif
-    if (.not.therm_k_exp_frz) then
-      option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN not set in inputdeck'
-      call printErrMsg(option)
-    endif
+     if (option%use_th_freezing .eqv. PETSC_TRUE) then
+        if (.not. therm_k_frz) then
+           option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           call printErrMsg(option)
+        endif
+        if (.not. therm_k_exp_frz) then
+           option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           call printErrMsg(option)
+        endif
+     endif
   endif
-#endif
 
 end subroutine MaterialPropertyRead
 
 ! ************************************************************************** !
-!
-! MaterialPropertyAddToList: Adds a material property to linked list
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine MaterialPropertyAddToList(material_property,list)
+  ! 
+  ! Adds a material property to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   
@@ -596,14 +597,15 @@ subroutine MaterialPropertyAddToList(material_property,list)
 end subroutine MaterialPropertyAddToList
 
 ! ************************************************************************** !
-!
-! MaterialPropConvertListToArray: Creates an array of pointers to the 
-!                                material_properties in the list
-! author: Glenn Hammond
-! date: 12/18/07
-!
-! ************************************************************************** !
+
 subroutine MaterialPropConvertListToArray(list,array,option)
+  ! 
+  ! Creates an array of pointers to the
+  ! material_properties in the list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/07
+  ! 
 
   use Option_module
   use String_module
@@ -725,15 +727,16 @@ subroutine MaterialPropConvertListToArray(list,array,option)
 end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
-!
-! MaterialPropGetPtrFromList: Returns a pointer to the material property
-!                             matching material_name
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function MaterialPropGetPtrFromList(material_property_name, &
                                     material_property_list)
+  ! 
+  ! Returns a pointer to the material property
+  ! matching material_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use String_module
   
@@ -762,15 +765,16 @@ function MaterialPropGetPtrFromList(material_property_name, &
 end function MaterialPropGetPtrFromList
 
 ! ************************************************************************** !
-!
-! MaterialPropGetPtrFromArray: Returns a pointer to the material property
-!                              matching material_name
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function MaterialPropGetPtrFromArray(material_property_name, &
                                      material_property_array)
+  ! 
+  ! Returns a pointer to the material property
+  ! matching material_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use String_module
 
@@ -800,14 +804,15 @@ function MaterialPropGetPtrFromArray(material_property_name, &
 end function MaterialPropGetPtrFromArray
 
 ! ************************************************************************** !
-!
-! MaterialAnisotropyExists: Determines whether any of the material 
-!                           properties are anisotropic
-! author: Glenn Hammond
-! date: 07/11/13
-!
-! ************************************************************************** !
+
 function MaterialAnisotropyExists(material_property_list)
+  ! 
+  ! Determines whether any of the material
+  ! properties are anisotropic
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/11/13
+  ! 
 
   implicit none
   
@@ -832,13 +837,14 @@ function MaterialAnisotropyExists(material_property_list)
 end function MaterialAnisotropyExists
 
 ! ************************************************************************** !
-!
-! MaterialPropertyDestroy: Destroys a material_property
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 recursive subroutine MaterialPropertyDestroy(material_property)
+  ! 
+  ! Destroys a material_property
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   

@@ -63,15 +63,15 @@ module MFD_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MFDAuxCreate: Allocate and initialize auxiliary object
-! author: Daniil Svyatskiy
-! date: 02/03/10
-!
-! ************************************************************************** !
 function MFDAuxCreate()
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/03/10
+  ! 
 
   use Option_module
 
@@ -118,13 +118,14 @@ function MFDAuxCreate()
 end function MFDAuxCreate
 
 ! ************************************************************************** !
-!
-! MFDAuxInit: Initialize auxiliary object
-! author: Daniil Svyatskiy
-! date: 02/03/10
-!
-! ************************************************************************** !
+
 subroutine MFDAuxInit(aux, num_aux, option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/03/10
+  ! 
 
   use Option_module
 
@@ -150,13 +151,14 @@ subroutine MFDAuxInit(aux, num_aux, option)
 end subroutine MFDAuxInit
 
 ! ************************************************************************** !
-!
-! MFDAuxVarInit: Initialize auxiliary object
-! author: Daniil Svyatskiy
-! date: 02/03/10
-!
-! ************************************************************************** !
+
 subroutine MFDAuxVarInit(aux_var, numfaces, option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/03/10
+  ! 
 
   use Option_module
 
@@ -174,13 +176,14 @@ subroutine MFDAuxVarInit(aux_var, numfaces, option)
 end subroutine MFDAuxVarInit
 
 ! ************************************************************************** !
-!
-! MFDAuxVarAddFace: Add face_id to list of faces
-! author: Daniil Svyatskiy
-! date: 02/03/10
-!
-! ************************************************************************** !
+
 subroutine MFDAuxAddFace(aux_var, option, face_id)
+  ! 
+  ! MFDAuxVarAddFace: Add face_id to list of faces
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/03/10
+  ! 
 
   use Option_module
 
@@ -209,15 +212,16 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
   endif
   
 end subroutine MFDAuxAddFace
-  
+
 ! ************************************************************************** !
-!
-! MFDAuxVarDestroy: Deallocates a mode auxiliary object
-! author: Daniil Svyatskiy
-! date: 02/03/10
-!
-! ************************************************************************** !
+
 subroutine MFDAuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/03/10
+  ! 
 
   implicit none
 
@@ -248,13 +252,14 @@ subroutine MFDAuxVarDestroy(aux_var)
 end subroutine MFDAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MFDAuxDestroy: Deallocates a mode auxiliary object
-! author: Daniil Svyatskiy
-! date: 02/03/10
-!
-! ************************************************************************** !
+
 subroutine MFDAuxDestroy(aux)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 02/03/10
+  ! 
 
   implicit none
 
@@ -330,7 +335,7 @@ subroutine MFDAuxDestroy(aux)
 end subroutine MFDAuxDestroy
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxInitResidDerivArrays(aux_var, option)
 
 use Option_module
@@ -359,7 +364,7 @@ use Option_module
 end subroutine MFDAuxInitResidDerivArrays
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine MFDAuxInitStiffMatrix(aux_var, option)
 
    use Option_module

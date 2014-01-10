@@ -27,13 +27,14 @@ module Dataset_Global_HDF5_class
 contains
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Create: Creates global dataset class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetGlobalHDF5Create()
+  ! 
+  ! Creates global dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -49,13 +50,14 @@ function DatasetGlobalHDF5Create()
 end function DatasetGlobalHDF5Create
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Init: Initializes members of global dataset class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGlobalHDF5Init(this)
+  ! 
+  ! Initializes members of global dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -69,13 +71,14 @@ subroutine DatasetGlobalHDF5Init(this)
 end subroutine DatasetGlobalHDF5Init
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Cast: Casts a dataset_base_type to database_global_type
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetGlobalHDF5Cast(this)
+  ! 
+  ! Casts a dataset_base_type to database_global_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Dataset_Base_class
   
@@ -94,13 +97,14 @@ function DatasetGlobalHDF5Cast(this)
 end function DatasetGlobalHDF5Cast
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Load: Load new data into dataset buffer
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGlobalHDF5Load(this,option)
+  ! 
+  ! Load new data into dataset buffer
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
 #if defined(PETSC_HAVE_HDF5)    
   use hdf5, only : H5T_NATIVE_DOUBLE
@@ -145,14 +149,16 @@ subroutine DatasetGlobalHDF5Load(this,option)
 end subroutine DatasetGlobalHDF5Load
 
 #if defined(PETSC_HAVE_HDF5)    
+
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5ReadData: Read an hdf5 array into a Petsc Vec
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
+
 subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
+  ! 
+  ! Read an hdf5 array into a Petsc Vec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/08
+  ! 
                          
   use hdf5
   use Logging_module
@@ -387,13 +393,14 @@ end subroutine DatasetGlobalHDF5ReadData
 #endif
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Print: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGlobalHDF5Print(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -413,13 +420,14 @@ subroutine DatasetGlobalHDF5Print(this,option)
 end subroutine DatasetGlobalHDF5Print
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Strip: Strips allocated objects within Global dataset object
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGlobalHDF5Strip(this)
+  ! 
+  ! Strips allocated objects within Global dataset object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Utility_module, only : DeallocateArray
 
@@ -433,13 +441,14 @@ subroutine DatasetGlobalHDF5Strip(this)
 end subroutine DatasetGlobalHDF5Strip
 
 ! ************************************************************************** !
-!
-! DatasetGlobalHDF5Destroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine DatasetGlobalHDF5Destroy(this)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   implicit none
   

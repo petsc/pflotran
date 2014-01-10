@@ -52,13 +52,14 @@ module Miscible_module
 contains
 
 ! ************************************************************************** !
-!
-! MiscibleTimeCut: Resets arrays for time step cut
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -82,13 +83,12 @@ subroutine MiscibleTimeCut(realization)
 end subroutine MiscibleTimeCut
 
 ! ************************************************************************** !
-!
-! MiscibleSetup: 
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleSetup(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -110,13 +110,14 @@ subroutine MiscibleSetup(realization)
 end subroutine MiscibleSetup
 
 ! ************************************************************************** !
-!
-! MiscibleSetupPatch: Creates arrays for auxiliary variables
-! author: Chuan Lu
-! date: 10/1/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/1/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -211,14 +212,14 @@ subroutine MiscibleSetupPatch(realization)
 end subroutine MiscibleSetupPatch
 
 ! ************************************************************************** !
-!
-! MiscibleComputeMassBalance: 
-!                        
-! author: Jitendra Kumar 
-! date: 07/21/2010
-! Adapted from RichardsComputeMassBalance: need to be checked
-! ************************************************************************** !
+
 subroutine MiscibleComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Adapted from RichardsComputeMassBalance: need to be checked
+  ! 
+  ! Author: Jitendra Kumar
+  ! Date: 07/21/2010
+  ! 
 
   use Realization_class
   use Patch_module
@@ -241,14 +242,14 @@ subroutine MiscibleComputeMassBalance(realization,mass_balance)
 end subroutine MiscibleComputeMassBalance    
 
 ! ************************************************************************** !
-!
-! MiscibleComputeMassBalancePatch: 
-!                        
-! author: Jitendra Kumar 
-! date: 07/21/2010
-! Adapted from RichardsComputeMassBalancePatch: need to be checked
-! ************************************************************************** !
+
 subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! Adapted from RichardsComputeMassBalancePatch: need to be checked
+  ! 
+  ! Author: Jitendra Kumar
+  ! Date: 07/21/2010
+  ! 
  
   use Realization_class
   use Option_module
@@ -309,13 +310,14 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
 end subroutine MiscibleComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! MiscibleZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra, LANL
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine MiscibleZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 12/13/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -361,13 +363,14 @@ subroutine MiscibleZeroMassBalDeltaPatch(realization)
 end subroutine MiscibleZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -420,12 +423,14 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
 end subroutine MiscibleUpdateMassBalancePatch
 
 ! ************************************************************************** !
-! MiscibleInitGuessCheckPatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
   function MiscibleInitGuessCheck(realization)
+  ! 
+  ! MiscibleInitGuessCheckPatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
  
   use Realization_class
   use Patch_module
@@ -461,15 +466,13 @@ end subroutine MiscibleUpdateMassBalancePatch
 
 end function MiscibleInitGuessCheck
 
-
-
 ! ************************************************************************** !
-! MiscibleInitGuessCheckPatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
   function MiscibleInitGuessCheckPatch(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
    
     use co2_span_wagner_module
      
@@ -502,15 +505,16 @@ end function MiscibleInitGuessCheck
     MiscibleInitGuessCheckPatch = ipass
   end function MiscibleInitGuessCheckPatch
 
-! ***************************************************************************
-!
-! MiscibleUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Miscible problem
-! author: Chuan Lu
-! date: 10/10/08
-!
 ! ************************************************************************** !
+
 subroutine MiscibleUpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Miscible problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -530,14 +534,15 @@ subroutine MiscibleUpdateAuxVars(realization)
 end subroutine MiscibleUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Miscible problem
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Miscible problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -657,13 +662,14 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
 end subroutine MiscibleUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! MiscibleInitializeTimestep: Update data in module prior to time step
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   
@@ -676,13 +682,14 @@ subroutine MiscibleInitializeTimestep(realization)
 end subroutine MiscibleInitializeTimestep
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateSolution: Updates data in module after a successful time step
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -711,17 +718,17 @@ subroutine MiscibleUpdateSolution(realization)
 
 end subroutine MiscibleUpdateSolution
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step 
-! author: Satish Karra, LANL
-! written based on RichardsUpdateSolutionPatch
-! date: 08/23/11
-!
-! ************************************************************************** !
 subroutine MiscibleUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! written based on RichardsUpdateSolutionPatch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 08/23/11
+  ! 
 
   use Realization_class
     
@@ -736,14 +743,15 @@ subroutine MiscibleUpdateSolutionPatch(realization)
 end subroutine MiscibleUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -763,14 +771,15 @@ subroutine MiscibleUpdateFixedAccumulation(realization)
 end subroutine MiscibleUpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -843,16 +852,16 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
 
 end subroutine MiscibleUpdateFixedAccumPatch
 
-
 ! ************************************************************************** !
-!
-! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -881,14 +890,15 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
 end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
-!
-! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine MiscibleAccumulation_Xp(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+  ! 
+  ! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
 use Option_module
 
@@ -922,19 +932,21 @@ Res(1:option%nflowspec) = mol(:)
 end subroutine MiscibleAccumulation_Xp
 
 ! ************************************************************************** !
-!
-! MiscibleSourceSink: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res,&
                             qsrc_phase,energy_flag, option)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
-  use Water_EOS_module
+  
+  use EOS_Water_module
   use co2eos_module
   use co2_span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
@@ -977,7 +989,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
       msrc(1) = msrc(1) / FMWH2O
       msrc(2) = msrc(2) / FMWGLYC
       if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
-!        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+!        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
@@ -1042,8 +1054,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
     ! injection well (well status = 2)
       if (dabs(well_status - 2D0) < 1D-1) then 
 
-        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
-          option%scale,ierr)
+        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol, &
+                                     enth_src_h2o,option%scale,ierr)
 
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
@@ -1082,18 +1094,18 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
   
 end subroutine MiscibleSourceSink
 
-
 ! ************************************************************************** !
-!
-! MiscibleFlux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
+
 subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
                         aux_var_dn,por_dn,tor_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
@@ -1175,15 +1187,16 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
 end subroutine MiscibleFlux
 
 ! ************************************************************************** !
-!
-! MiscibleBCFlux: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,dd_up,perm_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
@@ -1285,13 +1298,14 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine MiscibleBCFlux
 
 ! ************************************************************************** !
-!
-! MiscibleResidual: Computes the residual equation 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1394,13 +1408,14 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 end subroutine MiscibleResidual
 
 ! ************************************************************************** !
-!
-! MiscibleResidualPatch1: Computes the Residual by Flux
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the Residual by Flux
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -1687,13 +1702,14 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 end subroutine MiscibleResidualPatch1
 
 ! ************************************************************************** !
-!
-! MiscibleJacobianPatch0: Computes the Residual Aux vars for numerical Jacobin
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
+  ! 
+  ! MiscibleJacobianPatch0: Computes the Residual Aux vars for numerical Jacobin
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -1855,14 +1871,15 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 end subroutine MiscibleResidualPatch0
 
 ! ************************************************************************** !
-!
-! MiscibleResidualPatch2: Computes other terms in Residual
-!                       (accumulation, source/sink, reaction)
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes other terms in Residual
+  ! (accumulation, source/sink, reaction)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2103,15 +2120,15 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
  
 end subroutine MiscibleResidualPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleJacobian: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2197,15 +2214,15 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine MiscibleJacobian
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleJacobianPatch1: Computes the Jacobian: Flux term
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
 subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian: Flux term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -2589,13 +2606,14 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine MiscibleJacobianPatch1
 
 ! ************************************************************************** !
-!
-! MiscibleJacobianPatch2: Computes the Jacobian: Accum, source, reaction
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian: Accum, source, reaction
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -2904,15 +2922,15 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine MiscibleJacobianPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
 subroutine MiscibleCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Patch_module
   use Grid_module
@@ -2992,13 +3010,14 @@ subroutine MiscibleCreateZeroArray(patch,option)
 end subroutine MiscibleCreateZeroArray
 
 ! ************************************************************************** !
-!
-! MiscibleMaxChange: Computes the maximum change in the solution vector
-! author: Chuan Lu
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3038,14 +3057,15 @@ subroutine MiscibleMaxChange(realization)
 end subroutine MiscibleMaxChange
 
 ! ************************************************************************** !
-!
-! MiscibleGetTecplotHeader: Returns Richards contribution to 
-!                               Tecplot file header
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function MiscibleGetTecplotHeader(realization, icolumn)
+  ! 
+  ! Returns Richards contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -3108,13 +3128,14 @@ function MiscibleGetTecplotHeader(realization, icolumn)
 end function MiscibleGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! MiscibleSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine MiscibleSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -3162,15 +3183,15 @@ subroutine MiscibleSetPlotVariables(realization)
 
 end subroutine MiscibleSetPlotVariables
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseDestroy: Deallocates variables associated with Miscible
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
 subroutine MiscibleDestroy(realization)
+  ! 
+  ! MphaseDestroy: Deallocates variables associated with Miscible
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Realization_class
 

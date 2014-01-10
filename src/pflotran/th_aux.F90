@@ -29,7 +29,7 @@ module TH_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-#ifdef ICE
+    ! ice
     PetscReal :: sat_ice
     PetscReal :: sat_gas
     PetscReal :: dsat_dt
@@ -42,7 +42,6 @@ module TH_Aux_module
     PetscReal :: dden_ice_dt
     PetscReal :: u_ice
     PetscReal :: du_ice_dt
-#endif
   end type TH_auxvar_type
 
   type, public :: TH_parameter_type
@@ -50,10 +49,8 @@ module TH_Aux_module
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Thermal conductivity (wet)
     PetscReal, pointer :: alpha(:)
-#ifdef ICE
     PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
-    PetscReal, pointer :: alpha_fr(:)
-#endif
+    PetscReal, pointer :: alpha_fr(:) ! exponent frozen
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
     PetscReal, pointer :: diffusion_activation_energy(:)
@@ -76,21 +73,19 @@ module TH_Aux_module
             THAuxVarCompute, THAuxVarInit, &
             THAuxVarCopy
 
-#ifdef ICE
   public :: THAuxVarComputeIce
-#endif
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! THAuxCreate: Allocate and initialize auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
 function THAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -126,13 +121,14 @@ function THAuxCreate(option)
 end function THAuxCreate
 
 ! ************************************************************************** !
-!
-! THAuxVarInit: Initialize auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine THAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -164,7 +160,7 @@ subroutine THAuxVarInit(aux_var,option)
   aux_var%xmol = 0.d0
   allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 1.d-9
-#ifdef ICE
+  ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
   aux_var%sat_ice = 0.d0
   aux_var%sat_gas = 0.d0
   aux_var%dsat_dt = 0.d0
@@ -177,18 +173,18 @@ subroutine THAuxVarInit(aux_var,option)
   aux_var%dden_ice_dt = 0.d0
   aux_var%u_ice = 0.d0
   aux_var%du_ice_dt = 0.d0
-#endif
 
 end subroutine THAuxVarInit
 
 ! ************************************************************************** !
-!
-! THAuxVarCopy: Copies an auxiliary variable
-! author: ???
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine THAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: ???
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
 
@@ -222,36 +218,38 @@ subroutine THAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%du_dt = aux_var%du_dt  
   aux_var2%xmol = aux_var%xmol
   aux_var2%diff = aux_var%diff
-#ifdef ICE
-  aux_var2%sat_ice = aux_var%sat_ice 
-  aux_var2%sat_gas = aux_var%sat_gas
-  aux_var2%dsat_dt = aux_var%dsat_dt
-  aux_var2%dsat_ice_dp = aux_var%dsat_ice_dp
-  aux_var2%dsat_gas_dp = aux_var%dsat_gas_dp
-  aux_var2%dsat_ice_dt = aux_var%dsat_ice_dt
-  aux_var2%dsat_gas_dt = aux_var%dsat_gas_dt
-  aux_var2%den_ice = aux_var%den_ice
-  aux_var2%dden_ice_dp = aux_var%dden_ice_dp
-  aux_var2%dden_ice_dt = aux_var%dden_ice_dt
-  aux_var2%u_ice = aux_var%u_ice
-  aux_var2%du_ice_dt = aux_var%du_ice_dt
-#endif
+  if (option%use_th_freezing) then
+     aux_var2%sat_ice = aux_var%sat_ice 
+     aux_var2%sat_gas = aux_var%sat_gas
+     aux_var2%dsat_dt = aux_var%dsat_dt
+     aux_var2%dsat_ice_dp = aux_var%dsat_ice_dp
+     aux_var2%dsat_gas_dp = aux_var%dsat_gas_dp
+     aux_var2%dsat_ice_dt = aux_var%dsat_ice_dt
+     aux_var2%dsat_gas_dt = aux_var%dsat_gas_dt
+     aux_var2%den_ice = aux_var%den_ice
+     aux_var2%dden_ice_dp = aux_var%dden_ice_dp
+     aux_var2%dden_ice_dt = aux_var%dden_ice_dt
+     aux_var2%u_ice = aux_var%u_ice
+     aux_var2%du_ice_dt = aux_var%du_ice_dt
+  endif
 
 end subroutine THAuxVarCopy
 
 ! ************************************************************************** !
-!
-! THAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: ???
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
                             iphase,saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: ???
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
+  use EOS_Water_module
   use Saturation_Function_module  
   
   implicit none
@@ -322,16 +320,15 @@ subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
+  call EOSWaterSaturationPressure(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
   
 !  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
-  
-  dvis_dpsat = -dvis_dp 
+  call EOSWaterViscosity(global_aux_var%temp(1),pw,sat_pressure,dpsat_dt,visl, &
+                         dvis_dt,dvis_dp,dvis_dpsat,ierr)
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
     dw_dp = 0.d0
@@ -356,7 +353,9 @@ subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
 
   aux_var%dden_dp = dw_dp
   
-  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt+dvis_dpsat*dpsat_dt)
+!geh: contribution of dvis_dpsat is now added in EOSWaterViscosity
+!  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt+dvis_dpsat*dpsat_dt)
+  aux_var%dkvr_dt = -kr/(visl*visl)*dvis_dt
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   if (iphase < 3) then !kludge since pw is constant in the unsat zone
     aux_var%dh_dp = hw_dp
@@ -372,23 +371,23 @@ subroutine THAuxVarCompute(x,aux_var,global_aux_var, &
 end subroutine THAuxVarCompute
 
 ! ************************************************************************** !
-! 
-! THAuxVarComputeIce: Computes auxillary variables for each grid cell when
-!                      ice and vapor phases are present
-! author: Satish Karra, LANL
-! Date: 11/16/11
-!
-! ************************************************************************** !
 
-#ifdef ICE
 subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                saturation_function, por, perm, option)
+  ! 
+  ! Computes auxillary variables for each grid cell when
+  ! ice and vapor phases are present
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/16/11
+  ! 
 
 !sk: Not sure if we need por, perm
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
+  use EOS_Water_module
   use Saturation_Function_module  
   
   implicit none
@@ -471,8 +470,8 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, p_th, option)
 
 
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
 !  call wateos_flag (global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
 !                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
@@ -484,15 +483,11 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 !  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
 !                         dw_dt, hw, hw_dp, hw_dt, ierr)
                          
-  call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
-  
-  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
-            dvis_dp, ierr)
+  call EOSWaterSaturationPressure(global_aux_var%temp(1), sat_pressure, &
+                                  dpsat_dt, ierr)
+  call EOSWaterViscosity(global_aux_var%temp(1), pw, sat_pressure, dpsat_dt, &
+                         visl, dvis_dt, dvis_dp, dvis_dpsat, ierr)
 
-!  call VISW_temp(global_aux_var%temp(1),visl,dvis_dt,ierr)
-!  dvis_dp = 0.d0
-  
-  dvis_dpsat = -dvis_dp 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
     dw_dp = 0.d0
@@ -509,7 +504,9 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dsat_dp = ds_dp
   aux_var%dden_dt = dw_dt
   aux_var%dden_dp = dw_dp
-  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt) + dkr_dt/visl
+!geh: contribution of dvis_dpsat is now added in EOSWaterViscosity  
+!  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt) + dkr_dt/visl
+  aux_var%dkvr_dt = -kr/(visl*visl)*dvis_dt + dkr_dt/visl
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   aux_var%dh_dp = hw_dp
   aux_var%du_dp = hw_dp - (dpw_dp/dw_mol - pw/(dw_mol*dw_mol)*dw_dp)* &
@@ -526,10 +523,10 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dsat_gas_dt = dsg_temp
   
 ! Calculate the density, internal energy and derivatives for ice
-  call DensityIce(global_aux_var%temp(1), global_aux_var%pres(1), &
-                  den_ice, dden_ice_dT, dden_ice_dP)
+  call EOSWaterDensityIce(global_aux_var%temp(1), global_aux_var%pres(1), &
+                          den_ice, dden_ice_dT, dden_ice_dP)
 
-  call InternalEnergyIce(global_aux_var%temp(1), u_ice, du_ice_dT)
+  call EOSWaterInternalEnergyIce(global_aux_var%temp(1), u_ice, du_ice_dT)
 
   aux_var%den_ice = den_ice
   aux_var%dden_ice_dt = dden_ice_dT
@@ -538,16 +535,16 @@ subroutine THAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
 
 end subroutine THAuxVarComputeIce
-#endif
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a TH auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine AuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a TH auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -561,13 +558,14 @@ subroutine AuxVarDestroy(aux_var)
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! THAuxDestroy: Deallocates a TH auxiliary object
-! author: ???
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine THAuxDestroy(aux)
+  ! 
+  ! Deallocates a TH auxiliary object
+  ! 
+  ! Author: ???
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -611,12 +609,12 @@ subroutine THAuxDestroy(aux)
     nullify(aux%TH_parameter%ckdry)
     if (associated(aux%TH_parameter%alpha)) deallocate(aux%TH_parameter%alpha)
     nullify(aux%TH_parameter%alpha)
-#ifdef ICE
+    ! ice
     if (associated(aux%TH_parameter%ckfrozen)) deallocate(aux%TH_parameter%ckfrozen)
     nullify(aux%TH_parameter%ckfrozen)
     if (associated(aux%TH_parameter%alpha_fr)) deallocate(aux%TH_parameter%alpha_fr)
     nullify(aux%TH_parameter%alpha_fr)
-#endif
+
     if (associated(aux%TH_parameter%sir)) deallocate(aux%TH_parameter%sir)
     nullify(aux%TH_parameter%sir)
   endif

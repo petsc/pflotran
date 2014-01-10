@@ -81,17 +81,16 @@ type, public :: Flash2_auxvar_elem_type
             Flash2AuxVarInit, Flash2AuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! Flash2AuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function Flash2AuxCreate()
+  ! 
+  ! Flash2AuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -120,16 +119,15 @@ function Flash2AuxCreate()
   
 end function Flash2AuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! Flash2AuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -180,13 +178,14 @@ subroutine Flash2AuxVarInit(aux_var,option)
 end subroutine Flash2AuxVarInit
 
 ! ************************************************************************** !
-!
-! Flash2AuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
+
 subroutine Flash2AuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
@@ -224,21 +223,21 @@ subroutine Flash2AuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine Flash2AuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
              saturation_function,fluid_properties,option,xphico2)
+  ! 
+  ! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   use Global_Aux_module  
-  use Water_EOS_module
+  use EOS_Water_module
   use Gas_EOS_module
   use co2eos_module
   use co2_span_wagner_module
@@ -292,7 +291,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   t = aux_var%temp
 
 ! ********************* Gas phase properties ***********************
-    call PSAT(t, sat_pressure, ierr)
+    call EOSWaterSaturationPressure(t, sat_pressure, ierr)
     err=1.D0
     p2 = p
 
@@ -391,7 +390,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 ! **************  Gas phase properties ********************
     aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
-    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr)
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg * option%scale
@@ -416,9 +415,9 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-    call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
+    call EOSWaterDensityNaCl(t, p*1D-6, xm_nacl, dw_kg) 
     dw_kg = dw_kg * 1D3
-    call nacl_vis(t,p*1D-6,xm_nacl,visl)
+    call EOSWaterViscosityNaCl(t,p*1D-6,xm_nacl,visl)
     
     y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 !   y_nacl is the mole fraction
@@ -427,7 +426,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 !duan mixing **************************
 #ifdef DUANDEN
-  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************
@@ -492,14 +491,14 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 end subroutine Flash2AuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
   use Saturation_Function_module
   use Fluid_module
   
@@ -525,13 +524,14 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
 end subroutine Flash2AuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxVarDestroy(aux_var)
+  ! 
+  ! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -558,13 +558,14 @@ subroutine Flash2AuxVarDestroy(aux_var)
 end subroutine Flash2AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxDestroy(aux, option)
+  ! 
+  ! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   implicit none

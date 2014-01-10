@@ -32,15 +32,16 @@
 ! Sandia National Laboratories
 ! Applied Systems Analysis & Research
 ! 413 Cherry Blossom Lp
-! (509) 392-1715
-! gehammo@sandia.gov
 ! Richland, WA 99352
+! (505) 235-0665
+! gehammo@sandia.gov
 
 !=======================================================================
 program pflotran
   
   use Option_module
   use Simulation_Base_class
+  use Multi_Simulation_module
   use PFLOTRAN_Factory_module
   use Subsurface_Factory_module
   use Hydrogeophysics_Factory_module
@@ -56,39 +57,48 @@ program pflotran
 #include "finclude/petscsys.h"
 
   class(simulation_base_type), pointer :: simulation
+  ! multisimulation enables multiple simulations to be run concurrently
+  ! and/or one after another until a specified set of simulations has 
+  ! completed.
+  type(multi_simulation_type), pointer :: multisimulation
   type(option_type), pointer :: option
   
   nullify(simulation)
+  nullify(multisimulation)
   option => OptionCreate()
   call OptionInitMPI(option)
-  call PFLOTRANInitialize(option)
-  select case(option%simulation_mode)
-    case('SUBSURFACE')
-      call SubsurfaceInitialize(simulation,option)
-    case('HYDROGEOPHYSICS')
-      call HydrogeophysicsInitialize(simulation,option)
+  call PFLOTRANInitializePrePetsc(multisimulation,option)
+  call OptionInitPetsc(option)
+  do ! multi-simulation loop
+    call PFLOTRANInitializePostPetsc(multisimulation,option)
+    select case(option%simulation_mode)
+      case('SUBSURFACE')
+        call SubsurfaceInitialize(simulation,option)
+      case('HYDROGEOPHYSICS')
+        call HydrogeophysicsInitialize(simulation,option)
 #ifdef SURFACE_FLOW      
-    case('SURFACE')
-      call SurfaceInitialize(simulation,option)
-    case('SURFACE_SUBSURFACE')
-      call SurfSubsurfaceInitialize(simulation,option)
+      case('SURFACE')
+        call SurfaceInitialize(simulation,option)
+      case('SURFACE_SUBSURFACE')
+        call SurfSubsurfaceInitialize(simulation,option)
 #endif      
-    case default
-      option%io_buffer = 'Simulation Mode not recognized.'
-      call printErrMsg(option)
-  end select
-  call simulation%InitializeRun()
+      case default
+        option%io_buffer = 'Simulation Mode not recognized.'
+        call printErrMsg(option)
+    end select
+    call simulation%InitializeRun()
 
-  if (option%status == PROCEED) then
-    call simulation%ExecuteRun()
-  endif
+    if (option%status == PROCEED) then
+      call simulation%ExecuteRun()
+    endif
 
-  call simulation%FinalizeRun()
-  call simulation%Strip()
-  deallocate(simulation)
-  nullify(simulation)
-  
-  call PFLOTRANFinalize(option)
+    call simulation%FinalizeRun()
+    call simulation%Strip()
+    deallocate(simulation)
+    nullify(simulation)
+    call PFLOTRANFinalize(option)
+    if (MultiSimulationDone(multisimulation)) exit
+  enddo ! multi-simulation loop
   call OptionFinalize(option)
 
 end program pflotran

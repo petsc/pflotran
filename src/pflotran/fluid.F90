@@ -30,13 +30,14 @@ module Fluid_module
 contains
 
 ! ************************************************************************** !
-!
-! FluidPropertyCreate: Creates a fluid property object
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 function FluidPropertyCreate()
+  ! 
+  ! Creates a fluid property object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
   
   implicit none
 
@@ -63,13 +64,14 @@ function FluidPropertyCreate()
 end function FluidPropertyCreate
 
 ! ************************************************************************** !
-!
-! FluidPropertyRead: Reads in contents of a fluid property card
-! author: Glenn Hammond
-! date: 01/21/09
-! 
-! ************************************************************************** !
+
 subroutine FluidPropertyRead(fluid_property,input,option)
+  ! 
+  ! Reads in contents of a fluid property card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -119,13 +121,14 @@ subroutine FluidPropertyRead(fluid_property,input,option)
 end subroutine FluidPropertyRead
 
 ! ************************************************************************** !
-!
-! FluidPropertyAddToList: Adds a thermal property to linked list
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 subroutine FluidPropertyAddToList(fluid_property,list)
+  ! 
+  ! Adds a thermal property to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   implicit none
   
@@ -149,13 +152,14 @@ subroutine FluidPropertyAddToList(fluid_property,list)
 end subroutine FluidPropertyAddToList
 
 ! ************************************************************************** !
-!
-! FluidPropertyDestroy: Destroys a fluid property
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 recursive subroutine FluidPropertyDestroy(fluid_property)
+  ! 
+  ! Destroys a fluid property
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   implicit none
   

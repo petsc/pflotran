@@ -37,13 +37,14 @@ module General_module
 contains
 
 ! ************************************************************************** !
-!
-! GeneralTimeCut: Resets arrays for time step cut
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -78,13 +79,14 @@ subroutine GeneralTimeCut(realization)
 end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
-!
-! GeneralTimeCutPatch: Resets arrays for time step cut
-! author: Glenn Hammond
-! date: 09/26/11
-!
-! ************************************************************************** !
+
 subroutine GeneralTimeCutPatch(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/26/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -122,13 +124,12 @@ subroutine GeneralTimeCutPatch(realization)
 end subroutine GeneralTimeCutPatch
 
 ! ************************************************************************** !
-!
-! GeneralSetup: 
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSetup(realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -150,13 +151,14 @@ subroutine GeneralSetup(realization)
 end subroutine GeneralSetup
 
 ! ************************************************************************** !
-!
-! GeneralSetupPatch: Creates arrays for auxiliary variables
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -267,13 +269,14 @@ subroutine GeneralSetupPatch(realization)
 end subroutine GeneralSetupPatch
 
 ! ************************************************************************** !
-!
-! GeneralSetup: 
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralComputeMassBalance(realization,mass_balance)
+  ! 
+  ! GeneralSetup:
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -296,13 +299,14 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
 end subroutine GeneralComputeMassBalance
 
 ! ************************************************************************** !
-!
-! GeneralComputeMassBalancePatch: Initializes mass balance
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -353,13 +357,14 @@ subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
 end subroutine GeneralComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! GeneralZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -388,13 +393,14 @@ subroutine GeneralZeroMassBalDeltaPatch(realization)
 end subroutine GeneralZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! GeneralUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -425,14 +431,15 @@ subroutine GeneralUpdateMassBalancePatch(realization)
 end subroutine GeneralUpdateMassBalancePatch
 
 ! ************************************************************************** !
-!
-! GeneralUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the General problem
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateAuxVars(realization,update_state)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the General problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -453,14 +460,15 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
 end subroutine GeneralUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! GeneralUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the General problem
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the General problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -587,13 +595,14 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
 end subroutine GeneralUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! GeneralInitializeTimestep: Update data in module prior to time step
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   
@@ -606,14 +615,15 @@ subroutine GeneralInitializeTimestep(realization)
 end subroutine GeneralInitializeTimestep
 
 ! ************************************************************************** !
-!
-! GeneralUpdateSolution: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Field_module
@@ -648,16 +658,16 @@ subroutine GeneralUpdateSolution(realization)
   
 end subroutine GeneralUpdateSolution
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
 subroutine GeneralUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Option_module
@@ -703,14 +713,15 @@ subroutine GeneralUpdateSolutionPatch(realization)
 end subroutine GeneralUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! GeneralUpdateFixedAccum: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateFixedAccum(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -730,14 +741,15 @@ subroutine GeneralUpdateFixedAccum(realization)
 end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
-!
-! GeneralUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                accumulation term
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -817,13 +829,14 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
 end subroutine GeneralUpdateFixedAccumPatch
 
 ! ************************************************************************** !
-!
-! GeneralNumericalJacTest: Computes the a test numerical jacobian
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralNumericalJacTest(xx,realization)
+  ! 
+  ! Computes the a test numerical jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -907,15 +920,16 @@ subroutine GeneralNumericalJacTest(xx,realization)
 end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarPerturb: Calculates auxiliary variables for perturbed system
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
                                 saturation_function,ghosted_id, &
                                 option)
+  ! 
+  ! Calculates auxiliary variables for perturbed system
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   use Saturation_Function_module
@@ -1002,17 +1016,18 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   enddo
   
 end subroutine GeneralAuxVarPerturb
-  
+
 ! ************************************************************************** !
-!
-! GeneralAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !  
+
 subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
                                option,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   
@@ -1074,17 +1089,18 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
                     (1.d0 - por) * dencpr * gen_aux_var%temp) * v_over_t 
 
 end subroutine GeneralAccumulation
-  
+
 ! ************************************************************************** !
-!
-! GeneralAccumDerivative: Computes derivatives of the accumulation 
-!                                 term for the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,dencpr,por,vol, &
                                   option,J)
+  ! 
+  ! Computes derivatives of the accumulation
+  ! term for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   use Saturation_Function_module
@@ -1114,18 +1130,19 @@ subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,dencpr,por,vol, &
 end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
-!
-! GeneralFlux: Computes the internal flux terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
+
 subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
                        por_up,sir_up,dd_up,perm_up,tor_up, &
                        gen_aux_var_dn,global_aux_var_dn, &
                        por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                        area,dist_gravity,upweight,general_parameter, &
                        option,v_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   use Option_module                              
   
   implicit none
@@ -1358,13 +1375,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
-!
-! GeneralFluxDerivative: Computes the derivatives of the internal flux terms
-!                         for the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
+
 subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up,tor_up, &
                                   gen_aux_var_dn,global_aux_var_dn,por_dn, &
@@ -1372,6 +1383,13 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                                   area,dist_gravity,upweight, &
                                   general_parameter, &
                                   option,Jup,Jdn)
+  ! 
+  ! Computes the derivatives of the internal flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   use Option_module 
   
   implicit none
@@ -1430,18 +1448,19 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
 end subroutine GeneralFluxDerivative
 
 ! ************************************************************************** !
-!
-! GeneralBCFlux: Computes the boundary flux terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
+
 subroutine GeneralBCFlux(ibndtype,aux_vars, &
                          gen_aux_var_up,global_aux_var_up, &
                          gen_aux_var_dn,global_aux_var_dn, &
                          por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                          area,dist_gravity,general_parameter, &
                          option,v_darcy,Res)
+  ! 
+  ! Computes the boundary flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   use Option_module                              
   
   implicit none
@@ -1670,13 +1689,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
 end subroutine GeneralBCFlux
 
 ! ************************************************************************** !
-!
-! GeneralBCFluxDerivative: Computes the derivatives of the boundary flux terms
-!                          for the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
+
 subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
                                     gen_aux_var_up, &
                                     global_aux_var_up, &
@@ -1684,6 +1697,13 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
                                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                                     area,dist_gravity,general_parameter, &
                                     option,Jdn)
+  ! 
+  ! Computes the derivatives of the boundary flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module 
   
@@ -1727,18 +1747,20 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
 end subroutine GeneralBCFluxDerivative
 
 ! ************************************************************************** !
-!
-! GeneralSrcSink: Computes the source/sink terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                           gen_aux_var,global_aux_var,scale,res)
+  ! 
+  ! Computes the source/sink terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
-  use Water_EOS_module
+  
   use Gas_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -1784,9 +1806,9 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
 !      if (global_aux_var%istate == LIQUID_STATE .or. &
 !          global_aux_var%istate == TWO_PHASE_STATE) then
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call wateos_noderiv(gen_aux_var%temp, &
-                            gen_aux_var%pres(option%liquid_phase), &
-                            den_kg,den,enthalpy,option%scale,ierr)
+        call EOSWaterDensityEnthalpy(gen_aux_var%temp, &
+                                     gen_aux_var%pres(option%liquid_phase), &
+                                     den_kg,den,enthalpy,option%scale,ierr)
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
@@ -1811,16 +1833,17 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   endif
   
 end subroutine GeneralSrcSink
-  
+
 ! ************************************************************************** !
-!
-! GeneralSrcSinkDerivative: Computes the source/sink terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
                                     gen_aux_vars,global_aux_var,scale,Jac)
+  ! 
+  ! Computes the source/sink terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
 
@@ -1851,13 +1874,14 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
 end subroutine GeneralSrcSinkDerivative
 
 ! ************************************************************************** !
-!
-! GeneralResidual: Computes the residual equation 
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Field_module
@@ -1920,15 +1944,16 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 end subroutine GeneralResidual
 
 ! ************************************************************************** !
-!
-! GeneralResidualPatch1: Computes the residual equation 
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
-subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
+
+  
 
   use Connection_module
   use Realization_class
@@ -2161,15 +2186,16 @@ call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
 end subroutine GeneralResidualPatch1
 
 ! ************************************************************************** !
-!
-! GeneralResidualPatch2: Computes the residual equation 
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
-subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 
-  use Water_EOS_module
+subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
+
+  
 
   use Connection_module
   use Realization_class
@@ -2306,13 +2332,14 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 end subroutine GeneralResidualPatch2
 
 ! ************************************************************************** !
-!
-! GeneralJacobian: Computes the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2382,17 +2409,18 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 
 end subroutine GeneralJacobian
-                
+
 ! ************************************************************************** !
-!
-! GeneralJacobianPatch1: Computes the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
        
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -2633,15 +2661,16 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine GeneralJacobianPatch1
 
 ! ************************************************************************** !
-!
-! GeneralJacobianPatch2: Computes the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
        
-  use Water_EOS_module
+  
 
   use Connection_module
   use Realization_class
@@ -2781,13 +2810,14 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 end subroutine GeneralJacobianPatch2
 
 ! ************************************************************************** !
-!
-! GeneralCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2857,13 +2887,14 @@ subroutine GeneralCreateZeroArray(patch,option)
 end subroutine GeneralCreateZeroArray
 
 ! ************************************************************************** !
-!
-! GeneralMaxChange: Computes the maximum change in the solution vector
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Option_module
@@ -2891,13 +2922,14 @@ subroutine GeneralMaxChange(realization)
 end subroutine GeneralMaxChange
 
 ! ************************************************************************** !
-!
-! GeneralCheckUpdatePre: Checks update prior to update
-! author: Glenn Hammond
-! date: 03/06/13
-!
-! ************************************************************************** !
+
 subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
+  ! 
+  ! Checks update prior to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/06/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -3002,14 +3034,15 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 end subroutine GeneralCheckUpdatePre
 
 ! ************************************************************************** !
-!
-! GeneralCheckUpdatePost: Checks update after to update
-! author: Glenn Hammond
-! date: 03/06/13
-!
-! ************************************************************************** !
+
 subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                    X1_changed,realization,ierr)
+  ! 
+  ! Checks update after to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/06/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -3086,14 +3119,15 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 end subroutine GeneralCheckUpdatePost
 
 ! ************************************************************************** !
-!
-! GeneralGetTecplotHeader: Returns General Lite contribution to 
-!                               Tecplot file header
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 function GeneralGetTecplotHeader(realization,icolumn)
+  ! 
+  ! Returns General Lite contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   
   use Realization_class
   use Option_module
@@ -3212,13 +3246,14 @@ function GeneralGetTecplotHeader(realization,icolumn)
 end function GeneralGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! GeneralSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 02/15/13
-!
-! ************************************************************************** !
+
 subroutine GeneralSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/13
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -3318,13 +3353,14 @@ subroutine GeneralSetPlotVariables(realization)
 end subroutine GeneralSetPlotVariables
 
 ! ************************************************************************** !
-!
-! GeneralDestroy: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralDestroy(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3346,13 +3382,14 @@ subroutine GeneralDestroy(realization)
 end subroutine GeneralDestroy
 
 ! ************************************************************************** !
-!
-! GeneralDestroyPatch: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralDestroyPatch(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
 

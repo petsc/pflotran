@@ -31,6 +31,9 @@ module General_Grid_module
 contains
   
 #if !defined(PETSC_HAVE_HDF5)
+
+! ************************************************************************** !
+
 subroutine ReadStructuredGridHDF5(realization)
 
   use Realization_class
@@ -49,14 +52,16 @@ subroutine ReadStructuredGridHDF5(realization)
 end subroutine ReadStructuredGridHDF5
 
 #else
+
 ! ************************************************************************** !
-!
-! ReadHDF5StructuredGrid: Reads in a structured grid in HDF5 format
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
+
 subroutine ReadStructuredGridHDF5(realization)
+  ! 
+  ! ReadHDF5StructuredGrid: Reads in a structured grid in HDF5 format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/21/07
+  ! 
 
   use hdf5
   
@@ -396,14 +401,15 @@ subroutine ReadStructuredGridHDF5(realization)
 end subroutine ReadStructuredGridHDF5
 
 ! ************************************************************************** !
-!
-! SetupConnectionIndices: Set up indices array that map local connection to  
-!                         entries in HDF5 grid connection vectors
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
+
 subroutine SetupConnectionIndices(grid,option,file_id,indices)
+  ! 
+  ! Set up indices array that map local connection to
+  ! entries in HDF5 grid connection vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/21/07
+  ! 
 
   use hdf5
   use Connection_module
@@ -566,13 +572,14 @@ end subroutine SetupConnectionIndices
 #endif
 
 ! ************************************************************************** !
-!
-! UpdateGlobalToLocal: Updated global vec values to local
-! author: Glenn Hammond
-! date: 06/20/07
-!
-! ************************************************************************** !
+
 subroutine UpdateGlobalToLocal(discretization,field)
+  ! 
+  ! Updated global vec values to local
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/20/07
+  ! 
 
   use Discretization_module
   use Field_module

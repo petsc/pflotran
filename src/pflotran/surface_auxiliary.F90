@@ -25,14 +25,14 @@ module Surface_Auxiliary_module
 contains
 
 ! ************************************************************************** !
-!> This routine initializes a surface-auxiliary object
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceAuxInit(surf_aux)
+  ! 
+  ! This routine initializes a surface-auxiliary object
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   implicit none
   
@@ -44,14 +44,14 @@ subroutine SurfaceAuxInit(surf_aux)
 end subroutine SurfaceAuxInit
 
 ! ************************************************************************** !
-!> This routine deallocates pointers in a surface-auxiliary object
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceAuxDestroy(surf_aux)
+  ! 
+  ! This routine deallocates pointers in a surface-auxiliary object
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   implicit none
   

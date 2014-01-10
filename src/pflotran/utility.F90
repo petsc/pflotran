@@ -43,6 +43,8 @@ module Utility_module
   
 contains
 
+! ************************************************************************** !
+
 function rnd()
 
   implicit none
@@ -56,6 +58,8 @@ function rnd()
   rnd   = iseed/2796203.0
   return
 end function rnd
+
+! ************************************************************************** !
 
 function ran1(idum)
       
@@ -110,6 +114,8 @@ function ran1(idum)
   return
 end function ran1
 
+! ************************************************************************** !
+
 function ran2(idum)
       
   implicit none
@@ -162,8 +168,9 @@ function ran2(idum)
 
   return
 end function ran2
-      
-      
+
+! ************************************************************************** !
+
 subroutine Natural2LocalIndex(ir, nl, llist, llength)
   implicit none
   PetscInt :: nl, ir,na, l_search, itt, llength
@@ -216,13 +223,14 @@ subroutine Natural2LocalIndex(ir, nl, llist, llength)
 end subroutine Natural2LocalIndex
 
 ! ************************************************************************** !
-!
-! reallocateIntArray: Reallocates an integer array to a larger size and copies
-! author: Glenn Hammond
-! date: 10/29/07
-!
-! ************************************************************************** !
+
 subroutine reallocateIntArray(array,size)
+  ! 
+  ! Reallocates an integer array to a larger size and copies
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07
+  ! 
 
   implicit none
 
@@ -243,14 +251,15 @@ subroutine reallocateIntArray(array,size)
 end subroutine reallocateIntArray
 
 ! ************************************************************************** !
-!
-! reallocateRealArray2D: Reallocates a 2D real array to a larger size and 
-!                        copies values over.
-! author: Glenn Hammond
-! date: 10/29/07, 10/03/13
-!
-! ************************************************************************** !
+
 subroutine reallocateRealArray1D(array,size)
+  ! 
+  ! reallocateRealArray2D: Reallocates a 2D real array to a larger size and
+  ! copies values over.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07, 10/03/13
+  ! 
 
   implicit none
 
@@ -271,14 +280,15 @@ subroutine reallocateRealArray1D(array,size)
 end subroutine reallocateRealArray1D
 
 ! ************************************************************************** !
-!
-! reallocateRealArray2D: Reallocates a 2D real array to a larger size in last
-!                        dimension and copies values over.
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 subroutine reallocateRealArray2D(array,rank2_size)
+  ! 
+  ! Reallocates a 2D real array to a larger size in last
+  ! dimension and copies values over.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
 
   implicit none
 
@@ -299,14 +309,18 @@ subroutine reallocateRealArray2D(array,rank2_size)
 
 end subroutine reallocateRealArray2D
 
-!* Given an NxN matrix A, with physical dimension NP, this routine replaces it
-!* by the LU decomposition of a rowwise permutation of itself.
-!* A and N are input. A is output; INDX is output vector which records the
-!* row permutation effected by the partial pivoting; D id output as +1 or -1
-!* depending on whether the number of row interchanges was odd or even,
-!* respectively. This routine is used in combination with lubksb to solve
-!* linear equations or invert a matrix.
+! ************************************************************************** !
+
 subroutine ludcmp(A,N,INDX,D)
+  ! 
+  ! Given an NxN matrix A, with physical dimension NP, this routine replaces it
+  ! by the LU decomposition of a rowwise permutation of itself.
+  ! A and N are input. A is output; INDX is output vector which records the
+  ! row permutation effected by the partial pivoting; D id output as +1 or -1
+  ! depending on whether the number of row interchanges was odd or even,
+  ! respectively. This routine is used in combination with lubksb to solve
+  ! linear equations or invert a matrix.
+  ! 
 
   implicit none
 
@@ -382,11 +396,15 @@ subroutine ludcmp(A,N,INDX,D)
 
 end subroutine ludcmp
 
-!* Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
-!* A but rather as its LU decomposition. INDX is the input as the permutation
-!* vector returned by ludcmp. B is input as the right-hand side vector B, and
-!* returns with the solution vector X.
+! ************************************************************************** !
+
 subroutine lubksb(A,N,INDX,B)
+  ! 
+  ! Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
+  ! A but rather as its LU decomposition. INDX is the input as the permutation
+  ! vector returned by ludcmp. B is input as the right-hand side vector B, and
+  ! returns with the solution vector X.
+  ! 
 
   implicit none
 
@@ -425,14 +443,18 @@ subroutine lubksb(A,N,INDX,B)
 
 end subroutine lubksb
 
-!* Given an NxN matrix A, with physical dimension NP, this routine replaces it
-!* by the LU decomposition of a rowwise permutation of itself.
-!* A and N are input. A is output; INDX is output vector which records the
-!* row permutation effected by the partial pivoting; D id output as +1 or -1
-!* depending on whether the number of row interchanges was odd or even,
-!* respectively. This routine is used in combination with lubksb to solve
-!* linear equations or invert a matrix.
+! ************************************************************************** !
+
 subroutine ludcmp_chunk(A,N,INDX,D,chunk_size,ithread,num_threads)
+  ! 
+  ! Given an NxN matrix A, with physical dimension NP, this routine replaces it
+  ! by the LU decomposition of a rowwise permutation of itself.
+  ! A and N are input. A is output; INDX is output vector which records the
+  ! row permutation effected by the partial pivoting; D id output as +1 or -1
+  ! depending on whether the number of row interchanges was odd or even,
+  ! respectively. This routine is used in combination with lubksb to solve
+  ! linear equations or invert a matrix.
+  ! 
 
   implicit none
 
@@ -515,11 +537,15 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size,ithread,num_threads)
 
 end subroutine ludcmp_chunk
 
-!* Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
-!* A but rather as its LU decomposition. INDX is the input as the permutation
-!* vector returned bu ludcmp. B is input as the right-hand side vector B, and
-!* returns with the solution vector X.
+! ************************************************************************** !
+
 subroutine lubksb_chunk(A,N,INDX,B,chunk_size,ithread,num_threads)
+  ! 
+  ! Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
+  ! A but rather as its LU decomposition. INDX is the input as the permutation
+  ! vector returned bu ludcmp. B is input as the right-hand side vector B, and
+  ! returns with the solution vector X.
+  ! 
 
   implicit none
 
@@ -568,13 +594,14 @@ subroutine lubksb_chunk(A,N,INDX,B,chunk_size,ithread,num_threads)
 end subroutine lubksb_chunk
 
 ! ************************************************************************** !
-!
-! Interpolate: Interpolates values between two reference values
-! author: Glenn Hammond
-! date: 02/09/09
-!
-! ************************************************************************** !
+
 subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
+  ! 
+  ! Interpolates values between two reference values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/09/09
+  ! 
 
   implicit none
 
@@ -593,13 +620,14 @@ subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
 end subroutine Interpolate
 
 ! ************************************************************************** !
-!
-! InterpolateBilinear: Interpolates values between four reference values in 2D
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 function InterpolateBilinear(x,y,x1,x2,y1,y2,z1,z2,z3,z4)
+  ! 
+  ! Interpolates values between four reference values in 2D
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   implicit none
 
@@ -622,13 +650,14 @@ function InterpolateBilinear(x,y,x1,x2,y1,y2,z1,z2,z3,z4)
 end function InterpolateBilinear
 
 ! ************************************************************************** !
-!
-! DotProduct1: Computes the dot product between two 3d vectors
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
+
 function DotProduct1(v1,v2)
+  ! 
+  ! Computes the dot product between two 3d vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
 
   implicit none
   
@@ -641,13 +670,14 @@ function DotProduct1(v1,v2)
 end function DotProduct1
 
 ! ************************************************************************** !
-!
-! DotProduct2: Computes the dot product between two 3d vectors
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
+
 function DotProduct2(v1,v2x,v2y,v2z)
+  ! 
+  ! Computes the dot product between two 3d vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
 
   implicit none
   
@@ -660,14 +690,15 @@ function DotProduct2(v1,v2x,v2y,v2z)
 end function DotProduct2
 
 ! ************************************************************************** !
-!
-! DotProduct3: Computes the dot product between components of two 3d 
-!                    vectors
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
+
 function DotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
+  ! 
+  ! Computes the dot product between components of two 3d
+  ! vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
 
   implicit none
   
@@ -680,13 +711,14 @@ function DotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
 end function DotProduct3
 
 ! ************************************************************************** !
-!
-! CrossProduct1: Computes the cross product between two 3d vectors
-! author: Glenn Hammond
-! date: 10/30/09
-!
-! ************************************************************************** !
+
 function CrossProduct1(v1,v2)
+  ! 
+  ! Computes the cross product between two 3d vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
 
   implicit none
   
@@ -701,14 +733,15 @@ function CrossProduct1(v1,v2)
 end function CrossProduct1
 
 ! ************************************************************************** !
-!
-! Erf: Computes an approximate to erf(x)
-! author: Glenn Hammond
-! date: 05/20/09
-! from: http://jin.ece.uiuc.edu/routines/merror.for
-!
-! ************************************************************************** !
+
 function Erf(x)
+  ! 
+  ! Computes an approximate to erf(x)
+  ! from: http://jin.ece.uiuc.edu/routines/merror.for
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/20/09
+  ! 
 
   implicit none
   
@@ -747,32 +780,31 @@ function Erf(x)
 end function Erf
 
 ! ************************************************************************** !
-!
-! Erf: Computes an approximate to erf(x)
-! author: Glenn Hammond
-! date: 05/20/09
-!
-!/* adapted from 
-!#
-!# Lower tail quantile for standard normal distribution function.
-!#
-!# This function returns an approximation of the inverse cumulative
-!# standard normal distribution function.  I.e., given P, it returns
-!# an approximation to the X satisfying P = Pr{Z <= X} where Z is a
-!# random variable from the standard normal distribution.
-!#
-!# The algorithm uses a minimax approximation by rational functions
-!# and the result has a relative error whose absolute value is less
-!# than 1.15e-9.
-!#
-!# Author:      Peter J. Acklam
-!# Time-stamp:  2000-07-19 18:26:14
-!# E-mail:      pjacklam@online.no
-!# WWW URL:     http://home.online.no/~pjacklam
-!*/
-!
-! ************************************************************************** !
+
 function InverseErf(p)
+  ! 
+  ! Erf: Computes an approximate to erf(x)
+  ! adapted from
+  ! #
+  ! # Lower tail quantile for standard normal distribution function.
+  ! #
+  ! # This function returns an approximation of the inverse cumulative
+  ! # standard normal distribution function.  I.e., given P, it returns
+  ! # an approximation to the X satisfying P = Pr{Z <= X} where Z is a
+  ! # random variable from the standard normal distribution.
+  ! #
+  ! # The algorithm uses a minimax approximation by rational functions
+  ! # and the result has a relative error whose absolute value is less
+  ! # than 1.15e-9.
+  ! #
+  ! # Author:      Peter J. Acklam
+  ! # Time-stamp:  2000-07-19 18:26:14
+  ! # E-mail:      pjacklam@online.no
+  ! # WWW URL:     http://home.online.no/~pjacklam
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/20/09
+  ! 
 
   implicit none
   
@@ -819,13 +851,14 @@ function InverseErf(p)
 end function InverseErf
 
 ! ************************************************************************** !
-!
-! UtilityReadIntArray: Reads an array of integers from an input file
-! author: Glenn Hammond
-! date: 11/30/11
-!
-! ************************************************************************** !
+
 subroutine UtilityReadIntArray(array,array_size,comment,input,option)
+  ! 
+  ! Reads an array of integers from an input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/30/11
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -969,14 +1002,15 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
 end subroutine UtilityReadIntArray
 
 ! ************************************************************************** !
-!
-! UtilityReadRealArray: Reads an array of double precision numbers from the  
-!                       input file
-! author: Glenn Hammond
-! date: 05/21/09
-!
-! ************************************************************************** !
+
 subroutine UtilityReadRealArray(array,array_size,comment,input,option)
+  ! 
+  ! Reads an array of double precision numbers from the
+  ! input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/21/09
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -1120,14 +1154,15 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
 end subroutine UtilityReadRealArray
 
 ! ************************************************************************** !
-!
-! SearchOrderedArray: Locates an integer value in an ordered array and
-!                     returned the index
-! author: Glenn Hammond
-! date: 10/21/09
-!
-! ************************************************************************** !
+
 function SearchOrderedArray(array,array_length,int_value)
+  ! 
+  ! Locates an integer value in an ordered array and
+  ! returned the index
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/09
+  ! 
 
   implicit none
 
@@ -1170,13 +1205,14 @@ function SearchOrderedArray(array,array_length,int_value)
 end function SearchOrderedArray
 
 ! ************************************************************************** !
-!
-! FileExists: Returns PETSC_TRUE if file exists
-! author: Glenn Hammond
-! date: 04/27/11
-!
-! ************************************************************************** !
+
 function FileExists(filename)
+  ! 
+  ! Returns PETSC_TRUE if file exists
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/27/11
+  ! 
 
   implicit none
   
@@ -1199,13 +1235,14 @@ function FileExists(filename)
 end function FileExists
 
 ! ************************************************************************** !
-!
-! Equal: Returns PETSC_TRUE if values are equal
-! author: Glenn Hammond
-! date: 04/27/11
-!
-! ************************************************************************** !
+
 function Equal(value1, value2)
+  ! 
+  ! Returns PETSC_TRUE if values are equal
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/27/11
+  ! 
 
   implicit none
   
@@ -1219,13 +1256,14 @@ function Equal(value1, value2)
 end function Equal
 
 ! ************************************************************************** !
-!
-! BestFloat: Returns the best format for a floating point number
-! author: Glenn Hammond
-! date: 11/21/11
-!
-! ************************************************************************** !
+
 function BestFloat(float,upper_bound,lower_bound)
+  ! 
+  ! Returns the best format for a floating point number
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/21/11
+  ! 
 
   implicit none
   
@@ -1262,14 +1300,15 @@ function BestFloat(float,upper_bound,lower_bound)
 end function BestFloat
 
 ! ************************************************************************** !
-!
-! CubicPolynomialSetup: Sets up a cubic polynomial for smoothing 
-!                       discontinuous functions
-! author: Glenn Hammond
-! date: 03/12/12
-!
-! ************************************************************************** !
+
 subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
+  ! 
+  ! Sets up a cubic polynomial for smoothing
+  ! discontinuous functions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/12
+  ! 
 
   implicit none
 
@@ -1312,13 +1351,14 @@ subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
 end subroutine CubicPolynomialSetup
 
 ! ************************************************************************** !
-!
-! CubicPolynomialEvaluate: Evaluates value in cubic polynomial
-! author: Glenn Hammond
-! date: 03/12/12
-!
-! ************************************************************************** !
+
 subroutine CubicPolynomialEvaluate(coefficients,x,f,df_dx)
+  ! 
+  ! Evaluates value in cubic polynomial
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/12
+  ! 
 
   implicit none
 
@@ -1343,13 +1383,14 @@ subroutine CubicPolynomialEvaluate(coefficients,x,f,df_dx)
 end subroutine CubicPolynomialEvaluate
 
 ! ************************************************************************** !
-!
-! DeallocateArray1DInteger: Deallocates a 1D integer array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray1DInteger(array)
+  ! 
+  ! Deallocates a 1D integer array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1361,13 +1402,14 @@ subroutine DeallocateArray1DInteger(array)
 end subroutine DeallocateArray1DInteger
 
 ! ************************************************************************** !
-!
-! DeallocateArray2DInteger: Deallocates a 2D integer array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray2DInteger(array)
+  ! 
+  ! Deallocates a 2D integer array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1379,13 +1421,14 @@ subroutine DeallocateArray2DInteger(array)
 end subroutine DeallocateArray2DInteger
 
 ! ************************************************************************** !
-!
-! DeallocateArray3DInteger: Deallocates a 3D integer array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray3DInteger(array)
+  ! 
+  ! Deallocates a 3D integer array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1397,13 +1440,14 @@ subroutine DeallocateArray3DInteger(array)
 end subroutine DeallocateArray3DInteger
 
 ! ************************************************************************** !
-!
-! DeallocateArray1DReal: Deallocates a 1D real array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray1DReal(array)
+  ! 
+  ! Deallocates a 1D real array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1415,13 +1459,14 @@ subroutine DeallocateArray1DReal(array)
 end subroutine DeallocateArray1DReal
 
 ! ************************************************************************** !
-!
-! DeallocateArray2DReal: Deallocates a 2D real array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray2DReal(array)
+  ! 
+  ! Deallocates a 2D real array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1433,13 +1478,14 @@ subroutine DeallocateArray2DReal(array)
 end subroutine DeallocateArray2DReal
 
 ! ************************************************************************** !
-!
-! DeallocateArray3DReal: Deallocates a 3D real array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray3DReal(array)
+  ! 
+  ! Deallocates a 3D real array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1451,13 +1497,14 @@ subroutine DeallocateArray3DReal(array)
 end subroutine DeallocateArray3DReal
 
 ! ************************************************************************** !
-!
-! DeallocateArray1DLogical: Deallocates a 1D logical array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray1DLogical(array)
+  ! 
+  ! Deallocates a 1D logical array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1469,13 +1516,14 @@ subroutine DeallocateArray1DLogical(array)
 end subroutine DeallocateArray1DLogical
 
 ! ************************************************************************** !
-!
-! DeallocateArray2DLogical: Deallocates a 2D logical array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray2DLogical(array)
+  ! 
+  ! Deallocates a 2D logical array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1487,13 +1535,14 @@ subroutine DeallocateArray2DLogical(array)
 end subroutine DeallocateArray2DLogical
 
 ! ************************************************************************** !
-!
-! DeallocateArray3DLogical: Deallocates a 3D logical array
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray3DLogical(array)
+  ! 
+  ! Deallocates a 3D logical array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1505,13 +1554,14 @@ subroutine DeallocateArray3DLogical(array)
 end subroutine DeallocateArray3DLogical
 
 ! ************************************************************************** !
-!
-! DeallocateArray1DString: Deallocates a 1D array of character strings
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray1DString(array)
+  ! 
+  ! Deallocates a 1D array of character strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   implicit none
   
@@ -1523,13 +1573,14 @@ subroutine DeallocateArray1DString(array)
 end subroutine DeallocateArray1DString
 
 ! ************************************************************************** !
-!
-! DeallocateArray2DString: Deallocates a 2D array of character strings
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 subroutine DeallocateArray2DString(array)
+  ! 
+  ! Deallocates a 2D array of character strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -1541,21 +1592,22 @@ subroutine DeallocateArray2DString(array)
 end subroutine DeallocateArray2DString
 
 ! ************************************************************************** !
-!
-! ConvertMatrixToVector: Converts a given matrix A to a vec
-! This vec is different from PETSc Vec
-! A = [a1 a2 a3 .... am], where ai, i = 1, m are the columns
-! then vec(A) = [a1
-!                a2
-!                 .
-!                 .
-!                 .
-!                am]
-! author: Satish Karra, LANL
-! date: 6/19/2013
-!
-! ************************************************************************** !
+
 subroutine ConvertMatrixToVector(A,vecA)
+  ! 
+  ! Converts a given matrix A to a vec
+  ! This vec is different from PETSc Vec
+  ! A = [a1 a2 a3 .... am], where ai, i = 1, m are the columns
+  ! then vec(A) = [a1
+  ! a2
+  ! .
+  ! .
+  ! .
+  ! am]
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 6/19/2013
+  ! 
 
   PetscReal :: A(:,:)
   PetscReal, allocatable :: vecA(:,:)
@@ -1571,16 +1623,17 @@ subroutine ConvertMatrixToVector(A,vecA)
 end subroutine ConvertMatrixToVector
 
 ! ************************************************************************** !
-!
-! Kron: Returns the Kronecker product of two matrices A, B
-! Reference: The ubiquitous Kronecker product, by Charles F.Van Loan
-! for basics of Kronecker product
-! Also see wikipedia page: http://en.wikipedia.org/wiki/Kronecker_product
-! author: Satish Karra, LANL
-! date: 6/19/2013
-!
-! ************************************************************************** !
+
 subroutine Kron(A,B,K)
+  ! 
+  ! Returns the Kronecker product of two matrices A, B
+  ! Reference: The ubiquitous Kronecker product, by Charles F.Van Loan
+  ! for basics of Kronecker product
+  ! Also see wikipedia page: http://en.wikipedia.org/wiki/Kronecker_product
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 6/19/2013
+  ! 
 
   PetscReal :: A(:,:),B(:,:)
   PetscReal, allocatable :: K(:,:)
@@ -1609,13 +1662,14 @@ subroutine Kron(A,B,K)
 end subroutine Kron
 
 ! ************************************************************************** !
-!
-! Transposer: Transposer Converts vec of a matrix to vec of its transpose
-! author: Satish Karra, LANL
-! date: 6/19/2013
-!
-! ************************************************************************** !
+
 subroutine Transposer(m,n,T)
+  ! 
+  ! Transposer Converts vec of a matrix to vec of its transpose
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 6/19/2013
+  ! 
 
   PetscReal, allocatable :: T(:,:)
   PetscInt :: m,n
@@ -1639,13 +1693,14 @@ subroutine Transposer(m,n,T)
 end subroutine Transposer
 
 ! ************************************************************************** !
-!
-! Determinant: Determinant of a 3x3 matrix
-! author: Satish Karra, LANL
-! date: 6/24/2013
-!
-! ************************************************************************** !
+
 subroutine Determinant(A,detA)
+  ! 
+  ! Determinant of a 3x3 matrix
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 6/24/2013
+  ! 
 
   PetscReal :: A(3,3)
   PetscReal :: detA  

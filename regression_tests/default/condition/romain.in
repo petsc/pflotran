@@ -1,0 +1,138 @@
+!!:Description: 1D test problem for TH mode
+!!Tests the functionality used to assign initial 
+!!temperature cell-wise
+! Contributed by Romain P. <romain.pannetier57@gmail.com>
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+:===================== TH mode ===============================
+MODE TH NO_FREEZING
+
+:===================== Discretization =========================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 1 1 100
+BOUNDS
+0.d0 0.d0 0.d0
+1.d0 1.d0 100.d0
+/
+END
+
+:===================== Solver options ========================
+NEWTON_SOLVER FLOW
+ATOL 1D-12
+RTOL 1D-8
+STOL 1D-15
+ITOL 1D-8
+MAXIT 100
+MAXF 1000
+END
+
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:========================= material properties ===================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.1d0
+TORTUOSITY 1.d0
+ROCK_DENSITY 2.8E3
+SPECIFIC_HEAT 1E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5
+SATURATION_FUNCTION default 
+LONGITUDINAL_DISPERSIVITY 3.1536d0
+PERMEABILITY 
+PERM_X 1.d-15
+PERM_Y 1.d-15
+PERM_Z 1.d-15
+/
+/
+
+:========================= saturation functions ==================
+SATURATION_FUNCTION default
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.5d-1
+LAMBDA 0.75
+ALPHA 1.d-3
+/
+
+:========================= output options =========================
+OUTPUT
+:PERIODIC TIME 5.D-1 y
+:FORMAT HDF5
+/
+
+:======================== times ====================================
+TIME
+FINAL_TIME 7.d0 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
+/
+
+:=========================== regions ===============================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 100.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 100.d0
+1.d0 1.d0 100.d0
+/
+END
+
+:== dataset  ==============================================================
+DATASET Temperature
+  FILENAME romain_profile.h5
+END
+
+
+:======================= flow conditions ===============================
+FLOW_CONDITION initial
+UNITS Pa, C, yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+/
+PRESSURE 1.D5
+TEMPERATURE DATASET Temperature
+END
+
+FLOW_CONDITION top_c
+TYPE 
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+/
+PRESSURE 1.D5
+TEMPERATURE -5.D0
+END
+
+:========================== initial and boundary conditions =================
+!: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: top boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION top_c
+REGION top
+END
+
+:===================== stratigraphy couplers ==============================
+STRATA
+REGION all
+MATERIAL soil1
+END
+

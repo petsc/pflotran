@@ -43,13 +43,14 @@ module Auxiliary_module
 contains
 
 ! ************************************************************************** !
-!
-! AuxInit: Nullifies pointers in auxiliary object
-! author: Glenn Hammond
-! date: 04/09/08
-!
-! ************************************************************************** !
+
 subroutine AuxInit(aux)
+  ! 
+  ! Nullifies pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/09/08
+  ! 
 
   implicit none
   
@@ -73,13 +74,14 @@ subroutine AuxInit(aux)
 end subroutine AuxInit
 
 ! ************************************************************************** !
-!
-! AuxDestroy: Deallocates any allocated pointers in auxiliary object
-! author: Glenn Hammond
-! date: 04/09/08
-!
-! ************************************************************************** !
+
 subroutine AuxDestroy(aux)
+  ! 
+  ! Deallocates any allocated pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/09/08
+  ! 
 
   implicit none
   

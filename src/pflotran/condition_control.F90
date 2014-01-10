@@ -27,13 +27,14 @@ module Condition_Control_module
 contains
 
 ! ************************************************************************** !
-!
-! CondControlAssignFlowInitCond: Assigns flow initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlAssignFlowInitCond(realization)
+  ! 
+  ! Assigns flow initial conditions to model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -46,7 +47,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Dataset_Common_HDF5_class
   use Grid_module
   use Patch_module
-  use Water_EOS_module
+  use EOS_Water_module
 #ifdef DASVYAT
   use MFD_module, only : MFDInitializeMassMatrices
 #endif
@@ -199,7 +200,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                   xx_p(ibegin+GENERAL_GAS_SATURATION_DOF) = &
                     general%gas_saturation%dataset%rarray(1)
                   temperature = general%temperature%dataset%rarray(1)
-                  call psat(temperature,p_sat,ierr)
+                  call EOSWaterSaturationPressure(temperature,p_sat,ierr)
                   ! p_a = p_g - p_s(T)
                   xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF) = &
                     general%gas_pressure%dataset%rarray(1) - &
@@ -459,13 +460,14 @@ subroutine CondControlAssignFlowInitCond(realization)
 end subroutine CondControlAssignFlowInitCond
 
 ! ************************************************************************** !
-!
-! CondControlAssignTranInitCond: Assigns transport initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlAssignTranInitCond(realization)
+  ! 
+  ! Assigns transport initial conditions to model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -827,15 +829,16 @@ subroutine CondControlAssignTranInitCond(realization)
 end subroutine CondControlAssignTranInitCond
 
 ! ************************************************************************** !
-!
-! ConditionControlMapDatasetToVec: maps an external dataset to a PETSc vec
-!                                  representing values at each grid cell
-! author: Glenn Hammond
-! date: 03/23/12
-!
-! ************************************************************************** !
+
 subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                            mdof_vec,vec_type)
+  ! 
+  ! maps an external dataset to a PETSc vec
+  ! representing values at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/23/12
+  ! 
   use Realization_class
   use Option_module
   use Field_module
@@ -893,13 +896,14 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 end subroutine ConditionControlMapDatasetToVec
 
 ! ************************************************************************** !
-!
-! CondControlScaleSourceSink: Scales select source/sinks based on perms
-! author: Glenn Hammond
-! date: 09/03/08, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlScaleSourceSink(realization)
+  ! 
+  ! Scales select source/sinks based on perms
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/03/08, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -1054,6 +1058,9 @@ end subroutine CondControlScaleSourceSink
 
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
   use Surface_Realization_class
@@ -1065,7 +1072,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   use Condition_module
   use Grid_module
   use Patch_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
   
@@ -1155,8 +1162,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                         sub_condition_ptr(idof)%ptr%dataset%rarray(1)
                       pw = option%reference_pressure
                         
-                      call wateos_noderiv(temp, pw, dw_kg, &
-                                          dw_mol, hw, option%scale, ierr)
+                      call EOSWaterDensity(temp,pw,dw_kg,dw_mol, &
+                                           option%scale, ierr)
                       ! [rho*h*T*Cw]
                       xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
                                             (temp + 273.15d0)* &

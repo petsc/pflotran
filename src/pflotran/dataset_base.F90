@@ -44,13 +44,14 @@ module Dataset_Base_class
 contains
 
 ! ************************************************************************** !
-!
-! DatasetBaseCreate: Creates members of base database class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetBaseCreate()
+  ! 
+  ! Creates members of base database class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -66,13 +67,14 @@ function DatasetBaseCreate()
 end function DatasetBaseCreate
 
 ! ************************************************************************** !
-!
-! DatasetBaseInit: Initializes members of base database class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseInit(this)
+  ! 
+  ! Initializes members of base database class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -95,13 +97,14 @@ subroutine DatasetBaseInit(this)
 end subroutine DatasetBaseInit
 
 ! ************************************************************************** !
-!
-! DatasetBaseCopy: Copies members of base database class
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseCopy(this, that)
+  ! 
+  ! Copies members of base database class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
   
   implicit none
   
@@ -144,13 +147,14 @@ subroutine DatasetBaseCopy(this, that)
 end subroutine DatasetBaseCopy
 
 ! ************************************************************************** !
-!
-! DatasetBaseVerify: Verifies that data structure is properly set up.
-! author: Glenn Hammond
-! date: 10/08/13
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseVerify(this,option)
+  ! 
+  ! Verifies that data structure is properly set up.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/13
+  ! 
   
   use Option_module
   
@@ -203,13 +207,14 @@ subroutine DatasetBaseVerify(this,option)
 end subroutine DatasetBaseVerify
 
 ! ************************************************************************** !
-!
-! DatasetBaseInterpolateTime: Interpolates dataset between two buffer times
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseInterpolateTime(this)
+  ! 
+  ! Interpolates dataset between two buffer times
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Option_module
 
@@ -272,13 +277,14 @@ subroutine DatasetBaseInterpolateTime(this)
 end subroutine DatasetBaseInterpolateTime
 
 ! ************************************************************************** !
-!
-! DatasetBaseInterpolateSpace: Interpolates data from the dataset
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseInterpolateSpace(this,xx,yy,zz,time,real_value,option)
+  ! 
+  ! Interpolates data from the dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Utility_module, only : InterpolateBilinear
   use Option_module
@@ -294,16 +300,17 @@ subroutine DatasetBaseInterpolateSpace(this,xx,yy,zz,time,real_value,option)
 end subroutine DatasetBaseInterpolateSpace
 
 ! ************************************************************************** !
-!
-! DatasetBaseReorder: If a dataset is loaded from an HDF5 file, and it was
-!              multidimensional in the HDF5 file, the array needs to be
-!              reordered fro Fortran -> C indexing.  This subroutine
-!              takes care of the reordering.
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseReorder(this,option)
+  ! 
+  ! If a dataset is loaded from an HDF5 file, and it was
+  ! multidimensional in the HDF5 file, the array needs to be
+  ! reordered fro Fortran -> C indexing.  This subroutine
+  ! takes care of the reordering.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Option_module
   
@@ -364,13 +371,14 @@ subroutine DatasetBaseReorder(this,option)
 end subroutine DatasetBaseReorder
 
 ! ************************************************************************** !
-!
-! DatasetBaseGetTimes: Fills an array of times based on a dataset
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseGetTimes(this, option, max_sim_time, time_array)
+  ! 
+  ! Fills an array of times based on a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Option_module
 
@@ -390,13 +398,14 @@ subroutine DatasetBaseGetTimes(this, option, max_sim_time, time_array)
 end subroutine DatasetBaseGetTimes
 
 ! ************************************************************************** !
-!
-! DatasetBaseAddToList: Adds a dataset to linked list
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseAddToList(dataset,list)
+  ! 
+  ! Adds a dataset to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   implicit none
   
@@ -420,14 +429,15 @@ subroutine DatasetBaseAddToList(dataset,list)
 end subroutine DatasetBaseAddToList
 
 ! ************************************************************************** !
-!
-! DatasetBaseGetPointer: Returns the pointer to the dataset named "name"
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 function DatasetBaseGetPointer(dataset_list, dataset_name, debug_string, &
                                option)
+  ! 
+  ! Returns the pointer to the dataset named "name"
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
   use String_module
@@ -462,13 +472,14 @@ function DatasetBaseGetPointer(dataset_list, dataset_name, debug_string, &
 end function DatasetBaseGetPointer
 
 ! ************************************************************************** !
-!
-! DatasetBasePrint: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine DatasetBasePrint(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -504,13 +515,14 @@ subroutine DatasetBasePrint(this,option)
 end subroutine DatasetBasePrint
 
 ! ************************************************************************** !
-!
-! DatasetBaseStrip: Strips allocated objects within base dataset object
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseStrip(this)
+  ! 
+  ! Strips allocated objects within base dataset object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Utility_module, only : DeallocateArray
 
@@ -529,13 +541,14 @@ subroutine DatasetBaseStrip(this)
 end subroutine DatasetBaseStrip
 
 ! ************************************************************************** !
-!
-! DatasetBaseDestroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 01/12/11, 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetBaseDestroy(dataset)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11, 05/03/13
+  ! 
 
   implicit none
   

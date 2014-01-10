@@ -134,13 +134,14 @@ module Output_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputOptionCreate: Creates output options object
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
+
 function OutputOptionCreate()
+  ! 
+  ! Creates output options object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
 
   implicit none
   
@@ -202,13 +203,14 @@ function OutputOptionCreate()
 end function OutputOptionCreate
 
 ! ************************************************************************** !
-!
-! OutputVariableCreate1: initializes output variable object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableCreate1()
+  ! 
+  ! initializes output variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -232,13 +234,14 @@ function OutputVariableCreate1()
 end function OutputVariableCreate1
 
 ! ************************************************************************** !
-!
-! OutputVariableCreate2: initializes output variable object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableCreate2(name,icategory,units,ivar,isubvar,isubsubvar)
+  ! 
+  ! initializes output variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -272,14 +275,15 @@ function OutputVariableCreate2(name,icategory,units,ivar,isubvar,isubsubvar)
 end function OutputVariableCreate2
 
 ! ************************************************************************** !
-!
-! OutputVariableCreate3: initializes output variable object from an existing
-!                        output variabl object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableCreate3(output_variable)
+  ! 
+  ! initializes output variable object from an existing
+  ! output variabl object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -305,13 +309,14 @@ function OutputVariableCreate3(output_variable)
 end function OutputVariableCreate3
 
 ! ************************************************************************** !
-!
-! OutputVariableListCreate: initializes output variable list object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableListCreate()
+  ! 
+  ! initializes output variable list object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -329,13 +334,14 @@ function OutputVariableListCreate()
 end function OutputVariableListCreate
 
 ! ************************************************************************** !
-!
-! OutputVariableListDuplicate: initializes output variable list object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableListDuplicate(old_list,new_list)
+  ! 
+  ! initializes output variable list object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -363,13 +369,14 @@ function OutputVariableListDuplicate(old_list,new_list)
 end function OutputVariableListDuplicate
 
 ! ************************************************************************** !
-!
-! OutputVariableAddToList1: adds variable to list object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine OutputVariableAddToList1(list,variable)
+  ! 
+  ! adds variable to list object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -388,14 +395,15 @@ subroutine OutputVariableAddToList1(list,variable)
 end subroutine OutputVariableAddToList1
 
 ! ************************************************************************** !
-!
-! OutputVariableAddToList2: creates variable and adds to list object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine OutputVariableAddToList2(list,name,icategory,units,ivar, &
                                     isubvar,isubsubvar)
+  ! 
+  ! creates variable and adds to list object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -425,14 +433,15 @@ subroutine OutputVariableAddToList2(list,name,icategory,units,ivar, &
 end subroutine OutputVariableAddToList2
 
 ! ************************************************************************** !
-!
-! OutputVariableListToHeader: Converts a variable list to a header string
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
                                     plot_file)
+  ! 
+  ! Converts a variable list to a header string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   implicit none
   
@@ -467,14 +476,15 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
 end function OutputVariableListToHeader
 
 ! ************************************************************************** !
-!
-! OutputAppendToHeader: Appends formatted strings to header string
-! author: Glenn Hammond
-! date: 10/27/11
-!
-! ************************************************************************** !
+
 subroutine OutputAppendToHeader(header,variable_string,units_string, &
                                 cell_string, icolumn)
+  ! 
+  ! Appends formatted strings to header string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/27/11
+  ! 
 
   implicit none
 
@@ -528,14 +538,15 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
 end subroutine OutputAppendToHeader
 
 ! ************************************************************************** !
-!
-! OutputVariableToCategoryString: returns a string associated with an 
-!                                 output variable category
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 function OutputVariableToCategoryString(icategory)
+  ! 
+  ! returns a string associated with an
+  ! output variable category
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -569,14 +580,14 @@ function OutputVariableToCategoryString(icategory)
 end function OutputVariableToCategoryString
 
 ! ************************************************************************** !
-!> This routine reads variable from input file.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 12/21/12
-! ************************************************************************** !
+
 subroutine OutputVariableRead(input,option,output_variable_list)
+  ! 
+  ! This routine reads variable from input file.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 12/21/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -605,30 +616,34 @@ subroutine OutputVariableRead(input,option,output_variable_list)
       case ('LIQUID_PRESSURE')
         name = 'Liquid Pressure'
         units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_PRESSURE,units, &
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
                                      LIQUID_PRESSURE)
 
       case ('LIQUID_SATURATION')
         name = 'Liquid Saturation'
         units = ''
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
-                               LIQUID_SATURATION)
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     LIQUID_SATURATION)
+      case ('LIQUID_DENSITY')
+        name = 'Liquid Density'
+        units = 'kg/m^3'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_DENSITY)
+      case ('LIQUID_MOBILITY')
+        name = 'Liquid Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOBILITY)
       case ('TEMPERATURE')
         name = 'Temperature'
         units = 'C'
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
-                                  TEMPERATURE)
-!      case ('LIQUID_VELOCITIY_AT_CELL_CENTER')
-!        name = 'Liquid Velocity at Cell Center'
-!        units = 'm/s'
-!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
-!                               LIQUID_VELOCITY_CELL_CENT)
-!
-!      case ('LIQUID_VELOCITIY_AT_CELL_FACE')
-!        name = 'Liquid Velocity at Cell Face'
-!        units = 'm/s'
-!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
-!                               LIQUID_VELOCITY_CELL_FACE)
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     TEMPERATURE)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in VARIABLES.'
@@ -639,13 +654,14 @@ subroutine OutputVariableRead(input,option,output_variable_list)
 end subroutine OutputVariableRead
 
 ! ************************************************************************** !
-!
-! OutputVariableListDestroy: Deallocates an output variable list object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine OutputVariableListDestroy(output_variable_list)
+  ! 
+  ! Deallocates an output variable list object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -660,13 +676,14 @@ subroutine OutputVariableListDestroy(output_variable_list)
 end subroutine OutputVariableListDestroy
 
 ! ************************************************************************** !
-!
-! OutputVariableDestroy: Deallocates an output variable object
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 recursive subroutine OutputVariableDestroy(output_variable)
+  ! 
+  ! Deallocates an output variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
 
   implicit none
   
@@ -682,13 +699,14 @@ recursive subroutine OutputVariableDestroy(output_variable)
 end subroutine OutputVariableDestroy
 
 ! ************************************************************************** !
-!
-! OutputOptionDestroy: Deallocates an output option
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
+
 subroutine OutputOptionDestroy(output_option)
+  ! 
+  ! Deallocates an output option
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
 
   implicit none
   

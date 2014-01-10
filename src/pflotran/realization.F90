@@ -97,15 +97,16 @@ private
   !public :: RealizationGetVariable
 
 contains
-  
+
 ! ************************************************************************** !
-!
-! RealizationCreate1: Allocates and initializes a new Realization object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function RealizationCreate1()
+  ! 
+  ! Allocates and initializes a new Realization object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -120,13 +121,14 @@ function RealizationCreate1()
 end function RealizationCreate1  
 
 ! ************************************************************************** !
-!
-! RealizationCreate2: Allocates and initializes a new Realization object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function RealizationCreate2(option)
+  ! 
+  ! Allocates and initializes a new Realization object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -167,13 +169,14 @@ function RealizationCreate2(option)
 end function RealizationCreate2 
 
 ! ************************************************************************** !
-!
-! RealizationCreateDiscretization: Creates grid
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationCreateDiscretization(realization)
+  ! 
+  ! Creates grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Grid_module
   use Unstructured_Grid_Aux_module
@@ -351,8 +354,7 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, &
-                          discretization%dm_1dof%dm, &
-                          discretization%dm_1dof%ugdm, &
+                          discretization%dm_1dof, &
                           discretization%stencil_type,&
                           discretization%lsm_flux_method, &
                           option)
@@ -385,8 +387,7 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid, &
-                          discretization%dm_1dof%dm, &
-                          discretization%dm_1dof%ugdm, &
+                          discretization%dm_1dof, &
                           discretization%stencil_type,&
                           discretization%lsm_flux_method, &
                           option)
@@ -492,13 +493,14 @@ subroutine RealizationCreateDiscretization(realization)
 end subroutine RealizationCreateDiscretization
 
 ! ************************************************************************** !
-!
-! RealizationLocalizeRegions: Localizes regions within each patch
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationLocalizeRegions(realization)
+  ! 
+  ! Localizes regions within each patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use String_module
@@ -535,13 +537,14 @@ subroutine RealizationLocalizeRegions(realization)
 end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
-!
-! RealizatonPassPtrsToPatches: Sets patch%field => realization%field
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 subroutine RealizatonPassPtrsToPatches(realization)
+  ! 
+  ! Sets patch%field => realization%field
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
 
@@ -556,13 +559,14 @@ subroutine RealizatonPassPtrsToPatches(realization)
 end subroutine RealizatonPassPtrsToPatches
 
 ! ************************************************************************** !
-!
-! RealizationAddCoupler: Adds a copy of a coupler to a list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationAddCoupler(realization,coupler)
+  ! 
+  ! Adds a copy of a coupler to a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Coupler_module
 
@@ -594,17 +598,17 @@ subroutine RealizationAddCoupler(realization,coupler)
 end subroutine RealizationAddCoupler
 
 ! ************************************************************************** !
-!> This routine sets up nG2LP() mapping for MIMETIC discretization.
-!! nG2LP: For a given ghosted cell ID, return the index within the PETSc
-!!        solution vector that contains solution at cell centers + cell faces.
-!!        The index returned is in PETSc order (0-based).
-!!
-!> @author
-!! ???
-!!
-!! date: ???
-! ************************************************************************** !
+
 subroutine RealizationCreatenG2LP(realization)
+  ! 
+  ! This routine sets up nG2LP() mapping for MIMETIC discretization.
+  ! nG2LP: For a given ghosted cell ID, return the index within the PETSc
+  ! solution vector that contains solution at cell centers + cell faces.
+  ! The index returned is in PETSc order (0-based).
+  ! 
+  ! Author: ???
+  ! Date: ???
+  ! 
 
   use Grid_module
 
@@ -713,13 +717,14 @@ subroutine RealizationCreatenG2LP(realization)
 end subroutine RealizationCreatenG2LP
 
 ! ************************************************************************** !
-!
-! RealizationAddStrata: Adds a copy of a strata to a list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationAddStrata(realization,strata)
+  ! 
+  ! Adds a copy of a strata to a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Strata_module
 
@@ -739,13 +744,14 @@ subroutine RealizationAddStrata(realization,strata)
 end subroutine RealizationAddStrata
 
 ! ************************************************************************** !
-!
-! RealizationAddObservation: Adds a copy of a observation object to a list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationAddObservation(realization,observation)
+  ! 
+  ! Adds a copy of a observation object to a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Observation_module
 
@@ -766,13 +772,14 @@ subroutine RealizationAddObservation(realization,observation)
 end subroutine RealizationAddObservation
 
 ! ************************************************************************** !
-!
-! RealizationProcessCouplers: Sets connectivity and pointers for couplers
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationProcessCouplers(realization)
+  ! 
+  ! Sets connectivity and pointers for couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -787,14 +794,15 @@ subroutine RealizationProcessCouplers(realization)
 end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
-!
-! RealizationProcessConditions: Sets up auxiliary data associated with 
-!                               conditions
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine RealizationProcessConditions(realization)
+  ! 
+  ! Sets up auxiliary data associated with
+  ! conditions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Dataset_module
   
@@ -833,15 +841,16 @@ subroutine RealizationProcessConditions(realization)
 end subroutine RealizationProcessConditions
 
 ! ************************************************************************** !
-!
-! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxiliary arrays
-!                               and datasets
-! author: Glenn Hammond
-! date: 01/21/09, 01/12/11
-!
-! ************************************************************************** !
+
 subroutine RealProcessMatPropAndSatFunc(realization)
+  ! 
+  ! Sets up linkeage between material properties
+  ! and saturation function, auxiliary arrays
+  ! and datasets
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09, 01/12/11
+  ! 
 
   use String_module
   use Dataset_Common_HDF5_class
@@ -931,13 +940,14 @@ subroutine RealProcessMatPropAndSatFunc(realization)
 end subroutine RealProcessMatPropAndSatFunc
 
 ! ************************************************************************** !
-!
-! RealProcessFluidProperties: Sets up linkeage with fluid properties
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 subroutine RealProcessFluidProperties(realization)
+  ! 
+  ! Sets up linkeage with fluid properties
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
   
   implicit none
   
@@ -973,13 +983,14 @@ subroutine RealProcessFluidProperties(realization)
 end subroutine RealProcessFluidProperties
 
 ! ************************************************************************** !
-!
-! RealProcessFlowConditions: Sets linkage of flow conditions to dataset
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 subroutine RealProcessFlowConditions(realization)
+  ! 
+  ! Sets linkage of flow conditions to dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Dataset_Base_class
   use Dataset_module
@@ -1027,14 +1038,15 @@ subroutine RealProcessFlowConditions(realization)
 end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
-!
-! RealProcessTranConditions: Sets up auxiliary data associated with 
-!                            transport conditions
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine RealProcessTranConditions(realization)
+  ! 
+  ! Sets up auxiliary data associated with
+  ! transport conditions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use String_module
   use Reaction_module
@@ -1162,13 +1174,14 @@ subroutine RealProcessTranConditions(realization)
 end subroutine RealProcessTranConditions
 
 ! ************************************************************************** !
-!
-! RealizationInitConstraints: Initializes constraint concentrations
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
+
 subroutine RealizationInitConstraints(realization)
+  ! 
+  ! Initializes constraint concentrations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/08
+  ! 
 
   implicit none
 
@@ -1187,13 +1200,14 @@ subroutine RealizationInitConstraints(realization)
 end subroutine RealizationInitConstraints
 
 ! ************************************************************************** !
-!
-! RealizationPrintCouplers: Print boundary and initial condition data
-! author: Glenn Hammond
-! date: 10/28/08
-!
-! ************************************************************************** !
+
 subroutine RealizationPrintCouplers(realization)
+  ! 
+  ! Print boundary and initial condition data
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/28/08
+  ! 
 
   use Coupler_module
   
@@ -1242,13 +1256,14 @@ subroutine RealizationPrintCouplers(realization)
 end subroutine RealizationPrintCouplers
 
 ! ************************************************************************** !
-!
-! RealizationPrintCoupler: Prints boundary and initial condition coupler 
-! author: Glenn Hammond
-! date: 10/28/08
-!
-! ************************************************************************** !
+
 subroutine RealizationPrintCoupler(coupler,reaction,option)
+  ! 
+  ! Prints boundary and initial condition coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/28/08
+  ! 
 
   use Coupler_module
   use Reaction_module
@@ -1317,14 +1332,15 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
 end subroutine RealizationPrintCoupler
 
 ! ************************************************************************** !
-!
-! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
-!                                within list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizationInitAllCouplerAuxVars(realization)
+  ! 
+  ! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables
+  ! within list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -1345,14 +1361,15 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
 end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
-!                                  with couplers in lis
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
+  ! 
+  ! Updates auxiliary variables associated
+  ! with couplers in lis
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -1368,13 +1385,14 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
 end subroutine RealizUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
-!
-! RealizationUpdate: Update parameters in realization (e.g. conditions, bcs, srcs)
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
+
 subroutine RealizationUpdate(realization)
+  ! 
+  ! Update parameters in realization (e.g. conditions, bcs, srcs)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/09/07
+  ! 
 
   implicit none
   
@@ -1406,13 +1424,14 @@ subroutine RealizationUpdate(realization)
 end subroutine RealizationUpdate
 
 ! ************************************************************************** !
-!
-! RealizationRevertFlowParameters: Assigns initial porosity/perms to vecs
-! author: Glenn Hammond
-! date: 05/09/08
-!
-! ************************************************************************** !
+
 subroutine RealizationRevertFlowParameters(realization)
+  ! 
+  ! Assigns initial porosity/perms to vecs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/08
+  ! 
 
   use Option_module
   use Field_module
@@ -1446,13 +1465,14 @@ subroutine RealizationRevertFlowParameters(realization)
 end subroutine RealizationRevertFlowParameters
 
 ! ************************************************************************** !
-!
-! RealizUpdateUniformVelocity: Assigns uniform velocity for transport
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RealizUpdateUniformVelocity(realization)
+  ! 
+  ! Assigns uniform velocity for transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
 
@@ -1470,14 +1490,15 @@ subroutine RealizUpdateUniformVelocity(realization)
 end subroutine RealizUpdateUniformVelocity
 
 ! ************************************************************************** !
-!
-! RealizationAddWaypointsToList: Creates waypoints associated with source/sinks
-!                             boundary conditions, etc. and add to list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine RealizationAddWaypointsToList(realization)
+  ! 
+  ! Creates waypoints associated with source/sinks
+  ! boundary conditions, etc. and add to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Option_module
   use Waypoint_module
@@ -1672,13 +1693,14 @@ subroutine RealizationAddWaypointsToList(realization)
 end subroutine RealizationAddWaypointsToList
 
 ! ************************************************************************** !
-!
-! RealizationUpdateProperties: Updates coupled properties at each grid cell
-! author: Glenn Hammond
-! date: 08/05/09
-!
-! ************************************************************************** !
+
 subroutine RealizationUpdateProperties(realization)
+  ! 
+  ! Updates coupled properties at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   implicit none
 
@@ -1706,13 +1728,14 @@ subroutine RealizationUpdateProperties(realization)
 end subroutine RealizationUpdateProperties
 
 ! ************************************************************************** !
-!
-! RealizationUpdatePropertiesPatch: Updates coupled properties at each grid cell 
-! author: Glenn Hammond
-! date: 08/05/09
-!
-! ************************************************************************** !
+
 subroutine RealizationUpdatePropertiesPatch(realization)
+  ! 
+  ! Updates coupled properties at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   use Grid_module
   use Reactive_Transport_Aux_module
@@ -1966,14 +1989,15 @@ subroutine RealizationUpdatePropertiesPatch(realization)
 end subroutine RealizationUpdatePropertiesPatch
 
 ! ************************************************************************** !
-!
-! RealLocalToLocalWithArray: Takes an F90 array that is ghosted
-!                            and updates the ghosted values
-! author: Glenn Hammond
-! date: 06/09/11
-!
-! ************************************************************************** !
+
 subroutine RealLocalToLocalWithArray(realization,array_id)
+  ! 
+  ! Takes an F90 array that is ghosted
+  ! and updates the ghosted values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/09/11
+  ! 
 
   use Grid_module
 
@@ -2014,14 +2038,15 @@ subroutine RealLocalToLocalWithArray(realization,array_id)
 end subroutine RealLocalToLocalWithArray
 
 ! ************************************************************************** !
-!
-! RealizationCountCells: Counts # of active and inactive grid cells 
-! author: Glenn Hammond
-! date: 06/01/10
-!
-! ************************************************************************** !
+
 subroutine RealizationCountCells(realization,global_total_count, &
                                  global_active_count,total_count,active_count)
+  ! 
+  ! Counts # of active and inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/01/10
+  ! 
 
   use Option_module
 
@@ -2058,7 +2083,7 @@ subroutine RealizationCountCells(realization,global_total_count, &
 end subroutine RealizationCountCells
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine RealizationSetUpBC4Faces(realization)
 
   use Connection_module
@@ -2141,14 +2166,15 @@ subroutine RealizationSetUpBC4Faces(realization)
 end subroutine RealizationSetUpBC4Faces
 
 ! ************************************************************************** !
-!
-! RealizationPrintGridStatistics: Prints statistics regarding the numerical
-!                                 discretization 
-! author: Glenn Hammond
-! date: 06/01/10
-!
-! ************************************************************************** !
+
 subroutine RealizationPrintGridStatistics(realization)
+  ! 
+  ! Prints statistics regarding the numerical
+  ! discretization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/01/10
+  ! 
 
   use Grid_module
 
@@ -2338,14 +2364,15 @@ subroutine RealizationPrintGridStatistics(realization)
 end subroutine RealizationPrintGridStatistics
 
 ! ************************************************************************** !
-!
-! RealizationCalculateCFL1Timestep: Calculates largest time step that  
-!                                   preserves a CFL # of 1 in a realization
-! author: Glenn Hammond
-! date: 10/07/11
-!
-! ************************************************************************** !
+
 subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
+  ! 
+  ! Calculates largest time step that
+  ! preserves a CFL # of 1 in a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/11
+  ! 
 
   implicit none
 
@@ -2372,14 +2399,15 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
 end subroutine RealizationCalculateCFL1Timestep
 
 ! ************************************************************************** !
-!
-! RealizationNonInitializedData: Checks for non-initialized data sets
-!                                i.e. porosity, permeability
-! author: Glenn Hammond
-! date: 02/08/13
-!
-! ************************************************************************** !
+
 subroutine RealizationNonInitializedData(realization)
+  ! 
+  ! Checks for non-initialized data sets
+  ! i.e. porosity, permeability
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/08/13
+  ! 
 
   use Grid_module
   use Patch_module
@@ -2449,13 +2477,14 @@ subroutine RealizationNonInitializedData(realization)
 end subroutine RealizationNonInitializedData
 
 ! ************************************************************************** !
-!
-! RealizationDestroy: Deallocates a realization
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine RealizationDestroy(realization)
+  ! 
+  ! Deallocates a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Dataset_module
 

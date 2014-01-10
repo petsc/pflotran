@@ -38,13 +38,14 @@ module Output_Tecplot_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputTecplotHeader: Print header to Tecplot file
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
+
 subroutine OutputTecplotHeader(fid,realization_base,icolumn)
+  ! 
+  ! Print header to Tecplot file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -113,13 +114,14 @@ subroutine OutputTecplotHeader(fid,realization_base,icolumn)
 end subroutine OutputTecplotHeader
 
 ! ************************************************************************** !
-!
-! OutputTecplotZoneHeader: Print zone header to Tecplot file
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
+
 function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
+  ! 
+  ! Print zone header to Tecplot file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -222,13 +224,14 @@ function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
 end function OutputTecplotZoneHeader
 
 ! ************************************************************************** !
-!
-! OutputTecplotBlock: Print to Tecplot file in BLOCK format
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !  
+
 subroutine OutputTecplotBlock(realization_base)
+  ! 
+  ! Print to Tecplot file in BLOCK format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -369,13 +372,14 @@ subroutine OutputTecplotBlock(realization_base)
 end subroutine OutputTecplotBlock
 
 ! ************************************************************************** !
-!
-! OutputVelocitiesTecplotBlock: Print velocities to Tecplot file in BLOCK format
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputVelocitiesTecplotBlock(realization_base)
+  ! 
+  ! Print velocities to Tecplot file in BLOCK format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
  
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -512,15 +516,16 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
 end subroutine OutputVelocitiesTecplotBlock
 
 ! ************************************************************************** !
-!
-! OutputFluxVelocitiesTecplotBlk: Print intercellular fluxes to Tecplot file 
-!                                 in BLOCK format
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
                                             direction)
+  ! 
+  ! Print intercellular fluxes to Tecplot file
+  ! in BLOCK format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 !geh - specifically, the flow velocities at the interfaces between cells
  
   use Realization_Base_class, only : realization_base_type
@@ -829,13 +834,14 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
 end subroutine OutputFluxVelocitiesTecplotBlk
 
 ! ************************************************************************** !
-!
-! OutputTecplotPoint: Print to Tecplot file in POINT format
-! author: Glenn Hammond
-! date: 11/03/08
-!
-! ************************************************************************** !  
+
 subroutine OutputTecplotPoint(realization_base)
+  ! 
+  ! Print to Tecplot file in POINT format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/03/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetVariableValueAtCell
@@ -933,13 +939,14 @@ subroutine OutputTecplotPoint(realization_base)
 end subroutine OutputTecplotPoint
 
 ! ************************************************************************** !
-!
-! OutputVelocitiesTecplotPoint: Print velocities to Tecplot file in POINT format
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputVelocitiesTecplotPoint(realization_base)
+  ! 
+  ! Print velocities to Tecplot file in POINT format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
  
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetVariableValueAtCell
@@ -1105,13 +1112,14 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
 end subroutine OutputVelocitiesTecplotPoint
 
 ! ************************************************************************** !
-!
-! OutputVectorTecplot: Print a vector to a Tecplot file in BLOCK format
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
+  ! 
+  ! Print a vector to a Tecplot file in BLOCK format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
  
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -1211,15 +1219,15 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
                             
 end subroutine OutputVectorTecplot
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! WriteTecplotStructuredGrid: Writes structured grid face coordinates 
-! author: Glenn Hammond
-! date: 02/26/08
-!
-! ************************************************************************** !
 subroutine WriteTecplotStructuredGrid(fid,realization_base)
+  ! 
+  ! Writes structured grid face coordinates
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/26/08
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1333,13 +1341,14 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
 end subroutine WriteTecplotStructuredGrid
 
 ! ************************************************************************** !
-!
-! WriteTecplotUGridVertices: Writes unstructured grid vertices
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotUGridVertices(fid,realization_base)
+  ! 
+  ! Writes unstructured grid vertices
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1444,15 +1453,15 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
 
 end subroutine WriteTecplotUGridVertices
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! WriteTecplotExpGridElements: Writes unstructured explicit grid elements
-! author: Satish Karra, LANL
-! date: 04/11/13
-!
-! ************************************************************************** !
 subroutine WriteTecplotExpGridElements(fid,realization_base)
+  ! 
+  ! Writes unstructured explicit grid elements
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/11/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1553,13 +1562,14 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
 end subroutine WriteTecplotExpGridElements
 
 ! ************************************************************************** !
-!
-! WriteTecplotUGridElements: Writes unstructured grid elements
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotUGridElements(fid,realization_base)
+  ! 
+  ! Writes unstructured grid elements
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1610,14 +1620,15 @@ subroutine WriteTecplotUGridElements(fid,realization_base)
 end subroutine WriteTecplotUGridElements
 
 ! ************************************************************************** !
-!
-! GetCellConnections: This routine returns a vector containing vertex ids
-! in natural order of local cells.
-! author: Gautam Bisht
-! date: 11/01/2011
-!
-! ************************************************************************** !
+
 subroutine GetCellConnectionsTecplot(grid, vec)
+  ! 
+  ! GetCellConnections: This routine returns a vector containing vertex ids
+  ! in natural order of local cells.
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/01/2011
+  ! 
 
   use Grid_module
   use Unstructured_Grid_Aux_module
@@ -1719,14 +1730,15 @@ subroutine GetCellConnectionsTecplot(grid, vec)
 end subroutine GetCellConnectionsTecplot
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSetFromVec: Writes data from a Petsc Vec within a block
-!                             of a Tecplot file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotDataSetFromVec(fid,realization_base,vec,datatype)
+  ! 
+  ! Writes data from a Petsc Vec within a block
+  ! of a Tecplot file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   
@@ -1747,14 +1759,15 @@ subroutine WriteTecplotDataSetFromVec(fid,realization_base,vec,datatype)
 end subroutine WriteTecplotDataSetFromVec
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSet: Writes data from an array within a block
-!                      of a Tecplot file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotDataSet(fid,realization_base,array,datatype,size_flag)
+  ! 
+  ! Writes data from an array within a block
+  ! of a Tecplot file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1777,16 +1790,17 @@ subroutine WriteTecplotDataSet(fid,realization_base,array,datatype,size_flag)
 end subroutine WriteTecplotDataSet
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSetNumPerLine: Writes data from an array within a block
-!                                of a Tecplot file with a specified number
-!                                of values per line
-! author: Glenn Hammond
-! date: 10/25/07, 12/02/11
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
                                          size_flag,num_per_line)
+  ! 
+  ! Writes data from an array within a block
+  ! of a Tecplot file with a specified number
+  ! of values per line
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07, 12/02/11
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -2044,15 +2058,16 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
 end subroutine WriteTecplotDataSetNumPerLine
 
 ! ************************************************************************** !
-!
-! OutputPrintExplicitFlowrates: Prints out the flow rate through a voronoi face
-! for explicit grid. This will be used for particle tracking.
-! Prints out natural id of the two nodes and the value of the flow rate
-! author: Satish Karra, LANL
-! date: 04/24/13, 08/21/13 (Updated to Walkabout format)
-!
-! ************************************************************************** !
+
 subroutine OutputPrintExplicitFlowrates(realization_base)
+  ! 
+  ! Prints out the flow rate through a voronoi face
+  ! for explicit grid. This will be used for particle tracking.
+  ! Prints out natural id of the two nodes and the value of the flow rate
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/24/13, 08/21/13 (Updated to Walkabout format)
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -2168,18 +2183,18 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
 
 end subroutine OutputPrintExplicitFlowrates
 
-
 ! ************************************************************************** !
-!
-! OutputSecondaryContinuumTecplot: Print secondary continuum variables
-! in tecplot format. The output is at a given primary continuum node, 
-! and the coordinates in the output are the secondary continuum spatial 
-! coordinates 
-! author: Satish Karra, LANL
-! date: 04/30/2013
-!
-! ************************************************************************** !  
+
 subroutine OutputSecondaryContinuumTecplot(realization_base)
+  ! 
+  ! Print secondary continuum variables
+  ! in tecplot format. The output is at a given primary continuum node,
+  ! and the coordinates in the output are the secondary continuum spatial
+  ! coordinates
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/30/2013
+  ! 
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetVariableValueAtCell
@@ -2357,16 +2372,17 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
 end subroutine OutputSecondaryContinuumTecplot
 
 ! ************************************************************************** !
-!
-! WriteTecplotHeaderForCellSec: Print tecplot header for data at a cell for
-! secondary continuum 
-! author: Satish Karra, LANL
-! date: 04/30/2013
-!
-! ************************************************************************** !  
+
 subroutine WriteTecplotHeaderForCellSec(fid,realization_base,region,icell, &
                                         print_secondary_data, &
                                         icolumn)
+  ! 
+  ! Print tecplot header for data at a cell for
+  ! secondary continuum
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/30/2013
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -2411,16 +2427,17 @@ subroutine WriteTecplotHeaderForCellSec(fid,realization_base,region,icell, &
 end subroutine WriteTecplotHeaderForCellSec
 
 ! ************************************************************************** !
-!
-! WriteTecplotHeaderForCoordSec: Print a header for data at a coordinate
-! for secondary continuum
-! author: Satish Karra, LANL
-! date: 04/30/2013
-!
-! ************************************************************************** !  
+
 subroutine WriteTecplotHeaderForCoordSec(fid,realization_base,region, &
                                          print_secondary_data, &
                                          icolumn)
+  ! 
+  ! Print a header for data at a coordinate
+  ! for secondary continuum
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/30/2013
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -2455,14 +2472,15 @@ subroutine WriteTecplotHeaderForCoordSec(fid,realization_base,region, &
 end subroutine WriteTecplotHeaderForCoordSec
 
 ! ************************************************************************** !
-!
-! WriteTecplotHeaderSec: Print a header for secondary continuum data
-! author: Satish Karra, LANL
-! date: 04/30/2013
-!
-! ************************************************************************** !  
+
 subroutine WriteTecplotHeaderSec(fid,realization_base,cell_string, &
                                  print_secondary_data,icolumn)
+  ! 
+  ! Print a header for secondary continuum data
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/30/2013
+  ! 
                                      
   use Realization_Base_class, only : realization_base_type
   use Option_module

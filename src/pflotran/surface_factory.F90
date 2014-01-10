@@ -19,14 +19,14 @@ module Surface_Factory_module
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceInitialize(simulation_base,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -49,14 +49,14 @@ subroutine SurfaceInitialize(simulation_base,option)
 end subroutine SurfaceInitialize
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfaceInitializePostPETSc(simulation, option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Simulation_module
   use Option_module
@@ -82,14 +82,14 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
 end subroutine SurfaceInitializePostPETSc
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine HijackSurfaceSimulation(simulation_old,simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Simulation_module
   use Surface_Realization_class
@@ -213,14 +213,14 @@ subroutine HijackSurfaceSimulation(simulation_old,simulation)
 end subroutine HijackSurfaceSimulation
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfaceJumpStart(simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Surface_Realization_class
   use Option_module
@@ -359,14 +359,14 @@ subroutine SurfaceJumpStart(simulation)
 end subroutine SurfaceJumpStart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine HijackTimestepper(stepper_old,stepper_base)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Timestepper_Surface_class
   use Timestepper_Base_class

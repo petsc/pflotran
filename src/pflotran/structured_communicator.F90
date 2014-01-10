@@ -39,14 +39,15 @@ module Structured_Communicator_class
 contains
 
 ! ************************************************************************** !
-!
-! StructuredCommunicatorCreate: Allocates and initializes a new communicator 
-!                               object for structured grids
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 function StructuredCommunicatorCreate()
+  ! 
+  ! Allocates and initializes a new communicator
+  ! object for structured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -62,13 +63,14 @@ function StructuredCommunicatorCreate()
 end function StructuredCommunicatorCreate
 
 ! ************************************************************************** !
-!
-! StructuredSetDM: Sets pointer to DM
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 subroutine StructuredSetDM(this,dm_ptr)
+  ! 
+  ! Sets pointer to DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use DM_Kludge_module
 
@@ -82,13 +84,14 @@ subroutine StructuredSetDM(this,dm_ptr)
 end subroutine StructuredSetDM
 
 ! ************************************************************************** !
-!
-! StructuredGlobalToLocal: Performs global to local communication with DM
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine StructuredGlobalToLocal(this,source,destination)
+  ! 
+  ! Performs global to local communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -104,13 +107,14 @@ subroutine StructuredGlobalToLocal(this,source,destination)
 end subroutine StructuredGlobalToLocal
 
 ! ************************************************************************** !
-!
-! StructuredLocalToGlobal: Performs local to global communication with DM
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine StructuredLocalToGlobal(this,source,destination)
+  ! 
+  ! Performs local to global communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -126,13 +130,14 @@ subroutine StructuredLocalToGlobal(this,source,destination)
 end subroutine StructuredLocalToGlobal
 
 ! ************************************************************************** !
-!
-! StructuredLocalToLocal: Performs local to local communication with DM
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine StructuredLocalToLocal(this,source,destination)
+  ! 
+  ! Performs local to local communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -148,13 +153,14 @@ subroutine StructuredLocalToLocal(this,source,destination)
 end subroutine StructuredLocalToLocal
 
 ! ************************************************************************** !
-!
-! StructuredGlobalToNatural: Performs global to natural communication with DM
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine StructuredGlobalToNatural(this,source,destination)
+  ! 
+  ! Performs global to natural communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -170,13 +176,14 @@ subroutine StructuredGlobalToNatural(this,source,destination)
 end subroutine StructuredGlobalToNatural
 
 ! ************************************************************************** !
-!
-! StructuredNaturalToGlobal: Performs natural to global communication with DM
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine StructuredNaturalToGlobal(this,source,destination)
+  ! 
+  ! Performs natural to global communication with DM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   
@@ -192,14 +199,15 @@ subroutine StructuredNaturalToGlobal(this,source,destination)
 end subroutine StructuredNaturalToGlobal
 
 ! ************************************************************************** !
-!
-! StructuredCommunicatorDestroy: Deallocates a communicator object for 
-!                                structured grids
-! author: Glenn Hammond
-! date: 03/15/13
-!
-! ************************************************************************** !
+
 subroutine StructuredCommunicatorDestroy(this)
+  ! 
+  ! Deallocates a communicator object for
+  ! structured grids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/15/13
+  ! 
 
   implicit none
   

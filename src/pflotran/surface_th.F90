@@ -4,7 +4,6 @@ module Surface_TH_module
 
   use Surface_Global_Aux_module
   use Surface_TH_Aux_module
-  use Water_EOS_module
   
   use PFLOTRAN_Constants_module
 
@@ -44,14 +43,14 @@ module Surface_TH_module
 contains
 
 ! ************************************************************************** !
-!> This routine sets up surface_TH_type
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSetup(surf_realization)
+  ! 
+  ! This routine sets up surface_TH_type
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -133,14 +132,14 @@ subroutine SurfaceTHSetup(surf_realization)
 end subroutine SurfaceTHSetup
 
 ! ************************************************************************** !
-!> This routine adds variables to be printed to list
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSetPlotVariables(surf_realization)
+  ! 
+  ! This routine adds variables to be printed to list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
   
   use Surface_Realization_class
   use Output_Aux_module
@@ -173,15 +172,15 @@ subroutine SurfaceTHSetPlotVariables(surf_realization)
 end subroutine SurfaceTHSetPlotVariables
 
 ! ************************************************************************** !
-!> This routine gets latest states (P,T) from subsurface model and updates
-!! boundary condition for surface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
+  ! 
+  ! This routine gets latest states (P,T) from subsurface model and updates
+  ! boundary condition for surface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -196,7 +195,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -321,16 +320,16 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
 end subroutine SurfaceTHUpdateSurfBC
 
-! RTM: TODO: Figure out if this needs to be modified for surface freezing.
 ! ************************************************************************** !
-!> This routine updates source/sink term for the subsurface model
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
+  ! 
+  ! RTM: TODO: Figure out if this needs to be modified for surface freezing.
+  ! This routine updates source/sink term for the subsurface model
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -344,7 +343,7 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -388,7 +387,7 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,NFLOWDOF)
 
-  call density(option%reference_temperature,option%reference_pressure,den)
+  call EOSWaterdensity(option%reference_temperature,option%reference_pressure,den)
 
   coupler_list => patch%source_sinks
   coupler => coupler_list%first
@@ -439,15 +438,15 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
 end subroutine SurfaceTHUpdateSubsurfSS
 
 ! ************************************************************************** !
-!> This routine creates a PETSc vector to data between surface and subsurface
-!! model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
+  ! 
+  ! This routine creates a PETSc vector to data between surface and subsurface
+  ! model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -461,7 +460,7 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -544,14 +543,15 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
 end subroutine SurfaceTHCreateSurfSubsurfVec
 
 ! ************************************************************************** !
-!
-! This routine creates a MPI vector to exchanged data between surface and 
-! subsurface model.
-! author: Gautam Bisht, LBL
-! date: 07/29/13
-!
-! ************************************************************************** !
+
 subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
+  ! 
+  ! This routine creates a MPI vector to exchanged data between surface and
+  ! subsurface model.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/29/13
+  ! 
 
   use Grid_module
   use String_module
@@ -565,7 +565,7 @@ subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
   use Condition_module
   use Coupler_module
   use Surface_Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -649,15 +649,15 @@ subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
 end subroutine SurfaceTHCreateSurfSubsurfVecNew
 
 ! ************************************************************************** !
-!> This routine computes the flux of water and energy from surface to 
-!! subsurface model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
+  ! 
+  ! This routine computes the flux of water and energy from surface to
+  ! subsurface model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -672,10 +672,9 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
   use Discretization_module
   use Connection_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Saturation_Function_module
   use Surface_Realization_class
   use Realization_Base_class
@@ -744,8 +743,6 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   PetscReal :: sat_pressure
   PetscReal :: pw
   PetscReal :: visl
-  PetscReal :: dvis_dp
-  PetscReal :: dvis_dt
   PetscReal :: v_darcy
   PetscReal :: v_darcy_max
   PetscReal :: gravity
@@ -829,14 +826,14 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         ghosted_id = surf_grid%nL2G(local_id)
 
         ! Compute densities:
-        call density(surf_global_aux_vars(ghosted_id)%temp(1), &
+        call EOSWaterdensity(surf_global_aux_vars(ghosted_id)%temp(1), &
                      option%reference_pressure,den_surf_kg)
         ! Now modify den_surf_kg to account for frozen fraction.
         ! WARNING: This assumes density of ice at atmospheric pressure;
         ! TODO: Need to actually compute this to handle the general case.
         den_surf_kg = surf_aux_vars(ghosted_id)%unfrozen_fraction*den_surf_kg + &
                       (1-surf_aux_vars(ghosted_id)%unfrozen_fraction)*den_surf_ice_kg
-        call density(temp_sub_p(local_id),press_sub_p(local_id),den_sub_kg)
+        call EOSWaterdensity(temp_sub_p(local_id),press_sub_p(local_id),den_sub_kg)
         den_aveg = (den_surf_kg + den_sub_kg)/2.d0
 
         ! Exchange of water between surface-subsurface.
@@ -878,8 +875,8 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           pw = option%reference_pressure
         endif
                                            
-        call psat(option%reference_temperature,sat_pressure,ierr)
-        call VISW(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
+        call EOSWaterSaturationPressure(option%reference_temperature,sat_pressure,ierr)
+        call EOSWaterViscosity(option%reference_temperature,pw,sat_pressure,visl,ierr)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
         if (v_darcy<=0.d0) then
@@ -920,11 +917,11 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           Ke_up = (sat + epsilon)**th_alpha_p(local_id)
           k_eff_up = ckdry_p(local_id) + &
                       (ckwet_p(local_id) - ckdry_p(local_id))*Ke_up
-#ifdef ICE
-          Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
-          k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
-                     ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
-#endif
+          if (option%use_th_freezing) then
+             Ke_fr_up = (sat_ice_p(local_id) + epsilon)**th_alpha_fr_p(local_id)
+             k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
+                  ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
+          endif
           k_eff_dn = surf_aux_vars(ghosted_id)%k_therm
 
           Dk_eff = k_eff_up*k_eff_dn/(k_eff_up*hw/2.d0 + &
@@ -989,15 +986,15 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
 end subroutine SurfaceTHSurf2SubsurfFlux
 
 ! ************************************************************************** !
-!> This routine get soil properties of the top-most soil layer from the 
-!! subsurface domain.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
+  ! 
+  ! This routine get soil properties of the top-most soil layer from the
+  ! subsurface domain.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -1012,7 +1009,7 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
   use Coupler_module
   use Surface_Field_module
   use Field_module
-  use Water_EOS_module
+  use EOS_Water_module
   use Discretization_module
   use Connection_module
   use Surface_Realization_class
@@ -1309,13 +1306,13 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
     ckdry_p(local_id) = TH_parameter%ckdry(int(ithrm_loc_p(local_id)))
     th_alpha_p(local_id) = TH_parameter%alpha(int(ithrm_loc_p(local_id)))
 
-#ifdef ICE
-    ckice_p(local_id) = TH_parameter%ckfrozen(int(ithrm_loc_p(local_id)))
-    th_alpha_fr_p(local_id) = TH_parameter%alpha_fr(int(ithrm_loc_p(local_id)))
-#else
-    ckice_p(local_id) = 0.d0
-    th_alpha_fr_p(local_id) = 0.d0
-#endif
+    if (option%use_th_freezing) then
+       ckice_p(local_id) = TH_parameter%ckfrozen(int(ithrm_loc_p(local_id)))
+       th_alpha_fr_p(local_id) = TH_parameter%alpha_fr(int(ithrm_loc_p(local_id)))
+    else
+       ckice_p(local_id) = 0.d0
+       th_alpha_fr_p(local_id) = 0.d0
+    endif
 
   enddo
 
@@ -1339,16 +1336,14 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
 end subroutine SurfaceTHGetSubsurfProp
 
 ! ************************************************************************** !
-!> This routine provides the function evaluation for PETSc TSSolve()
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
-subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
-  use Water_EOS_module
+subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
+  ! 
+  ! This routine provides the function evaluation for PETSc TSSolve()
+  ! Author: Gautam Bisht, LBNL
+  ! 
+
+  use EOS_Water_module
   use Connection_module
   use Surface_Realization_class
   use Discretization_module
@@ -1620,16 +1615,14 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 end subroutine SurfaceTHRHSFunction
 
 ! ************************************************************************** !
-!> This routine maximum allowable 'dt' for explicit time scheme.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
-subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 
-  use Water_EOS_module
+subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
+  ! 
+  ! This routine maximum allowable 'dt' for explicit time scheme.
+  ! Author: Gautam Bisht, LBNL
+  ! 
+
+  use EOS_Water_module
   use Connection_module
   use Surface_Realization_class
   use Patch_module
@@ -1784,14 +1777,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 end subroutine SurfaceTHComputeMaxDt
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceTHFlux(surf_aux_var_up, &
                          surf_global_aux_var_up, &
                          zc_up, &
@@ -1805,6 +1791,13 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
                          option, &
                          vel, &
                          Res)
+  ! 
+  ! This routine computes the internal flux term for under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
@@ -1925,13 +1918,7 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
 end subroutine SurfaceTHFlux
 
 ! ************************************************************************** !
-!> This routine computes flux for boundary cells.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHBCFlux(ibndtype, &
                            surf_aux_var, &
                            surf_global_aux_var, &
@@ -1941,6 +1928,12 @@ subroutine SurfaceTHBCFlux(ibndtype, &
                            option, &
                            vel, &
                            Res)
+  ! 
+  ! This routine computes flux for boundary cells.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
   
@@ -2000,14 +1993,14 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 end subroutine SurfaceTHBCFlux
 
 ! ************************************************************************** !
-!> This routine updates auxiliary variables
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateAuxVars(surf_realization)
+  ! 
+  ! This routine updates auxiliary variables
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -2161,14 +2154,14 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 end subroutine SurfaceTHUpdateAuxVars
 
 ! ************************************************************************** !
-!> This routine updates the temperature after TSSolve.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/25/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateTemperature(surf_realization)
+  ! 
+  ! This routine updates the temperature after TSSolve.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/25/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -2178,6 +2171,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   use Coupler_module
   use Connection_module
   use Surface_Material_module
+  use EOS_Water_module
 
   implicit none
 
@@ -2240,7 +2234,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
                   surf_global_aux_vars(local_id)%den_kg(1)/ &
                   surf_aux_vars(local_id)%Cwi - 273.15d0
-          call density(temp,option%reference_pressure,den)
+          call EOSWaterdensity(temp,option%reference_pressure,den)
           surf_global_aux_vars(local_id)%den_kg(1) = den
         enddo
       endif
@@ -2288,15 +2282,15 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
 end subroutine SurfaceTHUpdateTemperature
 
 ! ************************************************************************** !
-!> This routine updates the states for surface-model at the end of
-!! subsurface-model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/25/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
+  ! 
+  ! This routine updates the states for surface-model at the end of
+  ! subsurface-model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/25/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -2310,7 +2304,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
   use String_module
   use Surface_Field_module
   use Surface_Realization_class
-  use Water_EOS_module
+  use EOS_Water_module
 
   implicit none
 
@@ -2371,7 +2365,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
 
     ! Compute density
     count = count + 1
-    call density(surftemp_p(count),option%reference_pressure,den)
+    call EOSWaterdensity(surftemp_p(count),option%reference_pressure,den)
     xx_p(ibeg) = (surfpress_p(count)-option%reference_pressure)/ &
                         (abs(option%gravity(3)))/den
     if(xx_p(ibeg)<1.d-15) then
@@ -2397,14 +2391,14 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
 end subroutine SurfaceTHUpdateSurfStateNew
 
 ! ************************************************************************** !
-!> This routine updates solution after a successful time step
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSolution(surf_realization)
+  ! 
+  ! This routine updates solution after a successful time step
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module

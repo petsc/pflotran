@@ -32,13 +32,14 @@ module Time_Storage_module
 contains
 
 ! ************************************************************************** !
-!
-! TimeStorageCreate: Initializes a time storage
-! author: Glenn Hammond
-! date: 10/26/11, 05/03/13
-!
-! ************************************************************************** !
+
 function TimeStorageCreate()
+  ! 
+  ! Initializes a time storage
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/03/13
+  ! 
 
   implicit none
   
@@ -63,14 +64,15 @@ function TimeStorageCreate()
 end function TimeStorageCreate
 
 ! ************************************************************************** !
-!
-! TimeStorageVerify: Verifies the data in a time storage
-! author: Glenn Hammond
-! date: 10/26/11, 05/03/13
-!
-! ************************************************************************** !
+
 subroutine TimeStorageVerify(default_time, time_storage, &
                              default_time_storage, option)
+  ! 
+  ! Verifies the data in a time storage
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/03/13
+  ! 
 
   use Option_module
 
@@ -124,13 +126,14 @@ subroutine TimeStorageVerify(default_time, time_storage, &
 end subroutine TimeStorageVerify
 
 ! ************************************************************************** !
-!
-! TimeStorageGetTimes: Fills an array of times based on time storage
-! author: Glenn Hammond
-! date: 10/26/11, 05/03/13
-!
-! ************************************************************************** !
+
 subroutine TimeStorageGetTimes(time_storage, option, max_sim_time, time_array)
+  ! 
+  ! Fills an array of times based on time storage
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/03/13
+  ! 
 
   use Option_module
 
@@ -187,13 +190,14 @@ subroutine TimeStorageGetTimes(time_storage, option, max_sim_time, time_array)
 end subroutine TimeStorageGetTimes
 
 ! ************************************************************************** !
-!
-! TimeStoragePrint: Prints time storage info
-! author: Glenn Hammond
-! date: 10/26/11, 05/03/13
-!
-! ************************************************************************** !
+
 subroutine TimeStoragePrint(time_storage,option)
+  ! 
+  ! Prints time storage info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/03/13
+  ! 
 
   use Option_module
 
@@ -226,13 +230,14 @@ subroutine TimeStoragePrint(time_storage,option)
 end subroutine TimeStoragePrint
 
 ! ************************************************************************** !
-!
-! TimeStorageUpdate: Updates a time storage
-! author: Glenn Hammond
-! date: 10/26/11, 05/03/13
-!
-! ************************************************************************** !
+
 subroutine TimeStorageUpdate(time_storage)
+  ! 
+  ! Updates a time storage
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/03/13
+  ! 
 
   use Option_module
   
@@ -314,13 +319,14 @@ subroutine TimeStorageUpdate(time_storage)
 end subroutine TimeStorageUpdate
 
 ! ************************************************************************** !
-!
-! TimeStorageDestroy: Destroys a time storage associated with a sub_condition
-! author: Glenn Hammond
-! date: 10/26/11, 05/03/13
-!
-! ************************************************************************** !
+
 subroutine TimeStorageDestroy(time_storage)
+  ! 
+  ! Destroys a time storage associated with a sub_condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/03/13
+  ! 
 
   implicit none
   

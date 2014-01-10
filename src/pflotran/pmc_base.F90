@@ -80,13 +80,14 @@ module PMC_Base_class
 contains
 
 ! ************************************************************************** !
-!
-! PMCBaseCreate: Allocates and initializes a new process model coupler object.
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 function PMCBaseCreate()
+  ! 
+  ! Allocates and initializes a new process model coupler object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   implicit none
   
@@ -106,13 +107,14 @@ function PMCBaseCreate()
 end function PMCBaseCreate
 
 ! ************************************************************************** !
-!
-! PMCBaseInit: Initializes a new process model coupler object.
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 subroutine PMCBaseInit(this)
+  ! 
+  ! Initializes a new process model coupler object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   implicit none
   
@@ -139,13 +141,14 @@ subroutine PMCBaseInit(this)
 end subroutine PMCBaseInit
 
 ! ************************************************************************** !
-!
-! PMCBaseCastToBase: Initializes a new process model coupler object.
-! author: Glenn Hammond
-! date: 06/10/13
-!
-! ************************************************************************** !
+
 function PMCCastToBase(this)
+  ! 
+  ! PMCBaseCastToBase: Initializes a new process model coupler object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/10/13
+  ! 
 
   implicit none
   
@@ -158,13 +161,12 @@ function PMCCastToBase(this)
 end function PMCCastToBase
 
 ! ************************************************************************** !
-!
-! PMCBaseSetTimestepper: 
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 subroutine PMCBaseSetTimestepper(this,timestepper)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Timestepper_Base_class
   
@@ -182,13 +184,14 @@ subroutine PMCBaseSetTimestepper(this,timestepper)
 end subroutine PMCBaseSetTimestepper
 
 ! ************************************************************************** !
-!
-! InitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine InitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -218,13 +221,14 @@ recursive subroutine InitializeRun(this)
 end subroutine InitializeRun
 
 ! ************************************************************************** !
-!
-! PMCBaseRunToTime: Runs the actual simulation.
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
+  ! 
+  ! Runs the actual simulation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Timestepper_Base_class
   
@@ -348,13 +352,12 @@ class(pmc_base_type), target :: this
 end subroutine PMCBaseRunToTime
 
 ! ************************************************************************** !
-!
-! PMCBaseUpdateSolution: 
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCBaseUpdateSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -378,13 +381,14 @@ recursive subroutine PMCBaseUpdateSolution(this)
 end subroutine PMCBaseUpdateSolution
 
 ! ************************************************************************** !
-!
-! FinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine FinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -409,14 +413,15 @@ recursive subroutine FinalizeRun(this)
 end subroutine FinalizeRun
 
 ! ************************************************************************** !
-!
-! SetOutputFlags: Toggles flags that determine whether output is printed
-!                 to the screen and output file during a time step.
-! author: Glenn Hammond
-! date: 03/29/13
-!
-! ************************************************************************** !
+
 subroutine SetOutputFlags(this)
+  ! 
+  ! Toggles flags that determine whether output is printed
+  ! to the screen and output file during a time step.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/29/13
+  ! 
 
   use Option_module
   use Output_Aux_module
@@ -447,13 +452,14 @@ subroutine SetOutputFlags(this)
 end subroutine SetOutputFlags
 
 ! ************************************************************************** !
-!
-! OutputLocal: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine OutputLocal(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -475,13 +481,14 @@ recursive subroutine OutputLocal(this)
 end subroutine OutputLocal
 
 ! ************************************************************************** !
-!
-! PMCBaseCheckpoint: Checkpoints PMC timestepper and state variables.
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
+  ! 
+  ! Checkpoints PMC timestepper and state variables.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Logging_module
   use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
@@ -550,13 +557,14 @@ recursive subroutine PMCBaseCheckpoint(this,viewer,id,id_stamp)
 end subroutine PMCBaseCheckpoint
 
 ! ************************************************************************** !
-!
-! PMCBaseRegisterHeader: Register header entries.
-! author: Glenn Hammond
-! date: 12/02/13
-!
-! ************************************************************************** !
+
 subroutine PMCBaseRegisterHeader(this,bag,header)
+  ! 
+  ! Register header entries.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/13
+  ! 
 
   use Option_module
 
@@ -580,13 +588,14 @@ subroutine PMCBaseRegisterHeader(this,bag,header)
 end subroutine PMCBaseRegisterHeader
 
 ! ************************************************************************** !
-!
-! PMCBaseSetHeader: Sets values in checkpoint header.
-! author: Glenn Hammond
-! date: 12/02/13
-!
-! ************************************************************************** !
+
 subroutine PMCBaseSetHeader(this,bag,header)
+  ! 
+  ! Sets values in checkpoint header.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/13
+  ! 
 
   use Option_module
 
@@ -610,13 +619,14 @@ subroutine PMCBaseSetHeader(this,bag,header)
 end subroutine PMCBaseSetHeader
 
 ! ************************************************************************** !
-!
-! PMCBaseRestart: Restarts PMC timestepper and state variables.
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCBaseRestart(this,viewer)
+  ! 
+  ! Restarts PMC timestepper and state variables.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Logging_module
   use Checkpoint_module, only : OpenCheckpointFile, CloseCheckpointFile
@@ -695,13 +705,14 @@ recursive subroutine PMCBaseRestart(this,viewer)
 end subroutine PMCBaseRestart
 
 ! ************************************************************************** !
-!
-! PMCBaseGetHeader: Gets values in checkpoint header.
-! author: Glenn Hammond
-! date: 12/02/13
-!
-! ************************************************************************** !
+
 subroutine PMCBaseGetHeader(this,header)
+  ! 
+  ! Gets values in checkpoint header.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/13
+  ! 
 
   use Option_module
 
@@ -738,14 +749,14 @@ subroutine PMCBaseGetHeader(this,header)
 end subroutine PMCBaseGetHeader
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine AccumulateAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/21/13
+  ! 
 
   implicit none
   
@@ -754,14 +765,14 @@ subroutine AccumulateAuxData(this)
 end subroutine AccumulateAuxData
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine GetAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/21/13
+  ! 
 
   implicit none
   
@@ -770,14 +781,14 @@ subroutine GetAuxData(this)
 end subroutine GetAuxData
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht,LBNL
-!!
-!! date: 08/21/13
-! ************************************************************************** !
+
 subroutine SetAuxData(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht,LBNL
+  ! Date: 08/21/13
+  ! 
 
   implicit none
   
@@ -786,13 +797,14 @@ subroutine SetAuxData(this)
 end subroutine SetAuxData
 
 ! ************************************************************************** !
-!
-! PMCBaseDestroy: Deallocates a pmc object
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCBaseDestroy(this)
+  ! 
+  ! Deallocates a pmc object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Utility_module, only: DeallocateArray 
 

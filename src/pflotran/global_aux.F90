@@ -52,15 +52,15 @@ module Global_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GlobalAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
 function GlobalAuxCreate()
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -85,13 +85,14 @@ function GlobalAuxCreate()
 end function GlobalAuxCreate
 
 ! ************************************************************************** !
-!
-! GlobalAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine GlobalAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -205,13 +206,14 @@ subroutine GlobalAuxVarInit(aux_var,option)
 end subroutine GlobalAuxVarInit
 
 ! ************************************************************************** !
-!
-! GlobalAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
 
@@ -279,13 +281,14 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
 end subroutine GlobalAuxVarCopy
 
 ! ************************************************************************** !
-!
-! GlobalAuxVarSingleDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GlobalAuxVarSingleDestroy(aux_var)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -298,15 +301,16 @@ subroutine GlobalAuxVarSingleDestroy(aux_var)
   nullify(aux_var)
 
 end subroutine GlobalAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!
-! GlobalAuxVarArrayDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GlobalAuxVarArrayDestroy(aux_vars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -323,15 +327,16 @@ subroutine GlobalAuxVarArrayDestroy(aux_vars)
   nullify(aux_vars)
 
 end subroutine GlobalAuxVarArrayDestroy
-  
+
 ! ************************************************************************** !
-!
-! GlobalAuxVarStrip: Deallocates all members of single auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GlobalAuxVarStrip(aux_var)
+  ! 
+  ! Deallocates all members of single auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -362,13 +367,14 @@ subroutine GlobalAuxVarStrip(aux_var)
 end subroutine GlobalAuxVarStrip
 
 ! ************************************************************************** !
-!
-! GlobalAuxDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine GlobalAuxDestroy(aux)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 

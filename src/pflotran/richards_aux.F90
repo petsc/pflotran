@@ -58,15 +58,15 @@ module Richards_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RichardsAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
 function RichardsAuxCreate()
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -102,13 +102,14 @@ function RichardsAuxCreate()
 end function RichardsAuxCreate
 
 ! ************************************************************************** !
-!
-! RichardsAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RichardsAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -137,13 +138,14 @@ subroutine RichardsAuxVarInit(aux_var,option)
 end subroutine RichardsAuxVarInit
 
 ! ************************************************************************** !
-!
-! RichardsAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !  
+
 subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Option_module
 
@@ -170,20 +172,22 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%dden_dp = aux_var%dden_dp
  
 end subroutine RichardsAuxVarCopy
-  
+
 ! ************************************************************************** !
-!
-! RichardsAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
                                  saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Option_module
   use Global_Aux_module
-  use Water_EOS_module
+  
+  use EOS_Water_module
   use Saturation_Function_module
   
   implicit none
@@ -255,13 +259,15 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
 #ifndef DONT_USE_WATEOS
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-              hw_dp,hw_dt,option%scale,ierr)
+!geh  call EOSWaterDensityEnthalpy(global_aux_var%temp(1),pw,dw_kg,dw_mol,hw, &
+!                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
+  call EOSWaterDensity(global_aux_var%temp(1),pw,dw_kg,dw_mol, &
+                       dw_dp,dw_dt,option%scale,ierr)
 #else
-  call density(global_aux_var%temp(1),pw,dw_kg)
+  call EOSWaterdensity(global_aux_var%temp(1),pw,dw_kg)
   pert = tol*pw
   pw_pert = pw+pert
-  call density(global_aux_var%temp(1),pw_pert,dw_kg_pert)
+  call EOSWaterdensity(global_aux_var%temp(1),pw_pert,dw_kg_pert)
   dw_dp = (dw_kg_pert-dw_kg)/pert
   ! dw_kg = kg/m^3
   ! dw_mol = kmol/m^3
@@ -270,12 +276,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   dw_dp = dw_dp/FMWH2O
 #endif
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(global_aux_var%temp(1),sat_pressure,ierr)
-!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
-  dvis_dpsat = -dvis_dp 
+  call EOSWaterSaturationPressure(global_aux_var%temp(1),sat_pressure,ierr)
+  !geh: 0.d0 passed in for derivative of pressure w/respect to temp
+  call EOSWaterViscosity(global_aux_var%temp(1),pw,sat_pressure,0.d0, &
+                         visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
+!geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
   if (.not.saturated) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
+    dvis_dpsat = 0.d0
     dw_dp = 0.d0
     hw_dp = 0.d0
   endif
@@ -319,13 +327,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 end subroutine RichardsAuxVarCompute
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine AuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -334,13 +343,14 @@ subroutine AuxVarDestroy(aux_var)
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RichardsAuxDestroy(aux)
+  ! 
+  ! Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 

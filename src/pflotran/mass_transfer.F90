@@ -27,13 +27,14 @@ module Mass_Transfer_module
 contains
 
 ! ************************************************************************** !
-!
-! MassTransferCreate: Creates a mass transfer object
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 function MassTransferCreate()
+  ! 
+  ! Creates a mass transfer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
   
   implicit none
 
@@ -52,13 +53,14 @@ function MassTransferCreate()
 end function MassTransferCreate
 
 ! ************************************************************************** !
-!
-! MassTransferRead: Reads in contents of a mass transfer card
-! author: Glenn Hammond
-! date: 05/01/13
-! 
-! ************************************************************************** !
+
 subroutine MassTransferRead(mass_transfer,input,option)
+  ! 
+  ! Reads in contents of a mass transfer card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -104,13 +106,14 @@ subroutine MassTransferRead(mass_transfer,input,option)
 end subroutine MassTransferRead
 
 ! ************************************************************************** !
-!
-! MassTransferAddToList: Adds a mass transfer object to linked list
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 subroutine MassTransferAddToList(mass_transfer,list)
+  ! 
+  ! Adds a mass transfer object to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   implicit none
   
@@ -134,15 +137,16 @@ subroutine MassTransferAddToList(mass_transfer,list)
 end subroutine MassTransferAddToList
 
 ! ************************************************************************** !
-!
-! MassTransferInit: Initializes mass transfer object opening dataset to
-!                   set up times, vectors, etc.
-! author: Glenn Hammond
-! date: 05/09/13
-!
-! ************************************************************************** !
+
 recursive subroutine MassTransferInit(mass_transfer, discretization, &
                                       available_datasets, option)
+  ! 
+  ! Initializes mass transfer object opening dataset to
+  ! set up times, vectors, etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/13
+  ! 
 
   use Discretization_module
   use Dataset_Base_class
@@ -215,14 +219,15 @@ recursive subroutine MassTransferInit(mass_transfer, discretization, &
 end subroutine MassTransferInit
 
 ! ************************************************************************** !
-!
-! MassTransferUpdate: Updates a mass transfer object transfering data from
-!                     the buffer into the PETSc Vec
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
+  ! 
+  ! Updates a mass transfer object transfering data from
+  ! the buffer into the PETSc Vec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   use Discretization_module
   use Grid_module
@@ -258,13 +263,14 @@ recursive subroutine MassTransferUpdate(mass_transfer, grid, option)
 end subroutine MassTransferUpdate
 
 ! ************************************************************************** !
-!
-! MassTransferDestroy: Destroys a mass transfer object
-! author: Glenn Hammond
-! date: 05/01/13
-!
-! ************************************************************************** !
+
 recursive subroutine MassTransferDestroy(mass_transfer)
+  ! 
+  ! Destroys a mass transfer object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/01/13
+  ! 
 
   implicit none
   

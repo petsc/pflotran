@@ -79,15 +79,16 @@ module Constraint_module
 contains
 
 ! ************************************************************************** !
-!
-! TranConstraintCreate: Creates a transport constraint (set of concentrations
-!                       and constraints for setting boundary or initial 
-!                       condition).
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 function TranConstraintCreate(option)
+  ! 
+  ! Creates a transport constraint (set of concentrations
+  ! and constraints for setting boundary or initial
+  ! condition).
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   
@@ -114,14 +115,15 @@ function TranConstraintCreate(option)
 end function TranConstraintCreate
 
 ! ************************************************************************** !
-!
-! TranConstraintCouplerCreate: Creates a coupler that ties a constraint to a
-!                              transport condition
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 function TranConstraintCouplerCreate(option)
+  ! 
+  ! Creates a coupler that ties a constraint to a
+  ! transport condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   
@@ -153,13 +155,14 @@ function TranConstraintCouplerCreate(option)
 end function TranConstraintCouplerCreate
 
 ! ************************************************************************** !
-!
-! TranConstraintRead: Reads a transport constraint from the input file
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConstraintRead(constraint,reaction,input,option)
+  ! 
+  ! Reads a transport constraint from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -606,13 +609,14 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 end subroutine TranConstraintRead
 
 ! ************************************************************************** !
-!
-! TranConstraintInitList: Initializes a transport constraint list
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConstraintInitList(list)
+  ! 
+  ! Initializes a transport constraint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   implicit none
 
@@ -626,14 +630,15 @@ subroutine TranConstraintInitList(list)
 end subroutine TranConstraintInitList
 
 ! ************************************************************************** !
-!
-! TranConstraintAddToList: Adds a new constraint to a transport constraint
-!                          list
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConstraintAddToList(new_constraint,list)
+  ! 
+  ! Adds a new constraint to a transport constraint
+  ! list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   implicit none
   
@@ -649,14 +654,15 @@ subroutine TranConstraintAddToList(new_constraint,list)
 end subroutine TranConstraintAddToList
 
 ! ************************************************************************** !
-!
-! TranConstraintGetPtrFromList: Returns a pointer to the constraint matching
-!                               constraint_name
-! author: Glenn Hammond
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function TranConstraintGetPtrFromList(constraint_name,constraint_list)
+  ! 
+  ! Returns a pointer to the constraint matching
+  ! constraint_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/08
+  ! 
 
   use String_module
 
@@ -687,13 +693,14 @@ function TranConstraintGetPtrFromList(constraint_name,constraint_list)
 end function TranConstraintGetPtrFromList
 
 ! ************************************************************************** !
-!
-! TranConstraintDestroy: Deallocates a constraint
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConstraintDestroy(constraint)
+  ! 
+  ! Deallocates a constraint
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   implicit none
   
@@ -723,13 +730,14 @@ subroutine TranConstraintDestroy(constraint)
 end subroutine TranConstraintDestroy
 
 ! ************************************************************************** !
-!
-! TranConstraintDestroyList: Deallocates a list of constraints
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConstraintDestroyList(constraint_list)
+  ! 
+  ! Deallocates a list of constraints
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   implicit none
   
@@ -759,13 +767,14 @@ subroutine TranConstraintDestroyList(constraint_list)
 end subroutine TranConstraintDestroyList
 
 ! ************************************************************************** !
-!
-! TranConstraintCouplerDestroy: Destroys a constraint coupler linked list
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConstraintCouplerDestroy(coupler_list)
+  ! 
+  ! Destroys a constraint coupler linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   
