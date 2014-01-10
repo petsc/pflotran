@@ -168,7 +168,7 @@ function stage-pflotran-test() {
     echo "  test directory : ${_test_dir}"
     cd ${_test_dir}
     make clean-tests &> /dev/null
-    make test
+    make ${_pflotran_flags} test
     BUILD_STATUS=$?
     cat *.testlog
 }
