@@ -46,14 +46,14 @@ module Surface_Flow_module
 contains
 
 ! ************************************************************************** !
-!> This routine sets up surfaceflow type
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/21/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowSetup(surf_realization)
+  ! 
+  ! This routine sets up surfaceflow type
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/21/12
+  ! 
 
   use Surface_Realization_class
   
@@ -64,14 +64,14 @@ subroutine SurfaceFlowSetup(surf_realization)
 end subroutine SurfaceFlowSetup
 
 ! ************************************************************************** !
-!> This routine adds variables to be printed to list
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/30/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowSetPlotVariables(surf_realization)
+  ! 
+  ! This routine adds variables to be printed to list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/30/12
+  ! 
   
   use Surface_Realization_class
   use Output_Aux_module
@@ -99,14 +99,7 @@ subroutine SurfaceFlowSetPlotVariables(surf_realization)
 end subroutine SurfaceFlowSetPlotVariables
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for the residual under
-!! kinematic-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/21/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowKinematic(hw_up, &
                                 mannings_up, &
                                 hw_dn, &
@@ -116,6 +109,13 @@ subroutine SurfaceFlowKinematic(hw_up, &
                                 option, &
                                 vel, &
                                 Res)
+  ! 
+  ! This routine computes the internal flux term for the residual under
+  ! kinematic-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/21/12
+  ! 
 
   use Option_module
   
@@ -148,14 +148,7 @@ subroutine SurfaceFlowKinematic(hw_up, &
 end subroutine SurfaceFlowKinematic
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for the residual under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowDiffusion(hw_up, &
                                 zc_up, &
                                 mannings_up, &
@@ -167,6 +160,13 @@ subroutine SurfaceFlowDiffusion(hw_up, &
                                 option, &
                                 vel, &
                                 Res)
+  ! 
+  ! This routine computes the internal flux term for the residual under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Option_module
 
@@ -226,14 +226,14 @@ subroutine SurfaceFlowDiffusion(hw_up, &
 end subroutine SurfaceFlowDiffusion
 
 ! ************************************************************************** !
-!> This routine updates data in module after a successful time step
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/22/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSolution(surf_realization)
+  ! 
+  ! This routine updates data in module after a successful time step
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/22/12
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module
@@ -251,14 +251,14 @@ subroutine SurfaceFlowUpdateSolution(surf_realization)
 end subroutine SurfaceFlowUpdateSolution
 
 ! ************************************************************************** !
-!> This routine provides the function evaluation for PETSc TSSolve()
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
+  ! 
+  ! This routine provides the function evaluation for PETSc TSSolve()
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module
@@ -516,14 +516,14 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 end subroutine SurfaceFlowRHSFunction
 
 ! ************************************************************************** !
-!> This routine maximum allowable 'dt' for surface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
+  ! 
+  ! This routine maximum allowable 'dt' for surface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   
   use Connection_module
@@ -675,14 +675,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 end subroutine SurfaceFlowComputeMaxDt
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
                          zc_up, &
                          mannings_up, &
@@ -694,6 +687,13 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
                          option, &
                          vel, &
                          Res)
+  ! 
+  ! This routine computes the internal flux term for under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Surface_Global_Aux_module
   use Option_module
@@ -755,13 +755,7 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
 end subroutine SurfaceFlowFlux
 
 ! ************************************************************************** !
-!> This routine computes the boundary term surface water equation
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowBCFlux(ibndtype, &
                            surf_global_aux_var, &
                            slope, &
@@ -770,6 +764,12 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
                            option, &
                            vel, &
                            Res)
+  ! 
+  ! This routine computes the boundary term surface water equation
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Option_module
   use Surface_Global_Aux_module
@@ -813,14 +813,14 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
 end subroutine SurfaceFlowBCFlux
 
 ! ************************************************************************** !
-!> This routine updates auxiliary variables
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateAuxVars(surf_realization)
+  ! 
+  ! This routine updates auxiliary variables
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -928,14 +928,14 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
 end subroutine SurfaceFlowUpdateAuxVars
 
 ! ************************************************************************** !
-!> This routine surface flow tecplot file header
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/29/12
-! ************************************************************************** !
+
 function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
+  ! 
+  ! This routine surface flow tecplot file header
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/29/12
+  ! 
 
   use Surface_Realization_class
   use Option_module
@@ -967,15 +967,15 @@ function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
 end function SurfaceFlowGetTecplotHeader
 
 ! ************************************************************************** !
-!> This routine get soil properties of the top-most soil layer from the 
-!! subsurface domain.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
+  ! 
+  ! This routine get soil properties of the top-most soil layer from the
+  ! subsurface domain.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Grid_module
   use String_module
@@ -1260,15 +1260,15 @@ subroutine SurfaceFlowGetSubsurfProp(realization,surf_realization)
 end subroutine SurfaceFlowGetSubsurfProp
 
 ! ************************************************************************** !
-!> This routine prescribes the strength of source/sink between surface and
-!! subsurface volume.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/06/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
+  ! 
+  ! This routine prescribes the strength of source/sink between surface and
+  ! subsurface volume.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/06/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1373,22 +1373,21 @@ subroutine SurfaceFlowUpdateSubsurfSS(realization,surf_realization,dt)
 end subroutine SurfaceFlowUpdateSubsurfSS
 
 ! ************************************************************************** !
-!> This routine scatters pressure values for first soil layer from subsurface
-!! model to surface model. When this routine is called for the first time,
-!! following subsurface properties are send from subsurface model to surface
-!! model:
-!!  - Permeabilities in X,Y,Z directions.
-!!  - Distance of soil control volume to center of surface cell (DX,DY,DZ).
-!!  - Porosity.
-!!  - Saturation function ID of soil control volume.
-!!
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/06/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
+  ! 
+  ! This routine scatters pressure values for first soil layer from subsurface
+  ! model to surface model. When this routine is called for the first time,
+  ! following subsurface properties are send from subsurface model to surface
+  ! model:
+  ! - Permeabilities in X,Y,Z directions.
+  ! - Distance of soil control volume to center of surface cell (DX,DY,DZ).
+  ! - Porosity.
+  ! - Saturation function ID of soil control volume.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/06/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1502,14 +1501,14 @@ subroutine SurfaceFlowUpdateSurfBC(realization,surf_realization)
 end subroutine SurfaceFlowUpdateSurfBC
 
 ! ************************************************************************** !
-!> This routine computes flux between surface and subsurface model.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 06/06/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
+  ! 
+  ! This routine computes flux between surface and subsurface model.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 06/06/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1719,15 +1718,15 @@ subroutine SurfaceFlowSurf2SubsurfFlux(realization,surf_realization)
 end subroutine SurfaceFlowSurf2SubsurfFlux
 
 ! ************************************************************************** !
-!> This routine creates a MPI vector to keep accumulated volume of water
-!! exchanged between surface and subsurface model.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 10/05/12
-! ************************************************************************** !
+
 subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
+  ! 
+  ! This routine creates a MPI vector to keep accumulated volume of water
+  ! exchanged between surface and subsurface model.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 10/05/12
+  ! 
 
   use Grid_module
   use String_module
@@ -1817,15 +1816,15 @@ subroutine SurfaceFlowCreateSurfSubsurfVec(realization,surf_realization)
 end subroutine SurfaceFlowCreateSurfSubsurfVec
 
 ! ************************************************************************** !
-!> This routine creates a MPI vector to exchanged data from subsurface model
-!! to surface model.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/29/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
+  ! 
+  ! This routine creates a MPI vector to exchanged data from subsurface model
+  ! to surface model.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/29/13
+  ! 
 
   use Grid_module
   use String_module
@@ -1918,15 +1917,15 @@ subroutine SurfaceFlowCreateSurfSubsurfVecNew(realization,surf_realization)
 end subroutine SurfaceFlowCreateSurfSubsurfVecNew
 
 ! ************************************************************************** !
-!> This routine gets updated values of standing water at the end of 
-!! subsurface-flow model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/30/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
+  ! 
+  ! This routine gets updated values of standing water at the end of
+  ! subsurface-flow model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/30/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -2053,15 +2052,15 @@ subroutine SurfaceFlowUpdateSurfState(realization, surf_realization, dt)
 end subroutine SurfaceFlowUpdateSurfState
 
 ! ************************************************************************** !
-!> This routine gets updated values of standing water at the end of 
-!! subsurface-flow model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/30/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
+  ! 
+  ! This routine gets updated values of standing water at the end of
+  ! subsurface-flow model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/30/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -2141,15 +2140,15 @@ subroutine SurfaceFlowUpdateSurfStateNew(surf_realization)
 end subroutine SurfaceFlowUpdateSurfStateNew
 
 ! ************************************************************************** !
-!> This routine updates the pressure BC for subsurface model at the end of
-!!  surface-flow model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 07/30/13
-! ************************************************************************** !
+
 subroutine SurfaceFlowUpdateSubsurfBC(realization,surf_realization)
+  ! 
+  ! This routine updates the pressure BC for subsurface model at the end of
+  ! surface-flow model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/30/13
+  ! 
 
   use Grid_module
   use String_module

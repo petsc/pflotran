@@ -82,17 +82,14 @@ module Mphase_Aux_module
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 function MphaseAuxCreate()
+  ! 
+  ! MphaseAuxVarCreate: Allocate and initialize auxiliary object
+  ! Author: Chuan Lu
+  ! 
 
   use Option_module
 
@@ -126,16 +123,13 @@ function MphaseAuxCreate()
   
 end function MphaseAuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! MphaseAuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 subroutine MphaseAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! Author: Chuan Lu
+  ! 
 
   use Option_module
 
@@ -186,14 +180,11 @@ subroutine MphaseAuxVarInit(aux_var,option)
 end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarCopy: Copies an auxiliary variable
-! author: 
-! date: 
-!
-! ************************************************************************** !  
-subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
 
+subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
   use Option_module
 
   implicit none
@@ -230,17 +221,15 @@ subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine MphaseAuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseAuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
 subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_function, &
                                    fluid_properties,option,xphico2)
+  ! 
+  ! MphaseAuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! Author: Chuan Lu
+  ! 
 
   use Option_module
   use Global_Aux_module
@@ -532,7 +521,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
 end subroutine MphaseAuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturation_function, &
                                     fluid_properties,option)
@@ -567,14 +556,11 @@ subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturati
 end subroutine MphaseAuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarElemDestroy: Deallocates a mphase auxiliary elment object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseAuxVarElemDestroy(aux_var_elem)
 
+subroutine MphaseAuxVarElemDestroy(aux_var_elem)
+  ! 
+  ! Deallocates a mphase auxiliary elment object
+  ! 
   implicit none
 
   type(mphase_auxvar_elem_type) :: aux_var_elem
@@ -601,14 +587,11 @@ subroutine MphaseAuxVarElemDestroy(aux_var_elem)
 end subroutine MphaseAuxVarElemDestroy
 
 ! ************************************************************************** !
-!
-! MphaseAuxVarDestroy: Deallocates a mphase auxiliary object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseAuxVarDestroy(aux_var)
 
+subroutine MphaseAuxVarDestroy(aux_var)
+  ! 
+  ! Deallocates a mphase auxiliary object
+  ! 
   implicit none
 
   type(mphase_auxvar_type) :: aux_var
@@ -627,14 +610,11 @@ subroutine MphaseAuxVarDestroy(aux_var)
 end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MphaseAuxDestroy: Deallocates a mphase auxiliary object
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseAuxDestroy(aux)
 
+subroutine MphaseAuxDestroy(aux)
+  ! 
+  ! Deallocates a mphase auxiliary object
+  ! 
   implicit none
 
   type(mphase_type), pointer :: aux

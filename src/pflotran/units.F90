@@ -13,13 +13,14 @@ module Units_module
 contains
 
 ! ************************************************************************** !
-!
-! UnitsConvert: Converts units to pflotran internal units
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 function UnitsConvertToInternal(units,option)
+  ! 
+  ! UnitsConvert: Converts units to pflotran internal units
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
 
@@ -77,13 +78,14 @@ function UnitsConvertToInternal(units,option)
 end function UnitsConvertToInternal
 
 ! ************************************************************************** !
-!
-! UnitsConvert: Converts units to pflotran internal units
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 function UnitsConvertToExternal(units,option)
+  ! 
+  ! UnitsConvert: Converts units to pflotran internal units
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
 
@@ -99,13 +101,14 @@ function UnitsConvertToExternal(units,option)
 end function UnitsConvertToExternal
 
 ! ************************************************************************** !
-!
-! UnitsConvert: Converts units to pflotran internal units
-! author: Glenn Hammond
-! date: 01/21/09
-!
-! ************************************************************************** !
+
 function UnitsConvert(unit,option)
+  ! 
+  ! Converts units to pflotran internal units
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
   

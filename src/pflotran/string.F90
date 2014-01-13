@@ -38,13 +38,14 @@ module String_module
 contains
 
 ! ************************************************************************** !
-!
-! StringCompare1: compares two strings
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 PetscBool function StringCompare1(string1,string2,n)
+  ! 
+  ! compares two strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -64,13 +65,14 @@ PetscBool function StringCompare1(string1,string2,n)
 end function StringCompare1
 
 ! ************************************************************************** !
-!
-! StringCompare2: compares two strings
-! author: Glenn Hammond
-! date: 10/25/11
-!
-! ************************************************************************** !
+
 PetscBool function StringCompare2(string1,string2)
+  ! 
+  ! compares two strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/11
+  ! 
 
   implicit none
 
@@ -97,13 +99,14 @@ PetscBool function StringCompare2(string1,string2)
 end function StringCompare2
 
 ! ************************************************************************** !
-!
-! StringCompareIgnoreCase1: compares two strings
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 function StringCompareIgnoreCase1(string1,string2,n)
+  ! 
+  ! compares two strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -132,13 +135,14 @@ function StringCompareIgnoreCase1(string1,string2,n)
 end function StringCompareIgnoreCase1
 
 ! ************************************************************************** !
-!
-! StringCompare: compares two strings
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 function StringCompareIgnoreCase2(string1,string2)
+  ! 
+  ! StringCompare: compares two strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -174,13 +178,14 @@ function StringCompareIgnoreCase2(string1,string2)
 end function StringCompareIgnoreCase2
 
 ! ************************************************************************** !
-!
-! StringToUpper: converts lowercase characters in a card to uppercase
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine StringToUpper(string)
+  ! 
+  ! converts lowercase characters in a card to uppercase
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
       
   implicit none
 
@@ -196,13 +201,14 @@ subroutine StringToUpper(string)
 end subroutine StringToUpper
 
 ! ************************************************************************** !
-!
-! StringToLower: converts uppercase characters in a card to lowercase
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine StringToLower(string)
+  ! 
+  ! converts uppercase characters in a card to lowercase
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
       
   implicit none
 
@@ -218,14 +224,15 @@ subroutine StringToLower(string)
 end subroutine StringToLower
 
 ! ************************************************************************** !
-!
-! StringReadQuotedWord: reads and removes a name from a string read from the
-!                       database.  "'" are used as delimiters.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine StringReadQuotedWord(string, name, return_blank_error, ierr)
+  ! 
+  ! reads and removes a name from a string read from the
+  ! database.  "'" are used as delimiters.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -288,13 +295,14 @@ subroutine StringReadQuotedWord(string, name, return_blank_error, ierr)
 end subroutine StringReadQuotedWord
 
 ! ************************************************************************** !
-!
-! StringStartsWithAlpha: Determines whether a string starts with an alpha char
-! author: Glenn Hammond
-! date: 10/07/10
-!
-! ************************************************************************** !
+
 function StringStartsWithAlpha(string)
+  ! 
+  ! Determines whether a string starts with an alpha char
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/10
+  ! 
       
   implicit none
 
@@ -314,14 +322,15 @@ function StringStartsWithAlpha(string)
 end function StringStartsWithAlpha
 
 ! ************************************************************************** !
-!
-! StringStartsWith: Determines whether a string starts with characters 
-!                   identical to another string
-! author: Glenn Hammond
-! date: 03/16/12
-!
-! ************************************************************************** !
+
 function StringStartsWith(string,string2)
+  ! 
+  ! Determines whether a string starts with characters
+  ! identical to another string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/16/12
+  ! 
       
   implicit none
 
@@ -347,15 +356,16 @@ function StringStartsWith(string,string2)
 end function StringStartsWith
 
 ! ************************************************************************** !
-!
-! StringAdjustl: Left adjusts a string by removing leading spaces and tabs.
-!                This subroutine is needed because the adjustl() Fortran 90 
-!                intrinsic will not remove leading tabs.
-! author: Richard Tran Mills
-! date: 9/21/2010
-!
-! ************************************************************************** !
+
 subroutine StringAdjustl(string)
+  ! 
+  ! Left adjusts a string by removing leading spaces and tabs.
+  ! This subroutine is needed because the adjustl() Fortran 90
+  ! intrinsic will not remove leading tabs.
+  ! 
+  ! Author: Richard Tran Mills
+  ! Date: 9/21/2010
+  ! 
 
   implicit none
 
@@ -382,13 +392,14 @@ subroutine StringAdjustl(string)
 end subroutine StringAdjustl
 
 ! ************************************************************************** !
-!
-! StringNull: Returns PETSC_TRUE if a string is blank
-! author: Glenn Hammond
-! date: 10/07/10
-!
-! ************************************************************************** !
+
 function StringNull(string)
+  ! 
+  ! Returns PETSC_TRUE if a string is blank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/10
+  ! 
       
   implicit none
 
@@ -407,14 +418,15 @@ function StringNull(string)
 end function StringNull
 
 ! ************************************************************************** !
-!
-! StringFindEntryInList: Returns the index of a string if found in a list
-!                        of strings
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function StringFindEntryInList(string,string_array)
+  ! 
+  ! Returns the index of a string if found in a list
+  ! of strings
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
       
   implicit none
 
@@ -436,13 +448,14 @@ function StringFindEntryInList(string,string_array)
 end function StringFindEntryInList
 
 ! ************************************************************************** !
-!
-! StringSwapChar: Swaps a character from a string
-! author: Glenn Hammond
-! date: 02/04/13
-!
-! ************************************************************************** !
+
 subroutine StringSwapChar(string,char_in,char_out)
+  ! 
+  ! Swaps a character from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/13
+  ! 
 
   implicit none
  
@@ -459,13 +472,14 @@ subroutine StringSwapChar(string,char_in,char_out)
 end subroutine StringSwapChar
 
 ! ************************************************************************** !
-!
-! StringSplit: Splits a string based on a set of chars
-! author: Glenn Hammond
-! date: 01/28/13
-!
-! ************************************************************************** !
+
 function StringSplit(string,chars)
+  ! 
+  ! Splits a string based on a set of chars
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/28/13
+  ! 
       
   implicit none
 
@@ -536,13 +550,14 @@ function StringSplit(string,chars)
 end function StringSplit
 
 ! ************************************************************************** !
-!
-! StringFormatInt: Writes a integer to a string
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
+
 function StringFormatInt(int_value)
+  ! 
+  ! Writes a integer to a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
 
   implicit none
   
@@ -557,13 +572,14 @@ function StringFormatInt(int_value)
 end function StringFormatInt
 
 ! ************************************************************************** !
-!
-! StringFormatDouble: Writes a double or real to a string
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
+
 function StringFormatDouble(real_value)
+  ! 
+  ! Writes a double or real to a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
 
   implicit none
   

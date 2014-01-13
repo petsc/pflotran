@@ -9,7 +9,9 @@ module Block_Tridiag_module
             solbtb
      
 contains
-      
+
+! ************************************************************************** !
+
 subroutine decbt (m, n, ndim, a, b, c, ip, ier)
       
   use PFLOTRAN_Constants_module
@@ -137,7 +139,8 @@ subroutine decbt (m, n, ndim, a, b, c, ip, ier)
      return
 
 end subroutine decbt
-!-----------------------  end of subroutine decbt  ----------
+
+! ************************************************************************** !
 
 subroutine solbt (m, n, ndim, a, b, c, ip, y)
 
@@ -223,7 +226,7 @@ subroutine solbt (m, n, ndim, a, b, c, ip, y)
   return
 end subroutine solbt
 
-!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+! ************************************************************************** !
 
 subroutine solbtf (m, n, ndim, a, b, c, ip, y)
 
@@ -281,7 +284,9 @@ subroutine solbtf (m, n, ndim, a, b, c, ip, y)
 
   return
 end subroutine solbtf
-      
+
+! ************************************************************************** !
+
 subroutine solbtb (m, n, ndim, a, b, c, ip, y)
 
   implicit none
@@ -342,7 +347,7 @@ subroutine solbtb (m, n, ndim, a, b, c, ip, y)
   return
 end subroutine solbtb
 
-!-----------------------  end of subroutine solbt  -----
+! ************************************************************************** !
 
 subroutine dec (n, ndim, a, ip, ier)
 
@@ -425,7 +430,7 @@ subroutine dec (n, ndim, a, ip, ier)
 
 end subroutine dec
 
-!----------------------- end of subroutine dec -----------
+! ************************************************************************** !
 
 subroutine sol (n, ndim, a, b, ip)
 

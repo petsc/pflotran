@@ -86,13 +86,14 @@ module Microbial_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! MicrobialCreate: Allocate and initialize microbial object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function MicrobialCreate()
+  ! 
+  ! Allocate and initialize microbial object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -123,13 +124,14 @@ function MicrobialCreate()
 end function MicrobialCreate
 
 ! ************************************************************************** !
-!
-! MicrobialRxnCreate: Allocate and initialize a microbial object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function MicrobialRxnCreate()
+  ! 
+  ! Allocate and initialize a microbial object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -154,13 +156,14 @@ function MicrobialRxnCreate()
 end function MicrobialRxnCreate
 
 ! ************************************************************************** !
-!
-! MicrobialMonodCreate: Allocate and initialize a microbial monod object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function MicrobialMonodCreate()
+  ! 
+  ! Allocate and initialize a microbial monod object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -179,14 +182,15 @@ function MicrobialMonodCreate()
 end function MicrobialMonodCreate
 
 ! ************************************************************************** !
-!
-! MicrobialInhibitionCreate: Allocate and initialize a microbial inhibition 
-!                            object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function MicrobialInhibitionCreate()
+  ! 
+  ! Allocate and initialize a microbial inhibition
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -207,13 +211,14 @@ function MicrobialInhibitionCreate()
 end function MicrobialInhibitionCreate
 
 ! ************************************************************************** !
-!
-! MicrobialBiomassCreate: Allocate and initialize a microbial biomass object
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 function MicrobialBiomassCreate()
+  ! 
+  ! Allocate and initialize a microbial biomass object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
   
@@ -231,14 +236,15 @@ function MicrobialBiomassCreate()
 end function MicrobialBiomassCreate
 
 ! ************************************************************************** !
-!
-! MicrobialGetMonodCount: Counts number of monod expressions in
-!                              microbial reaction
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function MicrobialGetMonodCount(microbial_rxn)
+  ! 
+  ! Counts number of monod expressions in
+  ! microbial reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -262,14 +268,15 @@ function MicrobialGetMonodCount(microbial_rxn)
 end function MicrobialGetMonodCount
 
 ! ************************************************************************** !
-!
-! MicrobialGetInhibitionCount: Counts number of inhibiton expressions in
-!                              microbial reaction
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function MicrobialGetInhibitionCount(microbial_rxn)
+  ! 
+  ! Counts number of inhibiton expressions in
+  ! microbial reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
   
@@ -293,13 +300,14 @@ function MicrobialGetInhibitionCount(microbial_rxn)
 end function MicrobialGetInhibitionCount
 
 ! ************************************************************************** !
-!
-! MicrobialGetBiomassCount: Returns the number of biomass species
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 function MicrobialGetBiomassCount(microbial)
+  ! 
+  ! Returns the number of biomass species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
   
@@ -319,13 +327,14 @@ function MicrobialGetBiomassCount(microbial)
 end function MicrobialGetBiomassCount
 
 ! ************************************************************************** !
-!
-! MicrobialRxnDestroy: Deallocates a microbial rxn object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 subroutine MicrobialRxnDestroy(microbial)
+  ! 
+  ! Deallocates a microbial rxn object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
     
@@ -342,13 +351,14 @@ subroutine MicrobialRxnDestroy(microbial)
 end subroutine MicrobialRxnDestroy
 
 ! ************************************************************************** !
-!
-! MicrobialMonodDestroy: Deallocates a microbial monod object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 recursive subroutine MicrobialMonodDestroy(monod)
+  ! 
+  ! Deallocates a microbial monod object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
     
@@ -364,13 +374,14 @@ recursive subroutine MicrobialMonodDestroy(monod)
 end subroutine MicrobialMonodDestroy
 
 ! ************************************************************************** !
-!
-! MicrobialInhibitionDestroy: Deallocates a microbial inhibition object
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 recursive subroutine MicrobialInhibitionDestroy(inhibition)
+  ! 
+  ! Deallocates a microbial inhibition object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   implicit none
     
@@ -386,13 +397,14 @@ recursive subroutine MicrobialInhibitionDestroy(inhibition)
 end subroutine MicrobialInhibitionDestroy
 
 ! ************************************************************************** !
-!
-! MicrobialBiomassDestroy: Deallocates a microbial biomass object
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 subroutine MicrobialBiomassDestroy(biomass)
+  ! 
+  ! Deallocates a microbial biomass object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
     
@@ -406,13 +418,14 @@ subroutine MicrobialBiomassDestroy(biomass)
 end subroutine MicrobialBiomassDestroy
 
 ! ************************************************************************** !
-!
-! MicrobialDestroy: Deallocates a microbial object
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine MicrobialDestroy(microbial)
+  ! 
+  ! Deallocates a microbial object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   

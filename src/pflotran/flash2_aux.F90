@@ -81,17 +81,16 @@ type, public :: Flash2_auxvar_elem_type
             Flash2AuxVarInit, Flash2AuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! Flash2AuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function Flash2AuxCreate()
+  ! 
+  ! Flash2AuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -120,16 +119,15 @@ function Flash2AuxCreate()
   
 end function Flash2AuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! Flash2AuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
@@ -180,13 +178,14 @@ subroutine Flash2AuxVarInit(aux_var,option)
 end subroutine Flash2AuxVarInit
 
 ! ************************************************************************** !
-!
-! Flash2AuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
+
 subroutine Flash2AuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
@@ -224,17 +223,17 @@ subroutine Flash2AuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine Flash2AuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
              saturation_function,fluid_properties,option,xphico2)
+  ! 
+  ! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   use Global_Aux_module  
@@ -297,11 +296,11 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     p2 = p
 
     if(p2 >= 5.d4)then
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+      if (option%co2eos == EOS_SPAN_WAGNER) then
 ! ************ Span-Wagner EOS ********************             
         select case(option%itable)  
           case(0,1,2,4,5)
-            if( option%itable >=4) then
+            if (option%itable >= 4) then
                 ! print *,' interp', itable
               call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
@@ -364,28 +363,28 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     tmp= Henry/p
     if (x(3) < xco2eq) then
       ! water only
-      aux_var%xmol(2)=x(3)
-      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
-      aux_var%xmol(4)=aux_var%xmol(2)*tmp
-      aux_var%xmol(3)=1.D0 - aux_var%xmol(4)  
-      aux_var%sat(1)=1.D0
-      aux_var%sat(2)=0.D0
+      aux_var%xmol(2) = x(3)
+      aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
+      aux_var%xmol(4) = aux_var%xmol(2)*tmp
+      aux_var%xmol(3) = 1.D0 - aux_var%xmol(4)
+      aux_var%sat(1) = 1.D0
+      aux_var%sat(2) = 0.D0
       iphase = 1
     elseif (x(3) > (1.D0-sat_pressure/p)) then
 	    !gas only
-      iphase =2
-      aux_var%xmol(4)=x(3)
-      aux_var%xmol(3)=1.D0 - aux_var%xmol(4) 
-      aux_var%xmol(2)=aux_var%xmol(4)/tmp
-      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
-      aux_var%sat(1)=0.D0 !1.D-8
-      aux_var%sat(2)=1.D0
+      iphase = 2
+      aux_var%xmol(4) = x(3)
+      aux_var%xmol(3) = 1.D0 - aux_var%xmol(4)
+      aux_var%xmol(2) = aux_var%xmol(4)/tmp
+      aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
+      aux_var%sat(1) = 0.D0 !1.D-8
+      aux_var%sat(2) = 1.D0
     else 
       iphase = 3
-      aux_var%xmol(1)=1.D0 - xco2eq
-      aux_var%xmol(2)= xco2eq
-      aux_var%xmol(3)= sat_pressure/p*aux_var%xmol(1) 
-      aux_var%xmol(4)= 1.D0 - aux_var%xmol(3)
+      aux_var%xmol(1) = 1.D0 - xco2eq
+      aux_var%xmol(2) = xco2eq
+      aux_var%xmol(3) = sat_pressure/p*aux_var%xmol(1)
+      aux_var%xmol(4) = 1.D0 - aux_var%xmol(3)
     endif 
 
 ! **************  Gas phase properties ********************
@@ -409,7 +408,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
  
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     aux_var%h(1) = hw
-    aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
+    aux_var%u(1) = aux_var%h(1) - pw/dw_mol*option%scale
     
     aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   ! fluid_properties%diff_base(1) need more work here. Add temp. dependence.
@@ -422,12 +421,13 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     
     y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 !   y_nacl is the mole fraction
-    aux_var%avgmw(1)= aux_var%xmol(1)*((1D0 - y_nacl) * FMWH2O&
+    aux_var%avgmw(1)= aux_var%xmol(1)*((1D0 - y_nacl) * FMWH2O &
        + y_nacl * FMWNACL) + aux_var%xmol(2) * FMWCO2
 
 !duan mixing **************************
 #ifdef DUANDEN
-  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
+  call EOSWaterDuanMixture (t,p,aux_var%xmol(2),y_nacl, &
+    aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************
@@ -468,31 +468,31 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 !******************************** 2 phase S-Pc-kr relation ********************
     aux_var%pc =0.D0
 
-      if(saturation_function%hysteresis_id <=0.1D0 ) then 
-         call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
+    if (saturation_function%hysteresis_id <= 0.1D0) then
+      call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
-        pw=p !-pc(1)
+      pw=p !-pc(1)
      
-       else
-          call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
+    else
+      call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
-     end if
+    end if
 
-!    call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
+!   call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
 !                                   ds_dp,dkr_dp, &
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-       aux_var%kvr(2) = kr(2)/visg     
-       aux_var%kvr(1) = kr(1)/visl
-       aux_var%vis(2) = visg     
-       aux_var%vis(1) = visl
+    aux_var%kvr(2) = kr(2)/visg
+    aux_var%kvr(1) = kr(1)/visl
+    aux_var%vis(2) = visg
+    aux_var%vis(1) = visl
 
 end subroutine Flash2AuxVarCompute_NINC
 
-
+! ************************************************************************** !
 
 subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_function, &
                                     fluid_properties,option)
@@ -525,13 +525,14 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
 end subroutine Flash2AuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxVarDestroy(aux_var)
+  ! 
+  ! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
@@ -558,13 +559,14 @@ subroutine Flash2AuxVarDestroy(aux_var)
 end subroutine Flash2AuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2AuxDestroy(aux, option)
+  ! 
+  ! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   implicit none

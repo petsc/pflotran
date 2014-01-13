@@ -51,13 +51,14 @@ module Reactive_Transport_module
 contains
 
 ! ************************************************************************** !
-!
-! RTTimeCut: Resets arrays for time step cut
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine RTTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -102,13 +103,12 @@ subroutine RTTimeCut(realization)
 end subroutine RTTimeCut
 
 ! ************************************************************************** !
-!
-! RTSetup: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RTSetup(realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -252,14 +252,15 @@ subroutine RTSetup(realization)
 end subroutine RTSetup
 
 ! ************************************************************************** !
-!
-! RTCheckUpdate: In the case of the log formulation, ensures that the update 
-!                vector does not exceed a prescribed tolerance
-! author: Glenn Hammond
-! date: 03/16/09
-!
-! ************************************************************************** !
+
 subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
+  ! 
+  ! In the case of the log formulation, ensures that the update
+  ! vector does not exceed a prescribed tolerance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/16/09
+  ! 
  
   use Realization_class
   use Grid_module
@@ -327,13 +328,12 @@ subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
 end subroutine RTCheckUpdate
 
 ! ************************************************************************** !
-!
-! RTComputeMassBalance: 
-! author: Glenn Hammond
-! date: 12/23/08
-!
-! ************************************************************************** !
+
 subroutine RTComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/23/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -431,13 +431,14 @@ subroutine RTComputeMassBalance(realization,mass_balance)
 end subroutine RTComputeMassBalance
 
 ! ************************************************************************** !
-!
-! RTZeroMassBalanceDelta: Zeros mass balance delta array
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine RTZeroMassBalanceDelta(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -478,13 +479,14 @@ subroutine RTZeroMassBalanceDelta(realization)
 end subroutine RTZeroMassBalanceDelta
 
 ! ************************************************************************** !
-!
-! RTUpdateMassBalance: Updates mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine RTUpdateMassBalance(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -531,13 +533,12 @@ subroutine RTUpdateMassBalance(realization)
 end subroutine RTUpdateMassBalance
 
 ! ************************************************************************** !
-!
-! RTInitializeTimestep: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RTInitializeTimestep(realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
 
@@ -550,14 +551,15 @@ subroutine RTInitializeTimestep(realization)
 end subroutine RTInitializeTimestep
 
 ! ************************************************************************** !
-!
-! RTUpdateEquilibriumState:  Updates equilibrium state variables after a 
-!                            successful time step
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 subroutine RTUpdateEquilibriumState(realization)
+  ! 
+  ! Updates equilibrium state variables after a
+  ! successful time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -638,14 +640,15 @@ subroutine RTUpdateEquilibriumState(realization)
 end subroutine RTUpdateEquilibriumState
 
 ! ************************************************************************** !
-!
-! RTUpdateKineticState:  Updates kinetic state variables for reactive 
-!                        transport
-! author: Glenn Hammond
-! date: 06/27/13
-!
-! ************************************************************************** !
+
 subroutine RTUpdateKineticState(realization)
+  ! 
+  ! Updates kinetic state variables for reactive
+  ! transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/27/13
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -717,14 +720,15 @@ subroutine RTUpdateKineticState(realization)
 end subroutine RTUpdateKineticState
 
 ! ************************************************************************** !
-!
-! RTUpdateFixedAccumulation: Computes derivative of accumulation term in 
-!                            residual function 
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine RTUpdateFixedAccumulation(realization)
+  ! 
+  ! Computes derivative of accumulation term in
+  ! residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -845,13 +849,14 @@ subroutine RTUpdateFixedAccumulation(realization)
 end subroutine RTUpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! RTUpdateTransportCoefs: Calculates coefficients for transport matrix 
-! author: Glenn Hammond
-! date: 02/24/10
-!
-! ************************************************************************** !
+
 subroutine RTUpdateTransportCoefs(realization)
+  ! 
+  ! Calculates coefficients for transport matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/24/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -988,14 +993,15 @@ subroutine RTUpdateTransportCoefs(realization)
 end subroutine RTUpdateTransportCoefs
 
 ! ************************************************************************** !
-!
-! RTUpdateRHSCoefs: Updates coefficients for the right hand side of 
-!                   linear transport equation
-! author: Glenn Hammond
-! date: 04/25/10
-!
-! ************************************************************************** !
+
 subroutine RTUpdateRHSCoefs(realization)
+  ! 
+  ! Updates coefficients for the right hand side of
+  ! linear transport equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/25/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1050,14 +1056,15 @@ subroutine RTUpdateRHSCoefs(realization)
 end subroutine RTUpdateRHSCoefs
 
 ! ************************************************************************** !
-!
-! RTCalculateRHS_t0: Calculate porition of RHS of transport system
-!                         at time t0 or time level k
-! author: Glenn Hammond
-! date: 04/25/10
-!
-! ************************************************************************** !
+
 subroutine RTCalculateRHS_t0(realization)
+  ! 
+  ! Calculate porition of RHS of transport system
+  ! at time t0 or time level k
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/25/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1113,14 +1120,15 @@ subroutine RTCalculateRHS_t0(realization)
 end subroutine RTCalculateRHS_t0
 
 ! ************************************************************************** !
-!
-! RTCalculateRHS_t1: Calculate porition of RHS of transport system
-!                         at time level k+1
-! author: Glenn Hammond
-! date: 04/25/10
-!
-! ************************************************************************** !
+
 subroutine RTCalculateRHS_t1(realization)
+  ! 
+  ! Calculate porition of RHS of transport system
+  ! at time level k+1
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/25/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1347,13 +1355,14 @@ subroutine RTCalculateRHS_t1(realization)
 end subroutine RTCalculateRHS_t1
 
 ! ************************************************************************** !
-!
-! RTCalculateTransportMatrix: Calculate transport matrix
-! author: Glenn Hammond
-! date: 04/25/10
-!
-! ************************************************************************** !
+
 subroutine RTCalculateTransportMatrix(realization,T)
+  ! 
+  ! Calculate transport matrix
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/25/10
+  ! 
 
   use Realization_class
   use Option_module
@@ -1576,13 +1585,14 @@ subroutine RTCalculateTransportMatrix(realization,T)
 end subroutine RTCalculateTransportMatrix
 
 ! ************************************************************************** !
-!
-! RTReact: Calculate reaction
-! author: Glenn Hammond
-! date: 05/03/10
-!
-! ************************************************************************** !
+
 subroutine RTReact(realization)
+  ! 
+  ! Calculate reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1792,14 +1802,15 @@ subroutine RTReact(realization)
 end subroutine RTReact
 
 ! ************************************************************************** !
-!
-! RTComputeBCMassBalanceOS: Calculates mass balance at boundary 
-!                           conditions for operator split mode
-! author: Glenn Hammond
-! date: 05/04/10
-!
-! ************************************************************************** !
+
 subroutine RTComputeBCMassBalanceOS(realization)
+  ! 
+  ! Calculates mass balance at boundary
+  ! conditions for operator split mode
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/04/10
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1952,13 +1963,14 @@ subroutine RTComputeBCMassBalanceOS(realization)
 end subroutine RTComputeBCMassBalanceOS
 
 ! ************************************************************************** !
-!
-! RTNumericalJacobianTest: Computes the a test numerical jacobian
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine RTNumericalJacobianTest(realization)
+  ! 
+  ! Computes the a test numerical jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2042,13 +2054,14 @@ subroutine RTNumericalJacobianTest(realization)
 end subroutine RTNumericalJacobianTest
 
 ! ************************************************************************** !
-!
-! RTResidual: Computes the residual equation 
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RTResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Field_module
@@ -2117,14 +2130,15 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 end subroutine RTResidual
 
 ! ************************************************************************** !
-!
-! RTResidualFlux: Computes the flux terms in the residual function for 
-!                 reactive transport
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTResidualFlux(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the flux terms in the residual function for
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2427,14 +2441,15 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 end subroutine RTResidualFlux
 
 ! ************************************************************************** !
-!
-! RTResidualNonFlux: Computes the non-flux terms in the residual function for 
-!                    reactive transport
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the non-flux terms in the residual function for
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2768,13 +2783,14 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
 end subroutine RTResidualNonFlux
 
 ! ************************************************************************** !
-!
-! RTJacobian: Computes the Jacobian
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2864,14 +2880,15 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine RTJacobian
 
 ! ************************************************************************** !
-!
-! RTJacobianFlux: Computes the flux term entries in the Jacobian for 
-!                 reactive transport
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the flux term entries in the Jacobian for
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3118,14 +3135,15 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
 end subroutine RTJacobianFlux
 
 ! ************************************************************************** !
-!
-! RTJacobianNonFlux: Computes non-flux term entries in the Jacobian for 
-!                    reactive transport
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes non-flux term entries in the Jacobian for
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3392,15 +3410,16 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
 end subroutine RTJacobianNonFlux
 
 ! ************************************************************************** !
-!
-! RTUpdateAuxVars: Updates the auxiliary variables associated with 
-!                  reactive transport
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
                            update_activity_coefs)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3803,13 +3822,14 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
 end subroutine RTUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! RTCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RTCreateZeroArray(patch,reaction,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Patch_module
   use Grid_module
@@ -3887,13 +3907,14 @@ subroutine RTCreateZeroArray(patch,reaction,option)
 end subroutine RTCreateZeroArray
 
 ! ************************************************************************** !
-!
-! RTMaxChange: Computes the maximum change in the solution vector
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine RTMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -3923,13 +3944,14 @@ subroutine RTMaxChange(realization)
 end subroutine RTMaxChange
 
 ! ************************************************************************** !
-!
-! RTSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine RTSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Option_module
@@ -4217,15 +4239,16 @@ subroutine RTSetPlotVariables(realization)
 end subroutine RTSetPlotVariables
 
 ! ************************************************************************** !
-!
-! RTJumpStartKineticSorption: Calculates the concentrations of species sorbing
-!                             through kinetic sorption processes based
-!                             on equilibrium with the aqueous phase.
-! author: Glenn Hammond
-! date: 08/05/09
-!
-! ************************************************************************** !
+
 subroutine RTJumpStartKineticSorption(realization)
+  ! 
+  ! Calculates the concentrations of species sorbing
+  ! through kinetic sorption processes based
+  ! on equilibrium with the aqueous phase.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   use Realization_class
   use Patch_module
@@ -4268,14 +4291,15 @@ subroutine RTJumpStartKineticSorption(realization)
 end subroutine RTJumpStartKineticSorption
 
 ! ************************************************************************** !
-!
-! RTCheckpointKineticSorption: Checkpoints expliclity stored sorbed 
-!                              concentrations
-! author: Glenn Hammond
-! date: 08/06/09
-!
-! ************************************************************************** !
+
 subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
+  ! 
+  ! Checkpoints expliclity stored sorbed
+  ! concentrations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/06/09
+  ! 
 
   use Realization_class
   use Patch_module
@@ -4357,13 +4381,14 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
 end subroutine RTCheckpointKineticSorption
 
 ! ************************************************************************** !
-!
-! RTExplicitAdvection: Updates advective transport explicitly
-! author: Glenn Hammond
-! date: 02/03/12
-!
-! ************************************************************************** !
+
 subroutine RTExplicitAdvection(realization)
+  ! 
+  ! Updates advective transport explicitly
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/12
+  ! 
 
   use Realization_class
 
@@ -4719,13 +4744,14 @@ subroutine RTExplicitAdvection(realization)
 end subroutine RTExplicitAdvection
 
 ! ************************************************************************** !
-!
-! RTAppendToHeader: Appends formatted strings to header string
-! author: Glenn Hammond
-! date: 10/27/11
-!
-! ************************************************************************** !
+
 subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
+  ! 
+  ! Appends formatted strings to header string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/27/11
+  ! 
 
   character(len=MAXHEADERLENGTH) :: header
   character(len=*) :: variable_string
@@ -4764,13 +4790,14 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
 end subroutine RTAppendToHeader
 
 ! ************************************************************************** !
-!
-! RTDestroy: Deallocates variables associated with Reactive Transport
-! author: Glenn Hammond
-! date: 02/03/09
-!
-! ************************************************************************** !
+
 subroutine RTDestroy(realization)
+  ! 
+  ! Deallocates variables associated with Reactive Transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/09
+  ! 
 
   use Realization_class
   use Patch_module

@@ -81,13 +81,14 @@ module Region_module
 contains
 
 ! ************************************************************************** !
-!
-! RegionCreateWithNothing: Creates a region with no arguments
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function RegionCreateWithNothing()
+  ! 
+  ! Creates a region with no arguments
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -125,13 +126,14 @@ function RegionCreateWithNothing()
 end function RegionCreateWithNothing
 
 ! ************************************************************************** !
-!
-! RegionCreateSideset: Creates a sideset
-! author: Glenn Hammond
-! date: 12/19/11
-!
-! ************************************************************************** !
+
 function RegionCreateSideset()
+  ! 
+  ! Creates a sideset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/11
+  ! 
 
   implicit none
   
@@ -148,13 +150,14 @@ function RegionCreateSideset()
 end function RegionCreateSideset
 
 ! ************************************************************************** !
-!
-! RegionCreateExplicitFaceSet: Creates a sideset
-! author: Glenn Hammond
-! date: 12/19/11
-!
-! ************************************************************************** !
+
 function RegionCreateExplicitFaceSet()
+  ! 
+  ! Creates a sideset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/11
+  ! 
 
   implicit none
   
@@ -171,13 +174,14 @@ function RegionCreateExplicitFaceSet()
 end function RegionCreateExplicitFaceSet
 
 ! ************************************************************************** !
-!
-! RegionCreateWithBlock: Creates a region with i,j,k indices for arguments
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function RegionCreateWithBlock(i1,i2,j1,j2,k1,k2)
+  ! 
+  ! Creates a region with i,j,k indices for arguments
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -202,13 +206,14 @@ function RegionCreateWithBlock(i1,i2,j1,j2,k1,k2)
 end function RegionCreateWithBlock
 
 ! ************************************************************************** !
-!
-! RegionCreate: Creates a region from a list of cells
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function RegionCreateWithList(list)
+  ! 
+  ! RegionCreate: Creates a region from a list of cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -228,13 +233,14 @@ function RegionCreateWithList(list)
 end function RegionCreateWithList
 
 ! ************************************************************************** !
-!
-! RegionCreateWithRegion: Creates a copy of a region
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 function RegionCreateWithRegion(region)
+  ! 
+  ! Creates a copy of a region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Unstructured_Cell_module
 
@@ -326,15 +332,16 @@ function RegionCreateWithRegion(region)
   RegionCreateWithRegion => new_region
   
 end function RegionCreateWithRegion
-  
+
 ! ************************************************************************** !
-!
-! RegionInitList: Initializes a region list
-! author: Glenn Hammond
-! date: 10/29/07
-!
-! ************************************************************************** !
+
 subroutine RegionInitList(list)
+  ! 
+  ! Initializes a region list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07
+  ! 
 
   implicit none
 
@@ -348,13 +355,14 @@ subroutine RegionInitList(list)
 end subroutine RegionInitList
 
 ! ************************************************************************** !
-!
-! RegionAddToList: Adds a new region to a region list
-! author: Glenn Hammond
-! date: 10/29/07
-!
-! ************************************************************************** !
+
 subroutine RegionAddToList(new_region,list)
+  ! 
+  ! Adds a new region to a region list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07
+  ! 
 
   implicit none
   
@@ -370,13 +378,14 @@ subroutine RegionAddToList(new_region,list)
 end subroutine RegionAddToList
 
 ! ************************************************************************** !
-!
-! RegionRead: Reads a region from the input file
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine RegionRead(region,input,option)
+  ! 
+  ! Reads a region from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -508,13 +517,14 @@ subroutine RegionRead(region,input,option)
 end subroutine RegionRead
 
 ! ************************************************************************** !
-!
-! RegionReadFromFilename: Reads a list of cells from a file named filename
-! author: Glenn Hammond
-! date: 10/29/07
-!
-! ************************************************************************** !
+
 subroutine RegionReadFromFilename(region,option,filename)
+  ! 
+  ! Reads a list of cells from a file named filename
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -534,13 +544,14 @@ subroutine RegionReadFromFilename(region,option,filename)
 end subroutine RegionReadFromFilename
 
 ! ************************************************************************** !
-!
-! RegionReadFromFileId: Reads a list of cells from an open file
-! author: Glenn Hammond
-! date: 10/29/07
-!
-! ************************************************************************** !
+
 subroutine RegionReadFromFileId(region,input,option)
+  ! 
+  ! Reads a list of cells from an open file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/29/07
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -844,13 +855,14 @@ subroutine RegionReadFromFileId(region,input,option)
 end subroutine RegionReadFromFileId
 
 ! ************************************************************************** !
-!
-! RegionReadSideSet: Reads an unstructured grid sideset
-! author: Glenn Hammond
-! date: 12/19/11
-!
-! ************************************************************************** !
+
 subroutine RegionReadSideSet(sideset,filename,option)
+  ! 
+  ! Reads an unstructured grid sideset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/11
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -998,13 +1010,14 @@ subroutine RegionReadSideSet(sideset,filename,option)
 end subroutine RegionReadSideSet
 
 ! ************************************************************************** !
-!
-! RegionReadExplicitFaceSet: Reads an unstructured grid explicit region
-! author: Glenn Hammond
-! date: 05/18/12
-!
-! ************************************************************************** !
+
 subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
+  ! 
+  ! Reads an unstructured grid explicit region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/18/12
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -1103,13 +1116,14 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 end subroutine RegionReadExplicitFaceSet
 
 ! ************************************************************************** !
-!
-! RegionGetPtrFromList: Returns a pointer to the region matching region_name
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 function RegionGetPtrFromList(region_name,region_list)
+  ! 
+  ! Returns a pointer to the region matching region_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use String_module
 
@@ -1139,13 +1153,14 @@ function RegionGetPtrFromList(region_name,region_list)
 end function RegionGetPtrFromList
 
 ! ************************************************************************** !
-!
-! RegionDestroySideset: Deallocates a unstructured grid side set
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
+
 subroutine RegionDestroySideset(sideset)
+  ! 
+  ! Deallocates a unstructured grid side set
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/09
+  ! 
 
   implicit none
   
@@ -1162,13 +1177,14 @@ subroutine RegionDestroySideset(sideset)
 end subroutine RegionDestroySideset
 
 ! ************************************************************************** !
-!
-! RegionDestroyExplicitFaceSet: Deallocates a unstructured grid explicit grid
-! author: Glenn Hammond
-! date: 05/18/12
-!
-! ************************************************************************** !
+
 subroutine RegionDestroyExplicitFaceSet(explicit_faceset)
+  ! 
+  ! Deallocates a unstructured grid explicit grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/18/12
+  ! 
 
   use Utility_module, only : DeallocateArray
 
@@ -1189,13 +1205,14 @@ subroutine RegionDestroyExplicitFaceSet(explicit_faceset)
 end subroutine RegionDestroyExplicitFaceSet
 
 ! ************************************************************************** !
-!
-! RegionDestroyList: Deallocates a list of regions
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine RegionDestroyList(region_list)
+  ! 
+  ! Deallocates a list of regions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -1225,13 +1242,14 @@ subroutine RegionDestroyList(region_list)
 end subroutine RegionDestroyList
 
 ! ************************************************************************** !
-!
-! RegionDestroy: Deallocates a region
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine RegionDestroy(region)
+  ! 
+  ! Deallocates a region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   

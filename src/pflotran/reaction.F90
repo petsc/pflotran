@@ -68,14 +68,15 @@ module Reaction_module
 contains
 
 ! ************************************************************************** !
-!
-! ReactionReadPass1: Initializes the reaction object, creating object and
-!                    reading first pass of CHEMISTRY input file block
-! author: Glenn Hammond
-! date: 01/03/13
-!
-! ************************************************************************** !
+
 subroutine ReactionInit(reaction,input,option)
+  ! 
+  ! ReactionReadPass1: Initializes the reaction object, creating object and
+  ! reading first pass of CHEMISTRY input file block
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/03/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -103,13 +104,14 @@ subroutine ReactionInit(reaction,input,option)
 end subroutine ReactionInit
 
 ! ************************************************************************** !
-!
-! ReactionReadPass1: Reads chemistry (first pass)
-! author: Glenn Hammond
-! date: 05/02/08
-!
-! ************************************************************************** !
+
 subroutine ReactionReadPass1(reaction,input,option)
+  ! 
+  ! Reads chemistry (first pass)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/02/08
+  ! 
 
   use Option_module
   use String_module
@@ -849,13 +851,14 @@ subroutine ReactionReadPass1(reaction,input,option)
 end subroutine ReactionReadPass1
 
 ! ************************************************************************** !
-!
-! ReactionReadPass2: Reads chemistry on pass 2
-! author: Glenn Hammond
-! date: 01/03/13
-!
-! ************************************************************************** !
+
 subroutine ReactionReadPass2(reaction,input,option)
+  ! 
+  ! Reads chemistry on pass 2
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/03/13
+  ! 
 
   use Option_module
   use String_module
@@ -958,13 +961,14 @@ subroutine ReactionReadPass2(reaction,input,option)
 end subroutine ReactionReadPass2
 
 ! ************************************************************************** !
-!
-! ReactionReadRedoxSpecies: Reads names of mineral species and sets flag
-! author: Glenn Hammond
-! date: 04/01/11
-!
-! ************************************************************************** !
+
 subroutine ReactionReadRedoxSpecies(reaction,input,option)
+  ! 
+  ! Reads names of mineral species and sets flag
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/01/11
+  ! 
 
   use Input_Aux_module
   use String_module  
@@ -1009,13 +1013,7 @@ subroutine ReactionReadRedoxSpecies(reaction,input,option)
 end subroutine ReactionReadRedoxSpecies
 
 ! ************************************************************************** !
-!
-! ReactionProcessConstraint: Initializes constraints based on primary
-!                            species in system
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      aq_species_constraint, &
                                      mineral_constraint, &
@@ -1023,6 +1021,13 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      colloid_constraint, &
                                      immobile_constraint, &
                                      option)
+  ! 
+  ! Initializes constraints based on primary
+  ! species in system
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
   use Option_module
   use Input_Aux_module
   use String_module
@@ -1153,13 +1158,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
 end subroutine ReactionProcessConstraint
 
 ! ************************************************************************** !
-!
-! ReactionEquilibrateConstraint: Equilibrates constraint concentrations
-!                                with prescribed geochemistry
-! author: Glenn Hammond
-! date: 10/22/08
-!
-! ************************************************************************** !
+
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
@@ -1170,6 +1169,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          porosity, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
+  ! 
+  ! Equilibrates constraint concentrations
+  ! with prescribed geochemistry
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/08
+  ! 
   use Option_module
   use Input_Aux_module
   use String_module  
@@ -1872,14 +1878,15 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 end subroutine ReactionEquilibrateConstraint
 
 ! ************************************************************************** !
-!
-! ReactionPrintConstraint: Prints a constraint associated with reactive 
-!                          transport
-! author: Glenn Hammond
-! date: 10/28/08
-!
-! ************************************************************************** !
+
 subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
+  ! 
+  ! Prints a constraint associated with reactive
+  ! transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/28/08
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -2564,14 +2571,15 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
-!
-! ReactionDoubleLayer: Calculates double layer potential, surface charge, and
-!                      sorbed surface complex concentrations
-! author: Peter C. Lichtner
-! date: ???
-!
-! ************************************************************************** !
+
 subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
+  ! 
+  ! Calculates double layer potential, surface charge, and
+  ! sorbed surface complex concentrations
+  ! 
+  ! Author: Peter C. Lichtner
+  ! Date: ???
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -2759,6 +2767,9 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 end subroutine ReactionDoubleLayer
 
 #if 0
+
+! ************************************************************************** !
+
 subroutine srfcmplx(irxn,icplx,lnQK,logK,Z,potential,tempk, &
                 ln_act,ln_act_h2o,ln_free_site,srfcplx_conc)
 
@@ -2808,13 +2819,14 @@ end subroutine srfcmplx
 #endif
 
 ! ************************************************************************** !
-!
-! ReactionReadOutput: Reads species to be printed in output
-! author: Glenn Hammond
-! date: 01/24/09
-!
-! ************************************************************************** !
+
 subroutine ReactionReadOutput(reaction,input,option)
+  ! 
+  ! Reads species to be printed in output
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/24/09
+  ! 
 
   use Input_Aux_module
   use String_module  
@@ -3046,16 +3058,17 @@ subroutine ReactionReadOutput(reaction,input,option)
 end subroutine ReactionReadOutput
 
 ! ************************************************************************** !
-!
-! RJumpStartKineticSorption: Calculates the concentrations of species sorbing
-!                            through kinetic sorption processes based
-!                            on equilibrium with the aqueous phase.
-! author: Glenn Hammond
-! date: 08/05/09
-!
-! ************************************************************************** !
+
 subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
                                      reaction,option)
+  ! 
+  ! Calculates the concentrations of species sorbing
+  ! through kinetic sorption processes based
+  ! on equilibrium with the aqueous phase.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/05/09
+  ! 
 
   use Option_module
   
@@ -3089,14 +3102,15 @@ subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
 end subroutine RJumpStartKineticSorption
 
 ! ************************************************************************** !
-!
-! RReact: Solves reaction portion of operator splitting using Newton-Raphson
-! author: Glenn Hammond
-! date: 05/04/10
-!
-! ************************************************************************** !
+
 subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
                   num_iterations_,reaction,option,vol_frac_prim)
+  ! 
+  ! Solves reaction portion of operator splitting using Newton-Raphson
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/04/10
+  ! 
 
   use Option_module
   
@@ -3280,16 +3294,17 @@ subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
   num_iterations_ = num_iterations
   
 end subroutine RReact
-      
+
 ! ************************************************************************** !
-!
-! RReaction: Computes reactions
-! author: Glenn Hammond
-! date: 09/30/08
-!
-! ************************************************************************** !
+
 subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                      volume,reaction,option)
+  ! 
+  ! Computes reactions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/08
+  ! 
 
   use Option_module
   use Reaction_Sandbox_module, only : RSandbox, sandbox_list
@@ -3346,14 +3361,15 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
 end subroutine RReaction
 
 ! ************************************************************************** !
-!
-! RReaction: Computes reactions
-! author: Glenn Hammond
-! date: 09/30/08
-!
-! ************************************************************************** !
+
 subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
                                volume,reaction,option)
+  ! 
+  ! RReaction: Computes reactions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/08
+  ! 
 
   use Option_module
   
@@ -3444,13 +3460,14 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
 end subroutine RReactionDerivative
 
 ! ************************************************************************** !
-!
-! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
-! author: Chuan Lu
-! date: 07/13/09
-!
-! ************************************************************************** !
+
 subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes activity coefficients of aqueous CO2
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 07/13/09
+  ! 
     
   use Option_module
 #ifdef CHUAN_CO2  
@@ -3494,13 +3511,14 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
 end subroutine CO2AqActCoeff
 
 ! ************************************************************************** !
-!
-! RActivityCoefficients: Computes the ionic strength and activity coefficients
-! author: Glenn Hammond
-! date: 09/30/08
-!
-! ************************************************************************** !
+
 subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes the ionic strength and activity coefficients
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/08
+  ! 
 
   use Option_module
   
@@ -3727,14 +3745,15 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RActivityCoefficients
 
 ! ************************************************************************** !
-!
-! RTotal: Computes the total component concentrations and derivative with
-!         respect to free-ion
-! author: Glenn Hammond
-! date: 08/28/08
-!
-! ************************************************************************** !
+
 subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes the total component concentrations and derivative with
+  ! respect to free-ion
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/28/08
+  ! 
 
   use Option_module
 #ifdef CHUAN_CO2  
@@ -3912,13 +3931,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTotal
 
 ! ************************************************************************** !
-!
-! RZeroSorb: Zeros out arrays associated with sorption
-! author: Glenn Hammond
-! date: 03/20/12
-!
-! ************************************************************************** !
+
 subroutine RZeroSorb(rt_auxvar)
+  ! 
+  ! Zeros out arrays associated with sorption
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/20/12
+  ! 
 
   implicit none
   
@@ -3931,14 +3951,15 @@ subroutine RZeroSorb(rt_auxvar)
 end subroutine RZeroSorb
 
 ! ************************************************************************** !
-!
-! RTotalSorb: Computes the total sorbed component concentrations and 
-!             derivative with respect to free-ion
-! author: Glenn Hammond
-! date: 10/22/08
-!
-! ************************************************************************** !
+
 subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes the total sorbed component concentrations and
+  ! derivative with respect to free-ion
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/08
+  ! 
 
   use Option_module
   
@@ -3966,15 +3987,16 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTotalSorb
 
 ! ************************************************************************** !
-!
-! RTotalSorbKD: Computes the total sorbed component concentrations and 
-!               derivative with respect to free-ion for the linear 
-!               K_D model
-! author: Glenn Hammond
-! date: 09/30/2010
-!
-! ************************************************************************** !
+
 subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes the total sorbed component concentrations and
+  ! derivative with respect to free-ion for the linear
+  ! K_D model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/2010
+  ! 
 
   use Option_module
 
@@ -4030,15 +4052,16 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTotalSorbKD
 
 ! ************************************************************************** !
-!
-! RTotalSorbEqIonx: Computes the total sorbed component concentrations and 
-!                   derivative with respect to free-ion for equilibrium ion
-!                   exchange
-! author: Glenn Hammond
-! date: 10/22/08; 05/26/09
-!
-! ************************************************************************** !
+
 subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes the total sorbed component concentrations and
+  ! derivative with respect to free-ion for equilibrium ion
+  ! exchange
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/08; 05/26/09
+  ! 
 
   use Option_module
   
@@ -4213,15 +4236,16 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTotalSorbEqIonx
 
 ! ************************************************************************** !
-!
-! RAccumulationSorb: Computes non-aqueous portion of the accumulation term in 
-!                    residual function
-! author: Glenn Hammond
-! date: 05/26/09
-!
-! ************************************************************************** !
+
 subroutine RAccumulationSorb(rt_auxvar,global_auxvar,vol,reaction, &
                              option,Res)
+  ! 
+  ! Computes non-aqueous portion of the accumulation term in
+  ! residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/26/09
+  ! 
 
   use Option_module
 
@@ -4245,15 +4269,16 @@ subroutine RAccumulationSorb(rt_auxvar,global_auxvar,vol,reaction, &
 end subroutine RAccumulationSorb
 
 ! ************************************************************************** !
-!
-! RAccumulationSorbDerivative: Computes derivative of non-aqueous portion of 
-!                              the accumulation term in residual function 
-! author: Glenn Hammond
-! date: 05/26/09
-!
-! ************************************************************************** !
+
 subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
                                        vol,reaction,option,J)
+  ! 
+  ! Computes derivative of non-aqueous portion of
+  ! the accumulation term in residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/26/09
+  ! 
 
   use Option_module
 
@@ -4277,17 +4302,19 @@ subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
     rt_auxvar%dtotal_sorb_eq(:,:)*v_t
 
 end subroutine RAccumulationSorbDerivative
+
 ! ************************************************************************** !
-!
-! RRadioactiveDecay: Computes radioactive decay with a single reactant 
-!                    (considering both the aqueous and sorbed phases) with 
-!                    the possibility of multiple daughter products
-! author: Glenn Hammond
-! date: 09/08/10, 01/07/13
-!
-! ************************************************************************** !
+
 subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
                              global_auxvar,porosity,volume,reaction,option)
+  ! 
+  ! Computes radioactive decay with a single reactant
+  ! (considering both the aqueous and sorbed phases) with
+  ! the possibility of multiple daughter products
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/08/10, 01/07/13
+  ! 
 
   use Option_module
   
@@ -4363,14 +4390,15 @@ subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
 end subroutine RRadioactiveDecay
 
 ! ************************************************************************** !
-!
-! RGeneral: Computes the general reaction rates
-! author: Glenn Hammond
-! date: 09/08/10
-!
-! ************************************************************************** !
+
 subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
                     porosity,volume,reaction,option)
+  ! 
+  ! Computes the general reaction rates
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/08/10
+  ! 
 
   use Option_module
   
@@ -4503,14 +4531,15 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
 end subroutine RGeneral
 
 ! ************************************************************************** !
-!
-! RSolve: Computes the kinetic mineral precipitation/dissolution
-!                  rates
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 subroutine RSolve(Res,Jac,conc,update,ncomp,use_log_formulation)
+  ! 
+  ! Computes the kinetic mineral precipitation/dissolution
+  ! rates
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   use Utility_module
   
@@ -4551,14 +4580,15 @@ subroutine RSolve(Res,Jac,conc,update,ncomp,use_log_formulation)
 end subroutine RSolve
 
 ! ************************************************************************** !
-!
-! RComputeKd: Computes the Kd for a given chemical component
-! author: Glenn Hammond
-! date: 05/14/09
-!
-! ************************************************************************** !
+
 subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
                              porosity,reaction,option)
+  ! 
+  ! RComputeKd: Computes the Kd for a given chemical component
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/14/09
+  ! 
 
   use Option_module
   
@@ -4598,13 +4628,14 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
 end subroutine ReactionComputeKd
 
 ! ************************************************************************** !
-!
-! RAge: Computes the ages of the groundwater
-! author: Glenn Hammond
-! date: 02/22/10
-!
-! ************************************************************************** !
+
 subroutine RAge(rt_auxvar,global_auxvar,por,vol,option,reaction,Res)
+  ! 
+  ! Computes the ages of the groundwater
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/10
+  ! 
 
   use Option_module
 
@@ -4631,13 +4662,14 @@ subroutine RAge(rt_auxvar,global_auxvar,por,vol,option,reaction,Res)
 end subroutine RAge
 
 ! ************************************************************************** !
-!
-! RTAuxVarCompute: Computes secondary variables for each grid cell
-! author: Glenn Hammond
-! date: 08/28/08
-!
-! ************************************************************************** !
+
 subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Computes secondary variables for each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/28/08
+  ! 
 
   use Option_module
 
@@ -4714,15 +4746,16 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RTAuxVarCompute
 
 ! ************************************************************************** !
-!
-! RTAccumulation: Computes aqueous portion of the accumulation term in 
-!                 residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
                           vol_frac_prim,Res)
+  ! 
+  ! Computes aqueous portion of the accumulation term in
+  ! residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -4800,16 +4833,17 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
 end subroutine RTAccumulation
 
 ! ************************************************************************** !
-!
-! RTAccumulationDerivative: Computes derivative of aqueous portion of the 
-!                           accumulation term in residual function 
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
+
 subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
                                     por,vol,reaction,option, &
                                     vol_frac_prim,J)
+  ! 
+  ! Computes derivative of aqueous portion of the
+  ! accumulation term in residual function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/08
+  ! 
 
   use Option_module
 
@@ -4896,13 +4930,14 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
 end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !
-!
-! RCalculateCompression: Calculates the compression for the Jacobian block 
-! author: Glenn Hammond
-! date: 07/12/10
-!
-! ************************************************************************** !
+
 subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
+  ! 
+  ! Calculates the compression for the Jacobian block
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/12/10
+  ! 
 
   use Option_module
 
@@ -4975,16 +5010,16 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
 
 end subroutine RCalculateCompression
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RUpdateKineticState: Updates state variables such as mineral vol frac, 
-!                      etc.
-! author: Glenn Hammond
-! date: 01/24/13
-!
-! ************************************************************************** !
 subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Updates state variables such as mineral vol frac,
+  ! etc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/24/13
+  ! 
 
   use Option_module
 
@@ -5076,15 +5111,16 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
 end subroutine RUpdateKineticState
 
 ! ************************************************************************** !
-!
-! RUpdateTempDependentCoefs: Updates temperature dependent coefficients for
-!                            anisothermal simulations
-! author: Glenn Hammond
-! date: 01/25/13
-!
-! ************************************************************************** !
+
 subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
                                      update_mnrl,option)
+  ! 
+  ! Updates temperature dependent coefficients for
+  ! anisothermal simulations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/25/13
+  ! 
 
   use Option_module
 
@@ -5157,13 +5193,14 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
 end subroutine RUpdateTempDependentCoefs
 
 ! ************************************************************************** !
-!
-! PrintRTAuxVar: Prints data from RTAuxVar object
-! author: Glenn Hammond
-! date: 05/18/2011
-!
-! ************************************************************************** !
+
 subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
+  ! 
+  ! PrintRTAuxVar: Prints data from RTAuxVar object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/18/2011
+  ! 
 
   use Option_module
 

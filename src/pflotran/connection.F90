@@ -50,13 +50,14 @@ module Connection_module
 contains
 
 ! ************************************************************************** !
-!
-! ConnectionCreate: Allocates and initializes a new connection
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 function ConnectionCreate(num_connections,connection_itype)
+  ! 
+  ! Allocates and initializes a new connection
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -130,13 +131,14 @@ function ConnectionCreate(num_connections,connection_itype)
 end function ConnectionCreate
 
 ! ************************************************************************** !
-!
-! ConnectionGetNumberInList: Returns the number of connections in a list
-! author: Glenn Hammond
-! date: 11/19/07
-!
-! ************************************************************************** !
+
 function ConnectionGetNumberInList(list)
+  ! 
+  ! Returns the number of connections in a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/19/07
+  ! 
 
   implicit none
   
@@ -157,13 +159,14 @@ function ConnectionGetNumberInList(list)
 end function ConnectionGetNumberInList
 
 ! ************************************************************************** !
-!
-! InitConnectionModule: Initializes module variables, lists, arrays.
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionInitList(list)
+  ! 
+  ! InitConnectionModule: Initializes module variables, lists, arrays.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
 
@@ -177,14 +180,15 @@ subroutine ConnectionInitList(list)
 end subroutine ConnectionInitList
 
 ! ************************************************************************** !
-!
-! ConnectionAddToList: Adds a new connection of the module global list of 
-!                      connections
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionAddToList(new_connection_set,list)
+  ! 
+  ! Adds a new connection of the module global list of
+  ! connections
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -200,14 +204,15 @@ subroutine ConnectionAddToList(new_connection_set,list)
 end subroutine ConnectionAddToList
 
 ! ************************************************************************** !
-!
-! ConnectionConvertListToArray: Creates an array of pointers to the 
-!                               connections in the connection list
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionConvertListToArray(list)
+  ! 
+  ! Creates an array of pointers to the
+  ! connections in the connection list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -229,13 +234,14 @@ subroutine ConnectionConvertListToArray(list)
 end subroutine ConnectionConvertListToArray
 
 ! ************************************************************************** !
-!
-! ConnectionDestroy: Deallocates a connection
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionDestroy(connection)
+  ! 
+  ! Deallocates a connection
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -271,13 +277,14 @@ subroutine ConnectionDestroy(connection)
 end subroutine ConnectionDestroy
 
 ! ************************************************************************** !
-!
-! ConnectionDestroyList: Deallocates the module global list and array of regions
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionDestroyList(list)
+  ! 
+  ! Deallocates the module global list and array of regions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   

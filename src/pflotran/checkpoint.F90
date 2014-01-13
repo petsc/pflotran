@@ -109,6 +109,8 @@ contains
 
 #ifndef PROCESS_MODEL
 
+! ************************************************************************** !
+
 subroutine Checkpoint(realization, &
                       flow_time_steps,flow_cumulative_newton_iterations, &
                       flow_cumulative_time_step_cuts, &
@@ -413,6 +415,8 @@ subroutine Checkpoint(realization, &
   call PetscLogStagePop(ierr)
 
 end subroutine Checkpoint
+
+! ************************************************************************** !
 
 subroutine Restart(realization, &
                    flow_time_steps, &
@@ -739,14 +743,15 @@ subroutine Restart(realization, &
 end subroutine Restart
 
 ! ************************************************************************** !
-!
-! CheckpointRegisterBagHeader: Registers entities within the PETSc bag to
-!                              header
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine CheckpointRegisterBagHeader(bag,header)
+  ! 
+  ! Registers entities within the PETSc bag to
+  ! header
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -881,13 +886,14 @@ end subroutine CheckpointRegisterBagHeader
 #endif
 
 ! ************************************************************************** !
-!
-! OpenCheckpointFile: Opens checkpoint file; sets format
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
+  ! 
+  ! Opens checkpoint file; sets format
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   use String_module, only : StringNull
@@ -938,13 +944,14 @@ subroutine OpenCheckpointFile(viewer,id,option,id_stamp)
 end subroutine OpenCheckpointFile
 
 ! ************************************************************************** !
-!
-! CloseCheckpointFile: Closes checkpoint file
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine CloseCheckpointFile(viewer)
+  ! 
+  ! Closes checkpoint file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   
@@ -960,13 +967,14 @@ subroutine CloseCheckpointFile(viewer)
 end subroutine CloseCheckpointFile
 
 ! ************************************************************************** !
-!
-! CheckpointFlowProcessModel: Checkpoints flow process model vectors
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine CheckpointFlowProcessModel(viewer,realization)
+  ! 
+  ! Checkpoints flow process model vectors
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   use Realization_class
@@ -1059,13 +1067,14 @@ subroutine CheckpointFlowProcessModel(viewer,realization)
 end subroutine CheckpointFlowProcessModel
 
 ! ************************************************************************** !
-!
-! RestartFlowProcessModel: Restarts flow process model
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine RestartFlowProcessModel(viewer,realization)
+  ! 
+  ! Restarts flow process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Option_module
   use Realization_class

@@ -58,14 +58,15 @@ module Communicator_Base_module
 contains
 
 ! ************************************************************************** !
-!
-! CommCreateProcessorGroups: Splits MPI_COMM_WORLD into N separate
-!                            processor groups
-! author: Glenn Hammond
-! date: 08/11/09
-!
-! ************************************************************************** !
+
 subroutine CommCreateProcessorGroups(option,num_groups)
+  ! 
+  ! Splits MPI_COMM_WORLD into N separate
+  ! processor groups
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/09
+  ! 
 
   use Option_module
   

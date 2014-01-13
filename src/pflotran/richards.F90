@@ -46,13 +46,14 @@ module Richards_module
 contains
 
 ! ************************************************************************** !
-!
-! RichardsTimeCut: Resets arrays for time step cut
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
  
   use Realization_class
   use Option_module
@@ -87,13 +88,12 @@ subroutine RichardsTimeCut(realization)
 end subroutine RichardsTimeCut
 
 ! ************************************************************************** !
-!
-! RichardsSetup: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RichardsSetup(realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -106,13 +106,14 @@ subroutine RichardsSetup(realization)
 end subroutine RichardsSetup
 
 ! ************************************************************************** !
-!
-! RichardsSetupPatch: Creates arrays for auxiliary variables
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -195,13 +196,14 @@ subroutine RichardsSetupPatch(realization)
 end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
-!
-! RichardsCheckUpdatePre: Checks update prior to update
-! author: Glenn Hammond
-! date: 02/13/12
-!
-! ************************************************************************** !
+
 subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
+  ! 
+  ! Checks update prior to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/13/12
+  ! 
 
   use Realization_class
   use Grid_module
@@ -320,14 +322,15 @@ subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
 end subroutine RichardsCheckUpdatePre
 
 ! ************************************************************************** !
-!
-! RichardsCheckUpdatePost: Checks update after to update
-! author: Glenn Hammond
-! date: 02/13/12
-!
-! ************************************************************************** !
+
 subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
                                    P1_changed,realization,ierr)
+  ! 
+  ! Checks update after to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/13/12
+  ! 
 
   use Realization_class
   use Grid_module
@@ -402,13 +405,12 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
 end subroutine RichardsCheckUpdatePost
 
 ! ************************************************************************** !
-!
-! RichardsComputeMassBalance: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine RichardsComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
 
@@ -422,13 +424,14 @@ subroutine RichardsComputeMassBalance(realization,mass_balance)
 end subroutine RichardsComputeMassBalance
 
 ! ************************************************************************** !
-!
-! RichardsComputeMassBalancePatch: Initializes mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -479,13 +482,14 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
 end subroutine RichardsComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! RichardsZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine RichardsZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -531,13 +535,14 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
 end subroutine RichardsZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! RichardsUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -591,13 +596,14 @@ subroutine RichardsUpdateMassBalancePatch(realization)
 end subroutine RichardsUpdateMassBalancePatch
 
 ! ************************************************************************** !
-!
-! RichardsUpdatePermPatch: Updates the permeability based on pressure
-! author: Satish Karra, LANL
-! Date: 01/09/12
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdatePermPatch(realization)
+  ! 
+  ! Updates the permeability based on pressure
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 01/09/12
+  ! 
 
   use Grid_module
   use Realization_class
@@ -685,16 +691,16 @@ subroutine RichardsUpdatePermPatch(realization)
   
 end subroutine RichardsUpdatePermPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! RichardsUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Richards problem
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
 subroutine RichardsUpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Richards problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Richards_MFD_module
@@ -710,14 +716,15 @@ subroutine RichardsUpdateAuxVars(realization)
 end subroutine RichardsUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! RichardsUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Richards problem
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Richards problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -859,13 +866,14 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
 end subroutine RichardsUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! RichardsInitializeTimestep: Update data in module prior to time step
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine RichardsInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Realization_class
   use Field_module 
@@ -899,14 +907,15 @@ subroutine RichardsInitializeTimestep(realization)
 end subroutine RichardsInitializeTimestep
 
 ! ************************************************************************** !
-!
-! RichardsUpdateSolution: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/13/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -932,14 +941,15 @@ subroutine RichardsUpdateSolution(realization)
 end subroutine RichardsUpdateSolution
 
 ! ************************************************************************** !
-!
-! RichardsUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/13/08
+  ! 
 
   use Realization_class
     
@@ -958,14 +968,15 @@ subroutine RichardsUpdateSolutionPatch(realization)
 end subroutine RichardsUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! RichardsUpdateFixedAccum: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateFixedAccum(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
 
@@ -976,14 +987,15 @@ subroutine RichardsUpdateFixedAccum(realization)
 end subroutine RichardsUpdateFixedAccum
 
 ! ************************************************************************** !
-!
-! RichardsUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                accumulation term
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1066,13 +1078,14 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
 end subroutine RichardsUpdateFixedAccumPatch
 
 ! ************************************************************************** !
-!
-! RichardsNumericalJacTest: Computes the a test numerical jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsNumericalJacTest(xx,realization)
+  ! 
+  ! Computes the a test numerical jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1156,13 +1169,14 @@ subroutine RichardsNumericalJacTest(xx,realization)
 end subroutine RichardsNumericalJacTest
 
 ! ************************************************************************** !
-!
-! RichardsResidual: Computes the residual equation 
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Field_module
@@ -1235,14 +1249,15 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 end subroutine RichardsResidual
 
 ! ************************************************************************** !
-!
-! RichardsResidualPatch1: Computes the interior flux and boundary flux 
-!   terms of the residual equation on a single patch
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the interior flux and boundary flux
+  ! terms of the residual equation on a single patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   
 
@@ -1534,14 +1549,15 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 end subroutine RichardsResidualPatch1
 
 ! ************************************************************************** !
-!
-! RichardsResidualPatch2: Computes the accumulation and source/sink terms of 
-!   the residual equation on a single patch
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the accumulation and source/sink terms of
+  ! the residual equation on a single patch
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   
 
@@ -1742,13 +1758,14 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 end subroutine RichardsResidualPatch2
 
 ! ************************************************************************** !
-!
-! RichardsJacobian: Computes the Jacobian
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1839,14 +1856,15 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine RichardsJacobian
 
 ! ************************************************************************** !
-!
-! RichardsJacobianPatch1: Computes the interior flux and boundary flux 
-!   terms of the Jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the interior flux and boundary flux
+  ! terms of the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
        
   
 
@@ -2170,14 +2188,15 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine RichardsJacobianPatch1
 
 ! ************************************************************************** !
-!
-! RichardsJacobianPatch2: Computes the accumulation and source/sink terms of 
-!   the Jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the accumulation and source/sink terms of
+  ! the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
        
   
 
@@ -2407,13 +2426,14 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 end subroutine RichardsJacobianPatch2
 
 ! ************************************************************************** !
-!
-! RichardsCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine RichardsCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2482,13 +2502,14 @@ subroutine RichardsCreateZeroArray(patch,option)
 end subroutine RichardsCreateZeroArray
 
 ! ************************************************************************** !
-!
-! RichardsMaxChange: Computes the maximum change in the solution vector
-! author: Glenn Hammond
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine RichardsMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/15/08
+  ! 
 
   use Realization_Base_class
   use Option_module
@@ -2525,13 +2546,14 @@ subroutine RichardsMaxChange(realization)
 end subroutine RichardsMaxChange
 
 ! ************************************************************************** !
-!
-! RichardsSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine RichardsSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -2563,13 +2585,14 @@ subroutine RichardsSetPlotVariables(realization)
 end subroutine RichardsSetPlotVariables
 
 ! ************************************************************************** !
-!
-! RichardsPrintAuxVars: Prints out the contents of an auxvar
-! author: Glenn Hammond
-! date: 02/21/12
-!
-! ************************************************************************** !
+
 subroutine RichardsPrintAuxVars(richards_auxvar,global_auxvar,cell_id)
+  ! 
+  ! Prints out the contents of an auxvar
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/21/12
+  ! 
 
   use Global_Aux_module
 
@@ -2592,16 +2615,16 @@ subroutine RichardsPrintAuxVars(richards_auxvar,global_auxvar,cell_id)
 end subroutine RichardsPrintAuxVars
 
 ! ************************************************************************** !
-!> This routine updates the boundary pressure condition corresponding on
-!! the top surface of the subsurface domain accounting for the amount of
-!! infilitration/exfiltration in the previous subsurface timestep.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/31/13
-! ************************************************************************** !
+
 subroutine RichardsUpdateSurfacePress(realization)
+  ! 
+  ! This routine updates the boundary pressure condition corresponding on
+  ! the top surface of the subsurface domain accounting for the amount of
+  ! infilitration/exfiltration in the previous subsurface timestep.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/31/13
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2690,13 +2713,14 @@ subroutine RichardsUpdateSurfacePress(realization)
 end subroutine RichardsUpdateSurfacePress
 
 ! ************************************************************************** !
-!
-! RichardsDestroy: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine RichardsDestroy(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Realization_class
   
@@ -2709,13 +2733,14 @@ subroutine RichardsDestroy(realization)
 end subroutine RichardsDestroy
 
 ! ************************************************************************** !
-!
-! RichardsDestroyPatch: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 02/03/09
-!
-! ************************************************************************** !
+
 subroutine RichardsDestroyPatch(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/09
+  ! 
 
   use Realization_class
 

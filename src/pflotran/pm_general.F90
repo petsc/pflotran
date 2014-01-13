@@ -61,13 +61,14 @@ module PM_General_class
 contains
 
 ! ************************************************************************** !
-!
-! PMGeneralCreate: Creates General process models shell
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMGeneralCreate()
+  ! 
+  ! Creates General process models shell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -101,13 +102,14 @@ function PMGeneralCreate()
 end function PMGeneralCreate
 
 ! ************************************************************************** !
-!
-! PMGeneralInit: Initializes variables associated with Richard
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralInit(this)
+  ! 
+  ! Initializes variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -138,13 +140,12 @@ subroutine PMGeneralInit(this)
 end subroutine PMGeneralInit
 
 ! ************************************************************************** !
-!
-! PMGeneralSetRealization: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralSetRealization(this,realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -172,13 +173,14 @@ subroutine PMGeneralSetRealization(this,realization)
 end subroutine PMGeneralSetRealization
 
 ! ************************************************************************** !
-! Should not need this as it is called in PreSolve.
-! PMGeneralInitializeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralInitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralInitializeTimestep
   use Global_module
@@ -212,13 +214,12 @@ subroutine PMGeneralInitializeTimestep(this)
 end subroutine PMGeneralInitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMGeneralPreSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralPreSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -233,13 +234,14 @@ subroutine PMGeneralPreSolve(this)
 end subroutine PMGeneralPreSolve
 
 ! ************************************************************************** !
-!
-! PMGeneralUpdatePostSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralPostSolve(this)
+  ! 
+  ! PMGeneralUpdatePostSolve:
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -254,13 +256,12 @@ subroutine PMGeneralPostSolve(this)
 end subroutine PMGeneralPostSolve
 
 ! ************************************************************************** !
-!
-! PMGeneralFinalizeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralFinalizeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralMaxChange
   use Global_module
@@ -289,13 +290,12 @@ subroutine PMGeneralFinalizeTimestep(this)
 end subroutine PMGeneralFinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMGeneralAcceptSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMGeneralAcceptSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -312,14 +312,13 @@ function PMGeneralAcceptSolution(this)
 end function PMGeneralAcceptSolution
 
 ! ************************************************************************** !
-!
-! PMGeneralUpdateTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -355,13 +354,14 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMGeneralUpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMGeneralInitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMGeneralInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use General_module, only : GeneralUpdateSolution
 
@@ -387,13 +387,14 @@ recursive subroutine PMGeneralInitializeRun(this)
 end subroutine PMGeneralInitializeRun
 
 ! ************************************************************************** !
-!
-! PMGeneralFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMGeneralFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -412,13 +413,12 @@ recursive subroutine PMGeneralFinalizeRun(this)
 end subroutine PMGeneralFinalizeRun
 
 ! ************************************************************************** !
-!
-! PMGeneralResidual: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralResidual
 
@@ -444,13 +444,12 @@ subroutine PMGeneralResidual(this,snes,xx,r,ierr)
 end subroutine PMGeneralResidual
 
 ! ************************************************************************** !
-!
-! PMGeneralJacobian: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralJacobian
 
@@ -475,15 +474,14 @@ subroutine PMGeneralJacobian(this,snes,xx,A,B,flag,ierr)
   end select
 
 end subroutine PMGeneralJacobian
-    
+
 ! ************************************************************************** !
-!
-! PMGeneralCheckUpdatePre: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralCheckUpdatePre
 
@@ -505,16 +503,15 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMGeneralCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMGeneralCheckUpdatePost: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralCheckUpdatePost
 
@@ -539,15 +536,14 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 #endif
 
 end subroutine PMGeneralCheckUpdatePost
-  
+
 ! ************************************************************************** !
-!
-! PMGeneralTimeCut: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralTimeCut(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralTimeCut
 
@@ -564,15 +560,14 @@ subroutine PMGeneralTimeCut(this)
   call GeneralTimeCut(this%realization)
 
 end subroutine PMGeneralTimeCut
-    
+
 ! ************************************************************************** !
-!
-! PMGeneralUpdateSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralUpdateSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralUpdateSolution
   use Condition_module
@@ -602,13 +597,14 @@ subroutine PMGeneralUpdateSolution(this)
 end subroutine PMGeneralUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given GeneralMaxChange is called in PostSolve
-! PMGeneralMaxChange: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralMaxChange(this)
+  ! 
+  ! Not needed given GeneralMaxChange is called in PostSolve
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Option_module
   use Field_module
@@ -725,15 +721,14 @@ subroutine PMGeneralMaxChange(this)
   this%dSmax = dS_gas_max
   
 end subroutine PMGeneralMaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMGeneralComputeMassBalance: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralComputeMassBalance
 
@@ -753,13 +748,14 @@ subroutine PMGeneralComputeMassBalance(this,mass_balance_array)
 end subroutine PMGeneralComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMGeneralCheckpoint: Checkpoints data associated with General PM
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with General PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Checkpoint_module
 
@@ -773,15 +769,15 @@ subroutine PMGeneralCheckpoint(this,viewer)
   
 end subroutine PMGeneralCheckpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMGeneralRestart: Restarts data associated with General PM
-! author: Glenn Hammond
-! date: 07/30/13
-!
-! ************************************************************************** !
 subroutine PMGeneralRestart(this,viewer)
+  ! 
+  ! Restarts data associated with General PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/30/13
+  ! 
 
   use Checkpoint_module
   use General_module, only : GeneralUpdateAuxVars
@@ -799,13 +795,14 @@ subroutine PMGeneralRestart(this,viewer)
 end subroutine PMGeneralRestart
 
 ! ************************************************************************** !
-!
-! PMGeneralDestroy: Destroys General process model
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMGeneralDestroy(this)
+  ! 
+  ! Destroys General process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use General_module, only : GeneralDestroy
 

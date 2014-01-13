@@ -59,14 +59,14 @@ module PM_Surface_TH_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 function PMSurfaceTHCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   implicit none
 
@@ -87,14 +87,14 @@ function PMSurfaceTHCreate()
 end function PMSurfaceTHCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Discretization_module
   use Unstructured_Communicator_class
@@ -118,14 +118,14 @@ subroutine PMSurfaceTHInit(this)
 end subroutine PMSurfaceTHInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHPreSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   implicit none
 
@@ -139,14 +139,14 @@ subroutine PMSurfaceTHPreSolve(this)
 end subroutine PMSurfaceTHPreSolve
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHSetRealization(this, surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Surface_Realization_class
   use Grid_module
@@ -165,14 +165,14 @@ subroutine PMSurfaceTHSetRealization(this, surf_realization)
 end subroutine PMSurfaceTHSetRealization
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 recursive subroutine PMSurfaceTHInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Surface_TH_module, only : SurfaceTHUpdateSolution
 
@@ -183,14 +183,14 @@ recursive subroutine PMSurfaceTHInitializeRun(this)
 end subroutine PMSurfaceTHInitializeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 recursive subroutine PMSurfaceTHFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   implicit none
 
@@ -209,14 +209,14 @@ recursive subroutine PMSurfaceTHFinalizeRun(this)
 end subroutine PMSurfaceTHFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHUpdateSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Surface_TH_module, only : SurfaceTHUpdateSolution
   use Condition_module
@@ -243,14 +243,14 @@ subroutine PMSurfaceTHUpdateSolution(this)
 end subroutine PMSurfaceTHUpdateSolution
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHRHSFunction(this,ts,time,xx,ff,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Surface_TH_module, only : SurfaceTHRHSFunction
 
@@ -269,15 +269,15 @@ subroutine PMSurfaceTHRHSFunction(this,ts,time,xx,ff,ierr)
 end subroutine PMSurfaceTHRHSFunction
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Surface_TH_module, only : SurfaceTHComputeMaxDt
 
@@ -301,16 +301,15 @@ subroutine PMSurfaceTHUpdateTimestep(this,dt,dt_max,iacceleration, &
 
 end subroutine PMSurfaceTHUpdateTimestep
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
 subroutine PMSurfaceTHDTExplicit(this,dt_max)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Surface_TH_module, only : SurfaceTHComputeMaxDt
 
@@ -331,14 +330,14 @@ subroutine PMSurfaceTHDTExplicit(this,dt_max)
 end subroutine PMSurfaceTHDTExplicit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHPostSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
   use Grid_module
   use Discretization_module
@@ -385,14 +384,14 @@ subroutine PMSurfaceTHPostSolve(this)
 end subroutine PMSurfaceTHPostSolve
 
 ! ************************************************************************** !
-!> This routine checkpoints data associated with surface-flow PM
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHCheckpoint(this,viewer)
+  ! 
+  ! This routine checkpoints data associated with surface-flow PM
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Surface_Checkpoint_module
 
@@ -407,14 +406,14 @@ subroutine PMSurfaceTHCheckpoint(this,viewer)
 end subroutine PMSurfaceTHCheckpoint
 
 ! ************************************************************************** !
-!> This routine reads checkpoint data associated with surface-flow PM
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHRestart(this,viewer)
+  ! 
+  ! This routine reads checkpoint data associated with surface-flow PM
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Surface_Checkpoint_module
   use Surface_TH_module, only : SurfaceTHUpdateAuxVars
@@ -432,14 +431,14 @@ subroutine PMSurfaceTHRestart(this,viewer)
 end subroutine PMSurfaceTHRestart
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/23/13
-! ************************************************************************** !
+
 subroutine PMSurfaceTHDestroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/23/13
+  ! 
 
 !  use Surface_TH_module, only : SurfaceTHDestroy
 

@@ -21,13 +21,14 @@ module Database_module
 contains
 
 ! ************************************************************************** !
-!
-! DatabaseRead: Collects parameters from geochemical database
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 subroutine DatabaseRead(reaction,option)
+  ! 
+  ! Collects parameters from geochemical database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -744,13 +745,14 @@ subroutine DatabaseRead(reaction,option)
 end subroutine DatabaseRead
 
 ! ************************************************************************** !
-!
-! BasisInit: Initializes the basis for geochemistry
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 subroutine BasisInit(reaction,option)
+  ! 
+  ! Initializes the basis for geochemistry
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   use Option_module
   use String_module
@@ -3768,15 +3770,16 @@ subroutine BasisInit(reaction,option)
 end subroutine BasisInit
 
 ! ************************************************************************** !
-!
-! GetSpeciesBasisID: Reduces redundant coding above
-! author: Glenn Hammond
-! date: 12/02/08
-!
-! ************************************************************************** !
+
 function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
                            species_name, &
                            pri_names,sec_names,gas_names)
+  ! 
+  ! Reduces redundant coding above
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/08
+  ! 
 
   use Option_module
   use String_module
@@ -3829,13 +3832,14 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
 end function GetSpeciesBasisID
 
 ! ************************************************************************** !
-!
-! BasisPrint: Prints the basis
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 subroutine BasisPrint(reaction,title,option)
+  ! 
+  ! Prints the basis
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   use Option_module
   use Reaction_module

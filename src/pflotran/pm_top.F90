@@ -32,13 +32,12 @@ module PM_module
 contains
 
 ! ************************************************************************** !
-!
-! PMResidual: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMResidual(snes,xx,r,this,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Option_module
   use Realization_class
@@ -64,13 +63,12 @@ subroutine PMResidual(snes,xx,r,this,ierr)
 end subroutine PMResidual
 
 ! ************************************************************************** !
-!
-! PMJacobian: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Option_module
   
@@ -95,15 +93,14 @@ subroutine PMJacobian(snes,xx,A,B,flag,this,ierr)
   call this%ptr%Jacobian(snes,xx,A,B,flag,ierr)
     
 end subroutine PMJacobian
-    
+
 ! ************************************************************************** !
-!
-! PMRHSFunction:
-! author: Gautam Bisht
-! date: 04/12/13
-!
-! ************************************************************************** !
+
 subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 04/12/13
+  ! 
 
   implicit none
   

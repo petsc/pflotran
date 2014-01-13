@@ -40,13 +40,14 @@ module Reaction_Sandbox_CLM_CN_class
 contains
 
 ! ************************************************************************** !
-!
-! RSandboxInit: Initializes reaction sandbox at beginning of simulation
-! author: Glenn Hammond
-! date: 11/08/12
-!
-! ************************************************************************** !
+
 function CLM_CN_Create()
+  ! 
+  ! RSandboxInit: Initializes reaction sandbox at beginning of simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/08/12
+  ! 
 
   implicit none
   
@@ -70,13 +71,14 @@ function CLM_CN_Create()
 end function CLM_CN_Create
 
 ! ************************************************************************** !
-!
-! CLM_CN_Init: Initializes reaction sandbox at beginning of simulation
-! author: Glenn Hammond
-! date: 01/29/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Init(this,reaction,option)
+  ! 
+  ! Initializes reaction sandbox at beginning of simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/13
+  ! 
 
   use Reaction_Aux_module
   use Option_module
@@ -91,15 +93,15 @@ subroutine CLM_CN_Init(this,reaction,option)
 
 end subroutine CLM_CN_Init
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! CLM_CN_Map: Maps coefficients to primary dependent variables
-! author: Glenn Hammond
-! date: 01/29/13
-!
-! ************************************************************************** !
 subroutine CLM_CN_Map(this,reaction,option)
+  ! 
+  ! Maps coefficients to primary dependent variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/13
+  ! 
 
   use Reaction_Aux_module
   use Option_module
@@ -228,13 +230,14 @@ subroutine CLM_CN_Map(this,reaction,option)
 end subroutine CLM_CN_Map
 
 ! ************************************************************************** !
-!
-! CLM_CN_Read: Reads input deck for reaction sandbox parameters
-! author: Glenn Hammond
-! date: 01/29/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Read(this,input,option)
+  ! 
+  ! Reads input deck for reaction sandbox parameters
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/13
+  ! 
 
   use Option_module
   use String_module
@@ -374,14 +377,15 @@ subroutine CLM_CN_Read(this,input,option)
 end subroutine CLM_CN_Read
 
 ! ************************************************************************** !
-!
-! CLM_CN_React: Evaluates reaction storing residual and/or Jacobian
-! author: Glenn Hammond
-! date: 01/29/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
                         global_auxvar,porosity,volume,reaction,option)
+  ! 
+  ! Evaluates reaction storing residual and/or Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/13
+  ! 
 
   use Option_module
   use Reaction_Aux_module
@@ -470,14 +474,15 @@ subroutine CLM_CN_React(this,Res,Jac,compute_derivative,rt_auxvar, &
 end subroutine CLM_CN_React
 
 ! ************************************************************************** !
-!
-! CLM_CN_Destroy: Destroys allocatable or pointer objects created in this 
-!                 module
-! author: Glenn Hammond
-! date: 01/29/13
-!
-! ************************************************************************** !
+
 subroutine CLM_CN_Destroy(this)
+  ! 
+  ! Destroys allocatable or pointer objects created in this
+  ! module
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/13
+  ! 
 
   implicit none
   

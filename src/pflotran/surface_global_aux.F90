@@ -39,14 +39,14 @@ module Surface_Global_Aux_module
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 function SurfaceGlobalAuxCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Option_module
 
@@ -69,14 +69,14 @@ function SurfaceGlobalAuxCreate()
 end function SurfaceGlobalAuxCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalAuxVarInit(aux_var,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Option_module
 
@@ -97,14 +97,14 @@ subroutine SurfaceGlobalAuxVarInit(aux_var,option)
 end subroutine SurfaceGlobalAuxVarInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !  
+
 subroutine SurfaceGlobalAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Option_module
 
@@ -121,14 +121,14 @@ subroutine SurfaceGlobalAuxVarCopy(aux_var,aux_var2,option)
 end subroutine SurfaceGlobalAuxVarCopy
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalAuxVarSingleDestroy(aux_var)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   implicit none
 
@@ -141,16 +141,16 @@ subroutine SurfaceGlobalAuxVarSingleDestroy(aux_var)
   nullify(aux_var)
 
 end subroutine SurfaceGlobalAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalAuxVarArrayDestroy(aux_vars)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   implicit none
 
@@ -167,16 +167,16 @@ subroutine SurfaceGlobalAuxVarArrayDestroy(aux_vars)
   nullify(aux_vars)
 
 end subroutine SurfaceGlobalAuxVarArrayDestroy
-  
+
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalAuxVarStrip(aux_var)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -192,14 +192,14 @@ subroutine SurfaceGlobalAuxVarStrip(aux_var)
 end subroutine SurfaceGlobalAuxVarStrip
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalAuxDestroy(aux)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   implicit none
 

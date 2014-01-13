@@ -53,16 +53,15 @@ module PM_TH_class
   
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
 function PMTHCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -89,14 +88,14 @@ function PMTHCreate()
 end function PMTHCreate
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -130,14 +129,14 @@ subroutine PMTHInit(this)
 end subroutine PMTHInit
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHSetRealization(this,realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -160,14 +159,14 @@ subroutine PMTHSetRealization(this,realization)
 end subroutine PMTHSetRealization
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHInitializeTimestep(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THInitializeTimestep
   use Global_module
@@ -209,14 +208,14 @@ subroutine PMTHInitializeTimestep(this)
 end subroutine PMTHInitializeTimestep
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHPreSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use Global_module
 
@@ -231,11 +230,11 @@ subroutine PMTHPreSolve(this)
 end subroutine PMTHPreSolve
 
 ! ************************************************************************** !
-!
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMTHPostSolve(this)
+  ! 
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -250,14 +249,14 @@ subroutine PMTHPostSolve(this)
 end subroutine PMTHPostSolve
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHFinalizeTimestep(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THMaxChange
   use Global_module
@@ -288,14 +287,14 @@ subroutine PMTHFinalizeTimestep(this)
 end subroutine PMTHFinalizeTimestep
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 function PMTHAcceptSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -312,15 +311,15 @@ function PMTHAcceptSolution(this)
 end function PMTHAcceptSolution
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
                               num_newton_iterations,tfac)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -367,14 +366,14 @@ subroutine PMTHUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMTHUpdateTimestep
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 recursive subroutine PMTHInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THUpdateSolution
 
@@ -400,14 +399,14 @@ recursive subroutine PMTHInitializeRun(this)
 end subroutine PMTHInitializeRun
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 recursive subroutine PMTHFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -426,14 +425,14 @@ recursive subroutine PMTHFinalizeRun(this)
 end subroutine PMTHFinalizeRun
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHResidual(this,snes,xx,r,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THResidual
 
@@ -454,14 +453,14 @@ subroutine PMTHResidual(this,snes,xx,r,ierr)
 end subroutine PMTHResidual
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THJacobian
 
@@ -483,14 +482,14 @@ subroutine PMTHJacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMTHJacobian
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THCheckUpdatePre
 
@@ -512,17 +511,17 @@ subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMTHCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THCheckUpdatePost
 
@@ -547,16 +546,16 @@ subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 #endif
 
 end subroutine PMTHCheckUpdatePost
-  
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHTimeCut(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THTimeCut
 
@@ -573,16 +572,16 @@ subroutine PMTHTimeCut(this)
   call THTimeCut(this%realization)
 
 end subroutine PMTHTimeCut
-    
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHUpdateSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THUpdateSolution, THUpdateSurfaceBC
   use Condition_module
@@ -616,14 +615,14 @@ subroutine PMTHUpdateSolution(this)
 end subroutine PMTHUpdateSolution     
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHMaxChange(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THMaxChange
 
@@ -638,16 +637,16 @@ subroutine PMTHMaxChange(this)
   call THMaxChange(this%realization)
 
 end subroutine PMTHMaxChange
-    
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THComputeMassBalance
 
@@ -667,13 +666,14 @@ subroutine PMTHComputeMassBalance(this,mass_balance_array)
 end subroutine PMTHComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMTHCheckpoint: Checkpoints data associated with TH PM
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine PMTHCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with TH PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Checkpoint_module
 
@@ -687,15 +687,15 @@ subroutine PMTHCheckpoint(this,viewer)
   
 end subroutine PMTHCheckpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMTHRestart: Restarts data associated with TH PM
-! author: Glenn Hammond
-! date: 07/30/13
-!
-! ************************************************************************** !
 subroutine PMTHRestart(this,viewer)
+  ! 
+  ! Restarts data associated with TH PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/30/13
+  ! 
 
   use Checkpoint_module
   use TH_module, only : THUpdateAuxVars
@@ -713,14 +713,14 @@ subroutine PMTHRestart(this,viewer)
 end subroutine PMTHRestart
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHDestroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use TH_module, only : THDestroy
 

@@ -20,14 +20,14 @@ module Surface_Global_module
 contains
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetup(surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -49,14 +49,14 @@ subroutine SurfaceGlobalSetup(surf_realization)
 end subroutine SurfaceGlobalSetup
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetupPatch(surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -146,14 +146,14 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
 end subroutine SurfaceGlobalSetupPatch
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -177,7 +177,7 @@ subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
 end subroutine SurfaceGlobalSetAuxVarScalar
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
 
   use Surface_Realization_class
@@ -228,14 +228,14 @@ subroutine SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
 end subroutine SurfaceGlobalSetAuxVarScalarPatch
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -263,14 +263,14 @@ subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
 end subroutine SurfaceGlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubvar)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -334,16 +334,15 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
 
 end subroutine SurfaceGlobalSetAuxVarVecLocPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
 subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module

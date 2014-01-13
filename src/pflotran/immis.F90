@@ -55,13 +55,14 @@ module Immis_module
 contains
 
 ! ************************************************************************** !
-!
-! ImmisTimeCut: Resets arrays for time step cut
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine ImmisTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -85,13 +86,12 @@ subroutine ImmisTimeCut(realization)
 end subroutine ImmisTimeCut
 
 ! ************************************************************************** !
-!
-! ImmisSetup: 
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine ImmisSetup(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -116,13 +116,14 @@ subroutine ImmisSetup(realization)
 end subroutine ImmisSetup
 
 ! ************************************************************************** !
-!
-! ImmisSetupPatch: Creates arrays for auxiliary variables
-! author: Chuan Lu
-! date: 10/1/08
-!
-! ************************************************************************** !
+
 subroutine ImmisSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/1/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -241,13 +242,12 @@ subroutine ImmisSetupPatch(realization)
 end subroutine ImmisSetupPatch
 
 ! ************************************************************************** !
-!
-! ImmisComputeMassBalance: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine ImmisComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -271,13 +271,14 @@ subroutine ImmisComputeMassBalance(realization,mass_balance)
 end subroutine ImmisComputeMassBalance
 
 ! ************************************************************************** !
-!
-! ImmisComputeMassBalancePatch: Initializes mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -336,13 +337,14 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
 end subroutine ImmisComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! ImmisZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine ImmisZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -389,12 +391,14 @@ subroutine ImmisZeroMassBalDeltaPatch(realization)
 end subroutine ImmisZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-! Immisinitguesscheckpatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
   function  ImmisInitGuessCheck(realization)
+  ! 
+  ! Immisinitguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
  
   use Realization_class
   use Patch_module
@@ -431,12 +435,14 @@ end subroutine ImmisZeroMassBalDeltaPatch
 end function ImmisInitGuessCheck
 
 ! ************************************************************************** !
-! Immisinitguesscheckpatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateReasonPatch(reason,realization)
+  ! 
+  ! Immisinitguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
    use Realization_class
    use Patch_module
    use Field_module
@@ -503,16 +509,16 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
   
 end subroutine ImmisUpdateReasonPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! ImmisUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Richards problem
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine ImmisUpdateReason(reason, realization)
+  ! 
+  ! ImmisUpdateAuxVars: Updates the auxiliary variables associated with
+  ! the Richards problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -551,12 +557,12 @@ subroutine ImmisUpdateReason(reason, realization)
 end subroutine ImmisUpdateReason
 
 ! ************************************************************************** !
-! Immisinitguesscheckpatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
   function ImmisInitGuessCheckPatch(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
    
     use co2_span_wagner_module
      
@@ -613,15 +619,16 @@ end subroutine ImmisUpdateReason
     ImmisInitGuessCheckPatch = ipass
   end function ImmisInitGuessCheckPatch
 
-! ***************************************************************************
-!
-! ImmisUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Immis problem
-! author: Chuan Lu
-! date: 10/10/08
-!
 ! ************************************************************************** !
+
 subroutine ImmisUpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Immis problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -641,14 +648,15 @@ subroutine ImmisUpdateAuxVars(realization)
 end subroutine ImmisUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! ImmisUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Immis problem
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Immis problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -817,13 +825,14 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
 end subroutine ImmisUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! ImmisInitializeTimestep: Update data in module prior to time step
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine ImmisInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   
@@ -836,13 +845,14 @@ subroutine ImmisInitializeTimestep(realization)
 end subroutine ImmisInitializeTimestep
 
 ! ************************************************************************** !
-!
-! ImmisUpdateSolution: Updates data in module after a successful time step
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -874,14 +884,14 @@ subroutine ImmisUpdateSolution(realization)
 end subroutine ImmisUpdateSolution
 
 ! ************************************************************************** !
-!
-! ImmisUpdateSolutionPatch: Updates mass balance 
-! author: PCL
-! 
-! date: 11/18/11
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateSolutionPatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: PCL
+  ! Date: 11/18/11
+  ! 
 
   use Realization_class
     
@@ -896,13 +906,14 @@ subroutine ImmisUpdateSolutionPatch(realization)
 end subroutine ImmisUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! ImmisUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -947,14 +958,15 @@ subroutine ImmisUpdateMassBalancePatch(realization)
 end subroutine ImmisUpdateMassBalancePatch
 
 ! ************************************************************************** !
-!
-! ImmisUpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -974,14 +986,15 @@ subroutine ImmisUpdateFixedAccumulation(realization)
 end subroutine ImmisUpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! ImmisUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine ImmisUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1057,16 +1070,16 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
 
 end subroutine ImmisUpdateFixedAccumPatch
 
-
 ! ************************************************************************** !
-!
-! ImmisAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -1109,14 +1122,15 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
 end subroutine ImmisAccumulation
 
 ! ************************************************************************** !
-!
-! ImmisSourceSink: Computes source/sink
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
                            qsrc_phase,energy_flag,option)
+  ! 
+  ! Computes source/sink
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -1329,18 +1343,18 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
       
 end subroutine ImmisSourceSink
 
-
 ! ************************************************************************** !
-!
-! ImmisFlux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
+
 subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
@@ -1450,15 +1464,16 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine ImmisFlux
 
 ! ************************************************************************** !
-!
-! ImmisBCFlux: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
@@ -1603,13 +1618,14 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine ImmisBCFlux
 
 ! ************************************************************************** !
-!
-! ImmisResidual: Computes the residual equation 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine ImmisResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1671,13 +1687,14 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
 end subroutine ImmisResidual
 
 ! ************************************************************************** !
-!
-! ImmisResidualPatch: Computes the residual equation at patch level
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation at patch level
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2182,13 +2199,14 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 end subroutine ImmisResidualPatch
 
 ! ************************************************************************** !
-!
-! ImmisJacobian: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2218,13 +2236,14 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine ImmisJacobian
 
 ! ************************************************************************** !
-!
-! ImmisJacobianPatch: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -2764,16 +2783,15 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 end subroutine ImmisJacobianPatch
 
-
-
 ! ************************************************************************** !
-!
-! ImmisCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine ImmisCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Patch_module
   use Grid_module
@@ -2868,13 +2886,14 @@ subroutine ImmisCreateZeroArray(patch,option)
 end subroutine ImmisCreateZeroArray
 
 ! ************************************************************************** !
-!
-! ImmisMaxChange: Computes the maximum change in the solution vector
-! author: Chuan Lu
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine ImmisMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2910,14 +2929,15 @@ subroutine ImmisMaxChange(realization)
 end subroutine ImmisMaxChange
 
 ! ************************************************************************** !
-!
-! ImmisGetTecplotHeader: Returns Richards contribution to 
-!                               Tecplot file header
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function ImmisGetTecplotHeader(realization, icolumn)
+  ! 
+  ! Returns Richards contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -3056,13 +3076,14 @@ function ImmisGetTecplotHeader(realization, icolumn)
 end function ImmisGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! ImmisSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine ImmisSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -3152,13 +3173,14 @@ subroutine ImmisSetPlotVariables(realization)
 end subroutine ImmisSetPlotVariables
 
 ! ************************************************************************** !
-!
-! ImmisDestroy: Deallocates variables associated with Immis
-! author: Chuan Lu 
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisDestroy(realization)
+  ! 
+  ! Deallocates variables associated with Immis
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/14/08
+  ! 
 
   use Realization_class
 
@@ -3173,14 +3195,14 @@ end subroutine ImmisDestroy
 
 
 #if 0
+
 ! ************************************************************************** !
-!
-! ImmisCheckpointWrite: Writes vecs to checkpoint file
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 subroutine ImmisCheckpointWrite(discretization, viewer)
+  ! 
+  ! Writes vecs to checkpoint file
+  ! Author: Chuan Lu
+  ! 
 
   use Discretization_module
 
@@ -3198,15 +3220,13 @@ subroutine ImmisCheckpointWrite(discretization, viewer)
   
 end subroutine ImmisCheckpointWrite
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! ImmisCheckpointRead: Reads vecs from checkpoint file
-! author: Chuan Lu 
-! date: 
-!
-! ************************************************************************** !
 subroutine ImmisCheckpointRead(discretization,viewer)
+  ! 
+  ! Reads vecs from checkpoint file
+  ! Author: Chuan Lu
+  ! 
 
   use Discretization_module
 

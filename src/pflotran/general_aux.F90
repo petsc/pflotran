@@ -91,15 +91,15 @@ module General_Aux_module
 
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
 function GeneralAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -136,13 +136,14 @@ function GeneralAuxCreate(option)
 end function GeneralAuxCreate
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarInit: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarInit(aux_var,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -176,13 +177,14 @@ subroutine GeneralAuxVarInit(aux_var,option)
 end subroutine GeneralAuxVarInit
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarCopy: Copies an auxiliary variable
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !  
+
 subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
 
@@ -204,16 +206,17 @@ subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%pert = aux_var%pert
 
 end subroutine GeneralAuxVarCopy
-  
+
 ! ************************************************************************** !
-!
-! GeneralAuxVarCompute: Computes auxiliary variables for each grid cell
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                                 saturation_function,por,perm,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   use Option_module
   use Global_Aux_module
@@ -414,17 +417,17 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
 end subroutine GeneralAuxVarCompute
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralUpdateState: Updates the state and swaps primary variables
-! author: Glenn Hammond
-! date: 05/25/11
-!
-! ************************************************************************** !
 subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
                                     saturation_function,por,perm,ghosted_id, &
                                     option)
+  ! 
+  ! GeneralUpdateState: Updates the state and swaps primary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/25/11
+  ! 
 
   use Option_module
   use Global_Aux_module
@@ -546,14 +549,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_aux_var,global_aux_var, &
 end subroutine GeneralAuxVarUpdateState
 
 ! ************************************************************************** !
-!
-! GeneralPrintAuxVars: Prints out the contents of an auxvar
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
                                string,option)
+  ! 
+  ! Prints out the contents of an auxvar
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -617,14 +621,15 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
 end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
-!
-! GeneralOutputAuxVars1: Prints out the contents of an auxvar to a file
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
                                 string,option)
+  ! 
+  ! Prints out the contents of an auxvar to a file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -719,13 +724,14 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
 end subroutine GeneralOutputAuxVars1
 
 ! ************************************************************************** !
-!
-! GeneralOutputAuxVars2: Prints out the contents of an auxvar to a file
-! author: Glenn Hammond
-! date: 02/18/13
-!
-! ************************************************************************** !
+
 subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
+  ! 
+  ! Prints out the contents of an auxvar to a file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/18/13
+  ! 
 
   use Global_Aux_module
   use Option_module
@@ -815,13 +821,14 @@ subroutine GeneralOutputAuxVars2(general_auxvars,global_auxvars,option)
 end subroutine GeneralOutputAuxVars2
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarSingleDestroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarSingleDestroy(aux_var)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -834,15 +841,16 @@ subroutine GeneralAuxVarSingleDestroy(aux_var)
   nullify(aux_var)  
 
 end subroutine GeneralAuxVarSingleDestroy
-  
+
 ! ************************************************************************** !
-!
-! GeneralAuxVarArray1Destroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarArray1Destroy(aux_vars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -861,13 +869,14 @@ subroutine GeneralAuxVarArray1Destroy(aux_vars)
 end subroutine GeneralAuxVarArray1Destroy
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarArray2Destroy: Deallocates a mode auxiliary object
-! author: Glenn Hammond
-! date: 01/10/12
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarArray2Destroy(aux_vars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/10/12
+  ! 
 
   implicit none
 
@@ -888,13 +897,14 @@ subroutine GeneralAuxVarArray2Destroy(aux_vars)
 end subroutine GeneralAuxVarArray2Destroy
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarDestroy: Deallocates a general auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxVarStrip(aux_var)
+  ! 
+  ! GeneralAuxVarDestroy: Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   implicit none
 
@@ -920,13 +930,14 @@ subroutine GeneralAuxVarStrip(aux_var)
 end subroutine GeneralAuxVarStrip
 
 ! ************************************************************************** !
-!
-! GeneralAuxDestroy: Deallocates a general auxiliary object
-! author: Glenn Hammond
-! date: 03/07/11
-!
-! ************************************************************************** !
+
 subroutine GeneralAuxDestroy(aux)
+  ! 
+  ! Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
 
   implicit none
 

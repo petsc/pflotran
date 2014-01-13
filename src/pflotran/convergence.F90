@@ -30,14 +30,15 @@ module Convergence_module
 contains
 
 ! ************************************************************************** !
-!
-! ConvergenceContextCreate: Creates a context containing pointer
-!                           for convergence subroutines
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 function ConvergenceContextCreate(solver,option,grid)
+  ! 
+  ! Creates a context containing pointer
+  ! for convergence subroutines
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   
@@ -58,13 +59,14 @@ function ConvergenceContextCreate(solver,option,grid)
 end function ConvergenceContextCreate
 
 ! ************************************************************************** !
-!
-! ConvergenceTest: User defined convergence test
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
+  ! 
+  ! User defined convergence test
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   
@@ -562,13 +564,14 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 end subroutine ConvergenceTest
 
 ! ************************************************************************** !
-!
-! ConvergenceContextDestroy: Destroy context
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 subroutine ConvergenceContextDestroy(context)
+  ! 
+  ! Destroy context
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   

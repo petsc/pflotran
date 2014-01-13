@@ -34,13 +34,14 @@ module Object_module
 contains
 
 ! ************************************************************************** !
-!
-! ObjectCreate: Allocates and initializes a new XXX object
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function ObjectCreate()
+  ! 
+  ! Allocates and initializes a new XXX object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -60,13 +61,14 @@ function ObjectCreate()
 end function ObjectCreate
 
 ! ************************************************************************** !
-!
-! ObjectDestroy: Deallocates an XXX object
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine ObjectDestroy(object)
+  ! 
+  ! Deallocates an XXX object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Utility_module, only: DeallocateArray 
 

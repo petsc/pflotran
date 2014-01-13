@@ -387,13 +387,14 @@ module Reaction_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! ReactionCreate: Allocate and initialize reaction object
-! author: Glenn Hammond
-! date: 05/02/08
-!
-! ************************************************************************** !
+
 function ReactionCreate()
+  ! 
+  ! Allocate and initialize reaction object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/02/08
+  ! 
 
   use Option_module
 
@@ -587,13 +588,14 @@ function ReactionCreate()
 end function ReactionCreate
 
 ! ************************************************************************** !
-!
-! SpeciesIndexCreate: Allocate and initialize a species index object
-! author: Peter Lichtner
-! date: 01/29/10
-!
-! ************************************************************************** !
+
 function SpeciesIndexCreate()
+  ! 
+  ! Allocate and initialize a species index object
+  ! 
+  ! Author: Peter Lichtner
+  ! Date: 01/29/10
+  ! 
 
   use Option_module
 
@@ -621,13 +623,14 @@ function SpeciesIndexCreate()
 end function SpeciesIndexCreate
 
 ! ************************************************************************** !
-!
-! AqueousSpeciesCreate: Allocate and initialize an aqueous species object
-! author: Glenn Hammond
-! date: 05/02/08
-!
-! ************************************************************************** !
+
 function AqueousSpeciesCreate()
+  ! 
+  ! Allocate and initialize an aqueous species object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/02/08
+  ! 
 
   use Option_module
 
@@ -653,13 +656,14 @@ function AqueousSpeciesCreate()
 end function AqueousSpeciesCreate
 
 ! ************************************************************************** !
-!
-! GasSpeciesCreate: Allocate and initialize a gas species object
-! author: Glenn Hammond
-! date: 05/02/08
-!
-! ************************************************************************** !
+
 function GasSpeciesCreate()
+  ! 
+  ! Allocate and initialize a gas species object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/02/08
+  ! 
 
   use Option_module
 
@@ -683,13 +687,14 @@ function GasSpeciesCreate()
 end function GasSpeciesCreate
 
 ! ************************************************************************** !
-!
-! ColloidCreate: Allocate and initialize a colloid object
-! author: Glenn Hammond
-! date: 02/24/10
-!
-! ************************************************************************** !
+
 function ColloidCreate()
+  ! 
+  ! Allocate and initialize a colloid object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/24/10
+  ! 
 
   use Option_module
 
@@ -716,13 +721,14 @@ function ColloidCreate()
 end function ColloidCreate
 
 ! ************************************************************************** !
-!
-! IonExchangeRxnCreate: Allocate and initialize an ion exchange reaction
-! author: Peter Lichtner
-! date: 10/24/08
-!
-! ************************************************************************** !
+
 function IonExchangeRxnCreate()
+  ! 
+  ! Allocate and initialize an ion exchange reaction
+  ! 
+  ! Author: Peter Lichtner
+  ! Date: 10/24/08
+  ! 
 
   implicit none
     
@@ -742,14 +748,15 @@ function IonExchangeRxnCreate()
 end function IonExchangeRxnCreate
 
 ! ************************************************************************** !
-!
-! IonExchangeCationCreate: Allocate and initialize a cation associated with
-!                          an ion exchange reaction
-! author: Peter Lichtner
-! date: 10/24/08
-!
-! ************************************************************************** !
+
 function IonExchangeCationCreate()
+  ! 
+  ! Allocate and initialize a cation associated with
+  ! an ion exchange reaction
+  ! 
+  ! Author: Peter Lichtner
+  ! Date: 10/24/08
+  ! 
 
   implicit none
     
@@ -767,14 +774,15 @@ function IonExchangeCationCreate()
 end function IonExchangeCationCreate
 
 ! ************************************************************************** !
-!
-! RadioactiveDecayRxnCreate: Allocate and initialize a radioactive decay
-!                            reaction
-! author: Glenn Hammond
-! date: 01/07/14
-!
-! ************************************************************************** !
+
 function RadioactiveDecayRxnCreate()
+  ! 
+  ! Allocate and initialize a radioactive decay
+  ! reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/14
+  ! 
 
   implicit none
     
@@ -795,13 +803,14 @@ function RadioactiveDecayRxnCreate()
 end function RadioactiveDecayRxnCreate
 
 ! ************************************************************************** !
-!
-! GeneralRxnCreate: Allocate and initialize a general reaction
-! author: Glenn Hammond
-! date: 09/03/10
-!
-! ************************************************************************** !
+
 function GeneralRxnCreate()
+  ! 
+  ! Allocate and initialize a general reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/03/10
+  ! 
 
   implicit none
     
@@ -823,13 +832,14 @@ function GeneralRxnCreate()
 end function GeneralRxnCreate
 
 ! ************************************************************************** !
-!
-! KDRxnCreate: Allocate and initialize a KD sorption reaction
-! author: Glenn Hammond
-! date: 09/32/10
-!
-! ************************************************************************** !
+
 function KDRxnCreate()
+  ! 
+  ! Allocate and initialize a KD sorption reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/32/10
+  ! 
 
   implicit none
     
@@ -851,14 +861,15 @@ function KDRxnCreate()
 end function KDRxnCreate
 
 ! ************************************************************************** !
-!
-! AqueousSpeciesConstraintCreate: Creates an aqueous species constraint 
-!                                 object
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 function AqueousSpeciesConstraintCreate(reaction,option)
+  ! 
+  ! Creates an aqueous species constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   
@@ -889,15 +900,16 @@ function AqueousSpeciesConstraintCreate(reaction,option)
   AqueousSpeciesConstraintCreate => constraint
 
 end function AqueousSpeciesConstraintCreate
- 
+
 ! ************************************************************************** !
-!
-! ColloidConstraintCreate: Creates a colloid constraint object
-! author: Glenn Hammond
-! date: 03/12/10
-!
-! ************************************************************************** !
+
 function ColloidConstraintCreate(reaction,option)
+  ! 
+  ! Creates a colloid constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/10
+  ! 
 
   use Option_module
   
@@ -924,15 +936,16 @@ function ColloidConstraintCreate(reaction,option)
   ColloidConstraintCreate => constraint
 
 end function ColloidConstraintCreate
-  
+
 ! ************************************************************************** !
-!
-! GetPrimarySpeciesNames: Returns the names of primary species in an array
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetPrimarySpeciesNames(reaction)
+  ! 
+  ! Returns the names of primary species in an array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   implicit none
   
@@ -960,13 +973,14 @@ function GetPrimarySpeciesNames(reaction)
 end function GetPrimarySpeciesNames
 
 ! ************************************************************************** !
-!
-! GetPrimarySpeciesCount: Returns the number of primary species
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetPrimarySpeciesCount(reaction)
+  ! 
+  ! Returns the number of primary species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   implicit none
   
@@ -986,13 +1000,14 @@ function GetPrimarySpeciesCount(reaction)
 end function GetPrimarySpeciesCount
 
 ! ************************************************************************** !
-!
-! GetPrimarySpeciesIDFromName: Returns the id of named primary species
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function GetPrimarySpeciesIDFromName(name,reaction,option)
+  ! 
+  ! Returns the id of named primary species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   use Option_module
   use String_module
@@ -1042,13 +1057,14 @@ function GetPrimarySpeciesIDFromName(name,reaction,option)
 end function GetPrimarySpeciesIDFromName
 
 ! ************************************************************************** !
-!
-! GetSecondarySpeciesNames: Returns the names of secondary species in an array
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetSecondarySpeciesNames(reaction)
+  ! 
+  ! Returns the names of secondary species in an array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   implicit none
   
@@ -1076,13 +1092,14 @@ function GetSecondarySpeciesNames(reaction)
 end function GetSecondarySpeciesNames
 
 ! ************************************************************************** !
-!
-! GetSecondarySpeciesCount: Returns the number of secondary species
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetSecondarySpeciesCount(reaction)
+  ! 
+  ! Returns the number of secondary species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   implicit none
   
@@ -1102,13 +1119,14 @@ function GetSecondarySpeciesCount(reaction)
 end function GetSecondarySpeciesCount
 
 ! ************************************************************************** !
-!
-! GetGasNames: Returns the names of gases in an array
-! author: Glenn Hammond
-! date: 10/21/08
-!
-! ************************************************************************** !
+
 function GetGasNames(reaction)
+  ! 
+  ! Returns the names of gases in an array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/08
+  ! 
 
   implicit none
   
@@ -1136,13 +1154,14 @@ function GetGasNames(reaction)
 end function GetGasNames
 
 ! ************************************************************************** !
-!
-! GetGasCount: Returns the number of primary species
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetGasCount(reaction)
+  ! 
+  ! Returns the number of primary species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   implicit none
   
@@ -1162,13 +1181,14 @@ function GetGasCount(reaction)
 end function GetGasCount
 
 ! ************************************************************************** !
-!
-! GetGasIDFromName: Returns the id of gas with the corresponding name
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 function GetGasIDFromName(reaction,name)
+  ! 
+  ! Returns the id of gas with the corresponding name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   use String_module
   
@@ -1195,13 +1215,14 @@ function GetGasIDFromName(reaction,name)
 end function GetGasIDFromName
 
 ! ************************************************************************** !
-!
-! GetColloidIDFromName: Returns the id of colloid with the corresponding name
-! author: Glenn Hammond
-! date: 02/24/10
-!
-! ************************************************************************** !
+
 function GetColloidIDFromName(reaction,name)
+  ! 
+  ! Returns the id of colloid with the corresponding name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/24/10
+  ! 
 
   use String_module
   
@@ -1228,13 +1249,14 @@ function GetColloidIDFromName(reaction,name)
 end function GetColloidIDFromName
 
 ! ************************************************************************** !
-!
-! GetColloidNames: Returns the names of colloids in an array
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 function GetColloidNames(reaction)
+  ! 
+  ! Returns the names of colloids in an array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   implicit none
   
@@ -1262,13 +1284,14 @@ function GetColloidNames(reaction)
 end function GetColloidNames
 
 ! ************************************************************************** !
-!
-! GetColloidCount: Returns the number of colloids
-! author: Glenn Hammond
-! date: 02/24/10
-!
-! ************************************************************************** !
+
 function GetColloidCount(reaction)
+  ! 
+  ! Returns the number of colloids
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/24/10
+  ! 
 
   implicit none
   
@@ -1287,15 +1310,15 @@ function GetColloidCount(reaction)
 
 end function GetColloidCount
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GetImmobileCount: Returns the number of immobile species
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
 function GetImmobileCount(reaction)
+  ! 
+  ! Returns the number of immobile species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   implicit none
   
@@ -1307,14 +1330,15 @@ function GetImmobileCount(reaction)
 end function GetImmobileCount
 
 ! ************************************************************************** !
-!
-! ReactionFitLogKCoef: Least squares fit to log K over database temperature 
-!                      range
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
+
 subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
+  ! 
+  ! Least squares fit to log K over database temperature
+  ! range
+  ! 
+  ! Author: P.C. Lichtner
+  ! Date: 02/13/09
+  ! 
 
   use Option_module
   use Utility_module
@@ -1382,13 +1406,14 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
 end subroutine ReactionFitLogKCoef
 
 ! ************************************************************************** !
-!
-! ReactionInitializeLogK: Least squares fit to log K over database temperature range
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
+
 subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
+  ! 
+  ! Least squares fit to log K over database temperature range
+  ! 
+  ! Author: P.C. Lichtner
+  ! Date: 02/13/09
+  ! 
 
   use Option_module
 
@@ -1430,14 +1455,15 @@ subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
 end subroutine ReactionInitializeLogK
 
 ! ************************************************************************** !
-!
-! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
-!                             b - fit coefficients determined from fit(...)
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
+
 subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
+  ! 
+  ! Interpolation log K function: temp - temperature [C]
+  ! b - fit coefficients determined from fit(...)
+  ! 
+  ! Author: P.C. Lichtner
+  ! Date: 02/13/09
+  ! 
 
   implicit none
   
@@ -1460,13 +1486,14 @@ subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
 end subroutine ReactionInterpolateLogK
 
 ! ************************************************************************** !
-!
-! ReactionInitializeLogK: Least squares fit to log K over database temperature range
-! author: Chuan Lu
-! date: 12/29/11
-!
-! ************************************************************************** !
+
 subroutine ReactionInitializeLogK_hpt(logKcoef,logK,option,reaction)
+  ! 
+  ! ReactionInitializeLogK: Least squares fit to log K over database temperature range
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/29/11
+  ! 
 
   use Option_module
 
@@ -1496,14 +1523,15 @@ subroutine ReactionInitializeLogK_hpt(logKcoef,logK,option,reaction)
 end subroutine ReactionInitializeLogK_hpt
 
 ! ************************************************************************** !
-!
-! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
-!                             b - fit coefficients determined from fit(...)
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
+
 subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
+  ! 
+  ! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
+  ! b - fit coefficients determined from fit(...)
+  ! 
+  ! Author: P.C. Lichtner
+  ! Date: 02/13/09
+  ! 
 
   implicit none
   
@@ -1540,16 +1568,16 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
  ! print *,'ReactionInterpolateLogK_hpt: ', pres,temp, logKs, coefs
 end subroutine ReactionInterpolateLogK_hpt
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Function logkeh: Maier-Kelly fit to equilibrium constant half-cell reaction
-! 2 H2O - 4 H+ - 4 e- = O2, to compute Eh and pe.
-! author: Peter Lichtner
-! date: 04/27/13
-!
-! ************************************************************************** !
 PetscReal function logkeh(tk)
+  ! 
+  ! Function logkeh: Maier-Kelly fit to equilibrium constant half-cell reaction
+  ! 2 H2O - 4 H+ - 4 e- = O2, to compute Eh and pe.
+  ! 
+  ! Author: Peter Lichtner
+  ! Date: 04/27/13
+  ! 
 
   implicit none
 
@@ -1566,13 +1594,14 @@ PetscReal function logkeh(tk)
 end function logkeh
 
 ! ************************************************************************** !
-!
-! SpeciesIndexDestroy: Deallocates a species index object
-! author: Glenn Hammond
-! date: 01/29/10
-!
-! ************************************************************************** !
+
 subroutine SpeciesIndexDestroy(species_idx)
+  ! 
+  ! Deallocates a species index object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/10
+  ! 
 
   implicit none
     
@@ -1584,13 +1613,14 @@ subroutine SpeciesIndexDestroy(species_idx)
 end subroutine SpeciesIndexDestroy
 
 ! ************************************************************************** !
-!
-! AqueousSpeciesDestroy: Deallocates an aqueous species
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine AqueousSpeciesDestroy(species)
+  ! 
+  ! Deallocates an aqueous species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   implicit none
     
@@ -1603,13 +1633,14 @@ subroutine AqueousSpeciesDestroy(species)
 end subroutine AqueousSpeciesDestroy
 
 ! ************************************************************************** !
-!
-! AqueousSpeciesListDestroy: Deallocates an aqueous species
-! author: Glenn Hammond
-! date: 09/03/10
-!
-! ************************************************************************** !
+
 subroutine AqueousSpeciesListDestroy(aq_species_list)
+  ! 
+  ! Deallocates an aqueous species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/03/10
+  ! 
 
   implicit none
     
@@ -1629,13 +1660,14 @@ subroutine AqueousSpeciesListDestroy(aq_species_list)
 end subroutine AqueousSpeciesListDestroy
 
 ! ************************************************************************** !
-!
-! GasSpeciesDestroy: Deallocates a gas species
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine GasSpeciesDestroy(species)
+  ! 
+  ! Deallocates a gas species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   implicit none
     
@@ -1648,13 +1680,14 @@ subroutine GasSpeciesDestroy(species)
 end subroutine GasSpeciesDestroy
 
 ! ************************************************************************** !
-!
-! ColloidDestroy: Deallocates a colloid
-! author: Glenn Hammond
-! date: 02/24/10
-!
-! ************************************************************************** !
+
 subroutine ColloidDestroy(colloid)
+  ! 
+  ! Deallocates a colloid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/24/10
+  ! 
 
   implicit none
     
@@ -1666,13 +1699,14 @@ subroutine ColloidDestroy(colloid)
 end subroutine ColloidDestroy
 
 ! ************************************************************************** !
-!
-! IonExchangeRxnDestroy: Deallocates an ion exchange reaction
-! author: Glenn Hammond
-! date: 10/24/08
-!
-! ************************************************************************** !
+
 subroutine IonExchangeRxnDestroy(ionxrxn)
+  ! 
+  ! Deallocates an ion exchange reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/08
+  ! 
 
   implicit none
     
@@ -1699,13 +1733,14 @@ subroutine IonExchangeRxnDestroy(ionxrxn)
 end subroutine IonExchangeRxnDestroy
 
 ! ************************************************************************** !
-!
-! RadioactiveDecayRxnDestroy: Deallocates a general reaction
-! author: Glenn Hammond
-! date: 01/07/14
-!
-! ************************************************************************** !
+
 subroutine RadioactiveDecayRxnDestroy(rxn)
+  ! 
+  ! Deallocates a general reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/14
+  ! 
 
   implicit none
     
@@ -1724,13 +1759,14 @@ subroutine RadioactiveDecayRxnDestroy(rxn)
 end subroutine RadioactiveDecayRxnDestroy
 
 ! ************************************************************************** !
-!
-! GeneralRxnDestroy: Deallocates a general reaction
-! author: Glenn Hammond
-! date: 09/03/10
-!
-! ************************************************************************** !
+
 subroutine GeneralRxnDestroy(rxn)
+  ! 
+  ! Deallocates a general reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/03/10
+  ! 
 
   implicit none
     
@@ -1749,13 +1785,14 @@ subroutine GeneralRxnDestroy(rxn)
 end subroutine GeneralRxnDestroy
 
 ! ************************************************************************** !
-!
-! KDRxnDestroy: Deallocates a KD reaction
-! author: Glenn Hammond
-! date: 09/30/10
-!
-! ************************************************************************** !
+
 subroutine KDRxnDestroy(rxn)
+  ! 
+  ! Deallocates a KD reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/30/10
+  ! 
 
   implicit none
     
@@ -1769,14 +1806,15 @@ subroutine KDRxnDestroy(rxn)
 end subroutine KDRxnDestroy
 
 ! ************************************************************************** !
-!
-! AqueousSpeciesConstraintDestroy: Destroys an aqueous species constraint 
-!                                  object
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine AqueousSpeciesConstraintDestroy(constraint)
+  ! 
+  ! Destroys an aqueous species constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   
@@ -1800,13 +1838,14 @@ subroutine AqueousSpeciesConstraintDestroy(constraint)
 end subroutine AqueousSpeciesConstraintDestroy
 
 ! ************************************************************************** !
-!
-! ColloidConstraintDestroy: Destroys a colloid constraint object
-! author: Glenn Hammond
-! date: 03/12/10
-!
-! ************************************************************************** !
+
 subroutine ColloidConstraintDestroy(constraint)
+  ! 
+  ! Destroys a colloid constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/12/10
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -1828,13 +1867,14 @@ subroutine ColloidConstraintDestroy(constraint)
 end subroutine ColloidConstraintDestroy
 
 ! ************************************************************************** !
-!
-! ReactionDestroy: Deallocates a reaction object
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine ReactionDestroy(reaction)
+  ! 
+  ! Deallocates a reaction object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   use Utility_module, only: DeallocateArray
   

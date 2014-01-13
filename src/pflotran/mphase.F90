@@ -55,13 +55,14 @@ module Mphase_module
 contains
 
 ! ************************************************************************** !
-!
-! MphaseTimeCut: Resets arrays for time step cut
-! author: Chuan Lu
-! date: 5/13/08
-!
-! ************************************************************************** !
+
 subroutine MphaseTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 5/13/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -85,15 +86,15 @@ subroutine MphaseTimeCut(realization)
 
 end subroutine MphaseTimeCut
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! init_span_wanger
-! author: Chuan Lu
-! date: 5/13/08
-!
-! ************************************************************************** !
 subroutine init_span_wanger(realization)
+  ! 
+  ! init_span_wanger
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 5/13/08
+  ! 
   use Realization_class
   use co2_span_wagner_module
   use co2_sw_module
@@ -123,15 +124,13 @@ subroutine init_span_wanger(realization)
   endif
 end subroutine init_span_wanger
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseSetup: 
-! author: Chuan Lu
-! date: 5/13/08
-!
-! ************************************************************************** !
 subroutine MphaseSetup(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 5/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -153,13 +152,14 @@ subroutine MphaseSetup(realization)
 end subroutine MphaseSetup
 
 ! ************************************************************************** !
-!
-! MphaseSetupPatch: Creates arrays for auxiliary variables
-! author: Chuan Lu
-! date: 5/13/08
-!
-! ************************************************************************** !
+
 subroutine MphaseSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 5/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -375,13 +375,12 @@ subroutine MphaseSetupPatch(realization)
 end subroutine MphaseSetupPatch
 
 ! ************************************************************************** !
-!
-! MphaseComputeMassBalance: 
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -406,13 +405,14 @@ subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
 end subroutine MphaseComputeMassBalance
 
 ! ************************************************************************** !
-!
-! MphaseComputeMassBalancePatch: Initializes mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -505,13 +505,14 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 end subroutine MphaseComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! MphaseZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine MphaseZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -558,13 +559,14 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
 end subroutine MphaseZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! MphaseUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 12/19/08
-!
-! ************************************************************************** !
+
 subroutine MphaseUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/19/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -618,12 +620,14 @@ subroutine MphaseUpdateMassBalancePatch(realization)
 end subroutine MphaseUpdateMassBalancePatch
 
 ! ************************************************************************** !
-! Mphaseinitguesscheckpatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 function MphaseInitGuessCheck(realization)
+  ! 
+  ! Mphaseinitguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
  
   use Realization_class
   use Patch_module
@@ -656,12 +660,14 @@ function MphaseInitGuessCheck(realization)
 end function MphaseInitGuessCheck
 
 ! ************************************************************************** !
-! Mphaseinitguesscheckpatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MPhaseUpdateReasonPatch(reason,realization)
+  ! 
+  ! Mphaseinitguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
   use Realization_class
   use Patch_module
   use Field_module
@@ -763,16 +769,16 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
   
 end subroutine MPhaseUpdateReasonPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Mphase problem
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
 subroutine MPhaseUpdateReason(reason, realization)
+  ! 
+  ! MphaseUpdateAuxVars: Updates the auxiliary variables associated with
+  ! the Mphase problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -812,12 +818,12 @@ subroutine MPhaseUpdateReason(reason, realization)
 end subroutine MPhaseUpdateReason
 
 ! ************************************************************************** !
-! Mphaseinitguesscheckpatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
   function  MphaseInitGuessCheckPatch(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
    
     use co2_span_wagner_module
      
@@ -874,15 +880,16 @@ end subroutine MPhaseUpdateReason
     MphaseInitGuessCheckPatch = ipass
   end function MphaseInitGuessCheckPatch
 
-! ***********************************
-!
-! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Mphase problem
-! author: Glenn Hammond
-! date: 12/10/07
-!
 ! ************************************************************************** !
+
 subroutine MphaseUpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Mphase problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -902,14 +909,15 @@ subroutine MphaseUpdateAuxVars(realization)
 end subroutine MphaseUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! MphaseUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Mphase problem
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MphaseUpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Mphase problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1129,13 +1137,14 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
 end subroutine MphaseUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! MphaseInitializeTimestep: Update data in module prior to time step
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine MphaseInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Realization_class
   
@@ -1148,13 +1157,14 @@ subroutine MphaseInitializeTimestep(realization)
 end subroutine MphaseInitializeTimestep
 
 ! ************************************************************************** !
-!
-! MphaseUpdateSolution: Updates data in module after a successful time step
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
+
 subroutine MphaseUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/13/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -1188,15 +1198,16 @@ subroutine MphaseUpdateSolution(realization)
 end subroutine MphaseUpdateSolution
 
 ! ************************************************************************** !
-!
-! MphaseUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step 
-! author: Satish Karra, LANL
-! written based on RichardsUpdateSolutionPatch
-! date: 08/23/11
-!
-! ************************************************************************** !
+
 subroutine MphaseUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! written based on RichardsUpdateSolutionPatch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 08/23/11
+  ! 
 
   use Realization_class
     
@@ -1211,14 +1222,15 @@ subroutine MphaseUpdateSolutionPatch(realization)
 end subroutine MphaseUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! MphaseUpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !
+
 subroutine MphaseUpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1238,14 +1250,15 @@ subroutine MphaseUpdateFixedAccumulation(realization)
 end subroutine MphaseUpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! MphaseUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !
+
 subroutine MphaseUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1350,17 +1363,17 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
 
 end subroutine MphaseUpdateFixedAccumPatch
 
-
 ! ************************************************************************** !
-!
-! MphaseAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !  
+
 subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
                               option,iireac,vol_frac_prim,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
 
   use Option_module
   
@@ -1415,14 +1428,15 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
 end subroutine MphaseAccumulation
 
 ! ************************************************************************** !
-!
-! MphaseSourceSink: Computes the source/sink portion for the residual
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !  
+
 subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res, &
                             qsrc_phase,energy_flag,option)
+  ! 
+  ! Computes the source/sink portion for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
 
   use Option_module
   
@@ -1641,21 +1655,18 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
       
 end subroutine MphaseSourceSink
 
-
-
-
 ! ************************************************************************** !
-!
-! MphaseFlux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** ! 
 
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,vol_frac_prim,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
   use Option_module                              
   
   implicit none
@@ -1823,15 +1834,16 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine MphaseFlux
 
 ! ************************************************************************** !
-!
-! MphaseBCFlux: Computes boundary flux terms for the residual function
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !
+
 subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,vol_frac_prim,Res)
+  ! 
+  ! Computes boundary flux terms for the residual function
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
   use Option_module
   
   implicit none
@@ -2025,13 +2037,14 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine MphaseBCFlux
 
 ! ************************************************************************** !
-!
-! MphaseResidual: Computes the residual equation 
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MphaseResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2112,16 +2125,15 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
 end subroutine MphaseResidual
 
-
-! ************************************************************************** !
-!
-! MphaseVarSwitchPatch: Computes the residual equation at patch level
-! author: Chuan Lu
-! date: 3/10/08
-!
 ! ************************************************************************** !
 
 subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
+  ! 
+  ! Computes the residual equation at patch level
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 3/10/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -2433,14 +2445,16 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
 
 end subroutine MphaseVarSwitchPatch
+
 ! ************************************************************************** !
-!
-! MphaseResidualPatch: Computes the residual equation at patch level
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation at patch level
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/07
+  ! 
 
   use Connection_module
   use Realization_class
@@ -3092,13 +3106,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 end subroutine MphaseResidualPatch
 
 ! ************************************************************************** !
-!
-! MphaseJacobian: Computes the Jacobian
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3164,13 +3179,14 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine MphaseJacobian
 
 ! ************************************************************************** !
-!
-! MphaseJacobianPatch: Computes the Jacobian
-! author: Chuan Lu
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/13/07
+  ! 
 
   use Connection_module
   use Option_module
@@ -3765,16 +3781,15 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine MphaseJacobianPatch
 
-
-
 ! ************************************************************************** !
-!
-! MphaseCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
+
 subroutine MphaseCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
 
   use Patch_module
   use Grid_module
@@ -3869,13 +3884,14 @@ subroutine MphaseCreateZeroArray(patch,option)
 end subroutine MphaseCreateZeroArray
 
 ! ************************************************************************** !
-!
-! MphaseMaxChange: Computes the maximum change in the solution vector
-! author: Glenn Hammond
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine MphaseMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3930,8 +3946,7 @@ subroutine MphaseMaxChange(realization)
   !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
 end subroutine MphaseMaxChange
 
-
-
+! ************************************************************************** !
 
 subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
 
@@ -3996,16 +4011,16 @@ subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
   
 end subroutine MphaseMaxChangePatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseGetTecplotHeader: Returns Mphase contribution to 
-!                               Tecplot file header
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
 function MphaseGetTecplotHeader(realization,icolumn)
+  ! 
+  ! Returns Mphase contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -4164,13 +4179,14 @@ function MphaseGetTecplotHeader(realization,icolumn)
 end function MphaseGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! MphaseSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine MphaseSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -4280,16 +4296,17 @@ subroutine MphaseSetPlotVariables(realization)
 end subroutine MphaseSetPlotVariables
 
 ! ************************************************************************** !
-!
-! MphaseSecondaryHeat: Calculates the source term contribution due to secondary
-! continuum in the primary continuum residual 
-! author: Satish Karra, LANL
-! date: 06/26/12
-!
-! ************************************************************************** !
+
 subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
                             therm_conductivity,dencpr, &
                             option,res_heat)
+  ! 
+  ! Calculates the source term contribution due to secondary
+  ! continuum in the primary continuum residual
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/26/12
+  ! 
                             
   use Option_module 
   use Global_Aux_module
@@ -4376,19 +4393,19 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
                           
 end subroutine MphaseSecondaryHeat
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseSecondaryHeatJacobian: Calculates the source term jacobian contribution 
-! due to secondary continuum in the primary continuum residual 
-! author: Satish Karra, LANL
-! date: 06/6/12
-!
-! ************************************************************************** !
 subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
                                     therm_conductivity, &
                                     dencpr, &
                                     option,jac_heat)
+  ! 
+  ! Calculates the source term jacobian contribution
+  ! due to secondary continuum in the primary continuum residual
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 06/6/12
+  ! 
                                     
   use Option_module 
   use Global_Aux_module
@@ -4466,13 +4483,14 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
 end subroutine MphaseSecondaryHeatJacobian
 
 ! ************************************************************************** !
-!
-! MphaseDestroy: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine MphaseDestroy(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Realization_class
 
@@ -4486,15 +4504,13 @@ subroutine MphaseDestroy(realization)
 end subroutine MphaseDestroy
 
 #if 0
-! ************************************************************************** !
-!
-! MphaseCheckpointWrite: Writes vecs to checkpoint file
-! author: 
-! date: 
-!
-! ************************************************************************** !
-subroutine MphaseCheckpointWrite(discretization, viewer)
 
+! ************************************************************************** !
+
+subroutine MphaseCheckpointWrite(discretization, viewer)
+  ! 
+  ! Writes vecs to checkpoint file
+  ! 
   use Discretization_module
 
   implicit none
@@ -4515,16 +4531,12 @@ subroutine MphaseCheckpointWrite(discretization, viewer)
   
 end subroutine MphaseCheckpointWrite
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseCheckpointRead: Reads vecs from checkpoint file
-! author: 
-! date: 
-!
-! ************************************************************************** !
 subroutine MphaseCheckpointRead(discretization,viewer)
-
+  ! 
+  ! Reads vecs from checkpoint file
+  ! 
   use Discretization_module
 
   implicit none

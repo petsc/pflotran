@@ -123,8 +123,6 @@ module Option_module
     PetscBool :: update_flow_perm ! If true, permeability changes due to pressure    
     
     PetscBool :: use_ice_new      ! use new formulation for ice partitioning
-    character(len=MAXWORDLENGTH) :: generalized_grid
-    PetscBool :: use_generalized_grid
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
@@ -287,13 +285,14 @@ module Option_module
 contains
 
 ! ************************************************************************** !
-!
-! OptionCreate: Allocates and initializes a new Option object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function OptionCreate()
+  ! 
+  ! Allocates and initializes a new Option object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -314,13 +313,14 @@ function OptionCreate()
 end function OptionCreate
 
 ! ************************************************************************** !
-!
-! OptionInitAll: Initializes all option variables 
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OptionInitAll(option)
+  ! 
+  ! Initializes all option variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -375,14 +375,15 @@ subroutine OptionInitAll(option)
 end subroutine OptionInitAll
 
 ! ************************************************************************** !
-!
-! OptionInitRealization: Initializes option variables specific to a single 
-!                        realization
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OptionInitRealization(option)
+  ! 
+  ! Initializes option variables specific to a single
+  ! realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   implicit none
   
@@ -515,9 +516,6 @@ subroutine OptionInitRealization(option)
   
 !  option%disp = 0.d0
   
-  option%generalized_grid = ""
-  option%use_generalized_grid = PETSC_FALSE
-
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
   option%restart_time = -999.d0
@@ -582,13 +580,14 @@ subroutine OptionInitRealization(option)
 end subroutine OptionInitRealization
 
 ! ************************************************************************** !
-!
-! OptionCheckCommandLine: Checks all PETSc options on input
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine OptionCheckCommandLine(option)
+  ! 
+  ! Checks all PETSc options on input
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
   
   implicit none
   
@@ -635,13 +634,14 @@ subroutine OptionCheckCommandLine(option)
 end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !
-!
-! printErrMsg1: Prints the error message from p0 and stops
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine printErrMsg1(option)
+  ! 
+  ! Prints the error message from p0 and stops
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   
@@ -652,13 +652,14 @@ subroutine printErrMsg1(option)
 end subroutine printErrMsg1
 
 ! ************************************************************************** !
-!
-! printErrMsg2: Prints the error message from p0 and stops
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine printErrMsg2(option,string)
+  ! 
+  ! Prints the error message from p0 and stops
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   
@@ -679,16 +680,17 @@ subroutine printErrMsg2(option,string)
   stop
   
 end subroutine printErrMsg2
- 
+
 ! ************************************************************************** !
-!
-! printErrMsgByRank1: Prints the error message from processor with error along
-!               with rank
-! author: Glenn Hammond
-! date: 11/04/11
-!
-! ************************************************************************** !
+
 subroutine printErrMsgByRank1(option)
+  ! 
+  ! Prints the error message from processor with error along
+  ! with rank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/04/11
+  ! 
 
   implicit none
   
@@ -699,14 +701,15 @@ subroutine printErrMsgByRank1(option)
 end subroutine printErrMsgByRank1
 
 ! ************************************************************************** !
-!
-! printErrMsgByRank2: Prints the error message from processor with error along
-!               with rank
-! author: Glenn Hammond
-! date: 11/04/11
-!
-! ************************************************************************** !
+
 subroutine printErrMsgByRank2(option,string)
+  ! 
+  ! Prints the error message from processor with error along
+  ! with rank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/04/11
+  ! 
 
   implicit none
   
@@ -722,15 +725,16 @@ subroutine printErrMsgByRank2(option,string)
   stop
   
 end subroutine printErrMsgByRank2
- 
+
 ! ************************************************************************** !
-!
-! printWrnMsg1: Prints the warning message from p0
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine printWrnMsg1(option)
+  ! 
+  ! Prints the warning message from p0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   
@@ -741,13 +745,14 @@ subroutine printWrnMsg1(option)
 end subroutine printWrnMsg1
 
 ! ************************************************************************** !
-!
-! printWrnMsg2: Prints the warning message from p0
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine printWrnMsg2(option,string)
+  ! 
+  ! Prints the warning message from p0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   
@@ -759,13 +764,14 @@ subroutine printWrnMsg2(option,string)
 end subroutine printWrnMsg2
 
 ! ************************************************************************** !
-!
-! printMsg1: Prints the message from p0
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
+
 subroutine printMsg1(option)
+  ! 
+  ! Prints the message from p0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -776,13 +782,14 @@ subroutine printMsg1(option)
 end subroutine printMsg1
 
 ! ************************************************************************** !
-!
-! printMsg2: Prints the message from p0
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
+
 subroutine printMsg2(option,string)
+  ! 
+  ! Prints the message from p0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -794,13 +801,14 @@ subroutine printMsg2(option,string)
 end subroutine printMsg2
 
 ! ************************************************************************** !
-!
-! printMsgAnyRank1: Prints the message from any processor core
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine printMsgAnyRank1(option)
+  ! 
+  ! Prints the message from any processor core
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -811,13 +819,14 @@ subroutine printMsgAnyRank1(option)
 end subroutine printMsgAnyRank1
 
 ! ************************************************************************** !
-!
-! printMsgAnyRank2: Prints the message from any processor core
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
+
 subroutine printMsgAnyRank2(string)
+  ! 
+  ! Prints the message from any processor core
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/12
+  ! 
 
   implicit none
   
@@ -828,13 +837,14 @@ subroutine printMsgAnyRank2(string)
 end subroutine printMsgAnyRank2
 
 ! ************************************************************************** !
-!
-! printMsgByRank1: Prints a message from processor along with rank
-! author: Glenn Hammond
-! date: 03/27/12
-!
-! ************************************************************************** !
+
 subroutine printMsgByRank1(option)
+  ! 
+  ! Prints a message from processor along with rank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/27/12
+  ! 
 
   implicit none
   
@@ -845,13 +855,14 @@ subroutine printMsgByRank1(option)
 end subroutine printMsgByRank1
 
 ! ************************************************************************** !
-!
-! printMsgByRank2: Prints a message from processor along with rank
-! author: Glenn Hammond
-! date: 03/27/12
-!
-! ************************************************************************** !
+
 subroutine printMsgByRank2(option,string)
+  ! 
+  ! Prints a message from processor along with rank
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/27/12
+  ! 
 
   implicit none
   
@@ -864,15 +875,16 @@ subroutine printMsgByRank2(option,string)
   print *, '(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
   
 end subroutine printMsgByRank2
- 
+
 ! ************************************************************************** !
-!
-! printVerboseMsg: Prints the message from p0
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
+
 subroutine printVerboseMsg(option)
+  ! 
+  ! Prints the message from p0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/14/07
+  ! 
 
   implicit none
   
@@ -885,13 +897,14 @@ subroutine printVerboseMsg(option)
 end subroutine printVerboseMsg
 
 ! ************************************************************************** !
-!
-! OptionCheckTouch: Users can steer the code by touching files.
-! author: Glenn Hammond
-! date: 03/04/08
-!
-! ************************************************************************** !
+
 function OptionCheckTouch(option,filename)
+  ! 
+  ! Users can steer the code by touching files.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/08
+  ! 
 
   implicit none
 
@@ -918,13 +931,14 @@ function OptionCheckTouch(option,filename)
 end function OptionCheckTouch
 
 ! ************************************************************************** !
-!
-! OptionPrintToScreen: Determines whether printing should occur
-! author: Glenn Hammond
-! date: 12/09/08
-!
-! ************************************************************************** !
+
 function OptionPrintToScreen(option)
+  ! 
+  ! Determines whether printing should occur
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/09/08
+  ! 
 
   implicit none
 
@@ -941,13 +955,14 @@ function OptionPrintToScreen(option)
 end function OptionPrintToScreen
 
 ! ************************************************************************** !
-!
-! OptionPrintToFile: Determines whether printing to file should occur
-! author: Glenn Hammond
-! date: 01/29/09
-!
-! ************************************************************************** !
+
 function OptionPrintToFile(option)
+  ! 
+  ! Determines whether printing to file should occur
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/09
+  ! 
 
   implicit none
 
@@ -964,16 +979,17 @@ function OptionPrintToFile(option)
 end function OptionPrintToFile
 
 ! ************************************************************************** !
-!
-! OptionMaxMinMeanVariance: Calculates the maximum, minumum, mean and 
-!                           optionally variance of a number across processor 
-!                           cores
-! author: Glenn Hammond
-! date: 06/01/10
-!
-! ************************************************************************** !
+
 subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
                                     calculate_variance,option)
+  ! 
+  ! Calculates the maximum, minumum, mean and
+  ! optionally variance of a number across processor
+  ! cores
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/01/10
+  ! 
 
   implicit none
 
@@ -1001,14 +1017,15 @@ subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
 end subroutine OptionMaxMinMeanVariance
 
 ! ************************************************************************** !
-!
-! OptionMeanVariance: Calculates the mean and optionally variance of a number
-!                     across processor cores
-! author: Glenn Hammond
-! date: 05/29/10
-!
-! ************************************************************************** !
+
 subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
+  ! 
+  ! Calculates the mean and optionally variance of a number
+  ! across processor cores
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/10
+  ! 
 
   implicit none
 
@@ -1037,13 +1054,14 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
 end subroutine OptionMeanVariance
 
 ! ************************************************************************** !
-!
-! OptionInitMPI1: Initializes base MPI communicator
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine OptionInitMPI1(option)
+  ! 
+  ! Initializes base MPI communicator
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -1057,13 +1075,14 @@ subroutine OptionInitMPI1(option)
 end subroutine OptionInitMPI1
 
 ! ************************************************************************** !
-!
-! OptionInitMPI2: Initializes base MPI communicator
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine OptionInitMPI2(option,communicator)
+  ! 
+  ! Initializes base MPI communicator
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -1084,13 +1103,14 @@ subroutine OptionInitMPI2(option,communicator)
 end subroutine OptionInitMPI2
 
 ! ************************************************************************** !
-!
-! OptionInitPetsc: Initialization of PETSc.
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine OptionInitPetsc(option)
+  ! 
+  ! Initialization of PETSc.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Logging_module
   
@@ -1117,13 +1137,14 @@ subroutine OptionInitPetsc(option)
 end subroutine OptionInitPetsc
 
 ! ************************************************************************** !
-!
-! OptionBeginTiming: Start outer timing.
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine OptionBeginTiming(option)
+  ! 
+  ! Start outer timing.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Logging_module
   
@@ -1142,13 +1163,14 @@ subroutine OptionBeginTiming(option)
 end subroutine OptionBeginTiming
 
 ! ************************************************************************** !
-!
-! OptionEndTiming: End timing.
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine OptionEndTiming(option)
+  ! 
+  ! End timing.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Logging_module
   
@@ -1185,14 +1207,15 @@ subroutine OptionEndTiming(option)
 end subroutine OptionEndTiming
 
 ! ************************************************************************** !
-!
-! OptionDivvyUpSimulations: Divides simulation in to multple simulations with
-!                           multiple input decks
-! author: Glenn Hammond
-! date: 06/06/13
-!
-! ************************************************************************** !
+
 subroutine OptionDivvyUpSimulations(option,filenames)
+  ! 
+  ! Divides simulation in to multple simulations with
+  ! multiple input decks
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/06/13
+  ! 
 
   implicit none
   
@@ -1220,14 +1243,15 @@ subroutine OptionDivvyUpSimulations(option,filenames)
 end subroutine OptionDivvyUpSimulations
 
 ! ************************************************************************** !
-!
-! OptionCreateProcessorGroups: Splits MPI_COMM_WORLD into N separate
-!                              processor groups
-! author: Glenn Hammond
-! date: 08/11/09
-!
-! ************************************************************************** !
+
 subroutine OptionCreateProcessorGroups(option,num_groups)
+  ! 
+  ! Splits MPI_COMM_WORLD into N separate
+  ! processor groups
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/09
+  ! 
 
   implicit none
 
@@ -1262,13 +1286,14 @@ subroutine OptionCreateProcessorGroups(option,num_groups)
 end subroutine OptionCreateProcessorGroups
 
 ! ************************************************************************** !
-!
-! OptionFinalize: End the simulation.
-! author: Glenn Hammond
-! date: 06/07/13
-!
-! ************************************************************************** !
+
 subroutine OptionFinalize(option)
+  ! 
+  ! End the simulation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/07/13
+  ! 
 
   use Logging_module
 
@@ -1293,15 +1318,16 @@ subroutine OptionFinalize(option)
   call exit(86)
   
 end subroutine OptionFinalize
-  
+
 ! ************************************************************************** !
-!
-! OptionDestroy: Deallocates an option
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine OptionDestroy(option)
+  ! 
+  ! Deallocates an option
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   

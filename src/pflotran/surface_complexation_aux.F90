@@ -136,14 +136,15 @@ module Surface_Complexation_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! SurfaceComplexationCreate: Allocate and initialize surface complexation 
-!                           object
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 function SurfaceComplexationCreate()
+  ! 
+  ! Allocate and initialize surface complexation
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   use Option_module
 
@@ -211,14 +212,15 @@ function SurfaceComplexationCreate()
 end function SurfaceComplexationCreate
 
 ! ************************************************************************** !
-!
-! SurfaceComplexationRxnCreate: Allocate and initialize a surface complexation
-!                               reaction
-! author: Peter Lichtner
-! date: 10/21/08
-!
-! ************************************************************************** !
+
 function SurfaceComplexationRxnCreate()
+  ! 
+  ! Allocate and initialize a surface complexation
+  ! reaction
+  ! 
+  ! Author: Peter Lichtner
+  ! Date: 10/21/08
+  ! 
 
   implicit none
     
@@ -249,13 +251,14 @@ function SurfaceComplexationRxnCreate()
 end function SurfaceComplexationRxnCreate
 
 ! ************************************************************************** !
-!
-! SurfaceComplexCreate: Allocate and initialize a surface complex reaction
-! author: Peter Lichtner
-! date: 10/21/08
-!
-! ************************************************************************** !
+
 function SurfaceComplexCreate()
+  ! 
+  ! Allocate and initialize a surface complex reaction
+  ! 
+  ! Author: Peter Lichtner
+  ! Date: 10/21/08
+  ! 
 
   implicit none
     
@@ -284,13 +287,14 @@ function SurfaceComplexCreate()
 end function SurfaceComplexCreate
 
 ! ************************************************************************** !
-!
-! SurfaceComplexConstraintCreate: Creates a surface complex constraint object
-! author: Glenn Hammond
-! date: 12/21/09
-!
-! ************************************************************************** !
+
 function SurfaceComplexConstraintCreate(surface_complexation,option)
+  ! 
+  ! Creates a surface complex constraint object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/09
+  ! 
 
   use Option_module
   
@@ -316,13 +320,14 @@ function SurfaceComplexConstraintCreate(surface_complexation,option)
 end function SurfaceComplexConstraintCreate
 
 ! ************************************************************************** !
-!
-! SrfCplxGetSrfCplxCountInRxnType: Deallocates a surface complexation reaction
-! author: Glenn Hammond
-! date: 03/22/12
-!
-! ************************************************************************** !
+
 function SrfCplxGetSrfCplxCountInRxnType(surface_complexation,rxn_type)
+  ! 
+  ! Deallocates a surface complexation reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/22/12
+  ! 
 
   implicit none
   
@@ -375,14 +380,15 @@ function SrfCplxGetSrfCplxCountInRxnType(surface_complexation,rxn_type)
 end function SrfCplxGetSrfCplxCountInRxnType
 
 ! ************************************************************************** !
-!
-! SrfCplxMapMasterSrfCplxToRxn: Maps surface complexes from the master list
-!                               to a compressed rxn list (e.g. for array)
-! author: Glenn Hammond
-! date: 03/22/12
-!
-! ************************************************************************** !
+
 subroutine SrfCplxMapMasterSrfCplxToRxn(surface_complexation,rxn_type)
+  ! 
+  ! Maps surface complexes from the master list
+  ! to a compressed rxn list (e.g. for array)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/22/12
+  ! 
 
   implicit none
   
@@ -461,13 +467,14 @@ subroutine SrfCplxMapMasterSrfCplxToRxn(surface_complexation,rxn_type)
 end subroutine SrfCplxMapMasterSrfCplxToRxn
 
 ! ************************************************************************** !
-!
-! SurfaceComplexationRxnDestroy: Deallocates a surface complexation reaction
-! author: Glenn Hammond
-! date: 10/21/08
-!
-! ************************************************************************** !
+
 subroutine SurfaceComplexationRxnDestroy(srfcplxrxn)
+  ! 
+  ! Deallocates a surface complexation reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/08
+  ! 
 
   use Utility_module
 
@@ -497,13 +504,14 @@ subroutine SurfaceComplexationRxnDestroy(srfcplxrxn)
 end subroutine SurfaceComplexationRxnDestroy
 
 ! ************************************************************************** !
-!
-! SurfaceComplexDestroy: Deallocates a surface complex
-! author: Glenn Hammond
-! date: 10/21/08
-!
-! ************************************************************************** !
+
 subroutine SurfaceComplexDestroy(srfcplx)
+  ! 
+  ! Deallocates a surface complex
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/08
+  ! 
 
   implicit none
     
@@ -522,14 +530,15 @@ subroutine SurfaceComplexDestroy(srfcplx)
 end subroutine SurfaceComplexDestroy
 
 ! ************************************************************************** !
-!
-! SurfaceComplexConstraintDestroy: Destroys a surface complex constraint 
-!                                  object
-! author: Glenn Hammond
-! date: 12/21/09
-!
-! ************************************************************************** !
+
 subroutine SurfaceComplexConstraintDestroy(constraint)
+  ! 
+  ! Destroys a surface complex constraint
+  ! object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/09
+  ! 
 
   use Utility_module, only : DeallocateArray
   implicit none
@@ -548,13 +557,14 @@ subroutine SurfaceComplexConstraintDestroy(constraint)
 end subroutine SurfaceComplexConstraintDestroy
 
 ! ************************************************************************** !
-!
-! SurfaceComplexationDestroy: Deallocates a reaction object
-! author: Glenn Hammond
-! date: 03/13/12
-!
-! ************************************************************************** !
+
 subroutine SurfaceComplexationDestroy(surface_complexation)
+  ! 
+  ! Deallocates a reaction object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/13/12
+  ! 
 
   use Utility_module, only: DeallocateArray 
   

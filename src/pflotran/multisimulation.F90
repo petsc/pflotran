@@ -25,9 +25,10 @@ module Multi_Simulation_module
 contains
 
 ! ************************************************************************** !
+
 function MultiSimulationCreate()
-  ! author: Glenn Hammond
-  ! date: 02/04/09, 01/06/14
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09, 01/06/14
   implicit none
   
   type(multi_simulation_type), pointer :: MultiSimulationCreate
@@ -44,9 +45,10 @@ function MultiSimulationCreate()
 end function MultiSimulationCreate
 
 ! ************************************************************************** !
+
 subroutine MultiSimulationInitialize(multisimulation,option)
-  ! author: Glenn Hammond
-  ! date: 02/04/09, 01/06/14
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09, 01/06/14
   use Simulation_module
   use Option_module
   use Input_Aux_module
@@ -154,9 +156,10 @@ subroutine MultiSimulationInitialize(multisimulation,option)
 end subroutine MultiSimulationInitialize
 
 ! ************************************************************************** !
+
 subroutine MultiSimulationIncrement(multisimulation,option)
-  ! author: Glenn Hammond
-  ! date: 02/04/09, 01/06/14
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09, 01/06/14
   use Option_module
   
   implicit none
@@ -199,9 +202,10 @@ subroutine MultiSimulationIncrement(multisimulation,option)
 end subroutine MultiSimulationIncrement
 
 ! ************************************************************************** !
+
 function MultiSimulationDone(multisimulation)
-  ! author: Glenn Hammond
-  ! date: 02/04/09, 01/06/14
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09, 01/06/14
   implicit none
   
   type(multi_simulation_type), pointer :: multisimulation
@@ -219,9 +223,10 @@ function MultiSimulationDone(multisimulation)
 end function MultiSimulationDone
 
 ! ************************************************************************** !
+
 subroutine MultiSimulationDestroy(multisimulation)
-  ! author: Glenn Hammond
-  ! date: 02/04/09, 01/06/14
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09, 01/06/14
   implicit none
   
   type(multi_simulation_type), pointer :: multisimulation

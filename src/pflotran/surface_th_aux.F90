@@ -49,14 +49,14 @@ module Surface_TH_Aux_module
 contains
 
 ! ************************************************************************** !
-!> This routine creates an empty object
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 function SurfaceTHAuxCreate(option)
+  ! 
+  ! This routine creates an empty object
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
 
@@ -85,14 +85,14 @@ function SurfaceTHAuxCreate(option)
 end function SurfaceTHAuxCreate
 
 ! ************************************************************************** !
-!> This routine initilizes an object.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHAuxVarInit(aux_var,option)
+  ! 
+  ! This routine initilizes an object.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
 
@@ -114,14 +114,14 @@ subroutine SurfaceTHAuxVarInit(aux_var,option)
 end subroutine SurfaceTHAuxVarInit
 
 ! ************************************************************************** !
-!> This routine makes a copy of an object.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHAuxVarCopy(aux_var,aux_var2,option)
+  ! 
+  ! This routine makes a copy of an object.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
 
@@ -143,15 +143,15 @@ subroutine SurfaceTHAuxVarCopy(aux_var,aux_var2,option)
 end subroutine SurfaceTHAuxVarCopy
 
 ! ************************************************************************** !
-!> This routine computes values for auxiliary variables.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
                                   option)
+  ! 
+  ! This routine computes values for auxiliary variables.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
   use Surface_Global_Aux_module
@@ -228,14 +228,15 @@ subroutine SurfaceTHAuxVarCompute(xx,aux_var,global_aux_var, &
 end subroutine SurfaceTHAuxVarCompute
 
 ! ************************************************************************** !
-!> This returns the unfrozen fraction, given a temperature.
-!!
-!! RTM: This is currently a public function, but is only called within 
-!! Surface_TH_Aux_module, so we may want to make it private.
-!! We may also want to move this into its own module if we add some 
-!! more sophisticated ways of computing this quantity.
-! ************************************************************************** !
+
 function SurfaceTHAuxVarComputeUnfrozen(temp)
+  ! 
+  ! This returns the unfrozen fraction, given a temperature.
+  ! RTM: This is currently a public function, but is only called within
+  ! Surface_TH_Aux_module, so we may want to make it private.
+  ! We may also want to move this into its own module if we add some
+  ! more sophisticated ways of computing this quantity.
+  ! 
 
   implicit none
 
@@ -260,14 +261,14 @@ function SurfaceTHAuxVarComputeUnfrozen(temp)
 end function SurfaceTHAuxVarComputeUnfrozen
 
 ! ************************************************************************** !
-!> This routine deallocates an object.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHAuxDestroy(aux)
+  ! 
+  ! This routine deallocates an object.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   implicit none
 

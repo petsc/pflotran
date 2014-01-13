@@ -75,13 +75,14 @@ module Saturation_Function_module
 contains
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCreate: Creates a saturation function
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function SaturationFunctionCreate(option)
+  ! 
+  ! Creates a saturation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
   
   use Option_module
   
@@ -121,13 +122,14 @@ function SaturationFunctionCreate(option)
 end function SaturationFunctionCreate
 
 ! ************************************************************************** !
-!
-! SaturationFunctionRead: Reads in contents of a saturation_function card
-! author: Glenn Hammond
-! date: 01/21/09
-! 
-! ************************************************************************** !
+
 subroutine SaturationFunctionRead(saturation_function,input,option)
+  ! 
+  ! Reads in contents of a saturation_function card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/21/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -258,14 +260,15 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
 end subroutine SaturationFunctionRead
 
 ! ************************************************************************** !
-!
-! SaturationFunctionComputeSpline: Computes a spline spanning the 
-!                                  discontinuity in Brooks Corey
-! author: Glenn Hammond
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionComputeSpline(option,saturation_function)
+  ! 
+  ! Computes a spline spanning the
+  ! discontinuity in Brooks Corey
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/27/08
+  ! 
   
   use Option_module
   use Utility_module
@@ -337,14 +340,15 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
 end subroutine SaturationFunctionComputeSpline
 
 ! ************************************************************************** !
-!
-! PermFunctionComputeSpline: Computes a spline spanning the 
-!                                  discontinuity in Brooks Corey
-! author: Glenn Hammond
-! date: 02/27/12
-!
-! ************************************************************************** !
+
 subroutine PermFunctionComputeSpline(option,saturation_function)
+  ! 
+  ! Computes a spline spanning the
+  ! discontinuity in Brooks Corey
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/27/12
+  ! 
   
   use Option_module
   use Utility_module
@@ -392,13 +396,14 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
 end subroutine PermFunctionComputeSpline
 
 ! ************************************************************************** !
-!
-! SaturationFunctionAddToList: Adds a saturation function to linked list
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionAddToList(saturation_function,list)
+  ! 
+  ! Adds a saturation function to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   
@@ -422,14 +427,15 @@ subroutine SaturationFunctionAddToList(saturation_function,list)
 end subroutine SaturationFunctionAddToList
 
 ! ************************************************************************** !
-!
-! SaturatFuncConvertListToArray: Creates an array of pointers to the 
-!                                saturation functions in the list
-! author: Glenn Hammond
-! date: 12/11/07
-!
-! ************************************************************************** !
+
 subroutine SaturatFuncConvertListToArray(list,array,option)
+  ! 
+  ! Creates an array of pointers to the
+  ! saturation functions in the list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07
+  ! 
 
   use String_module
   use Option_module
@@ -512,19 +518,20 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
 end subroutine SaturatFuncConvertListToArray
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCompute1: Computes the saturation and relative permeability
-!                             (and associated derivatives) as a function of 
-!                             capillary pressure
-! author: Glenn Hammond
-! date: 2/9/12
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
                                      dsat_pres,dkr_pres, &
                                      saturation_function, &
                                      auxvar1,auxvar2, &
                                      option)
+  ! 
+  ! Computes the saturation and relative permeability
+  ! (and associated derivatives) as a function of
+  ! capillary pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 2/9/12
+  ! 
   use Option_module
   
   implicit none
@@ -545,19 +552,20 @@ subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
 end subroutine SaturationFunctionCompute1
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCompute2: Computes the saturation and relative permeability
-!                             (and associated derivatives) as a function of 
-!                             capillary pressure
-! author: Glenn Hammond
-! date: 12/11/07
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                                       dsat_pres,dkr_pres, &
                                       saturation_function, &
                                       auxvar1,auxvar2, &
                                       switch_to_saturated,option)
+  ! 
+  ! Computes the saturation and relative permeability
+  ! (and associated derivatives) as a function of
+  ! capillary pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/11/07
+  ! 
   use Option_module
   use Utility_module, only:CubicPolynomialEvaluate
   
@@ -758,16 +766,17 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
 end subroutine SaturationFunctionCompute2
 
 ! ************************************************************************** !
-!
-! SaturationFunctionCompute3: Computes just saturation as a function of 
-!                             capillary pressure
-! author: Glenn Hammond
-! date: 2/9/12
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionCompute3(pressure,saturation, &
                                       saturation_function, &
                                       option)
+  ! 
+  ! Computes just saturation as a function of
+  ! capillary pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 2/9/12
+  ! 
   use Option_module
   
   implicit none
@@ -789,15 +798,7 @@ subroutine SaturationFunctionCompute3(pressure,saturation, &
 end subroutine SaturationFunctionCompute3
 
 ! ************************************************************************** !
-!
-! SaturationFunctionComputeIce:Computes the saturation of ice, water vapor 
-!                              and liquid water given the saturation function
-!                              temperature, water vapor pressure and liquid
-!                              water pressure 
-! author: Satish Karra, LANL
-! date: 11/14/11
-!
-! ************************************************************************** !
+
 subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
                                         ice_saturation, &
                                         liquid_saturation, gas_saturation, &
@@ -805,6 +806,15 @@ subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
                                         dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
                                         dsi_temp, dkr_pl, dkr_temp, &
                                         saturation_function, pth, option)
+  ! 
+  ! Computes the saturation of ice, water vapor
+  ! and liquid water given the saturation function
+  ! temperature, water vapor pressure and liquid
+  ! water pressure
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/14/11
+  ! 
 
   use Option_module
  
@@ -960,16 +970,16 @@ implicit none
    
 end subroutine SaturationFunctionComputeIce
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! ComputeSatVG: Evaluates van Genunchten saturation function and
-!                      its derivative at given capillary pressure
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
 subroutine ComputeSatVG(alpha,lambda,Pc,S,dS)
+  ! 
+  ! Evaluates van Genunchten saturation function and
+  ! its derivative at given capillary pressure
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
 
   implicit none
 
@@ -989,14 +999,15 @@ subroutine ComputeSatVG(alpha,lambda,Pc,S,dS)
 end subroutine ComputeSatVG
 
 ! ************************************************************************** !
-!
-! ComputeInvSatVG: Evaluates inverse of van Genunchten saturation function 
-!                  and its derivative at given saturation
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
+
 subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
+  ! 
+  ! Evaluates inverse of van Genunchten saturation function
+  ! and its derivative at given saturation
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
 
   implicit none
   
@@ -1016,14 +1027,15 @@ subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
 end subroutine ComputeInvSatVG
 
 ! ************************************************************************** !
-!
-! CalculateImplicitIceFunc: Evaluates the value of implicit equation whose
-!                           solution is ice saturation
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
+
 subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
+  ! 
+  ! Evaluates the value of implicit equation whose
+  ! solution is ice saturation
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
 
   implicit none
   
@@ -1053,15 +1065,16 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
 end subroutine CalculateImplicitIceFunc
 
 ! ************************************************************************** !
-!
-! CalcPhasePartitionIceNewt: Solves the implicit constitutive relation
-!                             to calculate saturations of ice, liquid 
-!                             and vapor phases
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
+
 subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+  ! 
+  ! Solves the implicit constitutive relation
+  ! to calculate saturations of ice, liquid
+  ! and vapor phases
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
 
   implicit none
   PetscReal :: alpha, lambda
@@ -1101,15 +1114,16 @@ subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
 end subroutine CalcPhasePartitionIceNewt
 
 ! ************************************************************************** !
-!
-! CalcPhasePartitionIceBis: Solves the implicit constitutive relation
-!                             to calculate saturations of ice, liquid 
-!                             and vapor phases using bisection method
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
+
 subroutine CalcPhasePartitionIceBis(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+  ! 
+  ! Solves the implicit constitutive relation
+  ! to calculate saturations of ice, liquid
+  ! and vapor phases using bisection method
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
 
   implicit none
   
@@ -1163,17 +1177,18 @@ subroutine CalcPhasePartitionIceBis(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
 end subroutine  CalcPhasePartitionIceBis
 
 ! ************************************************************************** !
-!
-! CalcPhasePartitionIceDeriv: Solves the implicit constitutive relation
-!                             to calculate saturations of ice, liquid 
-!                             and vapor phases
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
+
 subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
                                       dsg_dpl,dsg_dT,dsi_dpl,dsi_dT, &
                                       dsl_dpl,dsl_dT)
+  ! 
+  ! Solves the implicit constitutive relation
+  ! to calculate saturations of ice, liquid
+  ! and vapor phases
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
                                           
   implicit none
   
@@ -1297,18 +1312,19 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
 end subroutine CalcPhasePartitionIceDeriv 
 
 ! ************************************************************************** !
-!
-! SatFuncComputeIceImplicit: Calculates the saturations of water phases
-!                            and their derivative with respect to liquid
-!                            pressure
-! author: Satish Karra
-! date: 10/16/12
-!
-! ************************************************************************** !
+
 subroutine SatFuncComputeIceImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
                                      dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
                                      dsi_dT,dkr_dpl,dkr_dT, &
                                      saturation_function,pth,option)
+  ! 
+  ! Calculates the saturations of water phases
+  ! and their derivative with respect to liquid
+  ! pressure
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/16/12
+  ! 
 
   use Option_module
  
@@ -1396,16 +1412,17 @@ implicit none
 end subroutine SatFuncComputeIceImplicit
 
 ! ************************************************************************** !
-!
-! SatFuncGetRelPermFromSat: Calculates relative permeability from
-!                           phase saturation
-! author: Glenn Hammond
-! date: 03/05/11
-!
-! ************************************************************************** !
+
 subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
                                     saturation_function,iphase, &
                                     derivative,option)
+  ! 
+  ! Calculates relative permeability from
+  ! phase saturation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/05/11
+  ! 
 
   use Option_module
   
@@ -1463,19 +1480,19 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
 end subroutine SatFuncGetRelPermFromSat
 
 ! ************************************************************************** !
-!
-! CapillaryPressureThreshold: Computes the capillary pressure threshold 
-! after which instead of van Genuchten a linear function is used upto 100 Mpa
-! capillary pressure. The saturation at 100 Mpa is set to zero
-! This threshold value depends only on van Genuchten parameters alpha and lambda
-! This is used mainly for ice problem, so that the pressure doesnt go to large
-! negative values
-! author: Satish Karra, LANL
-! date: 09/12/12
-!
-! ************************************************************************** !
 
 subroutine CapillaryPressureThreshold(saturation_function,cap_threshold,option)
+  ! 
+  ! Computes the capillary pressure threshold
+  ! after which instead of van Genuchten a linear function is used upto 100 Mpa
+  ! capillary pressure. The saturation at 100 Mpa is set to zero
+  ! This threshold value depends only on van Genuchten parameters alpha and lambda
+  ! This is used mainly for ice problem, so that the pressure doesnt go to large
+  ! negative values
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/12/12
+  ! 
 
   use Option_module
   
@@ -1514,15 +1531,15 @@ subroutine CapillaryPressureThreshold(saturation_function,cap_threshold,option)
 end subroutine CapillaryPressureThreshold
 
 ! ************************************************************************** !
-!
-! ResidualCapPressThre: Computes the residual to calculate capillary pressure
-! thresold in the subroutine CapillaryPressureThreshold
-! author: Satish Karra, LANL
-! date: 09/12/12
-!
-! ************************************************************************** !
 
 subroutine ResidualCapPressThre(p,alpha,lambda,gamma,res)
+  ! 
+  ! Computes the residual to calculate capillary pressure
+  ! thresold in the subroutine CapillaryPressureThreshold
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/12/12
+  ! 
 
   implicit none
   
@@ -1533,17 +1550,16 @@ subroutine ResidualCapPressThre(p,alpha,lambda,gamma,res)
 
 end subroutine ResidualCapPressThre
 
-
-! ************************************************************************** !
-!
-! JacobianCapPressThre: Computes the jacobian to calculate capillary pressure
-! thresold in the subroutine CapillaryPressureThreshold
-! author: Satish Karra, LANL
-! date: 09/12/12
-!
 ! ************************************************************************** !
 
 subroutine JacobianCapPressThre(p,alpha,lambda,gamma,jac)
+  ! 
+  ! Computes the jacobian to calculate capillary pressure
+  ! thresold in the subroutine CapillaryPressureThreshold
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 09/12/12
+  ! 
 
   implicit none
   
@@ -1555,17 +1571,17 @@ subroutine JacobianCapPressThre(p,alpha,lambda,gamma,jac)
  
 end subroutine JacobianCapPressThre
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! SatFuncGetCapillaryPressure: Computes the capillary pressure as a function of 
-!                           pressure
-! author: Glenn Hammond
-! date: 06/03/09
-!
-! ************************************************************************** !
 subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
                                        saturation_function,option)
+  ! 
+  ! Computes the capillary pressure as a function of
+  ! pressure
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/03/09
+  ! 
 
   use Option_module
   
@@ -1657,16 +1673,17 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
 end subroutine SatFuncGetCapillaryPressure
 
 ! ************************************************************************** !
-!
-! SaturationFunctionGetID: Returns the ID of the saturation function named
-!                          "saturation_function_name"
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 function SaturationFunctionGetID(saturation_function_list, &
                                  saturation_function_name, &
                                  material_property_name, option)
+  ! 
+  ! Returns the ID of the saturation function named
+  ! "saturation_function_name"
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Option_module
   use String_module
@@ -1704,13 +1721,14 @@ function SaturationFunctionGetID(saturation_function_list, &
 end function SaturationFunctionGetID
 
 ! ************************************************************************** !
-!
-! SaturationFunctionDestroy: Destroys a saturation function
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 recursive subroutine SaturationFunctionDestroy(saturation_function)
+  ! 
+  ! Destroys a saturation function
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   

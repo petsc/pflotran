@@ -25,13 +25,14 @@ module Stochastic_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! StochasticCreate: Create stochastic simulation object
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
+
 function StochasticCreate()
+  ! 
+  ! Create stochastic simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09
+  ! 
 
   implicit none
   
@@ -48,13 +49,14 @@ function StochasticCreate()
 end function StochasticCreate
 
 ! ************************************************************************** !
-!
-! StochasticRead: Reads debugging data from the input file
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
+
 subroutine StochasticRead(stochastic,input,option)
+  ! 
+  ! Reads debugging data from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -93,13 +95,14 @@ subroutine StochasticRead(stochastic,input,option)
 end subroutine StochasticRead
 
 ! ************************************************************************** !
-!
-! StochasticDestroy: Deallocates a stochastic object
-! author: Glenn Hammond
-! date: 02/04/09
-!
-! ************************************************************************** !
+
 subroutine StochasticDestroy(stochastic)
+  ! 
+  ! Deallocates a stochastic object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/09
+  ! 
 
   implicit none
   

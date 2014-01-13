@@ -14,14 +14,15 @@ module Hydrostatic_module
 contains
 
 ! ************************************************************************** !
-!
-! HydrostaticUpdateCoupler: Computes the hydrostatic initial/boundary 
-!                           condition 
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
+
 subroutine HydrostaticUpdateCoupler(coupler,option,grid)
+  ! 
+  ! Computes the hydrostatic initial/boundary
+  ! condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
 
   use EOS_Water_module
 
@@ -529,14 +530,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 end subroutine HydrostaticUpdateCoupler
 
 ! ************************************************************************** !
-!
-! HydrostaticTest: Computes the hydrostatic initial/boundary 
-!                                 condition (more accurately than before0
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
+
 subroutine HydrostaticTest()
+  ! 
+  ! Computes the hydrostatic initial/boundary
+  ! condition (more accurately than before0
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/28/07
+  ! 
 
   use EOS_Water_module
   
@@ -635,14 +637,16 @@ subroutine HydrostaticTest()
 end subroutine HydrostaticTest
 
 #if 0
+
 ! ************************************************************************** !
-!
-! ProjectAOntoUnitB: Projects vector a onto b, assuming b is a unit vector
-! author: Glenn Hammond
-! date: 02/20/09
-!
-! ************************************************************************** !
+
 function ProjectAOntoUnitB(A,B)
+  ! 
+  ! Projects vector a onto b, assuming b is a unit vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/09
+  ! 
 
   implicit none
   

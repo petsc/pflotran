@@ -16,13 +16,14 @@ module Immobile_module
 contains
 
 ! ************************************************************************** !
-!
-! ImmobileRead: Reads immobile species
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
+
 subroutine ImmobileRead(immobile,input,option)
+  ! 
+  ! Reads immobile species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/02/13
+  ! 
 
   use Option_module
   use String_module
@@ -64,15 +65,16 @@ subroutine ImmobileRead(immobile,input,option)
 end subroutine ImmobileRead
 
 ! ************************************************************************** !
-!
-! ImmobileProcessConstraint: Initializes constraints based on immobile
-!                           species in system
-! author: Glenn Hammond
-! date: 01/07/13
-!
-! ************************************************************************** !
+
 subroutine ImmobileProcessConstraint(immobile,constraint_name, &
                                     constraint,option)
+  ! 
+  ! Initializes constraints based on immobile
+  ! species in system
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/13
+  ! 
   use Option_module
   use Input_Aux_module
   use String_module

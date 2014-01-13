@@ -9,51 +9,37 @@ module co2eos_module
 
 contains
 
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! ************************************************************************** !
 
-! VERSION/REVISION HISTORY
- 
-! $Id: co2eos.F90,v 1.1.1.1 2004/07/30 21:49:42 lichtner Exp $
-! $Log: co2eos.F90,v $
-! Revision 1.1.1.1  2004/07/30 21:49:42  lichtner
-! initial import
-!
-! Revision 1.2  2004/01/10 18:32:06  lichtner
-! Began work on 2 phase capability.
-!
-! Revision 1.1.1.1  2003/11/23 20:12:46  lichtner
-! initial entry
-!
-! Revision 1.2  2003/05/09 15:22:41  lichtner
-! commented out icall statements
-!
-! Revision 1.1.1.1  2003/03/03 01:33:27  lichtner
-! PFLOTRAN initial implementation
-!
-! Revision 1.6  2002/09/28 17:25:49  lichtner
-! Improved fit of dissolved CO2.
-!
-! Revision 1.5  2002/05/19 18:53:01  lichtner
-! Added documentation of CO2 EOS
-!
-! Revision 1.4  2002/05/19 00:21:46  lichtner
-! Modified Crovetto (1991) fit to Henry's law to be consistent with 
-! Duan et al. CO2 EOS.
-!
-! Revision 1.3  2002/05/07 03:14:39  lichtner
-! Modified Henry's law subroutine to output the Poynting term.
-!
-! Revision 1.2  2002/05/04 18:28:34  lichtner
-! Added Duan and Weare CO2 eos and new Henry's law.
-!
-! Revision 1.1  2002/04/12 19:03:10  lichtner
-! Initial entry
-!
-
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-!********1*********2*********3*********4*********5*********6*********7**
 subroutine CO2(TX,PCX,DC,FC,PHI,HC)
+  ! 
+  ! VERSION/REVISION HISTORY
+  ! $Id: co2eos.F90,v 1.1.1.1 2004/07/30 21:49:42 lichtner Exp $
+  ! $Log: co2eos.F90,v $
+  ! Revision 1.1.1.1  2004/07/30 21:49:42  lichtner
+  ! initial import
+  ! Revision 1.2  2004/01/10 18:32:06  lichtner
+  ! Began work on 2 phase capability.
+  ! Revision 1.1.1.1  2003/11/23 20:12:46  lichtner
+  ! initial entry
+  ! Revision 1.2  2003/05/09 15:22:41  lichtner
+  ! commented out icall statements
+  ! Revision 1.1.1.1  2003/03/03 01:33:27  lichtner
+  ! PFLOTRAN initial implementation
+  ! Revision 1.6  2002/09/28 17:25:49  lichtner
+  ! Improved fit of dissolved CO2.
+  ! Revision 1.5  2002/05/19 18:53:01  lichtner
+  ! Added documentation of CO2 EOS
+  ! Revision 1.4  2002/05/19 00:21:46  lichtner
+  ! Modified Crovetto (1991) fit to Henry's law to be consistent with
+  ! Duan et al. CO2 EOS.
+  ! Revision 1.3  2002/05/07 03:14:39  lichtner
+  ! Modified Henry's law subroutine to output the Poynting term.
+  ! Revision 1.2  2002/05/04 18:28:34  lichtner
+  ! Added Duan and Weare CO2 eos and new Henry's law.
+  ! Revision 1.1  2002/04/12 19:03:10  lichtner
+  ! Initial entry
+  ! 
       
   use PFLOTRAN_Constants_module
 
@@ -171,8 +157,9 @@ subroutine CO2(TX,PCX,DC,FC,PHI,HC)
       
       RETURN
 end subroutine CO2
-      
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine MRK(Y,T,PCX,V,DV,AT)
       
       implicit none
@@ -264,8 +251,9 @@ subroutine MRK(Y,T,PCX,V,DV,AT)
            -(AT/(DSQRT(T)*V*(V+B))))
       RETURN
 end subroutine MRK
-      
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine FUGACITY(Y,T,V,Z,PHI)
       
       implicit none
@@ -358,8 +346,9 @@ subroutine FUGACITY(Y,T,V,Z,PHI)
 
       RETURN
 end subroutine FUGACITY
-      
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine ENTHALPY(T,V,Z,H)
 
       implicit none
@@ -504,24 +493,21 @@ subroutine ENTHALPY(T,V,Z,H)
       H = (URES+Z-(TREF/T)) * R * T + 8.1858447D5*.044D0
       RETURN
 end subroutine ENTHALPY
-      
-!********1*********2*********3*********4*********5*********6*********7**
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-! Subroutine: duanco2.f
 
-! Input: tt   [C]        temperature
-!        p    [Pa]       CO2 partial pressure
-
-! Output: fc   [bars]    CO2 fugacity
-!         phi  [-]       CO2 fugacity coefficient
-!         dc   [g/cm^3]  CO2 density
-
-! Duan, Z., Moller, N., and Weare, J.H. (1992) An equation of state for 
-! the CH4-CO2-H2O system: I. Pure systems from 0 to 1000 oC and 0 to   
-! 8000 bar. Geochimica Cosmochimica Acta, 56, 2605-2617.
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! ************************************************************************** !
 
 subroutine duanco2 (tt,p,dc,fc,phi)
+  ! 
+  ! Subroutine: duanco2.f
+  ! Input: tt   [C]        temperature
+  ! p    [Pa]       CO2 partial pressure
+  ! Output: fc   [bars]    CO2 fugacity
+  ! phi  [-]       CO2 fugacity coefficient
+  ! dc   [g/cm^3]  CO2 density
+  ! Duan, Z., Moller, N., and Weare, J.H. (1992) An equation of state for
+  ! the CH4-CO2-H2O system: I. Pure systems from 0 to 1000 oC and 0 to
+  ! 8000 bar. Geochimica Cosmochimica Acta, 56, 2605-2617.
+  ! 
 
       implicit none
       
@@ -643,7 +629,9 @@ subroutine duanco2 (tt,p,dc,fc,phi)
       return
 
 end subroutine duanco2
-!----------------------------------------------
+
+! ************************************************************************** !
+
 subroutine Henry_duan_sun_0NaCl (p,tc,henry)
 
   implicit none
@@ -671,7 +659,8 @@ subroutine Henry_duan_sun_0NaCl (p,tc,henry)
 
   return
 end subroutine Henry_duan_sun_0NaCl
-  
+
+! ************************************************************************** !
 
 subroutine Henry_duan_sun(tc,p,keqco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   
@@ -726,7 +715,9 @@ subroutine Henry_duan_sun(tc,p,keqco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   !print *, 'keqco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
   return
 end subroutine Henry_duan_sun
-  
+
+! ************************************************************************** !
+
 subroutine duan_sun_param(t,p,c,par)
   
   implicit none
@@ -743,26 +734,23 @@ subroutine duan_sun_param(t,p,c,par)
   return
 end subroutine duan_sun_param
 
-
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-! Subroutine: henry.f
-
-! Input: tx   [C]       temperature
-!        pco2 [Pa]      CO2 partial pressure
-!        psys [Pa]      total system pressure ***not implemented***
-!        phi  [-]       CO2 fugacity coefficient
-
-! Output: xmole [-]     mole fraction CO2 in aqueous phase
-!         x1m   [-]     mass fraction CO2
-!         rkh   [Pa]  Henry constant
-!         poyn  [-]     Poynting factor
-
-! Crovetto, R. (1991) Evaluation of solubility data of the system CO2-H2O 
-! from 273�Z K to the critical point of water. Journal of Physical and 
-! Chemical Reference Data, 20(3), 575-589.
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! ************************************************************************** !
 
 subroutine HENRY_co2_noderiv(xmole,x1m,tx,pcx,xphi,rkh,poyn)
+  ! 
+  ! Subroutine: henry.f
+  ! Input: tx   [C]       temperature
+  ! pco2 [Pa]      CO2 partial pressure
+  ! psys [Pa]      total system pressure ***not implemented***
+  ! phi  [-]       CO2 fugacity coefficient
+  ! Output: xmole [-]     mole fraction CO2 in aqueous phase
+  ! x1m   [-]     mass fraction CO2
+  ! rkh   [Pa]  Henry constant
+  ! poyn  [-]     Poynting factor
+  ! Crovetto, R. (1991) Evaluation of solubility data of the system CO2-H2O
+  ! from 273�Z K to the critical point of water. Journal of Physical and
+  ! Chemical Reference Data, 20(3), 575-589.
+  ! 
 
 !     input:
 !     tx   [C]  temperature
@@ -850,7 +838,9 @@ subroutine HENRY_co2_noderiv(xmole,x1m,tx,pcx,xphi,rkh,poyn)
 
       RETURN
 end subroutine HENRY_CO2_NODERIV
-      
+
+! ************************************************************************** !
+
 subroutine HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
 
       implicit none
@@ -930,8 +920,9 @@ subroutine HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
 
       RETURN
 end subroutine HENRY_sullivan
-      
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine SOLUT(PCX,TX,HSOL)
       implicit none
       
@@ -952,8 +943,9 @@ subroutine SOLUT(PCX,TX,HSOL)
       HSOL = HSOL * 1.D6
       RETURN
 end subroutine SOLUT
-      
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine DENMIX(TX,DW,X1M,D1M)
       implicit none
       
@@ -1006,8 +998,9 @@ subroutine DENMIX(TX,DW,X1M,D1M)
 
       RETURN
 end subroutine DENMIX
-      
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine VISCO2(TX,DC,VC)
       implicit none
 !
@@ -1090,8 +1083,9 @@ subroutine VISCO2(TX,DC,VC)
       VC = VC * 1.0D-06
       RETURN
 end subroutine VISCO2
-                  
-!********1*********2*********3*********4*********5*********6*********7**
+
+! ************************************************************************** !
+
 subroutine SAT(T,P)
 !--------- Fast SAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 !
@@ -1121,7 +1115,9 @@ subroutine SAT(T,P)
     1 FORMAT(A1,'TEMPERATURE = ',E12.6,'  OUT OF RANGE IN SAT ')
       RETURN
 end subroutine SAT
-      
+
+! ************************************************************************** !
+
 subroutine COWAT0(TF,PP,D,U)
 !--------- Fast COWAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 
@@ -1224,7 +1220,9 @@ subroutine COWAT0(TF,PP,D,U)
   102 FORMAT(1H ,5X,A6,5X,I2,2X,E20.10)
       RETURN
 end subroutine COWAT0
-      
+
+! ************************************************************************** !
+
 subroutine SUPST(T,P,D,U)
 !--------- Fast SUPST M.J.O'Sullivan - 17 SEPT 1990 ---------
 ! SUPST    1.0 S     1 February  1991
@@ -1376,6 +1374,8 @@ subroutine SUPST(T,P,D,U)
       RETURN
 end subroutine SUPST
 
+! ************************************************************************** !
+
 subroutine TSAT(PX,TX00,TS)
       implicit none
       
@@ -1408,7 +1408,9 @@ subroutine TSAT(PX,TX00,TS)
       goto 1
       
 end subroutine TSAT
-      
+
+! ************************************************************************** !
+
 subroutine SIGMA(T,ST)
       implicit none
 !
@@ -1427,7 +1429,9 @@ subroutine SIGMA(T,ST)
       ST=0.
       RETURN
 end subroutine SIGMA
-      
+
+! ************************************************************************** !
+
 subroutine VIS(T,P,D,VW,VS,PS)
       implicit none
       
@@ -1447,7 +1451,9 @@ subroutine VIS(T,P,D,VW,VS,PS)
       IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
       RETURN
 end subroutine VIS
-      
+
+! ************************************************************************** !
+
 subroutine VISW0(T,P,PS,VW)
       implicit none
 
@@ -1464,7 +1470,9 @@ subroutine VISW0(T,P,PS,VW)
 
       RETURN
 end subroutine VISW0
-      
+
+! ************************************************************************** !
+
 subroutine VISS(T,P,D,VS)
       implicit none
 
@@ -1479,6 +1487,8 @@ subroutine VISS(T,P,D,VS)
 
       RETURN
 end subroutine VISS
+
+! ************************************************************************** !
 
 subroutine THERC(T,P,D,CONW,CONS,PS)
       implicit none

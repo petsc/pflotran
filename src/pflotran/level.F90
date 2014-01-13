@@ -36,13 +36,14 @@ module Level_module
 contains
 
 ! ************************************************************************** !
-!
-! LevelCreate: Allocates and initializes a new Level object
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 function LevelCreate()
+  ! 
+  ! Allocates and initializes a new Level object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -61,13 +62,14 @@ function LevelCreate()
 end function LevelCreate
 
 ! ************************************************************************** !
-!
-! LevelListCreate: Creates a level list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 function LevelCreateList()
+  ! 
+  ! LevelListCreate: Creates a level list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
 
@@ -86,13 +88,14 @@ function LevelCreateList()
 end function LevelCreateList
 
 ! ************************************************************************** !
-!
-! LevelAddPatch: Adds a new level to list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine LevelAddPatch(new_patch,level)
+  ! 
+  ! Adds a new level to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -104,13 +107,14 @@ subroutine LevelAddPatch(new_patch,level)
 end subroutine LevelAddPatch
 
 ! ************************************************************************** !
-!
-! LevelAddToList: Adds a new level to list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine LevelAddToList(new_level,level_list)
+  ! 
+  ! Adds a new level to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -126,14 +130,15 @@ subroutine LevelAddToList(new_level,level_list)
 end subroutine LevelAddToList
 
 ! ************************************************************************** !
-!
-! LevelConvertListToArray: Creates an array of pointers to the 
-!                               levels in the level list
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine LevelConvertListToArray(level_list)
+  ! 
+  ! Creates an array of pointers to the
+  ! levels in the level list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   
@@ -155,13 +160,14 @@ subroutine LevelConvertListToArray(level_list)
 end subroutine LevelConvertListToArray
 
 ! ************************************************************************** !
-!
-! LevelDestroyList: Deallocates a level list and array of leveles
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine LevelDestroyList(level_list)
+  ! 
+  ! Deallocates a level list and array of leveles
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -192,13 +198,14 @@ subroutine LevelDestroyList(level_list)
 end subroutine LevelDestroyList
 
 ! ************************************************************************** !
-!
-! LevelDestroy: Deallocates a level object
-! author: Glenn Hammond
-! date: 02/22/08
-!
-! ************************************************************************** !
+
 subroutine LevelDestroy(level)
+  ! 
+  ! Deallocates a level object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/22/08
+  ! 
 
   implicit none
   

@@ -27,13 +27,14 @@ module Debug_module
 contains
 
 ! ************************************************************************** !
-!
-! DebugCreate: Create object that stores debugging options for PFLOW
-! author: Glenn Hammond
-! date: 12/21/07
-!
-! ************************************************************************** !
+
 function DebugCreate()
+  ! 
+  ! Create object that stores debugging options for PFLOW
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/07
+  ! 
 
   implicit none
   
@@ -60,13 +61,14 @@ function DebugCreate()
 end function DebugCreate
 
 ! ************************************************************************** !
-!
-! DebugRead: Reads debugging data from the input file
-! author: Glenn Hammond
-! date: 12/21/07
-!
-! ************************************************************************** !
+
 subroutine DebugRead(debug,input,option)
+  ! 
+  ! Reads debugging data from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/21/07
+  ! 
 
   use Option_module
   use Input_Aux_module

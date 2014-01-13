@@ -36,14 +36,15 @@ module Output_Surface_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputSurfaceInit: Initializes module variables for surface variables
-! author: Glenn Hammond
-! date: 01/16/13
-!
-! ************************************************************************** !
-!subroutine OutputSurfaceInit(realization_base,num_steps)
+
 subroutine OutputSurfaceInit(num_steps)
+  ! 
+  ! Initializes module variables for surface variables
+  ! subroutine OutputSurfaceInit(realization_base,num_steps)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/13
+  ! 
 
   !use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -67,16 +68,16 @@ subroutine OutputSurfaceInit(num_steps)
 end subroutine OutputSurfaceInit
 
 ! ************************************************************************** !
-!> This subroutine is main driver for all output subroutines related to
-!! surface flows.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/29/12
-! ************************************************************************** !
+
 subroutine OutputSurface(surf_realization,realization,plot_flag, &
                          transient_plot_flag)
+  ! 
+  ! This subroutine is main driver for all output subroutines related to
+  ! surface flows.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/29/12
+  ! 
 
   use Surface_Realization_class, only : surface_realization_type
   use Realization_class, only : realization_type
@@ -156,15 +157,15 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 end subroutine OutputSurface
 
 ! ************************************************************************** !
-!> This subroutine print to Tecplot file in FEQUADRILATERAL format for surface
-!! flows.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/29/12
-! ************************************************************************** !
+
 subroutine OutputTecplotFEQUAD(surf_realization,realization)
+  ! 
+  ! This subroutine print to Tecplot file in FEQUADRILATERAL format for surface
+  ! flows.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/29/12
+  ! 
 
   use Surface_Realization_class, only : surface_realization_type
   use Realization_class, only : realization_type
@@ -263,14 +264,14 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
 end subroutine OutputTecplotFEQUAD
 
 ! ************************************************************************** !
-!> This subroutine prints header to Tecplot file for surface grid.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/30/12
-! ************************************************************************** !
+
 subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
+  ! 
+  ! This subroutine prints header to Tecplot file for surface grid.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/30/12
+  ! 
 
   use Surface_Realization_class
   use Grid_module
@@ -339,14 +340,14 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
 end subroutine OutputTecplotHeader
 
 ! ************************************************************************** !
-!> This subroutine prints zone header to Tecplot file.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/30/12
-! ************************************************************************** !
+
 function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
+  ! 
+  ! This subroutine prints zone header to Tecplot file.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/30/12
+  ! 
 
   use Surface_Realization_class
   use Grid_module
@@ -422,15 +423,15 @@ function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
 end function OutputTecplotZoneHeader
 
 ! ************************************************************************** !
-!> This subroutine writes unstructured grid elements for surface grid.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/30/12
-! ************************************************************************** !
+
 subroutine WriteTecplotUGridElements(fid, &
                                       surf_realization)
+  ! 
+  ! This subroutine writes unstructured grid elements for surface grid.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/30/12
+  ! 
 
   use Surface_Realization_class
   use Grid_module
@@ -504,14 +505,14 @@ subroutine WriteTecplotUGridElements(fid, &
 end subroutine WriteTecplotUGridElements
 
 ! ************************************************************************** !
-!> This subroutine writes unstructure grid vertices for surface grid.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/30/12
-! ************************************************************************** !
+
 subroutine WriteTecplotUGridVertices(fid,surf_realization)
+  ! 
+  ! This subroutine writes unstructure grid vertices for surface grid.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/30/12
+  ! 
 
   use Surface_Realization_class
   use Grid_module
@@ -564,15 +565,12 @@ subroutine WriteTecplotUGridVertices(fid,surf_realization)
 end subroutine WriteTecplotUGridVertices
 
 ! ************************************************************************** !
-!> This routine outputs hydrograph fluxes.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
 
 subroutine OutputHydrograph(surf_realization)
+  ! 
+  ! This routine outputs hydrograph fluxes.
+  ! Author: Gautam Bisht, LBNL
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -689,16 +687,16 @@ subroutine OutputHydrograph(surf_realization)
 end subroutine OutputHydrograph
 
 ! ************************************************************************** !
-!> This routine writes unstructured grid data in HDF5 XDMF format for 
-!! surface flow.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/2012
-! ************************************************************************** !
+
 subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
                                       var_list_type)
+  ! 
+  ! This routine writes unstructured grid data in HDF5 XDMF format for
+  ! surface flow.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/2012
+  ! 
 
   use Surface_Realization_class
   use Realization_class
@@ -1022,16 +1020,17 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
 end subroutine OutputSurfaceHDF5UGridXDMF
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!> This routine writes unstructured coordinates to HDF5 file in XDMF format
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/2012
-! ************************************************************************** !
+
 subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
                                           option,file_id)
+  ! 
+  ! This routine writes unstructured coordinates to HDF5 file in XDMF format
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/2012
+  ! 
 
   use hdf5
   use HDF5_module
@@ -1543,17 +1542,17 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
 #endif
-! ifdef PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
-!> This routine extracts variables indexed by ivar from a multivar array
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/30/13
-! ************************************************************************** !
+
 subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubvar1)
+  ! 
+  ! ifdef PETSC_HAVE_HDF5
+  ! This routine extracts variables indexed by ivar from a multivar array
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 01/30/13
+  ! 
 
   use Surface_Realization_class, only : surface_realization_type, &
                                         SurfRealizGetVariable
@@ -1584,14 +1583,14 @@ subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubva
 end subroutine OutputSurfaceGetVarFromArray
 
 ! ************************************************************************** !
-!> This routine to temporally average variables and output them.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/22/13
-! ************************************************************************** !
+
 subroutine OutputSurfaceAvegVars(surf_realization,realization)
+  ! 
+  ! This routine to temporally average variables and output them.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/22/13
+  ! 
 
   use Surface_Realization_class, only : surface_realization_type
   use Realization_class, only : realization_type
@@ -1707,14 +1706,14 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
 end subroutine OutputSurfaceAvegVars
 
 ! ************************************************************************** !
-!> This routine reads variable from input file.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/22/13
-! ************************************************************************** !
+
 subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
+  ! 
+  ! This routine reads variable from input file.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/22/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1760,16 +1759,16 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
 end subroutine OutputSurfaceVariableRead
 
 ! ************************************************************************** !
-!> This subroutine creates an ID for HDF5 filename for:
-!! - Instantaneous, or
-!! - Temporally averaged variables.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/22/13
-! ************************************************************************** !  
+
 function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
+  ! 
+  ! This subroutine creates an ID for HDF5 filename for:
+  ! - Instantaneous, or
+  ! - Temporally averaged variables.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/22/13
+  ! 
 
   use Option_module
   
@@ -1808,16 +1807,17 @@ function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
 end function OutputSurfaceHDF5FilenameID
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!> This returns mass/energy flowrate at all faces of a control volume for
-!! surface realizaton.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/25/2013
-! ************************************************************************** !
+
 subroutine OutputSurfaceGetFlowrates(surf_realization)
+  ! 
+  ! This returns mass/energy flowrate at all faces of a control volume for
+  ! surface realizaton.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/25/2013
+  ! 
 
   use hdf5
   use HDF5_module
@@ -2019,15 +2019,15 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 end subroutine OutputSurfaceGetFlowrates
 
 ! ************************************************************************** !
-!> This routine writes (mass/energy) flowrate for unstructured grid for
-!! surface realization.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/25/2013
-! ************************************************************************** !
+
 subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type)
+  ! 
+  ! This routine writes (mass/energy) flowrate for unstructured grid for
+  ! surface realization.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/25/2013
+  ! 
 
   use hdf5
   use HDF5_module

@@ -55,13 +55,14 @@ module Flash2_module
 contains
 
 ! ************************************************************************** !
-!
-! Flash2TimeCut: Resets arrays for time step cut
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2TimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -85,13 +86,12 @@ subroutine Flash2TimeCut(realization)
 end subroutine Flash2TimeCut
 
 ! ************************************************************************** !
-!
-! Flash2Setup: 
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2Setup(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -116,13 +116,14 @@ subroutine Flash2Setup(realization)
 end subroutine Flash2Setup
 
 ! ************************************************************************** !
-!
-! Flash2SetupPatch: Creates arrays for auxiliary variables
-! author: Chuan Lu
-! date: 10/1/08
-!
-! ************************************************************************** !
+
 subroutine Flash2SetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/1/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -228,12 +229,14 @@ subroutine Flash2SetupPatch(realization)
 end subroutine Flash2SetupPatch
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
   function  Flash2InitGuessCheck(realization)
+  ! 
+  ! Flash2initguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
  
   use Realization_class
   use Patch_module
@@ -269,12 +272,14 @@ end subroutine Flash2SetupPatch
  end function Flash2InitGuessCheck
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateReasonPatch(reason,realization)
+  ! 
+  ! Flash2initguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
    use Realization_class
    use Patch_module
@@ -343,16 +348,16 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   ! reason = re!; print *,'reason:',reason
 end subroutine Flash2UpdateReasonPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2UpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Richards problem
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine Flash2UpdateReason(reason, realization)
+  ! 
+  ! Flash2UpdateAuxVars: Updates the auxiliary variables associated with
+  ! the Richards problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -391,12 +396,12 @@ subroutine Flash2UpdateReason(reason, realization)
 end subroutine Flash2UpdateReason
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
   function  Flash2InitGuessCheckPatch(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
    
      use co2_span_wagner_module
      
@@ -453,15 +458,16 @@ end subroutine Flash2UpdateReason
     Flash2InitGuessCheckPatch = ipass
   end function Flash2InitGuessCheckPatch
 
-! ***************************************************************************
-!
-! Flash2UpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Flash2 problem
-! author: Chuan Lu
-! date: 10/10/08
-!
 ! ************************************************************************** !
+
 subroutine Flash2UpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Flash2 problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -481,14 +487,15 @@ subroutine Flash2UpdateAuxVars(realization)
 end subroutine Flash2UpdateAuxVars
 
 ! ************************************************************************** !
-!
-! Flash2UpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Flash2 problem
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Flash2 problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -649,13 +656,14 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
 end subroutine Flash2UpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! Flash2InitializeTimestep: Update data in module prior to time step
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2InitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   
@@ -668,13 +676,14 @@ subroutine Flash2InitializeTimestep(realization)
 end subroutine Flash2InitializeTimestep
 
 ! ************************************************************************** !
-!
-! Flash2UpdateSolution: Updates data in module after a successful time step
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   
@@ -690,16 +699,16 @@ subroutine Flash2UpdateSolution(realization)
 
 end subroutine Flash2UpdateSolution
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2UpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine Flash2UpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -719,14 +728,15 @@ subroutine Flash2UpdateFixedAccumulation(realization)
 end subroutine Flash2UpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! Flash2UpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -804,16 +814,16 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
 
 end subroutine Flash2UpdateFixedAccumPatch
 
-
 ! ************************************************************************** !
-!
-! Flash2Accumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -862,15 +872,16 @@ subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
 end subroutine Flash2Accumulation
 
 ! ************************************************************************** !
-!
-! Flash2Accumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
+
 subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res,&
                             qsrc_phase,energy_flag, option)
+  ! 
+  ! Flash2Accumulation: Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -1067,18 +1078,18 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   
 end subroutine Flash2SourceSink
 
-
 ! ************************************************************************** !
-!
-! Flash2Flux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
+
 subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
@@ -1193,16 +1204,17 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine Flash2Flux
 
 ! ************************************************************************** !
-!
-! Flash2Flux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 05/04/10
-!
-! ************************************************************************** ! 
+
 subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Flash2Flux: Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/04/10
+  ! 
   use Option_module                              
   
   implicit none
@@ -1292,16 +1304,17 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine Flash2FluxAdv
 
 ! ************************************************************************** !
-!
-! Flash2Flux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
+
 subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Flash2Flux: Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
@@ -1367,15 +1380,16 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
 end subroutine Flash2FluxDiffusion
 
 ! ************************************************************************** !
-!
-! Flash2BCFlux: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
@@ -1515,16 +1529,18 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   Res(option%nflowdof)=fluxe * option%flow_dt
 
 end subroutine Flash2BCFlux
+
 ! ************************************************************************** !
-!
-! Flash2BCFluxAdv: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
@@ -1631,15 +1647,16 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine Flash2BCFluxAdv
 
 ! ************************************************************************** !
-!
-! Flash2BCFluxDiffusion: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
@@ -1700,15 +1717,15 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
 end subroutine Flash2BCFluxDiffusion
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2Residual: Computes the residual equation 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine Flash2Residual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1808,14 +1825,15 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 end subroutine Flash2Residual
 
 ! ************************************************************************** !
-!
-! Flash2ResidualPatch: Computes the residual equation at patch level
-!                      original version (not used)
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation at patch level
+  ! original version (not used)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2322,13 +2340,14 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 end subroutine Flash2ResidualPatch
 
 ! ************************************************************************** !
-!
-! Flash2Jacobian: Computes the Residual by Flux
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Flash2Jacobian: Computes the Residual by Flux
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2621,14 +2640,14 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 end subroutine Flash2ResidualPatch1
 
 ! ************************************************************************** !
-!
-! Flash2Jacobian: Computes the Residual Aux vars for numerical Jacobin
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 
 subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+  ! 
+  ! Flash2Jacobian: Computes the Residual Aux vars for numerical Jacobin
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2778,14 +2797,15 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 end subroutine Flash2ResidualPatch0
 
 ! ************************************************************************** !
-!
-! Flash2ResidualPatch2: Computes other terms in Residual
-!                       (accumulation, source/sink, reaction)
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes other terms in Residual
+  ! (accumulation, source/sink, reaction)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -3011,15 +3031,15 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
  
 end subroutine Flash2ResidualPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2Jacobian: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3105,13 +3125,14 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine Flash2Jacobian
 
 ! ************************************************************************** !
-!
-! Flash2JacobianPatch: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -3661,13 +3682,14 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 end subroutine Flash2JacobianPatch
 
 ! ************************************************************************** !
-!
-! Flash2JacobianPatch: Computes the Jacobian: Flux term
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Flash2JacobianPatch: Computes the Jacobian: Flux term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -4068,13 +4090,14 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine Flash2JacobianPatch1
 
 ! ************************************************************************** !
-!
-! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -4385,15 +4408,15 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine Flash2JacobianPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2CreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
 subroutine Flash2CreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Patch_module
   use Grid_module
@@ -4488,13 +4511,14 @@ subroutine Flash2CreateZeroArray(patch,option)
 end subroutine Flash2CreateZeroArray
 
 ! ************************************************************************** !
-!
-! Flash2MaxChange: Computes the maximum change in the solution vector
-! author: Chuan Lu
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine Flash2MaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -4529,14 +4553,15 @@ subroutine Flash2MaxChange(realization)
 end subroutine Flash2MaxChange
 
 ! ************************************************************************** !
-!
-! Flash2GetTecplotHeader: Returns Richards contribution to 
-!                               Tecplot file header
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function Flash2GetTecplotHeader(realization, icolumn)
+  ! 
+  ! Returns Richards contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -4686,13 +4711,14 @@ function Flash2GetTecplotHeader(realization, icolumn)
 end function Flash2GetTecplotHeader
 
 ! ************************************************************************** !
-!
-! Flash2SetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine Flash2SetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -4802,13 +4828,14 @@ subroutine Flash2SetPlotVariables(realization)
 end subroutine Flash2SetPlotVariables
 
 ! ************************************************************************** !
-!
-! Flash2Destroy: Deallocates variables associated with Flash2
-! author: Chuan Lu 
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2Destroy(realization)
+  ! 
+  ! Deallocates variables associated with Flash2
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/14/08
+  ! 
 
   use Realization_class
 
@@ -4823,14 +4850,16 @@ end subroutine Flash2Destroy
 
 
 #if 0
+
 ! ************************************************************************** !
-!
-! Flash2CheckpointWrite: Writes vecs to checkpoint file
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 subroutine Flash2CheckpointWrite(discretization, viewer)
+  ! 
+  ! Writes vecs to checkpoint file
+  ! date:
+  ! 
+  ! Author: Chuan Lu
+  ! 
 
   use Discretization_module
 
@@ -4848,15 +4877,15 @@ subroutine Flash2CheckpointWrite(discretization, viewer)
   
 end subroutine Flash2CheckpointWrite
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2CheckpointRead: Reads vecs from checkpoint file
-! author: Chuan Lu 
-! date: 
-!
-! ************************************************************************** !
 subroutine Flash2CheckpointRead(discretization,viewer)
+  ! 
+  ! Reads vecs from checkpoint file
+  ! date:
+  ! 
+  ! Author: Chuan Lu
+  ! 
 
   use Discretization_module
 

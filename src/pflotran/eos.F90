@@ -15,6 +15,7 @@ module EOS_module
 contains
 
 ! ************************************************************************** !
+
 subroutine EOSInit()
 
   implicit none
@@ -24,6 +25,7 @@ subroutine EOSInit()
 end subroutine EOSInit
 
 ! ************************************************************************** !
+
 subroutine EOSRead(input,option)
 
   use Option_module
