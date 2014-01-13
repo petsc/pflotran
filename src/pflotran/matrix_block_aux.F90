@@ -64,7 +64,7 @@ end function MatrixBlockAuxVarCreate
 
 ! ************************************************************************** !
 
-subroutine MatrixBlockAuxVarInit1(aux_var,dim1,dim2,dim3,option)
+subroutine MatrixBlockAuxVarInit1(auxvar,dim1,dim2,dim3,option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -76,21 +76,21 @@ subroutine MatrixBlockAuxVarInit1(aux_var,dim1,dim2,dim3,option)
 
   implicit none
   
-  type(matrix_block_auxvar_type) :: aux_var
+  type(matrix_block_auxvar_type) :: auxvar
   type(matrix_block_info_type) :: matrix_info
   PetscInt :: dim1
   PetscInt :: dim2
   PetscInt :: dim3
   type(option_type) :: option  
   
-  allocate(aux_var%dtotal(dim1,dim2,dim3))
-  aux_var%dtotal = 0.d0
+  allocate(auxvar%dtotal(dim1,dim2,dim3))
+  auxvar%dtotal = 0.d0
   
 end subroutine MatrixBlockAuxVarInit1
 
 ! ************************************************************************** !
 
-subroutine MatrixBlockAuxVarInit2(aux_var,matrix_info,option)
+subroutine MatrixBlockAuxVarInit2(auxvar,matrix_info,option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -102,18 +102,18 @@ subroutine MatrixBlockAuxVarInit2(aux_var,matrix_info,option)
 
   implicit none
   
-  type(matrix_block_auxvar_type) :: aux_var
+  type(matrix_block_auxvar_type) :: auxvar
   type(matrix_block_info_type) :: matrix_info
   type(option_type) :: option  
   
-  allocate(aux_var%dtotal(matrix_info%dim1,matrix_info%dim2,matrix_info%dim3))
-  aux_var%dtotal = 0.d0
+  allocate(auxvar%dtotal(matrix_info%dim1,matrix_info%dim2,matrix_info%dim3))
+  auxvar%dtotal = 0.d0
   
 end subroutine MatrixBlockAuxVarInit2
 
 ! ************************************************************************** !
 
-subroutine MatrixBlockAuxVarCopy(aux_var,aux_var2,option)
+subroutine MatrixBlockAuxVarCopy(auxvar,auxvar2,option)
   ! 
   ! Copys an auxiliary object
   ! 
@@ -125,16 +125,16 @@ subroutine MatrixBlockAuxVarCopy(aux_var,aux_var2,option)
 
   implicit none
   
-  type(matrix_block_auxvar_type) :: aux_var, aux_var2
+  type(matrix_block_auxvar_type) :: auxvar, auxvar2
   type(option_type) :: option  
   
-  aux_var%dtotal = aux_var2%dtotal
+  auxvar%dtotal = auxvar2%dtotal
   
 end subroutine MatrixBlockAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine MatrixBlockAuxVarDestroy(aux_var)
+subroutine MatrixBlockAuxVarDestroy(auxvar)
   ! 
   ! Deallocates a matrix block auxiliary object
   ! 
@@ -144,15 +144,15 @@ subroutine MatrixBlockAuxVarDestroy(aux_var)
 
   implicit none
 
-  type(matrix_block_auxvar_type), pointer :: aux_var
+  type(matrix_block_auxvar_type), pointer :: auxvar
   
-  if (.not.associated(aux_var)) return
+  if (.not.associated(auxvar)) return
   
-  if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
-  nullify(aux_var%dtotal)
+  if (associated(auxvar%dtotal))deallocate(auxvar%dtotal)
+  nullify(auxvar%dtotal)
   
-  deallocate(aux_var)
-  nullify(aux_var)
+  deallocate(auxvar)
+  nullify(auxvar)
   
 end subroutine MatrixBlockAuxVarDestroy
 

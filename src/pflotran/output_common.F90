@@ -1632,7 +1632,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   option => realization_base%option
   field => realization_base%field
   grid => patch%grid
-  global_auxvar => patch%aux%Global%aux_vars
+  global_auxvar => patch%aux%Global%auxvars
   richards_parameter => patch%aux%Richards%richards_parameter
   
  
@@ -1731,7 +1731,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   option => realization_base%option
   field => realization_base%field
   grid => patch%grid
-  global_auxvar => patch%aux%Global%aux_vars
+  global_auxvar => patch%aux%Global%auxvars
   
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   

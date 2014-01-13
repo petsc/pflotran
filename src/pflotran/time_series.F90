@@ -20,7 +20,7 @@ module Time_Series_module
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
     PetscReal :: time_shift
-    PetscReal :: lame_aux_variable_remove_me
+    PetscReal :: lame_auxvariable_remove_me
   end type time_series_type
   
   public :: TimeSeriesCreate, &
@@ -59,7 +59,7 @@ function TimeSeriesCreate()
   time_series%is_transient = PETSC_FALSE
   time_series%interpolation_method = INTERPOLATION_NULL
   time_series%time_shift = 0.d0
-  time_series%lame_aux_variable_remove_me = 0.d0
+  time_series%lame_auxvariable_remove_me = 0.d0
   
   TimeSeriesCreate => time_series
     

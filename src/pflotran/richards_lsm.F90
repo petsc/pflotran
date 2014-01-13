@@ -62,12 +62,12 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:) 
-  type(richards_auxvar_type), pointer :: rich_aux_vars_bc(:)
-  type(richards_auxvar_type), pointer :: rich_aux_vars_ss(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)  
-  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)  
+  type(richards_auxvar_type), pointer :: rich_auxvars(:) 
+  type(richards_auxvar_type), pointer :: rich_auxvars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_auxvars_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)  
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)  
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase, i
   PetscReal, pointer :: xx_loc_p(:), xx_p(:)
@@ -90,12 +90,12 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
 
-  rich_aux_vars => patch%aux%Richards%aux_vars
-  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
-  rich_aux_vars_ss => patch%aux%Richards%aux_vars_ss
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  rich_auxvars => patch%aux%Richards%auxvars
+  rich_auxvars_bc => patch%aux%Richards%auxvars_bc
+  rich_auxvars_ss => patch%aux%Richards%auxvars_ss
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
     
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
@@ -119,13 +119,13 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
                            option%gravity(3)*grid%z(cell_neighbors(nid,ghosted_id))
 
         Pn = xx_loc_p(cell_neighbors(nid,ghosted_id)) - &
-             global_aux_vars(cell_neighbors(nid,ghosted_id))%den(1)*FMWH2O*distance_gravity
+             global_auxvars(cell_neighbors(nid,ghosted_id))%den(1)*FMWH2O*distance_gravity
 
         distance_gravity0 = option%gravity(1)*grid%x(ghosted_id) + &
                             option%gravity(2)*grid%y(ghosted_id) + &
                             option%gravity(3)*grid%z(ghosted_id)
         P = xx_loc_p(ghosted_id) - &
-             global_aux_vars(ghosted_id)%den(1)*FMWH2O*distance_gravity0
+             global_auxvars(ghosted_id)%den(1)*FMWH2O*distance_gravity0
 
         phi_p(nid) = Pn-P
       enddo
@@ -148,7 +148,7 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
       if(abs(b_p(2))<1.D-20) b_p(2) = 0.d0
       if(abs(b_p(3))<1.D-20) b_p(3) = 0.d0
 
-      global_aux_vars(ghosted_id)%dphi(1,:) = b_p(:)
+      global_auxvars(ghosted_id)%dphi(1,:) = b_p(:)
 
       call VecRestoreArrayF90(B,b_p,ierr)
 
@@ -166,9 +166,9 @@ end subroutine RichardsUpdateLSMAuxVarsPatch
 
 ! ************************************************************************** !
 
-subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
+subroutine RichardsLSMFluxDerivative(rich_auxvar_up,global_auxvar_up,por_up, &
                                   sir_up,dd_up,perm_up, &
-                                  rich_aux_var_dn,global_aux_var_dn,por_dn, &
+                                  rich_auxvar_dn,global_auxvar_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
                                   area, dist, dist_gravity,upweight, &
                                   distance, &
@@ -195,8 +195,8 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 
   implicit none
 
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(richards_auxvar_type) :: rich_auxvar_up, rich_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -229,8 +229,8 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 
   PetscInt :: iphase, ideriv
   PetscInt :: nid_up, nid_dn,ii
-  type(richards_auxvar_type) :: rich_aux_var_pert_up, rich_aux_var_pert_dn
-  type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
+  type(richards_auxvar_type) :: rich_auxvar_pert_up, rich_auxvar_pert_dn
+  type(global_auxvar_type) :: global_auxvar_pert_up, global_auxvar_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
 
@@ -257,9 +257,9 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   ! One of the cells is a boundary cell, so use 2-point flux
   if(bnd_cell(ghosted_id_up).or.bnd_cell(ghosted_id_dn)) then
 #if 0         
-    call RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
+    call RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up,por_up, &
                                   sir_up,dd_up,perm_up, &
-                                  rich_aux_var_dn,global_aux_var_dn,por_dn, &
+                                  rich_auxvar_dn,global_auxvar_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
                                   area, dist, dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
@@ -279,35 +279,35 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   endif
 
   ! Flow term
-  if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
-    if (global_aux_var_up%sat(1) <eps) then
+  if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
+    if (global_auxvar_up%sat(1) <eps) then
       upweight=0.d0
-    else if (global_aux_var_dn%sat(1) <eps) then
+    else if (global_auxvar_dn%sat(1) <eps) then
       upweight=1.d0
     endif
 
-    density_ave =        upweight*global_aux_var_up%den(1)+ &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)
-    dden_ave_dp_up = upweight*rich_aux_var_up%dden_dp
-    dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+    density_ave =        upweight*global_auxvar_up%den(1)+ &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)
+    dden_ave_dp_up = upweight*rich_auxvar_up%dden_dp
+    dden_ave_dp_dn = (1.D0-upweight)*rich_auxvar_dn%dden_dp
 
-    dphi_x =       upweight *global_aux_var_up%dphi(1,1) + &
-             (1.d0-upweight)*global_aux_var_dn%dphi(1,1)
-    dphi_y =       upweight *global_aux_var_up%dphi(1,2) + &
-             (1.d0-upweight)*global_aux_var_dn%dphi(1,2)
-    dphi_z =       upweight *global_aux_var_up%dphi(1,3) + &
-             (1.d0-upweight)*global_aux_var_dn%dphi(1,3)
+    dphi_x =       upweight *global_auxvar_up%dphi(1,1) + &
+             (1.d0-upweight)*global_auxvar_dn%dphi(1,1)
+    dphi_y =       upweight *global_auxvar_up%dphi(1,2) + &
+             (1.d0-upweight)*global_auxvar_dn%dphi(1,2)
+    dphi_z =       upweight *global_auxvar_up%dphi(1,3) + &
+             (1.d0-upweight)*global_auxvar_dn%dphi(1,3)
 
     dphi = -(dist(1)*dphi_x + dist(2)*dphi_y + dist(3)*dphi_z)*distance
 
     ! H_x = P - W * rho * g *z
-    dHup_x_dp_up = 1.d0 - FMWH2O*rich_aux_var_up%dden_dp*option%gravity(1)*x(ghosted_id_up)
-    dHup_y_dp_up = 1.d0 - FMWH2O*rich_aux_var_up%dden_dp*option%gravity(2)*y(ghosted_id_up)
-    dHup_z_dp_up = 1.d0 - FMWH2O*rich_aux_var_up%dden_dp*option%gravity(3)*z(ghosted_id_up)
+    dHup_x_dp_up = 1.d0 - FMWH2O*rich_auxvar_up%dden_dp*option%gravity(1)*x(ghosted_id_up)
+    dHup_y_dp_up = 1.d0 - FMWH2O*rich_auxvar_up%dden_dp*option%gravity(2)*y(ghosted_id_up)
+    dHup_z_dp_up = 1.d0 - FMWH2O*rich_auxvar_up%dden_dp*option%gravity(3)*z(ghosted_id_up)
 
-    dHdn_x_dp_dn = 1.d0 - FMWH2O*rich_aux_var_dn%dden_dp*option%gravity(1)*x(ghosted_id_dn)
-    dHdn_y_dp_dn = 1.d0 - FMWH2O*rich_aux_var_dn%dden_dp*option%gravity(2)*y(ghosted_id_dn)
-    dHdn_z_dp_dn = 1.d0 - FMWH2O*rich_aux_var_dn%dden_dp*option%gravity(3)*z(ghosted_id_dn)
+    dHdn_x_dp_dn = 1.d0 - FMWH2O*rich_auxvar_dn%dden_dp*option%gravity(1)*x(ghosted_id_dn)
+    dHdn_y_dp_dn = 1.d0 - FMWH2O*rich_auxvar_dn%dden_dp*option%gravity(2)*y(ghosted_id_dn)
+    dHdn_z_dp_dn = 1.d0 - FMWH2O*rich_auxvar_dn%dden_dp*option%gravity(3)*z(ghosted_id_dn)
 
     dphi_x_dp_up =       upweight *jacfac(ghosted_id_up,0     ,1)*dHup_x_dp_up + &
                    (1.d0-upweight)*jacfac(ghosted_id_dn,nid_up,1)*dHup_x_dp_up
@@ -327,11 +327,11 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     dphi_dp_dn = -(dist(1)*dphi_x_dp_dn + dist(2)*dphi_y_dp_dn + dist(3)*dphi_z_dp_dn)
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
-      dukvr_dp_up = rich_aux_var_up%dkvr_dp
+      ukvr = rich_auxvar_up%kvr
+      dukvr_dp_up = rich_auxvar_up%dkvr_dp
     else
-      ukvr = rich_aux_var_dn%kvr
-      dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+      ukvr = rich_auxvar_dn%kvr
+      dukvr_dp_dn = rich_auxvar_dn%dkvr_dp
     endif
 
     if (ukvr>floweps) then
@@ -352,9 +352,9 @@ end subroutine RichardsLSMFluxDerivative
 
 ! ************************************************************************** !
 
-subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
+subroutine RichardsLSMFlux(rich_auxvar_up,global_auxvar_up, &
                            por_up,sir_up,dd_up,perm_up, &
-                           rich_aux_var_dn,global_aux_var_dn, &
+                           rich_auxvar_dn,global_auxvar_dn, &
                            por_dn,sir_dn,dd_dn,perm_dn, &
                            area, dist, dist_gravity,upweight, distance, &
                            option, &
@@ -372,8 +372,8 @@ subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
 
   implicit none
 
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(richards_auxvar_type) :: rich_auxvar_up, rich_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -402,9 +402,9 @@ subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
  ! One of the cells is a boundary cell, so use 2-point flux
   if(bnd_cell(ghosted_id_up).or.bnd_cell(ghosted_id_dn)) then
 #if 0         
-    call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
+    call RichardsFlux(rich_auxvar_up,global_auxvar_up, &
                       por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_dn,global_aux_var_dn, &
+                      rich_auxvar_dn,global_auxvar_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area, dist, dist_gravity,upweight, &
                       option,v_darcy,Res)
@@ -413,29 +413,29 @@ subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
   endif
 
   ! Flow term
-  if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
-    if (global_aux_var_up%sat(1) <eps) then
+  if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
+    if (global_auxvar_up%sat(1) <eps) then
       upweight=0.d0
-    else if (global_aux_var_dn%sat(1) <eps) then
+    else if (global_auxvar_dn%sat(1) <eps) then
       upweight=1.d0
     endif
 
-    density_ave = upweight*global_aux_var_up%den(1)+ &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)
+    density_ave = upweight*global_auxvar_up%den(1)+ &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)
 
-    dphi_x =       upweight *global_aux_var_up%dphi(1,1) + &
-             (1.d0-upweight)*global_aux_var_dn%dphi(1,1)
-    dphi_y =       upweight *global_aux_var_up%dphi(1,2) + &
-             (1.d0-upweight)*global_aux_var_dn%dphi(1,2)
-    dphi_z =       upweight *global_aux_var_up%dphi(1,3) + &
-             (1.d0-upweight)*global_aux_var_dn%dphi(1,3)
+    dphi_x =       upweight *global_auxvar_up%dphi(1,1) + &
+             (1.d0-upweight)*global_auxvar_dn%dphi(1,1)
+    dphi_y =       upweight *global_auxvar_up%dphi(1,2) + &
+             (1.d0-upweight)*global_auxvar_dn%dphi(1,2)
+    dphi_z =       upweight *global_auxvar_up%dphi(1,3) + &
+             (1.d0-upweight)*global_auxvar_dn%dphi(1,3)
 
     dphi = -(dist(1)*dphi_x + dist(2)*dphi_y + dist(3)*dphi_z)*distance
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
+      ukvr = rich_auxvar_up%kvr
     else
-      ukvr = rich_aux_var_dn%kvr
+      ukvr = rich_auxvar_dn%kvr
     endif
 
     if (ukvr>floweps) then

@@ -502,7 +502,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   type(option_type) :: option
 
 #ifdef DASVYAT
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   PetscInt :: icount, icell, iface, local_id
   PetscInt :: local_id_dn, local_id_up, ghosted_id_dn, ghosted_id_up
@@ -526,8 +526,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   numfaces = 6
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    call MFDAuxVarInit(aux_var, numfaces(icell), option)
+    auxvar => MFD_aux%auxvars(icell)
+    call MFDAuxVarInit(auxvar, numfaces(icell), option)
   enddo
 
   local_id = 1
@@ -540,8 +540,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
 
       if (local_id_dn>0) then
-        aux_var => MFD_aux%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option, icount)
         grid%fG2L(icount)=local_id
         grid%fL2G(local_id) = icount
         local_id = local_id + 1
@@ -561,12 +561,12 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
       endif
 
       if (local_id_dn>0) then
-        aux_var => MFD_aux%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option, icount)
       endif
       if (local_id_up>0) then
-        aux_var => MFD_aux%aux_vars(local_id_up)
-        call MFDAuxAddFace(aux_var,option, icount)
+        auxvar => MFD_aux%auxvars(local_id_up)
+        call MFDAuxAddFace(auxvar,option, icount)
       endif
     endif
   enddo
@@ -623,7 +623,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   IS :: is_local_bl
   PetscViewer :: viewer
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
   PetscInt, allocatable :: ghosted_ids(:)
@@ -690,9 +690,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   e2n_local_values = 0
 
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
       conn => grid%faces(ghost_face_id)%conn_set_ptr
       iface = grid%faces(ghost_face_id)%id
@@ -796,9 +796,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
   call VecGetArrayF90(grid%e2f, vec_ptr_e2f, ierr)
  
   do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    do icount = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(icount)
+    auxvar => MFD_aux%auxvars(icell)
+    do icount = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(icount)
       local_face_id = grid%fG2L(ghost_face_id)
 
       if (local_face_id == 0) then
@@ -3250,7 +3250,7 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
 
 #ifdef DASVYAT
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   type(unstructured_grid_type),pointer :: ugrid
   type(connection_set_list_type), pointer :: connection_set_list
@@ -3311,9 +3311,9 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
   ! For each local cell, allocate memory for mfd_auxvar_type that depends on
   ! on number of faces for a given cell.
   do local_id = 1, grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
+    auxvar => MFD%auxvars(local_id)
     nfaces = UCellGetNFaces(ugrid%cell_type(local_id),option)
-    call MFDAuxVarInit(aux_var,nfaces,option)
+    call MFDAuxVarInit(auxvar,nfaces,option)
   enddo
 
   ! Compute fG2L and fL2G mapping
@@ -3337,13 +3337,13 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       endif
 
       if (local_id_dn>0) then
-        aux_var => MFD%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option,iface)
       endif
 
       if (local_id_up>0) then
-        aux_var => MFD%aux_vars(local_id_up)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_up)
+        call MFDAuxAddFace(auxvar,option,iface)
       endif
 
       ! For 'local_id_up', find the face-id that is shared by cells
@@ -3394,8 +3394,8 @@ subroutine GridComputeCell2FaceForUGrid(grid,MFD,option)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
    
       if (local_id_dn>0) then
-        aux_var => MFD%aux_vars(local_id_dn)
-        call MFDAuxAddFace(aux_var,option,iface)
+        auxvar => MFD%auxvars(local_id_dn)
+        call MFDAuxAddFace(auxvar,option,iface)
         grid%fG2L(iface)=local_id
         grid%fL2G(local_id) = iface
         local_id = local_id + 1
@@ -3467,7 +3467,7 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   type(option_type) :: option
 
   type(unstructured_grid_type),pointer :: ugrid
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
 
   PetscInt :: local_id
@@ -3552,9 +3552,9 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
   e2n_local_values = 0
 
   do local_id = 1, grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
-    do iface = 1, aux_var%numfaces
-      ghost_face_id = aux_var%face_id_gh(iface)
+    auxvar => MFD%auxvars(local_id)
+    do iface = 1, auxvar%numfaces
+      ghost_face_id = auxvar%face_id_gh(iface)
       local_face_id = grid%fG2L(ghost_face_id)
       conn => grid%faces(ghost_face_id)%conn_set_ptr
       face_id = grid%faces(ghost_face_id)%id
@@ -3669,9 +3669,9 @@ subroutine GridSetGlobalCell2FaceForUGrid(grid,MFD,DOF,option)
  
   jcount=0
   do local_id=1,grid%nlmax
-    aux_var => MFD%aux_vars(local_id)
-    do iface=1,aux_var%numfaces
-      ghost_face_id=aux_var%face_id_gh(iface)
+    auxvar => MFD%auxvars(local_id)
+    do iface=1,auxvar%numfaces
+      ghost_face_id=auxvar%face_id_gh(iface)
       local_face_id=grid%fG2L(ghost_face_id)
 
       if (local_face_id==0) then

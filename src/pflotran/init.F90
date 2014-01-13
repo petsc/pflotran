@@ -2906,7 +2906,7 @@ subroutine assignMaterialPropToRegions(realization)
   type(strata_type), pointer :: strata
   type(patch_type), pointer :: patch  
   type(patch_type), pointer :: cur_patch
-  class(material_auxvar_type), pointer :: material_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   type(material_property_type), pointer :: material_property, null_material_property
   type(region_type), pointer :: region
@@ -2932,13 +2932,13 @@ subroutine assignMaterialPropToRegions(realization)
     endif
     
     patch%aux%Material => MaterialAuxCreate()
-    allocate(material_aux_vars(grid%ngmax))
+    allocate(material_auxvars(grid%ngmax))
     do ghosted_id = 1, grid%ngmax
-      call MaterialAuxVarInit(material_aux_vars(ghosted_id),option)
+      call MaterialAuxVarInit(material_auxvars(ghosted_id),option)
     enddo
     patch%aux%Material%num_aux = grid%ngmax
-    patch%aux%Material%aux_vars => material_aux_vars
-    nullify(material_aux_vars)
+    patch%aux%Material%auxvars => material_auxvars
+    nullify(material_auxvars)
     
     cur_patch => cur_patch%next
   enddo

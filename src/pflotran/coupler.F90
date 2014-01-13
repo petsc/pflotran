@@ -479,7 +479,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   type(region_type), pointer :: region
 
   type(mfd_type), pointer :: mfd_aux
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
 
   PetscErrorCode :: ierr
   PetscInt, pointer :: local_faces(:)
@@ -523,10 +523,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   else 
     do icell = 1, region%num_cells
       cell_id_local = region%cell_ids(icell)
-      aux_var => mfd_aux%aux_vars(cell_id_local)
+      auxvar => mfd_aux%auxvars(cell_id_local)
 
-      do iface = 1,aux_var%numfaces
-        face_id_ghosted = aux_var%face_id_gh(iface)
+      do iface = 1,auxvar%numfaces
+        face_id_ghosted = auxvar%face_id_gh(iface)
         face_id_local = grid%fG2L(face_id_ghosted)
  
         if (face_id_local > 0) then
@@ -553,10 +553,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
     do icell = 1, region%num_cells
     
       cell_id_local = region%cell_ids(icell)
-      aux_var => mfd_aux%aux_vars(cell_id_local)
+      auxvar => mfd_aux%auxvars(cell_id_local)
 
-      do iface = 1,aux_var%numfaces
-        face_id_ghosted = aux_var%face_id_gh(iface)
+      do iface = 1,auxvar%numfaces
+        face_id_ghosted = auxvar%face_id_gh(iface)
         face_id_local = grid%fG2L(face_id_ghosted)
 
         if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
@@ -635,10 +635,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
     do icell = 1, region%num_cells
     
       cell_id_local = region%cell_ids(icell)
-      aux_var => mfd_aux%aux_vars(cell_id_local)
+      auxvar => mfd_aux%auxvars(cell_id_local)
 
-      do iface = 1,aux_var%numfaces
-        face_id_ghosted = aux_var%face_id_gh(iface)
+      do iface = 1,auxvar%numfaces
+        face_id_ghosted = auxvar%face_id_gh(iface)
         face_id_local = grid%fG2L(face_id_ghosted)
 
         if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
@@ -707,7 +707,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   type(mfd_type), pointer :: mfd_aux
   PetscErrorCode :: ierr
   PetscInt, pointer :: local_faces(:)
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscInt :: conn_id, stride, iface_type, e2n_size
   PetscScalar, pointer :: e2n_local(:)
   type(connection_set_type), pointer :: conn_set_ptr
@@ -740,9 +740,9 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
 
   do icell = 1, region%num_cells
     cell_id_local = region%cell_ids(icell)
-    aux_var => mfd_aux%aux_vars(cell_id_local)
-    do iface = 1,aux_var%numfaces
-      face_id_ghosted = aux_var%face_id_gh(iface)
+    auxvar => mfd_aux%auxvars(cell_id_local)
+    do iface = 1,auxvar%numfaces
+      face_id_ghosted = auxvar%face_id_gh(iface)
       if (coupler%faces_set(icell) == face_id_ghosted) then
         e2n_local((cell_id_local-1)*stride + iface) = -coupler%flow_condition%itype(RICHARDS_PRESSURE_DOF)
       end if

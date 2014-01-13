@@ -619,8 +619,8 @@ subroutine PMGeneralMaxChange(this)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: dP_liquid_max
   PetscReal :: dP_gas_max
@@ -641,8 +641,8 @@ subroutine PMGeneralMaxChange(this)
   call printMsg(this%option,'PMGeneral%MaxChange()')
 #endif
 
-  gen_aux_vars => this%realization%patch%aux%General%aux_vars
-  global_aux_vars => this%realization%patch%aux%Global%aux_vars
+  gen_auxvars => this%realization%patch%aux%General%auxvars
+  global_auxvars => this%realization%patch%aux%Global%auxvars
   
   dP_liquid_max = 0.d0
   dP_gas_max = 0.d0
@@ -659,10 +659,10 @@ subroutine PMGeneralMaxChange(this)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     ! flow_dxx only represents change if same primary dependent variable
-    if (gen_aux_vars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) == &
-        global_aux_vars(ghosted_id)%istate) then
+    if (gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) == &
+        global_auxvars(ghosted_id)%istate) then
       offset = (local_id-1)*option%nflowdof
-      select case(global_aux_vars(ghosted_id)%istate)
+      select case(global_auxvars(ghosted_id)%istate)
         case(LIQUID_STATE)
           dP_liquid_max = max(dP_liquid_max, &
                               vec_ptr(offset+GENERAL_LIQUID_PRESSURE_DOF))

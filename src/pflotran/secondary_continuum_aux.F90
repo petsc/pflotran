@@ -164,7 +164,7 @@ end function SecondaryAuxRTCreate
 
 ! ************************************************************************** !
 
-subroutine SecondaryAuxVarRTDestroy(aux_var)
+subroutine SecondaryAuxVarRTDestroy(auxvar)
   ! 
   ! Deallocates a secondary continuum reactive
   ! transport auxiliary variable object
@@ -177,18 +177,18 @@ subroutine SecondaryAuxVarRTDestroy(aux_var)
 
   implicit none
   
-  type(sec_transport_type) :: aux_var
+  type(sec_transport_type) :: auxvar
   
-  call RTAuxVarDestroy(aux_var%sec_rt_auxvar)
-  call DeallocateArray(aux_var%area)
-  call DeallocateArray(aux_var%vol)
-  call DeallocateArray(aux_var%dm_plus)
-  call DeallocateArray(aux_var%dm_minus)
-  call DeallocateArray(aux_var%sec_jac)
-  call DeallocateArray(aux_var%cxm)
-  call DeallocateArray(aux_var%cxp)
-  call DeallocateArray(aux_var%cdl)
-  call DeallocateArray(aux_var%r)
+  call RTAuxVarDestroy(auxvar%sec_rt_auxvar)
+  call DeallocateArray(auxvar%area)
+  call DeallocateArray(auxvar%vol)
+  call DeallocateArray(auxvar%dm_plus)
+  call DeallocateArray(auxvar%dm_minus)
+  call DeallocateArray(auxvar%sec_jac)
+  call DeallocateArray(auxvar%cxm)
+  call DeallocateArray(auxvar%cxp)
+  call DeallocateArray(auxvar%cdl)
+  call DeallocateArray(auxvar%r)
   
 end subroutine SecondaryAuxVarRTDestroy
 

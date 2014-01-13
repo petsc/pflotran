@@ -30,7 +30,7 @@ module MFD_Aux_module
   type, public :: mfd_type
     PetscInt :: num_aux
     PetscInt :: ndof
-    type(mfd_auxvar_type), pointer :: aux_vars(:)
+    type(mfd_auxvar_type), pointer :: auxvars(:)
     IS :: is_ghosted_local_faces ! IS for ghosted faces with local on-processor numbering
     IS :: is_local_local_faces ! IS for local faces with local on-processor numbering
     IS :: is_ghosted_petsc_faces ! IS for ghosted faces with petsc numbering
@@ -83,7 +83,7 @@ function MFDAuxCreate()
 
   allocate(aux) 
   aux%num_aux = 0
-  nullify(aux%aux_vars)
+  nullify(aux%auxvars)
 
   aux%is_ghosted_local_faces = 0
  
@@ -135,24 +135,24 @@ subroutine MFDAuxInit(aux, num_aux, option)
   PetscInt :: num_aux, i
   type(option_type) :: option
 
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
-  allocate(aux%aux_vars(num_aux))
+  if (associated(aux%auxvars)) deallocate(aux%auxvars)
+  allocate(aux%auxvars(num_aux))
 
   do i=1,num_aux
-    nullify(aux%aux_vars(i)%face_id_gh)
-    nullify(aux%aux_vars(i)%MassMatrixInv)
-    nullify(aux%aux_vars(i)%StiffMatrix)
-    nullify(aux%aux_vars(i)%Rl)
-    nullify(aux%aux_vars(i)%dRl_dp)
-    nullify(aux%aux_vars(i)%dRp_dl)
-    nullify(aux%aux_vars(i)%dRp_dneig)
+    nullify(aux%auxvars(i)%face_id_gh)
+    nullify(aux%auxvars(i)%MassMatrixInv)
+    nullify(aux%auxvars(i)%StiffMatrix)
+    nullify(aux%auxvars(i)%Rl)
+    nullify(aux%auxvars(i)%dRl_dp)
+    nullify(aux%auxvars(i)%dRp_dl)
+    nullify(aux%auxvars(i)%dRp_dneig)
   end do
 
 end subroutine MFDAuxInit
 
 ! ************************************************************************** !
 
-subroutine MFDAuxVarInit(aux_var, numfaces, option)
+subroutine MFDAuxVarInit(auxvar, numfaces, option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -164,20 +164,20 @@ subroutine MFDAuxVarInit(aux_var, numfaces, option)
 
   implicit none
   
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscInt :: numfaces
   type(option_type) :: option
 
-  aux_var%numfaces = numfaces
-  if (associated(aux_var%face_id_gh)) deallocate(aux_var%face_id_gh)
-  allocate(aux_var%face_id_gh(numfaces))
-  aux_var%face_id_gh(1:numfaces) = 0
+  auxvar%numfaces = numfaces
+  if (associated(auxvar%face_id_gh)) deallocate(auxvar%face_id_gh)
+  allocate(auxvar%face_id_gh(numfaces))
+  auxvar%face_id_gh(1:numfaces) = 0
   
 end subroutine MFDAuxVarInit
 
 ! ************************************************************************** !
 
-subroutine MFDAuxAddFace(aux_var, option, face_id)
+subroutine MFDAuxAddFace(auxvar, option, face_id)
   ! 
   ! MFDAuxVarAddFace: Add face_id to list of faces
   ! 
@@ -189,7 +189,7 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
 
   implicit none
   
-  type(mfd_auxvar_type) :: aux_var
+  type(mfd_auxvar_type) :: auxvar
   PetscInt :: face_id
   type(option_type) :: option 
 
@@ -198,9 +198,9 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
 
   done = PETSC_FALSE
 
-  do i = 1, aux_var%numfaces
-     if (aux_var%face_id_gh(i) == 0) then
-        aux_var%face_id_gh(i) = face_id
+  do i = 1, auxvar%numfaces
+     if (auxvar%face_id_gh(i) == 0) then
+        auxvar%face_id_gh(i) = face_id
         done = PETSC_TRUE
         exit
      endif
@@ -215,7 +215,7 @@ end subroutine MFDAuxAddFace
 
 ! ************************************************************************** !
 
-subroutine MFDAuxVarDestroy(aux_var)
+subroutine MFDAuxVarDestroy(auxvar)
   ! 
   ! Deallocates a mode auxiliary object
   ! 
@@ -225,29 +225,29 @@ subroutine MFDAuxVarDestroy(aux_var)
 
   implicit none
 
-  type(mfd_auxvar_type) :: aux_var
+  type(mfd_auxvar_type) :: auxvar
 
 
-  if (associated(aux_var%face_id_gh)) deallocate(aux_var%face_id_gh)
-  nullify(aux_var%face_id_gh)
+  if (associated(auxvar%face_id_gh)) deallocate(auxvar%face_id_gh)
+  nullify(auxvar%face_id_gh)
 
-  if (associated(aux_var%MassMatrixInv)) deallocate(aux_var%MassMatrixInv)
-  nullify(aux_var%MassMatrixInv)
+  if (associated(auxvar%MassMatrixInv)) deallocate(auxvar%MassMatrixInv)
+  nullify(auxvar%MassMatrixInv)
 
-  if (associated(aux_var%StiffMatrix)) deallocate(aux_var%StiffMatrix)
-  nullify(aux_var%StiffMatrix)
+  if (associated(auxvar%StiffMatrix)) deallocate(auxvar%StiffMatrix)
+  nullify(auxvar%StiffMatrix)
 
-  if (associated(aux_var%Rl)) deallocate(aux_var%Rl)
-  nullify(aux_var%Rl)
+  if (associated(auxvar%Rl)) deallocate(auxvar%Rl)
+  nullify(auxvar%Rl)
 
-  if (associated(aux_var%dRp_dl)) deallocate(aux_var%dRp_dl)
-  nullify(aux_var%dRp_dl)
+  if (associated(auxvar%dRp_dl)) deallocate(auxvar%dRp_dl)
+  nullify(auxvar%dRp_dl)
 
-  if (associated(aux_var%dRl_dp)) deallocate(aux_var%dRl_dp)
-  nullify(aux_var%dRl_dp)
+  if (associated(auxvar%dRl_dp)) deallocate(auxvar%dRl_dp)
+  nullify(auxvar%dRl_dp)
 
-  if (associated(aux_var%dRp_dneig)) deallocate(aux_var%dRp_dneig)
-  nullify(aux_var%dRp_dneig)
+  if (associated(auxvar%dRp_dneig)) deallocate(auxvar%dRp_dneig)
+  nullify(auxvar%dRp_dneig)
 
 end subroutine MFDAuxVarDestroy
 
@@ -269,13 +269,13 @@ subroutine MFDAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  if (associated(aux%aux_vars)) then
+  if (associated(aux%auxvars)) then
     do iaux = 1, aux%num_aux
-      call MFDAuxVarDestroy(aux%aux_vars(iaux))
+      call MFDAuxVarDestroy(aux%auxvars(iaux))
     enddo  
-    deallocate(aux%aux_vars)
+    deallocate(aux%auxvars)
   endif
-  nullify(aux%aux_vars)
+  nullify(aux%auxvars)
   
   if (aux%is_ghosted_local_faces /= 0) &
          call ISDestroy(aux%is_ghosted_local_faces, ierr)
@@ -336,47 +336,47 @@ end subroutine MFDAuxDestroy
 
 ! ************************************************************************** !
 
-subroutine MFDAuxInitResidDerivArrays(aux_var, option)
+subroutine MFDAuxInitResidDerivArrays(auxvar, option)
 
 use Option_module
 
   implicit none
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(option_type) :: option
 
-  allocate(aux_var%Rl(aux_var%numfaces))
-  allocate(aux_var%dRl_dp(aux_var%numfaces))
-  allocate(aux_var%dRp_dl(aux_var%numfaces))
-  allocate(aux_var%dRp_dneig(aux_var%numfaces))
+  allocate(auxvar%Rl(auxvar%numfaces))
+  allocate(auxvar%dRl_dp(auxvar%numfaces))
+  allocate(auxvar%dRp_dl(auxvar%numfaces))
+  allocate(auxvar%dRp_dneig(auxvar%numfaces))
 
-  aux_var%Rl = 0.
-  aux_var%dRl_dp = 0.
-  aux_var%dRp_dl = 0.
-  aux_var%dRp_dneig = 0.
+  auxvar%Rl = 0.
+  auxvar%dRl_dp = 0.
+  auxvar%dRp_dl = 0.
+  auxvar%dRp_dneig = 0.
  
-  allocate(aux_var%WB(aux_var%numfaces))
-  allocate(aux_var%gr(aux_var%numfaces))
+  allocate(auxvar%WB(auxvar%numfaces))
+  allocate(auxvar%gr(auxvar%numfaces))
 
-  aux_var%WB = 0.
-  aux_var%gr = 0.
+  auxvar%WB = 0.
+  auxvar%gr = 0.
 
 end subroutine MFDAuxInitResidDerivArrays
 
 ! ************************************************************************** !
 
-subroutine MFDAuxInitStiffMatrix(aux_var, option)
+subroutine MFDAuxInitStiffMatrix(auxvar, option)
 
    use Option_module
 
   implicit none
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(option_type) :: option
 
-  allocate(aux_var%StiffMatrix(aux_var%numfaces, aux_var%numfaces))
+  allocate(auxvar%StiffMatrix(auxvar%numfaces, auxvar%numfaces))
 
-  aux_var%StiffMatrix = 0.
+  auxvar%StiffMatrix = 0.
 
 end subroutine MFDAuxInitStiffMatrix
 

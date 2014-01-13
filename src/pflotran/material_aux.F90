@@ -41,7 +41,7 @@ module Material_Aux_class
   type, public :: material_type
     PetscInt :: num_aux
     type(material_parameter_type), pointer :: material_parameter
-    class(material_auxvar_type), pointer :: aux_vars(:)
+    class(material_auxvar_type), pointer :: auxvars(:)
   end type material_type  
   
   public :: MaterialAuxCreate, &
@@ -71,7 +71,7 @@ function MaterialAuxCreate()
   type(material_type), pointer :: aux
 
   allocate(aux)
-  nullify(aux%aux_vars)
+  nullify(aux%auxvars)
   allocate(aux%material_parameter)
   nullify(aux%material_parameter%sir)
   nullify(aux%material_parameter%dencpr)
@@ -83,7 +83,7 @@ end function MaterialAuxCreate
 
 ! ************************************************************************** !
 
-subroutine MaterialAuxVarInit(aux_var,option)
+subroutine MaterialAuxVarInit(auxvar,option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -95,26 +95,26 @@ subroutine MaterialAuxVarInit(aux_var,option)
 
   implicit none
   
-  class(material_auxvar_type) :: aux_var
+  class(material_auxvar_type) :: auxvar
   type(option_type) :: option
   
-  aux_var%volume = -999.d0
-  aux_var%porosity = -999.d0
-  aux_var%tortuosity = -999.d0
+  auxvar%volume = -999.d0
+  auxvar%porosity = -999.d0
+  auxvar%tortuosity = -999.d0
   if (option%iflowmode /= NULL_MODE) then
-    allocate(aux_var%permeability(3))
-    aux_var%permeability = -999.d0
+    allocate(auxvar%permeability(3))
+    auxvar%permeability = -999.d0
   else
-    nullify(aux_var%permeability)
+    nullify(auxvar%permeability)
   endif
-  nullify(aux_var%sat_func_prop)
-  nullify(aux_var%rock_properties)
+  nullify(auxvar%sat_func_prop)
+  nullify(auxvar%rock_properties)
   
 end subroutine MaterialAuxVarInit
 
 ! ************************************************************************** !
 
-subroutine MaterialAuxVarCopy(aux_var,aux_var2,option)
+subroutine MaterialAuxVarCopy(auxvar,auxvar2,option)
   ! 
   ! Copies an auxiliary variable
   ! 
@@ -126,27 +126,27 @@ subroutine MaterialAuxVarCopy(aux_var,aux_var2,option)
 
   implicit none
   
-  class(material_auxvar_type) :: aux_var, aux_var2
+  class(material_auxvar_type) :: auxvar, auxvar2
   type(option_type) :: option
   
-  aux_var2%volume = aux_var%volume
-  aux_var2%porosity = aux_var%porosity
-  aux_var2%tortuosity = aux_var%tortuosity
-  if (associated(aux_var%permeability)) then
-    aux_var2%permeability = aux_var%permeability
+  auxvar2%volume = auxvar%volume
+  auxvar2%porosity = auxvar%porosity
+  auxvar2%tortuosity = auxvar%tortuosity
+  if (associated(auxvar%permeability)) then
+    auxvar2%permeability = auxvar%permeability
   endif
-  if (associated(aux_var%sat_func_prop)) then
-    aux_var2%sat_func_prop = aux_var%sat_func_prop
+  if (associated(auxvar%sat_func_prop)) then
+    auxvar2%sat_func_prop = auxvar%sat_func_prop
   endif
-  if (associated(aux_var%rock_properties)) then
-    aux_var2%rock_properties = aux_var%rock_properties
+  if (associated(auxvar%rock_properties)) then
+    auxvar2%rock_properties = auxvar%rock_properties
   endif
 
 end subroutine MaterialAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine MaterialPermTensorToScalar(material_aux_var,dist, &
+subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
                                       scalar_permeability)
   ! 
   ! Transforms a diagonal permeability tensor to a scalar through a dot 
@@ -160,7 +160,7 @@ subroutine MaterialPermTensorToScalar(material_aux_var,dist, &
 
   implicit none
   
-  class(material_auxvar_type) :: material_aux_var
+  class(material_auxvar_type) :: material_auxvar
   ! -1 = fraction upwind
   ! 0 = magnitude
   ! 1 = unit x-dir
@@ -170,15 +170,15 @@ subroutine MaterialPermTensorToScalar(material_aux_var,dist, &
   PetscReal, intent(out) :: scalar_permeability
   
   scalar_permeability = &
-            material_aux_var%permeability(perm_xx_index)*dabs(dist(1))+ &
-            material_aux_var%permeability(perm_yy_index)*dabs(dist(2))+ &
-            material_aux_var%permeability(perm_zz_index)*dabs(dist(3))
+            material_auxvar%permeability(perm_xx_index)*dabs(dist(1))+ &
+            material_auxvar%permeability(perm_yy_index)*dabs(dist(2))+ &
+            material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
 
 end subroutine MaterialPermTensorToScalar
 
 ! ************************************************************************** !
 
-subroutine MaterialAuxVarStrip(aux_var)
+subroutine MaterialAuxVarStrip(auxvar)
   ! 
   ! Deallocates a material auxiliary object
   ! 
@@ -190,11 +190,11 @@ subroutine MaterialAuxVarStrip(aux_var)
   
   implicit none
 
-  class(material_auxvar_type) :: aux_var
+  class(material_auxvar_type) :: auxvar
   
-  call DeallocateArray(aux_var%permeability)
-  call DeallocateArray(aux_var%sat_func_prop)
-  call DeallocateArray(aux_var%rock_properties)
+  call DeallocateArray(auxvar%permeability)
+  call DeallocateArray(auxvar%sat_func_prop)
+  call DeallocateArray(auxvar%rock_properties)
   
 end subroutine MaterialAuxVarStrip
 
@@ -216,13 +216,13 @@ subroutine MaterialAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  if (associated(aux%aux_vars)) then
+  if (associated(aux%auxvars)) then
     do iaux = 1, aux%num_aux
-      call MaterialAuxVarStrip(aux%aux_vars(iaux))
+      call MaterialAuxVarStrip(aux%auxvars(iaux))
     enddo  
-    deallocate(aux%aux_vars)
+    deallocate(aux%auxvars)
   endif
-  nullify(aux%aux_vars)
+  nullify(aux%auxvars)
     
   if (associated(aux%material_parameter)) then
     if (associated(aux%material_parameter%sir)) &

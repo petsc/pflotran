@@ -1548,8 +1548,8 @@ subroutine OutputMassBalance(realization_base)
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option  
   type(coupler_type), pointer :: coupler
-  type(global_auxvar_type), pointer :: global_aux_vars_bc_or_ss(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc_or_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc_or_ss(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars_bc_or_ss(:)
   
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: filename
@@ -1923,9 +1923,9 @@ subroutine OutputMassBalance(realization_base)
   endif
   
   coupler => patch%boundary_conditions%first
-  global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_bc
+  global_auxvars_bc_or_ss => patch%aux%Global%auxvars_bc
   if (option%ntrandof > 0) then
-    rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_bc
+    rt_auxvars_bc_or_ss => patch%aux%RT%auxvars_bc
   endif    
   bcs_done = PETSC_FALSE
   do 
@@ -1937,9 +1937,9 @@ subroutine OutputMassBalance(realization_base)
         if (associated(patch%source_sinks)) then
           coupler => patch%source_sinks%first
           if (.not.associated(coupler)) exit
-          global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_ss
+          global_auxvars_bc_or_ss => patch%aux%Global%auxvars_ss
           if (option%ntrandof > 0) then
-            rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_ss
+            rt_auxvars_bc_or_ss => patch%aux%RT%auxvars_ss
           endif    
         else
           exit
@@ -1958,17 +1958,17 @@ subroutine OutputMassBalance(realization_base)
         do iconn = 1, coupler%connection_set%num_connections
           sum_area(1) = sum_area(1) + &
             coupler%connection_set%area(iconn)
-          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) >= 0.5d0) then
+          if (global_auxvars_bc_or_ss(offset+iconn)%sat(1) >= 0.5d0) then
             sum_area(2) = sum_area(2) + &
               coupler%connection_set%area(iconn)
           endif
-          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) > 0.99d0) then
+          if (global_auxvars_bc_or_ss(offset+iconn)%sat(1) > 0.99d0) then
             sum_area(3) = sum_area(3) + &
               coupler%connection_set%area(iconn)
           endif
           sum_area(4) = sum_area(4) + &
             coupler%connection_set%area(iconn)* &
-            global_aux_vars_bc_or_ss(offset+iconn)%sat(1)
+            global_auxvars_bc_or_ss(offset+iconn)%sat(1)
         enddo
 
         call MPI_Reduce(sum_area,sum_area_global, &
@@ -2001,7 +2001,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -2017,7 +2017,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
@@ -2037,7 +2037,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -2053,7 +2053,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
@@ -2072,7 +2072,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -2088,7 +2088,7 @@ subroutine OutputMassBalance(realization_base)
           ! print out H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+            sum_kg = sum_kg + global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
@@ -2109,7 +2109,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
             
             if (icomp == 1) then
@@ -2134,7 +2134,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
             
         !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o/glycol
@@ -2161,7 +2161,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
@@ -2179,7 +2179,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
 
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
@@ -2202,7 +2202,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
@@ -2220,7 +2220,7 @@ subroutine OutputMassBalance(realization_base)
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
-                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+                global_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
 
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
@@ -2245,7 +2245,7 @@ subroutine OutputMassBalance(realization_base)
       ! print out cumulative boundary flux
       sum_mol = 0.d0
       do iconn = 1, coupler%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+        sum_mol = sum_mol + rt_auxvars_bc_or_ss(offset+iconn)%mass_balance
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -2265,7 +2265,7 @@ subroutine OutputMassBalance(realization_base)
       ! print out boundary flux
       sum_mol = 0.d0
       do iconn = 1, coupler%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta 
+        sum_mol = sum_mol + rt_auxvars_bc_or_ss(offset+iconn)%mass_balance_delta 
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -2339,7 +2339,7 @@ subroutine OutputMassBalance(realization_base)
     if (option%ntrandof > 0) then
 
       sum_mol = 0.d0
-      sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
+      sum_mol = sum_mol + patch%aux%RT%auxvars(iconn)%mass_balance
 
       int_mpi = option%nphase*option%ntrandof
       call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &

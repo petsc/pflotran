@@ -399,8 +399,8 @@ subroutine PMCSurfaceSetAuxData(this)
   class(pmc_surface_type) :: this
 
   type(grid_type), pointer :: surf_grid
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
   type(patch_type), pointer :: surf_patch
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
@@ -461,8 +461,8 @@ subroutine PMCSurfaceSetAuxData(this)
             surf_realization => pmc%surf_realization
             surf_patch => surf_realization%patch
             surf_grid => surf_patch%grid
-            surf_global_aux_vars => surf_patch%surf_aux%SurfaceGlobal%aux_vars
-            surf_aux_vars => surf_patch%surf_aux%SurfaceTH%aux_vars
+            surf_global_auxvars => surf_patch%surf_aux%SurfaceGlobal%auxvars
+            surf_auxvars => surf_patch%surf_aux%SurfaceTH%auxvars
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx_loc, &
                                 xx_loc_p,ierr)
@@ -481,7 +481,7 @@ subroutine PMCSurfaceSetAuxData(this)
                 surf_temp_p(local_id) = this%option%reference_temperature
               else
                 surf_head_p(local_id) = xx_loc_p(istart)
-                surf_temp_p(local_id) = surf_global_aux_vars(ghosted_id)%temp(1)
+                surf_temp_p(local_id) = surf_global_auxvars(ghosted_id)%temp(1)
               endif
             enddo
 
@@ -577,7 +577,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   PetscInt :: istart, iend
   PetscReal :: den
   PetscErrorCode :: ierr
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
 
   print *, 'PMCSurfaceGetAuxDataAfterRestart()'
   if (this%option%subsurf_surf_coupling == SEQ_COUPLED) then
@@ -631,7 +631,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
             ! subroutine needs to be modified in future.
             call EOSWaterdensity(this%option%reference_temperature,this%option%reference_pressure,den)
 
-            surf_aux_vars => pmc%surf_realization%patch%surf_aux%SurfaceTH%aux_vars
+            surf_auxvars => pmc%surf_realization%patch%surf_aux%SurfaceTH%auxvars
 
             call VecGetArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecGetArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)
@@ -649,7 +649,7 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
               surfpress_p(count) = xx_p(istart)*den*abs(this%option%gravity(3)) + &
                                    this%option%reference_pressure
               surftemp_p = xx_p(iend)/xx_p(istart)/den/ &
-                      surf_aux_vars(ghosted_id)%Cwi - 273.15d0
+                      surf_auxvars(ghosted_id)%Cwi - 273.15d0
             enddo
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%flow_xx, xx_p, ierr)
             call VecRestoreArrayF90(pmc%surf_realization%surf_field%press_subsurf, surfpress_p, ierr)

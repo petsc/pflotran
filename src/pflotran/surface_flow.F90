@@ -293,8 +293,8 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   type(coupler_type), pointer               :: source_sink
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
   PetscInt  :: local_id_up, local_id_dn, local_id
   PetscInt  :: ghosted_id_up, ghosted_id_dn, ghosted_id
@@ -317,16 +317,16 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   grid => patch%grid
   option => surf_realization%option
   surf_field => surf_realization%surf_field
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   surf_field              => surf_realization%surf_field
   discretization          => surf_realization%discretization
   option                  => surf_realization%option
   patch                   => surf_realization%patch
   grid                    => patch%grid
-  surf_global_aux_vars    => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_global_auxvars    => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
   
   surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%iter_count < 10) then
@@ -375,10 +375,10 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      if(surf_global_aux_vars(ghosted_id_up)%head(1)<0.d0 .or. &
-         surf_global_aux_vars(ghosted_id_dn)%head(1)<0.d0) then
-        write(*,*),'In SurfaceFlowFlux: ', surf_global_aux_vars(ghosted_id_up)%head(1), &
-          surf_global_aux_vars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
+      if(surf_global_auxvars(ghosted_id_up)%head(1)<0.d0 .or. &
+         surf_global_auxvars(ghosted_id_dn)%head(1)<0.d0) then
+        write(*,*),'In SurfaceFlowFlux: ', surf_global_auxvars(ghosted_id_up)%head(1), &
+          surf_global_auxvars(ghosted_id_dn)%head(1),ghosted_id_up,ghosted_id_dn
           option%io_buffer='stopping: -ve head values '
           call printErrMsg(option)
       endif
@@ -390,10 +390,10 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
           call printErrMsg(option)
         case (DIFFUSION_WAVE)
 #if 1
-        call SurfaceFlowFlux(surf_global_aux_vars(ghosted_id_up), &
+        call SurfaceFlowFlux(surf_global_auxvars(ghosted_id_up), &
                              zc(ghosted_id_up), &
                              mannings_loc_p(ghosted_id_up), &
-                             surf_global_aux_vars(ghosted_id_dn), &
+                             surf_global_auxvars(ghosted_id_dn), &
                              zc(ghosted_id_dn), &
                              mannings_loc_p(ghosted_id_dn), &
                              dist, cur_connection_set%area(iconn), &
@@ -441,7 +441,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
 #if 1
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -548,8 +548,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   type(coupler_type), pointer               :: boundary_condition
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
@@ -574,8 +574,8 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   grid => patch%grid
   option => surf_realization%option
   surf_field => surf_realization%surf_field
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
   call VecGetArrayF90(surf_field%area,area_p,ierr)
@@ -611,10 +611,10 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       select case(option%surface_flow_formulation)
         case (KINEMATIC_WAVE)
         case (DIFFUSION_WAVE)
-          call SurfaceFlowFlux(surf_global_aux_vars(ghosted_id_up), &
+          call SurfaceFlowFlux(surf_global_auxvars(ghosted_id_up), &
                                zc(ghosted_id_up), &
                                mannings_loc_p(ghosted_id_up), &
-                               surf_global_aux_vars(ghosted_id_dn), &
+                               surf_global_auxvars(ghosted_id_dn), &
                                zc(ghosted_id_dn), &
                                mannings_loc_p(ghosted_id_dn), &
                                dist, cur_connection_set%area(iconn), &
@@ -653,7 +653,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
       slope_dn = dz/dist
 
       call SurfaceFlowBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -676,10 +676,10 @@ end subroutine SurfaceFlowComputeMaxDt
 
 ! ************************************************************************** !
 
-subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
+subroutine SurfaceFlowFlux(surf_global_auxvar_up, &
                          zc_up, &
                          mannings_up, &
-                         surf_global_aux_var_dn, &
+                         surf_global_auxvar_dn, &
                          zc_dn, &
                          mannings_dn, &
                          dist, &
@@ -701,8 +701,8 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
   implicit none
 
   type(option_type) :: option
-  type(surface_global_auxvar_type) :: surf_global_aux_var_up
-  type(surface_global_auxvar_type) :: surf_global_aux_var_dn
+  type(surface_global_auxvar_type) :: surf_global_auxvar_up
+  type(surface_global_auxvar_type) :: surf_global_auxvar_dn
   PetscReal :: zc_up, zc_dn
   PetscReal :: mannings_up, mannings_dn
 
@@ -720,20 +720,20 @@ subroutine SurfaceFlowFlux(surf_global_aux_var_up, &
   ! initialize
   flux = 0.d0
 
-  head_up = surf_global_aux_var_up%head(1) + zc_up
-  head_dn = surf_global_aux_var_dn%head(1) + zc_dn
+  head_up = surf_global_auxvar_up%head(1) + zc_up
+  head_dn = surf_global_auxvar_dn%head(1) + zc_dn
 
   if (head_up>head_dn) then
     mannings_half = mannings_up
-    if (surf_global_aux_var_up%head(1)>eps) then
-      hw_half = surf_global_aux_var_up%head(1)
+    if (surf_global_auxvar_up%head(1)>eps) then
+      hw_half = surf_global_auxvar_up%head(1)
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
-    if (surf_global_aux_var_dn%head(1)>eps) then
-      hw_half = surf_global_aux_var_dn%head(1)
+    if (surf_global_auxvar_dn%head(1)>eps) then
+      hw_half = surf_global_auxvar_dn%head(1)
     else
       hw_half = 0.d0
     endif
@@ -757,7 +757,7 @@ end subroutine SurfaceFlowFlux
 ! ************************************************************************** !
 
 subroutine SurfaceFlowBCFlux(ibndtype, &
-                           surf_global_aux_var, &
+                           surf_global_auxvar, &
                            slope, &
                            mannings, &
                            length, &
@@ -777,7 +777,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   implicit none
 
   type(option_type) :: option
-  type(surface_global_auxvar_type) :: surf_global_aux_var
+  type(surface_global_auxvar_type) :: surf_global_auxvar
   PetscReal :: slope
   PetscReal :: mannings
   PetscReal :: length
@@ -794,7 +794,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
-  head = surf_global_aux_var%head(1)
+  head = surf_global_auxvar%head(1)
   
   select case(pressure_bc_type)
     case (ZERO_GRADIENT_BC)
@@ -843,9 +843,9 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: ghosted_id, local_id, sum_connection, iconn
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -859,9 +859,9 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
   grid => patch%grid
   surf_field => surf_realization%surf_field
 
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
   
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
@@ -873,7 +873,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    surf_global_aux_vars(ghosted_id)%head(1) = xx_loc_p(ghosted_id)
+    surf_global_auxvars(ghosted_id)%head(1) = xx_loc_p(ghosted_id)
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
    
@@ -899,7 +899,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
             xxbc(1) = xx_loc_p(ghosted_id)
         end select
       
-      surf_global_aux_vars_bc(sum_connection)%head(1) = xxbc(1)
+      surf_global_auxvars_bc(sum_connection)%head(1) = xxbc(1)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -918,7 +918,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       xxss = xx_loc_p(ghosted_id)
-      surf_global_aux_vars_ss(sum_connection)%head(1) = xxss(1)
+      surf_global_auxvars_ss(sum_connection)%head(1) = xxss(1)
     enddo
     source_sink => source_sink%next
   enddo

@@ -3029,7 +3029,7 @@ subroutine StepperStepSurfaceFlowExplicitDT(surf_realization,stepper,failure)
       call SurfaceTHUpdateTemperature(surf_realization)
       call SurfaceTHUpdateAuxVars(surf_realization)
       ! override flags since they will soon be out of date
-      surf_realization%patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
+      surf_realization%patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_FALSE
     case default
   end select
 
@@ -3165,7 +3165,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
     if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
       call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 !       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE,* are passed
-!       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
+!       patch%aux%RT%auxvars_up_to_date = PETSC_TRUE 
     endif
     if (realization%reaction%use_log_formulation) then
       call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
@@ -4329,8 +4329,8 @@ subroutine StepperSandbox(realization)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: volume_p(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend
   PetscInt :: species_offset
@@ -4347,8 +4347,8 @@ subroutine StepperSandbox(realization)
   reaction => realization%reaction
   option => realization%option
 
-  rt_aux_vars => patch%Aux%RT%aux_vars
-  global_aux_vars => patch%Aux%Global%aux_vars
+  rt_auxvars => patch%Aux%RT%auxvars
+  global_auxvars => patch%Aux%Global%auxvars
   rt_sec_transport_vars => patch%Aux%SC_RT%sec_transport_vars
 
                                    ! cells     bcs        act coefs.
@@ -4380,7 +4380,7 @@ subroutine StepperSandbox(realization)
       vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
     endif
     
-    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%total(:,ONE_INTEGER)
+    tran_xx_p(istart:iend) = rt_auxvars(ghosted_id)%total(:,ONE_INTEGER)
     ! scale uo2++ total concentration by 0.25
     tran_xx_p(istart + species_offset) = 0.25d0 * &
                                          tran_xx_p(istart + species_offset)
@@ -4388,11 +4388,11 @@ subroutine StepperSandbox(realization)
   option%io_buffer = 'StepperSandbox() no longer used.'
   call printErrMsg(option)
 !geh: this subroutine no longer used
-!    call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+!    call RReact(rt_auxvars(ghosted_id),global_auxvars(ghosted_id), &
 !                tran_xx_p(istart:iend),volume_p(local_id), &
 !                porosity_loc_p(ghosted_id), &
 !                num_iterations,reaction,option,vol_frac_prim)
-    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+    tran_xx_p(istart:iend) = rt_auxvars(ghosted_id)%pri_molal
   enddo
 
   call VecRestoreArrayF90(field%tran_xx,tran_xx_p,ierr)

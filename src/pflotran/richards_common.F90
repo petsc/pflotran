@@ -36,8 +36,8 @@ contains
 
 ! ************************************************************************** !
 
-subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var, &
-                                   material_aux_var, &
+subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
+                                   material_auxvar, &
                                    option,sat_func,J)
   ! 
   ! Computes derivatives of the accumulation
@@ -53,9 +53,9 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var, &
   
   implicit none
 
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
-  type(material_auxvar_type) :: material_aux_var
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
@@ -66,39 +66,39 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var, &
   PetscReal :: tempreal 
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: rich_aux_var_pert
-  type(global_auxvar_type) :: global_aux_var_pert
-  type(material_auxvar_type) :: material_aux_var_pert
+  type(richards_auxvar_type) :: rich_auxvar_pert
+  type(global_auxvar_type) :: global_auxvar_pert
+  type(material_auxvar_type) :: material_auxvar_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
-  vol_over_dt = material_aux_var%volume/option%flow_dt
-  por = material_aux_var%porosity
+  vol_over_dt = material_auxvar%volume/option%flow_dt
+  por = material_auxvar%porosity
       
 !#define USE_COMPRESSIBLITY
 #ifndef USE_COMPRESSIBLITY  
   ! accumulation term units = dkmol/dp
-  J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
-            rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+  J(1,1) = (global_auxvar%sat(1)*rich_auxvar%dden_dp+ &
+            rich_auxvar%dsat_dp*global_auxvar%den(1))* &
            por*vol_over_dt
 
 #else
-  tempreal = exp(-1.d-7*(global_aux_var%pres(1)-option%reference_pressure))
-  J(1,1) = ((global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
-             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+  tempreal = exp(-1.d-7*(global_auxvar%pres(1)-option%reference_pressure))
+  J(1,1) = ((global_auxvar%sat(1)*rich_auxvar%dden_dp+ &
+             rich_auxvar%dsat_dp*global_auxvar%den(1))* &
             1.d0-(1.d0-por)*tempreal + &
-            global_aux_var%sat(1)*global_aux_var%den(1)* &
+            global_auxvar%sat(1)*global_auxvar%den(1)* &
             (por-1.d0)*-1.d-7*tempreal)* &
            vol_over_dt
 #endif  
   
   if (option%numerical_derivatives_flow) then
-    call GlobalAuxVarInit(global_aux_var_pert,option)  
-    call MaterialAuxVarInit(material_aux_var_pert,option)  
-    call RichardsAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
-    call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
-    call MaterialAuxVarCopy(material_aux_var,material_aux_var_pert,option)
-    x(1) = global_aux_var%pres(1)
-    call RichardsAccumulation(rich_aux_var,global_aux_var,material_aux_var, &
+    call GlobalAuxVarInit(global_auxvar_pert,option)  
+    call MaterialAuxVarInit(material_auxvar_pert,option)  
+    call RichardsAuxVarCopy(rich_auxvar,rich_auxvar_pert,option)
+    call GlobalAuxVarCopy(global_auxvar,global_auxvar_pert,option)
+    call MaterialAuxVarCopy(material_auxvar,material_auxvar_pert,option)
+    x(1) = global_auxvar%pres(1)
+    call RichardsAccumulation(rich_auxvar,global_auxvar,material_auxvar, &
                               option,res)
     ideriv = 1
     pert = max(dabs(x(ideriv)*perturbation_tolerance),0.1d0)
@@ -106,36 +106,36 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var, &
     if (x_pert(ideriv) < option%reference_pressure) pert = -1.d0*pert
     x_pert(ideriv) = x_pert(ideriv) + pert
     
-    call RichardsAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
-                               material_aux_var_pert,sat_func,option)
+    call RichardsAuxVarCompute(x_pert(1),rich_auxvar_pert,global_auxvar_pert, &
+                               material_auxvar_pert,sat_func,option)
 #if 0      
       select case(ideriv)
         case(1)
-!         print *, 'dvis_dp:', aux_var%dvis_dp, (aux_var_pert%vis-aux_var%vis)/pert(ideriv)
-!         print *, 'dkr_dp:', aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
-          print *, 'dsat_dp:', aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
-          print *, 'dden_dp:', aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
-!          print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
-          print *, 'dkvr_x_dp:', aux_var%dkvr_x_dp, (rich_aux_var_pert%kvr_x-rich_aux_var%kvr_x)/pert
-          print *, 'dkvr_y_dp:', aux_var%dkvr_y_dp, (rich_aux_var_pert%kvr_y-rich_aux_var%kvr_y)/pert
-          print *, 'dkvr_z_dp:', aux_var%dkvr_z_dp, (rich_aux_var_pert%kvr_z-rich_aux_var%kvr_z)/pert
+!         print *, 'dvis_dp:', auxvar%dvis_dp, (auxvar_pert%vis-auxvar%vis)/pert(ideriv)
+!         print *, 'dkr_dp:', auxvar%dkr_dp, (auxvar_pert%kr-auxvar%kr)/pert(ideriv)
+          print *, 'dsat_dp:', auxvar%dsat_dp, (global_auxvar_pert%sat-global_auxvar%sat)/pert
+          print *, 'dden_dp:', auxvar%dden_dp, (global_auxvar_pert%den-global_auxvar%den)/pert
+!          print *, 'dkvr_dp:', auxvar%dkvr_dp, (rich_auxvar_pert%kvr-rich_auxvar%kvr)/pert
+          print *, 'dkvr_x_dp:', auxvar%dkvr_x_dp, (rich_auxvar_pert%kvr_x-rich_auxvar%kvr_x)/pert
+          print *, 'dkvr_y_dp:', auxvar%dkvr_y_dp, (rich_auxvar_pert%kvr_y-rich_auxvar%kvr_y)/pert
+          print *, 'dkvr_z_dp:', auxvar%dkvr_z_dp, (rich_auxvar_pert%kvr_z-rich_auxvar%kvr_z)/pert
       end select     
 #endif     
-    call RichardsAccumulation(rich_aux_var_pert,global_aux_var_pert, &
-                              material_aux_var_pert, &
+    call RichardsAccumulation(rich_auxvar_pert,global_auxvar_pert, &
+                              material_auxvar_pert, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
-    call GlobalAuxVarStrip(global_aux_var_pert)  
-    call MaterialAuxVarStrip(material_aux_var_pert)  
+    call GlobalAuxVarStrip(global_auxvar_pert)  
+    call MaterialAuxVarStrip(material_auxvar_pert)  
   endif
    
 end subroutine RichardsAccumDerivative
 
 ! ************************************************************************** !
 
-subroutine RichardsAccumulation(rich_aux_var,global_aux_var, &
-                                material_aux_var, &
+subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
+                                material_auxvar, &
                                 option,Res)
   ! 
   ! Computes the non-fixed portion of the accumulation
@@ -150,24 +150,24 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var, &
   
   implicit none
 
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
-  type(material_auxvar_type) :: material_aux_var
+  type(richards_auxvar_type) :: rich_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: por, por1, vol_over_dt
        
-  vol_over_dt = material_aux_var%volume/option%flow_dt
-  por = material_aux_var%porosity
+  vol_over_dt = material_auxvar%volume/option%flow_dt
+  por = material_auxvar%porosity
   
   ! accumulation term units = kmol/s
 #ifndef USE_COMPRESSIBILITY
-    Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * &
+    Res(1) = global_auxvar%sat(1) * global_auxvar%den(1) * por * &
              vol_over_dt
 #else
-    por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(global_aux_var%pres(1)- &
+    por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(global_auxvar%pres(1)- &
                                        option%reference_pressure))
-    Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por1 * &
+    Res(1) = global_auxvar%sat(1) * global_auxvar%den(1) * por1 * &
              vol_over_dt
 #endif
     
@@ -175,10 +175,10 @@ end subroutine RichardsAccumulation
 
 ! ************************************************************************** !
 
-subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up, &
-                                  material_aux_var_up,sir_up, & 
-                                  rich_aux_var_dn,global_aux_var_dn, &
-                                  material_aux_var_dn,sir_dn, &
+subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
+                                  material_auxvar_up,sir_up, & 
+                                  rich_auxvar_dn,global_auxvar_dn, &
+                                  material_auxvar_dn,sir_dn, &
                                   area, dist, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
   ! 
@@ -195,9 +195,9 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up, &
   
   implicit none
   
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  class(material_auxvar_type) :: material_aux_var_up, material_aux_var_dn
+  type(richards_auxvar_type) :: rich_auxvar_up, rich_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: v_darcy, area, dist(-1:3)
@@ -221,9 +221,9 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up, &
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: rich_aux_var_pert_up, rich_aux_var_pert_dn
-  type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
-  type(material_auxvar_type) :: material_aux_var_pert_up, material_aux_var_pert_dn
+  type(richards_auxvar_type) :: rich_auxvar_pert_up, rich_auxvar_pert_dn
+  type(global_auxvar_type) :: global_auxvar_pert_up, global_auxvar_pert_dn
+  type(material_auxvar_type) :: material_auxvar_pert_up, material_auxvar_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
   
@@ -246,64 +246,64 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up, &
   
   call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
                                     dist_gravity,upweight)
-  call material_aux_var_up%PermeabilityTensorToScalar(dist,perm_up)
-  call material_aux_var_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   
 ! Flow term
-  if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
-    if (global_aux_var_up%sat(1) <eps) then 
+  if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
+    if (global_auxvar_up%sat(1) <eps) then 
       upweight=0.d0
-    else if (global_aux_var_dn%sat(1) <eps) then 
+    else if (global_auxvar_dn%sat(1) <eps) then 
       upweight=1.d0
     endif
-    density_ave = upweight*global_aux_var_up%den(1)+ &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)
-    dden_ave_dp_up = upweight*rich_aux_var_up%dden_dp
-    dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+    density_ave = upweight*global_auxvar_up%den(1)+ &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)
+    dden_ave_dp_up = upweight*rich_auxvar_up%dden_dp
+    dden_ave_dp_dn = (1.D0-upweight)*rich_auxvar_dn%dden_dp
 
-    gravity = (upweight*global_aux_var_up%den(1) + &
-              (1.D0-upweight)*global_aux_var_dn%den(1)) &
+    gravity = (upweight*global_auxvar_up%den(1) + &
+              (1.D0-upweight)*global_auxvar_dn%den(1)) &
               * FMWH2O * dist_gravity
     dgravity_dden_up = upweight*FMWH2O*dist_gravity
     dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
-    dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
-    dphi_dp_up = 1.d0 + dgravity_dden_up*rich_aux_var_up%dden_dp
-    dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
+    dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1)  + gravity
+    dphi_dp_up = 1.d0 + dgravity_dden_up*rich_auxvar_up%dden_dp
+    dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_auxvar_dn%dden_dp
 
     if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY
       if (dabs(dist(1))==1) then
-        ukvr = rich_aux_var_up%kvr_x
-        dukvr_dp_up = rich_aux_var_up%dkvr_x_dp
+        ukvr = rich_auxvar_up%kvr_x
+        dukvr_dp_up = rich_auxvar_up%dkvr_x_dp
       else if (dabs(dist(2))==1) then
-        ukvr = rich_aux_var_up%kvr_y
-        dukvr_dp_up = rich_aux_var_up%dkvr_y_dp
+        ukvr = rich_auxvar_up%kvr_y
+        dukvr_dp_up = rich_auxvar_up%dkvr_y_dp
       else if (dabs(dist(3))==1) then
-        ukvr = rich_aux_var_up%kvr_z
-        dukvr_dp_up = rich_aux_var_up%dkvr_z_dp
+        ukvr = rich_auxvar_up%kvr_z
+        dukvr_dp_up = rich_auxvar_up%dkvr_z_dp
       end if
 #else
-      ukvr = rich_aux_var_up%kvr
-      dukvr_dp_up = rich_aux_var_up%dkvr_dp
+      ukvr = rich_auxvar_up%kvr
+      dukvr_dp_up = rich_auxvar_up%dkvr_dp
 #endif
     else
 #ifdef USE_ANISOTROPIC_MOBILITY    
       if (dabs(dist(1))==1) then
-        ukvr = rich_aux_var_dn%kvr_x
-        dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
+        ukvr = rich_auxvar_dn%kvr_x
+        dukvr_dp_dn = rich_auxvar_dn%dkvr_x_dp
       else if (dabs(dist(2))==1) then
-        ukvr = rich_aux_var_dn%kvr_y
-        dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
+        ukvr = rich_auxvar_dn%kvr_y
+        dukvr_dp_dn = rich_auxvar_dn%dkvr_y_dp
       else if (dabs(dist(3))==1) then
-        ukvr = rich_aux_var_dn%kvr_z
-        dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
+        ukvr = rich_auxvar_dn%kvr_z
+        dukvr_dp_dn = rich_auxvar_dn%dkvr_z_dp
       end if
 #else
-      ukvr = rich_aux_var_dn%kvr
-      dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+      ukvr = rich_auxvar_dn%kvr
+      dukvr_dp_dn = rich_auxvar_dn%dkvr_dp
 #endif
     endif      
    
@@ -323,21 +323,21 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up, &
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives_flow) then
-    call GlobalAuxVarInit(global_aux_var_pert_up,option)
-    call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call MaterialAuxVarInit(material_aux_var_pert_up,option)
-    call MaterialAuxVarInit(material_aux_var_pert_dn,option)  
-    call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call RichardsAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
-    call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
-    call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
-    call MaterialAuxVarCopy(material_aux_var_up,material_aux_var_pert_up,option)
-    call MaterialAuxVarCopy(material_aux_var_dn,material_aux_var_pert_dn,option)
-    x_up(1) = global_aux_var_up%pres(1)
-    x_dn(1) = global_aux_var_dn%pres(1)
-    call RichardsFlux(rich_aux_var_up,global_aux_var_up,material_aux_var_up, &
+    call GlobalAuxVarInit(global_auxvar_pert_up,option)
+    call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
+    call MaterialAuxVarInit(material_auxvar_pert_up,option)
+    call MaterialAuxVarInit(material_auxvar_pert_dn,option)  
+    call RichardsAuxVarCopy(rich_auxvar_up,rich_auxvar_pert_up,option)
+    call RichardsAuxVarCopy(rich_auxvar_dn,rich_auxvar_pert_dn,option)
+    call GlobalAuxVarCopy(global_auxvar_up,global_auxvar_pert_up,option)
+    call GlobalAuxVarCopy(global_auxvar_dn,global_auxvar_pert_dn,option)
+    call MaterialAuxVarCopy(material_auxvar_up,material_auxvar_pert_up,option)
+    call MaterialAuxVarCopy(material_auxvar_dn,material_auxvar_pert_dn,option)
+    x_up(1) = global_auxvar_up%pres(1)
+    x_dn(1) = global_auxvar_dn%pres(1)
+    call RichardsFlux(rich_auxvar_up,global_auxvar_up,material_auxvar_up, &
                       sir_up, &
-                      rich_aux_var_dn,global_aux_var_dn,material_aux_var_dn, &
+                      rich_auxvar_dn,global_auxvar_dn,material_auxvar_dn, &
                       sir_dn, &
                       area, dist, &
                       option,v_darcy,res)
@@ -352,44 +352,44 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up, &
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call RichardsAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
-                               global_aux_var_pert_up, &
-                               material_aux_var_pert_up,sat_func_up, &
+    call RichardsAuxVarCompute(x_pert_up(1),rich_auxvar_pert_up, &
+                               global_auxvar_pert_up, &
+                               material_auxvar_pert_up,sat_func_up, &
                                option)
-    call RichardsAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
-                               global_aux_var_pert_dn, &
-                               material_aux_var_pert_dn,sat_func_dn, &
+    call RichardsAuxVarCompute(x_pert_dn(1),rich_auxvar_pert_dn, &
+                               global_auxvar_pert_dn, &
+                               material_auxvar_pert_dn,sat_func_dn, &
                                option)
-    call RichardsFlux(rich_aux_var_pert_up,global_aux_var_pert_up, &
-                      material_aux_var_pert_up,sir_up, &
-                      rich_aux_var_dn,global_aux_var_dn, &
-                      material_aux_var_dn,sir_dn, &
+    call RichardsFlux(rich_auxvar_pert_up,global_auxvar_pert_up, &
+                      material_auxvar_pert_up,sir_up, &
+                      rich_auxvar_dn,global_auxvar_dn, &
+                      material_auxvar_dn,sir_dn, &
                       area, dist, &
                       option,v_darcy,res_pert_up)
-    call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
-                      material_aux_var_up,sir_up, &
-                      rich_aux_var_pert_dn,global_aux_var_pert_dn, &
-                      material_aux_var_pert_dn,sir_dn, &
+    call RichardsFlux(rich_auxvar_up,global_auxvar_up, &
+                      material_auxvar_up,sir_up, &
+                      rich_auxvar_pert_dn,global_auxvar_pert_dn, &
+                      material_auxvar_pert_dn,sir_dn, &
                       area, dist, &
                       option,v_darcy,res_pert_dn)
     J_pert_up(1,ideriv) = (res_pert_up(1)-res(1))/pert_up
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jup = J_pert_up
     Jdn = J_pert_dn
-    call GlobalAuxVarStrip(global_aux_var_pert_up)
-    call GlobalAuxVarStrip(global_aux_var_pert_dn)    
-    call MaterialAuxVarStrip(material_aux_var_pert_up)
-    call MaterialAuxVarStrip(material_aux_var_pert_dn)    
+    call GlobalAuxVarStrip(global_auxvar_pert_up)
+    call GlobalAuxVarStrip(global_auxvar_pert_dn)    
+    call MaterialAuxVarStrip(material_auxvar_pert_up)
+    call MaterialAuxVarStrip(material_auxvar_pert_dn)    
   endif
 
 end subroutine RichardsFluxDerivative
 
 ! ************************************************************************** !
 
-subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
-                        material_aux_var_up,sir_up, &
-                        rich_aux_var_dn,global_aux_var_dn, &
-                        material_aux_var_dn,sir_dn, &
+subroutine RichardsFlux(rich_auxvar_up,global_auxvar_up, &
+                        material_auxvar_up,sir_up, &
+                        rich_auxvar_dn,global_auxvar_dn, &
+                        material_auxvar_dn,sir_dn, &
                         area, dist, &
                         option,v_darcy,Res)
   ! 
@@ -404,9 +404,9 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   
   implicit none
   
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  class(material_auxvar_type) :: material_aux_var_up, material_aux_var_dn
+  type(richards_auxvar_type) :: rich_auxvar_up, rich_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: v_darcy, area, dist(-1:3)
@@ -425,53 +425,53 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   
   call ConnectionCalculateDistances(dist,option%gravity,dd_up,dd_dn, &
                                     dist_gravity,upweight)
-  call material_aux_var_up%PermeabilityTensorToScalar(dist,perm_up)
-  call material_aux_var_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
 
   
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   
 ! Flow term
-  if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
-    if (global_aux_var_up%sat(1) <eps) then 
+  if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
+    if (global_auxvar_up%sat(1) <eps) then 
       upweight=0.d0
-    else if (global_aux_var_dn%sat(1) <eps) then 
+    else if (global_auxvar_dn%sat(1) <eps) then 
       upweight=1.d0
     endif
     
 
-    density_ave = upweight*global_aux_var_up%den(1)+ &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)
+    density_ave = upweight*global_auxvar_up%den(1)+ &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)
 
-    gravity = (upweight*global_aux_var_up%den(1) + &
-              (1.D0-upweight)*global_aux_var_dn%den(1)) &
+    gravity = (upweight*global_auxvar_up%den(1) + &
+              (1.D0-upweight)*global_auxvar_dn%den(1)) &
               * FMWH2O * dist_gravity
 
-    dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
+    dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1)  + gravity
 
     if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY       
       if (dabs(dabs(dist(1))-1) < 1e-6) then
-        ukvr = rich_aux_var_up%kvr_x
+        ukvr = rich_auxvar_up%kvr_x
       else if (dabs(dabs(norm(2))-1) < 1e-6) then
-        ukvr = rich_aux_var_up%kvr_y
+        ukvr = rich_auxvar_up%kvr_y
       else if (dabs(dabs(norm(3))-1) < 1e-6) then
-        ukvr = rich_aux_var_up%kvr_z
+        ukvr = rich_auxvar_up%kvr_z
       end if
 #else
-      ukvr = rich_aux_var_up%kvr
+      ukvr = rich_auxvar_up%kvr
 #endif
     else
 #ifdef USE_ANISOTROPIC_MOBILITY       
       if (dabs(dabs(norm(1))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_x
+        ukvr = rich_auxvar_dn%kvr_x
       else if (dabs(dabs(norm(2))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_y
+        ukvr = rich_auxvar_dn%kvr_y
       else if (dabs(dabs(norm(3))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_z
+        ukvr = rich_auxvar_dn%kvr_z
       end if
 #else
-      ukvr = rich_aux_var_dn%kvr
+      ukvr = rich_auxvar_dn%kvr
 #endif
     endif      
 
@@ -492,10 +492,10 @@ end subroutine RichardsFlux
 
 ! ************************************************************************** !
 
-subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
-                                    rich_aux_var_up,global_aux_var_up, &
-                                    rich_aux_var_dn,global_aux_var_dn, &
-                                    material_aux_var_dn, &
+subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
+                                    rich_auxvar_up,global_auxvar_up, &
+                                    rich_auxvar_dn,global_auxvar_dn, &
+                                    material_auxvar_dn, &
                                     sir_dn, &
                                     area,dist,option, &
                                     sat_func_dn,Jdn)
@@ -516,12 +516,12 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  class(material_auxvar_type) :: material_aux_var_dn
+  type(richards_auxvar_type) :: rich_auxvar_up, rich_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_dn
-  PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
+  PetscReal :: auxvars(:) ! from aux_real_var array in boundary condition
   PetscReal :: area
   ! dist(-1) = fraction_upwind
   ! dist(0) = magnitude
@@ -549,10 +549,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: dHdn_x_dp_dn, dHdn_y_dp_dn, dHdn_z_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: rich_aux_var_pert_dn, rich_aux_var_pert_up
-  type(global_auxvar_type) :: global_aux_var_pert_dn, global_aux_var_pert_up
-  class(material_auxvar_type), allocatable :: material_aux_var_pert_dn, &
-                                              material_aux_var_pert_up
+  type(richards_auxvar_type) :: rich_auxvar_pert_dn, rich_auxvar_pert_up
+  type(global_auxvar_type) :: global_auxvar_pert_dn, global_auxvar_pert_up
+  class(material_auxvar_type), allocatable :: material_auxvar_pert_dn, &
+                                              material_auxvar_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
@@ -573,7 +573,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   dukvr_dp_dn = 0.d0
   dq_dp_dn = 0.d0
 
-  call material_aux_var_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
   ! Flow
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
@@ -587,35 +587,35 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
       dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
 
       if (pressure_bc_type == CONDUCTANCE_BC) then
-        Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
+        Dq = auxvars(RICHARDS_CONDUCTANCE_DOF)
       else
         Dq = perm_dn / dist(0)
       endif
       ! Flow term
-      if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
+      if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
-        if (global_aux_var_up%sat(1) < eps) then 
+        if (global_auxvar_up%sat(1) < eps) then 
           upweight=0.d0
-        else if (global_aux_var_dn%sat(1) < eps) then 
+        else if (global_auxvar_dn%sat(1) < eps) then 
           upweight=1.d0
         endif
         
-        density_ave = upweight*global_aux_var_up%den(1) + (1.D0-upweight)*global_aux_var_dn%den(1)
-        dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+        density_ave = upweight*global_auxvar_up%den(1) + (1.D0-upweight)*global_auxvar_dn%den(1)
+        dden_ave_dp_dn = (1.D0-upweight)*rich_auxvar_dn%dden_dp
 
-        gravity = (upweight*global_aux_var_up%den(1) + &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)) &
+        gravity = (upweight*global_auxvar_up%den(1) + &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)) &
                   * FMWH2O * dist_gravity
         dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
-        dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
-        dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
+        dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
+        dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_auxvar_dn%dden_dp
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC .or. &
             pressure_bc_type == HET_SURF_SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
+          if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
             dphi_dp_dn = 0.d0
           endif
@@ -624,30 +624,30 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY  
           if (dabs(dabs(dist(1))-1) < 1e-6) then
-            ukvr = rich_aux_var_up%kvr_x
+            ukvr = rich_auxvar_up%kvr_x
           else if (dabs(dabs(dist(2))-1) < 1e-6) then
-            ukvr = rich_aux_var_up%kvr_y
+            ukvr = rich_auxvar_up%kvr_y
           else if (dabs(dabs(dist(3))-1) < 1e-6) then
-            ukvr = rich_aux_var_up%kvr_z
+            ukvr = rich_auxvar_up%kvr_z
           end if
 #else
-          ukvr = rich_aux_var_up%kvr
+          ukvr = rich_auxvar_up%kvr
 #endif
         else
 #ifdef USE_ANISOTROPIC_MOBILITY
           if (dabs(dabs(dist(1))-1) < 1e-6) then
-            ukvr = rich_aux_var_dn%kvr_x
-            dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
+            ukvr = rich_auxvar_dn%kvr_x
+            dukvr_dp_dn = rich_auxvar_dn%dkvr_x_dp
           else if (dabs(dabs(dist(2))-1) < 1e-6) then
-            ukvr = rich_aux_var_dn%kvr_y
-            dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
+            ukvr = rich_auxvar_dn%kvr_y
+            dukvr_dp_dn = rich_auxvar_dn%dkvr_y_dp
           else if (dabs(dabs(dist(3))-1) < 1e-6) then
-            ukvr = rich_aux_var_dn%kvr_z
-            dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
+            ukvr = rich_auxvar_dn%kvr_z
+            dukvr_dp_dn = rich_auxvar_dn%dkvr_z_dp
           end if
 #else
-          ukvr = rich_aux_var_dn%kvr
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+          ukvr = rich_auxvar_dn%kvr
+          dukvr_dp_dn = rich_auxvar_dn%dkvr_dp
 #endif
         endif      
      
@@ -658,7 +658,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
           ! not exceed depth of standing water.
           if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
             call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
-            v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
+            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if(v_darcy > v_darcy_allowable) then
               dphi_dp_dn = 0.d0
@@ -672,42 +672,42 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
+      if (dabs(auxvars(RICHARDS_PRESSURE_DOF)) > floweps) then
+        v_darcy = auxvars(RICHARDS_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
-          density_ave = global_aux_var_up%den(1)
+          density_ave = global_auxvar_up%den(1)
         else 
-          density_ave = global_aux_var_dn%den(1)
-          dden_ave_dp_dn = rich_aux_var_dn%dden_dp
+          density_ave = global_auxvar_dn%den(1)
+          dden_ave_dp_dn = rich_auxvar_dn%dden_dp
         endif 
         q = v_darcy * area
       endif
 
     case(UNIT_GRADIENT_BC)
 
-      if (global_aux_var_dn%sat(1) > sir_dn) then
+      if (global_auxvar_dn%sat(1) > sir_dn) then
 
-        dphi = dot_product(option%gravity,dist(1:3))*global_aux_var_dn%den(1)*FMWH2O      
-        density_ave = global_aux_var_dn%den(1)
+        dphi = dot_product(option%gravity,dist(1:3))*global_auxvar_dn%den(1)*FMWH2O      
+        density_ave = global_auxvar_dn%den(1)
 
-        dphi_dp_dn = dot_product(option%gravity,dist(1:3))*rich_aux_var_dn%dden_dp*FMWH2O
-        dden_ave_dp_dn = rich_aux_var_dn%dden_dp
+        dphi_dp_dn = dot_product(option%gravity,dist(1:3))*rich_auxvar_dn%dden_dp*FMWH2O
+        dden_ave_dp_dn = rich_auxvar_dn%dden_dp
 
         ! since boundary auxvar is meaningless (no pressure specified there), only use cell
 #ifdef USE_ANISOTROPIC_MOBILITY
         if (dabs(dabs(dist(1))-1) < 1e-6) then
-          ukvr = rich_aux_var_dn%kvr_x
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
+          ukvr = rich_auxvar_dn%kvr_x
+          dukvr_dp_dn = rich_auxvar_dn%dkvr_x_dp
         else if (dabs(dabs(dist(2))-1) < 1e-6) then
-          ukvr = rich_aux_var_dn%kvr_y
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
+          ukvr = rich_auxvar_dn%kvr_y
+          dukvr_dp_dn = rich_auxvar_dn%dkvr_y_dp
         else if (dabs(dabs(dist(3))-1) < 1e-6) then
-          ukvr = rich_aux_var_dn%kvr_z
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
+          ukvr = rich_auxvar_dn%kvr_z
+          dukvr_dp_dn = rich_auxvar_dn%dkvr_z_dp
         end if
 #else
-        ukvr = rich_aux_var_dn%kvr
-        dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+        ukvr = rich_auxvar_dn%kvr
+        dukvr_dp_dn = rich_auxvar_dn%dkvr_dp
 #endif
      
         if (ukvr*perm_dn>floweps) then
@@ -723,29 +723,29 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
 
   if (option%numerical_derivatives_flow) then
-    call GlobalAuxVarInit(global_aux_var_pert_up,option)
-    call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    allocate(material_aux_var_pert_up,material_aux_var_pert_dn)
-    call MaterialAuxVarInit(material_aux_var_pert_up,option)  
-    call MaterialAuxVarInit(material_aux_var_pert_dn,option)  
-    call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call RichardsAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
-    call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
-    call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
-    call MaterialAuxVarCopy(material_aux_var_dn,material_aux_var_pert_up, &
+    call GlobalAuxVarInit(global_auxvar_pert_up,option)
+    call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
+    allocate(material_auxvar_pert_up,material_auxvar_pert_dn)
+    call MaterialAuxVarInit(material_auxvar_pert_up,option)  
+    call MaterialAuxVarInit(material_auxvar_pert_dn,option)  
+    call RichardsAuxVarCopy(rich_auxvar_up,rich_auxvar_pert_up,option)
+    call RichardsAuxVarCopy(rich_auxvar_dn,rich_auxvar_pert_dn,option)
+    call GlobalAuxVarCopy(global_auxvar_up,global_auxvar_pert_up,option)
+    call GlobalAuxVarCopy(global_auxvar_dn,global_auxvar_pert_dn,option)
+    call MaterialAuxVarCopy(material_auxvar_dn,material_auxvar_pert_up, &
                             option)
-    call MaterialAuxVarCopy(material_aux_var_dn,material_aux_var_pert_dn, &
+    call MaterialAuxVarCopy(material_auxvar_dn,material_auxvar_pert_dn, &
                             option)
-    x_up(1) = global_aux_var_up%pres(1)
-    x_dn(1) = global_aux_var_dn%pres(1)
+    x_up(1) = global_auxvar_up%pres(1)
+    x_dn(1) = global_auxvar_dn%pres(1)
     ideriv = 1
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_up(ideriv) = x_dn(ideriv)
     endif
-    call RichardsBCFlux(ibndtype,aux_vars, &
-                        rich_aux_var_up,global_aux_var_up, &
-                        rich_aux_var_dn,global_aux_var_dn, &
-                        material_aux_var_dn, &
+    call RichardsBCFlux(ibndtype,auxvars, &
+                        rich_auxvar_up,global_auxvar_up, &
+                        rich_auxvar_dn,global_auxvar_dn, &
+                        material_auxvar_dn, &
                         sir_dn, &
                         area,dist,option,v_darcy,res)
     if (pressure_bc_type == ZERO_GRADIENT_BC) then
@@ -761,37 +761,37 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_pert_up(ideriv) = x_pert_dn(ideriv)
     endif   
-    call RichardsAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
-                               global_aux_var_pert_dn, &
-                               material_aux_var_pert_dn,sat_func_dn, &
+    call RichardsAuxVarCompute(x_pert_dn(1),rich_auxvar_pert_dn, &
+                               global_auxvar_pert_dn, &
+                               material_auxvar_pert_dn,sat_func_dn, &
                                option)
-    call RichardsAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
-                               global_aux_var_pert_up, &
-                               material_aux_var_pert_up,sat_func_dn, &
+    call RichardsAuxVarCompute(x_pert_up(1),rich_auxvar_pert_up, &
+                               global_auxvar_pert_up, &
+                               material_auxvar_pert_up,sat_func_dn, &
                                option)
-    call RichardsBCFlux(ibndtype,aux_vars, &
-                        rich_aux_var_pert_up,global_aux_var_pert_up, &
-                        rich_aux_var_pert_dn,global_aux_var_pert_dn, &
-                        material_aux_var_pert_dn, &
+    call RichardsBCFlux(ibndtype,auxvars, &
+                        rich_auxvar_pert_up,global_auxvar_pert_up, &
+                        rich_auxvar_pert_dn,global_auxvar_pert_dn, &
+                        material_auxvar_pert_dn, &
                         sir_dn, &
                         area,dist,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
-    call GlobalAuxVarStrip(global_aux_var_pert_up)
-    call GlobalAuxVarStrip(global_aux_var_pert_dn)   
-    call MaterialAuxVarStrip(material_aux_var_pert_up)
-    call MaterialAuxVarStrip(material_aux_var_pert_dn)
-    deallocate(material_aux_var_pert_up,material_aux_var_pert_dn)
+    call GlobalAuxVarStrip(global_auxvar_pert_up)
+    call GlobalAuxVarStrip(global_auxvar_pert_dn)   
+    call MaterialAuxVarStrip(material_auxvar_pert_up)
+    call MaterialAuxVarStrip(material_auxvar_pert_dn)
+    deallocate(material_auxvar_pert_up,material_auxvar_pert_dn)
   endif
 
 end subroutine RichardsBCFluxDerivative
 
 ! ************************************************************************** !
 
-subroutine RichardsBCFlux(ibndtype,aux_vars, &
-                          rich_aux_var_up, global_aux_var_up, &
-                          rich_aux_var_dn, global_aux_var_dn, &
-                          material_aux_var_dn, &
+subroutine RichardsBCFlux(ibndtype,auxvars, &
+                          rich_auxvar_up, global_auxvar_up, &
+                          rich_auxvar_dn, global_auxvar_dn, &
+                          material_auxvar_dn, &
                           sir_dn, &
                           area, dist, option,v_darcy,Res)
   ! 
@@ -809,12 +809,12 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  class(material_auxvar_type) :: material_aux_var_dn
+  type(richards_auxvar_type) :: rich_auxvar_up, rich_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_dn
-  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: v_darcy, area
   ! dist(-1) = fraction_upwind - not applicable here
   ! dist(0) = magnitude
@@ -842,7 +842,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   q = 0.d0
   ukvr = 0.d0
 
-  call material_aux_var_dn%PermeabilityTensorToScalar(dist,perm_dn)  
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)  
 
   ! Flow  
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
@@ -856,31 +856,31 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
       dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
 
       if (pressure_bc_type == CONDUCTANCE_BC) then
-        Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
+        Dq = auxvars(RICHARDS_CONDUCTANCE_DOF)
       else
         Dq = perm_dn / dist(0)
       endif
       ! Flow term
-      if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
+      if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
-        if (global_aux_var_up%sat(1) < eps) then 
+        if (global_auxvar_up%sat(1) < eps) then 
           upweight=0.d0
-        else if (global_aux_var_dn%sat(1) < eps) then 
+        else if (global_auxvar_dn%sat(1) < eps) then 
           upweight=1.d0
         endif
-        density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
+        density_ave = upweight*global_auxvar_up%den(1)+(1.D0-upweight)*global_auxvar_dn%den(1)
    
-        gravity = (upweight*global_aux_var_up%den(1) + &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)) &
+        gravity = (upweight*global_auxvar_up%den(1) + &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)) &
                   * FMWH2O * dist_gravity
        
-        dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
+        dphi = global_auxvar_up%pres(1) - global_auxvar_dn%pres(1) + gravity
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC .or. &
             pressure_bc_type == HET_SURF_SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
+          if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
           endif
         endif
@@ -888,26 +888,26 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY       
          if (dabs(dabs(dist(1))-1) < 1e-6) then
-           ukvr = rich_aux_var_up%kvr_x
+           ukvr = rich_auxvar_up%kvr_x
          else if (dabs(dabs(dist(2))-1) < 1e-6) then
-           ukvr = rich_aux_var_up%kvr_y
+           ukvr = rich_auxvar_up%kvr_y
          else if (dabs(dabs(dist(3))-1) < 1e-6) then
-           ukvr = rich_aux_var_up%kvr_z
+           ukvr = rich_auxvar_up%kvr_z
          end if
 #else
-         ukvr = rich_aux_var_up%kvr
+         ukvr = rich_auxvar_up%kvr
 #endif
        else
 #ifdef USE_ANISOTROPIC_MOBILITY
          if (dabs(dabs(dist(1))-1) < 1e-6) then
-           ukvr = rich_aux_var_dn%kvr_x
+           ukvr = rich_auxvar_dn%kvr_x
          else if (dabs(dabs(dist(2))-1) < 1e-6) then
-           ukvr = rich_aux_var_dn%kvr_y
+           ukvr = rich_auxvar_dn%kvr_y
          else if (dabs(dabs(dist(3))-1) < 1e-6) then
-           ukvr = rich_aux_var_dn%kvr_z
+           ukvr = rich_auxvar_dn%kvr_z
          end if
 #else
-         ukvr = rich_aux_var_dn%kvr
+         ukvr = rich_auxvar_dn%kvr
 #endif
        endif
         
@@ -918,7 +918,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
           ! not exceed depth of standing water.
           if(pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%nsurfflowdof>0) then
             call EOSWaterdensity(option%reference_temperature,option%reference_pressure,rho)
-            v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
+            v_darcy_allowable = (global_auxvar_up%pres(1)-option%reference_pressure) &
                                 /option%flow_dt/(-option%gravity(3))/rho
             if (v_darcy > v_darcy_allowable) v_darcy = v_darcy_allowable
           endif
@@ -927,32 +927,32 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
+      if (dabs(auxvars(RICHARDS_PRESSURE_DOF)) > floweps) then
+        v_darcy = auxvars(RICHARDS_PRESSURE_DOF)
 
         if (v_darcy > 0.d0) then 
-          density_ave = global_aux_var_up%den(1)
+          density_ave = global_auxvar_up%den(1)
         else 
-          density_ave = global_aux_var_dn%den(1)
+          density_ave = global_auxvar_dn%den(1)
         endif 
       endif
 
     case(UNIT_GRADIENT_BC)
 
-      dphi = dot_product(option%gravity,dist(1:3))*global_aux_var_dn%den(1)*FMWH2O
-      density_ave = global_aux_var_dn%den(1)
+      dphi = dot_product(option%gravity,dist(1:3))*global_auxvar_dn%den(1)*FMWH2O
+      density_ave = global_auxvar_dn%den(1)
 
       ! since boundary auxvar is meaningless (no pressure specified there), only use cell
 #ifdef USE_ANISOTROPIC_MOBILITY
       if (dabs(dabs(dist(1))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_x
+        ukvr = rich_auxvar_dn%kvr_x
       else if (dabs(dabs(dist(2))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_y
+        ukvr = rich_auxvar_dn%kvr_y
       else if (dabs(dabs(dist(3))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_z
+        ukvr = rich_auxvar_dn%kvr_z
       end if
 #else
-      ukvr = rich_aux_var_dn%kvr
+      ukvr = rich_auxvar_dn%kvr
 #endif
      
       if (ukvr*perm_dn>floweps) then

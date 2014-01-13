@@ -888,39 +888,39 @@ subroutine MaterialSetAuxVarScalar(Material,value,ivar)
   select case(ivar)
     case(VOLUME)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%volume = value
+        Material%auxvars(i)%volume = value
       enddo
     case(POROSITY)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%porosity = value
+        Material%auxvars(i)%porosity = value
       enddo
     case(TORTUOSITY)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%tortuosity = value
+        Material%auxvars(i)%tortuosity = value
       enddo
     case(PERMEABILITY_X)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%permeability(perm_xx_index) = value
+        Material%auxvars(i)%permeability(perm_xx_index) = value
       enddo
     case(PERMEABILITY_Y)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%permeability(perm_yy_index) = value
+        Material%auxvars(i)%permeability(perm_yy_index) = value
       enddo
     case(PERMEABILITY_Z)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%permeability(perm_zz_index) = value
+        Material%auxvars(i)%permeability(perm_zz_index) = value
       enddo
     case(PERMEABILITY_XY)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%permeability(perm_xy_index) = value
+        Material%auxvars(i)%permeability(perm_xy_index) = value
       enddo
     case(PERMEABILITY_YZ)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%permeability(perm_yz_index) = value
+        Material%auxvars(i)%permeability(perm_yz_index) = value
       enddo
     case(PERMEABILITY_XZ)
       do i=1, Material%num_aux
-        Material%aux_vars(i)%permeability(perm_xz_index) = value
+        Material%auxvars(i)%permeability(perm_xz_index) = value
       enddo
   end select
   
@@ -957,44 +957,44 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   select case(ivar)
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%volume = vec_loc_p(ghosted_id)
+        Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
       enddo
     case(POROSITY)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
       enddo
     case(TORTUOSITY)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%tortuosity = vec_loc_p(ghosted_id)
+        Material%auxvars(ghosted_id)%tortuosity = vec_loc_p(ghosted_id)
       enddo
     case(PERMEABILITY_X)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%permeability(perm_xx_index) = &
+        Material%auxvars(ghosted_id)%permeability(perm_xx_index) = &
           vec_loc_p(ghosted_id)
       enddo
     case(PERMEABILITY_Y)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%permeability(perm_yy_index) = &
+        Material%auxvars(ghosted_id)%permeability(perm_yy_index) = &
           vec_loc_p(ghosted_id)
       enddo
     case(PERMEABILITY_Z)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%permeability(perm_zz_index) = &
+        Material%auxvars(ghosted_id)%permeability(perm_zz_index) = &
           vec_loc_p(ghosted_id)
       enddo
     case(PERMEABILITY_XY)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%permeability(perm_xy_index) = &
+        Material%auxvars(ghosted_id)%permeability(perm_xy_index) = &
           vec_loc_p(ghosted_id)
       enddo
     case(PERMEABILITY_YZ)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%permeability(perm_yz_index) = &
+        Material%auxvars(ghosted_id)%permeability(perm_yz_index) = &
           vec_loc_p(ghosted_id)
       enddo
     case(PERMEABILITY_XZ)
       do ghosted_id=1, Material%num_aux
-        Material%aux_vars(ghosted_id)%permeability(perm_xz_index) = &
+        Material%auxvars(ghosted_id)%permeability(perm_xz_index) = &
           vec_loc_p(ghosted_id)
       enddo
   end select
@@ -1034,45 +1034,45 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   select case(ivar)
     case(VOLUME)
       do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%aux_vars(ghosted_id)%volume
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
       enddo
     case(POROSITY)
       do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%aux_vars(ghosted_id)%porosity
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity
       enddo
     case(TORTUOSITY)
       do ghosted_id=1, Material%num_aux
-        vec_loc_p(ghosted_id) = Material%aux_vars(ghosted_id)%tortuosity
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%tortuosity
       enddo
     case(PERMEABILITY_X)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = &
-          Material%aux_vars(ghosted_id)%permeability(perm_xx_index)
+          Material%auxvars(ghosted_id)%permeability(perm_xx_index)
       enddo
     case(PERMEABILITY_Y)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = &
-          Material%aux_vars(ghosted_id)%permeability(perm_yy_index)
+          Material%auxvars(ghosted_id)%permeability(perm_yy_index)
       enddo
     case(PERMEABILITY_Z)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = &
-          Material%aux_vars(ghosted_id)%permeability(perm_zz_index)
+          Material%auxvars(ghosted_id)%permeability(perm_zz_index)
       enddo
     case(PERMEABILITY_XY)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = &
-          Material%aux_vars(ghosted_id)%permeability(perm_xy_index)
+          Material%auxvars(ghosted_id)%permeability(perm_xy_index)
       enddo
     case(PERMEABILITY_YZ)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = &
-          Material%aux_vars(ghosted_id)%permeability(perm_yz_index)
+          Material%auxvars(ghosted_id)%permeability(perm_yz_index)
       enddo
     case(PERMEABILITY_XZ)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = &
-          Material%aux_vars(ghosted_id)%permeability(perm_xz_index)
+          Material%auxvars(ghosted_id)%permeability(perm_xz_index)
       enddo
   end select
 

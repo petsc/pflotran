@@ -1430,7 +1430,7 @@ subroutine RealizationUpdate(realization)
   if (associated(realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(realization)
   endif
-! currently don't use aux_vars, just condition for src/sinks
+! currently don't use auxvars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
   call MassTransferUpdate(realization%flow_mass_transfer_list, &
@@ -1821,7 +1821,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   reaction => realization%reaction
   grid => patch%grid
   material_property_array => realization%material_property_array
-  rt_auxvars => patch%aux%RT%aux_vars
+  rt_auxvars => patch%aux%RT%auxvars
 
   if (.not.associated(patch%imat)) then
     option%io_buffer = 'Materials IDs not present in run.  Material ' // &
@@ -2154,7 +2154,7 @@ subroutine RealizationSetUpBC4Faces(realization)
   type(field_type), pointer :: field
   
 
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   type(connection_set_type), pointer :: conn
   type(coupler_type), pointer ::  boundary_condition
 
@@ -2182,9 +2182,9 @@ subroutine RealizationSetUpBC4Faces(realization)
       local_id = boundary_condition%region%cell_ids(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      aux_var => grid%MFD%aux_vars(local_id)
-      do j = 1, aux_var%numfaces
-        ghost_face_id = aux_var%face_id_gh(j)
+      auxvar => grid%MFD%auxvars(local_id)
+      do j = 1, auxvar%numfaces
+        ghost_face_id = auxvar%face_id_gh(j)
         local_face_id = grid%fG2L(ghost_face_id)
         conn => grid%faces(ghost_face_id)%conn_set_ptr
         jface = grid%faces(ghost_face_id)%id

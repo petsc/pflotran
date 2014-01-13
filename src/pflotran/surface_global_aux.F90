@@ -19,9 +19,9 @@ module Surface_Global_Aux_module
   
   type, public :: surface_global_type
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
-    type(surface_global_auxvar_type), pointer :: aux_vars(:)
-    type(surface_global_auxvar_type), pointer :: aux_vars_bc(:)
-    type(surface_global_auxvar_type), pointer :: aux_vars_ss(:)
+    type(surface_global_auxvar_type), pointer :: auxvars(:)
+    type(surface_global_auxvar_type), pointer :: auxvars_bc(:)
+    type(surface_global_auxvar_type), pointer :: auxvars_ss(:)
   end type surface_global_type
   
   interface SurfaceGlobalAuxVarDestroy
@@ -60,9 +60,9 @@ function SurfaceGlobalAuxCreate()
   aux%num_aux = 0
   aux%num_aux_bc = 0
   aux%num_aux_ss = 0
-  nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
-  nullify(aux%aux_vars_ss)
+  nullify(aux%auxvars)
+  nullify(aux%auxvars_bc)
+  nullify(aux%auxvars_ss)
 
   SurfaceGlobalAuxCreate => aux
   
@@ -70,7 +70,7 @@ end function SurfaceGlobalAuxCreate
 
 ! ************************************************************************** !
 
-subroutine SurfaceGlobalAuxVarInit(aux_var,option)
+subroutine SurfaceGlobalAuxVarInit(auxvar,option)
   ! 
   ! This routine
   ! 
@@ -82,23 +82,23 @@ subroutine SurfaceGlobalAuxVarInit(aux_var,option)
 
   implicit none
   
-  type(surface_global_auxvar_type) :: aux_var
+  type(surface_global_auxvar_type) :: auxvar
   type(option_type) :: option
   
-  aux_var%istate = 0
+  auxvar%istate = 0
 
-  allocate(aux_var%head(option%nphase))
-  aux_var%head = 0.d0
-  allocate(aux_var%temp(ONE_INTEGER))
-  aux_var%temp = option%reference_temperature
-  allocate(aux_var%den_kg(option%nphase))
-  aux_var%den_kg = 0.d0
+  allocate(auxvar%head(option%nphase))
+  auxvar%head = 0.d0
+  allocate(auxvar%temp(ONE_INTEGER))
+  auxvar%temp = option%reference_temperature
+  allocate(auxvar%den_kg(option%nphase))
+  auxvar%den_kg = 0.d0
 
 end subroutine SurfaceGlobalAuxVarInit
 
 ! ************************************************************************** !
 
-subroutine SurfaceGlobalAuxVarCopy(aux_var,aux_var2,option)
+subroutine SurfaceGlobalAuxVarCopy(auxvar,auxvar2,option)
   ! 
   ! This routine
   ! 
@@ -110,19 +110,19 @@ subroutine SurfaceGlobalAuxVarCopy(aux_var,aux_var2,option)
 
   implicit none
   
-  type(surface_global_auxvar_type) :: aux_var, aux_var2
+  type(surface_global_auxvar_type) :: auxvar, auxvar2
   type(option_type) :: option
 
-  aux_var2%istate = aux_var%istate
-  aux_var2%head = aux_var%head
-  aux_var2%temp = aux_var%temp
-  aux_var2%den_kg = aux_var%den_kg
+  auxvar2%istate = auxvar%istate
+  auxvar2%head = auxvar%head
+  auxvar2%temp = auxvar%temp
+  auxvar2%den_kg = auxvar%den_kg
 
 end subroutine SurfaceGlobalAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine SurfaceGlobalAuxVarSingleDestroy(aux_var)
+subroutine SurfaceGlobalAuxVarSingleDestroy(auxvar)
   ! 
   ! This routine
   ! 
@@ -132,19 +132,19 @@ subroutine SurfaceGlobalAuxVarSingleDestroy(aux_var)
 
   implicit none
 
-  type(surface_global_auxvar_type), pointer :: aux_var
+  type(surface_global_auxvar_type), pointer :: auxvar
   
-  if (associated(aux_var)) then
-    call SurfaceGlobalAuxVarStrip(aux_var)
-    deallocate(aux_var)
+  if (associated(auxvar)) then
+    call SurfaceGlobalAuxVarStrip(auxvar)
+    deallocate(auxvar)
   endif
-  nullify(aux_var)
+  nullify(auxvar)
 
 end subroutine SurfaceGlobalAuxVarSingleDestroy
 
 ! ************************************************************************** !
 
-subroutine SurfaceGlobalAuxVarArrayDestroy(aux_vars)
+subroutine SurfaceGlobalAuxVarArrayDestroy(auxvars)
   ! 
   ! This routine
   ! 
@@ -154,23 +154,23 @@ subroutine SurfaceGlobalAuxVarArrayDestroy(aux_vars)
 
   implicit none
 
-  type(surface_global_auxvar_type), pointer :: aux_vars(:)
+  type(surface_global_auxvar_type), pointer :: auxvars(:)
   
   PetscInt :: iaux
   
-  if (associated(aux_vars)) then
-    do iaux = 1, size(aux_vars)
-      call SurfaceGlobalAuxVarStrip(aux_vars(iaux))
+  if (associated(auxvars)) then
+    do iaux = 1, size(auxvars)
+      call SurfaceGlobalAuxVarStrip(auxvars(iaux))
     enddo  
-    deallocate(aux_vars)
+    deallocate(auxvars)
   endif
-  nullify(aux_vars)
+  nullify(auxvars)
 
 end subroutine SurfaceGlobalAuxVarArrayDestroy
 
 ! ************************************************************************** !
 
-subroutine SurfaceGlobalAuxVarStrip(aux_var)
+subroutine SurfaceGlobalAuxVarStrip(auxvar)
   ! 
   ! This routine
   ! 
@@ -182,11 +182,11 @@ subroutine SurfaceGlobalAuxVarStrip(aux_var)
 
   implicit none
 
-  type(surface_global_auxvar_type) :: aux_var
+  type(surface_global_auxvar_type) :: auxvar
   
-  call DeallocateArray(aux_var%head)
-  call DeallocateArray(aux_var%temp)
-  call DeallocateArray(aux_var%den_kg)
+  call DeallocateArray(auxvar%head)
+  call DeallocateArray(auxvar%temp)
+  call DeallocateArray(auxvar%den_kg)
 
 
 end subroutine SurfaceGlobalAuxVarStrip
@@ -208,9 +208,9 @@ subroutine SurfaceGlobalAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  call SurfaceGlobalAuxVarDestroy(aux%aux_vars)
-  call SurfaceGlobalAuxVarDestroy(aux%aux_vars_bc)
-  call SurfaceGlobalAuxVarDestroy(aux%aux_vars_ss)
+  call SurfaceGlobalAuxVarDestroy(aux%auxvars)
+  call SurfaceGlobalAuxVarDestroy(aux%auxvars_bc)
+  call SurfaceGlobalAuxVarDestroy(aux%auxvars_ss)
   
   deallocate(aux)
   nullify(aux)
