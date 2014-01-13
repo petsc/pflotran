@@ -254,6 +254,7 @@ chem_obj = \
 	${common_src}surface_complexation_aux.o 
 
 grid_obj = \
+	${common_src}communicator_base.o \
 	${common_src}connection.o \
 	${common_src}discretization.o \
 	${common_src}dm_kludge.o \
@@ -622,7 +623,7 @@ mass_transfer.o : dataset_base.o dataset_common_hdf5.o dataset_global_hdf5.o \
                   discretization.o grid.o input_aux.o option.o \
                   pflotran_constants.o string.o
 material.o : dataset_common_hdf5.o input_aux.o option.o pflotran_constants.o \
-             string.o
+             string.o communicator_base.o
 material_aux.o : option.o pflotran_constants.o
 matrix_block_aux.o : option.o pflotran_constants.o
 matrix_buffer.o : grid.o pflotran_constants.o structured_grid.o

@@ -3,6 +3,9 @@ module Timestepper_module
   use Solver_module
   use Waypoint_module 
   use Convergence_module 
+  use Material_module
+  use Material_Aux_class
+  use Variables_module
  
   use PFLOTRAN_Constants_module
 
@@ -2000,16 +2003,39 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
-                                  field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
-                                  field%tortuosity_loc,ONEDOF)
+  if (field%porosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                    field%porosity_loc,ONEDOF)
+  endif
+  if (field%tortuosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
+  endif
   call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                   field%icap_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                                   field%ithrm_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+  endif
     
   if (option%print_screen_flag) then
     write(*,'(/,2("=")," FLOW ",72("="))')
@@ -2504,16 +2530,39 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     ! vector, as that needs to be done within the residual calculation routine
     ! because that routine may get called several times during one Newton step
     ! if a method such as line search is being used.
-    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
-                                    field%porosity_loc,ONEDOF)
-    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
-                                    field%tortuosity_loc,ONEDOF)
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                                     field%ithrm_loc,ONEDOF)
     call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                     field%iphas_loc,ONEDOF)
+  if (field%porosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                    field%porosity_loc,ONEDOF)
+  endif
+  if (field%tortuosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
+  endif
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+  endif
     
     if (option%print_screen_flag) then
       if (step_to_steady_state) then
@@ -3056,10 +3105,33 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
-                                  field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
-                                  field%tortuosity_loc,ONEDOF)
+  if (field%porosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                    field%porosity_loc,ONEDOF)
+  endif
+  if (field%tortuosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
+  endif
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+  endif
 
   ! interpolate flow parameters/data
   ! this must remain here as these weighted values are used by both
@@ -3319,10 +3391,33 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   field => realization%field
   solver => stepper%solver
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
-                                  field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
-                                  field%tortuosity_loc,ONEDOF)
+  if (field%porosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                    field%porosity_loc,ONEDOF)
+  endif
+  if (field%tortuosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
+  endif
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+  endif
 
   if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT (OS) ",43("="))')
 
@@ -3698,16 +3793,39 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   num_linear_iterations = 0
 
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
-                                  field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
-                                  field%tortuosity_loc,ONEDOF)
+  if (field%porosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                    field%porosity_loc,ONEDOF)
+  endif
+  if (field%tortuosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
+  endif
   call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                   field%icap_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                                   field%ithrm_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+  endif
     
   if (option%print_screen_flag) write(*,'(/,2("=")," FLOW (STEADY STATE) ",37("="))')
 
@@ -3822,10 +3940,33 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
-                                  field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
-                                  field%tortuosity_loc,ONEDOF)
+  if (field%porosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                    field%porosity_loc,ONEDOF)
+  endif
+  if (field%tortuosity_loc /= 0) then
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
+  endif
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 POROSITY,ZERO_INTEGER)
+    call MaterialGetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc, &
+                                 TORTUOSITY,ZERO_INTEGER)
+  endif
 
   call GlobalUpdateDenAndSat(realization,1.d0)
   num_newton_iterations = 0
@@ -4244,10 +4385,13 @@ subroutine StepperSandbox(realization)
     tran_xx_p(istart + species_offset) = 0.25d0 * &
                                          tran_xx_p(istart + species_offset)
 
-    call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                tran_xx_p(istart:iend),volume_p(local_id), &
-                porosity_loc_p(ghosted_id), &
-                num_iterations,reaction,option,vol_frac_prim)
+  option%io_buffer = 'StepperSandbox() no longer used.'
+  call printErrMsg(option)
+!geh: this subroutine no longer used
+!    call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+!                tran_xx_p(istart:iend),volume_p(local_id), &
+!                porosity_loc_p(ghosted_id), &
+!                num_iterations,reaction,option,vol_frac_prim)
     tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
   enddo
 
