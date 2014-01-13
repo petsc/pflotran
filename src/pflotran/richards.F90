@@ -1676,17 +1676,17 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     
         ! production well (well status = -1)
           if(dabs(well_status + 1.D0) < 1.D-1) then
-            if (global_aux_vars(ghosted_id)%pres(1) > pressure_min) then
+            if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
               Dq = well_factor 
-              dphi = global_aux_vars(ghosted_id)%pres(1) - pressure_bh
+              dphi = global_auxvars(ghosted_id)%pres(1) - pressure_bh
               if (dphi >= 0.D0) then ! outflow only
-                ukvr = rich_aux_vars(ghosted_id)%kvr
+                ukvr = rich_auxvars(ghosted_id)%kvr
                 if (ukvr < 1.e-20) ukvr = 0.D0
                 v_darcy = 0.D0
                 if (ukvr*Dq > floweps) then
                   v_darcy = Dq * ukvr * dphi
                   ! store volumetric rate for ss_fluid_fluxes()
-                  qsrc_mol = -1.d0*v_darcy*global_aux_vars(ghosted_id)%den(1)
+                  qsrc_mol = -1.d0*v_darcy*global_auxvars(ghosted_id)%den(1)
                 endif
               endif
             endif
