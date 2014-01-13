@@ -161,7 +161,12 @@ subroutine MaterialPermTensorToScalar(material_aux_var,dist, &
   implicit none
   
   class(material_auxvar_type) :: material_aux_var
-  PetscReal, intent(in) :: dist(3)
+  ! -1 = fraction upwind
+  ! 0 = magnitude
+  ! 1 = unit x-dir
+  ! 2 = unit y-dir
+  ! 3 = unit z-dir
+  PetscReal, intent(in) :: dist(-1:3)
   PetscReal, intent(out) :: scalar_permeability
   
   scalar_permeability = &
