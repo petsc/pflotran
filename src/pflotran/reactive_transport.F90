@@ -2558,7 +2558,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       call SecondaryRTResJacMulti(rt_sec_transport_vars(local_id), &
                                   rt_aux_vars(ghosted_id), &
                                   global_aux_vars(ghosted_id), &
-                                  material_aux_vars(ghosted_id), &
+                                  material_aux_vars(ghosted_id)%volume, &
                                   reaction, &
                                   sec_diffusion_coefficient, &
                                   sec_porosity, &

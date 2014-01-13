@@ -657,7 +657,7 @@ end subroutine SecondaryRTAuxVarInit
 ! ************************************************************************** !
 
 subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
-                                  global_aux_var,material_aux_var, &
+                                  global_aux_var,prim_vol, &
                                   reaction,diffusion_coefficient, &
                                   porosity,option,res_transport)
   ! 
@@ -679,14 +679,12 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Material_Aux_class
-  
 
   implicit none
   
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: aux_var
   type(reactive_transport_auxvar_type) :: rt_auxvar
-  class(material_auxvar_type) :: material_aux_var  
   type(global_auxvar_type) :: global_aux_var
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
@@ -766,6 +764,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                           sec_transport_vars%ncells)
   PetscReal :: coeff_right_copy(reaction%naqcomp,reaction%naqcomp, &
                            sec_transport_vars%ncells)
+
+  class(material_auxvar_type), allocatable :: material_auxvar
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -928,6 +928,8 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
 !====================== Add reaction contributions =============================        
   
   ! Reaction 
+  allocate(material_auxvar)
+  call MaterialAuxVarInit(material_auxvar,option)
   do i = 1, ngcells
     res_react = 0.d0
     jac_react = 0.d0
@@ -935,13 +937,16 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,aux_var, &
                       option)
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
+    material_auxvar%porosity = porosity
+    material_auxvar%volume = vol(i)
     call RReaction(res_react,jac_react,PETSC_TRUE, &
-                   rt_auxvar,global_aux_var,material_aux_var,reaction,option)                     
+                   rt_auxvar,global_aux_var,material_auxvar,reaction,option)                     
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
     coeff_diag(:,:,i) = coeff_diag(:,:,i) + jac_react  ! in kg water/s
   enddo  
+  deallocate(material_auxvar)
          
 !============================== Forward solve ==================================        
                         
@@ -1466,7 +1471,7 @@ end subroutine SecondaryRTUpdateEquilState
 ! ************************************************************************** !
 
 subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
-                                         reaction,sec_porosity,option) 
+                                         reaction,porosity,option) 
   ! 
   ! Updates the kinetic secondary continuum
   ! variables at the end of time step
@@ -1490,7 +1495,7 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
   type(sec_transport_type) :: sec_transport_vars
   type(global_auxvar_type) :: global_aux_vars
   type(reaction_type), pointer :: reaction
-  PetscReal :: sec_porosity
+  PetscReal :: porosity
   PetscInt :: ngcells
   PetscReal :: vol(sec_transport_vars%ncells)
   PetscReal :: res_react(reaction%naqcomp)
@@ -1506,7 +1511,7 @@ subroutine SecondaryRTUpdateKineticState(sec_transport_vars,global_aux_vars, &
   allocate(material_auxvar)
   call MaterialAuxVarInit(material_auxvar,option)
   do i = 1, ngcells
-    material_auxvar%porosity = sec_porosity
+    material_auxvar%porosity = porosity
     material_auxvar%volume = vol(i)
     call RReaction(res_react,jac_react,PETSC_FALSE, &
                    sec_transport_vars%sec_rt_auxvar(i), &
@@ -1536,7 +1541,7 @@ end subroutine SecondaryRTUpdateKineticState
 subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
                                     global_aux_var, &
                                     reaction,diffusion_coefficient, &
-                                    sec_porosity,option,inf_norm_sec)
+                                    porosity,option,inf_norm_sec)
   ! 
   ! The residual of the secondary domain are checked
   ! to ensure convergence
@@ -1579,7 +1584,7 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
   PetscInt :: ngcells, ncomp
   PetscReal :: area_fm
   PetscReal :: diffusion_coefficient
-  PetscReal :: sec_porosity
+  PetscReal :: porosity
   PetscReal :: arrhenius_factor
   PetscReal :: pordt, pordiff
   PetscReal :: inf_norm_sec
@@ -1607,8 +1612,8 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
   res = 0.d0
   
   total_primary_node = aux_var%total(:,1)                         ! in mol/L 
-  pordt = sec_porosity/option%tran_dt
-  pordiff = sec_porosity*diffusion_coefficient
+  pordt = porosity/option%tran_dt
+  pordiff = porosity*diffusion_coefficient
 
   call RTAuxVarInit(rt_auxvar,reaction,option)
   do i = 1, ngcells
@@ -1669,17 +1674,14 @@ subroutine SecondaryRTCheckResidual(sec_transport_vars,aux_var, &
                       option)
     rt_auxvar%pri_molal = conc_upd(:,i) ! in mol/kg
     call RTotal(rt_auxvar,global_aux_var,reaction,option)
-    !geh: This is dangerous using a material_aux_type class without initilizing
-    !     its arrays to null, but I believe that only porosity and volume are
-    !     used.
-    material_auxvar%porosity = sec_porosity
+    material_auxvar%porosity = porosity
     material_auxvar%volume = vol(i)
     call RReaction(res_react,jac_react,PETSC_FALSE, &
-                   rt_auxvar,global_aux_var,material_auxvar,reaction,option)                  
+                   rt_auxvar,global_aux_var,material_auxvar,reaction,option)                     
     do j = 1, ncomp
       res(j+(i-1)*ncomp) = res(j+(i-1)*ncomp) + res_react(j) 
     enddo
-  enddo
+  enddo           
   deallocate(material_auxvar)
   
  ! Need to decide how to scale the residual with volumes
