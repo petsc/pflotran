@@ -1574,6 +1574,15 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscInt :: sum_connection
+  PetscReal, pointer :: mmsrc(:)
+  PetscReal, allocatable :: msrc(:)
+  PetscReal :: well_status
+  PetscReal :: well_factor
+  PetscReal :: pressure_bh
+  PetscReal :: pressure_max
+  PetscReal :: pressure_min
+  PetscReal :: well_inj_water
+  PetscReal :: Dq, dphi, v_darcy, ukvr
   
   patch => realization%patch
   grid => patch%grid
@@ -1615,10 +1624,6 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
-    
-    if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
-       source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
       
     cur_connection_set => source_sink%connection_set
     
@@ -1628,7 +1633,12 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      select case(source_sink%flow_condition%rate%itype)
+      if (source_sink%flow_condition%itype(1)/=HET_VOL_RATE_SS .and. &
+          source_sink%flow_condition%itype(1)/=HET_MASS_RATE_SS .and. &
+          source_sink%flow_condition%itype(1)/=WELL_SS) &
+        qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
+
+      select case(source_sink%flow_condition%itype(1))
         case(MASS_RATE_SS)
           qsrc_mol = qsrc/FMWH2O ! kg/sec -> kmol/sec
         case(SCALED_MASS_RATE_SS)
@@ -1647,7 +1657,45 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                      global_auxvars(ghosted_id)%den(1)                  ! den  = kmol/m^3
         case(HET_MASS_RATE_SS)
           qsrc_mol = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O ! kg/sec -> kmol/sec
+      
+        case(WELL_SS) ! production well, SK 12/19/13
+        ! if node pessure is lower than the given extraction pressure, shut it down
+!  well parameter explanation
+!   1. well status. 1 injection; -1 production; 0 shut in!
+!   2. well factor [m^3],  the effective permeability [m^2/s]
+!   3. bottomhole pressure:  [Pa]
+!   4. max pressure: [Pa]
+!   5. min pressure: [Pa]   
+          mmsrc => source_sink%flow_condition%well%dataset%rarray
+
+          well_status = mmsrc(1)
+          well_factor = mmsrc(2)
+          pressure_bh = mmsrc(3)
+          pressure_max = mmsrc(4)
+          pressure_min = mmsrc(5)
+    
+        ! production well (well status = -1)
+          if(dabs(well_status + 1.D0) < 1.D-1) then
+            if (global_aux_vars(ghosted_id)%pres(1) > pressure_min) then
+              Dq = well_factor 
+              dphi = global_aux_vars(ghosted_id)%pres(1) - pressure_bh
+              if (dphi >= 0.D0) then ! outflow only
+                ukvr = rich_aux_vars(ghosted_id)%kvr
+                if (ukvr < 1.e-20) ukvr = 0.D0
+                v_darcy = 0.D0
+                if (ukvr*Dq > floweps) then
+                  v_darcy = Dq * ukvr * dphi
+                  ! store volumetric rate for ss_fluid_fluxes()
+                  qsrc_mol = -1.d0*v_darcy*global_aux_vars(ghosted_id)%den(1)
+                endif
+              endif
+            endif
+          endif 
+
+
       end select
+          
+      
       if (option%compute_mass_balance_new) then
         ! need to added global auxvar for src/sink
         global_auxvars_ss(sum_connection)%mass_balance_delta(1,1) = &
@@ -2117,7 +2165,14 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: flow_pc
   PetscViewer :: viewer
-
+  PetscReal, pointer :: mmsrc(:)
+  PetscReal :: well_status
+  PetscReal :: well_factor
+  PetscReal :: pressure_bh
+  PetscReal :: pressure_max
+  PetscReal :: pressure_min
+  PetscReal :: ukvr, Dq, dphi, v_darcy
+  
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2175,8 +2230,9 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
-       source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
+    if(source_sink%flow_condition%itype(1)/=HET_VOL_RATE_SS.and. &
+       source_sink%flow_condition%itype(1)/=HET_MASS_RATE_SS .and. &
+       source_sink%flow_condition%itype(1)/=WELL_SS) &
       qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
 
     cur_connection_set => source_sink%connection_set
@@ -2188,7 +2244,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
       
       Jup = 0.d0
-      select case(source_sink%flow_condition%rate%itype)
+      select case(source_sink%flow_condition%itype(1))
         case(MASS_RATE_SS,SCALED_MASS_RATE_SS,HET_MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           Jup(1,1) = -qsrc*rich_auxvars(ghosted_id)%dden_dp*FMWH2O
@@ -2198,7 +2254,42 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         case(HET_VOL_RATE_SS)
           Jup(1,1) = -source_sink%flow_aux_real_var(ONE_INTEGER,iconn)* &
                     rich_auxvars(ghosted_id)%dden_dp*FMWH2O
+        case(WELL_SS) ! production well, SK 12/19/13
+        ! if node pessure is lower than the given extraction pressure, shut it down
+!  well parameter explanation
+!   1. well status. 1 injection; -1 production; 0 shut in!
+!   2. well factor [m^3],  the effective permeability [m^2/s]
+!   3. bottomhole pressure:  [Pa]
+!   4. max pressure: [Pa]
+!   5. min pressure: [Pa]   
+          mmsrc => source_sink%flow_condition%well%dataset%rarray
 
+          well_status = mmsrc(1)
+          well_factor = mmsrc(2)
+          pressure_bh = mmsrc(3)
+          pressure_max = mmsrc(4)
+          pressure_min = mmsrc(5)
+    
+        ! production well (well status = -1)
+          if(dabs(well_status + 1.D0) < 1.D-1) then
+            if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
+              Dq = well_factor 
+              dphi = global_auxvars(ghosted_id)%pres(1) - pressure_bh
+              if (dphi >= 0.D0) then ! outflow only
+                ukvr = rich_auxvars(ghosted_id)%kvr
+                if (ukvr < 1.e-20) ukvr = 0.D0
+                v_darcy = 0.D0
+                if (ukvr*Dq > floweps) then
+                  v_darcy = Dq * ukvr * dphi
+                  ! store volumetric rate for ss_fluid_fluxes()
+                  Jup(1,1) = -Dq*rich_auxvars(ghosted_id)%dkvr_dp*dphi* &
+                             global_auxvars(ghosted_id)%den(1) &
+                             -Dq*ukvr*1.d0*global_auxvars(ghosted_id)%den(1) &
+                             -Dq*ukvr*dphi*rich_auxvars(ghosted_id)%dden_dp
+                endif
+              endif
+            endif
+          endif 
       end select
 #ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then

@@ -168,6 +168,8 @@ function stage-pflotran-test() {
     echo "  test directory : ${_test_dir}"
     cd ${_test_dir}
     make clean-tests &> /dev/null
+    # FIXME(bja 2014-01-10) Need to handle the case of -f makefile_legacy...?
+    #make ${_pflotran_flags} test
     make test
     BUILD_STATUS=$?
     cat *.testlog
