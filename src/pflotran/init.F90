@@ -814,6 +814,9 @@ subroutine Init(simulation)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
+  ! assignVolumesToMaterialAuxVars() must be called after 
+  ! assignMaterialPropToRegions() where the Material object is created 
+  call assignVolumesToMaterialAuxVars(realization)
   if(realization%discretization%lsm_flux_method) &
     call GridComputeMinv(realization%discretization%grid, &
                          realization%discretization%stencil_width,option)
@@ -2897,8 +2900,8 @@ subroutine assignMaterialPropToRegions(realization)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(strata_type), pointer :: strata
   type(patch_type), pointer :: patch  
@@ -2918,12 +2921,13 @@ subroutine assignMaterialPropToRegions(realization)
   cur_patch => realization%patch_list%first
   do
     if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
     if (.not.associated(cur_patch%imat)) then
-      allocate(cur_patch%imat(cur_patch%grid%ngmax))
+      allocate(cur_patch%imat(grid%ngmax))
       ! initialize to "unset"
       cur_patch%imat = -999
       ! also allocate saturation function id
-      allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
+      allocate(cur_patch%sat_func_id(grid%ngmax))
       cur_patch%sat_func_id = -999
     endif
     
@@ -3188,6 +3192,44 @@ subroutine assignMaterialPropToRegions(realization)
   endif    
 
 end subroutine assignMaterialPropToRegions
+
+! ************************************************************************** !
+
+subroutine assignVolumesToMaterialAuxVars(realization)
+  ! 
+  ! Assigns the cell volumes currently stored in field%volume0 to the 
+  ! material auxiliary variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Material_module
+  use Discretization_module
+  use Field_module
+  use Variables_module, only : VOLUME
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+
+  option => realization%option
+  field => realization%field
+
+  if (option%iflowmode == RICHARDS_MODE .or. &
+      option%iflowmode == NULL_MODE) then
+    call DiscretizationGlobalToLocal(realization%discretization,field%volume0, &
+                                     field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                 field%work_loc,VOLUME,ZERO_INTEGER)
+  endif
+
+end subroutine assignVolumesToMaterialAuxVars
 
 ! ************************************************************************** !
 

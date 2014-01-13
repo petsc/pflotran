@@ -479,6 +479,7 @@ subroutine CLM_CN_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
 
   use Option_module
   use Reaction_Aux_module, only : reaction_type
+  use Material_Aux_class, only : material_auxvar_type
   
   implicit none
   

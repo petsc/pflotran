@@ -86,6 +86,7 @@ module Material_module
             MaterialAnisotropyExists, &
             MaterialSetAuxVarScalar, &
             MaterialSetAuxVarVecLoc, &
+            MaterialGetAuxVarVecLoc, &
             MaterialAuxVarCommunicate, &
             MaterialPropertyRead
   
@@ -885,6 +886,10 @@ subroutine MaterialSetAuxVarScalar(Material,value,ivar)
   PetscInt :: i
   
   select case(ivar)
+    case(VOLUME)
+      do i=1, Material%num_aux
+        Material%aux_vars(i)%volume = value
+      enddo
     case(POROSITY)
       do i=1, Material%num_aux
         Material%aux_vars(i)%porosity = value
@@ -950,6 +955,10 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
   
   select case(ivar)
+    case(VOLUME)
+      do ghosted_id=1, Material%num_aux
+        Material%aux_vars(ghosted_id)%volume = vec_loc_p(ghosted_id)
+      enddo
     case(POROSITY)
       do ghosted_id=1, Material%num_aux
         Material%aux_vars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
@@ -1023,6 +1032,10 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
   
   select case(ivar)
+    case(VOLUME)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%aux_vars(ghosted_id)%volume
+      enddo
     case(POROSITY)
       do ghosted_id=1, Material%num_aux
         vec_loc_p(ghosted_id) = Material%aux_vars(ghosted_id)%porosity

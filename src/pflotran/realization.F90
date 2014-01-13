@@ -187,6 +187,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Discretization_module
   use Unstructured_Cell_module
   use DM_Kludge_module
+  use Variables_module, only : VOLUME
   
   implicit none
   
@@ -223,6 +224,8 @@ subroutine RealizationCreateDiscretization(realization)
                                      field%porosity0)
   call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%tortuosity0)
+  call DiscretizationDuplicateVector(discretization,field%work, &
+                                     field%volume0)
   if (option%iflowmode /= RICHARDS_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     !geh: relocated to material aux var
@@ -376,7 +379,13 @@ subroutine RealizationCreateDiscretization(realization)
       endif
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
-      call GridComputeVolumes(grid,field%volume,option)
+      !geh: remove
+      if (option%iflowmode == RICHARDS_MODE .or. &
+          option%iflowmode == NULL_MODE) then
+        call GridComputeVolumes(grid,field%volume0,option)
+      else
+        call GridComputeVolumes(grid,field%volume,option)
+      endif
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
@@ -408,7 +417,17 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option, &
                                       discretization%dm_1dof%ugdm) 
-      call GridComputeVolumes(grid,field%volume,option)
+      !geh: remove
+      if (option%iflowmode == RICHARDS_MODE .or. &
+          option%iflowmode == NULL_MODE) then
+        call GridComputeVolumes(grid,field%work,option)
+        call DiscretizationGlobalToLocal(discretization,field%work, &
+                                         field%work_loc,ONEDOF)  
+        call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                                     field%work_loc,VOLUME,ZERO_INTEGER)
+      else
+        call GridComputeVolumes(grid,field%volume,option)
+      endif
 #ifdef MFD_UGRID
       call GridComputeCell2FaceConnectivity(discretization%grid,discretization%MFD,option)
 #endif

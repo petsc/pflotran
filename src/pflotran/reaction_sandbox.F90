@@ -216,6 +216,7 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Material_Aux_class, only: material_auxvar_type
   
   implicit none
 

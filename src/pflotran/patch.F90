@@ -2065,27 +2065,52 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         do while (icount < x_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)
-          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                      grid%structured_grid%dy(neighbor_ghosted_id)* &
-                      grid%structured_grid%dz(neighbor_ghosted_id)
-             
+          if (option%iflowmode /= RICHARDS_MODE .and. &
+              option%iflowmode /= NULL_MODE) then
+            !geh: remove
+            sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                        grid%structured_grid%dy(neighbor_ghosted_id)* &
+                        grid%structured_grid%dz(neighbor_ghosted_id)
+          else
+            sum = sum + &
+                  material_aux_vars(ghosted_id)%permeability(perm_xx_index)* &
+                  grid%structured_grid%dy(neighbor_ghosted_id)* &
+                  grid%structured_grid%dz(neighbor_ghosted_id)
+          endif
         enddo
         ! y-direction
         do while (icount < x_count + y_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
-          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                      grid%structured_grid%dx(neighbor_ghosted_id)* &
-                      grid%structured_grid%dz(neighbor_ghosted_id)
-             
+          if (option%iflowmode /= RICHARDS_MODE .and. &
+              option%iflowmode /= NULL_MODE) then
+            !geh: remove
+            sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                        grid%structured_grid%dx(neighbor_ghosted_id)* &
+                        grid%structured_grid%dz(neighbor_ghosted_id)
+          else
+            sum = sum + &
+                  material_aux_vars(ghosted_id)%permeability(perm_xx_index)* &
+                  grid%structured_grid%dx(neighbor_ghosted_id)* &
+                  grid%structured_grid%dz(neighbor_ghosted_id)
+          endif   
         enddo
         ! z-direction
         do while (icount < x_count + y_count + z_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
-          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                      grid%structured_grid%dx(neighbor_ghosted_id)* &
-                      grid%structured_grid%dy(neighbor_ghosted_id)
+          if (option%iflowmode /= RICHARDS_MODE .and. &
+              option%iflowmode /= NULL_MODE) then
+            !geh: remove
+            sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                        grid%structured_grid%dx(neighbor_ghosted_id)* &
+                        grid%structured_grid%dy(neighbor_ghosted_id)
+          else
+            sum = sum + &
+                  material_aux_vars(ghosted_id)%permeability(perm_xx_index)* &
+                  grid%structured_grid%dx(neighbor_ghosted_id)* &
+                  grid%structured_grid%dy(neighbor_ghosted_id)
+          endif   
         enddo
         vec_ptr(local_id) = vec_ptr(local_id) + sum
       enddo

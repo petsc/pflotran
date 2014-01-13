@@ -2060,9 +2060,11 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     xx_p(:) = exp(log_xx_p(:))
     call VecRestoreArrayF90(field%tran_xx,xx_p,ierr)
     call VecRestoreArrayReadF90(xx,log_xx_p,ierr)  
-    call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)
+    call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                     field%tran_xx_loc,NTRANDOF)
   else
-    call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
+    call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc, &
+                                     NTRANDOF)
   endif
 
   ! pass #1 for internal and boundary flux terms

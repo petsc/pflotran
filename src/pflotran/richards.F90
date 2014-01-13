@@ -604,6 +604,8 @@ subroutine RichardsUpdatePermPatch(realization)
   use Patch_module
   use Field_module
   use Material_module
+  use Material_Aux_class
+  use Variables_module
   
   implicit none
   
@@ -615,13 +617,13 @@ subroutine RichardsUpdatePermPatch(realization)
   type(grid_type), pointer :: grid
   type(material_property_ptr_type), pointer :: material_property_array(:)
   type(discretization_type), pointer :: discretization
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: local_id, ghosted_id
   PetscReal :: scale
   PetscReal :: p_min, p_max, permfactor_max
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
-  PetscReal, pointer :: perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -630,6 +632,7 @@ subroutine RichardsUpdatePermPatch(realization)
   field => realization%field
   grid => patch%grid
   material_property_array => realization%material_property_array
+  material_auxvars => patch%aux%Material%aux_vars
 
   if (.not.associated(patch%imat)) then
     option%io_buffer = 'Materials IDs not present in run.  Material ' // &
@@ -640,9 +643,6 @@ subroutine RichardsUpdatePermPatch(realization)
   call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr)
   call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr)
   call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr)
-  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecGetArrayF90(field%perm_zz_loc,perm_zz_loc_p,ierr)
-  call VecGetArrayF90(field%perm_yy_loc,perm_yy_loc_p,ierr)
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   
   do local_id = 1, grid%nlmax
@@ -661,25 +661,38 @@ subroutine RichardsUpdatePermPatch(realization)
         scale = permfactor_max
       endif
     endif
-    perm_xx_loc_p(ghosted_id) = perm0_xx_p(local_id)*scale
-    perm_yy_loc_p(ghosted_id) = perm0_yy_p(local_id)*scale
-    perm_zz_loc_p(ghosted_id) = perm0_zz_p(local_id)*scale
+    material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
+      perm0_xx_p(local_id)*scale
+    material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
+      perm0_yy_p(local_id)*scale
+    material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
+      perm0_zz_p(local_id)*scale
   enddo
   
   call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr)
   call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr)
   call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr)
-  call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
-  call VecRestoreArrayF90(field%perm_zz_loc,perm_zz_loc_p,ierr)
-  call VecRestoreArrayF90(field%perm_yy_loc,perm_yy_loc_p,ierr)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
 
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
-                                  field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc, &
-                                  field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc, &
-                                  field%perm_zz_loc,ONEDOF)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+
   
 end subroutine RichardsUpdatePermPatch
 
@@ -1165,6 +1178,9 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Option_module
   use Logging_module
   use Mass_Transfer_module, only : mass_transfer_type
+  use Material_module
+  use Material_Aux_class
+  use Variables_module
 
   implicit none
 
@@ -1189,12 +1205,28 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
 
-  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
-  
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+
   ! pass #1 for internal and boundary flux terms
   call RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
