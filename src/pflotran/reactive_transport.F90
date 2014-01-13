@@ -6,6 +6,7 @@ module Reactive_Transport_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   
   use PFLOTRAN_Constants_module
 
@@ -351,9 +352,8 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(reaction_type), pointer :: reaction
-
-  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -373,9 +373,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
 
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
+  material_aux_vars => patch%aux%Material%aux_vars
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -385,14 +383,15 @@ subroutine RTComputeMassBalance(realization,mass_balance)
       mass_balance(:,iphase) = mass_balance(:,iphase) + &
         rt_aux_vars(ghosted_id)%total(:,iphase) * &
         global_aux_vars(ghosted_id)%sat(iphase) * &
-        porosity_loc_p(ghosted_id) * &
-        volume_p(local_id)*1000.d0
+        material_aux_vars(ghosted_id)%porosity * &
+        material_aux_vars(ghosted_id)%volume*1000.d0
         
       if (iphase == 1) then
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0) then
           mass_balance(:,iphase) = mass_balance(:,iphase) + &
-            rt_aux_vars(ghosted_id)%total_sorb_eq(:) * volume_p(local_id)
+            rt_aux_vars(ghosted_id)%total_sorb_eq(:) * &
+            material_aux_vars(ghosted_id)%volume
         endif
 
 
@@ -402,7 +401,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
             do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
               mass_balance(:,iphase) = mass_balance(:,iphase) + &
                 rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) * &
-                volume_p(local_id)
+                material_aux_vars(ghosted_id)%volume
             enddo
           enddo
         endif
@@ -416,7 +415,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
               mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
               + reaction%mineral%kinmnrlstoich(i,imnrl)                  &
               * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
-              * volume_p(local_id) &
+              * material_aux_vars(ghosted_id)%volume &
               / reaction%mineral%kinmnrl_molar_vol(imnrl)
             enddo 
           enddo
@@ -425,9 +424,6 @@ subroutine RTComputeMassBalance(realization,mass_balance)
     enddo
   enddo
 
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  
 end subroutine RTComputeMassBalance
 
 ! ************************************************************************** !
@@ -671,6 +667,7 @@ subroutine RTUpdateKineticState(realization)
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscInt :: ghosted_id, local_id
   PetscReal :: conc, max_conc, min_conc
@@ -684,6 +681,7 @@ subroutine RTUpdateKineticState(realization)
 
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
+  material_aux_vars => patch%aux%Material%aux_vars
 
   ! update mineral volume fractions, multirate sorption concentrations, 
   ! kinetic sorption concentration etc.  These updates must take place
@@ -699,7 +697,9 @@ subroutine RTUpdateKineticState(realization)
     endif
 
     call RUpdateKineticState(rt_aux_vars(ghosted_id), &
-                             global_aux_vars(ghosted_id),reaction,option)
+                             global_aux_vars(ghosted_id), &
+                             material_aux_vars(ghosted_id), &
+                             reaction,option)
   enddo
   
   ! update secondary continuum variables
@@ -711,8 +711,8 @@ subroutine RTUpdateKineticState(realization)
         sec_porosity = realization%material_property_array(1)%ptr% &
                         secondary_continuum_porosity
 
-        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(local_id), &
-                                           global_aux_vars(local_id), &
+        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(ghosted_id), &
+                                           global_aux_vars(ghosted_id), &
                                            reaction,sec_porosity,option)                     
     enddo
   endif
@@ -744,14 +744,14 @@ subroutine RTUpdateFixedAccumulation(realization)
   
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)  
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
-  PetscReal, pointer :: xx_p(:), porosity_loc_p(:), tor_loc_p(:), &
-                        volume_p(:), accum_p(:), density_loc_p(:)
+  PetscReal, pointer :: xx_p(:), accum_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: dof_offset, istart, iendaq, iendall
   PetscInt :: istartim, iendim
@@ -764,6 +764,8 @@ subroutine RTUpdateFixedAccumulation(realization)
   patch => realization%patch
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
+  material_aux_vars => patch%aux%Material%aux_vars
+  
   grid => patch%grid
   reaction => realization%reaction
   if (option%use_mc) then
@@ -772,9 +774,6 @@ subroutine RTUpdateFixedAccumulation(realization)
 
   ! cannot use tran_xx_loc vector here as it has not yet been updated.
   call VecGetArrayReadF90(field%tran_xx,xx_p, ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   call VecGetArrayF90(field%tran_accum, accum_p, ierr)
   
@@ -827,23 +826,18 @@ subroutine RTUpdateFixedAccumulation(realization)
                          reaction,option)
     call RTAccumulation(rt_aux_vars(ghosted_id), &
                         global_aux_vars(ghosted_id), &
-                        porosity_loc_p(ghosted_id), &
-                        volume_p(local_id), &
+                        material_aux_vars(ghosted_id), &
                         reaction,option,vol_frac_prim, &
                         accum_p(istart:iendall)) 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                              global_aux_vars(ghosted_id), &
-                             volume_p(local_id), &
+                             material_aux_vars(ghosted_id), &
                              reaction,option,accum_p(istart:iendall))
     endif
   enddo
 
   call VecRestoreArrayReadF90(field%tran_xx,xx_p, ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
-
   call VecRestoreArrayF90(field%tran_accum, accum_p, ierr)
 
 end subroutine RTUpdateFixedAccumulation
@@ -872,12 +866,12 @@ subroutine RTUpdateTransportCoefs(realization)
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reactive_transport_param_type), pointer :: rt_parameter
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
   PetscInt :: local_id, ghosted_id, ghosted_face_id, id
   
   type(coupler_type), pointer :: boundary_condition
@@ -893,11 +887,9 @@ subroutine RTUpdateTransportCoefs(realization)
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  material_aux_vars => patch%aux%Material%aux_vars
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
-
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc,tor_loc_p,ierr)
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -924,14 +916,12 @@ subroutine RTUpdateTransportCoefs(realization)
       dist_dn = distance-dist_up ! should avoid truncation error
 
       call TDiffusion(global_aux_vars(ghosted_id_up), &
-                      porosity_loc_p(ghosted_id_up), &
-                      tor_loc_p(ghosted_id_up), &
+                      material_aux_vars(ghosted_id_up), &
                       patch%material_property_array(patch%imat(ghosted_id_up))% &
                         ptr%longitudinal_dispersivity, &
                       dist_up, &
                       global_aux_vars(ghosted_id_dn), &
-                      porosity_loc_p(ghosted_id_dn), &
-                      tor_loc_p(ghosted_id_dn), &
+                      material_aux_vars(ghosted_id_dn), &
                       patch%material_property_array(patch%imat(ghosted_id_dn))% &
                         ptr%longitudinal_dispersivity, &
                       dist_dn, &
@@ -974,8 +964,7 @@ subroutine RTUpdateTransportCoefs(realization)
       call TDiffusionBC(boundary_condition%tran_condition%itype, &
                         global_aux_vars_bc(sum_connection), &
                         global_aux_vars(ghosted_id), &
-                        porosity_loc_p(ghosted_id), &
-                        tor_loc_p(ghosted_id), &
+                        material_aux_vars(ghosted_id), &
                         patch%material_property_array(patch%imat(ghosted_id))% &
                           ptr%longitudinal_dispersivity, &
                         cur_connection_set%dist(0,iconn), &
@@ -985,10 +974,6 @@ subroutine RTUpdateTransportCoefs(realization)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
-  ! Restore vectors
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
 
 end subroutine RTUpdateTransportCoefs
 
@@ -1016,11 +1001,12 @@ subroutine RTUpdateRHSCoefs(realization)
   type(realization_type) :: realization
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), rhs_coef_p(:)
+  PetscReal, pointer :: rhs_coef_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: iphase
   PetscErrorCode :: ierr
@@ -1029,29 +1015,26 @@ subroutine RTUpdateRHSCoefs(realization)
   field => realization%field
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
+  material_aux_vars => patch%aux%Material%aux_vars
   grid => patch%grid
 
   ! Get vectors
   call VecGetArrayF90(field%tran_rhs_coef,rhs_coef_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    rhs_coef_p(local_id) = porosity_loc_p(ghosted_id)* &
+    rhs_coef_p(local_id) = material_aux_vars(ghosted_id)%porosity* &
                            global_aux_vars(ghosted_id)%sat(iphase)* &
 ! total already has den_kg within 
 !                           global_aux_vars(ghosted_id)%den_kg(iphase)* &
                            1000.d0* &
-                           volume_p(local_id)/option%tran_dt
+                           material_aux_vars(ghosted_id)%volume/option%tran_dt
   enddo
 
   ! Restore vectors
   call VecRestoreArrayF90(field%tran_rhs_coef,rhs_coef_p,ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
 end subroutine RTUpdateRHSCoefs
 
@@ -1152,8 +1135,6 @@ subroutine RTCalculateRHS_t1(realization)
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
   PetscReal, pointer :: rhs_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: iphase
   PetscReal :: coef_up(1), coef_dn(1)
@@ -1196,8 +1177,6 @@ subroutine RTCalculateRHS_t1(realization)
 
   ! Get vectors
   call VecGetArrayF90(field%tran_rhs,rhs_p,ierr)
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   ! add in inflowing boundary conditions
   ! Boundary Flux Terms -----------------------------------
@@ -1338,8 +1317,6 @@ subroutine RTCalculateRHS_t1(realization)
 
   ! Restore vectors
   call VecRestoreArrayF90(field%tran_rhs,rhs_p,ierr)
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   ! Mass Transfer
   if (associated(realization%rt_mass_transfer_list)) then
@@ -1378,12 +1355,11 @@ subroutine RTCalculateTransportMatrix(realization,T)
   Mat :: T
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: volume_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
@@ -1407,13 +1383,12 @@ subroutine RTCalculateTransportMatrix(realization,T)
   field => realization%field
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
+  material_aux_vars => patch%aux%Material%aux_vars
   grid => patch%grid  
 
   call MatZeroEntries(T,ierr)
   
   ! Get vectors
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1500,11 +1475,11 @@ subroutine RTCalculateTransportMatrix(realization,T)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle    
-    coef = porosity_loc_p(ghosted_id)* &
+    coef = material_aux_vars(ghosted_id)%porosity* &
            global_aux_vars(ghosted_id)%sat(iphase)* &
 !geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
            1000.d0* &
-           volume_p(local_id)/option%tran_dt
+           material_aux_vars(ghosted_id)%volume/option%tran_dt
     call MatSetValuesLocal(T,1,ghosted_id-1,1,ghosted_id-1,coef, &
                            ADD_VALUES,ierr)
   enddo
@@ -1555,10 +1530,6 @@ subroutine RTCalculateTransportMatrix(realization,T)
   enddo
 
   ! All CO2 source/sinks are handled on the RHS for now
-
-  ! Restore vectors
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
   call MatAssemblyBegin(T,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(T,MAT_FINAL_ASSEMBLY,ierr)
@@ -1612,6 +1583,7 @@ subroutine RTReact(realization)
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -1623,8 +1595,6 @@ subroutine RTReact(realization)
   PetscInt :: iphase
   PetscInt :: ithread, vector_length
   PetscReal, pointer :: tran_xx_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: mask_p(:)
   PetscInt :: num_iterations
 #ifdef OS_STATISTICS
@@ -1661,6 +1631,7 @@ subroutine RTReact(realization)
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
   rt_aux_vars => patch%aux%RT%aux_vars
+  material_aux_vars => patch%aux%Material%aux_vars
   grid => patch%grid
   reaction => realization%reaction
   if (option%use_mc) then
@@ -1673,8 +1644,6 @@ subroutine RTReact(realization)
 
   ! Get vectors
   call VecGetArrayReadF90(field%tran_xx,tran_xx_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
       
   vol_frac_prim = 1.d0    
   iphase = 1
@@ -1698,8 +1667,8 @@ subroutine RTReact(realization)
     endif
     
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                tran_xx_p(istart:iend),volume_p(local_id), &
-                porosity_loc_p(ghosted_id), &
+                material_aux_vars(ghosted_id), &
+                tran_xx_p(istart:iend), &
                 num_iterations,reaction,option,vol_frac_prim)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iendaq) = rt_aux_vars(ghosted_id)%pri_molal
@@ -1729,8 +1698,6 @@ subroutine RTReact(realization)
   
   ! Restore vectors
   call VecRestoreArrayReadF90(field%tran_xx,tran_xx_p,ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
   if (option%compute_mass_balance_new) then
     call RTZeroMassBalanceDelta(realization)
@@ -1855,8 +1822,6 @@ subroutine RTComputeBCMassBalanceOS(realization)
   PetscReal :: coef_up(realization%option%nphase)
   PetscReal :: coef_dn(realization%option%nphase)
   PetscReal :: coef_in, coef_out
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -1913,9 +1878,6 @@ subroutine RTComputeBCMassBalanceOS(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
-
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
   sum_connection = 0
@@ -1956,9 +1918,6 @@ subroutine RTComputeBCMassBalanceOS(realization)
     enddo
     source_sink => source_sink%next
   enddo
-
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)  
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
 
 end subroutine RTComputeBCMassBalanceOS
 
@@ -2165,7 +2124,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt, parameter :: iphase = 1
   PetscInt :: i, istart, iend                        
@@ -2243,9 +2201,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   ! Get pointer to Vector data
   call VecGetArrayF90(r, r_p, ierr)
  
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
-
   r_p = 0.d0
   vol_frac_prim = 1.d0
 
@@ -2435,9 +2390,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   ! Restore vectors
   call VecRestoreArrayF90(r, r_p, ierr)
  
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
-
 end subroutine RTResidualFlux
 
 ! ************************************************************************** !
@@ -2476,7 +2428,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt, parameter :: iphase = 1
   PetscInt :: i
@@ -2495,6 +2446,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_ss(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars_ss(:) 
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   PetscReal :: Res(realization%reaction%ncomp)
   
   type(coupler_type), pointer :: source_sink
@@ -2528,6 +2480,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   rt_aux_vars_ss => patch%aux%RT%aux_vars_ss
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  material_aux_vars => patch%aux%Material%aux_vars
   if (option%use_mc) then
     rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
   endif
@@ -2536,9 +2489,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   call VecGetArrayF90(r, r_p, ierr)
   call VecGetArrayReadF90(field%tran_accum, accum_p, ierr)
  
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayReadF90(field%volume, volume_p, ierr)
-  
   vol_frac_prim = 1.d0
 
   if (.not.option%steady_state) then
@@ -2559,24 +2509,23 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       endif  
       call RTAccumulation(rt_aux_vars(ghosted_id), &
                           global_aux_vars(ghosted_id), &
-                          porosity_loc_p(ghosted_id), &
-                          volume_p(local_id), &
+                          material_aux_vars(ghosted_id), &
                           reaction,option,vol_frac_prim,Res)
       if (reaction%neqsorb > 0) then
         call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
-                               volume_p(local_id), &
+                               material_aux_vars(ghosted_id), &
                                reaction,option,Res)
       endif
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       if (reaction%calculate_water_age) then 
         call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                  porosity_loc_p(ghosted_id),volume_p(local_id),option,reaction,Res)
+                  material_aux_vars(ghosted_id),option,reaction,Res)
         r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       endif
       if (reaction%calculate_tracer_age) then 
         call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                  porosity_loc_p(ghosted_id),volume_p(local_id),option,reaction,Res)
+                  material_aux_vars(ghosted_id),option,reaction,Res)
         r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       endif
     enddo
@@ -2605,9 +2554,9 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
                      secondary_continuum_porosity
 
       call SecondaryRTResJacMulti(rt_sec_transport_vars(local_id), &
-                                  rt_aux_vars(local_id), &
-                                  global_aux_vars(local_id), &
-                                  volume_p(local_id), &
+                                  rt_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id), &
+                                  material_aux_vars(ghosted_id), &
                                   reaction, &
                                   sec_diffusion_coefficient, &
                                   sec_porosity, &
@@ -2740,8 +2689,8 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
       endif      
       call RReaction(Res,Jup,PETSC_FALSE,rt_aux_vars(ghosted_id), &
                      global_aux_vars(ghosted_id), &
-                     porosity_loc_p(ghosted_id), &
-                     volume_p(local_id),reaction,option)
+                     material_aux_vars(ghosted_id), &
+                     reaction,option)
       if (option%use_mc) then
         vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
         Res = Res*vol_frac_prim
@@ -2764,9 +2713,6 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayReadF90(field%tran_accum, accum_p, ierr)
  
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
-  
   ! Mass Transfer
   if (associated(realization%rt_mass_transfer_list)) then
     cur_mass_transfer => realization%rt_mass_transfer_list
@@ -2912,7 +2858,6 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend                        
   type(grid_type), pointer :: grid
@@ -2968,10 +2913,6 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
   endif
 
 
-  ! Get pointer to Vector data
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
-  
   vol_frac_prim = 1.d0
 
   ! Interior Flux Terms -----------------------------------
@@ -3128,10 +3069,6 @@ subroutine RTJacobianFlux(snes,xx,A,B,flag,realization,ierr)
   enddo
   call PetscLogEventEnd(logging%event_rt_jacobian_fluxbc,ierr)  
 
-  ! Restore vectors
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%tortuosity_loc, tor_loc_p, ierr)
-
 end subroutine RTJacobianFlux
 
 ! ************************************************************************** !
@@ -3168,7 +3105,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), work_loc_p(:)
+  PetscReal, pointer :: work_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istartaq, iendaq
   PetscInt :: istartcoll, iendcoll
@@ -3183,6 +3120,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
     
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscReal :: Res(realization%reaction%ncomp)    
   
@@ -3214,16 +3152,13 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  material_aux_vars => patch%aux%Material%aux_vars
   if (option%use_mc) then
     rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
   endif
 
   vol_frac_prim = 1.d0
   
-  ! Get pointer to Vector data
-  call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayReadF90(field%volume, volume_p, ierr)
-    
   if (.not.option%steady_state) then
   call PetscLogEventBegin(logging%event_rt_jacobian_accum,ierr)  
 #if 1  
@@ -3238,15 +3173,15 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       
       call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
                                     global_aux_vars(ghosted_id), &
-                                    porosity_loc_p(ghosted_id), &
-                                    volume_p(local_id),reaction,option, &
+                                    material_aux_vars(ghosted_id), &
+                                    reaction,option, &
                                     vol_frac_prim,Jup) 
                                     
       if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_aux_vars(ghosted_id), &
                                          global_aux_vars(ghosted_id), &
-                                         volume_p(local_id),reaction, &
-                                         option,Jup)
+                                         material_aux_vars(ghosted_id), &
+                                         reaction,option,Jup)
       endif
       
       if (option%use_mc) then
@@ -3344,8 +3279,8 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
       endif      
       call RReactionDerivative(Res,Jup,rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
-                               porosity_loc_p(ghosted_id), &
-                               volume_p(local_id),reaction,option)
+                               material_aux_vars(ghosted_id), &
+                               reaction,option)
       if (option%use_mc) then
         vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
         Jup = Jup*vol_frac_prim
@@ -3391,9 +3326,6 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,flag,realization,ierr)
     call VecRestoreArrayF90(field%tran_work_loc, work_loc_p, ierr)
     call PetscLogEventEnd(logging%event_rt_jacobian_zero_calc,ierr)    
   endif
-
-  call VecRestoreArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%volume, volume_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -3458,7 +3390,6 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
   PetscInt :: istartcoll_loc, iendcoll_loc
   PetscInt :: istartim, iendim
   PetscReal, pointer :: xx_loc_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal :: xxbc(realization%reaction%ncomp)
   PetscReal, pointer :: basis_molarity_p(:)
   PetscReal, pointer :: basis_coll_conc_p(:)
@@ -3493,7 +3424,6 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
 #endif  
   
   call VecGetArrayReadF90(field%tran_xx_loc,xx_loc_p,ierr)
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
 
   if (update_cells) then
 
@@ -3637,7 +3567,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
         boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
         boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
         boundary_condition%tran_condition%cur_constraint_coupler%immobile_species, &
-        porosity_loc_p(ghosted_id), &
+        patch%aux%Material%aux_vars(ghosted_id)%porosity, &
         boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
         PETSC_TRUE,option)
     basis_molarity_p => boundary_condition%tran_condition% &
@@ -3779,7 +3709,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
               boundary_condition%tran_condition%cur_constraint_coupler%immobile_species, &
-              porosity_loc_p(ghosted_id), &
+              patch%aux%Material%aux_vars(ghosted_id)%porosity, &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
             ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
@@ -3816,7 +3746,6 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
   patch%aux%RT%aux_vars_up_to_date = update_cells .and. update_bcs
   
   call VecRestoreArrayReadF90(field%tran_xx_loc,xx_loc_p, ierr)
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
   icall = icall+ 1
   
 end subroutine RTUpdateAuxVars
@@ -4413,7 +4342,8 @@ subroutine RTExplicitAdvection(realization)
   type(reaction_type), pointer :: reaction
   type(discretization_type), pointer :: discretization
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -4430,8 +4360,6 @@ subroutine RTExplicitAdvection(realization)
   
   PetscReal :: sum_flux(realization%reaction%ncomp,realization%patch%grid%ngmax)
   
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: tvd_ghosts_p(:)
   PetscReal, pointer :: rhs_coef_p(:)
@@ -4467,6 +4395,7 @@ subroutine RTExplicitAdvection(realization)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  material_aux_vars => patch%aux%Material%aux_vars
   
   ntvddof = patch%aux%RT%rt_parameter%naqcomp
   
@@ -4701,8 +4630,6 @@ subroutine RTExplicitAdvection(realization)
     source_sink => source_sink%next
   enddo
   
-  call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayReadF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%tran_xx,tran_xx_p,ierr)
   call VecGetArrayReadF90(field%tran_rhs_coef,rhs_coef_p,ierr)
 
@@ -4717,10 +4644,10 @@ subroutine RTExplicitAdvection(realization)
 !    do iphase = 1, option%nphase
       ! psv_t must have same units [mol/sec] and be consistent with rhs_coef_p
       ! in RTUpdateRHSCoefs()
-      psv_t = porosity_loc_p(ghosted_id)* &
+      psv_t = material_aux_vars(ghosted_id)%porosity* &
               global_aux_vars(ghosted_id)%sat(iphase)* &
               1000.d0* &
-              volume_p(local_id)/option%tran_dt
+              material_aux_vars(ghosted_id)%volume/option%tran_dt
       !geh: clearly dangerous that I reload into total, but I am going to do it!
       tran_xx_p(local_start:local_end) = &
         ((rhs_coef_p(local_id)*rt_aux_vars(ghosted_id)%total(:,iphase)) + &
@@ -4736,8 +4663,6 @@ subroutine RTExplicitAdvection(realization)
   endif
   
   ! Restore vectors
-  call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayReadF90(field%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%tran_xx,tran_xx_p,ierr)
   call VecRestoreArrayReadF90(field%tran_rhs_coef,rhs_coef_p,ierr)
   

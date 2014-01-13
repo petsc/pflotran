@@ -217,70 +217,77 @@ subroutine RealizationCreateDiscretization(realization)
   call DiscretizationCreateDMs(discretization,option)
 
   ! 1 degree of freedom, global
-  call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
+  call DiscretizationCreateVector(discretization,ONEDOF,field%work, &
                                   GLOBAL,option)
- 
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+  call DiscretizationDuplicateVector(discretization,field%work, &
+                                     field%porosity0)
+  call DiscretizationDuplicateVector(discretization,field%work, &
                                      field%tortuosity0)
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                     field%volume)
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    !geh: relocated to material aux var
+    call DiscretizationDuplicateVector(discretization,field%work, &
+                                       field%volume)
+  endif
 
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                     field%work)
-  
   ! 1 degree of freedom, local
-  call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
+  call DiscretizationCreateVector(discretization,ONEDOF,field%work_loc, &
                                   LOCAL,option)
-  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                     field%tortuosity_loc)
-
-  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                     field%work_loc)
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+      !geh: relocated to material aux var
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                       field%porosity_loc)
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                       field%tortuosity_loc)
+  endif
   
   if (option%nflowdof > 0) then
 
     ! 1-dof global  
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+    call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_xx)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+    call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_yy)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+    call DiscretizationDuplicateVector(discretization,field%work, &
                                        field%perm0_zz)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
         discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%perm0_xz)
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%perm0_xy)
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%perm0_yz)
     endif
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                       field%perm_pow)
 
     ! 1-dof local
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%ithrm_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%icap_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%iphas_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+    call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                        field%iphas_old_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_xx_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_yy_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_zz_loc)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
-        discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                         field%perm_xz_loc)
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                         field%perm_xy_loc)
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                         field%perm_yz_loc)
+    
+    if (option%iflowmode /= RICHARDS_MODE) then
+      !geh: for Richards mode, perm*_loc has been relocated to material aux var
+      call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                         field%perm_xx_loc)
+      call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                         field%perm_yy_loc)
+      call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                         field%perm_zz_loc)
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC.or. &
+          discretization%itype == UNSTRUCTURED_GRID_MIMETIC) then
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                           field%perm_xz_loc)
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                           field%perm_xy_loc)
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
+                                           field%perm_yz_loc)
+      endif
     endif
 
     ! ndof degrees of freedom, global
@@ -376,7 +383,7 @@ subroutine RealizationCreateDiscretization(realization)
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
       if (discretization%lsm_flux_method) then
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+        call DiscretizationDuplicateVector(discretization,field%work_loc, &
                                           is_bnd_vec)
         call GridComputeNeighbors(grid,field%work_loc,option)
         call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
@@ -456,7 +463,7 @@ subroutine RealizationCreateDiscretization(realization)
     allocate(field%avg_vars_vec(field%nvars))
 
     do ivar=1,field%nvars
-      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+      call DiscretizationDuplicateVector(discretization,field%work, &
                                          field%avg_vars_vec(ivar))
       call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
     enddo
@@ -1436,6 +1443,8 @@ subroutine RealizationRevertFlowParameters(realization)
   use Option_module
   use Field_module
   use Discretization_module
+  use Material_Aux_class
+  use Variables_module
 
   implicit none
   
@@ -1444,24 +1453,51 @@ subroutine RealizationRevertFlowParameters(realization)
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
+  type(material_type), pointer :: Material
   
   option => realization%option
   field => realization%field
   discretization => realization%discretization
+  Material => realization%patch%aux%Material
 
   if (option%nflowdof > 0) then
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    !geh: remove    
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                            field%perm_xx_loc,ONEDOF)  
     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
                            field%perm_yy_loc,ONEDOF)  
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                            field%perm_zz_loc,ONEDOF)   
+  else
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_X,0)
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Y,0)
+    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z,0)
+  endif
   endif   
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
+    !geh: remove    
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                    field%porosity_loc,ONEDOF)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
                                    field%tortuosity_loc,ONEDOF)
-                           
+  else
+    call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY,0)
+    call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,TORTUOSITY,0)
+  endif                           
+
 end subroutine RealizationRevertFlowParameters
 
 ! ************************************************************************** !

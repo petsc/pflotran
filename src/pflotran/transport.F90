@@ -2,6 +2,7 @@ module Transport_module
 
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   use Matrix_Block_Aux_module  
 
   use PFLOTRAN_Constants_module
@@ -61,8 +62,8 @@ contains
 
 ! ************************************************************************** !
 
-subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
-                      global_aux_var_dn,por_dn,tor_dn,disp_dn,dist_dn, &
+subroutine TDiffusion(global_aux_var_up,material_aux_var_up,disp_up,dist_up, &
+                      global_aux_var_dn,material_aux_var_dn,disp_dn,dist_dn, &
                       rt_parameter,option,velocity,diffusion)
   ! 
   ! Computes diffusion term at cell interface
@@ -76,8 +77,9 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
   implicit none
   
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
-  PetscReal :: por_up, tor_up, disp_up, dist_up
-  PetscReal :: por_dn, tor_dn, disp_dn, dist_dn
+  class(material_auxvar_type) :: material_aux_var_up, material_aux_var_dn
+  PetscReal :: disp_up, dist_up
+  PetscReal :: disp_dn, dist_dn
   PetscReal :: velocity(*)
   type(option_type) :: option
   type(reactive_transport_param_type) :: rt_parameter
@@ -116,8 +118,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
   endif
 
   if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*tor_up*por_up 
-    stp_dn = sat_dn*tor_dn*por_dn
+    stp_up = sat_up*material_aux_var_up%tortuosity*material_aux_var_up%porosity 
+    stp_dn = sat_dn*material_aux_var_dn%tortuosity*material_aux_var_dn%porosity 
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
     stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
@@ -156,8 +158,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
       if (sat_up > eps .and. sat_dn > eps) then
-        stp_up = sat_up*tor_up*por_up 
-        stp_dn = sat_dn*tor_dn*por_dn
+        stp_up = sat_up*material_aux_var_up%tortuosity*material_aux_var_up%porosity 
+        stp_dn = sat_dn*material_aux_var_dn%tortuosity*material_aux_var_dn%porosity 
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
         stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
@@ -194,8 +196,11 @@ end subroutine TDiffusion
 
 ! ************************************************************************** !
 
-subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
-                        por_dn,tor_dn,disp_dn,dist_dn, &
+subroutine TDiffusionBC(ibndtype, &
+                        global_aux_var_up, &
+                        global_aux_var_dn, &
+                        material_aux_var_dn, &
+                        disp_dn,dist_dn, &
                         rt_parameter,option,velocity,diffusion)
   ! 
   ! Computes diffusion term at cell boundary interface
@@ -210,7 +215,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   
   PetscInt :: ibndtype
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  PetscReal :: por_dn, tor_dn, disp_dn, dist_dn
+  class(material_auxvar_type) :: material_aux_var_dn
+  PetscReal :: disp_dn, dist_dn
   PetscReal :: velocity(1)
   type(reactive_transport_param_type) :: rt_parameter
   type(option_type) :: option
@@ -240,7 +246,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
       !         m^3 water/m^4 bulk
 
-      stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+      stp_ave_over_dist = (material_aux_var_dn%tortuosity* &
+                           material_aux_var_dn%porosity*sat_up) / dist_dn
 
       ! need to account for multiple phases
       ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
@@ -263,7 +270,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
         !         m^3 water/m^4 bulk
           
-        stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+        stp_ave_over_dist = (material_aux_var_dn%tortuosity* &
+                             material_aux_var_dn%porosity*sat_up) / dist_dn
 
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
@@ -300,7 +308,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           !  units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
           ! m^3 water/m^4 bulk
          
-          stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+          stp_ave_over_dist = (material_aux_var_dn%tortuosity* &
+                               material_aux_var_dn%porosity*sat_up) / dist_dn
             
           !  need to account for multiple phases
           !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = 
@@ -323,7 +332,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         case(DIRICHLET_ZERO_GRADIENT_BC)
           if (q >= 0.d0) then
           ! same as dirichlet above
-            stp_ave_over_dist = (tor_dn*por_dn*sat_up) / dist_dn
+            stp_ave_over_dist = (material_aux_var_dn%tortuosity* &
+                                 material_aux_var_dn%porosity*sat_up) / dist_dn
             if (iphase == 2) then
               diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
                                   stp_ave_over_dist * &

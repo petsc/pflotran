@@ -3,6 +3,7 @@ module Reaction_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module  
   use Global_Aux_module
+  use Material_Aux_class
   
   use Surface_Complexation_module
   use Mineral_module
@@ -3103,7 +3104,7 @@ end subroutine RJumpStartKineticSorption
 
 ! ************************************************************************** !
 
-subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
+subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
                   num_iterations_,reaction,option,vol_frac_prim)
   ! 
   ! Solves reaction portion of operator splitting using Newton-Raphson
@@ -3119,10 +3120,9 @@ subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar 
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   PetscReal :: tran_xx_p(reaction%ncomp)
   type(option_type) :: option
-  PetscReal :: volume
-  PetscReal :: porosity
   PetscInt :: num_iterations_
   PetscReal :: sign_(reaction%ncomp)
   
@@ -3182,10 +3182,10 @@ subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
   endif
 
   ! still need code to overwrite other phases
-  call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+  call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                       option,vol_frac_prim,fixed_accum)
   if (reaction%neqsorb > 0) then
-    call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
+    call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                            option,fixed_accum)  
   endif
 
@@ -3205,25 +3205,24 @@ subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
     
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
-    call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+    call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                         option,vol_frac_prim,residual)
     residual = residual-fixed_accum
 
     ! J is overwritten in RTAccumulationDerivative()
-    call RTAccumulationDerivative(rt_auxvar,global_auxvar,porosity,volume, &
+    call RTAccumulationDerivative(rt_auxvar,global_auxvar,material_auxvar, &
                                   reaction,option,vol_frac_prim,J)
 
     if (reaction%neqsorb > 0) then
-      call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
+      call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                              option,residual)
-      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,volume, &
+      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,material_auxvar, &
                                        reaction,option,J)
     endif
 
                          ! derivative
     call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, &
-                   porosity, volume, &
-                   reaction,option)
+                   material_auxvar,reaction,option)
     
     if (maxval(abs(residual)) < reaction%max_residual_tolerance) exit
 
@@ -3297,8 +3296,8 @@ end subroutine RReact
 
 ! ************************************************************************** !
 
-subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
-                     volume,reaction,option)
+subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                     material_auxvar,reaction,option)
   ! 
   ! Computes reactions
   ! 
@@ -3314,46 +3313,45 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar 
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscBool :: derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
 
   if (reaction%mineral%nkinmnrl > 0) then
     call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar, &
-                         volume,reaction,option)
+                         material_auxvar,reaction,option)
   endif
   
   if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
     call RMultiRateSorption(Res,Jac,derivative,rt_auxvar,global_auxvar, &
-                            volume,reaction,option)
+                            material_auxvar,reaction,option)
   endif
   
   if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
     call RKineticSurfCplx(Res,Jac,derivative,rt_auxvar,global_auxvar, &
-                          volume,reaction,option)
+                          material_auxvar,reaction,option)
   endif
   
   if (reaction%nradiodecay_rxn > 0) then
     call RRadioactiveDecay(Res,Jac,derivative,rt_auxvar,global_auxvar, &
-                           porosity,volume,reaction,option)
+                           material_auxvar,reaction,option)
   endif
   
   if (reaction%ngeneral_rxn > 0) then
-    call RGeneral(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
-                  volume,reaction,option)
+    call RGeneral(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                  material_auxvar,reaction,option)
   endif
   
   if (reaction%microbial%nrxn > 0) then
-    call RMicrobial(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
-                    volume,reaction,option)
+    call RMicrobial(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                    material_auxvar,reaction,option)
   endif
   
   if (associated(sandbox_list)) then
-    call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
-                  volume,reaction,option)
+    call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                  material_auxvar,reaction,option)
   endif
   
   ! add new reactions here and in RReactionDerivative
@@ -3362,8 +3360,8 @@ end subroutine RReaction
 
 ! ************************************************************************** !
 
-subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
-                               volume,reaction,option)
+subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
+                               material_auxvar,reaction,option)
   ! 
   ! RReaction: Computes reactions
   ! 
@@ -3379,11 +3377,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   type(reactive_transport_auxvar_type) :: rt_auxvar 
   type(reactive_transport_auxvar_type) :: rt_auxvar_pert
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
    
   PetscReal :: Res_orig(reaction%ncomp)
   PetscReal :: Res_pert(reaction%ncomp)
@@ -3397,7 +3394,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   if (.not.option%numerical_derivatives_rxn) then ! analytical derivative
     compute_derivative = PETSC_TRUE
     call RReaction(Res,Jac,compute_derivative,rt_auxvar, &
-                   global_auxvar,porosity,volume,reaction,option)  
+                   global_auxvar,material_auxvar,reaction,option)  
 
     ! add only in RReaction
 
@@ -3409,7 +3406,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
 
     call RReaction(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                   global_auxvar,porosity,volume,reaction,option)     
+                   global_auxvar,material_auxvar,reaction,option)     
 
     ! aqueous species
     do jcomp = 1, reaction%naqcomp
@@ -3423,7 +3420,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
                                                 reaction,option)
 
       call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                     global_auxvar,porosity,volume,reaction,option)    
+                     global_auxvar,material_auxvar,reaction,option)    
 
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
@@ -3438,7 +3435,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       pert = rt_auxvar_pert%immobile(jcomp)*perturbation_tolerance
       rt_auxvar_pert%immobile(jcomp) = rt_auxvar_pert%immobile(jcomp) + pert
       call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                     global_auxvar,porosity,volume,reaction,option)    
+                     global_auxvar,material_auxvar,reaction,option)    
 
       ! j is the index in the residual vector and Jacobian
       joffset = reaction%offset_immobile + jcomp
@@ -3831,8 +3828,9 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
                                                  rt_auxvar%sec_act_coef(icplx)
       do i = 1, ncomp
         icomp = reaction%eqcplxspecid(i,icplx)
-        rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) = rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) + &
-                                               reaction%eqcplxstoich(i,icplx)*tempreal
+        rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) = &
+          rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) + &
+          reaction%eqcplxstoich(i,icplx)*tempreal
       enddo
     enddo
   enddo
@@ -4237,8 +4235,8 @@ end subroutine RTotalSorbEqIonx
 
 ! ************************************************************************** !
 
-subroutine RAccumulationSorb(rt_auxvar,global_auxvar,vol,reaction, &
-                             option,Res)
+subroutine RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar, &
+                             reaction,option,Res)
   ! 
   ! Computes non-aqueous portion of the accumulation term in
   ! residual function
@@ -4253,7 +4251,7 @@ subroutine RAccumulationSorb(rt_auxvar,global_auxvar,vol,reaction, &
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: vol
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
@@ -4262,7 +4260,7 @@ subroutine RAccumulationSorb(rt_auxvar,global_auxvar,vol,reaction, &
   
   ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
   ! all residual entries should be in mol/sec
-  v_t = vol/option%tran_dt
+  v_t = material_auxvar%volume/option%tran_dt
   Res(1:reaction%naqcomp) = Res(1:reaction%naqcomp) + &
     rt_auxvar%total_sorb_eq(:)*v_t
 
@@ -4271,7 +4269,7 @@ end subroutine RAccumulationSorb
 ! ************************************************************************** !
 
 subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
-                                       vol,reaction,option,J)
+                                       material_auxvar,reaction,option,J)
   ! 
   ! Computes derivative of non-aqueous portion of
   ! the accumulation term in residual function
@@ -4285,8 +4283,8 @@ subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
   implicit none
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar  
-  PetscReal :: vol
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: J(reaction%ncomp,reaction%ncomp)
@@ -4296,7 +4294,7 @@ subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
   
   ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
-  v_t = vol/option%tran_dt
+  v_t = material_auxvar%volume/option%tran_dt
   J(1:reaction%naqcomp,1:reaction%naqcomp) = &
     J(1:reaction%naqcomp,1:reaction%naqcomp) + &
     rt_auxvar%dtotal_sorb_eq(:,:)*v_t
@@ -4306,7 +4304,7 @@ end subroutine RAccumulationSorbDerivative
 ! ************************************************************************** !
 
 subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
-                             global_auxvar,porosity,volume,reaction,option)
+                             global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes radioactive decay with a single reactant
   ! (considering both the aqueous and sorbed phases) with
@@ -4325,17 +4323,17 @@ subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   PetscInt :: i, icomp, jcomp, irxn, ncomp
   PetscReal :: tempreal, L_water, sum, rate
 
   PetscInt, parameter :: iphase = 1
 
-  L_water = porosity*global_auxvar%sat(iphase)*volume*1.d3 ! L water
+  L_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
+            material_auxvar%volume*1.d3 ! L water
 
   do irxn = 1, reaction%nradiodecay_rxn ! for each mineral
     
@@ -4347,7 +4345,7 @@ subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
     ! sum total moles of component in aqueous and sorbed phases
     sum = rt_auxvar%total(icomp,iphase)*L_water
     if (associated(rt_auxvar%total_sorb_eq)) then
-      sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+      sum = sum + rt_auxvar%total_sorb_eq(icomp)*material_auxvar%volume
     endif
     
     rate = sum*reaction%radiodecay_kf(irxn)
@@ -4372,7 +4370,8 @@ subroutine RRadioactiveDecay(Res,Jac,compute_derivative,rt_auxvar, &
           tempreal * &
           reaction%radiodecaystoich(i,irxn) * &
           (rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water + &
-           rt_auxvar%dtotal_sorb_eq(jcomp,1:reaction%naqcomp)*volume)
+           rt_auxvar%dtotal_sorb_eq(jcomp,1:reaction%naqcomp)* &
+           material_auxvar%volume)
       enddo
     else ! no sorption
       do i = 1, ncomp
@@ -4392,7 +4391,7 @@ end subroutine RRadioactiveDecay
 ! ************************************************************************** !
 
 subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
-                    porosity,volume,reaction,option)
+                    material_auxvar,reaction,option)
   ! 
   ! Computes the general reaction rates
   ! 
@@ -4409,10 +4408,9 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_act(reaction%naqcomp)
@@ -4480,8 +4478,9 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
 
     ! Qkf/Qkr units are now mol/kg(water)-sec
 
-    por_den_sat_vol = porosity*global_auxvar%den_kg(iphase)* &
-                      global_auxvar%sat(iphase)*volume
+    por_den_sat_vol = material_auxvar%porosity*global_auxvar%den_kg(iphase)* &
+                      global_auxvar%sat(iphase)* &
+                      material_auxvar%volume
 
     ncomp = reaction%generalspecid(0,irxn)
     do i = 1, ncomp
@@ -4582,7 +4581,7 @@ end subroutine RSolve
 ! ************************************************************************** !
 
 subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
-                             porosity,reaction,option)
+                             material_auxvar,reaction,option)
   ! 
   ! RComputeKd: Computes the Kd for a given chemical component
   ! 
@@ -4597,8 +4596,8 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
   PetscInt :: icomp
   PetscReal :: retardation
   type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar  
-  PetscReal :: porosity
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -4609,7 +4608,8 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
   retardation = 0.d0
   if (reaction%nsorb == 0) return
   
-  bulk_vol_to_fluid_vol = porosity*global_auxvar%sat(iphase)*1000.d0
+  bulk_vol_to_fluid_vol = material_auxvar%porosity* &
+                          global_auxvar%sat(iphase)*1000.d0
 
   if (associated(rt_auxvar%total_sorb_eq)) then
     retardation = rt_auxvar%total_sorb_eq(icomp)
@@ -4629,7 +4629,7 @@ end subroutine ReactionComputeKd
 
 ! ************************************************************************** !
 
-subroutine RAge(rt_auxvar,global_auxvar,por,vol,option,reaction,Res)
+subroutine RAge(rt_auxvar,global_auxvar,material_auxvar,option,reaction,Res)
   ! 
   ! Computes the ages of the groundwater
   ! 
@@ -4642,8 +4642,8 @@ subroutine RAge(rt_auxvar,global_auxvar,por,vol,option,reaction,Res)
   implicit none
 
   type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar  
-  PetscReal :: por,vol
+  type(global_auxvar_type) :: global_auxvar 
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
@@ -4651,13 +4651,15 @@ subroutine RAge(rt_auxvar,global_auxvar,por,vol,option,reaction,Res)
   
   Res(:) = 0.d0
   if (reaction%calculate_water_age) then
-    Res(reaction%species_idx%water_age_id) = por*global_auxvar%sat(iphase)* &
-      1000.d0 * vol
+    Res(reaction%species_idx%water_age_id) = material_auxvar%porosity* &
+                                             global_auxvar%sat(iphase)* &
+                                             1000.d0 * material_auxvar%volume
   endif
   if (reaction%calculate_tracer_age) then
     Res(reaction%species_idx%tracer_age_id) = &
       -rt_auxvar%total(reaction%species_idx%tracer_aq_id,iphase)* &
-      por*global_auxvar%sat(iphase)*1000.d0*vol
+      material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+      material_auxvar%volume
   endif
 end subroutine RAge
 
@@ -4747,7 +4749,8 @@ end subroutine RTAuxVarCompute
 
 ! ************************************************************************** !
 
-subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
+subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
+                          reaction,option, &
                           vol_frac_prim,Res)
   ! 
   ! Computes aqueous portion of the accumulation term in
@@ -4763,7 +4766,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: por, vol
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
@@ -4787,7 +4790,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
-  psv_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt  
+  psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+          material_auxvar%volume / option%tran_dt  
   istart = 1
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase)*vol_frac_prim 
@@ -4809,7 +4813,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
     do iimob = 1, reaction%nimcomp
       idof = reaction%offset_immobile + iimob
       Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
-                              vol/option%tran_dt 
+                              material_auxvar%volume/option%tran_dt 
     enddo
   endif
 
@@ -4821,7 +4825,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
 
 ! super critical CO2 phase
     if (iphase == 2) then
-      psv_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt 
+      psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+              material_auxvar%volume / option%tran_dt 
       Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)* &
                          vol_frac_prim 
       ! should sum over gas component only need more implementations
@@ -4835,7 +4840,8 @@ end subroutine RTAccumulation
 ! ************************************************************************** !
 
 subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
-                                    por,vol,reaction,option, &
+                                    material_auxvar, &
+                                    reaction,option, &
                                     vol_frac_prim,J)
   ! 
   ! Computes derivative of aqueous portion of the
@@ -4851,7 +4857,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar  
-  PetscReal :: por, vol
+  class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: J(reaction%ncomp,reaction%ncomp)
@@ -4872,11 +4878,13 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   ! all Jacobian entries should be in kg water/sec
   J = 0.d0
   if (associated(rt_auxvar%aqueous%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt*vol_frac_prim
+    psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+             material_auxvar%volume/option%tran_dt*vol_frac_prim
     J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
   else
-    psvd_t = por*global_auxvar%sat(iphase)* &
-             global_auxvar%den_kg(iphase)*vol/option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
+    psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
+             global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
+             option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
     do icomp=istart,iendaq
       J(icomp,icomp) = psvd_t
     enddo
@@ -4900,7 +4908,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   if (reaction%nimcomp > 0) then
     do iimob = 1, reaction%nimcomp
       idof = reaction%offset_immobile + iimob
-      J(idof,idof) = vol/option%tran_dt
+      J(idof,idof) = material_auxvar%volume/option%tran_dt
     enddo
   endif
 
@@ -4912,13 +4920,15 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
 ! super critical CO2 phase
     if (iphase == 2) then
       if (associated(rt_auxvar%aqueous%dtotal)) then
-        psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt* &
+        psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+                 material_auxvar%volume/option%tran_dt* &
                  vol_frac_prim  
         J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
       else
-        psvd_t = por*global_auxvar%sat(iphase)* &
-          global_auxvar%den_kg(iphase)*vol/option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
+        psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
+                 global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
+                 option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
         do icomp=istart,iendaq
           J(icomp,icomp) = J(icomp,icomp) + psvd_t
         enddo
@@ -4931,7 +4941,8 @@ end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !
 
-subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
+subroutine RCalculateCompression(global_auxvar,rt_auxvar,material_auxvar, &
+                                 reaction,option)
   ! 
   ! Calculates the compression for the Jacobian block
   ! 
@@ -4952,6 +4963,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
   PetscReal :: residual(reaction%ncomp)
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   PetscInt :: i, jj
   PetscReal :: vol = 1.d0
@@ -4965,7 +4977,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
 
   call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
   call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
-                                por,vol,reaction,option,1.d0,J)
+                                material_auxvar,reaction,option,1.d0,J)
     
   do jj = 1, reaction%ncomp
     do i = 1, reaction%ncomp
@@ -4974,12 +4986,13 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
   enddo
 
   if (reaction%neqsorb > 0) then
-    call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,vol, &
+    call RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
+                                     material_auxvar, &
                                      reaction,option,J)
   endif
 
-  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,por,vol, &
-                 reaction,option)
+  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, &
+                 material_auxvar,reaction,option)
  
   do jj = 1, reaction%ncomp
     do i = 1, reaction%ncomp
@@ -5012,7 +5025,8 @@ end subroutine RCalculateCompression
 
 ! ************************************************************************** !
 
-subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
+subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
+                               reaction,option)
   ! 
   ! Updates state variables such as mineral vol frac,
   ! etc.
@@ -5027,6 +5041,7 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar  
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -5039,8 +5054,9 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,reaction,option)
   ! update mineral volume fractions
   if (reaction%mineral%nkinmnrl > 0) then
   
-    call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar,1.d0, &
-                         reaction,option)  ! Updates the mineral rates, res is not needed
+    ! Updates the mineral rates, res is not needed
+    call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar, &
+                         material_auxvar,reaction,option)  
                     
     do imnrl = 1, reaction%mineral%nkinmnrl
       ! rate = mol/m^3/sec

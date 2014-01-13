@@ -256,12 +256,14 @@ subroutine RichardsLSMFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 
   ! One of the cells is a boundary cell, so use 2-point flux
   if(bnd_cell(ghosted_id_up).or.bnd_cell(ghosted_id_dn)) then
+#if 0         
     call RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
                                   area, dist, dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
+#endif    
     return
   endif
 
@@ -399,12 +401,14 @@ subroutine RichardsLSMFlux(rich_aux_var_up,global_aux_var_up, &
 
  ! One of the cells is a boundary cell, so use 2-point flux
   if(bnd_cell(ghosted_id_up).or.bnd_cell(ghosted_id_dn)) then
+#if 0         
     call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area, dist, dist_gravity,upweight, &
                       option,v_darcy,Res)
+#endif    
     return
   endif
 

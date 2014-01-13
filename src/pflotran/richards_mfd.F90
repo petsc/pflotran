@@ -47,7 +47,8 @@ subroutine RichardsCheckMassBalancePatch(realization)
   use Field_module
   use MFD_Aux_module
   use MFD_module
-
+  use Auxiliary_module
+  use Material_Aux_class
   
   implicit none
 
@@ -70,6 +71,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
   type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscReal :: mass_conserv, res(1)
@@ -87,10 +89,9 @@ subroutine RichardsCheckMassBalancePatch(realization)
   richards_parameter => patch%aux%Richards%richards_parameter
   rich_aux_vars => patch%aux%Richards%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
+  material_aux_vars => patch%aux%Material%aux_vars
   field => realization%field
 
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_loc_p, ierr)
 
@@ -128,8 +129,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
         
     call RichardsAccumulation(rich_aux_vars(ghosted_cell_id), &
                                 global_aux_vars(ghosted_cell_id), &
-                                porosity_loc_p(ghosted_cell_id), &
-                                volume_p(local_id), &
+                                material_aux_vars(ghosted_cell_id), &
                                 option, res)
 
     mass_conserv = mass_conserv + res(1) - accum_p(local_id)
@@ -137,8 +137,6 @@ subroutine RichardsCheckMassBalancePatch(realization)
 
   enddo
 
-  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(field%flow_accum, xx_faces_loc_p, ierr)
 
@@ -319,6 +317,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   use Connection_module
   use MFD_module
   use MFD_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -332,6 +331,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   type(connection_set_type), pointer :: cur_connection_set
   type(richards_auxvar_type), pointer :: rich_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  class(material_auxvar_type), pointer :: material_aux_vars(:)
   type(mfd_auxvar_type), pointer :: mfd_aux_var
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn, i,j
@@ -350,12 +350,11 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   discretization => realization%discretization
   rich_aux_vars => patch%aux%Richards%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-
+  material_aux_vars => patch%aux%Material%aux_vars
+  
   call VecGetArrayF90(field%flow_xx, xx_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecGetArrayF90(field%work_loc_faces, work_loc_faces_p, ierr)
-  call VecGetArrayF90(field%porosity0, porosity_p,ierr)
-  call VecGetArrayF90(field%volume, volume_p,ierr)
   call VecGetArrayF90(field%flow_accum, accum_p,ierr)
 
   numfaces = 6     ! hex only
@@ -388,8 +387,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
 
     call RichardsAccumulation(rich_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
-                              porosity_p(local_id), &
-                              volume_p(local_id), &
+                              material_aux_vars(ghosted_id), &
                               option,Res)
 
     Res(1) = Res(1) - accum_p(local_id)
@@ -405,12 +403,11 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   deallocate(faces_DELTA_pr)
   deallocate(faces_pr)
 
-  call DiscretizationGlobalToLocal(discretization, field%flow_xx, field%flow_xx_loc, NFLOWDOF)
+  call DiscretizationGlobalToLocal(discretization, field%flow_xx, &
+                                   field%flow_xx_loc, NFLOWDOF)
   call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
   call VecRestoreArrayF90(field%work_loc_faces, work_loc_faces_p, ierr)
-  call VecRestoreArrayF90(field%porosity0, porosity_p,ierr)
-  call VecRestoreArrayF90(field%volume, volume_p,ierr)
   call VecRestoreArrayF90(field%flow_accum, accum_p,ierr)
 
 end subroutine RichardsUpdateCellPressurePatch

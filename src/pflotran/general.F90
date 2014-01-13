@@ -167,7 +167,7 @@ subroutine GeneralSetupPatch(realization)
   use Connection_module
   use Grid_module
   use Material_module
-  use Material_Aux_module
+  use Material_Aux_class
   use Fluid_module
  
   implicit none
@@ -756,7 +756,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
-  use Material_Aux_module
+  use Material_Aux_class
 
   implicit none
   
@@ -1963,7 +1963,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -2205,7 +2205,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -2430,7 +2430,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
     
   implicit none
 
@@ -2680,7 +2680,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
     
   implicit none
 

@@ -175,8 +175,8 @@ end subroutine RichardsAuxVarCopy
 
 ! ************************************************************************** !
 
-subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
-                                 saturation_function,por,perm,option)
+subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,material_aux_var, &
+                                 saturation_function,option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -189,6 +189,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   
   use EOS_Water_module
   use Saturation_Function_module
+  use Material_Aux_class
   
   implicit none
 
@@ -197,8 +198,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   PetscReal :: x(option%nflowdof)
   type(richards_auxvar_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
-  PetscReal :: por, perm
-
+  class(material_auxvar_type) :: material_aux_var
+  
   PetscInt :: i
   PetscBool :: saturated
   PetscErrorCode :: ierr
@@ -236,12 +237,13 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   if (aux_var%pc > 0.d0) then
     saturated = PETSC_FALSE
     call SaturationFunctionCompute(global_aux_var%pres(1), &
-                                   global_aux_var%sat(1),kr, &
-                                   ds_dp,dkr_dp, &
-                                   saturation_function, &
-                                   por,perm, &
-                                   saturated, &
-                                   option)
+                                global_aux_var%sat(1),kr, &
+                                ds_dp,dkr_dp, &
+                                saturation_function, &
+                                material_aux_var%porosity, &
+                                material_aux_var%permeability(perm_xx_index), &
+                                saturated, &
+                                option)
   else
     saturated = PETSC_TRUE
   endif  

@@ -43,9 +43,13 @@ module Connection_module
     type(connection_set_ptr_type), pointer :: array(:)
   end type connection_set_list_type
   
-  public :: ConnectionCreate, ConnectionAddToList, &
+  public :: ConnectionCreate, &
+            ConnectionAddToList, &
             ConnectionGetNumberInList, &
-            ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
+            ConnectionInitList, &
+            ConnectionCalculateDistances, &
+            ConnectionDestroyList, &
+            ConnectionDestroy
   
 contains
 
@@ -232,6 +236,43 @@ subroutine ConnectionConvertListToArray(list)
   enddo
 
 end subroutine ConnectionConvertListToArray
+
+! ************************************************************************** !
+
+subroutine ConnectionCalculateDistances(dist,gravity,distance_upwind, &
+                                        distance_downwind,distance_gravity, &
+                                        upwind_weight)
+  ! 
+  ! Calculates the various distances and weights used in a flux calculation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: dist(-1:3)
+  PetscReal, intent(in) :: gravity(3)
+  
+  PetscReal, intent(out) :: distance_upwind
+  PetscReal, intent(out) :: distance_downwind
+  PetscReal, intent(out) :: distance_gravity
+  PetscReal, intent(out) :: upwind_weight
+  
+  ! dist(-1) = scalar - fraction upwind
+  ! dist(0) = scalar - magnitude of distance
+  ! gravity = vector(3)
+  ! dist(1:3) = vector(3) - unit vector
+  distance_gravity = dist(0) * &                  ! distance_gravity = dx*g*n
+                     dot_product(gravity,dist(1:3))
+  distance_upwind = dist(0)*dist(-1)
+  distance_downwind = dist(0)-distance_upwind ! should avoid truncation error
+  ! upweight could be calculated as 1.d0-fraction_upwind
+  ! however, this introduces ever so slight error causing pflow-overhaul not
+  ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
+  upwind_weight = distance_downwind/(distance_upwind+distance_downwind)
+  
+end subroutine ConnectionCalculateDistances
 
 ! ************************************************************************** !
 

@@ -24,7 +24,7 @@ module Field_module
 
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm_xz_loc, perm_xy_loc, perm_yz_loc
-    Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
+    Vec :: perm0_xx, perm0_yy, perm0_zz
     Vec :: perm0_xz, perm0_xy, perm0_yz
     
     Vec :: work, work_loc
@@ -113,7 +113,6 @@ function FieldCreate()
   field%perm0_xz = 0
   field%perm0_xy = 0
   field%perm0_yz = 0
-  field%perm_pow = 0
   
   field%work = 0
   field%work_loc = 0
@@ -205,7 +204,6 @@ subroutine FieldDestroy(field)
   if (field%perm0_xz /= 0) call VecDestroy(field%perm0_xz,ierr)
   if (field%perm0_xy /= 0) call VecDestroy(field%perm0_xy,ierr)
   if (field%perm0_yz /= 0) call VecDestroy(field%perm0_yz,ierr)
-  if (field%perm_pow /= 0) call VecDestroy(field%perm_pow,ierr)
   
   if (field%work /= 0) call VecDestroy(field%work,ierr)
   if (field%work_loc /= 0) call VecDestroy(field%work_loc,ierr)

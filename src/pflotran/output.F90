@@ -432,8 +432,8 @@ subroutine ComputeFlowCellVelocityStats(realization_base)
   discretization => realization_base%discretization
     
   allocate(sum_area(grid%nlmax))
-  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec)
-  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec2)
+  call DiscretizationDuplicateVector(discretization,field%work,global_vec)
+  call DiscretizationDuplicateVector(discretization,field%work,global_vec2)
 
   do iphase = 1,option%nphase
 
@@ -591,8 +591,8 @@ subroutine ComputeFlowFluxVelocityStats(realization_base)
   field => realization_base%field
   output_option => realization_base%output_option
   
-  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec) 
-  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec2) 
+  call DiscretizationDuplicateVector(discretization,field%work,global_vec) 
+  call DiscretizationDuplicateVector(discretization,field%work,global_vec2) 
 
   do iphase = 1,option%nphase
     do direction = 1,3

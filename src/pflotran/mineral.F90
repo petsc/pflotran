@@ -531,7 +531,7 @@ end subroutine MineralProcessConstraint
 ! ************************************************************************** !
 
 subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
-                           global_auxvar,volume,reaction,option)
+                           global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes the kinetic mineral precipitation/dissolution
   ! rates
@@ -541,6 +541,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   ! 
 
   use Option_module
+  use Material_Aux_class
 #ifdef SOLID_SOLUTION
   use Solid_Solution_Aux_module
 #endif
@@ -552,9 +553,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp
   PetscInt :: ipref, ipref_species
@@ -775,11 +776,11 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
     ! scale Im_const by volume for calculating derivatives below
     ! units: m^2 mnrl
-    Im_const = Im_const*volume
+    Im_const = Im_const*material_auxvar%volume
 
     ! convert rate from volumetric (mol/sec/m^3 bulk) to mol/sec
     ! units: mol/sec
-    Im = Im*volume
+    Im = Im*material_auxvar%volume
     
     ncomp = mineral%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp

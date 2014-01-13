@@ -545,7 +545,7 @@ end subroutine RTotalSorbMultiRateAsEQ
 ! ************************************************************************** !
 
 subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
-                              global_auxvar,volume,reaction,option)
+                              global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes contribution to the accumualtion term due
   ! due to multirate sorption
@@ -555,6 +555,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   ! 
 
   use Option_module
+  use Material_Aux_class
   use Matrix_Block_Aux_module
   
   implicit none
@@ -562,7 +563,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: volume
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -614,12 +615,12 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         surface_complexation%kinmr_rate(irate,ikinmrrxn)/one_plus_kdt
         
       ! this is the constribution to the accumulation term in the residual
-      Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
+      Res(:) = Res(:) + material_auxvar%volume * k_over_one_plus_kdt * &
         (surface_complexation%kinmr_frac(irate,ikinmrrxn)*total_sorb_eq(:) - &
          rt_auxvar%kinmr_total_sorb(:,irate,ikinmrrxn))
       
       if (compute_derivative) then
-        Jac = Jac + volume * k_over_one_plus_kdt * &
+        Jac = Jac + material_auxvar%volume * k_over_one_plus_kdt * &
           surface_complexation%kinmr_frac(irate,ikinmrrxn) * dtotal_sorb_eq
       endif
 
@@ -909,7 +910,7 @@ end subroutine RTotalSorbEqSurfCplx1
 ! ************************************************************************** !
 
 subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
-                            global_auxvar,volume,reaction,option)
+                            global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes contribution to residual and jacobian for
   ! kinetic surface complexation reactions
@@ -919,13 +920,14 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   ! 
 
   use Option_module
+  use Material_Aux_class
   
   implicit none
   
   PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: volume
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -1055,7 +1057,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
         icomp = surface_complexation%srfcplxspecid(i,icplx)
         Res(icomp) = Res(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
                      (srfcplx_conc_kp1(icplx,ikinrxn)-rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn))/ &
-                     dt * volume
+                     dt * material_auxvar%volume
       enddo
     enddo
   enddo
@@ -1096,7 +1098,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
               (surface_complexation%srfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
               Q(icplx) * (surface_complexation%srfcplxstoich(l,icplx) - &
               dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
-              exp(-ln_conc(lcomp)) * volume
+              exp(-ln_conc(lcomp)) * material_auxvar%volume
           enddo
         enddo
       enddo

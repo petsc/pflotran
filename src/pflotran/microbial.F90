@@ -147,7 +147,7 @@ end subroutine MicrobialRead
 ! ************************************************************************** !
 
 subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
-                      global_auxvar,porosity,volume,reaction,option)
+                      global_auxvar,material_auxvar,reaction,option)
   ! 
   ! Computes the microbial reaction
   ! 
@@ -158,6 +158,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   use Option_module, only : option_type, printErrMsg
   use Reactive_Transport_Aux_module, only : reactive_transport_auxvar_type
   use Global_Aux_module, only : global_auxvar_type
+  use Material_Aux_class, only : material_auxvar_type
   use Reaction_Aux_module, only : reaction_type
   use Immobile_Aux_module, only : immobile_type
   
@@ -168,10 +169,9 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: porosity
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   PetscInt, parameter :: iphase = 1
   PetscReal :: por_sat_vol
@@ -232,7 +232,8 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ! por_sat_vol units: m^3 water
-    por_sat_vol = porosity*global_auxvar%sat(iphase)*volume
+    por_sat_vol = material_auxvar%porosity*global_auxvar%sat(iphase)* &
+                  material_auxvar%volume
 
     ! Im units (before): mol/L-sec
     Im = Im * 1.d3*por_sat_vol
