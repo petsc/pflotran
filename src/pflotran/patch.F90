@@ -2073,7 +2073,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
                         grid%structured_grid%dz(neighbor_ghosted_id)
           else
             sum = sum + &
-                  material_aux_vars(ghosted_id)%permeability(perm_xx_index)* &
+                  material_aux_vars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
                   grid%structured_grid%dy(neighbor_ghosted_id)* &
                   grid%structured_grid%dz(neighbor_ghosted_id)
           endif
@@ -2090,7 +2090,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
                         grid%structured_grid%dz(neighbor_ghosted_id)
           else
             sum = sum + &
-                  material_aux_vars(ghosted_id)%permeability(perm_xx_index)* &
+                  material_aux_vars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
                   grid%structured_grid%dx(neighbor_ghosted_id)* &
                   grid%structured_grid%dz(neighbor_ghosted_id)
           endif   
@@ -2107,7 +2107,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
                         grid%structured_grid%dy(neighbor_ghosted_id)
           else
             sum = sum + &
-                  material_aux_vars(ghosted_id)%permeability(perm_xx_index)* &
+                  material_aux_vars(neighbor_ghosted_id)%permeability(perm_xx_index)* &
                   grid%structured_grid%dx(neighbor_ghosted_id)* &
                   grid%structured_grid%dy(neighbor_ghosted_id)
           endif   
