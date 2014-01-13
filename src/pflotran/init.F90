@@ -2931,17 +2931,14 @@ subroutine assignMaterialPropToRegions(realization)
       cur_patch%sat_func_id = -999
     endif
     
-    if (option%iflowmode == RICHARDS_MODE .or. &
-        option%iflowmode == NULL_MODE) then
-      patch%aux%Material => MaterialAuxCreate()
-      allocate(material_aux_vars(grid%ngmax))
-      do ghosted_id = 1, grid%ngmax
-        call MaterialAuxVarInit(material_aux_vars(ghosted_id),option)
-      enddo
-      patch%aux%Material%num_aux = grid%ngmax
-      patch%aux%Material%aux_vars => material_aux_vars
-      nullify(material_aux_vars)
-    endif
+    patch%aux%Material => MaterialAuxCreate()
+    allocate(material_aux_vars(grid%ngmax))
+    do ghosted_id = 1, grid%ngmax
+      call MaterialAuxVarInit(material_aux_vars(ghosted_id),option)
+    enddo
+    patch%aux%Material%num_aux = grid%ngmax
+    patch%aux%Material%aux_vars => material_aux_vars
+    nullify(material_aux_vars)
     
     cur_patch => cur_patch%next
   enddo
@@ -3121,35 +3118,34 @@ subroutine assignMaterialPropToRegions(realization)
 
   ! update ghosted values
   if (option%nflowdof > 0) then
-    if (option%iflowmode == RICHARDS_MODE .or. &
-        option%iflowmode == NULL_MODE) then
-      call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                                       field%work_loc,ONEDOF)
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_X,0)
-      call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                                     field%work_loc,ONEDOF)
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_X,0)
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                                     field%work_loc,ONEDOF)  
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Y,0)
+    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                     field%work_loc,ONEDOF)   
+    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                 PERMEABILITY_Z,0)
+    if (option%mimetic) then
+      call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
                                        field%work_loc,ONEDOF)  
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_Y,0)
-      call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                   PERMEABILITY_XZ,0)
+      call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
+                                       field%work_loc,ONEDOF)  
+      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                                   PERMEABILITY_YZ,0)
+      call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
                                        field%work_loc,ONEDOF)   
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_Z,0)
-      if (option%mimetic) then
-        call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
-                                         field%work_loc,ONEDOF)  
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_XZ,0)
-        call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
-                                         field%work_loc,ONEDOF)  
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                    PERMEABILITY_YZ,0)
-        call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
-                                         field%work_loc,ONEDOF)   
-      call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   PERMEABILITY_YZ,0)
-      endif
-    else
+    endif
+    !geh: remove
+    if (option%iflowmode /= RICHARDS_MODE) then
       call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                        field%perm_xx_loc,ONEDOF)  
       call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
@@ -3174,17 +3170,16 @@ subroutine assignMaterialPropToRegions(realization)
     call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
   endif
   
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == NULL_MODE) then
-    call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                      field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 POROSITY,0)
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                      field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 TORTUOSITY,0)
-  else
+  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+                                    field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               POROSITY,0)
+  call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
+                                    field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
+                               TORTUOSITY,0)
+  !geh: remove
+  if (option%iflowmode /= RICHARDS_MODE) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)
     call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
@@ -3221,13 +3216,10 @@ subroutine assignVolumesToMaterialAuxVars(realization)
   option => realization%option
   field => realization%field
 
-  if (option%iflowmode == RICHARDS_MODE .or. &
-      option%iflowmode == NULL_MODE) then
-    call DiscretizationGlobalToLocal(realization%discretization,field%volume0, &
-                                     field%work_loc,ONEDOF)
-    call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                 field%work_loc,VOLUME,ZERO_INTEGER)
-  endif
+  call DiscretizationGlobalToLocal(realization%discretization,field%volume0, &
+                                   field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
+                               field%work_loc,VOLUME,ZERO_INTEGER)
 
 end subroutine assignVolumesToMaterialAuxVars
 

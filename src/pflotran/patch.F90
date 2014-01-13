@@ -2006,6 +2006,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   grid => patch%grid
   material_aux_vars => patch%aux%Material%aux_vars
 
+  !geh: remove
   if (option%iflowmode /= RICHARDS_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     call VecGetArrayF90(field%perm_xx_loc,perm_loc_ptr,ierr)
@@ -2025,6 +2026,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
     case(SCALE_BY_VOLUME)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
+        !geh: remove
         if (option%iflowmode /= RICHARDS_MODE .and. &
             option%iflowmode /= NULL_MODE) then
           !geh: remove
@@ -2039,6 +2041,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
+        !geh: remove
         if (option%iflowmode /= RICHARDS_MODE .and. &
             option%iflowmode /= NULL_MODE) then
           !geh: remove
@@ -2065,6 +2068,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         do while (icount < x_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)
+          !geh: remove
           if (option%iflowmode /= RICHARDS_MODE .and. &
               option%iflowmode /= NULL_MODE) then
             !geh: remove
@@ -2082,6 +2086,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         do while (icount < x_count + y_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
+          !geh: remove
           if (option%iflowmode /= RICHARDS_MODE .and. &
               option%iflowmode /= NULL_MODE) then
             !geh: remove
@@ -2099,6 +2104,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         do while (icount < x_count + y_count + z_count)
           icount = icount + 1
           neighbor_ghosted_id = ghosted_neighbors(icount)                 
+          !geh: remove
           if (option%iflowmode /= RICHARDS_MODE .and. &
               option%iflowmode /= NULL_MODE) then
             !geh: remove
@@ -2139,6 +2145,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   enddo
   call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 
+  !geh: remove
   if (option%iflowmode /= RICHARDS_MODE .and. &
       option%iflowmode /= NULL_MODE) then
     call VecRestoreArrayF90(field%perm_xx_loc,perm_loc_ptr, ierr)

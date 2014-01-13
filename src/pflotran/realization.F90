@@ -379,12 +379,11 @@ subroutine RealizationCreateDiscretization(realization)
       endif
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
+      call GridComputeVolumes(grid,field%volume0,option)
       !geh: remove
-      if (option%iflowmode == RICHARDS_MODE .or. &
-          option%iflowmode == NULL_MODE) then
-        call GridComputeVolumes(grid,field%volume0,option)
-      else
-        call GridComputeVolumes(grid,field%volume,option)
+      if (option%iflowmode /= RICHARDS_MODE .and. &
+          option%iflowmode /= NULL_MODE) then
+        call VecCopy(field%volume0,field%volume,ierr)
       endif
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
@@ -417,16 +416,11 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option, &
                                       discretization%dm_1dof%ugdm) 
+      call GridComputeVolumes(grid,field%volume0,option)
       !geh: remove
-      if (option%iflowmode == RICHARDS_MODE .or. &
-          option%iflowmode == NULL_MODE) then
-        call GridComputeVolumes(grid,field%work,option)
-        call DiscretizationGlobalToLocal(discretization,field%work, &
-                                         field%work_loc,ONEDOF)  
-        call MaterialSetAuxVarVecLoc(realization%patch%aux%Material, &
-                                     field%work_loc,VOLUME,ZERO_INTEGER)
-      else
-        call GridComputeVolumes(grid,field%volume,option)
+      if (option%iflowmode /= RICHARDS_MODE .and. &
+          option%iflowmode /= NULL_MODE) then
+        call VecCopy(field%volume0,field%volume,ierr)
       endif
 #ifdef MFD_UGRID
       call GridComputeCell2FaceConnectivity(discretization%grid,discretization%MFD,option)
