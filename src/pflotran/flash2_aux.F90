@@ -296,11 +296,11 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
     p2 = p
 
     if(p2 >= 5.d4)then
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+      if (option%co2eos == EOS_SPAN_WAGNER) then
 ! ************ Span-Wagner EOS ********************             
         select case(option%itable)  
           case(0,1,2,4,5)
-            if( option%itable >=4) then
+            if (option%itable >= 4) then
                 ! print *,' interp', itable
               call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
@@ -363,28 +363,28 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
     tmp= Henry/p
     if (x(3) < xco2eq) then
       ! water only
-      auxvar%xmol(2)=x(3)
-      auxvar%xmol(1)=1.D0 - auxvar%xmol(2)
-      auxvar%xmol(4)=auxvar%xmol(2)*tmp
-      auxvar%xmol(3)=1.D0 - auxvar%xmol(4)  
-      auxvar%sat(1)=1.D0
-      auxvar%sat(2)=0.D0
+      auxvar%xmol(2) = x(3)
+      auxvar%xmol(1) = 1.D0 - auxvar%xmol(2)
+      auxvar%xmol(4) = auxvar%xmol(2)*tmp
+      auxvar%xmol(3) = 1.D0 - auxvar%xmol(4)
+      auxvar%sat(1) = 1.D0
+      auxvar%sat(2) = 0.D0
       iphase = 1
     elseif (x(3) > (1.D0-sat_pressure/p)) then
 	    !gas only
-      iphase =2
-      auxvar%xmol(4)=x(3)
-      auxvar%xmol(3)=1.D0 - auxvar%xmol(4) 
-      auxvar%xmol(2)=auxvar%xmol(4)/tmp
-      auxvar%xmol(1)=1.D0 - auxvar%xmol(2)
-      auxvar%sat(1)=0.D0 !1.D-8
-      auxvar%sat(2)=1.D0
+      iphase = 2
+      auxvar%xmol(4) = x(3)
+      auxvar%xmol(3) = 1.D0 - auxvar%xmol(4)
+      auxvar%xmol(2) = auxvar%xmol(4)/tmp
+      auxvar%xmol(1) = 1.D0 - auxvar%xmol(2)
+      auxvar%sat(1) = 0.D0 !1.D-8
+      auxvar%sat(2) = 1.D0
     else 
       iphase = 3
-      auxvar%xmol(1)=1.D0 - xco2eq
-      auxvar%xmol(2)= xco2eq
-      auxvar%xmol(3)= sat_pressure/p*auxvar%xmol(1) 
-      auxvar%xmol(4)= 1.D0 - auxvar%xmol(3)
+      auxvar%xmol(1) = 1.D0 - xco2eq
+      auxvar%xmol(2) = xco2eq
+      auxvar%xmol(3) = sat_pressure/p*auxvar%xmol(1)
+      auxvar%xmol(4) = 1.D0 - auxvar%xmol(3)
     endif 
 
 ! **************  Gas phase properties ********************
@@ -408,7 +408,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
  
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     auxvar%h(1) = hw
-    auxvar%u(1) = auxvar%h(1) - pw /dw_mol* option%scale
+    auxvar%u(1) = auxvar%h(1) - pw/dw_mol*option%scale
     
     auxvar%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   ! fluid_properties%diff_base(1) need more work here. Add temp. dependence.
@@ -421,12 +421,13 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
     
     y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 !   y_nacl is the mole fraction
-    auxvar%avgmw(1)= auxvar%xmol(1)*((1D0 - y_nacl) * FMWH2O&
+    auxvar%avgmw(1)= auxvar%xmol(1)*((1D0 - y_nacl) * FMWH2O &
        + y_nacl * FMWNACL) + auxvar%xmol(2) * FMWCO2
 
 !duan mixing **************************
 #ifdef DUANDEN
-  call EOSWaterDuanMixture (t,p,auxvar%xmol(2),y_nacl,auxvar%avgmw(1),dw_kg,auxvar%den(1))
+  call EOSWaterDuanMixture (t,p,auxvar%xmol(2),y_nacl, &
+    auxvar%avgmw(1),dw_kg,auxvar%den(1))
 #endif 
 
 ! Garcia mixing **************************
@@ -467,27 +468,27 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
 !******************************** 2 phase S-Pc-kr relation ********************
     auxvar%pc =0.D0
 
-      if(saturation_function%hysteresis_id <=0.1D0 ) then 
-         call pckrNH_noderiv(auxvar%sat,auxvar%pc,kr, &
+    if (saturation_function%hysteresis_id <= 0.1D0) then
+      call pckrNH_noderiv(auxvar%sat,auxvar%pc,kr, &
                                    saturation_function, &
                                    option)
-        pw=p !-pc(1)
+      pw=p !-pc(1)
      
-       else
-          call pckrHY_noderiv(auxvar%sat,auxvar%hysdat,auxvar%pc,kr, &
+    else
+      call pckrHY_noderiv(auxvar%sat,auxvar%hysdat,auxvar%pc,kr, &
                                    saturation_function, &
                                    option)
-     end if
+    end if
 
-!    call SaturationFunctionCompute(auxvar%pres,auxvar%sat,kr, &
+!   call SaturationFunctionCompute(auxvar%pres,auxvar%sat,kr, &
 !                                   ds_dp,dkr_dp, &
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-       auxvar%kvr(2) = kr(2)/visg     
-       auxvar%kvr(1) = kr(1)/visl
-       auxvar%vis(2) = visg     
-       auxvar%vis(1) = visl
+    auxvar%kvr(2) = kr(2)/visg
+    auxvar%kvr(1) = kr(1)/visl
+    auxvar%vis(2) = visg
+    auxvar%vis(1) = visl
 
 end subroutine Flash2AuxVarCompute_NINC
 

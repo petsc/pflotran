@@ -2443,6 +2443,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   use Constraint_module
   
   use EOS_Water_module
@@ -2455,10 +2456,15 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
 
   type(reactive_transport_auxvar_type), pointer :: rt_auxvar
   type(global_auxvar_type), pointer :: global_auxvar
+  type(material_auxvar_type), allocatable :: material_auxvar
   type(coupler_type), pointer :: cur_coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   PetscReal :: dum1
   PetscErrorCode :: ierr
+
+  allocate(material_auxvar)
+  call MaterialAuxVarInit(material_auxvar,option)
+  material_auxvar%porosity = option%reference_porosity
   
   cur_coupler => coupler_list%first
   do
@@ -2518,19 +2524,21 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       global_auxvar%sat = option%reference_saturation  
   
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                            material_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
                             cur_constraint_coupler%minerals, &
                             cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%colloids, &
                             cur_constraint_coupler%immobile_species, &
-                            option%reference_porosity, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_FALSE,option)
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
     cur_coupler => cur_coupler%next
   enddo
+
+  deallocate(material_auxvar)
 
 end subroutine PatchInitCouplerConstraints
 

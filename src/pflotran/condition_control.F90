@@ -483,6 +483,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   use Reaction_module
   use HDF5_module
   
@@ -496,7 +497,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscInt :: icell, iconn, idof, isub_condition, temp_int, iimmobile
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite, imnrl, ikinrxn
-  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
+  PetscReal, pointer :: xx_p(:), xx_loc_p(:), vec_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -510,6 +511,7 @@ subroutine CondControlAssignTranInitCond(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(tran_constraint_coupler_type), pointer :: constraint_coupler
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: iphase
   PetscInt :: offset
@@ -538,10 +540,10 @@ subroutine CondControlAssignTranInitCond(realization)
     grid => cur_patch%grid
     rt_auxvars => cur_patch%aux%RT%auxvars
     global_auxvars => cur_patch%aux%Global%auxvars
+    material_auxvars => cur_patch%aux%Material%auxvars
 
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p,ierr)
-    call VecGetArrayF90(field%porosity_loc,porosity_loc,ierr)
       
     xx_p = -999.d0
       
@@ -650,14 +652,14 @@ subroutine CondControlAssignTranInitCond(realization)
           option%iflag = grid%nG2A(grid%nL2G(local_id))
           if (icell == 1) then
             call ReactionEquilibrateConstraint(rt_auxvars(ghosted_id), &
-              global_auxvars(ghosted_id),reaction, &
+              global_auxvars(ghosted_id),material_auxvars(ghosted_id), &
+              reaction, &
               constraint_coupler%constraint_name, &
               constraint_coupler%aqueous_species, &
               constraint_coupler%minerals, &
               constraint_coupler%surface_complexes, &
               constraint_coupler%colloids, &
               constraint_coupler%immobile_species, &
-              porosity_loc(ghosted_id), &
               constraint_coupler%num_iterations, &
               PETSC_FALSE,option)
           else
@@ -667,14 +669,14 @@ subroutine CondControlAssignTranInitCond(realization)
             rt_auxvars(ghosted_id)%pri_molal = &
               rt_auxvars(grid%nL2G(initial_condition%region%cell_ids(icell-1)))%pri_molal
             call ReactionEquilibrateConstraint(rt_auxvars(ghosted_id), &
-              global_auxvars(ghosted_id),reaction, &
+              global_auxvars(ghosted_id),material_auxvars(ghosted_id), &
+              reaction, &
               constraint_coupler%constraint_name, &
               constraint_coupler%aqueous_species, &
               constraint_coupler%minerals, &
               constraint_coupler%surface_complexes, &
               constraint_coupler%colloids, &
               constraint_coupler%immobile_species, &
-              porosity_loc(ghosted_id), &
               constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
           endif
@@ -777,7 +779,6 @@ subroutine CondControlAssignTranInitCond(realization)
     enddo
       
     call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
-    call VecRestoreArrayF90(field%porosity_loc,porosity_loc,ierr)
 
     cur_patch => cur_patch%next
   enddo
