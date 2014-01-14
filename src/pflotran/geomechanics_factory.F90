@@ -151,8 +151,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
     call SimAuxCopySubsurfGeomechVec(simulation%sim_aux, &
           simulation_old%geomech_realization%geomech_field%strain_subsurf)
 
-    call GeomechRealizMapSubsurfGeomechGrid(simulation%realization, &
-                                            simulation%geomech_realization, &
+    call GeomechRealizMapSubsurfGeomechGrid(simulation_old%realization, &
+                                            simulation_old%geomech_realization, &
                                             option)
 
     dm_ptr => GeomechDiscretizationGetDMPtrFromIndex( &

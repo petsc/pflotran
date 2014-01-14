@@ -398,7 +398,7 @@ subroutine PMGeomechForceDestroy(this)
   call printMsg(this%option,'PMGeomechForce%Destroy()')
 #endif
 
-  call GeomechRealizDestroy(this%geomech_realization)
+  !call GeomechRealizDestroy(this%geomech_realization)
 
   call this%comm1%Destroy()
   
