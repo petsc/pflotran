@@ -3366,15 +3366,13 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
           enddo
         case(TOTAL_BULK) ! mol/m^3 bulk
           ! add in total molarity and convert to mol/m^3 bulk
-          call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
             vec_ptr(local_id) = &
               patch%aux%RT%auxvars(ghosted_id)%total(isubvar,iphase) * &
-              vec_ptr2(ghosted_id) * &
+              patch%aux%Material%auxvars(ghosted_id)%porosity * &
               patch%aux%Global%auxvars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
           enddo
-          call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
           ! add in total sorbed.  already in mol/m^3 bulk
           if (patch%reaction%nsorb > 0) then
             do local_id=1,grid%nlmax
@@ -3475,7 +3473,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
               patch%aux%RT%auxvars(ghosted_id)%sec_act_coef(isubvar)
           enddo
         case(PRIMARY_KD)
-          call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
             call ReactionComputeKd(isubvar,vec_ptr(local_id), &
@@ -3484,7 +3481,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec,ivar,
                                    patch%aux%Material%auxvars(ghosted_id), &
                                    patch%reaction,option)
           enddo
-          call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
           if (patch%reaction%nsorb > 0) then
             if (patch%reaction%neqsorb > 0) then
@@ -4174,12 +4170,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           value = patch%aux%RT%auxvars(ghosted_id)%total(isubvar,iphase)
         case(TOTAL_BULK) ! mol/m^3 bulk
           ! add in total molarity and convert to mol/m^3 bulk
-          call VecGetArrayF90(field%porosity_loc,vec_ptr2,ierr)
           value = &
               patch%aux%RT%auxvars(ghosted_id)%total(isubvar,iphase) * &
-              vec_ptr2(ghosted_id) * &
+              patch%aux%Material%auxvars(ghosted_id)%porosity * &
               patch%aux%Global%auxvars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
-          call VecRestoreArrayF90(field%porosity_loc,vec_ptr2,ierr)
           ! add in total sorbed.  already in mol/m^3 bulk
           if (patch%reaction%nsorb > 0) then
             if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
@@ -5285,6 +5279,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   use Coupler_module
   use Field_module
   use Global_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -5299,6 +5294,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
@@ -5315,9 +5311,13 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
 
   field => patch%field
   global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid
 
+  !geh: remove
+  if (option%iflowmode /= RICHARDS_MODE) then
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  endif
 
   max_dt_cfl_1 = 1.d20
   
@@ -5337,6 +5337,18 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       do iphase = 1, option%nphase
+        if (option%iflowmode == RICHARDS_MODE) then
+        por_sat_min = min(material_auxvars(ghosted_id_up)%porosity* &
+                          global_auxvars(ghosted_id_up)%sat(iphase), &
+                          material_auxvars(ghosted_id_dn)%porosity* &
+                          global_auxvars(ghosted_id_dn)%sat(iphase))
+        por_sat_ave = (fraction_upwind* &
+                       material_auxvars(ghosted_id_up)%porosity* &
+                       global_auxvars(ghosted_id_up)%sat(iphase) + &
+                      (1.d0-fraction_upwind)* &
+                      material_auxvars(ghosted_id_dn)%porosity* &
+                      global_auxvars(ghosted_id_dn)%sat(iphase))
+        else
         por_sat_min = min(porosity_loc_p(ghosted_id_up)* &
                           global_auxvars(ghosted_id_up)%sat(iphase), &
                           porosity_loc_p(ghosted_id_dn)* &
@@ -5345,6 +5357,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
                        global_auxvars(ghosted_id_up)%sat(iphase) + &
                       (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
                       global_auxvars(ghosted_id_dn)%sat(iphase))
+        endif
         v_darcy = patch%internal_velocities(iphase,sum_connection)
         v_pore_max = v_darcy / por_sat_min
         v_pore_ave = v_darcy / por_sat_ave
@@ -5372,8 +5385,11 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       !geh: since on boundary, dist must be scaled by 2.d0
       distance = 2.d0*cur_connection_set%dist(0,iconn)
       do iphase = 1, option%nphase
-        por_sat_ave = porosity_loc_p(ghosted_id_dn)* &
+        if (option%iflowmode == RICHARDS_MODE) then
+        else
+        por_sat_ave = material_auxvars(ghosted_id_dn)%porosity* &
                       global_auxvars(ghosted_id_dn)%sat(iphase)
+        endif
         v_darcy = patch%boundary_velocities(iphase,sum_connection)
         v_pore_ave = v_darcy / por_sat_ave
         dt_cfl_1 = distance / dabs(v_pore_ave)
@@ -5383,7 +5399,10 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
     boundary_condition => boundary_condition%next
   enddo
 
+  !geh: remove
+  if (option%iflowmode /= RICHARDS_MODE) then
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  endif
 
 end subroutine PatchCalculateCFL1Timestep
 
