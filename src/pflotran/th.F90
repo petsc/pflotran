@@ -2598,6 +2598,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
         q = v_darcy * area
       endif
 
+    case(ZERO_GRADIENT_BC)
+      ! do nothing
+
   end select
 
   if (v_darcy >= 0.D0) then
@@ -2910,6 +2913,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           density_ave = global_auxvar_dn%den(1)
         endif 
       endif
+
+    case(ZERO_GRADIENT_BC)
+      ! do nothing needed to bypass default case
 
     case default
       option%io_buffer = 'BC type "' // trim(GetSubConditionName(ibndtype(TH_PRESSURE_DOF))) // &
