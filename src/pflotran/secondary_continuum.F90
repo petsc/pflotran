@@ -502,6 +502,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   use Reaction_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
+  use Material_Aux_class
   
   use EOS_Water_module
   
@@ -514,6 +515,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   type(option_type), pointer :: option
   type(reactive_transport_auxvar_type), pointer :: rt_auxvar
   type(global_auxvar_type), pointer :: global_auxvar
+  type(material_auxvar_type), allocatable :: material_auxvar
   type(tran_constraint_type), pointer :: constraint
   type(flow_condition_type), pointer :: initial_flow_condition
   
@@ -525,6 +527,10 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   PetscInt :: num_iterations, ierr
   
   num_iterations = 0
+
+  allocate(material_auxvar)
+  call MaterialAuxVarInit(material_auxvar,option)
+  material_auxvar%porosity = option%reference_porosity
 
   call SecondaryContinuumSetProperties( &
         rt_sec_transport_vars%sec_continuum, &
@@ -629,13 +635,13 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
     global_auxvar%sat = option%reference_saturation
                       
     call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                          material_auxvar, &
                           reaction,constraint%name, &
                           constraint%aqueous_species, &
                           constraint%minerals, &
                           constraint%surface_complexes, &
                           constraint%colloids, &
                           constraint%immobile_species, &
-                          option%reference_porosity, &
                           num_iterations, &
                           PETSC_FALSE,option)   
                           
@@ -643,7 +649,7 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
        
   enddo                                    
   
-
+  deallocate(material_auxvar)
   
   rt_sec_transport_vars%sec_jac_update = PETSC_FALSE
   rt_sec_transport_vars%sec_jac = 0.d0

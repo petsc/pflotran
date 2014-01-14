@@ -3704,14 +3704,14 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
           if (.not.skip_equilibrate_constraint) then
             ! print *,'RT redo constrain on BCs: 1: ', sum_connection
             call ReactionEquilibrateConstraint(patch%aux%RT%auxvars_bc(sum_connection), &
-              patch%aux%Global%auxvars_bc(sum_connection),reaction, &
+              patch%aux%Global%auxvars_bc(sum_connection), &
+              patch%aux%Material%auxvars(ghosted_id),reaction, &
               boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
               boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
               boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
               boundary_condition%tran_condition%cur_constraint_coupler%immobile_species, &
-              patch%aux%Material%auxvars(ghosted_id)%porosity, &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
             ! print *,'RT redo constrain on BCs: 2: ', sum_connection  

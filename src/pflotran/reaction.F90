@@ -1161,13 +1161,13 @@ end subroutine ReactionProcessConstraint
 ! ************************************************************************** !
 
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                                         material_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
                                          mineral_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
                                          immobile_constraint, &
-                                         porosity, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
   ! 
@@ -1182,15 +1182,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use String_module  
   use Utility_module
   use Constraint_module
+  use EOS_Water_module
+  use Material_Aux_class
 #ifdef CHUAN_CO2
   use co2eos_module, only: Henry_duan_sun
   use co2_span_wagner_module, only: co2_span_wagner
-  use EOS_Water_module
 #endif  
   implicit none
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
@@ -1198,7 +1200,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   type(immobile_constraint_type), pointer :: immobile_constraint
-  PetscReal :: porosity
   PetscInt :: num_iterations
   
   PetscBool :: use_prev_soln_as_guess
@@ -1958,7 +1959,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 !  global_auxvar%den_kg(iphase) = option%reference_water_density
 !  global_auxvar%temp(1) = option%reference_temperature
 !  global_auxvar%sat(iphase) = option%reference_saturation
-  bulk_vol_to_fluid_vol = option%reference_porosity*global_auxvar%sat(iphase)*1000.d0
+  bulk_vol_to_fluid_vol = option%reference_porosity* &
+                          global_auxvar%sat(iphase)*1000.d0
 
 ! compute mass fraction of H2O
   if (reaction%use_full_geochemistry) then
