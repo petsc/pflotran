@@ -3179,7 +3179,8 @@ subroutine assignMaterialPropToRegions(realization)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                TORTUOSITY,0)
   !geh: remove
-  if (option%iflowmode /= RICHARDS_MODE) then
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= NULL_MODE) then
     call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                      field%porosity_loc,ONEDOF)
     call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
