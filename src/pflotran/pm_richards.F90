@@ -728,8 +728,7 @@ subroutine PMRichardsDestroy(this)
 #ifndef SIMPLIFY 
   call RichardsDestroy(this%realization)
 #endif
-  !geh: at this point, the PM should not destroy
-  !call this%comm1%Destroy()
+  call this%comm1%Destroy()
   
 end subroutine PMRichardsDestroy
   

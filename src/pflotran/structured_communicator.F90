@@ -216,7 +216,9 @@ subroutine StructuredCommunicatorDestroy(this)
   PetscErrorCode :: ierr
   
   if (this%dm /= 0) then
-    call DMDestroy(this%dm,ierr)
+    !geh: all DMs are currently destroyed in realization.  This DM is solely
+    !     a pointer.  This will need to change, but skip for now.
+    !call DMDestroy(this%dm,ierr)
   endif
   this%dm = 0
   
