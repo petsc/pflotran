@@ -1944,7 +1944,7 @@ subroutine ReactionDestroy(reaction)
     if (.not.associated(radioactive_decay_rxn)) exit
     prev_radioactive_decay_rxn => radioactive_decay_rxn
     radioactive_decay_rxn => radioactive_decay_rxn%next
-    call GeneralRxnDestroy(prev_general_rxn)
+    call RadioactiveDecayRxnDestroy(prev_radioactive_decay_rxn)
   enddo    
   nullify(reaction%radioactive_decay_rxn_list)
   
