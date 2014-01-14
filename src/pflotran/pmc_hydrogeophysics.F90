@@ -248,6 +248,32 @@ end subroutine PMCHydrogeophysicsFinalizeRun
 
 ! ************************************************************************** !
 
+subroutine PMCHydrogeophysicsStrip(this)
+  !
+  ! Deallocates members of PMC Subsurface.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  
+  implicit none
+  
+  class(pmc_hydrogeophysics_type) :: this
+  
+  PetscErrorCode :: ierr
+
+  call PMCBaseStrip(this)
+  nullify(this%realization)
+  if (this%solution_seq /= 0) &
+    call VecDestroy(this%solution_seq,ierr)
+  this%solution_seq = 0
+  if (this%pf_to_e4d_scatter /= 0) &
+    call VecScatterDestroy(this%pf_to_e4d_scatter, ierr)
+  this%pf_to_e4d_scatter = 0
+  
+end subroutine PMCHydrogeophysicsStrip
+
+! ************************************************************************** !
+
 recursive subroutine PMCHydrogeophysicsDestroy(this)
   ! 
   ! Deallocates a process_model_coupler object
@@ -266,19 +292,16 @@ recursive subroutine PMCHydrogeophysicsDestroy(this)
   
   call printMsg(this%option,'PMCHydrogeophysics%Destroy()')
   
-  nullify(this%realization)
+  call PMCHydrogeophysicsStrip(this)
+  
+  if (associated(this%below)) then
+    call this%below%Destroy()
+  endif 
   
   if (associated(this%next)) then
     call this%next%Destroy()
-  endif 
+  endif  
 
-  if (this%solution_seq /= 0) &
-    call VecDestroy(this%solution_seq,ierr)
-  this%solution_seq = 0
-  if (this%pf_to_e4d_scatter /= 0) &
-    call VecScatterDestroy(this%pf_to_e4d_scatter, ierr)
-  this%pf_to_e4d_scatter = 0
-  
 end subroutine PMCHydrogeophysicsDestroy
   
 end module PMC_Hydrogeophysics_class

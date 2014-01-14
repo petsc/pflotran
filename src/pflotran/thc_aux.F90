@@ -107,7 +107,17 @@ function THCAuxCreate(option)
   nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
   allocate(aux%thc_parameter)
+  
+  nullify(aux%thc_parameter%dencpr)
+  nullify(aux%thc_parameter%ckdry)
+  nullify(aux%thc_parameter%ckwet)
+  nullify(aux%thc_parameter%alpha)
+  nullify(aux%thc_parameter%ckfrozen)
+  nullify(aux%thc_parameter%alpha_fr)
   nullify(aux%thc_parameter%sir)
+  nullify(aux%thc_parameter%diffusion_coefficient)
+  nullify(aux%thc_parameter%diffusion_activation_energy)
+  
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 

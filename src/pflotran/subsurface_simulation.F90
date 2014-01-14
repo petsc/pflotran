@@ -187,6 +187,9 @@ subroutine SubsurfaceSimulationStrip(this)
 #endif
   
   call SimulationBaseStrip(this)
+  call RealizationStrip(this%realization)
+  deallocate(this%realization)
+  nullify(this%realization)
   call RegressionDestroy(this%regression)
   
 end subroutine SubsurfaceSimulationStrip

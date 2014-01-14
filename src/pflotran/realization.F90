@@ -62,7 +62,8 @@ private
   end interface
   
   public :: RealizationCreate, &
-            RealizationDestroy, &
+            RealizationStrip, &
+            RealizationDestroyLegacy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
             RealizationProcessConditions, &
@@ -2527,7 +2528,7 @@ end subroutine RealizationNonInitializedData
 
 ! ************************************************************************** !
 
-subroutine RealizationDestroy(realization)
+subroutine RealizationDestroyLegacy(realization)
   ! 
   ! Deallocates a realization
   ! 
@@ -2590,6 +2591,56 @@ subroutine RealizationDestroy(realization)
   deallocate(realization)
   nullify(realization)
   
-end subroutine RealizationDestroy
+end subroutine RealizationDestroyLegacy
+
+! ************************************************************************** !
+
+subroutine RealizationStrip(this)
+  ! 
+  ! Deallocates a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
+
+  use Dataset_module
+
+  implicit none
+  
+  class(realization_type) :: this
+  
+  call RealizationBaseStrip(this)
+  call RegionDestroyList(this%regions)
+  
+  call FlowConditionDestroyList(this%flow_conditions)
+  call TranConditionDestroyList(this%transport_conditions)
+  call TranConstraintDestroyList(this%transport_constraints)
+
+  if (associated(this%fluid_property_array)) &
+    deallocate(this%fluid_property_array)
+  nullify(this%fluid_property_array)
+  call FluidPropertyDestroy(this%fluid_properties)
+  
+  if (associated(this%material_property_array)) &
+    deallocate(this%material_property_array)
+  nullify(this%material_property_array)
+  call MaterialPropertyDestroy(this%material_properties)
+
+  if (associated(this%saturation_function_array)) &
+    deallocate(this%saturation_function_array)
+  nullify(this%saturation_function_array)
+  call SaturationFunctionDestroy(this%saturation_functions)
+
+  call DatasetDestroy(this%datasets)
+  
+  call UniformVelocityDatasetDestroy(this%uniform_velocity_dataset)
+  
+  call ReactionDestroy(this%reaction)
+  
+  call TranConstraintDestroy(this%sec_transport_constraint)
+  
+  call WaypointListDestroy(this%waypoints)
+  
+end subroutine RealizationStrip
 
 end module Realization_class

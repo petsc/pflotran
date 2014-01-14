@@ -75,6 +75,7 @@ module PMC_Base_class
     
   public :: PMCBaseCreate, &
             PMCBaseInit, &
+            PMCBaseStrip, &
             SetOutputFlags
   
 contains
@@ -802,6 +803,34 @@ end subroutine SetAuxData
 
 ! ************************************************************************** !
 
+subroutine PMCBaseStrip(this)
+  !
+  ! Deallocates members of PMC Base.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+
+  nullify(this%option)
+
+  if (associated(this%timestepper)) then
+    call this%timestepper%Destroy()
+  endif
+  if (associated(this%pm_list)) then
+    call this%pm_list%Destroy()
+  endif
+  nullify(this%waypoints) ! deleted in realization
+!  call WaypointListDestroy(this%waypoints)
+  nullify(this%pm_ptr)
+  nullify(this%sim_aux)
+
+end subroutine PMCBaseStrip
+
+! ************************************************************************** !
+
 recursive subroutine PMCBaseDestroy(this)
   ! 
   ! Deallocates a pmc object
@@ -820,14 +849,14 @@ recursive subroutine PMCBaseDestroy(this)
   call printMsg(this%option,'PMC%Destroy()')
 #endif
   
+  if (associated(this%below)) then
+    call this%below%Destroy()
+  endif 
+  
   if (associated(this%next)) then
     call this%next%Destroy()
   endif 
   
-  if (associated(this%pm_list)) then
-    call this%pm_list%Destroy()
-  endif
-
 !  deallocate(pmc)
 !  nullify(pmc)
   

@@ -40,7 +40,8 @@ module Realization_Base_class
   public :: RealizationBaseInit, &
             RealizationGetVariable, &
             RealizGetVariableValueAtCell, &
-            RealizationSetVariable
+            RealizationSetVariable, &
+            RealizationBaseStrip
 
 contains
 
@@ -174,5 +175,37 @@ subroutine RealizationSetVariable(realization_base,vec,vec_format,ivar,isubvar)
                        vec,vec_format,ivar,isubvar)
 
 end subroutine RealizationSetVariable
+
+! ************************************************************************** !
+
+subroutine RealizationBaseStrip(this)
+  ! 
+  ! Deallocates members of base realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  ! 
+
+  implicit none
+  
+  class(realization_base_type) :: this
+  
+  call FieldDestroy(this%field)
+
+!  call OptionDestroy(realization%option) !geh it will be destroy externally
+  call OutputOptionDestroy(this%output_option)
+  
+  call DiscretizationDestroy(this%discretization)
+  
+  call PatchDestroyList(this%patch_list)
+  nullify(this%patch)
+
+  if (associated(this%debug)) deallocate(this%debug)
+  nullify(this%debug)
+  
+  call MassTransferDestroy(this%flow_mass_transfer_list)
+  call MassTransferDestroy(this%rt_mass_transfer_list)
+   
+end subroutine RealizationBaseStrip
 
 end module Realization_Base_class

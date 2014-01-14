@@ -149,7 +149,7 @@ subroutine SimulationDestroy(simulation)
     call RTDestroy(simulation%realization)
   endif
 
-  call RealizationDestroy(simulation%realization)
+  call RealizationDestroyLegacy(simulation%realization)
   call TimestepperDestroy(simulation%flow_stepper)
   call TimestepperDestroy(simulation%tran_stepper)
 #ifdef SURFACE_FLOW

@@ -106,8 +106,18 @@ function THAuxCreate(option)
   nullify(aux%auxvars_bc)
   nullify(aux%auxvars_ss)
   aux%n_zero_rows = 0
+
   allocate(aux%TH_parameter)
+  nullify(aux%TH_parameter%dencpr)
+  nullify(aux%TH_parameter%ckdry)
+  nullify(aux%TH_parameter%ckwet)
+  nullify(aux%TH_parameter%alpha)
+  nullify(aux%TH_parameter%ckfrozen)
+  nullify(aux%TH_parameter%alpha_fr)
   nullify(aux%TH_parameter%sir)
+  nullify(aux%TH_parameter%diffusion_coefficient)
+  nullify(aux%TH_parameter%diffusion_activation_energy)
+  
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 

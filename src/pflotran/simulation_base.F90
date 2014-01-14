@@ -312,6 +312,7 @@ subroutine SimulationBaseStrip(this)
   call printMsg(this%option,'SimulationBaseStrip()')
 #endif
   call SimAuxDestroy(this%sim_aux)
+  call this%process_model_coupler_list%Destroy()
   
 end subroutine SimulationBaseStrip
 
