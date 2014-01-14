@@ -243,13 +243,13 @@ subroutine UnstructuredCommunicatorDestroy(this)
   
   PetscErrorCode :: ierr
   
+  !geh: all DMs are currently destroyed in realization.  This DM is solely
+  !     a pointer.  This will need to change, but skip for now.
   if (associated(this%ugdm)) then
-    call UGridDMDestroy(this%ugdm)
+    !call UGridDMDestroy(this%ugdm)
   endif
   nullify(this%ugdm)
   if (this%dm /= 0) then
-    !geh: all DMs are currently destroyed in realization.  This DM is solely
-    !     a pointer.  This will need to change, but skip for now.
     !call DMDestroy(this%dm,ierr)
   endif
   this%dm = 0  
