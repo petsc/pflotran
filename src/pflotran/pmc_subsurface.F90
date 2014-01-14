@@ -17,6 +17,7 @@ module PMC_Subsurface_class
     procedure, public :: Init => PMCSubsurfaceInit
     procedure, public :: GetAuxData => PMCSubsurfaceGetAuxData
     procedure, public :: SetAuxData => PMCSubsurfaceSetAuxData
+    procedure, public :: Destroy => PMCSubsurfaceDestroy
   end type pmc_subsurface_type
   
   public :: PMCSubsurfaceCreate
@@ -553,16 +554,31 @@ end subroutine PMCSubsurfaceFinalizeRun
 
 ! ************************************************************************** !
 
-recursive subroutine Destroy(this)
+subroutine PMCSubsurfaceStrip(this)
+  !
+  ! Deallocates members of PMC Subsurface.
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/13/14
+  
+  implicit none
+  
+  class(pmc_subsurface_type) :: this
+
+  call PMCBaseStrip(this)
+  nullify(this%realization)
+
+end subroutine PMCSubsurfaceStrip
+
+! ************************************************************************** !
+
+recursive subroutine PMCSubsurfaceDestroy(this)
   ! 
   ! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-
-  use Utility_module, only: DeallocateArray
-  use Option_module
 
   implicit none
   
@@ -571,11 +587,17 @@ recursive subroutine Destroy(this)
 #ifdef DEBUG
   call printMsg(this%option,'PMCSubsurface%Destroy()')
 #endif
+
+  call PMCBaseStrip(this)
+  
+  if (associated(this%below)) then
+    call this%below%Destroy()
+  endif 
   
   if (associated(this%next)) then
     call this%next%Destroy()
-  endif 
+  endif
   
-end subroutine Destroy
+end subroutine PMCSubsurfaceDestroy
   
 end module PMC_Subsurface_class
