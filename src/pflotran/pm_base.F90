@@ -202,6 +202,8 @@ module PM_Base_class
   
 contains
 
+! ************************************************************************** !
+
 subroutine PMBaseCreate(this)
 
   implicit none
@@ -220,14 +222,16 @@ subroutine PMBaseCreate(this)
 end subroutine PMBaseCreate
 
 #if 0
+
 ! ************************************************************************** !
-!
-! PMBaseRunTo: Runs the actual simulation.
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine RunToTime(this,time)
+  ! 
+  ! PMBaseRunTo: Runs the actual simulation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -244,12 +248,17 @@ end subroutine PMBaseRunTo
 #endif
 
 #ifndef ABSTRACT
+
+! ************************************************************************** !
+
 subroutine PMBaseInit(this)
   implicit none
   class(pm_base_type) :: this
   print *, 'Must extend PMBaseInit.'
   stop
 end subroutine PMBaseInit
+
+! ************************************************************************** !
 
 subroutine PMBaseResidual(this,snes,xx,r,ierr)
   implicit none
@@ -262,6 +271,8 @@ subroutine PMBaseResidual(this,snes,xx,r,ierr)
   stop
 end subroutine PMBaseResidual
 
+! ************************************************************************** !
+
 subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
   implicit none
   class(pm_base_type) :: this
@@ -273,7 +284,9 @@ subroutine PMBaseJacobian(this,snes,xx,A,B,flag,ierr)
   print *, 'Must extend PMBaseJacobian.'
   stop
 end subroutine PMBaseJacobian
-    
+
+! ************************************************************************** !
+
 subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
                                 num_newton_iterations,tfac)
   implicit none
@@ -286,7 +299,9 @@ subroutine PMBaseUpdateTimestep(this,dt,dt_max,iacceleration, &
   print *, 'Must extend PMBaseUpdateTimestep.'
   stop
 end subroutine PMBaseUpdateTimestep
-    
+
+! ************************************************************************** !
+
 subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   implicit none
   class(pm_base_type) :: this
@@ -298,7 +313,9 @@ subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   print *, 'Must extend PMBaseCheckUpdatePre.'
   stop
 end subroutine PMBaseCheckUpdatePre
-    
+
+! ************************************************************************** !
+
 subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
   implicit none
@@ -314,6 +331,8 @@ subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   stop
 end subroutine PMBaseCheckUpdatePost
 
+! ************************************************************************** !
+
 subroutine PMBasePostSolve(this)
   implicit none
   class(pm_base_type) :: this
@@ -321,14 +340,18 @@ subroutine PMBasePostSolve(this)
   print *, 'Must extend PMBasePostSolve.'
   stop
 end subroutine PMBasePostSolve
-    
+
+! ************************************************************************** !
+
 subroutine PMBaseThisOnly(this)
   implicit none
   class(pm_base_type) :: this
   print *, 'Must extend PMBaseThisOnly.'
   stop
 end subroutine PMBaseThisOnly
-    
+
+! ************************************************************************** !
+
 subroutine PMBaseThisTime(this,time)
   implicit none
   class(pm_base_type) :: this
@@ -336,7 +359,9 @@ subroutine PMBaseThisTime(this,time)
   print *, 'Must extend PMBaseThisTime.'
   stop
 end subroutine PMBaseThisTime
-    
+
+! ************************************************************************** !
+
 function PMBaseFunctionThisOnly(this)
   implicit none
   class(pm_base_type) :: this
@@ -345,7 +370,9 @@ function PMBaseFunctionThisOnly(this)
   print *, 'Must extend PMBaseFunctionThisOnly.'
   stop
 end function PMBaseFunctionThisOnly
-    
+
+! ************************************************************************** !
+
 subroutine PMBaseComputeMassBalance(this,mass_balance_array)
   implicit none
   class(pm_base_type) :: this
@@ -353,6 +380,8 @@ subroutine PMBaseComputeMassBalance(this,mass_balance_array)
   print *, 'Must extend PMBaseComputeMassBalance.'
   stop
 end subroutine PMBaseComputeMassBalance
+
+! ************************************************************************** !
 
 subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
   implicit none
@@ -365,6 +394,8 @@ subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
   print *, 'Must extend PMBaseRHSFunction.'
   stop
 end subroutine PMBaseRHSFunction
+
+! ************************************************************************** !
 
 subroutine PMBaseCheckpoint(this,viewer)
   implicit none

@@ -54,6 +54,8 @@ module BatchChem
 
 contains
 
+! ************************************************************************** !
+
 subroutine BatchChemInitializeReactions(option, input, reaction)
 
   use Reaction_module
@@ -106,6 +108,7 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
 
 end subroutine BatchChemInitializeReactions
 
+! ************************************************************************** !
 
 subroutine BatchChemProcessConstraints(option, input, reaction, &
      global_auxvars, rt_auxvars, transport_constraints, constraint_coupler)

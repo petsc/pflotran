@@ -49,13 +49,14 @@ module Output_Common_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputCommonInit: Initializes module variables for common formats
-! author: Glenn Hammond
-! date: 01/16/13
-!
-! ************************************************************************** !
+
 subroutine OutputCommonInit()
+  ! 
+  ! Initializes module variables for common formats
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/13
+  ! 
 
   use Option_module
 
@@ -67,13 +68,14 @@ subroutine OutputCommonInit()
 end subroutine OutputCommonInit
 
 ! ************************************************************************** !
-!
-! OutputFilenameID: Creates an ID for filename
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
+
 function OutputFilenameID(output_option,option)
+  ! 
+  ! Creates an ID for filename
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
 
   use Option_module
   
@@ -99,13 +101,14 @@ function OutputFilenameID(output_option,option)
 end function OutputFilenameID
 
 ! ************************************************************************** !
-!
-! OutputFilename: Creates a filename for a Tecplot file
-! author: Glenn Hammond
-! date: 01/13/12
-!
-! ************************************************************************** !  
+
 function OutputFilename(output_option,option,suffix,optional_string)
+  ! 
+  ! Creates a filename for a Tecplot file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
 
   use Option_module
   
@@ -146,13 +149,14 @@ function OutputFilename(output_option,option,suffix,optional_string)
 end function OutputFilename
 
 ! ************************************************************************** !
-!
-! OutputGetVarFromArray: Extracts variables indexed by ivar from a multivar array
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
+  ! 
+  ! Extracts variables indexed by ivar from a multivar array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Realization_Base_class, only : RealizationGetVariable
   use Grid_module
@@ -182,13 +186,14 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 end subroutine OutputGetVarFromArray
 
 ! ************************************************************************** !
-!
-! ConvertArrayToNatural: Converts an array  to natural ordering
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
+  ! 
+  ! Converts an array  to natural ordering
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Option_module
   
@@ -233,14 +238,15 @@ subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
 end subroutine ConvertArrayToNatural
 
 ! ************************************************************************** !
-!
-! OutputGetVarFromArrayAtCoord: Extracts variables indexed by ivar from a multivar array
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
+
 function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
                                       num_cells,ghosted_ids,isubvar1)
+  ! 
+  ! Extracts variables indexed by ivar from a multivar array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
 
   use Realization_Base_class, only : RealizGetVariableValueAtCell
   use Grid_module
@@ -292,14 +298,15 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
 end function OutputGetVarFromArrayAtCoord
 
 ! ************************************************************************** !
-!
-! OutputGetCellCenteredVelocities: Computes the cell-centered velocity component 
-!                            as an averages of cell face velocities
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction)
+  ! 
+  ! Computes the cell-centered velocity component
+  ! as an averages of cell face velocities
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Grid_module
   use Option_module
@@ -415,13 +422,14 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction
 end subroutine OutputGetCellCenteredVelocities
 
 ! ************************************************************************** !
-!
-! GetCellCoordinates: Extracts coordinates of cells into a PetscVec
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 subroutine GetCellCoordinates(grid,vec,direction)
+  ! 
+  ! Extracts coordinates of cells into a PetscVec
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Grid_module
   use Variables_module
@@ -460,13 +468,14 @@ subroutine GetCellCoordinates(grid,vec,direction)
 end subroutine GetCellCoordinates
 
 ! ************************************************************************** !
-!
-! GetVertexCoordinates: Extracts vertex coordinates of cells into a PetscVec
-! author: Gautam Bisht
-! date: 11/01/2011
-!
-! ************************************************************************** !
+
 subroutine GetVertexCoordinates(grid,vec,direction,option)
+  ! 
+  ! Extracts vertex coordinates of cells into a PetscVec
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/01/2011
+  ! 
 
   use Grid_module
   use Option_module
@@ -536,14 +545,15 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
 end subroutine GetVertexCoordinates
 
 ! ************************************************************************** !
-!
-! ExplicitGetCellCoordinates: Extracts cell coordinates for explicit grid
-! into a PetscVec
-! author: Satish Karra, LANL
-! date: 12/11/12
-!
-! ************************************************************************** !
+
 subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
+  ! 
+  ! Extracts cell coordinates for explicit grid
+  ! into a PetscVec
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 12/11/12
+  ! 
 
   use Grid_module
   use Option_module
@@ -613,15 +623,15 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
 end subroutine ExplicitGetCellCoordinates
 
 ! ************************************************************************** !
-!> This routine returns a vector containing vertex ids in natural order of
-!! local cells for unstructured grid.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 05/31/12
-! ************************************************************************** !
+
 subroutine GetCellConnections(grid, vec)
+  ! 
+  ! This routine returns a vector containing vertex ids in natural order of
+  ! local cells for unstructured grid.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 05/31/12
+  ! 
 
   use Grid_module
   use Unstructured_Grid_Aux_module
@@ -705,14 +715,15 @@ subroutine GetCellConnections(grid, vec)
 end subroutine GetCellConnections
 
 ! ************************************************************************** !
-!
-! GetCellConnectionsExplicit: returns a vector containing vertex ids in natural order of
-! local cells for unstructured grid of explicit type
-! author: Satish Karra
-! date: 07/16/13
-! 
-! ************************************************************************** !
+
 subroutine GetCellConnectionsExplicit(grid, vec)
+  ! 
+  ! returns a vector containing vertex ids in natural order of
+  ! local cells for unstructured grid of explicit type
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/16/13
+  ! 
 
   use Grid_module
   use Unstructured_Grid_Aux_module
@@ -801,14 +812,14 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 end subroutine GetCellConnectionsExplicit
 
 ! ************************************************************************** !
-!> This subroutine writes header to a .xmf file
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/12
-! ************************************************************************** !
+
 subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
+  ! 
+  ! This subroutine writes header to a .xmf file
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/12
+  ! 
 
   implicit none
 
@@ -928,13 +939,14 @@ subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
 end subroutine OutputXMFHeader
 
 ! ************************************************************************** !
-!
-! OutputXMFHeaderExplicit: Header for xdmf output with explicit grid
-! author: Satish Karra
-! date: 07/17/13
-! 
-! ************************************************************************** !
+
 subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
+  ! 
+  ! Header for xdmf output with explicit grid
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/17/13
+  ! 
 
   implicit none
 
@@ -1006,14 +1018,14 @@ subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
 end subroutine OutputXMFHeaderExplicit
 
 ! ************************************************************************** !
-!> This subroutine writes footer to a .xmf file
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/12
-! ************************************************************************** !
+
 subroutine OutputXMFFooter(fid)
+  ! 
+  ! This subroutine writes footer to a .xmf file
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/12
+  ! 
 
   implicit none
 
@@ -1033,14 +1045,14 @@ subroutine OutputXMFFooter(fid)
 end subroutine OutputXMFFooter
 
 ! ************************************************************************** !
-!> This subroutine writes an attribute to a .xmf file
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/12
-! ************************************************************************** !
+
 subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
+  ! 
+  ! This subroutine writes an attribute to a .xmf file
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/29/12
+  ! 
 
   implicit none
 
@@ -1069,13 +1081,14 @@ subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
 end subroutine OutputXMFAttribute
 
 ! ************************************************************************** !
-!
-! OutputXMFAttributeExplicit: Header for xdmf attribute with explicit grid
-! author: Satish Karra
-! date: 07/17/13
-!
-! ************************************************************************** !
+
 subroutine OutputXMFAttributeExplicit(fid,nmax,attname,att_datasetname)
+  ! 
+  ! Header for xdmf attribute with explicit grid
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/17/13
+  ! 
 
   implicit none
 
@@ -1104,14 +1117,14 @@ subroutine OutputXMFAttributeExplicit(fid,nmax,attname,att_datasetname)
 end subroutine OutputXMFAttributeExplicit
 
 ! ************************************************************************** !
-!> This returns mass/energy flowrate at all faces of a control volume
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/21/2013
-! ************************************************************************** !
+
 subroutine OutputGetFlowrates(realization_base)
+  ! 
+  ! This returns mass/energy flowrate at all faces of a control volume
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/21/2013
+  ! 
 
   use HDF5_module
   use Realization_Base_class, only : realization_base_type
@@ -1312,15 +1325,16 @@ subroutine OutputGetFlowrates(realization_base)
 end subroutine OutputGetFlowrates
 
 ! ************************************************************************** !
-!
-! OutputGetExplicitIDsFlowrates: Calculates the ids of the nodes of a 
-! connection for flow rats output
-! author: Satish Karra, LANL
-! date: 04/24/13
-!
-! ************************************************************************** !
+
 subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
                                          ids_up,ids_dn)
+  ! 
+  ! Calculates the ids of the nodes of a
+  ! connection for flow rats output
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/24/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1468,15 +1482,16 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
 end subroutine OutputGetExplicitIDsFlowrates
 
 ! ************************************************************************** !
-!
-! OutputGetExplicitFlowrates: Forms a vector of magnitude of flowrates
-! which will be printed out to file for particle tracking.
-! author: Satish Karra, LANL
-! date: 04/24/13
-!
-! ************************************************************************** !
+
 subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
                                       flowrates,darcy)
+  ! 
+  ! Forms a vector of magnitude of flowrates
+  ! which will be printed out to file for particle tracking.
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/24/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1554,14 +1569,15 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
 end subroutine OutputGetExplicitFlowrates
 
 ! ************************************************************************** !
-!
-! OutputGetExplicitAuxVars: Calculates density at the face 
-! between a connection
-! author: Satish Karra, LANL
-! date: 07/17/13
-!
-! ************************************************************************** !
+
 subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
+  ! 
+  ! Calculates density at the face
+  ! between a connection
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/17/13
+  ! 
 
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1616,7 +1632,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   option => realization_base%option
   field => realization_base%field
   grid => patch%grid
-  global_auxvar => patch%aux%Global%aux_vars
+  global_auxvar => patch%aux%Global%auxvars
   richards_parameter => patch%aux%Richards%richards_parameter
   
  
@@ -1665,16 +1681,16 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
 end subroutine OutputGetExplicitAuxVars
 
 ! ************************************************************************** !
-!
-! OutputGetExplicitCellInfo: Calculates porosity, saturation, density 
-! and pressure in a cell (explicit)
-! author: Satish Karra, LANL
-! date: 08/21/13
-!
-! ************************************************************************** !
 
 subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
                                      density,pressure)
+  ! 
+  ! Calculates porosity, saturation, density
+  ! and pressure in a cell (explicit)
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 08/21/13
+  ! 
                                      
   use Realization_Base_class, only : realization_base_type
   use Patch_module
@@ -1715,7 +1731,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   option => realization_base%option
   field => realization_base%field
   grid => patch%grid
-  global_auxvar => patch%aux%Global%aux_vars
+  global_auxvar => patch%aux%Global%auxvars
   
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   

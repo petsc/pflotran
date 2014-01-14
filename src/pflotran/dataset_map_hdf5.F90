@@ -34,13 +34,14 @@ module Dataset_Map_HDF5_class
 contains
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Create: Creates global dataset class
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 function DatasetMapHDF5Create()
+  ! 
+  ! Creates global dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
   
   implicit none
   
@@ -56,13 +57,14 @@ function DatasetMapHDF5Create()
 end function DatasetMapHDF5Create
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Init: Initializes members of global dataset class
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5Init(this)
+  ! 
+  ! Initializes members of global dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
   
   implicit none
   
@@ -81,12 +83,13 @@ subroutine DatasetMapHDF5Init(this)
 end subroutine DatasetMapHDF5Init
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Cast: Casts a dataset_base_type to dataset_map_hdf5_type
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 function DatasetMapHDF5Cast(this)
+  ! 
+  ! Casts a dataset_base_type to dataset_map_hdf5_type
+  ! 
+  ! Date: 05/03/13
+  ! 
 
   use Dataset_Base_class
   
@@ -105,13 +108,14 @@ function DatasetMapHDF5Cast(this)
 end function DatasetMapHDF5Cast
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Read: Reads in contents of a dataset card
-! author: Glenn Hammond
-! date: 01/12/11, 06/04/13
-! 
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5Read(this,input,option)
+  ! 
+  ! Reads in contents of a dataset card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11, 06/04/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -166,13 +170,14 @@ subroutine DatasetMapHDF5Read(this,input,option)
 end subroutine DatasetMapHDF5Read
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Load: Load new data into dataset buffer
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5Load(this,option)
+  ! 
+  ! Load new data into dataset buffer
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
   
   use Option_module
   use Time_Storage_module
@@ -198,14 +203,16 @@ subroutine DatasetMapHDF5Load(this,option)
 end subroutine DatasetMapHDF5Load
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!
-! DatasetMapHDF5ReadData: Read an hdf5 data into a array
-! author: Glenn Hammond
-! date: 10/25/11, 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5ReadData(this,option)
+  ! 
+  ! Read an hdf5 data into a array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/11, 05/29/13
+  ! 
 
   use hdf5
   use Option_module
@@ -403,13 +410,14 @@ subroutine DatasetMapHDF5ReadData(this,option)
 end subroutine DatasetMapHDF5ReadData
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5ReadMap: Read an hdf5 array 
-! author: Glenn Hammond
-! date: 10/25/11, 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5ReadMap(this,option)
+  ! 
+  ! Read an hdf5 array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/11, 05/29/13
+  ! 
 
   use hdf5
   use Option_module
@@ -546,13 +554,14 @@ end subroutine DatasetMapHDF5ReadMap
 #endif
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Print: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5Print(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -580,13 +589,14 @@ subroutine DatasetMapHDF5Print(this,option)
 end subroutine DatasetMapHDF5Print
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Strip: Strips allocated objects within Map dataset object
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5Strip(this)
+  ! 
+  ! Strips allocated objects within Map dataset object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Utility_module, only : DeallocateArray
 
@@ -603,13 +613,14 @@ subroutine DatasetMapHDF5Strip(this)
 end subroutine DatasetMapHDF5Strip
 
 ! ************************************************************************** !
-!
-! DatasetMapHDF5Destroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetMapHDF5Destroy(this)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
 
   implicit none
   

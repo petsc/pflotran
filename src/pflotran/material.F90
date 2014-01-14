@@ -3,6 +3,7 @@ module Material_module
   use Dataset_Common_HDF5_class
 
   use PFLOTRAN_Constants_module
+  use Material_Aux_class
 
   implicit none
 
@@ -83,18 +84,47 @@ module Material_module
             MaterialPropGetPtrFromArray, &
             MaterialPropConvertListToArray, &
             MaterialAnisotropyExists, &
+            MaterialSetAuxVarScalar, &
+            MaterialSetAuxVarVecLoc, &
+            MaterialGetAuxVarVecLoc, &
+            MaterialAuxVarCommunicate, &
             MaterialPropertyRead
   
 contains
 
+
 ! ************************************************************************** !
-!
-! MaterialPropertyCreate: Creates a material property
-! author: Glenn Hammond
-! date: 11/02/07
-!
+
+subroutine MaterialInit(option)
+  !
+  ! Initializes the pointer used to index material property arrays
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  !
+  use Material_Aux_class
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+
+  rock_density_index = 1
+  rock_compressibility_index = 2
+  rock_thermal_conductivity_index = 3
+  rock_heat_capacity_index = 4
+  
+end subroutine MaterialInit
+
 ! ************************************************************************** !
+
 function MaterialPropertyCreate()
+  ! 
+  ! Creates a material property
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
   
   implicit none
 
@@ -164,13 +194,14 @@ function MaterialPropertyCreate()
 end function MaterialPropertyCreate
 
 ! ************************************************************************** !
-!
-! MaterialPropertyRead: Reads in contents of a material_property card
-! author: Glenn Hammond
-! date: 01/13/09
-! 
-! ************************************************************************** !
+
 subroutine MaterialPropertyRead(material_property,input,option)
+  ! 
+  ! Reads in contents of a material_property card
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/09
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -564,13 +595,14 @@ subroutine MaterialPropertyRead(material_property,input,option)
 end subroutine MaterialPropertyRead
 
 ! ************************************************************************** !
-!
-! MaterialPropertyAddToList: Adds a material property to linked list
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine MaterialPropertyAddToList(material_property,list)
+  ! 
+  ! Adds a material property to linked list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   
@@ -594,14 +626,15 @@ subroutine MaterialPropertyAddToList(material_property,list)
 end subroutine MaterialPropertyAddToList
 
 ! ************************************************************************** !
-!
-! MaterialPropConvertListToArray: Creates an array of pointers to the 
-!                                material_properties in the list
-! author: Glenn Hammond
-! date: 12/18/07
-!
-! ************************************************************************** !
+
 subroutine MaterialPropConvertListToArray(list,array,option)
+  ! 
+  ! Creates an array of pointers to the
+  ! material_properties in the list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/18/07
+  ! 
 
   use Option_module
   use String_module
@@ -723,15 +756,16 @@ subroutine MaterialPropConvertListToArray(list,array,option)
 end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
-!
-! MaterialPropGetPtrFromList: Returns a pointer to the material property
-!                             matching material_name
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function MaterialPropGetPtrFromList(material_property_name, &
                                     material_property_list)
+  ! 
+  ! Returns a pointer to the material property
+  ! matching material_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use String_module
   
@@ -760,15 +794,16 @@ function MaterialPropGetPtrFromList(material_property_name, &
 end function MaterialPropGetPtrFromList
 
 ! ************************************************************************** !
-!
-! MaterialPropGetPtrFromArray: Returns a pointer to the material property
-!                              matching material_name
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 function MaterialPropGetPtrFromArray(material_property_name, &
                                      material_property_array)
+  ! 
+  ! Returns a pointer to the material property
+  ! matching material_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use String_module
 
@@ -798,14 +833,15 @@ function MaterialPropGetPtrFromArray(material_property_name, &
 end function MaterialPropGetPtrFromArray
 
 ! ************************************************************************** !
-!
-! MaterialAnisotropyExists: Determines whether any of the material 
-!                           properties are anisotropic
-! author: Glenn Hammond
-! date: 07/11/13
-!
-! ************************************************************************** !
+
 function MaterialAnisotropyExists(material_property_list)
+  ! 
+  ! Determines whether any of the material
+  ! properties are anisotropic
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/11/13
+  ! 
 
   implicit none
   
@@ -830,13 +866,258 @@ function MaterialAnisotropyExists(material_property_list)
 end function MaterialAnisotropyExists
 
 ! ************************************************************************** !
-!
-! MaterialPropertyDestroy: Destroys a material_property
-! author: Glenn Hammond
-! date: 11/02/07
-!
+
+subroutine MaterialSetAuxVarScalar(Material,value,ivar)
+  ! 
+  ! Sets values of a material auxvar data using a scalar value.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  PetscReal :: value
+  PetscInt :: ivar
+
+  PetscInt :: i
+  
+  select case(ivar)
+    case(VOLUME)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%volume = value
+      enddo
+    case(POROSITY)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%porosity = value
+      enddo
+    case(TORTUOSITY)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%tortuosity = value
+      enddo
+    case(PERMEABILITY_X)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_xx_index) = value
+      enddo
+    case(PERMEABILITY_Y)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_yy_index) = value
+      enddo
+    case(PERMEABILITY_Z)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_zz_index) = value
+      enddo
+    case(PERMEABILITY_XY)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_xy_index) = value
+      enddo
+    case(PERMEABILITY_YZ)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_yz_index) = value
+      enddo
+    case(PERMEABILITY_XZ)
+      do i=1, Material%num_aux
+        Material%auxvars(i)%permeability(perm_xz_index) = value
+      enddo
+  end select
+  
+end subroutine MaterialSetAuxVarScalar
+
 ! ************************************************************************** !
+
+subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  PetscInt :: ghosted_id
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  
+  select case(ivar)
+    case(VOLUME)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%volume = vec_loc_p(ghosted_id)
+      enddo
+    case(POROSITY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%porosity = vec_loc_p(ghosted_id)
+      enddo
+    case(TORTUOSITY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%tortuosity = vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_X)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_xx_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_Y)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_yy_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_Z)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_zz_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_XY)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_xy_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_YZ)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_yz_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+    case(PERMEABILITY_XZ)
+      do ghosted_id=1, Material%num_aux
+        Material%auxvars(ghosted_id)%permeability(perm_xz_index) = &
+          vec_loc_p(ghosted_id)
+      enddo
+  end select
+
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+
+end subroutine MaterialSetAuxVarVecLoc
+
+! ************************************************************************** !
+
+subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Variables_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  PetscInt :: ghosted_id
+  PetscReal, pointer :: vec_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayReadF90(vec_loc,vec_loc_p,ierr)
+  
+  select case(ivar)
+    case(VOLUME)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%volume
+      enddo
+    case(POROSITY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%porosity
+      enddo
+    case(TORTUOSITY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = Material%auxvars(ghosted_id)%tortuosity
+      enddo
+    case(PERMEABILITY_X)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_xx_index)
+      enddo
+    case(PERMEABILITY_Y)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_yy_index)
+      enddo
+    case(PERMEABILITY_Z)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_zz_index)
+      enddo
+    case(PERMEABILITY_XY)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_xy_index)
+      enddo
+    case(PERMEABILITY_YZ)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_yz_index)
+      enddo
+    case(PERMEABILITY_XZ)
+      do ghosted_id=1, Material%num_aux
+        vec_loc_p(ghosted_id) = &
+          Material%auxvars(ghosted_id)%permeability(perm_xz_index)
+      enddo
+  end select
+
+  call VecRestoreArrayReadF90(vec_loc,vec_loc_p,ierr)
+
+end subroutine MaterialGetAuxVarVecLoc
+
+! ************************************************************************** !
+
+subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
+  ! 
+  ! Sets values of material auxvar data using a vector.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  use Communicator_Base_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  class(communicator_type), pointer :: comm
+  type(material_type) :: Material ! from realization%patch%aux%Material
+  Vec :: vec_loc
+  PetscInt :: ivar
+  PetscInt :: isubvar  
+  
+  call MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+  call comm%LocalToLocal(vec_loc,vec_loc)
+  call MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
+
+end subroutine MaterialAuxVarCommunicate
+
+! ************************************************************************** !
+
 recursive subroutine MaterialPropertyDestroy(material_property)
+  ! 
+  ! Destroys a material_property
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   implicit none
   

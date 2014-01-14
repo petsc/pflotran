@@ -37,13 +37,14 @@ module General_module
 contains
 
 ! ************************************************************************** !
-!
-! GeneralTimeCut: Resets arrays for time step cut
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -78,13 +79,14 @@ subroutine GeneralTimeCut(realization)
 end subroutine GeneralTimeCut
 
 ! ************************************************************************** !
-!
-! GeneralTimeCutPatch: Resets arrays for time step cut
-! author: Glenn Hammond
-! date: 09/26/11
-!
-! ************************************************************************** !
+
 subroutine GeneralTimeCutPatch(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/26/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -100,7 +102,7 @@ subroutine GeneralTimeCutPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: iphas_loc_p(:)
@@ -110,25 +112,24 @@ subroutine GeneralTimeCutPatch(realization)
   field => realization%field
   patch => realization%patch
   grid => patch%grid
-  global_aux_vars => patch%aux%Global%aux_vars
+  global_auxvars => patch%aux%Global%auxvars
   
   ! restore stored state
   call VecGetArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)
   do ghosted_id = 1, grid%ngmax
-    global_aux_vars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
+    global_auxvars(ghosted_id)%istate = int(iphas_loc_p(ghosted_id))
   enddo
   call VecRestoreArrayReadF90(field%iphas_loc,iphas_loc_p, ierr)  
  
 end subroutine GeneralTimeCutPatch
 
 ! ************************************************************************** !
-!
-! GeneralSetup: 
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSetup(realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -150,13 +151,14 @@ subroutine GeneralSetup(realization)
 end subroutine GeneralSetup
 
 ! ************************************************************************** !
-!
-! GeneralSetupPatch: Creates arrays for auxiliary variables
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -165,7 +167,7 @@ subroutine GeneralSetupPatch(realization)
   use Connection_module
   use Grid_module
   use Material_module
-  use Material_Aux_module
+  use Material_Aux_class
   use Fluid_module
  
   implicit none
@@ -179,9 +181,9 @@ subroutine GeneralSetupPatch(realization)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, idof
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:) ! extra index for derivatives
-  type(general_auxvar_type), pointer :: gen_aux_vars_bc(:)
-  type(general_auxvar_type), pointer :: gen_aux_vars_ss(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:) ! extra index for derivatives
+  type(general_auxvar_type), pointer :: gen_auxvars_bc(:)
+  type(general_auxvar_type), pointer :: gen_auxvars_ss(:)
   type(material_type), pointer :: material
   type(fluid_property_type), pointer :: cur_fluid_property  
   
@@ -216,37 +218,37 @@ subroutine GeneralSetupPatch(realization)
     endif
   enddo
 
-  ! allocate aux_var data structures for all grid cells  
-  allocate(gen_aux_vars(0:option%nflowdof,grid%ngmax))
+  ! allocate auxvar data structures for all grid cells  
+  allocate(gen_auxvars(0:option%nflowdof,grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     do idof = 0, option%nflowdof
-      call GeneralAuxVarInit(gen_aux_vars(idof,ghosted_id),option)
+      call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id),option)
     enddo
   enddo
-  patch%aux%General%aux_vars => gen_aux_vars
+  patch%aux%General%auxvars => gen_auxvars
   patch%aux%General%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them 
+  ! auxvar data structures for them 
   sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   if (sum_connection > 0) then
-    allocate(gen_aux_vars_bc(sum_connection))
+    allocate(gen_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
-      call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
+      call GeneralAuxVarInit(gen_auxvars_bc(iconn),option)
     enddo
-    patch%aux%General%aux_vars_bc => gen_aux_vars_bc
+    patch%aux%General%auxvars_bc => gen_auxvars_bc
   endif
   patch%aux%General%num_aux_bc = sum_connection
 
   ! count the number of source/sink connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
   if (sum_connection > 0) then
-    allocate(gen_aux_vars_ss(sum_connection))
+    allocate(gen_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
-      call GeneralAuxVarInit(gen_aux_vars_ss(iconn),option)
+      call GeneralAuxVarInit(gen_auxvars_ss(iconn),option)
     enddo
-    patch%aux%General%aux_vars_ss => gen_aux_vars_ss
+    patch%aux%General%auxvars_ss => gen_auxvars_ss
   endif
   patch%aux%General%num_aux_ss = sum_connection
     
@@ -267,13 +269,14 @@ subroutine GeneralSetupPatch(realization)
 end subroutine GeneralSetupPatch
 
 ! ************************************************************************** !
-!
-! GeneralSetup: 
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralComputeMassBalance(realization,mass_balance)
+  ! 
+  ! GeneralSetup:
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -296,13 +299,14 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
 end subroutine GeneralComputeMassBalance
 
 ! ************************************************************************** !
-!
-! GeneralComputeMassBalancePatch: Initializes mass balance
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -319,7 +323,7 @@ subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
@@ -331,7 +335,7 @@ subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
   grid => patch%grid
   field => realization%field
 
-  global_aux_vars => patch%aux%Global%aux_vars
+  global_auxvars => patch%aux%Global%auxvars
 
   call VecGetArrayReadF90(field%volume,volume_p,ierr)
   call VecGetArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -342,8 +346,8 @@ subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
     if (patch%imat(ghosted_id) <= 0) cycle
     ! mass = volume*saturation*density
     mass_balance = mass_balance + &
-      global_aux_vars(ghosted_id)%den_kg* &
-      global_aux_vars(ghosted_id)%sat* &
+      global_auxvars(ghosted_id)%den_kg* &
+      global_auxvars(ghosted_id)%sat* &
       porosity_loc_p(ghosted_id)*volume_p(local_id)
   enddo
 
@@ -353,13 +357,14 @@ subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
 end subroutine GeneralComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! GeneralZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -372,29 +377,30 @@ subroutine GeneralZeroMassBalDeltaPatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
 
   PetscInt :: iconn
 
   option => realization%option
   patch => realization%patch
 
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   do iconn = 1, patch%aux%General%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
   enddo
 
 end subroutine GeneralZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! GeneralUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -407,32 +413,33 @@ subroutine GeneralUpdateMassBalancePatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
 
   PetscInt :: iconn
 
   option => realization%option
   patch => realization%patch
 
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   do iconn = 1, patch%aux%General%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance = &
-      global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    global_auxvars_bc(iconn)%mass_balance = &
+      global_auxvars_bc(iconn)%mass_balance + &
+      global_auxvars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
   enddo
 
 end subroutine GeneralUpdateMassBalancePatch
 
 ! ************************************************************************** !
-!
-! GeneralUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the General problem
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateAuxVars(realization,update_state)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the General problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -453,14 +460,15 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
 end subroutine GeneralUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! GeneralUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the General problem
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the General problem
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -482,8 +490,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)  
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)  
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)  
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: ghosted_start, ghosted_end
@@ -498,10 +506,10 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   grid => patch%grid
   field => realization%field
 
-  gen_aux_vars => patch%aux%General%aux_vars
-  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  gen_auxvars => patch%aux%General%auxvars
+  gen_auxvars_bc => patch%aux%General%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
     
   call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayReadF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
@@ -515,16 +523,16 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
     ghosted_end = ghosted_id*option%nflowdof
     ghosted_start = ghosted_end - option%nflowdof + 1
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
-                       gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                       global_aux_vars(ghosted_id), &
+                       gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                       global_auxvars(ghosted_id), &
                        patch%saturation_function_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
       call GeneralAuxVarUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
-                                    gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                                    global_aux_vars(ghosted_id), &
+                                    gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                                    global_auxvars(ghosted_id), &
                                     patch%saturation_function_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
                                     porosity_loc_p(ghosted_id), &
@@ -558,18 +566,18 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       enddo
 
       ! set this based on data given 
-      global_aux_vars_bc(sum_connection)%istate = &
+      global_auxvars_bc(sum_connection)%istate = &
         boundary_condition%flow_condition%iphase
       ! update state and update aux var; this could result in two update to 
       ! the aux var as update state updates if the state changes
-      call GeneralAuxVarUpdateState(xxbc,gen_aux_vars_bc(sum_connection), &
-                         global_aux_vars_bc(sum_connection), &
+      call GeneralAuxVarUpdateState(xxbc,gen_auxvars_bc(sum_connection), &
+                         global_auxvars_bc(sum_connection), &
                          patch%saturation_function_array( &
                            patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          ghosted_id,option)
-      call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
-                         global_aux_vars_bc(sum_connection), &
+      call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
+                         global_auxvars_bc(sum_connection), &
                          patch%saturation_function_array( &
                            patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
@@ -582,18 +590,19 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   call VecRestoreArrayReadF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
   call VecRestoreArrayReadF90(field%porosity_loc,porosity_loc_p,ierr)  
 
-  patch%aux%General%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%General%auxvars_up_to_date = PETSC_TRUE
 
 end subroutine GeneralUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! GeneralInitializeTimestep: Update data in module prior to time step
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   
@@ -606,14 +615,15 @@ subroutine GeneralInitializeTimestep(realization)
 end subroutine GeneralInitializeTimestep
 
 ! ************************************************************************** !
-!
-! GeneralUpdateSolution: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Field_module
@@ -648,16 +658,16 @@ subroutine GeneralUpdateSolution(realization)
   
 end subroutine GeneralUpdateSolution
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GeneralUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
 subroutine GeneralUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Option_module
@@ -673,8 +683,8 @@ subroutine GeneralUpdateSolutionPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: iphas_loc_p(:)
@@ -684,8 +694,8 @@ subroutine GeneralUpdateSolutionPatch(realization)
   field => realization%field
   patch => realization%patch
   grid => patch%grid
-  gen_aux_vars => patch%aux%General%aux_vars  
-  global_aux_vars => patch%aux%Global%aux_vars
+  gen_auxvars => patch%aux%General%auxvars  
+  global_auxvars => patch%aux%Global%auxvars
   
   if (realization%option%compute_mass_balance_new) then
     call GeneralUpdateMassBalancePatch(realization)
@@ -695,22 +705,23 @@ subroutine GeneralUpdateSolutionPatch(realization)
   call VecGetArrayF90(field%iphas_loc,iphas_loc_p,ierr)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    iphas_loc_p(ghosted_id) = global_aux_vars(ghosted_id)%istate
-    gen_aux_vars%istate_store(PREV_TS) = global_aux_vars(ghosted_id)%istate
+    iphas_loc_p(ghosted_id) = global_auxvars(ghosted_id)%istate
+    gen_auxvars%istate_store(PREV_TS) = global_auxvars(ghosted_id)%istate
   enddo
   call VecRestoreArrayF90(field%iphas_loc,iphas_loc_p,ierr)
 
 end subroutine GeneralUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! GeneralUpdateFixedAccum: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateFixedAccum(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -730,21 +741,22 @@ subroutine GeneralUpdateFixedAccum(realization)
 end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
-!
-! GeneralUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                accumulation term
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
   use Option_module
   use Field_module
   use Grid_module
-  use Material_Aux_module
+  use Material_Aux_class
 
   implicit none
   
@@ -754,8 +766,8 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   type(material_parameter_type), pointer :: material_parameter
 
   PetscInt :: ghosted_id, local_id, local_start, local_end
@@ -771,8 +783,8 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  gen_aux_vars => patch%aux%General%aux_vars
-  global_aux_vars => patch%aux%Global%aux_vars
+  gen_auxvars => patch%aux%General%auxvars
+  global_auxvars => patch%aux%Global%auxvars
   material_parameter => patch%aux%Material%material_parameter
     
   call VecGetArrayReadF90(field%flow_xx,xx_p, ierr)
@@ -791,15 +803,15 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
     local_end = local_id*option%nflowdof
     local_start = local_end - option%nflowdof + 1
     call GeneralAuxVarCompute(xx_p(local_start:local_end), &
-                              gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                              global_aux_vars(ghosted_id), &
+                              gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                              global_auxvars(ghosted_id), &
                               patch%saturation_function_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               porosity_loc_p(ghosted_id), &
                               perm_xx_loc_p(ghosted_id), &                        
                               option)
-    call GeneralAccumulation(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                             global_aux_vars(ghosted_id), &
+    call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                             global_auxvars(ghosted_id), &
                              material_parameter%dencpr(imat), &
                              porosity_loc_p(ghosted_id), &
                              volume_p(local_id), &
@@ -817,13 +829,14 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
 end subroutine GeneralUpdateFixedAccumPatch
 
 ! ************************************************************************** !
-!
-! GeneralNumericalJacTest: Computes the a test numerical jacobian
-! author: Glenn Hammond
-! date: 03/10/11
-!
-! ************************************************************************** !
+
 subroutine GeneralNumericalJacTest(xx,realization)
+  ! 
+  ! Computes the a test numerical jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -907,15 +920,16 @@ subroutine GeneralNumericalJacTest(xx,realization)
 end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
-!
-! GeneralAuxVarPerturb: Calculates auxiliary variables for perturbed system
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
-subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
+
+subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
                                 saturation_function,ghosted_id, &
                                 option)
+  ! 
+  ! Calculates auxiliary variables for perturbed system
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   use Saturation_Function_module
@@ -924,8 +938,8 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 
   type(option_type) :: option
   PetscInt :: ghosted_id
-  type(general_auxvar_type) :: gen_aux_var(0:)
-  type(global_auxvar_type) :: global_aux_var
+  type(general_auxvar_type) :: gen_auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
   type(saturation_function_type) :: saturation_function
      
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), pert(option%nflowdof)
@@ -935,24 +949,24 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 
 #ifdef DEBUG_GENERAL
   character(len=MAXWORDLENGTH) :: word
-  type(global_auxvar_type) :: global_aux_var_debug
-  type(general_auxvar_type) :: general_aux_var_debug
-  call GlobalAuxVarInit(global_aux_var_debug,option)
-  call GeneralAuxVarInit(general_aux_var_debug,option)
+  type(global_auxvar_type) :: global_auxvar_debug
+  type(general_auxvar_type) :: general_auxvar_debug
+  call GlobalAuxVarInit(global_auxvar_debug,option)
+  call GeneralAuxVarInit(general_auxvar_debug,option)
 #endif
 
-  select case(global_aux_var%istate)
+  select case(global_auxvar%istate)
     case(LIQUID_STATE)
-       x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
+       x(GENERAL_LIQUID_PRESSURE_DOF) = gen_auxvar(ZERO_INTEGER)%pres(option%liquid_phase)
+       x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = gen_auxvar(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
+       x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = gen_auxvar(ZERO_INTEGER)%temp
        pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
        pert(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_MOLE_FRACTION_DOF)
        pert(GENERAL_LIQUID_STATE_TEMPERATURE_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_LIQUID_STATE_TEMPERATURE_DOF)
     case(GAS_STATE)
-       x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
+       x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
+       x(GENERAL_AIR_PRESSURE_DOF) = gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
+       x(GENERAL_GAS_STATE_TEMPERATURE_DOF) = gen_auxvar(ZERO_INTEGER)%temp
        ! gas pressure [p(g)] must always be perturbed down as p(v) = p(g) - p(a) and
        ! p(v) >= Psat (i.e. an increase in p(v)) results in two phase.
        pert(GENERAL_GAS_PRESSURE_DOF) = -1.d0
@@ -963,9 +977,9 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
        endif
        pert(GENERAL_GAS_STATE_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_GAS_STATE_TEMPERATURE_DOF)
     case(TWO_PHASE_STATE)
-       x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
-       x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(GENERAL_GAS_SATURATION_DOF) = gen_aux_var(ZERO_INTEGER)%sat(option%gas_phase)
+       x(GENERAL_GAS_PRESSURE_DOF) = gen_auxvar(ZERO_INTEGER)%pres(option%gas_phase)
+       x(GENERAL_AIR_PRESSURE_DOF) = gen_auxvar(ZERO_INTEGER)%pres(option%air_pressure_id)
+       x(GENERAL_GAS_SATURATION_DOF) = gen_auxvar(ZERO_INTEGER)%sat(option%gas_phase)
        pert(GENERAL_GAS_PRESSURE_DOF) = 1.d0
        if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > 1.d0) then 
          pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
@@ -980,21 +994,21 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   end select
   
   do idof = 1, option%nflowdof
-    gen_aux_var(idof)%pert = pert(idof)
+    gen_auxvar(idof)%pert = pert(idof)
     x_pert = x
     x_pert(idof) = x(idof) + pert(idof)
-    call GeneralAuxVarCompute(x_pert,gen_aux_var(idof),global_aux_var, &
+    call GeneralAuxVarCompute(x_pert,gen_auxvar(idof),global_auxvar, &
                               saturation_function,0.d0,0.d0,option)
 #ifdef DEBUG_GENERAL
-    call GlobalAuxVarCopy(global_aux_var,global_aux_var_debug,option)
-    call GeneralAuxVarCopy(gen_aux_var(idof),general_aux_var_debug,option)
-    call GeneralAuxVarUpdateState(x_pert,general_aux_var_debug, &
-                                  global_aux_var_debug,saturation_function, &
+    call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
+    call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
+    call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
+                                  global_auxvar_debug,saturation_function, &
                                   0.d0,0.d0,ghosted_id,option)
-    if (global_aux_var%istate /= global_aux_var_debug%istate) then
+    if (global_auxvar%istate /= global_auxvar_debug%istate) then
       write(option%io_buffer, &
             &'(''Change in state due to perturbation: '',i3,'' -> '',i3)') &
-        global_aux_var%istate, global_aux_var_debug%istate
+        global_auxvar%istate, global_auxvar_debug%istate
       call printMsg(option)
     endif
 #endif
@@ -1002,24 +1016,25 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   enddo
   
 end subroutine GeneralAuxVarPerturb
-  
+
 ! ************************************************************************** !
-!
-! GeneralAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !  
-subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
+
+subroutine GeneralAccumulation(gen_auxvar,global_auxvar,dencpr,por,vol, &
                                option,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   
   implicit none
 
-  type(general_auxvar_type) :: gen_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(general_auxvar_type) :: gen_auxvar
+  type(global_auxvar_type) :: global_auxvar
   type(option_type) :: option
   PetscReal :: Res(option%nflowdof) 
   PetscReal :: vol, por, dencpr
@@ -1042,9 +1057,9 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
     do iphase = 1, option%nphase
       ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * den[kmol phase/m^3 phase] * 
       !                          xmol[kmol comp/kmol phase]
-      Res(icomp) = Res(icomp) + gen_aux_var%sat(iphase) * &
-                                gen_aux_var%den(iphase) * &
-                                gen_aux_var%xmol(icomp,iphase)
+      Res(icomp) = Res(icomp) + gen_auxvar%sat(iphase) * &
+                                gen_auxvar%den(iphase) * &
+                                gen_auxvar%xmol(icomp,iphase)
     enddo
   enddo
   
@@ -1062,37 +1077,38 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
   do iphase = 1, option%nphase
     ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
     !                    den[kmol phase/m^3 phase] * U[MJ/kmol phase]
-    Res(energy_id) = Res(energy_id) + gen_aux_var%sat(iphase) * &
-                                      gen_aux_var%den(iphase) * &
-                                      gen_aux_var%U(iphase)
+    Res(energy_id) = Res(energy_id) + gen_auxvar%sat(iphase) * &
+                                      gen_auxvar%den(iphase) * &
+                                      gen_auxvar%U(iphase)
   enddo
   ! Res[MJ/sec] = (Res[MJ/m^3 void] * por[m^3 void/m^3 bulk] + 
   !                (1-por)[m^3 rock/m^3 bulk] * 
   !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
   !               vol[m^3 bulk] / dt[sec]
   Res(energy_id) = (Res(energy_id) * por + &
-                    (1.d0 - por) * dencpr * gen_aux_var%temp) * v_over_t 
+                    (1.d0 - por) * dencpr * gen_auxvar%temp) * v_over_t 
 
 end subroutine GeneralAccumulation
-  
+
 ! ************************************************************************** !
-!
-! GeneralAccumDerivative: Computes derivatives of the accumulation 
-!                                 term for the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
-subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,dencpr,por,vol, &
+
+subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,dencpr,por,vol, &
                                   option,J)
+  ! 
+  ! Computes derivatives of the accumulation
+  ! term for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   use Saturation_Function_module
   
   implicit none
 
-  type(general_auxvar_type) :: gen_aux_var(0:)
-  type(global_auxvar_type) :: global_aux_var
+  type(general_auxvar_type) :: gen_auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
   type(option_type) :: option
   PetscReal :: dencpr, vol, por
   PetscReal :: J(option%nflowdof,option%nflowdof)
@@ -1100,38 +1116,39 @@ subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,dencpr,por,vol, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
-  call GeneralAccumulation(gen_aux_var(ZERO_INTEGER),global_aux_var,dencpr, &
+  call GeneralAccumulation(gen_auxvar(ZERO_INTEGER),global_auxvar,dencpr, &
                            por,vol,option,res)
                            
   do idof = 1, option%nflowdof
-    call GeneralAccumulation(gen_aux_var(idof),global_aux_var,dencpr, &
+    call GeneralAccumulation(gen_auxvar(idof),global_auxvar,dencpr, &
                              por,vol,option,res_pert)
     do irow = 1, option%nflowdof
-      J(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var(idof)%pert
+      J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
     enddo !irow
   enddo ! idof
 
 end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
-!
-! GeneralFlux: Computes the internal flux terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
-subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
+
+subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                        por_up,sir_up,dd_up,perm_up,tor_up, &
-                       gen_aux_var_dn,global_aux_var_dn, &
+                       gen_auxvar_dn,global_auxvar_dn, &
                        por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                        area,dist_gravity,upweight,general_parameter, &
                        option,v_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   use Option_module                              
   
   implicit none
   
-  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -1167,9 +1184,9 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   
 #ifdef DEBUG_GENERAL_LOCAL 
   PetscReal :: flux(option%nflowdof)
-  call GeneralPrintAuxVars(gen_aux_var_up,global_aux_var_up,-999, &
+  call GeneralPrintAuxVars(gen_auxvar_up,global_auxvar_up,-999, &
                            'Upwind',option)  
-  call GeneralPrintAuxVars(gen_aux_var_dn,global_aux_var_dn,-999, &
+  call GeneralPrintAuxVars(gen_auxvar_dn,global_auxvar_dn,-999, &
                            'Downwind',option)  
 #endif
 
@@ -1189,8 +1206,8 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   flux = 0.d0
 #endif
 
-  istate_up = global_aux_var_up%istate
-  istate_dn = global_aux_var_dn%istate
+  istate_up = global_auxvar_up%istate
+  istate_dn = global_auxvar_dn%istate
 
   do iphase = 1, option%nphase
  
@@ -1198,38 +1215,38 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
 !              (istate_dn == TWO_PHASE_STATE .or. istate_dn == iphase))) cycle
     
     ! using residual saturation cannot be correct! - geh
-    if (gen_aux_var_up%sat(iphase) > sir_up .or. &
-        gen_aux_var_dn%sat(iphase) > sir_dn) then
+    if (gen_auxvar_up%sat(iphase) > sir_up .or. &
+        gen_auxvar_dn%sat(iphase) > sir_dn) then
       upweight_adj = upweight
-      if (gen_aux_var_up%sat(iphase) < eps) then 
+      if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight_adj=0.d0
-      else if (gen_aux_var_dn%sat(iphase) < eps) then 
+      else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
       endif    
-      density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
+      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
+                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
       ! MJ/kmol
-      H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
-              (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
+      H_ave = upweight_adj*gen_auxvar_up%H(iphase)+ &
+              (1.D0-upweight_adj)*gen_auxvar_dn%H(iphase)
 
       !geh: dist_gravity is the distance * gravity in the direction of 
       !     gravity (negative if gravity is down)      
-      gravity_term = (upweight_adj*gen_aux_var_up%den(iphase) + &
-                     (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
+      gravity_term = (upweight_adj*gen_auxvar_up%den(iphase) + &
+                     (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                      * fmw_phase(iphase) * dist_gravity 
 
-      delta_pressure = gen_aux_var_up%pres(iphase) - &
-                       gen_aux_var_dn%pres(iphase) + &
+      delta_pressure = gen_auxvar_up%pres(iphase) - &
+                       gen_auxvar_dn%pres(iphase) + &
                        gravity_term
 
       if (delta_pressure >= 0.D0) then
-        ukvr = gen_aux_var_up%kvr(iphase)
-        xmol(:) = gen_aux_var_up%xmol(:,iphase)
+        ukvr = gen_auxvar_up%kvr(iphase)
+        xmol(:) = gen_auxvar_up%xmol(:,iphase)
         den = density_ave
         uH = H_ave
       else
-        ukvr = gen_aux_var_dn%kvr(iphase)
-        xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+        ukvr = gen_auxvar_dn%kvr(iphase)
+        xmol(:) = gen_auxvar_dn%xmol(:,iphase)
         den = density_ave
         uH = H_ave
       endif      
@@ -1274,26 +1291,26 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   ! add in gas component diffusion in gas and liquid phases
   do iphase = 1, option%nphase
     theta = 1.8d0
-    if (gen_aux_var_up%sat(iphase) > eps .and. &
-        gen_aux_var_dn%sat(iphase) > eps) then
+    if (gen_auxvar_up%sat(iphase) > eps .and. &
+        gen_auxvar_dn%sat(iphase) > eps) then
       upweight_adj = upweight
-      if (gen_aux_var_up%sat(iphase) < eps) then 
+      if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight_adj=0.d0
-      else if (gen_aux_var_dn%sat(iphase) < eps) then 
+      else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight_adj=1.d0
       endif         
 ! not useing harmonic mean
-!      stp_up = gen_aux_var_up%sat(iphase)*tor_up*por_up
-!      stp_dn = gen_aux_var_dn%sat(iphase)*tor_dn*por_dn
+!      stp_up = gen_auxvar_up%sat(iphase)*tor_up*por_up
+!      stp_dn = gen_auxvar_dn%sat(iphase)*tor_dn*por_dn
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
-                    (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
+      density_ave = upweight_adj*gen_auxvar_up%den(iphase)+ &
+                    (1.D0-upweight_adj)*gen_auxvar_dn%den(iphase)
 !      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
-      stp_ave = sqrt(gen_aux_var_up%sat(iphase)*gen_aux_var_dn%sat(iphase))* &
+      stp_ave = sqrt(gen_auxvar_up%sat(iphase)*gen_auxvar_dn%sat(iphase))* &
                 sqrt(tor_up*tor_dn)* &
                 sqrt(por_up*por_dn)
-      delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
-                   gen_aux_var_dn%xmol(air_comp_id,iphase)
+      delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
+                   gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
       ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if (iphase == option%liquid_phase) then
@@ -1301,10 +1318,10 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
         v_air = stp_ave * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol
       else
-        temp_ave = upweight_adj*gen_aux_var_up%temp + &
-                   (1.d0-upweight_adj)*gen_aux_var_dn%temp
-        pressure_ave = upweight_adj*gen_aux_var_up%pres(iphase)+ &
-                      (1.D0-upweight_adj)*gen_aux_var_dn%pres(iphase)
+        temp_ave = upweight_adj*gen_auxvar_up%temp + &
+                   (1.d0-upweight_adj)*gen_auxvar_dn%temp
+        pressure_ave = upweight_adj*gen_auxvar_up%pres(iphase)+ &
+                      (1.D0-upweight_adj)*gen_auxvar_dn%pres(iphase)
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 ((temp_ave+273.15)/273.15d0)**theta * &
@@ -1328,20 +1345,20 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
     
 #if 1
   ! add heat conduction flux
-  k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
+  k_eff_up = gen_auxvar_up%sat(option%liquid_phase) * &
              general_parameter%thermal_conductivity(option%liquid_phase) + &
-             gen_aux_var_up%sat(option%gas_phase) * &
+             gen_auxvar_up%sat(option%gas_phase) * &
              general_parameter%thermal_conductivity(option%gas_phase)
-  k_eff_dn = gen_aux_var_dn%sat(option%liquid_phase) * &
+  k_eff_dn = gen_auxvar_dn%sat(option%liquid_phase) * &
              general_parameter%thermal_conductivity(option%liquid_phase) + &
-             gen_aux_var_dn%sat(option%gas_phase) * &
+             gen_auxvar_dn%sat(option%gas_phase) * &
              general_parameter%thermal_conductivity(option%gas_phase)
   if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
     k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
   else
     k_eff_ave = 0.d0
   endif
-  delta_temp = gen_aux_var_up%temp - gen_aux_var_dn%temp
+  delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
 #ifdef DEBUG_GENERAL_LOCAL 
   flux(energy_id) = flux(energy_id) + heat_flux
@@ -1358,26 +1375,27 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
-!
-! GeneralFluxDerivative: Computes the derivatives of the internal flux terms
-!                         for the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
-subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
+
+subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up,por_up, &
                                   sir_up,dd_up,perm_up,tor_up, &
-                                  gen_aux_var_dn,global_aux_var_dn,por_dn, &
+                                  gen_auxvar_dn,global_auxvar_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn,tor_dn, &
                                   area,dist_gravity,upweight, &
                                   general_parameter, &
                                   option,Jup,Jdn)
+  ! 
+  ! Computes the derivatives of the internal flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   use Option_module 
   
   implicit none
   
-  type(general_auxvar_type) :: gen_aux_var_up(0:), gen_aux_var_dn(0:)
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(general_auxvar_type) :: gen_auxvar_up(0:), gen_auxvar_dn(0:)
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -1394,64 +1412,65 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
-  call GeneralFlux(gen_aux_var_up(ZERO_INTEGER),global_aux_var_up, &
+  call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                    por_up,sir_up,dd_up,perm_up,tor_up, &
-                   gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
+                   gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                    por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                    area,dist_gravity,upweight,general_parameter, &
                    option,v_darcy,res)
                            
   ! upgradient derivatives
   do idof = 1, option%nflowdof
-    call GeneralFlux(gen_aux_var_up(idof),global_aux_var_up, &
+    call GeneralFlux(gen_auxvar_up(idof),global_auxvar_up, &
                      por_up,sir_up,dd_up,perm_up,tor_up, &
-                     gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
+                     gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                      por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                      area,dist_gravity,upweight,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
-      Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_up(idof)%pert
+      Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_up(idof)%pert
     enddo !irow
   enddo ! idof
 
   ! downgradient derivatives
   do idof = 1, option%nflowdof
-    call GeneralFlux(gen_aux_var_up(ZERO_INTEGER),global_aux_var_up, &
+    call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
                      por_up,sir_up,dd_up,perm_up,tor_up, &
-                     gen_aux_var_dn(idof),global_aux_var_dn, &
+                     gen_auxvar_dn(idof),global_auxvar_dn, &
                      por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                      area,dist_gravity,upweight,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
-      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
+      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
     enddo !irow
   enddo ! idof
 
 end subroutine GeneralFluxDerivative
 
 ! ************************************************************************** !
-!
-! GeneralBCFlux: Computes the boundary flux terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
-subroutine GeneralBCFlux(ibndtype,aux_vars, &
-                         gen_aux_var_up,global_aux_var_up, &
-                         gen_aux_var_dn,global_aux_var_dn, &
+
+subroutine GeneralBCFlux(ibndtype,auxvars, &
+                         gen_auxvar_up,global_auxvar_up, &
+                         gen_auxvar_dn,global_auxvar_dn, &
                          por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                          area,dist_gravity,general_parameter, &
                          option,v_darcy,Res)
+  ! 
+  ! Computes the boundary flux terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   use Option_module                              
   
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   type(option_type) :: option
   PetscReal :: dd_dn, sir_dn(option%nphase)
-  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: por_dn, perm_dn, tor_dn
   PetscReal :: v_darcy(option%nphase), area
   PetscReal :: dist_gravity
@@ -1487,8 +1506,8 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   Res = 0.d0
   v_darcy = 0.d0
   
-  istate_up = global_aux_var_up%istate
-  istate_dn = global_aux_var_dn%istate
+  istate_up = global_auxvar_up%istate
+  istate_dn = global_auxvar_dn%istate
 
   do iphase = 1, option%nphase
  
@@ -1513,52 +1532,52 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
             case(GAS_PHASE)
               idof = GENERAL_GAS_CONDUCTANCE_DOF
           end select        
-          perm_ave_over_dist = aux_vars(idof)
+          perm_ave_over_dist = auxvars(idof)
         else
           perm_ave_over_dist = perm_dn / dd_dn
         endif
         
           
         ! using residual saturation cannot be correct! - geh
-        if (gen_aux_var_up%sat(iphase) > sir_dn(iphase) .or. &
-            gen_aux_var_dn%sat(iphase) > sir_dn(iphase)) then
+        if (gen_auxvar_up%sat(iphase) > sir_dn(iphase) .or. &
+            gen_auxvar_dn%sat(iphase) > sir_dn(iphase)) then
           upweight = 1.d0
-          if (gen_aux_var_up%sat(iphase) < eps) then 
+          if (gen_auxvar_up%sat(iphase) < eps) then 
             upweight=0.d0
-          else if (gen_aux_var_dn%sat(iphase) < eps) then 
+          else if (gen_auxvar_dn%sat(iphase) < eps) then 
             upweight=1.d0
           endif    
-          density_ave = upweight*gen_aux_var_up%den(iphase)+ &
-                        (1.D0-upweight)*gen_aux_var_dn%den(iphase)
+          density_ave = upweight*gen_auxvar_up%den(iphase)+ &
+                        (1.D0-upweight)*gen_auxvar_dn%den(iphase)
           ! MJ/kmol
-!geh          H_ave = upweight*gen_aux_var_up%H(iphase)+ &
-!geh                  (1.D0-upweight)*gen_aux_var_dn%H(iphase)
+!geh          H_ave = upweight*gen_auxvar_up%H(iphase)+ &
+!geh                  (1.D0-upweight)*gen_auxvar_dn%H(iphase)
 
-          gravity = (upweight*gen_aux_var_up%den(iphase) + &
-                    (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
+          gravity = (upweight*gen_auxvar_up%den(iphase) + &
+                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)) &
                     * fmw_phase(iphase) * dist_gravity 
 
-          delta_pressure = gen_aux_var_up%pres(iphase) - &
-                 gen_aux_var_dn%pres(iphase) + &
+          delta_pressure = gen_auxvar_up%pres(iphase) - &
+                 gen_auxvar_dn%pres(iphase) + &
                  gravity
 
           if (bc_type == SEEPAGE_BC .or. &
               bc_type == CONDUCTANCE_BC) then
                 ! flow in         ! boundary cell is <= pref
             if (delta_pressure > 0.d0 .and. &
-                gen_aux_var_up%pres(iphase)-option%reference_pressure < eps) then
+                gen_auxvar_up%pres(iphase)-option%reference_pressure < eps) then
               delta_pressure = 0.d0
             endif
           endif
             
           if (delta_pressure >= 0.D0) then
-            ukvr = gen_aux_var_up%kvr(iphase)
-            xmol(:) = gen_aux_var_up%xmol(:,iphase)
-            uH = gen_aux_var_up%H(iphase)
+            ukvr = gen_auxvar_up%kvr(iphase)
+            xmol(:) = gen_auxvar_up%xmol(:,iphase)
+            uH = gen_auxvar_up%H(iphase)
           else
-            ukvr = gen_aux_var_dn%kvr(iphase)
-            xmol(:) = gen_aux_var_dn%xmol(:,iphase)
-            uH = gen_aux_var_dn%H(iphase)
+            ukvr = gen_auxvar_dn%kvr(iphase)
+            xmol(:) = gen_auxvar_dn%xmol(:,iphase)
+            uH = gen_auxvar_dn%H(iphase)
           endif      
 
           if (ukvr > floweps) then
@@ -1576,12 +1595,12 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
             idof = GENERAL_GAS_FLUX_DOF
         end select
       
-        if (dabs(aux_vars(idof)) > floweps) then
-          v_darcy(iphase) = aux_vars(idof)
+        if (dabs(auxvars(idof)) > floweps) then
+          v_darcy(iphase) = auxvars(idof)
           if (v_darcy(iphase) > 0.d0) then 
-            density_ave = gen_aux_var_up%den(iphase)
+            density_ave = gen_auxvar_up%den(iphase)
           else 
-            density_ave = gen_aux_var_dn%den(iphase)
+            density_ave = gen_auxvar_dn%den(iphase)
           endif 
         endif
     end select
@@ -1612,25 +1631,25 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   do iphase = 1, option%nphase
     theta = 1.d0
   
-    if (gen_aux_var_up%sat(iphase) > eps .and. &
-        gen_aux_var_dn%sat(iphase) > eps) then
+    if (gen_auxvar_up%sat(iphase) > eps .and. &
+        gen_auxvar_dn%sat(iphase) > eps) then
       upweight = 1.d0
-      if (gen_aux_var_up%sat(iphase) < eps) then 
+      if (gen_auxvar_up%sat(iphase) < eps) then 
         upweight=0.d0
-      else if (gen_aux_var_dn%sat(iphase) < eps) then 
+      else if (gen_auxvar_dn%sat(iphase) < eps) then 
         upweight=1.d0
       endif       
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      temp_ave = upweight*gen_aux_var_up%temp + &
-              (1.d0-upweight)*gen_aux_var_dn%temp
-      density_ave = upweight*gen_aux_var_up%den(iphase)+ &
-                    (1.D0-upweight)*gen_aux_var_dn%den(iphase)             
-  !    stp_ave = tor_dn*por_dn*(gen_aux_var_up%sat(iphase)*gen_aux_var_dn%sat(iphase))/ &
-  !              ((gen_aux_var_up%sat(iphase)+gen_aux_var_dn%sat(iphase))*dd_dn)
+      temp_ave = upweight*gen_auxvar_up%temp + &
+              (1.d0-upweight)*gen_auxvar_dn%temp
+      density_ave = upweight*gen_auxvar_up%den(iphase)+ &
+                    (1.D0-upweight)*gen_auxvar_dn%den(iphase)             
+  !    stp_ave = tor_dn*por_dn*(gen_auxvar_up%sat(iphase)*gen_auxvar_dn%sat(iphase))/ &
+  !              ((gen_auxvar_up%sat(iphase)+gen_auxvar_dn%sat(iphase))*dd_dn)
       ! should saturation be distance weighted?
-      stp_ave = tor_dn*por_dn*gen_aux_var_dn%sat(iphase)/dd_dn
-      delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
-                   gen_aux_var_dn%xmol(air_comp_id,iphase)
+      stp_ave = tor_dn*por_dn*gen_auxvar_dn%sat(iphase)/dd_dn
+      delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
+                   gen_auxvar_dn%xmol(air_comp_id,iphase)
       ! need to account for multiple phases
       ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if (iphase == option%liquid_phase) then
@@ -1641,7 +1660,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         ! Eq. 1.9b.  The gas density is added below
         v_air = stp_ave * &
                 (temp_ave/273.15d0)**theta * &
-                option%reference_pressure / gen_aux_var_dn%pres(iphase) * &
+                option%reference_pressure / gen_auxvar_dn%pres(iphase) * &
                 general_parameter%diffusion_coefficient(iphase) * delta_xmol      
       endif
       q =  v_air * area
@@ -1652,47 +1671,48 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
 #endif
 
   ! add heat conduction flux
-!  k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
+!  k_eff_up = gen_auxvar_up%sat(option%liquid_phase) * &
 !             general_parameter%diffusion_coefficient(option%liquid_phase) + &
-!             gen_aux_var_up%sat(option%gas_phase) * &
+!             gen_auxvar_up%sat(option%gas_phase) * &
 !             general_parameter%diffusion_coefficient(option%gas_phase)
-  k_eff_dn = gen_aux_var_dn%sat(option%liquid_phase) * &
+  k_eff_dn = gen_auxvar_dn%sat(option%liquid_phase) * &
              general_parameter%diffusion_coefficient(option%liquid_phase) + &
-             gen_aux_var_dn%sat(option%gas_phase) * &
+             gen_auxvar_dn%sat(option%gas_phase) * &
              general_parameter%diffusion_coefficient(option%gas_phase)
 !  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*0)
   ! should k_eff be distance weighted?
   k_eff_ave = k_eff_dn/dd_dn
-  delta_temp = gen_aux_var_up%temp - gen_aux_var_dn%temp
+  delta_temp = gen_auxvar_up%temp - gen_auxvar_dn%temp
   heat_flux = k_eff_ave * delta_temp * area
   Res(energy_id) = Res(energy_id) + heat_flux
 
 end subroutine GeneralBCFlux
 
 ! ************************************************************************** !
-!
-! GeneralBCFluxDerivative: Computes the derivatives of the boundary flux terms
-!                          for the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** ! 
-subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
-                                    gen_aux_var_up, &
-                                    global_aux_var_up, &
-                                    gen_aux_var_dn,global_aux_var_dn, &
+
+subroutine GeneralBCFluxDerivative(ibndtype,auxvars, &
+                                    gen_auxvar_up, &
+                                    global_auxvar_up, &
+                                    gen_auxvar_dn,global_auxvar_dn, &
                                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                                     area,dist_gravity,general_parameter, &
                                     option,Jdn)
+  ! 
+  ! Computes the derivatives of the boundary flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module 
   
   implicit none
 
   PetscInt :: ibndtype(:)
-  PetscReal :: aux_vars(:) ! from aux_real_var array
-  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn(0:)
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  PetscReal :: auxvars(:) ! from aux_real_var array
+  type(general_auxvar_type) :: gen_auxvar_up, gen_auxvar_dn(0:)
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   type(option_type) :: option
   PetscReal :: dd_dn, sir_dn(option%nphase)
   PetscReal :: por_dn,perm_dn,tor_dn
@@ -1705,36 +1725,37 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscInt :: idof, irow
 
-  call GeneralBCFlux(ibndtype,aux_vars, &
-                     gen_aux_var_up,global_aux_var_up, &
-                     gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
+  call GeneralBCFlux(ibndtype,auxvars, &
+                     gen_auxvar_up,global_auxvar_up, &
+                     gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
                      por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                      area,dist_gravity,general_parameter, &
                      option,v_darcy,res)                     
   ! downgradient derivatives
   do idof = 1, option%nflowdof
-    call GeneralBCFlux(ibndtype,aux_vars, &
-                       gen_aux_var_up,global_aux_var_up, &
-                       gen_aux_var_dn(idof),global_aux_var_dn, &
+    call GeneralBCFlux(ibndtype,auxvars, &
+                       gen_auxvar_up,global_auxvar_up, &
+                       gen_auxvar_dn(idof),global_auxvar_dn, &
                        por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
                        area,dist_gravity,general_parameter, &
                        option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
-      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
+      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
     enddo !irow
   enddo ! idof
 
 end subroutine GeneralBCFluxDerivative
 
 ! ************************************************************************** !
-!
-! GeneralSrcSink: Computes the source/sink terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                          gen_aux_var,global_aux_var,scale,res)
+                          gen_auxvar,global_auxvar,scale,res)
+  ! 
+  ! Computes the source/sink terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
   
@@ -1746,8 +1767,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   type(option_type) :: option
   PetscReal :: qsrc(:)
   PetscInt :: flow_src_sink_type
-  type(general_auxvar_type) :: gen_aux_var
-  type(global_auxvar_type) :: global_aux_var
+  type(general_auxvar_type) :: gen_auxvar
+  type(global_auxvar_type) :: global_auxvar
   PetscReal :: scale
   PetscReal :: res(option%nflowdof)
       
@@ -1769,10 +1790,10 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         qsrc_mol(icomp) = qsrc(icomp)/fmw_phase(icomp)*scale ! kg/sec -> kmol/sec
       case(VOLUMETRIC_RATE_SS)  ! assume local density for now
         ! qsrc1 = m^3/sec
-        qsrc_mol(icomp) = qsrc(icomp)*gen_aux_var%den(icomp) ! den = kmol/m^3
+        qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp) ! den = kmol/m^3
       case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
         ! qsrc1 = m^3/sec
-        qsrc_mol(icomp) = qsrc(icomp)*gen_aux_var%den(icomp)*scale ! den = kmol/m^3
+        qsrc_mol(icomp) = qsrc(icomp)*gen_auxvar%den(icomp)*scale ! den = kmol/m^3
     end select
     res(icomp) = qsrc_mol(icomp)
     if (icomp == TWO_INTEGER) then
@@ -1782,29 +1803,29 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
     if (dabs(qsrc(THREE_INTEGER)) < 1.d-40) then
-!      if (global_aux_var%istate == LIQUID_STATE .or. &
-!          global_aux_var%istate == TWO_PHASE_STATE) then
+!      if (global_auxvar%istate == LIQUID_STATE .or. &
+!          global_auxvar%istate == TWO_PHASE_STATE) then
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call EOSWaterDensityEnthalpy(gen_aux_var%temp, &
-                                     gen_aux_var%pres(option%liquid_phase), &
+        call EOSWaterDensityEnthalpy(gen_auxvar%temp, &
+                                     gen_auxvar%pres(option%liquid_phase), &
                                      den_kg,den,enthalpy,option%scale,ierr)
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
                                 qsrc_mol(ONE_INTEGER) * enthalpy
-!          (gen_aux_var%H(ONE_INTEGER) - gen_aux_var%pres(ONE_INTEGER) / &
-!                                        gen_aux_var%den(ONE_INTEGER) * 1.d-6)
+!          (gen_auxvar%H(ONE_INTEGER) - gen_auxvar%pres(ONE_INTEGER) / &
+!                                        gen_auxvar%den(ONE_INTEGER) * 1.d-6)
       endif
-!      if (global_aux_var%istate == GAS_STATE .or. &
-!          global_aux_var%istate == TWO_PHASE_STATE) then
+!      if (global_auxvar%istate == GAS_STATE .or. &
+!          global_auxvar%istate == TWO_PHASE_STATE) then
       if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
-        call ideal_gaseos_noderiv(gen_aux_var%pres(option%air_pressure_id), &
-                                  gen_aux_var%temp, &
+        call ideal_gaseos_noderiv(gen_auxvar%pres(option%air_pressure_id), &
+                                  gen_auxvar%temp, &
                                   option%scale,den,enthalpy,internal_energy)
         ! enthalpy units: MJ/kmol
         res(option%energy_id) = res(option%energy_id) + &
           qsrc_mol(TWO_INTEGER) * enthalpy
-!          (gen_aux_var%H(TWO_INTEGER) - gen_aux_var%pres(TWO_INTEGER) / &
-!                                        gen_aux_var%den(TWO_INTEGER) * 1.d-6)
+!          (gen_auxvar%H(TWO_INTEGER) - gen_auxvar%pres(TWO_INTEGER) / &
+!                                        gen_auxvar%den(TWO_INTEGER) * 1.d-6)
       endif
     else
       res(option%energy_id) = qsrc(THREE_INTEGER)
@@ -1812,16 +1833,17 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   endif
   
 end subroutine GeneralSrcSink
-  
+
 ! ************************************************************************** !
-!
-! GeneralSrcSinkDerivative: Computes the source/sink terms for the residual
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
-                                    gen_aux_vars,global_aux_var,scale,Jac)
+                                    gen_auxvars,global_auxvar,scale,Jac)
+  ! 
+  ! Computes the source/sink terms for the residual
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Option_module
 
@@ -1830,8 +1852,8 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   type(option_type) :: option
   PetscReal :: qsrc(:)
   PetscInt :: flow_src_sink_type
-  type(general_auxvar_type) :: gen_aux_vars(0:)
-  type(global_auxvar_type) :: global_aux_var
+  type(general_auxvar_type) :: gen_auxvars(0:)
+  type(global_auxvar_type) :: global_auxvar
   PetscReal :: scale
   PetscReal :: Jac(option%nflowdof,option%nflowdof)
   
@@ -1839,26 +1861,27 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   PetscInt :: idof, irow
 
   call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                      gen_aux_vars(ZERO_INTEGER),global_aux_var,scale,res)
+                      gen_auxvars(ZERO_INTEGER),global_auxvar,scale,res)
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                        gen_aux_vars(idof),global_aux_var,scale,res_pert)            
+                        gen_auxvars(idof),global_auxvar,scale,res_pert)            
     do irow = 1, option%nflowdof
-      Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_vars(idof)%pert
+      Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvars(idof)%pert
     enddo !irow
   enddo ! idof
   
 end subroutine GeneralSrcSinkDerivative
 
 ! ************************************************************************** !
-!
-! GeneralResidual: Computes the residual equation 
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Field_module
@@ -1921,13 +1944,14 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 end subroutine GeneralResidual
 
 ! ************************************************************************** !
-!
-! GeneralResidualPatch1: Computes the residual equation 
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   
 
@@ -1939,7 +1963,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -1972,8 +1996,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
@@ -1988,14 +2012,14 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   material_parameter => patch%aux%Material%material_parameter
-  gen_aux_vars => patch%aux%General%aux_vars
-  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_auxvars => patch%aux%General%auxvars
+  gen_auxvars_bc => patch%aux%General%auxvars_bc
   general_parameter => patch%aux%General%general_parameter
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
                                              ! do update state
 call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
-  patch%aux%General%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
+  patch%aux%General%auxvars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
     call GeneralZeroMassBalDeltaPatch(realization)
   endif
@@ -2056,13 +2080,13 @@ call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
    
-      call GeneralFlux(gen_aux_vars(ZERO_INTEGER,ghosted_id_up), &
-                        global_aux_vars(ghosted_id_up), &
+      call GeneralFlux(gen_auxvars(ZERO_INTEGER,ghosted_id_up), &
+                        global_auxvars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
                           material_parameter%sir(1,icap_up), &
                           dd_up,perm_up,tort_loc_p(ghosted_id_up), &
-                        gen_aux_vars(ZERO_INTEGER,ghosted_id_dn), &
-                        global_aux_vars(ghosted_id_dn), &
+                        gen_auxvars(ZERO_INTEGER,ghosted_id_dn), &
+                        global_auxvars(ghosted_id_dn), &
                           porosity_loc_p(ghosted_id_dn), &
                           material_parameter%sir(1,icap_dn), &
                           dd_dn,perm_dn,tort_loc_p(ghosted_id_dn), &
@@ -2123,10 +2147,10 @@ call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
 
       call GeneralBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
-                                gen_aux_vars_bc(sum_connection), &
-                                global_aux_vars_bc(sum_connection), &
-                                gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                                global_aux_vars(ghosted_id), &
+                                gen_auxvars_bc(sum_connection), &
+                                global_auxvars_bc(sum_connection), &
+                                gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                                global_auxvars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 material_parameter%sir(:,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
@@ -2137,11 +2161,11 @@ call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,iphase) - Res(1)
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1,iphase) - Res(1)
         ! contribution to internal 
-!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
+!        global_auxvars(ghosted_id)%mass_balance_delta(1) = &
+!          global_auxvars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
 
       local_end = local_id * option%nflowdof
@@ -2162,13 +2186,14 @@ call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
 end subroutine GeneralResidualPatch1
 
 ! ************************************************************************** !
-!
-! GeneralResidualPatch2: Computes the residual equation 
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   
 
@@ -2180,7 +2205,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
   
   implicit none
 
@@ -2206,8 +2231,8 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
   type(material_parameter_type), pointer :: material_parameter
@@ -2218,10 +2243,10 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   grid => patch%grid
   option => realization%option
   field => realization%field
-  gen_aux_vars => patch%aux%General%aux_vars
-  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  gen_auxvars => patch%aux%General%auxvars
+  gen_auxvars_bc => patch%aux%General%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_parameter => patch%aux%Material%material_parameter
 
 ! now assign access pointer to local variables
@@ -2248,8 +2273,8 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       if (imat <= 0) cycle
       local_end = local_id * option%nflowdof
       local_start = local_end - option%nflowdof + 1
-      call GeneralAccumulation(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                                global_aux_vars(ghosted_id), &
+      call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                                global_auxvars(ghosted_id), &
                                 material_parameter%dencpr(imat), &
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
@@ -2283,8 +2308,8 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       call GeneralSrcSink(option,source_sink%flow_condition%general%rate% &
                                   dataset%rarray(:), &
                         source_sink%flow_condition%general%rate%itype, &
-                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
-                        global_aux_vars(ghosted_id), &
+                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                        global_auxvars(ghosted_id), &
                         scale,Res)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
@@ -2307,13 +2332,14 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 end subroutine GeneralResidualPatch2
 
 ! ************************************************************************** !
-!
-! GeneralJacobian: Computes the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2383,15 +2409,16 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 
 end subroutine GeneralJacobian
-                
+
 ! ************************************************************************** !
-!
-! GeneralJacobianPatch1: Computes the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
        
   
 
@@ -2403,7 +2430,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
     
   implicit none
 
@@ -2442,9 +2469,9 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(field_type), pointer :: field 
   type(material_parameter_type), pointer :: material_parameter
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)
   type(general_auxvar_type) :: test
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
   
   PetscViewer :: viewer
 
@@ -2453,11 +2480,11 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   material_parameter => patch%aux%Material%material_parameter
-  gen_aux_vars => patch%aux%General%aux_vars
-  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_auxvars => patch%aux%General%auxvars
+  gen_auxvars_bc => patch%aux%General%auxvars_bc
   general_parameter => patch%aux%General%general_parameter
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayReadF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -2468,14 +2495,14 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   ! Perturb aux vars
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
     if (patch%imat(ghosted_id) <= 0) cycle
-    call GeneralAuxVarPerturb(gen_aux_vars(:,ghosted_id), &
-                              global_aux_vars(ghosted_id), &
+    call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
+                              global_auxvars(ghosted_id), &
                               patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id,option)
   enddo
   
 #ifdef DEBUG_GENERAL_LOCAL
-  call GeneralOutputAuxVars(gen_aux_vars,global_aux_vars,option)
+  call GeneralOutputAuxVars(gen_auxvars,global_auxvars,option)
 #endif 
   
   ! Interior Flux Terms -----------------------------------  
@@ -2523,13 +2550,13 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
                               
-      call GeneralFluxDerivative(gen_aux_vars(:,ghosted_id_up), &
-                                  global_aux_vars(ghosted_id_up), &
+      call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
+                                  global_auxvars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
                                     material_parameter%sir(1,icap_up), &
                                     dd_up,perm_up,tort_loc_p(ghosted_id_up), &
-                                  gen_aux_vars(:,ghosted_id_dn), &
-                                  global_aux_vars(ghosted_id_dn), &
+                                  gen_auxvars(:,ghosted_id_dn), &
+                                  global_auxvars(ghosted_id_dn), &
                                     porosity_loc_p(ghosted_id_dn), &
                                     material_parameter%sir(1,icap_dn), &
                                     dd_dn,perm_dn,tort_loc_p(ghosted_id_dn), &
@@ -2598,10 +2625,10 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                   boundary_condition%flow_aux_real_var(:,iconn), &
-                                  gen_aux_vars_bc(sum_connection), &
-                                  global_aux_vars_bc(sum_connection), &
-                                  gen_aux_vars(:,ghosted_id), &
-                                  global_aux_vars(ghosted_id), &
+                                  gen_auxvars_bc(sum_connection), &
+                                  global_auxvars_bc(sum_connection), &
+                                  gen_auxvars(:,ghosted_id), &
+                                  global_auxvars(ghosted_id), &
                                   porosity_loc_p(ghosted_id), &
                                   material_parameter%sir(:,icap_dn), &
                                   cur_connection_set%dist(0,iconn),perm_dn, &
@@ -2634,13 +2661,14 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine GeneralJacobianPatch1
 
 ! ************************************************************************** !
-!
-! GeneralJacobianPatch2: Computes the Jacobian
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
        
   
 
@@ -2652,7 +2680,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Material_Aux_module
+  use Material_Aux_class
     
   implicit none
 
@@ -2678,8 +2706,8 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   type(material_parameter_type), pointer :: material_parameter
   PetscInt :: flow_pc
   PetscReal :: scale
@@ -2689,8 +2717,8 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   grid => patch%grid
   option => realization%option
   field => realization%field
-  gen_aux_vars => patch%aux%General%aux_vars
-  global_aux_vars => patch%aux%Global%aux_vars
+  gen_auxvars => patch%aux%General%auxvars
+  global_auxvars => patch%aux%Global%auxvars
   material_parameter => patch%aux%Material%material_parameter
 
   call VecGetArrayReadF90(field%porosity_loc, porosity_loc_p, ierr)
@@ -2705,8 +2733,8 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
     icap = patch%sat_func_id(ghosted_id)
-    call GeneralAccumDerivative(gen_aux_vars(:,ghosted_id), &
-                              global_aux_vars(ghosted_id), &
+    call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
+                              global_auxvars(ghosted_id), &
                               material_parameter%dencpr(imat), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
@@ -2746,8 +2774,8 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                         source_sink%flow_condition%general%rate% &
                                   dataset%rarray(:), &
                         source_sink%flow_condition%general%rate%itype, &
-                        gen_aux_vars(:,ghosted_id), &
-                        global_aux_vars(ghosted_id), &
+                        gen_auxvars(:,ghosted_id), &
+                        global_auxvars(ghosted_id), &
                         scale,Jup)
 
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
@@ -2782,13 +2810,14 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 end subroutine GeneralJacobianPatch2
 
 ! ************************************************************************** !
-!
-! GeneralCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2858,13 +2887,14 @@ subroutine GeneralCreateZeroArray(patch,option)
 end subroutine GeneralCreateZeroArray
 
 ! ************************************************************************** !
-!
-! GeneralMaxChange: Computes the maximum change in the solution vector
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Option_module
@@ -2892,13 +2922,14 @@ subroutine GeneralMaxChange(realization)
 end subroutine GeneralMaxChange
 
 ! ************************************************************************** !
-!
-! GeneralCheckUpdatePre: Checks update prior to update
-! author: Glenn Hammond
-! date: 03/06/13
-!
-! ************************************************************************** !
+
 subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
+  ! 
+  ! Checks update prior to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/06/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -2923,8 +2954,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
   PetscInt :: local_id, ghosted_id
   PetscReal :: P_R, X0, X1, delX
   PetscReal :: scale
@@ -2933,8 +2964,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   grid => realization%patch%grid
   option => realization%option
   field => realization%field
-  gen_aux_vars => realization%patch%aux%General%aux_vars
-  global_aux_vars => realization%patch%aux%Global%aux_vars
+  gen_auxvars => realization%patch%aux%General%auxvars
+  global_auxvars => realization%patch%aux%Global%auxvars
 
   patch => realization%patch
 
@@ -2973,8 +3004,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         call printMsgAnyRank(option)
 #if 0
         ghosted_id = grid%nL2G(local_id)
-        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
-                                  global_aux_vars(ghosted_id),ghosted_id)
+        call RichardsPrintAuxVars(rich_auxvars(ghosted_id), &
+                                  global_auxvars(ghosted_id),ghosted_id)
         write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
         call printMsgAnyRank(option)
 #endif
@@ -2984,8 +3015,8 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
         call printMsgAnyRank(option)
 #if 0
         ghosted_id = grid%nL2G(local_id)
-        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
-                                  global_aux_vars(ghosted_id),ghosted_id)
+        call RichardsPrintAuxVars(rich_auxvars(ghosted_id), &
+                                  global_auxvars(ghosted_id),ghosted_id)
         write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
         call printMsgAnyRank(option)
 #endif
@@ -3003,14 +3034,15 @@ subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
 end subroutine GeneralCheckUpdatePre
 
 ! ************************************************************************** !
-!
-! GeneralCheckUpdatePost: Checks update after to update
-! author: Glenn Hammond
-! date: 03/06/13
-!
-! ************************************************************************** !
+
 subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
                                    X1_changed,realization,ierr)
+  ! 
+  ! Checks update after to update
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/06/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -3036,8 +3068,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(general_auxvar_type), pointer :: gen_auxvars(:,:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
   PetscInt :: local_id, ghosted_id
   PetscReal :: Res(1)
   PetscReal :: inf_norm
@@ -3046,8 +3078,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   grid => realization%patch%grid
   option => realization%option
   field => realization%field
-  gen_aux_vars => realization%patch%aux%General%aux_vars
-  global_aux_vars => realization%patch%aux%Global%aux_vars
+  gen_auxvars => realization%patch%aux%General%auxvars
+  global_auxvars => realization%patch%aux%Global%auxvars
   
   dX_changed = PETSC_FALSE
   X1_changed = PETSC_FALSE
@@ -3065,8 +3097,8 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
       ghosted_id = grid%nL2G(local_id)
       if (realization%patch%imat(ghosted_id) <= 0) cycle
     
-      call RichardsAccumulation(rich_aux_vars(ghosted_id), &
-                                global_aux_vars(ghosted_id), &
+      call RichardsAccumulation(rich_auxvars(ghosted_id), &
+                                global_auxvars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res)
@@ -3087,14 +3119,15 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
 end subroutine GeneralCheckUpdatePost
 
 ! ************************************************************************** !
-!
-! GeneralGetTecplotHeader: Returns General Lite contribution to 
-!                               Tecplot file header
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 function GeneralGetTecplotHeader(realization,icolumn)
+  ! 
+  ! Returns General Lite contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
   
   use Realization_class
   use Option_module
@@ -3213,13 +3246,14 @@ function GeneralGetTecplotHeader(realization,icolumn)
 end function GeneralGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! GeneralSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 02/15/13
-!
-! ************************************************************************** !
+
 subroutine GeneralSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/15/13
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -3319,13 +3353,14 @@ subroutine GeneralSetPlotVariables(realization)
 end subroutine GeneralSetPlotVariables
 
 ! ************************************************************************** !
-!
-! GeneralDestroy: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralDestroy(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3347,13 +3382,14 @@ subroutine GeneralDestroy(realization)
 end subroutine GeneralDestroy
 
 ! ************************************************************************** !
-!
-! GeneralDestroyPatch: Deallocates variables associated with Richard
-! author: Glenn Hammond
-! date: 03/09/11
-!
-! ************************************************************************** !
+
 subroutine GeneralDestroyPatch(realization)
+  ! 
+  ! Deallocates variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/11
+  ! 
 
   use Realization_class
 

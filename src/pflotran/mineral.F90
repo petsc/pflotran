@@ -26,13 +26,14 @@ module Mineral_module
 contains
 
 ! ************************************************************************** !
-!
-! MineralRead: Reads chemical species
-! author: Glenn Hammond
-! date: 08/16/12
-!
-! ************************************************************************** !
+
 subroutine MineralRead(mineral,input,option)
+  ! 
+  ! Reads chemical species
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/16/12
+  ! 
 
   use Option_module
   use String_module
@@ -73,13 +74,14 @@ subroutine MineralRead(mineral,input,option)
 end subroutine MineralRead
 
 ! ************************************************************************** !
-!
-! MineralReadKinetics: Reads mineral kinetics
-! author: Glenn Hammond
-! date: 10/16/08
-!
-! ************************************************************************** !
+
 subroutine MineralReadKinetics(mineral,input,option)
+  ! 
+  ! Reads mineral kinetics
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/16/08
+  ! 
 
   use Input_Aux_module
   use String_module  
@@ -391,14 +393,15 @@ subroutine MineralReadKinetics(mineral,input,option)
 end subroutine MineralReadKinetics
 
 ! ************************************************************************** !
-!
-! MineralReadFromDatabase: Reads mineral from database
-! author: Glenn Hammond
-! date: 10/16/08
-!
-! ************************************************************************** !
+
 subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
                                    option)
+  ! 
+  ! Reads mineral from database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/16/08
+  ! 
 
   use Input_Aux_module
   use String_module  
@@ -455,14 +458,15 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
 end subroutine MineralReadFromDatabase
 
 ! ************************************************************************** !
-!
-! MineralProcessConstraint: Initializes constraints based on mineral
-!                           species in system
-! author: Glenn Hammond
-! date: 01/07/13
-!
-! ************************************************************************** !
+
 subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
+  ! 
+  ! Initializes constraints based on mineral
+  ! species in system
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/13
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -525,17 +529,19 @@ subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
 end subroutine MineralProcessConstraint
 
 ! ************************************************************************** !
-!
-! RKineticMineral: Computes the kinetic mineral precipitation/dissolution
-!                  rates
-! author: Glenn Hammond
-! date: 09/04/08
-!
-! ************************************************************************** !
+
 subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
-                           global_auxvar,volume,reaction,option)
+                           global_auxvar,material_auxvar,reaction,option)
+  ! 
+  ! Computes the kinetic mineral precipitation/dissolution
+  ! rates
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/04/08
+  ! 
 
   use Option_module
+  use Material_Aux_class
 #ifdef SOLID_SOLUTION
   use Solid_Solution_Aux_module
 #endif
@@ -547,9 +553,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   
   PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp
   PetscInt :: ipref, ipref_species
@@ -770,11 +776,11 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
     ! scale Im_const by volume for calculating derivatives below
     ! units: m^2 mnrl
-    Im_const = Im_const*volume
+    Im_const = Im_const*material_auxvar%volume
 
     ! convert rate from volumetric (mol/sec/m^3 bulk) to mol/sec
     ! units: mol/sec
-    Im = Im*volume
+    Im = Im*material_auxvar%volume
     
     ncomp = mineral%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
@@ -932,16 +938,17 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 end subroutine RKineticMineral
 
 ! ************************************************************************** !
-!
-! RMineralRate: Calculates the mineral saturation index
-! author: Glenn Hammond
-! date: 08/29/11
-!
-! ************************************************************************** !
+
 subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
                         QK,Im,Im_const,sum_prefactor_rate,affinity_factor, &
                         prefactor,ln_prefactor_spec,cycle_, &
                         reaction,mineral,option)
+  ! 
+  ! Calculates the mineral saturation index
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/29/11
+  ! 
 
   use Option_module
 
@@ -1102,13 +1109,14 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
 end subroutine RMineralRate
 
 ! ************************************************************************** !
-!
-! RMineralSaturationIndex: Calculates the mineral saturation index
-! author: Glenn Hammond
-! date: 08/29/11
-!
-! ************************************************************************** !
+
 function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
+  ! 
+  ! Calculates the mineral saturation index
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/29/11
+  ! 
 
   use Option_module
   
@@ -1151,15 +1159,16 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
 end function RMineralSaturationIndex
 
 ! ************************************************************************** !
-!
-! MineralUpdateTempDepCoefs: Updates temperature dependent coefficients for
-!                            anisothermal simulations
-! author: Glenn Hammond
-! date: 01/25/13
-!
-! ************************************************************************** !
+
 subroutine MineralUpdateTempDepCoefs(temp,pres,mineral,use_geothermal_hpt, &
                                      update_mnrl,option)
+  ! 
+  ! Updates temperature dependent coefficients for
+  ! anisothermal simulations
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/25/13
+  ! 
 
   use Option_module
 

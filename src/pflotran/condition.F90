@@ -127,13 +127,14 @@ module Condition_module
 contains
 
 ! ************************************************************************** !
-!
-! FlowConditionCreate: Creates a condition
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function FlowConditionCreate(option)
+  ! 
+  ! Creates a condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   
@@ -175,13 +176,14 @@ function FlowConditionCreate(option)
 end function FlowConditionCreate
 
 ! ************************************************************************** !
-!
-! TranConditionCreate: Creates a transport condition
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function TranConditionCreate(option)
+  ! 
+  ! Creates a transport condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Option_module
   
@@ -205,13 +207,14 @@ function TranConditionCreate(option)
 end function TranConditionCreate
 
 ! ************************************************************************** !
-!
-! FlowGeneralConditionCreate: Creates a condition for general mode
-! author: Glenn Hammond
-! date: 05/26/11
-!
-! ************************************************************************** !
+
 function FlowGeneralConditionCreate(option)
+  ! 
+  ! Creates a condition for general mode
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/26/11
+  ! 
 
   use Option_module
   
@@ -236,15 +239,16 @@ function FlowGeneralConditionCreate(option)
 end function FlowGeneralConditionCreate
 
 ! ************************************************************************** !
-!
-! FlowGeneralSubConditionPtr: Returns a pointer to a subcondition, creating
-!                             them if necessary
-! author: Glenn Hammond
-! date: 06/09/11
-!
-! ************************************************************************** !
+
 function FlowGeneralSubConditionPtr(sub_condition_name,general, &
                                     option)
+  ! 
+  ! Returns a pointer to a subcondition, creating
+  ! them if necessary
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/09/11
+  ! 
 
   use Option_module
 
@@ -318,13 +322,14 @@ function FlowGeneralSubConditionPtr(sub_condition_name,general, &
 end function FlowGeneralSubConditionPtr
 
 ! ************************************************************************** !
-!
-! FlowSubConditionCreate: Creates a sub_condition
-! author: Glenn Hammond
-! date: 02/04/08
-!
-! ************************************************************************** !
+
 function FlowSubConditionCreate(ndof)
+  ! 
+  ! Creates a sub_condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/08
+  ! 
 
   use Dataset_Ascii_class
   use Option_module
@@ -361,14 +366,15 @@ function FlowSubConditionCreate(ndof)
 end function FlowSubConditionCreate
 
 ! ************************************************************************** !
-!
-! GetFlowSubCondFromArrayByName: returns a pointer to a subcondition with
-!                                 matching name
-! author: Glenn Hammond
-! date: 06/02/08
-!
-! ************************************************************************** !
+
 function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
+  ! 
+  ! returns a pointer to a subcondition with
+  ! matching name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/02/08
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -395,15 +401,16 @@ function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
 end function GetFlowSubCondFromArrayByName
 
 ! ************************************************************************** !
-!
-! FlowSubConditionVerify: Verifies the data in a subcondition
-! author: Glenn Hammond
-! date: 02/04/08
-!
-! ************************************************************************** !
+
 subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
                                   sub_condition, default_time_storage, &
                                   destroy_if_null)
+  ! 
+  ! Verifies the data in a subcondition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/08
+  ! 
   use Time_Storage_module
   use Option_module
   use Dataset_module
@@ -440,13 +447,14 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
 end subroutine FlowSubConditionVerify
 
 ! ************************************************************************** !
-!
-! FlowConditionRead: Reads a condition from the input file
-! author: Glenn Hammond
-! date: 10/31/07
-!
-! ************************************************************************** !
+
 subroutine FlowConditionRead(condition,input,option)
+  ! 
+  ! Reads a condition from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/31/07
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1131,7 +1139,7 @@ subroutine FlowConditionRead(condition,input,option)
     
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate) .and. &
-          .not.associated(saturation)) then
+          .not.associated(saturation) .and. .not.associated(well)) then
         option%io_buffer = 'pressure, rate and saturation condition null in ' // &
                            'condition: ' // trim(condition%name)
         call printErrMsg(option)      
@@ -1146,7 +1154,10 @@ subroutine FlowConditionRead(condition,input,option)
       if (associated(rate)) then
         condition%rate => rate
       endif
-      
+      if (associated(well)) then
+        condition%well => well
+      endif
+            
       condition%num_sub_conditions = 1
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
       if (associated(pressure)) then
@@ -1155,6 +1166,8 @@ subroutine FlowConditionRead(condition,input,option)
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => saturation
       elseif (associated(rate)) then
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      elseif (associated(well)) then
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
       endif                         
 
       allocate(condition%itype(ONE_INTEGER))
@@ -1164,6 +1177,8 @@ subroutine FlowConditionRead(condition,input,option)
         condition%itype(ONE_INTEGER) = saturation%itype
       else if (associated(rate)) then
         condition%itype(ONE_INTEGER) = rate%itype
+      else if (associated(well)) then
+        condition%itype(ONE_INTEGER) = well%itype
       endif
       
       ! these are not used with richards
@@ -1179,14 +1194,15 @@ subroutine FlowConditionRead(condition,input,option)
 end subroutine FlowConditionRead
 
 ! ************************************************************************** !
-!
-! FlowConditionGeneralRead: Reads a condition from the input file for
-!                           general mode
-! author: Glenn Hammond
-! date: 09/14/11
-!
-! ************************************************************************** !
+
 subroutine FlowConditionGeneralRead(condition,input,option)
+  ! 
+  ! Reads a condition from the input file for
+  ! general mode
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/14/11
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1539,13 +1555,14 @@ subroutine FlowConditionGeneralRead(condition,input,option)
 end subroutine FlowConditionGeneralRead
 
 ! ************************************************************************** !
-!
-! TranConditionRead: Reads a transport condition from the input file
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
+  ! 
+  ! Reads a transport condition from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -1718,13 +1735,14 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
 end subroutine TranConditionRead
 
 ! ************************************************************************** !
-!
-! ConditionReadValues: Read the value(s) of a condition variable
-! author: Glenn Hammond
-! date: 10/31/07
-!
-! ************************************************************************** !
+
 subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
+  ! 
+  ! Read the value(s) of a condition variable
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/31/07
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -1909,13 +1927,14 @@ subroutine ConditionReadValues(input,option,keyword,string,dataset_base,units)
 end subroutine ConditionReadValues
 
 ! ************************************************************************** !
-!
-! FlowConditionPrint: Prints flow condition info
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
+
 subroutine FlowConditionPrint(condition,option)
+  ! 
+  ! Prints flow condition info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/08
+  ! 
 
   use Option_module
   use Dataset_module
@@ -1956,13 +1975,14 @@ subroutine FlowConditionPrint(condition,option)
 end subroutine FlowConditionPrint
 
 ! ************************************************************************** !
-!
-! FlowConditionPrintSubCondition: Prints flow subcondition info
-! author: Glenn Hammond
-! date: 12/04/08
-!
-! ************************************************************************** !
+
 subroutine FlowConditionPrintSubCondition(subcondition,option)
+  ! 
+  ! Prints flow subcondition info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/04/08
+  ! 
 
   use Option_module
   use Dataset_module
@@ -1995,13 +2015,14 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
 end subroutine FlowConditionPrintSubCondition
 
 ! ************************************************************************** !
-!
-! SubConditionName: Return name of subcondition
-! author: Gautam Bisht
-! date: 10/16/13
-!
-! ************************************************************************** !
+
 function GetSubConditionName(subcon_itype)
+  ! 
+  ! SubConditionName: Return name of subcondition
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 10/16/13
+  ! 
 
   implicit none
 
@@ -2058,13 +2079,14 @@ function GetSubConditionName(subcon_itype)
 end function GetSubConditionName
 
 ! ************************************************************************** !
-!
-! FlowConditionUpdate: Updates a transient condition
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine FlowConditionUpdate(condition_list,option,time)
+  ! 
+  ! Updates a transient condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use Option_module
   use Dataset_module
@@ -2102,13 +2124,14 @@ subroutine FlowConditionUpdate(condition_list,option,time)
 end subroutine FlowConditionUpdate
 
 ! ************************************************************************** !
-!
-! TranConditionUpdate: Updates a transient transport condition
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
+
 subroutine TranConditionUpdate(condition_list,option,time)
+  ! 
+  ! Updates a transient transport condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07
+  ! 
 
   use Option_module
   
@@ -2143,13 +2166,14 @@ subroutine TranConditionUpdate(condition_list,option,time)
 end subroutine TranConditionUpdate
 
 ! ************************************************************************** !
-!
-! FlowConditionInitList: Initializes a condition list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine FlowConditionInitList(list)
+  ! 
+  ! Initializes a condition list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
 
@@ -2163,13 +2187,14 @@ subroutine FlowConditionInitList(list)
 end subroutine FlowConditionInitList
 
 ! ************************************************************************** !
-!
-! FlowConditionAddToList: Adds a new condition to a condition list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine FlowConditionAddToList(new_condition,list)
+  ! 
+  ! Adds a new condition to a condition list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -2185,14 +2210,15 @@ subroutine FlowConditionAddToList(new_condition,list)
 end subroutine FlowConditionAddToList
 
 ! ************************************************************************** !
-!
-! FlowConditionGetPtrFromList: Returns a pointer to the condition matching &
-!                          condition_name
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 function FlowConditionGetPtrFromList(condition_name,condition_list)
+  ! 
+  ! Returns a pointer to the condition matching &
+  ! condition_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use String_module
   
@@ -2223,13 +2249,14 @@ function FlowConditionGetPtrFromList(condition_name,condition_list)
 end function FlowConditionGetPtrFromList
 
 ! ************************************************************************** !
-!
-! TranConditionInitList: Initializes a transport condition list
-! author: Glenn Hammond
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine TranConditionInitList(list)
+  ! 
+  ! Initializes a transport condition list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/08
+  ! 
 
   implicit none
 
@@ -2243,13 +2270,14 @@ subroutine TranConditionInitList(list)
 end subroutine TranConditionInitList
 
 ! ************************************************************************** !
-!
-! TranConditionAddToList: Adds a new condition to a transport condition list
-! author: Glenn Hammond
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine TranConditionAddToList(new_condition,list)
+  ! 
+  ! Adds a new condition to a transport condition list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/08
+  ! 
 
   implicit none
   
@@ -2265,14 +2293,15 @@ subroutine TranConditionAddToList(new_condition,list)
 end subroutine TranConditionAddToList
 
 ! ************************************************************************** !
-!
-! TranConditionGetPtrFromList: Returns a pointer to the condition matching
-!                              condition_name
-! author: Glenn Hammond
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function TranConditionGetPtrFromList(condition_name,condition_list)
+  ! 
+  ! Returns a pointer to the condition matching
+  ! condition_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/13/08
+  ! 
 
   use String_module
 
@@ -2303,13 +2332,14 @@ function TranConditionGetPtrFromList(condition_name,condition_list)
 end function TranConditionGetPtrFromList
 
 ! ************************************************************************** !
-!
-! FlowConditionIsTransient: Returns PETSC_TRUE
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
+
 function FlowConditionIsTransient(condition)
+  ! 
+  ! Returns PETSC_TRUE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/12/11
+  ! 
 
   use Dataset_module
 
@@ -2338,13 +2368,14 @@ function FlowConditionIsTransient(condition)
 end function FlowConditionIsTransient
 
 ! ************************************************************************** !
-!
-! FlowSubConditionIsTransient: Returns PETSC_TRUE
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
+
 function FlowSubConditionIsTransient(sub_condition)
+  ! 
+  ! Returns PETSC_TRUE
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11
+  ! 
 
   use Dataset_module
 
@@ -2366,13 +2397,14 @@ function FlowSubConditionIsTransient(sub_condition)
 end function FlowSubConditionIsTransient
 
 ! ************************************************************************** !
-!
-! FlowConditionDestroyList: Deallocates a list of conditions
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine FlowConditionDestroyList(condition_list)
+  ! 
+  ! Deallocates a list of conditions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -2402,13 +2434,14 @@ subroutine FlowConditionDestroyList(condition_list)
 end subroutine FlowConditionDestroyList
 
 ! ************************************************************************** !
-!
-! FlowConditionDestroy: Deallocates a condition
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine FlowConditionDestroy(condition)
+  ! 
+  ! Deallocates a condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   use Dataset_module
   use Dataset_Ascii_class
@@ -2461,13 +2494,14 @@ subroutine FlowConditionDestroy(condition)
 end subroutine FlowConditionDestroy
 
 ! ************************************************************************** !
-!
-! FlowGeneralConditionDestroy:Destroys a general mode condition
-! author: Glenn Hammond
-! date: 05/26/11
-!
-! ************************************************************************** !
+
 subroutine FlowGeneralConditionDestroy(general_condition)
+  ! 
+  ! Destroys a general mode condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/26/11
+  ! 
 
   use Option_module
   
@@ -2491,13 +2525,14 @@ subroutine FlowGeneralConditionDestroy(general_condition)
 end subroutine FlowGeneralConditionDestroy
 
 ! ************************************************************************** !
-!
-! FlowSubConditionDestroy: Destroys a sub_condition
-! author: Glenn Hammond
-! date: 02/04/08
-!
-! ************************************************************************** !
+
 subroutine FlowSubConditionDestroy(sub_condition)
+  ! 
+  ! Destroys a sub_condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/08
+  ! 
 
   use Dataset_module
   use Dataset_Ascii_class
@@ -2523,13 +2558,14 @@ subroutine FlowSubConditionDestroy(sub_condition)
 end subroutine FlowSubConditionDestroy
 
 ! ************************************************************************** !
-!
-! TranConditionDestroyList: Deallocates a list of conditions
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine TranConditionDestroyList(condition_list)
+  ! 
+  ! Deallocates a list of conditions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -2559,13 +2595,14 @@ subroutine TranConditionDestroyList(condition_list)
 end subroutine TranConditionDestroyList
 
 ! ************************************************************************** !
-!
-! TranConditionDestroy: Deallocates a condition
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine TranConditionDestroy(condition)
+  ! 
+  ! Deallocates a condition
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   

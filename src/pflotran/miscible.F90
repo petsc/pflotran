@@ -52,13 +52,14 @@ module Miscible_module
 contains
 
 ! ************************************************************************** !
-!
-! MiscibleTimeCut: Resets arrays for time step cut
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -82,13 +83,12 @@ subroutine MiscibleTimeCut(realization)
 end subroutine MiscibleTimeCut
 
 ! ************************************************************************** !
-!
-! MiscibleSetup: 
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleSetup(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -110,13 +110,14 @@ subroutine MiscibleSetup(realization)
 end subroutine MiscibleSetup
 
 ! ************************************************************************** !
-!
-! MiscibleSetupPatch: Creates arrays for auxiliary variables
-! author: Chuan Lu
-! date: 10/1/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleSetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/1/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -135,7 +136,7 @@ subroutine MiscibleSetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection, ipara
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)  
   
   option => realization%option
   patch => realization%patch
@@ -171,16 +172,16 @@ subroutine MiscibleSetupPatch(realization)
   enddo
 ! Miscible_parameters create_end *****************************************
 
-! allocate aux_var data structures for all grid cells  
-  allocate(aux_vars(grid%ngmax))
+! allocate auxvar data structures for all grid cells  
+  allocate(auxvars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call MiscibleAuxVarInit(aux_vars(ghosted_id),option)
+    call MiscibleAuxVarInit(auxvars(ghosted_id),option)
   enddo
-  patch%aux%Miscible%aux_vars => aux_vars
+  patch%aux%Miscible%auxvars => auxvars
   patch%aux%Miscible%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -189,11 +190,11 @@ subroutine MiscibleSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(aux_vars_bc(sum_connection))
+  allocate(auxvars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call MiscibleAuxVarInit(aux_vars_bc(iconn),option)
+    call MiscibleAuxVarInit(auxvars_bc(iconn),option)
   enddo
-  patch%aux%Miscible%aux_vars_bc => aux_vars_bc
+  patch%aux%Miscible%auxvars_bc => auxvars_bc
   patch%aux%Miscible%num_aux_bc = sum_connection
   option%numerical_derivatives_flow = PETSC_TRUE
   
@@ -211,14 +212,14 @@ subroutine MiscibleSetupPatch(realization)
 end subroutine MiscibleSetupPatch
 
 ! ************************************************************************** !
-!
-! MiscibleComputeMassBalance: 
-!                        
-! author: Jitendra Kumar 
-! date: 07/21/2010
-! Adapted from RichardsComputeMassBalance: need to be checked
-! ************************************************************************** !
+
 subroutine MiscibleComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Adapted from RichardsComputeMassBalance: need to be checked
+  ! 
+  ! Author: Jitendra Kumar
+  ! Date: 07/21/2010
+  ! 
 
   use Realization_class
   use Patch_module
@@ -241,14 +242,14 @@ subroutine MiscibleComputeMassBalance(realization,mass_balance)
 end subroutine MiscibleComputeMassBalance    
 
 ! ************************************************************************** !
-!
-! MiscibleComputeMassBalancePatch: 
-!                        
-! author: Jitendra Kumar 
-! date: 07/21/2010
-! Adapted from RichardsComputeMassBalancePatch: need to be checked
-! ************************************************************************** !
+
 subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
+  ! 
+  ! Adapted from RichardsComputeMassBalancePatch: need to be checked
+  ! 
+  ! Author: Jitendra Kumar
+  ! Date: 07/21/2010
+  ! 
  
   use Realization_class
   use Option_module
@@ -265,8 +266,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(miscible_auxvar_type), pointer :: miscible_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(miscible_auxvar_type), pointer :: miscible_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
@@ -280,8 +281,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   grid => patch%grid
   field => realization%field
 
-  global_aux_vars => patch%aux%Global%aux_vars
-  miscible_aux_vars => patch%aux%Miscible%aux_vars
+  global_auxvars => patch%aux%Global%auxvars
+  miscible_auxvars => patch%aux%Miscible%auxvars
 
   call VecGetArrayF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -295,8 +296,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
     ! mass = saturation * density * mole fraction * volume
     do ispec = 1,option%nflowspec
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
-        miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec)* &
-        global_aux_vars(ghosted_id)%den(1)* &
+        miscible_auxvars(ghosted_id)%auxvar_elem(0)%xmol(ispec)* &
+        global_auxvars(ghosted_id)%den(1)* &
         porosity_loc_p(ghosted_id)*volume_p(local_id)
     enddo
   enddo
@@ -309,13 +310,14 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
 end subroutine MiscibleComputeMassBalancePatch
 
 ! ************************************************************************** !
-!
-! MiscibleZeroMassBalDeltaPatch: Zeros mass balance delta array
-! author: Satish Karra, LANL
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine MiscibleZeroMassBalDeltaPatch(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 12/13/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -328,20 +330,20 @@ subroutine MiscibleZeroMassBalDeltaPatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
 
   PetscInt :: iconn
 
   option => realization%option
   patch => realization%patch
 
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
   do iconn = 1, patch%aux%Miscible%num_aux
-    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+    patch%aux%Global%auxvars(iconn)%mass_balance_delta = 0.d0
   enddo
 #endif
 
@@ -349,25 +351,26 @@ subroutine MiscibleZeroMassBalDeltaPatch(realization)
   ! placed around the internal do loop - geh
   if (patch%aux%Miscible%num_aux_bc > 0) then
     do iconn = 1, patch%aux%Miscible%num_aux_bc
-      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+      global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
   if (patch%aux%Miscible%num_aux_ss > 0) then
     do iconn = 1, patch%aux%Miscible%num_aux_ss
-      global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
+      global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
  
 end subroutine MiscibleZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
-! date: 12/13/11
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateMassBalancePatch(realization)
+  ! 
+  ! Updates mass balance
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/11
+  ! 
  
   use Realization_class
   use Option_module
@@ -380,39 +383,39 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
 
   PetscInt :: iconn
 
   option => realization%option
   patch => realization%patch
 
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
   do iconn = 1, patch%aux%Miscible%num_aux
-    patch%aux%Global%aux_vars(iconn)%mass_balance = &
-      patch%aux%Global%aux_vars(iconn)%mass_balance + &
-      patch%aux%Global%aux_vars(iconn)%mass_balance_delta* &
+    patch%aux%Global%auxvars(iconn)%mass_balance = &
+      patch%aux%Global%auxvars(iconn)%mass_balance + &
+      patch%aux%Global%auxvars(iconn)%mass_balance_delta* &
       option%flow_dt
   enddo
 #endif
 
   if (patch%aux%Miscible%num_aux_bc > 0) then
     do iconn = 1, patch%aux%Miscible%num_aux_bc
-      global_aux_vars_bc(iconn)%mass_balance = &
-        global_aux_vars_bc(iconn)%mass_balance + &
-        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
+      global_auxvars_bc(iconn)%mass_balance = &
+        global_auxvars_bc(iconn)%mass_balance + &
+        global_auxvars_bc(iconn)%mass_balance_delta*option%flow_dt
     enddo
   endif
 
   if (patch%aux%Miscible%num_aux_ss > 0) then
     do iconn = 1, patch%aux%Miscible%num_aux_ss
-      global_aux_vars_bc(iconn)%mass_balance = &
-        global_aux_vars_bc(iconn)%mass_balance + &
-        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
+      global_auxvars_bc(iconn)%mass_balance = &
+        global_auxvars_bc(iconn)%mass_balance + &
+        global_auxvars_bc(iconn)%mass_balance_delta*option%flow_dt
     enddo
   endif
 
@@ -420,12 +423,14 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
 end subroutine MiscibleUpdateMassBalancePatch
 
 ! ************************************************************************** !
-! MiscibleInitGuessCheckPatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
   function MiscibleInitGuessCheck(realization)
+  ! 
+  ! MiscibleInitGuessCheckPatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
  
   use Realization_class
   use Patch_module
@@ -461,15 +466,13 @@ end subroutine MiscibleUpdateMassBalancePatch
 
 end function MiscibleInitGuessCheck
 
-
-
 ! ************************************************************************** !
-! MiscibleInitGuessCheckPatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
   function MiscibleInitGuessCheckPatch(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
    
     use co2_span_wagner_module
      
@@ -502,15 +505,16 @@ end function MiscibleInitGuessCheck
     MiscibleInitGuessCheckPatch = ipass
   end function MiscibleInitGuessCheckPatch
 
-! ***************************************************************************
-!
-! MiscibleUpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Miscible problem
-! author: Chuan Lu
-! date: 10/10/08
-!
 ! ************************************************************************** !
+
 subroutine MiscibleUpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Miscible problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -530,14 +534,15 @@ subroutine MiscibleUpdateAuxVars(realization)
 end subroutine MiscibleUpdateAuxVars
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Miscible problem
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Miscible problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -558,8 +563,8 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -573,10 +578,10 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
   
-  aux_vars => patch%aux%Miscible%aux_vars
-  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Miscible%auxvars
+  auxvars_bc => patch%aux%Miscible%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
@@ -595,17 +600,17 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
     endif
     
     call MiscibleAuxVarCompute_NINC(xx_loc_p(istart:iend), &
-                       aux_vars(ghosted_id)%aux_var_elem(0), &
-                       global_aux_vars(ghosted_id), &
+                       auxvars(ghosted_id)%auxvar_elem(0), &
+                       global_auxvars(ghosted_id), &
                        realization%fluid_properties,option)
                       
 !   update global variables
-    if( associated(global_aux_vars))then
-      global_aux_vars(ghosted_id)%pres = aux_vars(ghosted_id)%aux_var_elem(0)%pres
-      global_aux_vars(ghosted_id)%sat(:) = 1D0
-      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          *aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+    if( associated(global_auxvars))then
+      global_auxvars(ghosted_id)%pres = auxvars(ghosted_id)%auxvar_elem(0)%pres
+      global_auxvars(ghosted_id)%sat(:) = 1D0
+      global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+      global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
+                                          *auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
     else
       print *,'Not associated global for Miscible'
     endif
@@ -633,16 +638,16 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
         end select
       enddo
  
-      call MiscibleAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-                         global_aux_vars_bc(sum_connection), &
+      call MiscibleAuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
+                         global_auxvars_bc(sum_connection), &
                          realization%fluid_properties, option)
 
-      if (associated(global_aux_vars_bc)) then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
-        global_aux_vars_bc(sum_connection)%sat(:)=1.D0
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-            * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+      if (associated(global_auxvars_bc)) then
+        global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres
+        global_auxvars_bc(sum_connection)%sat(:)=1.D0
+        global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+        global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+            * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
       endif
 
     enddo
@@ -652,18 +657,19 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   
-  patch%aux%Miscible%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%Miscible%auxvars_up_to_date = PETSC_TRUE
 
 end subroutine MiscibleUpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! MiscibleInitializeTimestep: Update data in module prior to time step
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   
@@ -676,13 +682,14 @@ subroutine MiscibleInitializeTimestep(realization)
 end subroutine MiscibleInitializeTimestep
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateSolution: Updates data in module after a successful time step
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Field_module
@@ -711,17 +718,17 @@ subroutine MiscibleUpdateSolution(realization)
 
 end subroutine MiscibleUpdateSolution
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleUpdateSolutionPatch: Updates data in module after a successful time 
-!                             step 
-! author: Satish Karra, LANL
-! written based on RichardsUpdateSolutionPatch
-! date: 08/23/11
-!
-! ************************************************************************** !
 subroutine MiscibleUpdateSolutionPatch(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step
+  ! written based on RichardsUpdateSolutionPatch
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 08/23/11
+  ! 
 
   use Realization_class
     
@@ -736,14 +743,15 @@ subroutine MiscibleUpdateSolutionPatch(realization)
 end subroutine MiscibleUpdateSolutionPatch
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -763,14 +771,15 @@ subroutine MiscibleUpdateFixedAccumulation(realization)
 end subroutine MiscibleUpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! MiscibleUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleUpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -787,8 +796,8 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(Miscible_parameter_type), pointer :: Miscible_parameter
-  type(Miscible_auxvar_type), pointer :: aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -803,9 +812,9 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  global_aux_vars => patch%aux%Global%aux_vars
+  global_auxvars => patch%aux%Global%auxvars
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
-  aux_vars => patch%aux%Miscible%aux_vars
+  auxvars => patch%aux%Miscible%auxvars
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
@@ -824,8 +833,8 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
 
-    call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
-                              global_aux_vars(ghosted_id), &
+    call MiscibleAccumulation(auxvars(ghosted_id)%auxvar_elem(0), &
+                              global_auxvars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -843,24 +852,24 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
 
 end subroutine MiscibleUpdateFixedAccumPatch
 
-
 ! ************************************************************************** !
-!
-! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
-subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+
+subroutine MiscibleAccumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
   implicit none
 
-  type(Miscible_auxvar_elem_type) :: aux_var
+  type(Miscible_auxvar_elem_type) :: auxvar
   type(option_type) :: option
-  type(global_auxvar_type) :: global_aux_var
+  type(global_auxvar_type) :: global_auxvar
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: vol,por,rock_dencpr
      
@@ -872,7 +881,7 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
       mol(ispec) = mol(ispec) + &
-        aux_var%den(np) * aux_var%xmol(ispec + (np-1)*option%nflowspec)
+        auxvar%den(np) * auxvar%xmol(ispec + (np-1)*option%nflowspec)
     enddo
   enddo
   mol = mol*porXvol
@@ -881,22 +890,23 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
 end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
-!
-! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
-subroutine MiscibleAccumulation_Xp(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+
+subroutine MiscibleAccumulation_Xp(auxvar,global_auxvar,por,vol,rock_dencpr,option,Res)
+  ! 
+  ! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
 use Option_module
 
 implicit none
 
-type(Miscible_auxvar_elem_type) :: aux_var
+type(Miscible_auxvar_elem_type) :: auxvar
 type(option_type) :: option
-type(global_auxvar_type) :: global_aux_var
+type(global_auxvar_type) :: global_auxvar
 PetscReal :: Res(1:option%nflowdof) 
 PetscReal :: vol,por,rock_dencpr
 
@@ -909,12 +919,12 @@ np = 1
 
 ! pressure equation
 ispec = 1
-mol(ispec) = mol(ispec) + aux_var%den(np)
+mol(ispec) = mol(ispec) + auxvar%den(np)
 
 !PPG
 ispec = 2
 mol(ispec) = mol(ispec) + &
-aux_var%den(np) * aux_var%xmol(ispec + (np-1)*option%nflowspec)
+auxvar%den(np) * auxvar%xmol(ispec + (np-1)*option%nflowspec)
 
 mol = mol*porXvol
 Res(1:option%nflowspec) = mol(:)
@@ -922,15 +932,16 @@ Res(1:option%nflowspec) = mol(:)
 end subroutine MiscibleAccumulation_Xp
 
 ! ************************************************************************** !
-!
-! MiscibleSourceSink: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
-subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res,&
+
+subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,Res,&
                             qsrc_phase,energy_flag, option)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -943,7 +954,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
   
   implicit none
 
-  type(Miscible_auxvar_elem_type) :: aux_var
+  type(Miscible_auxvar_elem_type) :: auxvar
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal, pointer :: mmsrc(:)
@@ -978,7 +989,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
       msrc(1) = msrc(1) / FMWH2O
       msrc(2) = msrc(2) / FMWGLYC
       if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
-!        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+!        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
@@ -1015,58 +1026,58 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
 
     ! production well (well status = -1)
       if (dabs(well_status + 1D0) < 1D-1) then 
-        if (aux_var%pres > pressure_min) then
+        if (auxvar%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
-            dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
+            dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
+              ukvr = auxvar%kvr(np)
               if(ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = -1.d0*v_darcy
-                Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
-                  aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
-                Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
-                  aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)* &
-                  aux_var%h(np)*option%flow_dt
+                Res(1) = Res(1) - v_darcy* auxvar%den(np)* &
+                  auxvar%xmol((np-1)*option%nflowspec+1)*option%flow_dt
+                Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
+                  auxvar%xmol((np-1)*option%nflowspec+2)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
+                  auxvar%h(np)*option%flow_dt
               ! print *,'produce: ',np,v_darcy
               endif
             endif
           enddo
         endif
       endif 
-     !print *,'well-prod: ',  aux_var%pres,psrc(1), res
+     !print *,'well-prod: ',  auxvar%pres,psrc(1), res
     ! injection well (well status = 2)
       if (dabs(well_status - 2D0) < 1D-1) then 
 
-        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol, &
+        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
                                      enth_src_h2o,option%scale,ierr)
 
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        if (aux_var%pres < pressure_max) then  
+        if (auxvar%pres < pressure_max) then  
           do np = 1, option%nphase
-            dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
+            dphi = pressure_bh - auxvar%pres + auxvar%pc(np)
             if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
+              ukvr = auxvar%kvr(np)
               v_darcy=0.D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = v_darcy
-                Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
-!                 aux_var%xmol((np-1)*option%nflowspec+1) * option%flow_dt
+                Res(1) = Res(1) + v_darcy* auxvar%den(np)* &
+!                 auxvar%xmol((np-1)*option%nflowspec+1) * option%flow_dt
                   (1.d0-csrc) * option%flow_dt
-                Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
-!                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
+                Res(2) = Res(2) + v_darcy* auxvar%den(np)* &
+!                 auxvar%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   csrc * option%flow_dt
-!               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+!               if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1083,23 +1094,23 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
   
 end subroutine MiscibleSourceSink
 
-
 ! ************************************************************************** !
-!
-! MiscibleFlux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
-subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
-                        aux_var_dn,por_dn,tor_dn,dd_dn,perm_dn, &
+
+subroutine MiscibleFlux(auxvar_up,por_up,tor_up,dd_up,perm_up, &
+                        auxvar_dn,por_dn,tor_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
   
-  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: por_up, por_dn
   PetscReal :: tor_up, tor_dn
@@ -1128,13 +1139,13 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
       
 !   Flow term
       
-    density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+    density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np) 
         
-    gravity = (upweight*aux_var_up%den(np)*aux_var_up%avgmw(np) + &
-             (1.D0-upweight)*aux_var_dn%den(np)*aux_var_dn%avgmw(np)) &
+    gravity = (upweight*auxvar_up%den(np)*auxvar_up%avgmw(np) + &
+             (1.D0-upweight)*auxvar_dn%den(np)*auxvar_dn%avgmw(np)) &
              *dist_gravity
 
-    dphi = aux_var_up%pres - aux_var_dn%pres + gravity
+    dphi = auxvar_up%pres - auxvar_dn%pres + gravity
 
     v_darcy = 0.D0
     ukvr = 0.D0
@@ -1142,11 +1153,11 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
 
 !   note uxmol only contains one phase xmol
     if (dphi >= 0.D0) then
-      ukvr = aux_var_up%kvr(np)
-      uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+      ukvr = auxvar_up%kvr(np)
+      uxmol(:) = auxvar_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     else
-      ukvr = aux_var_dn%kvr(np)
-      uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+      ukvr = auxvar_dn%kvr(np)
+      uxmol(:) = auxvar_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     endif
 
     v_darcy = Dq * ukvr * dphi
@@ -1160,12 +1171,12 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
 !   Note : use harmonic average rule for diffusion
     do ispec=1, option%nflowspec
       ind = ispec + (np-1)*option%nflowspec
-      dendif_up = aux_var_up%den(1)*aux_var_up%diff(ispec)
-      dendif_dn = aux_var_dn%den(1)*aux_var_dn%diff(ispec)
+      dendif_up = auxvar_up%den(1)*auxvar_up%diff(ispec)
+      dendif_dn = auxvar_dn%den(1)*auxvar_dn%diff(ispec)
       dif_harmonic = (portor_up*portor_dn*dendif_up*dendif_dn) &
         /(dd_dn*portor_up*dendif_up + dd_up*portor_dn*dendif_dn)*area
       fluxm(ispec) = fluxm(ispec) + dif_harmonic* &
-        (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
+        (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
     enddo
   enddo
 
@@ -1176,24 +1187,25 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
 end subroutine MiscibleFlux
 
 ! ************************************************************************** !
-!
-! MiscibleBCFlux: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
-subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+
+subroutine MiscibleBCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      por_dn,tor_dn,dd_up,perm_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: dd_up
-  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn,tor_dn
   PetscReal :: vv_darcy(:), area
   PetscReal :: Res(1:option%nflowdof) 
@@ -1221,19 +1233,19 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         ukvr=0.D0
         v_darcy=0.D0
 
-        density_ave = aux_var_up%den(np)
+        density_ave = auxvar_up%den(np)
         
-        gravity = aux_var_up%den(np)*aux_var_up%avgmw(np)*dist_gravity
+        gravity = auxvar_up%den(np)*auxvar_up%avgmw(np)*dist_gravity
        
-        dphi = aux_var_up%pres - aux_var_dn%pres &
-                - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+        dphi = auxvar_up%pres - auxvar_dn%pres &
+                - auxvar_up%pc(np) + auxvar_dn%pc(np) &
                 + gravity
    
         ! figure out the direction of flow
         if (dphi >= 0.D0) then
-          ukvr = aux_var_up%kvr(np)
+          ukvr = auxvar_up%kvr(np)
         else
-          ukvr = aux_var_dn%kvr(np)
+          ukvr = auxvar_dn%kvr(np)
         endif
      
         if (ukvr*Dq > floweps) then
@@ -1242,12 +1254,12 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
       case(NEUMANN_BC) !may not work
         v_darcy = 0.D0
-        if (dabs(aux_vars(1)) > floweps) then
-          v_darcy = aux_vars(MIS_PRESSURE_DOF)
+        if (dabs(auxvars(1)) > floweps) then
+          v_darcy = auxvars(MIS_PRESSURE_DOF)
           if (v_darcy > 0.d0) then 
-            density_ave = aux_var_up%den(np)
+            density_ave = auxvar_up%den(np)
           else 
-            density_ave = aux_var_dn%den(np)
+            density_ave = auxvar_dn%den(np)
           endif
         endif
     end select
@@ -1257,9 +1269,9 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     uxmol = 0.D0
      
     if (v_darcy >= 0.D0) then
-      uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+      uxmol(:) = auxvar_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     else
-      uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+      uxmol(:) = auxvar_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     endif
     
     do ispec=1, option%nflowspec
@@ -1271,12 +1283,12 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   select case(ibndtype(2))
     case(DIRICHLET_BC) 
       do np = 1, option%nphase ! note: nphase = 1
-        diff = portor*aux_var_up%den(np)
+        diff = portor*auxvar_up%den(np)
         do ispec = 1, option%nflowspec
           fluxm(ispec) = fluxm(ispec) + diff* &
-                   aux_var_dn%diff((np-1)*option%nflowspec+ispec)* &
-                   (aux_var_up%xmol((np-1)*option%nflowspec+ispec) &
-                   -aux_var_dn%xmol((np-1)*option%nflowspec+ispec))
+                   auxvar_dn%diff((np-1)*option%nflowspec+ispec)* &
+                   (auxvar_up%xmol((np-1)*option%nflowspec+ispec) &
+                   -auxvar_dn%xmol((np-1)*option%nflowspec+ispec))
         enddo
       enddo
   end select
@@ -1286,13 +1298,14 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine MiscibleBCFlux
 
 ! ************************************************************************** !
-!
-! MiscibleResidual: Computes the residual equation 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1395,13 +1408,14 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 end subroutine MiscibleResidual
 
 ! ************************************************************************** !
-!
-! MiscibleResidualPatch1: Computes the Residual by Flux
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the Residual by Flux
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -1458,9 +1472,9 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Miscible_parameter_type), pointer :: Miscible_parameter
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -1479,14 +1493,14 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   field => realization%field
 
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
-  aux_vars => patch%aux%Miscible%aux_vars
-  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Miscible%auxvars
+  auxvars_bc => patch%aux%Miscible%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
  ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%auxvars_up_to_date = PETSC_FALSE 
   
   if (option%compute_mass_balance_new) then
     call MiscibleZeroMassBalDeltaPatch(realization)
@@ -1561,24 +1575,24 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       enddo
 
  
-    call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
-           global_aux_vars_bc(sum_connection),&
+    call MiscibleAuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+           global_auxvars_bc(sum_connection),&
            realization%fluid_properties, option)
 
-    if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres - &
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%sat(:) = 1.D0
-      global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !   global_aux_vars(ghosted_id)%den_kg_store
+    if( associated(global_auxvars_bc))then
+      global_auxvars_bc(sum_connection)%pres(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%pres - &
+                     auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+      global_auxvars_bc(sum_connection)%sat(:) = 1.D0
+      global_auxvars_bc(sum_connection)%den(:) = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+      global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+          * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
+  !   global_auxvars(ghosted_id)%den_kg_store
     endif
 
     call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(0), &
-         aux_vars(ghosted_id)%aux_var_elem(0), &
+         auxvars_bc(sum_connection)%auxvar_elem(0), &
+         auxvars(ghosted_id)%auxvar_elem(0), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
          cur_connection_set%dist(0,iconn),perm_dn, &
@@ -1591,8 +1605,8 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 
     if (option%compute_mass_balance_new) then
       ! contribution to boundary
-      global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) &
+      global_auxvars_bc(sum_connection)%mass_balance_delta(:,1) = &
+        global_auxvars_bc(sum_connection)%mass_balance_delta(:,1) &
           - Res(:)/option%flow_dt 
     endif
   
@@ -1647,10 +1661,10 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
 
-      call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+      call MiscibleFlux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
         tortuosity_loc_p(ghosted_id_up), &
         dd_up,perm_up, &
-        aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+        auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
         tortuosity_loc_p(ghosted_id_dn), &
         dd_dn,perm_dn, &
         cur_connection_set%area(iconn),distance_gravity, &
@@ -1688,13 +1702,14 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 end subroutine MiscibleResidualPatch1
 
 ! ************************************************************************** !
-!
-! MiscibleJacobianPatch0: Computes the Residual Aux vars for numerical Jacobin
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
+  ! 
+  ! MiscibleJacobianPatch0: Computes the Residual Aux vars for numerical Jacobin
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -1738,8 +1753,8 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Miscible_parameter_type), pointer :: Miscible_parameter
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
@@ -1752,14 +1767,14 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
   field => realization%field
 
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
-  aux_vars => patch%aux%Miscible%aux_vars
-  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Miscible%auxvars
+  auxvars_bc => patch%aux%Miscible%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
  ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%auxvars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -1782,17 +1797,17 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
     ghosted_id = ng   
     istart = (ng-1) * option%nflowdof + 1; iend = istart - 1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-    call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-          global_aux_vars(ng),&
+    call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
+          global_auxvars(ng),&
           realization%fluid_properties,option)
-!    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
+!    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 
-    if(associated(global_aux_vars)) then
-      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres
-      global_aux_vars(ghosted_id)%sat(:) = 1D0
-      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-            * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+    if(associated(global_auxvars)) then
+      global_auxvars(ghosted_id)%pres(:) = auxvars(ghosted_id)%auxvar_elem(0)%pres
+      global_auxvars(ghosted_id)%sat(:) = 1D0
+      global_auxvars(ghosted_id)%den(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+      global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
+            * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
     else
       print *,'Not associated global for Miscible'
     endif
@@ -1844,7 +1859,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       patch%aux%Miscible%delx(:,ng) = delx(:)
 
       call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
-            aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
+            auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
             realization%fluid_properties,option)
     endif
   enddo
@@ -1856,14 +1871,15 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 end subroutine MiscibleResidualPatch0
 
 ! ************************************************************************** !
-!
-! MiscibleResidualPatch2: Computes other terms in Residual
-!                       (accumulation, source/sink, reaction)
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes other terms in Residual
+  ! (accumulation, source/sink, reaction)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -1907,11 +1923,11 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Miscible_parameter_type), pointer :: Miscible_parameter
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -1929,15 +1945,15 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   field => realization%field
 
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
-  aux_vars => patch%aux%Miscible%aux_vars
-  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  auxvars => patch%aux%Miscible%auxvars
+  auxvars_bc => patch%aux%Miscible%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
   
  ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%auxvars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
@@ -1963,8 +1979,8 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
 
-      call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
-                            global_aux_vars(ghosted_id), &
+      call MiscibleAccumulation(auxvars(ghosted_id)%auxvar_elem(0),&
+                            global_auxvars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -2025,13 +2041,13 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       endif
       
       call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
-                            aux_vars(ghosted_id)%aux_var_elem(0), &
+                            auxvars(ghosted_id)%auxvar_elem(0), &
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag,option)
       if (option%compute_mass_balance_new) then
-        global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
-          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+        global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
           Res(:)/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
@@ -2073,9 +2089,9 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       print *, 'overflow in res: ', &
       local_id,ghosted_id,istart,r_p (istart:istart+1), &
-      aux_vars(ghosted_id)%aux_var_elem(0)%pres, &
-      aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1), &
-      aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2)
+      auxvars(ghosted_id)%auxvar_elem(0)%pres, &
+      auxvars(ghosted_id)%auxvar_elem(0)%xmol(1), &
+      auxvars(ghosted_id)%auxvar_elem(0)%xmol(2)
     endif
   enddo
 
@@ -2104,15 +2120,15 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
  
 end subroutine MiscibleResidualPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleJacobian: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -2198,15 +2214,15 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine MiscibleJacobian
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleJacobianPatch1: Computes the Jacobian: Flux term
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
 subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian: Flux term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -2272,8 +2288,8 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(Miscible_parameter_type), pointer :: Miscible_parameter
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -2300,10 +2316,10 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
 
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
-  aux_vars => patch%aux%Miscible%aux_vars
-  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Miscible%auxvars
+  auxvars_bc => patch%aux%Miscible%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -2392,19 +2408,19 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
         end select
       enddo
  
-      call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
-         global_aux_vars_bc(sum_connection),&
+      call MiscibleAuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+         global_auxvars_bc(sum_connection),&
          realization%fluid_properties, option)
       call MiscibleAuxVarCompute_Winc(xxbc,delxbc,&
-         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
-         global_aux_vars_bc(sum_connection),&
+         auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
+         global_auxvars_bc(sum_connection),&
          realization%fluid_properties,option)
     
       do nvar=1,option%nflowdof
         call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
           boundary_condition%flow_aux_real_var(:,iconn), &
-          aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
-          aux_vars(ghosted_id)%aux_var_elem(nvar), &
+          auxvars_bc(sum_connection)%auxvar_elem(nvar), &
+          auxvars(ghosted_id)%auxvar_elem(nvar), &
           porosity_loc_p(ghosted_id), &
           tortuosity_loc_p(ghosted_id), &
           cur_connection_set%dist(0,iconn),perm_dn, &
@@ -2512,20 +2528,20 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-        call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
+        call MiscibleFlux(auxvars(ghosted_id_up)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_up), &
             tortuosity_loc_p(ghosted_id_up), &
             dd_up,perm_up, &
-            aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+            auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
             tortuosity_loc_p(ghosted_id_dn), &
             dd_dn,perm_dn, &
             cur_connection_set%area(iconn),distance_gravity, &
             upweight, option, vv_darcy, Res)
         ra(:,nvar) = (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:)) &
               /patch%aux%Miscible%delx(nvar,ghosted_id_up)
-        call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+        call MiscibleFlux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
             tortuosity_loc_p(ghosted_id_up), &
             dd_up,perm_up, &
-            aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
+            auxvars(ghosted_id_dn)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_dn),&
             tortuosity_loc_p(ghosted_id_dn), &
             dd_dn,perm_dn, &
             cur_connection_set%area(iconn),distance_gravity, &
@@ -2590,13 +2606,14 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine MiscibleJacobianPatch1
 
 ! ************************************************************************** !
-!
-! MiscibleJacobianPatch2: Computes the Jacobian: Accum, source, reaction
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian: Accum, source, reaction
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -2662,8 +2679,8 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(Miscible_parameter_type), pointer :: Miscible_parameter
-  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -2690,10 +2707,10 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
 
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
-  aux_vars => patch%aux%Miscible%aux_vars
-  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Miscible%auxvars
+  auxvars_bc => patch%aux%Miscible%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -2727,8 +2744,8 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     icap = int(icap_loc_p(ghosted_id))
      
     do nvar =1, option%nflowdof
-      call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
-             global_aux_vars(ghosted_id),& 
+      call MiscibleAccumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
+             global_auxvars(ghosted_id),& 
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -2785,7 +2802,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 !       r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !     endif         
       do nvar =1, option%nflowdof
-        call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
+        call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,&
                             ss_flow, &
                             enthalpy_flag, option)
@@ -2905,15 +2922,15 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine MiscibleJacobianPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MiscibleCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
 subroutine MiscibleCreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Patch_module
   use Grid_module
@@ -2993,13 +3010,14 @@ subroutine MiscibleCreateZeroArray(patch,option)
 end subroutine MiscibleCreateZeroArray
 
 ! ************************************************************************** !
-!
-! MiscibleMaxChange: Computes the maximum change in the solution vector
-! author: Chuan Lu
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine MiscibleMaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3039,14 +3057,15 @@ subroutine MiscibleMaxChange(realization)
 end subroutine MiscibleMaxChange
 
 ! ************************************************************************** !
-!
-! MiscibleGetTecplotHeader: Returns Richards contribution to 
-!                               Tecplot file header
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function MiscibleGetTecplotHeader(realization, icolumn)
+  ! 
+  ! Returns Richards contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -3109,13 +3128,14 @@ function MiscibleGetTecplotHeader(realization, icolumn)
 end function MiscibleGetTecplotHeader
 
 ! ************************************************************************** !
-!
-! MiscibleSetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine MiscibleSetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -3163,15 +3183,15 @@ subroutine MiscibleSetPlotVariables(realization)
 
 end subroutine MiscibleSetPlotVariables
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MphaseDestroy: Deallocates variables associated with Miscible
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
 subroutine MiscibleDestroy(realization)
+  ! 
+  ! MphaseDestroy: Deallocates variables associated with Miscible
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Realization_class
 

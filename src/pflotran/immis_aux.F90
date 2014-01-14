@@ -33,7 +33,7 @@ type, public :: Immis_auxvar_elem_type
 
   type, public :: Immis_auxvar_type
     
-    type(Immis_auxvar_elem_type), pointer :: aux_var_elem(:) 
+    type(Immis_auxvar_elem_type), pointer :: auxvar_elem(:) 
 #if 0
     PetscReal , pointer :: davgmw_dx(:)
     PetscReal , pointer :: dden_dp(:)
@@ -63,13 +63,13 @@ type, public :: Immis_auxvar_elem_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-    PetscBool :: aux_vars_up_to_date
+    PetscBool :: auxvars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
     type(Immis_parameter_type), pointer :: immis_parameter
-    type(Immis_auxvar_type), pointer :: aux_vars(:)
-    type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
-    type(Immis_auxvar_type), pointer :: aux_vars_ss(:)
+    type(Immis_auxvar_type), pointer :: auxvars(:)
+    type(Immis_auxvar_type), pointer :: auxvars_bc(:)
+    type(Immis_auxvar_type), pointer :: auxvars_ss(:)
 
     PetscReal, pointer :: res_old_AR(:,:), res_old_FL(:,:), delx(:,:)
   end type Immis_type
@@ -81,17 +81,16 @@ type, public :: Immis_auxvar_elem_type
             ImmisAuxVarInit, ImmisAuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
-!
-! ImmisAuxVarCreate: Allocate and initialize auxiliary object
-! author: Chuan Lu
-! date: 02/27/08
-!
-! ************************************************************************** !
+
 function ImmisAuxCreate()
+  ! 
+  ! ImmisAuxVarCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/27/08
+  ! 
 
   use Option_module
 
@@ -102,12 +101,12 @@ function ImmisAuxCreate()
   type(Immis_type), pointer :: aux
 
   allocate(aux) 
-  aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%auxvars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
-  nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
+  nullify(aux%auxvars)
+  nullify(aux%auxvars_bc)
   aux%n_zero_rows = 0
   allocate(aux%immis_parameter)
   nullify(aux%immis_parameter%sir)
@@ -123,122 +122,122 @@ function ImmisAuxCreate()
   
 end function ImmisAuxCreate
 
-
-
 ! ************************************************************************** !
-!
-! ImmisAuxVarInit: Initialize auxiliary object
-! author: Chuan Lu
-! date: 02/14/08
-!
-! ************************************************************************** !
-subroutine ImmisAuxVarInit(aux_var,option)
+
+subroutine ImmisAuxVarInit(auxvar,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(Immis_auxvar_type) :: aux_var
+  type(Immis_auxvar_type) :: auxvar
   type(option_type) :: option
 
   PetscInt :: var_elem_size, var_node_size
   PetscInt :: nvar 
 
-  allocate(aux_var%aux_var_elem(0 : option%nflowdof))
-  allocate(aux_var%aux_var_elem(0)%hysdat(4))
+  allocate(auxvar%auxvar_elem(0 : option%nflowdof))
+  allocate(auxvar%auxvar_elem(0)%hysdat(4))
  
   do nvar = 0, option%nflowdof
-    allocate ( aux_var%aux_var_elem(nvar)%sat(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%den(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%avgmw(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%vis(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%h(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
-    allocate ( aux_var%aux_var_elem(nvar)%kvr(option%nphase))
-!   allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
-!   allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
+    allocate ( auxvar%auxvar_elem(nvar)%sat(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%den(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%avgmw(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%vis(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%h(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%u(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%pc(option%nphase))
+    allocate ( auxvar%auxvar_elem(nvar)%kvr(option%nphase))
+!   allocate ( auxvar%auxvar_elem(nvar)%xmol(option%nphase*option%nflowspec))
+!   allocate ( auxvar%auxvar_elem(nvar)%diff(option%nphase*option%nflowspec))
     if(nvar>0) &
-      aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
+      auxvar%auxvar_elem(nvar)%hysdat => auxvar%auxvar_elem(0)%hysdat
 
-    aux_var%aux_var_elem(nvar)%pres = 0.d0
-    aux_var%aux_var_elem(nvar)%temp = 0.d0
-    aux_var%aux_var_elem(nvar)%sat = 0.d0
-    aux_var%aux_var_elem(nvar)%den = 0.d0
-    aux_var%aux_var_elem(nvar)%avgmw = 0.d0
-    aux_var%aux_var_elem(nvar)%vis = 0.d0
-    aux_var%aux_var_elem(nvar)%h = 0.d0
-    aux_var%aux_var_elem(nvar)%u = 0.d0
-    aux_var%aux_var_elem(nvar)%pc = 0.d0
-    aux_var%aux_var_elem(nvar)%kvr = 0.d0
-!   aux_var%aux_var_elem(nvar)%xmol = 0.d0
-!   aux_var%aux_var_elem(nvar)%diff = 0.d0
+    auxvar%auxvar_elem(nvar)%pres = 0.d0
+    auxvar%auxvar_elem(nvar)%temp = 0.d0
+    auxvar%auxvar_elem(nvar)%sat = 0.d0
+    auxvar%auxvar_elem(nvar)%den = 0.d0
+    auxvar%auxvar_elem(nvar)%avgmw = 0.d0
+    auxvar%auxvar_elem(nvar)%vis = 0.d0
+    auxvar%auxvar_elem(nvar)%h = 0.d0
+    auxvar%auxvar_elem(nvar)%u = 0.d0
+    auxvar%auxvar_elem(nvar)%pc = 0.d0
+    auxvar%auxvar_elem(nvar)%kvr = 0.d0
+!   auxvar%auxvar_elem(nvar)%xmol = 0.d0
+!   auxvar%auxvar_elem(nvar)%diff = 0.d0
 #if 0
-     aux_var%aux_var_elem(nvar)%dsat_dp = 0.d0
-     aux_var%aux_var_elem(nvar)%dden_dp = 0.d0
-     aux_var%aux_var_elem(nvar)%dkvr_dp = 0.d0
+     auxvar%auxvar_elem(nvar)%dsat_dp = 0.d0
+     auxvar%auxvar_elem(nvar)%dden_dp = 0.d0
+     auxvar%auxvar_elem(nvar)%dkvr_dp = 0.d0
 #endif
   enddo
 
 end subroutine ImmisAuxVarInit
 
 ! ************************************************************************** !
-!
-! ImmisAuxVarCopy: Copies an auxiliary variable
-! author: Chuan Lu
-! date: 10/13/0
-!
-! ************************************************************************** !  
-subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
+
+subroutine ImmisAuxVarCopy(auxvar,auxvar2,option)
+  ! 
+  ! Copies an auxiliary variable
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/0
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(Immis_auxvar_elem_type) :: aux_var, aux_var2
+  type(Immis_auxvar_elem_type) :: auxvar, auxvar2
   type(option_type) :: option
 
-  aux_var2%pres = aux_var%pres
-  aux_var2%temp = aux_var%temp
-  aux_var2%sat = aux_var%sat
-  aux_var2%den = aux_var%den
-  aux_var2%avgmw = aux_var%avgmw
-  aux_var2%vis = aux_var%vis
-  aux_var2%h = aux_var%h
-  aux_var2%u = aux_var%u
-  aux_var2%pc = aux_var%pc
-!  aux_var2%kr = aux_var%kr
-!  aux_var2%dkr_dp = aux_var%dkr_dp
-!  aux_var2%vis = aux_var%vis
-!  aux_var2%dvis_dp = aux_var%dvis_dp
-  aux_var2%kvr = aux_var%kvr
+  auxvar2%pres = auxvar%pres
+  auxvar2%temp = auxvar%temp
+  auxvar2%sat = auxvar%sat
+  auxvar2%den = auxvar%den
+  auxvar2%avgmw = auxvar%avgmw
+  auxvar2%vis = auxvar%vis
+  auxvar2%h = auxvar%h
+  auxvar2%u = auxvar%u
+  auxvar2%pc = auxvar%pc
+!  auxvar2%kr = auxvar%kr
+!  auxvar2%dkr_dp = auxvar%dkr_dp
+!  auxvar2%vis = auxvar%vis
+!  auxvar2%dvis_dp = auxvar%dvis_dp
+  auxvar2%kvr = auxvar%kvr
 #if 0
-  aux_var2%dsat_dp = aux_var%dsat_dp
-  aux_var2%dden_dp = aux_var%dden_dp
-  aux_var2%dden_dt = aux_var%dden_dt
-  aux_var2%dkvr_dp = aux_var%dkvr_dp
-  aux_var2%dkvr_dt = aux_var%dkvr_dt
-  aux_var2%dh_dp = aux_var%dh_dp
-  aux_var2%dh_dt = aux_var%dh_dt
-  aux_var2%du_dp = aux_var%du_dp
-  aux_var2%du_dt = aux_var%du_dt  
+  auxvar2%dsat_dp = auxvar%dsat_dp
+  auxvar2%dden_dp = auxvar%dden_dp
+  auxvar2%dden_dt = auxvar%dden_dt
+  auxvar2%dkvr_dp = auxvar%dkvr_dp
+  auxvar2%dkvr_dt = auxvar%dkvr_dt
+  auxvar2%dh_dp = auxvar%dh_dp
+  auxvar2%dh_dt = auxvar%dh_dt
+  auxvar2%du_dp = auxvar%du_dp
+  auxvar2%du_dt = auxvar%du_dt  
 #endif
-! aux_var2%xmol = aux_var%xmol
-! aux_var2%diff = aux_var%diff
+! auxvar2%xmol = auxvar%xmol
+! auxvar2%diff = auxvar%diff
 
 end subroutine ImmisAuxVarCopy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! ImmisAuxVarCompute_NI: Computes auxiliary variables for each grid cell
-!                        No increments 
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
-subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
+subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
                                    fluid_properties,option)
+  ! 
+  ! ImmisAuxVarCompute_NI: Computes auxiliary variables for each grid cell
+  ! No increments
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   use EOS_Water_module
@@ -257,7 +256,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   type(fluid_property_type) :: fluid_properties
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
-  type(Immis_auxvar_elem_type) :: aux_var
+  type(Immis_auxvar_elem_type) :: auxvar
   PetscInt :: iphase
 
   PetscErrorCode :: ierr
@@ -274,34 +273,34 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
    
   
   
-  aux_var%sat = 0.d0
-  aux_var%h = 0.d0
-  aux_var%u = 0.d0
-  aux_var%den = 0.d0
-  aux_var%avgmw = 0.d0
-! aux_var%vis = 0.d0
-  aux_var%pc = 0.d0
-  aux_var%kvr = 0.d0
-! aux_var%xmol = 0.d0
-! aux_var%diff = 0.d0
+  auxvar%sat = 0.d0
+  auxvar%h = 0.d0
+  auxvar%u = 0.d0
+  auxvar%den = 0.d0
+  auxvar%avgmw = 0.d0
+! auxvar%vis = 0.d0
+  auxvar%pc = 0.d0
+  auxvar%kvr = 0.d0
+! auxvar%xmol = 0.d0
+! auxvar%diff = 0.d0
   kr = 0.d0
  
-  aux_var%pres = x(1)  
-  aux_var%temp = x(2)
-  p = aux_var%pres
-  t = aux_var%temp
+  auxvar%pres = x(1)  
+  auxvar%temp = x(2)
+  p = auxvar%pres
+  t = auxvar%temp
 
   if(x(3)<0.D0)x(3) = 0.D0
   if(x(3)>1.D0)x(3) = 1.D0
   
-  aux_var%sat(2) = x(3)
-  if (aux_var%sat(2) < 0.D0) then
+  auxvar%sat(2) = x(3)
+  if (auxvar%sat(2) < 0.D0) then
 !   print *,'tran:',iphase, x(1:3)
-    aux_var%sat(2) = 0.D0
+    auxvar%sat(2) = 0.D0
   endif
-! if(aux_var%sat(2) > 1.D0) print *,'tran:',iphase, x(1:3)
-  aux_var%sat(1) = 1.D0 - aux_var%sat(2)
-  aux_var%pc(:) = 0.D0
+! if(auxvar%sat(2) > 1.D0) print *,'tran:',iphase, x(1:3)
+  auxvar%sat(1) = 1.D0 - auxvar%sat(2)
+  auxvar%pc(:) = 0.D0
   temp = 1.D-2
 
 
@@ -362,23 +361,23 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 !   henry= 1D0 / (FMWH2O*1.D-3) / (henry*1.D-5)/xphi 
    
    pw = p
-   aux_var%den(2) = dg
-   aux_var%h(2) = hg  
-   aux_var%u(2) = hg - p/dg * option%scale
-   aux_var%pc(2) = 0.D0
+   auxvar%den(2) = dg
+   auxvar%h(2) = hg  
+   auxvar%u(2) = hg - p/dg * option%scale
+   auxvar%pc(2) = 0.D0
    
-!   aux_var%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
+!   auxvar%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
-   aux_var%zco2 = aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
+   auxvar%zco2 = auxvar%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 
   call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
 
-  aux_var%h(1) = hw
-  aux_var%u(1) = aux_var%h(1) - pw /dw_mol*option%scale
-!  aux_var%diff(1:option%nflowspec) = 1D-9
+  auxvar%h(1) = hw
+  auxvar%u(1) = auxvar%h(1) - pw /dw_mol*option%scale
+!  auxvar%diff(1:option%nflowspec) = 1D-9
   ! fluid_properties%diff_base(1)
 
   xm_nacl = option%m_nacl*FMWNACL
@@ -396,9 +395,9 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   x_nacl =  option%m_nacl/(option%m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
 
-  aux_var%avgmw(1) = (1.D0 - x_nacl)*FMWH2O + x_nacl*FMWNACL
-  aux_var%avgmw(2) = FMWCO2
-  aux_var%den(1) = dw_kg/aux_var%avgmw(1)
+  auxvar%avgmw(1) = (1.D0 - x_nacl)*FMWH2O + x_nacl*FMWNACL
+  auxvar%avgmw(2) = FMWCO2
+  auxvar%den(1) = dw_kg/auxvar%avgmw(1)
 
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 ***********
  !  den(1) = 949.7109D0 + p * (0.559684D-6 - 0.00097D-12 * p) &  
@@ -406,38 +405,38 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
  !  den(1) = dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
  !  den(1) = den(1)/avgmw(1)
 !****************************** 2 phase S-Pc-kr relation *********************************
-    aux_var%pc = 0.D0
+    auxvar%pc = 0.D0
 
     if (saturation_function%hysteresis_id <= 0.1D0) then 
-      call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
+      call pckrNH_noderiv(auxvar%sat,auxvar%pc,kr, &
                                    saturation_function, &
                                    option)
       pw=p !-pc(1)
      
     else
-      call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
+      call pckrHY_noderiv(auxvar%sat,auxvar%hysdat,auxvar%pc,kr, &
                                    saturation_function, &
                                    option)
     end if
 
-!   call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
+!   call SaturationFunctionCompute(auxvar%pres,auxvar%sat,kr, &
 !                                   ds_dp,dkr_dp, &
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-    aux_var%kvr(2) = kr(2)/visg     
-    aux_var%kvr(1) = kr(1)/visl
-    aux_var%vis(2) = visg     
-    aux_var%vis(1) = visl
+    auxvar%kvr(2) = kr(2)/visg     
+    auxvar%kvr(1) = kr(1)/visl
+    auxvar%vis(2) = visg     
+    auxvar%vis(1) = visl
   
    
-!  print *,'immis_aux: ',aux_var%den,aux_var%avgmw,aux_var%vis,aux_var%kvr
+!  print *,'immis_aux: ',auxvar%den,auxvar%avgmw,auxvar%vis,auxvar%kvr
 
 end subroutine ImmisAuxVarCompute_NINC
 
+! ************************************************************************** !
 
-
-subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
+subroutine ImmisAuxVarCompute_WINC(x, delx, auxvar,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
@@ -451,7 +450,7 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
   type(fluid_property_type) :: fluid_properties
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
-  type(Immis_auxvar_elem_type) :: aux_var(1:option%nflowdof)
+  type(Immis_auxvar_elem_type) :: auxvar(1:option%nflowdof)
  ! PetscInt :: iphase
 
   PetscInt :: n 
@@ -459,53 +458,55 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
   do n=1, option%nflowdof
      xx=x;  xx(n)=x(n)+ delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
-    call  ImmisAuxVarCompute_NINC(xx,aux_var(n),saturation_function, &
+    call  ImmisAuxVarCompute_NINC(xx,auxvar(n),saturation_function, &
                                    fluid_properties, option)
   enddo
 
 end subroutine ImmisAuxVarCompute_WINC
 
 ! ************************************************************************** !
-!
-! AuxVarDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
-subroutine ImmisAuxVarDestroy(aux_var)
+
+subroutine ImmisAuxVarDestroy(auxvar)
+  ! 
+  ! AuxVarDestroy: Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   implicit none
 
-  type(Immis_auxvar_elem_type) :: aux_var
+  type(Immis_auxvar_elem_type) :: auxvar
   
-! if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
-! nullify(aux_var%xmol)
-! if (associated(aux_var%diff))deallocate(aux_var%diff)
-! nullify(aux_var%diff)
-  if (associated(aux_var%pc))deallocate(aux_var%pc)
-  nullify(aux_var%pc)
-  if (associated(aux_var%sat))deallocate(aux_var%sat)
-  nullify(aux_var%sat)
-  if (associated(aux_var%u))deallocate(aux_var%u)
-  nullify(aux_var%u)
-  if (associated(aux_var%h))deallocate(aux_var%h)
-  nullify(aux_var%h)
-  if (associated(aux_var%den))deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%avgmw)
-  if (associated(aux_var%vis))deallocate(aux_var%vis)
-  nullify(aux_var%vis)
+! if (associated(auxvar%xmol)) deallocate(auxvar%xmol)
+! nullify(auxvar%xmol)
+! if (associated(auxvar%diff))deallocate(auxvar%diff)
+! nullify(auxvar%diff)
+  if (associated(auxvar%pc))deallocate(auxvar%pc)
+  nullify(auxvar%pc)
+  if (associated(auxvar%sat))deallocate(auxvar%sat)
+  nullify(auxvar%sat)
+  if (associated(auxvar%u))deallocate(auxvar%u)
+  nullify(auxvar%u)
+  if (associated(auxvar%h))deallocate(auxvar%h)
+  nullify(auxvar%h)
+  if (associated(auxvar%den))deallocate(auxvar%den)
+  nullify(auxvar%den)
+  if (associated(auxvar%avgmw))deallocate(auxvar%avgmw)
+  nullify(auxvar%avgmw)
+  if (associated(auxvar%vis))deallocate(auxvar%vis)
+  nullify(auxvar%vis)
 end subroutine ImmisAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! RichardsAuxDestroy: Deallocates a richards auxiliary object
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
+
 subroutine ImmisAuxDestroy(aux, option)
+  ! 
+  ! RichardsAuxDestroy: Deallocates a richards auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/14/08
+  ! 
 
   use Option_module
   implicit none
@@ -518,32 +519,32 @@ subroutine ImmisAuxDestroy(aux, option)
   
   do iaux = 1, aux%num_aux
     do ielem= 0, option%nflowdof 
-      call ImmisAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
+      call ImmisAuxVarDestroy(aux%auxvars(iaux)%auxvar_elem(ielem))
     enddo
-    deallocate(aux%aux_vars)
+    deallocate(aux%auxvars)
   enddo
-  nullify(aux%aux_vars)
+  nullify(aux%auxvars)
   
   do iaux = 1, aux%num_aux_bc
     do ielem= 0, option%nflowdof 
-      call ImmisAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
+      call ImmisAuxVarDestroy(aux%auxvars_bc(iaux)%auxvar_elem(ielem))
     enddo
-    deallocate(aux%aux_vars_bc)
+    deallocate(aux%auxvars_bc)
   enddo
-  nullify(aux%aux_vars_bc)
+  nullify(aux%auxvars_bc)
   
   do iaux = 1, aux%num_aux_ss
     do ielem = 0, option%nflowdof 
-      call ImmisAuxVarDestroy(aux%aux_vars_ss(iaux)%aux_var_elem(ielem))
+      call ImmisAuxVarDestroy(aux%auxvars_ss(iaux)%auxvar_elem(ielem))
     enddo
-    deallocate(aux%aux_vars_ss)
+    deallocate(aux%auxvars_ss)
   enddo
-  nullify(aux%aux_vars_ss)
+  nullify(aux%auxvars_ss)
   
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
-  nullify(aux%aux_vars_bc)
+  if (associated(aux%auxvars)) deallocate(aux%auxvars)
+  nullify(aux%auxvars)
+  if (associated(aux%auxvars_bc)) deallocate(aux%auxvars_bc)
+  nullify(aux%auxvars_bc)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

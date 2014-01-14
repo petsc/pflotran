@@ -74,13 +74,14 @@ module Coupler_module
 contains
 
 ! ************************************************************************** !
-!
-! CouplerCreate: Creates a coupler
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function CouplerCreate1()
+  ! 
+  ! CouplerCreate: Creates a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
 
@@ -114,13 +115,14 @@ function CouplerCreate1()
 end function CouplerCreate1
 
 ! ************************************************************************** !
-!
-! CouplerCreate2: Creates a coupler
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function CouplerCreate2(itype)
+  ! 
+  ! Creates a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
 
@@ -146,13 +148,14 @@ function CouplerCreate2(itype)
 end function CouplerCreate2
 
 ! ************************************************************************** !
-!
-! CouplerCreateFromCoupler: Creates a coupler
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 function CouplerCreateFromCoupler(coupler)
+  ! 
+  ! Creates a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -189,13 +192,14 @@ function CouplerCreateFromCoupler(coupler)
 end function CouplerCreateFromCoupler
 
 ! ************************************************************************** !
-!
-! CouplerInitList: Initializes a coupler list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine CouplerInitList(list)
+  ! 
+  ! Initializes a coupler list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
 
@@ -209,13 +213,14 @@ subroutine CouplerInitList(list)
 end subroutine CouplerInitList
 
 ! ************************************************************************** !
-!
-! CouplerRead: Reads a coupler from the input file
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine CouplerRead(coupler,input,option)
+  ! 
+  ! Reads a coupler from the input file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -258,13 +263,14 @@ subroutine CouplerRead(coupler,input,option)
 end subroutine CouplerRead
 
 ! ************************************************************************** !
-!
-! CouplerAddToList: Adds a new coupler to a coupler list
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine CouplerAddToList(new_coupler,list)
+  ! 
+  ! Adds a new coupler to a coupler list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -280,13 +286,14 @@ subroutine CouplerAddToList(new_coupler,list)
 end subroutine CouplerAddToList
 
 ! ************************************************************************** !
-!
-! CouplerListComputeConnections: computes connectivity for a list of couplers
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine CouplerListComputeConnections(grid,option,coupler_list)
+  ! 
+  ! computes connectivity for a list of couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Option_module
   use Grid_module
@@ -327,13 +334,14 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
 end subroutine CouplerListComputeConnections
 
 ! ************************************************************************** !
-!
-! CouplerComputeConnections: computes connectivity coupler to a grid
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine CouplerComputeConnections(grid,option,coupler)
+  ! 
+  ! computes connectivity coupler to a grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -439,13 +447,14 @@ subroutine CouplerComputeConnections(grid,option,coupler)
 end subroutine CouplerComputeConnections
 
 ! ************************************************************************** !
-!
-! CouplerComputeConnections: computes connectivity coupler to a grid
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
+
 subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
+  ! 
+  ! CouplerComputeConnections: computes connectivity coupler to a grid
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/20/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -470,7 +479,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   type(region_type), pointer :: region
 
   type(mfd_type), pointer :: mfd_aux
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
 
   PetscErrorCode :: ierr
   PetscInt, pointer :: local_faces(:)
@@ -514,10 +523,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   else 
     do icell = 1, region%num_cells
       cell_id_local = region%cell_ids(icell)
-      aux_var => mfd_aux%aux_vars(cell_id_local)
+      auxvar => mfd_aux%auxvars(cell_id_local)
 
-      do iface = 1,aux_var%numfaces
-        face_id_ghosted = aux_var%face_id_gh(iface)
+      do iface = 1,auxvar%numfaces
+        face_id_ghosted = auxvar%face_id_gh(iface)
         face_id_local = grid%fG2L(face_id_ghosted)
  
         if (face_id_local > 0) then
@@ -544,10 +553,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
     do icell = 1, region%num_cells
     
       cell_id_local = region%cell_ids(icell)
-      aux_var => mfd_aux%aux_vars(cell_id_local)
+      auxvar => mfd_aux%auxvars(cell_id_local)
 
-      do iface = 1,aux_var%numfaces
-        face_id_ghosted = aux_var%face_id_gh(iface)
+      do iface = 1,auxvar%numfaces
+        face_id_ghosted = auxvar%face_id_gh(iface)
         face_id_local = grid%fG2L(face_id_ghosted)
 
         if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
@@ -626,10 +635,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
     do icell = 1, region%num_cells
     
       cell_id_local = region%cell_ids(icell)
-      aux_var => mfd_aux%aux_vars(cell_id_local)
+      auxvar => mfd_aux%auxvars(cell_id_local)
 
-      do iface = 1,aux_var%numfaces
-        face_id_ghosted = aux_var%face_id_gh(iface)
+      do iface = 1,auxvar%numfaces
+        face_id_ghosted = auxvar%face_id_gh(iface)
         face_id_local = grid%fG2L(face_id_ghosted)
 
         if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
@@ -667,7 +676,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 end subroutine CouplerComputeConnectionsFaces
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine CouplerAssignBCtoCells(grid,option,coupler)
 
   use Connection_module
@@ -698,7 +707,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   type(mfd_type), pointer :: mfd_aux
   PetscErrorCode :: ierr
   PetscInt, pointer :: local_faces(:)
-  type(mfd_auxvar_type), pointer :: aux_var
+  type(mfd_auxvar_type), pointer :: auxvar
   PetscInt :: conn_id, stride, iface_type, e2n_size
   PetscScalar, pointer :: e2n_local(:)
   type(connection_set_type), pointer :: conn_set_ptr
@@ -731,9 +740,9 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
 
   do icell = 1, region%num_cells
     cell_id_local = region%cell_ids(icell)
-    aux_var => mfd_aux%aux_vars(cell_id_local)
-    do iface = 1,aux_var%numfaces
-      face_id_ghosted = aux_var%face_id_gh(iface)
+    auxvar => mfd_aux%auxvars(cell_id_local)
+    do iface = 1,auxvar%numfaces
+      face_id_ghosted = auxvar%face_id_gh(iface)
       if (coupler%faces_set(icell) == face_id_ghosted) then
         e2n_local((cell_id_local-1)*stride + iface) = -coupler%flow_condition%itype(RICHARDS_PRESSURE_DOF)
       end if
@@ -747,14 +756,15 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
 end subroutine CouplerAssignBCtoCells
 
 ! ************************************************************************** !
-!
-! CouplerGetNumConnectionsInList: Returns the number of connections associated
-!                                 with all couplers in the list
-! author: Glenn Hammond
-! date: 11/19/07
-!
-! ************************************************************************** !
+
 function CouplerGetNumConnectionsInList(list)
+  ! 
+  ! Returns the number of connections associated
+  ! with all couplers in the list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/19/07
+  ! 
 
   implicit none
   
@@ -776,17 +786,18 @@ function CouplerGetNumConnectionsInList(list)
 end function CouplerGetNumConnectionsInList
 
 ! ************************************************************************** !
-!
-! CouplerGetNumBoundConnectionsInListMFD: Returns the number of boundary connections associated
-!	                                    with all couplers in the list. Establish connections between
-!   	                                 local face_id and bound_face_id.
-!										 (Since boundary fluxes allocated only for active boundary faces
-!											they have different indexing
-! author: Daniil Svyatskiy
-! date: 11/04/10
-!
-! ************************************************************************** !
+
 function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
+  ! 
+  ! Returns the number of boundary connections associated
+  ! with all couplers in the list. Establish connections between
+  ! local face_id and bound_face_id.
+  ! (Since boundary fluxes allocated only for active boundary faces
+  ! they have different indexing
+  ! 
+  ! Author: Daniil Svyatskiy
+  ! Date: 11/04/10
+  ! 
 
   use Grid_module
   use Option_module
@@ -832,14 +843,15 @@ function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
 end function CouplerGetNumBoundConnectionsInListMFD 
 
 ! ************************************************************************** !
-!
-! CouplerGetPtrFromList: Returns a pointer to the coupler matching 
-!                        coupler_name
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 function CouplerGetPtrFromList(coupler_name,coupler_list)
+  ! 
+  ! Returns a pointer to the coupler matching
+  ! coupler_name
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   use String_module
 
@@ -869,13 +881,14 @@ function CouplerGetPtrFromList(coupler_name,coupler_list)
 end function CouplerGetPtrFromList
 
 ! ************************************************************************** !
-!
-! CouplerDestroyList: Deallocates a list of couplers
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine CouplerDestroyList(coupler_list)
+  ! 
+  ! Deallocates a list of couplers
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
@@ -903,15 +916,16 @@ subroutine CouplerDestroyList(coupler_list)
   nullify(coupler_list)
 
 end subroutine CouplerDestroyList
-  
+
 ! ************************************************************************** !
-!
-! CouplerDestroy: Destroys a coupler
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
+
 subroutine CouplerDestroy(coupler)
+  ! 
+  ! Destroys a coupler
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   

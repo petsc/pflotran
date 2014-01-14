@@ -65,13 +65,14 @@ module PM_RT_class
 contains
 
 ! ************************************************************************** !
-!
-! PMRTCreate: Creates reactive transport process models shell
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMRTCreate()
+  ! 
+  ! Creates reactive transport process models shell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -103,13 +104,14 @@ function PMRTCreate()
 end function PMRTCreate
 
 ! ************************************************************************** !
-!
-! PMRTInit: Initializes variables associated with reactive transport
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTInit(this)
+  ! 
+  ! Initializes variables associated with reactive transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
 #ifndef SIMPLIFY
   use Discretization_module
@@ -143,13 +145,12 @@ subroutine PMRTInit(this)
 end subroutine PMRTInit
 
 ! ************************************************************************** !
-!
-! PMRTSetRealization: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTSetRealization(this,realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Realization_class  
 
@@ -175,13 +176,12 @@ subroutine PMRTSetRealization(this,realization)
 end subroutine PMRTSetRealization
 
 ! ************************************************************************** !
-!
-! PMRTInitializeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTInitializeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTInitializeTimestep, &
                                         RTUpdateTransportCoefs
@@ -235,13 +235,12 @@ subroutine PMRTInitializeTimestep(this)
 end subroutine PMRTInitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMRTPreSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTPreSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTUpdateTransportCoefs, &
                                         RTUpdateAuxVars
@@ -272,7 +271,7 @@ subroutine PMRTPreSolve(this)
       call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 !       The below is set within RTUpdateAuxVarsPatch() when 
 !         PETSC_TRUE,PETSC_TRUE,* are passed
-!       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
+!       patch%aux%RT%auxvars_up_to_date = PETSC_TRUE 
   endif
   if (this%realization%reaction%use_log_formulation) then
     call VecCopy(this%realization%field%tran_xx, &
@@ -283,13 +282,12 @@ subroutine PMRTPreSolve(this)
 end subroutine PMRTPreSolve
 
 ! ************************************************************************** !
-!
-! PMRTPostSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTPostSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -302,13 +300,12 @@ subroutine PMRTPostSolve(this)
 end subroutine PMRTPostSolve
 
 ! ************************************************************************** !
-!
-! PMRTFinalizeTimestep: 
-! author: Glenn Hammond
-! date: 04/03/13
-!
-! ************************************************************************** !
+
 subroutine PMRTFinalizeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/03/13
+  ! 
 
   use Reactive_Transport_module, only : RTMaxChange
   use Global_module
@@ -337,13 +334,14 @@ subroutine PMRTFinalizeTimestep(this)
 end subroutine PMRTFinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMRichardsAcceptSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMRTAcceptSolution(this)
+  ! 
+  ! PMRichardsAcceptSolution:
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -360,14 +358,13 @@ function PMRTAcceptSolution(this)
 end function PMRTAcceptSolution
 
 ! ************************************************************************** !
-!
-! PMRTUpdateTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
                               num_newton_iterations,tfac)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -404,13 +401,14 @@ subroutine PMRTUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMRTUpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMRTInitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMRTInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Reactive_Transport_module, only : RTUpdateEquilibriumState, &
                                         RTJumpStartKineticSorption
@@ -452,13 +450,14 @@ recursive subroutine PMRTInitializeRun(this)
 end subroutine PMRTInitializeRun
 
 ! ************************************************************************** !
-!
-! PMRTFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMRTFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -477,13 +476,12 @@ recursive subroutine PMRTFinalizeRun(this)
 end subroutine PMRTFinalizeRun
 
 ! ************************************************************************** !
-!
-! PMRTResidual: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTResidual
 
@@ -504,13 +502,12 @@ subroutine PMRTResidual(this,snes,xx,r,ierr)
 end subroutine PMRTResidual
 
 ! ************************************************************************** !
-!
-! PMRTJacobian: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTJacobian
 
@@ -530,15 +527,14 @@ subroutine PMRTJacobian(this,snes,xx,A,B,flag,ierr)
   call RTJacobian(snes,xx,A,B,flag,this%realization,ierr)
 
 end subroutine PMRTJacobian
-    
+
 ! ************************************************************************** !
-!
-! PMRTCheckUpdatePre: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTCheckUpdate
 
@@ -560,16 +556,15 @@ subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMRTCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMRTCheckUpdatePost: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
 !  use Reactive_Transport_module, only : RTCheckUpdatePost
 
@@ -592,15 +587,14 @@ subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 !                               P1_changed,this%realization,ierr)
 
 end subroutine PMRTCheckUpdatePost
-  
+
 ! ************************************************************************** !
-!
-! PMRTTimeCut: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTTimeCut(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTTimeCut
 
@@ -621,13 +615,12 @@ subroutine PMRTTimeCut(this)
 end subroutine PMRTTimeCut
 
 ! ************************************************************************** !
-!
-! PMRTUpdateSolution1: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTUpdateSolution1(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module
   use Condition_module
@@ -642,13 +635,12 @@ subroutine PMRTUpdateSolution1(this)
 end subroutine PMRTUpdateSolution1
 
 ! ************************************************************************** !
-!
-! PMRTUpdateSolution2: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTUpdateSolution2(this, update_kinetics)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module
   use Condition_module
@@ -693,13 +685,12 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
 end subroutine PMRTUpdateSolution2     
 
 ! ************************************************************************** !
-!
-! PMRTMaxChange: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTMaxChange(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTMaxChange
 
@@ -714,15 +705,14 @@ subroutine PMRTMaxChange(this)
   call RTMaxChange(this%realization)
 
 end subroutine PMRTMaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMRTComputeMassBalance: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTComputeMassBalance
 
@@ -742,13 +732,14 @@ subroutine PMRTComputeMassBalance(this,mass_balance_array)
 end subroutine PMRTComputeMassBalance
 
 ! ************************************************************************** !
-!
-! SetTranWeights: Sets the weights at t0 or t1 for transport
-! author: Glenn Hammond
-! date: 01/17/11; 04/03/13
-!
-! ************************************************************************** !
+
 subroutine SetTranWeights(this)
+  ! 
+  ! Sets the weights at t0 or t1 for transport
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/17/11; 04/03/13
+  ! 
 
   use Option_module
 
@@ -772,13 +763,14 @@ subroutine SetTranWeights(this)
 end subroutine SetTranWeights
 
 ! ************************************************************************** !
-!
-! PMRTCheckpoint: Checkpoints flow reactive transport process model
-! author: Glenn Hammond
-! date: 07/29/13
-!
-! ************************************************************************** !
+
 subroutine PMRTCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints flow reactive transport process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/29/13
+  ! 
 
   use Option_module
   use Realization_class
@@ -800,6 +792,9 @@ subroutine PMRTCheckpoint(this,viewer)
 #include "finclude/petscbag.h"      
 
   interface PetscBagGetData
+
+! ************************************************************************** !
+
     subroutine PetscBagGetData(bag,header,ierr)
       import :: pm_rt_header_type
       implicit none
@@ -901,13 +896,14 @@ subroutine PMRTCheckpoint(this,viewer)
 end subroutine PMRTCheckpoint
 
 ! ************************************************************************** !
-!
-! PMRTRestart: Restarts flow reactive transport process model
-! author: Glenn Hammond
-! date: 07/29/13
-!
-! ************************************************************************** !
+
 subroutine PMRTRestart(this,viewer)
+  ! 
+  ! Restarts flow reactive transport process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/29/13
+  ! 
 
   use Option_module
   use Realization_class
@@ -930,6 +926,9 @@ subroutine PMRTRestart(this,viewer)
 #include "finclude/petscbag.h"      
 
   interface PetscBagGetData
+
+! ************************************************************************** !
+
     subroutine PetscBagGetData(bag,header,ierr)
       import :: pm_rt_header_type
       implicit none
@@ -1042,13 +1041,14 @@ subroutine PMRTRestart(this,viewer)
 end subroutine PMRTRestart
 
 ! ************************************************************************** !
-!
-! PMRTDestroy: Destroys RT process model
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRTDestroy(this)
+  ! 
+  ! Destroys RT process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Reactive_Transport_module, only : RTDestroy
 

@@ -43,14 +43,14 @@ module Surface_TH_module
 contains
 
 ! ************************************************************************** !
-!> This routine sets up surface_TH_type
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSetup(surf_realization)
+  ! 
+  ! This routine sets up surface_TH_type
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -69,9 +69,9 @@ subroutine SurfaceTHSetup(surf_realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
-  type(Surface_TH_auxvar_type), pointer :: Surf_TH_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: Surf_TH_aux_vars_bc(:)
-  type(Surface_TH_auxvar_type), pointer :: Surf_TH_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars_ss(:)
   type(fluid_property_type), pointer :: cur_fluid_property
   type(coupler_type), pointer :: initial_condition
   PetscReal :: area_per_vol
@@ -86,17 +86,17 @@ subroutine SurfaceTHSetup(surf_realization)
     
   patch%surf_aux%SurfaceTH => SurfaceTHAuxCreate(option)
 
-  ! allocate aux_var data structures for all grid cells
-  allocate(Surf_TH_aux_vars(grid%ngmax))
+  ! allocate auxvar data structures for all grid cells
+  allocate(Surf_TH_auxvars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call SurfaceTHAuxVarInit(Surf_TH_aux_vars(ghosted_id),option)
+    call SurfaceTHAuxVarInit(Surf_TH_auxvars(ghosted_id),option)
   enddo
 
-  patch%surf_aux%SurfaceTH%aux_vars => Surf_TH_aux_vars
+  patch%surf_aux%SurfaceTH%auxvars => Surf_TH_auxvars
   patch%surf_aux%SurfaceTH%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them
+  ! auxvar data structures for them
   boundary_condition => patch%boundary_conditions%first
 
   sum_connection = 0    
@@ -108,22 +108,22 @@ subroutine SurfaceTHSetup(surf_realization)
   enddo
 
   if (sum_connection > 0) then 
-    allocate(Surf_TH_aux_vars_bc(sum_connection))
+    allocate(Surf_TH_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
-      call SurfaceTHAuxVarInit(Surf_TH_aux_vars_bc(iconn),option)
+      call SurfaceTHAuxVarInit(Surf_TH_auxvars_bc(iconn),option)
     enddo
-    patch%surf_aux%SurfaceTH%aux_vars_bc => Surf_TH_aux_vars_bc
+    patch%surf_aux%SurfaceTH%auxvars_bc => Surf_TH_auxvars_bc
   endif
   patch%surf_aux%SurfaceTH%num_aux_bc = sum_connection
 
   ! Create aux vars for source/sink
   sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
   if (sum_connection > 0) then
-    allocate(Surf_TH_aux_vars_ss(sum_connection))
+    allocate(Surf_TH_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
-      call SurfaceTHAuxVarInit(Surf_TH_aux_vars_ss(iconn),option)
+      call SurfaceTHAuxVarInit(Surf_TH_auxvars_ss(iconn),option)
     enddo
-    patch%surf_aux%SurfaceTH%aux_vars_ss => Surf_TH_aux_vars_ss
+    patch%surf_aux%SurfaceTH%auxvars_ss => Surf_TH_auxvars_ss
   endif
   patch%surf_aux%SurfaceTH%num_aux_ss = sum_connection
 
@@ -132,14 +132,14 @@ subroutine SurfaceTHSetup(surf_realization)
 end subroutine SurfaceTHSetup
 
 ! ************************************************************************** !
-!> This routine adds variables to be printed to list
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSetPlotVariables(surf_realization)
+  ! 
+  ! This routine adds variables to be printed to list
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
   
   use Surface_Realization_class
   use Output_Aux_module
@@ -172,15 +172,15 @@ subroutine SurfaceTHSetPlotVariables(surf_realization)
 end subroutine SurfaceTHSetPlotVariables
 
 ! ************************************************************************** !
-!> This routine gets latest states (P,T) from subsurface model and updates
-!! boundary condition for surface flow model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
+  ! 
+  ! This routine gets latest states (P,T) from subsurface model and updates
+  ! boundary condition for surface flow model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -223,7 +223,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
   type(surface_field_type),pointer    :: surf_field
   type(dm_ptr_type), pointer          :: dm_ptr
   type(connection_set_type), pointer  :: cur_connection_set
-  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(global_auxvar_type), pointer :: global_auxvars(:)  
   
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
@@ -250,7 +250,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
   field      => realization%field
   surf_grid  => surf_realization%discretization%grid
   surf_field => surf_realization%surf_field
-  global_aux_vars => patch%aux%Global%aux_vars
+  global_auxvars => patch%aux%Global%auxvars
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,ONEDOF)
   
@@ -298,7 +298,7 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
           iend = ghosted_id*option%nflowdof
           istart = iend-option%nflowdof+1
-          temp_p(iconn) = global_aux_vars(ghosted_id)%temp(1)
+          temp_p(iconn) = global_auxvars(ghosted_id)%temp(1)
         enddo
         call VecRestoreArrayF90(surf_field%subsurf_temp_vec_1dof,temp_p,ierr)
 
@@ -320,16 +320,16 @@ subroutine SurfaceTHUpdateSurfBC(realization,surf_realization)
 
 end subroutine SurfaceTHUpdateSurfBC
 
-! RTM: TODO: Figure out if this needs to be modified for surface freezing.
 ! ************************************************************************** !
-!> This routine updates source/sink term for the subsurface model
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
+  ! 
+  ! RTM: TODO: Figure out if this needs to be modified for surface freezing.
+  ! This routine updates source/sink term for the subsurface model
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -438,15 +438,15 @@ subroutine SurfaceTHUpdateSubsurfSS(realization,surf_realization,dt)
 end subroutine SurfaceTHUpdateSubsurfSS
 
 ! ************************************************************************** !
-!> This routine creates a PETSc vector to data between surface and subsurface
-!! model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
+  ! 
+  ! This routine creates a PETSc vector to data between surface and subsurface
+  ! model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -543,14 +543,15 @@ subroutine SurfaceTHCreateSurfSubsurfVec(realization,surf_realization)
 end subroutine SurfaceTHCreateSurfSubsurfVec
 
 ! ************************************************************************** !
-!
-! This routine creates a MPI vector to exchanged data between surface and 
-! subsurface model.
-! author: Gautam Bisht, LBL
-! date: 07/29/13
-!
-! ************************************************************************** !
+
 subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
+  ! 
+  ! This routine creates a MPI vector to exchanged data between surface and
+  ! subsurface model.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 07/29/13
+  ! 
 
   use Grid_module
   use String_module
@@ -648,15 +649,15 @@ subroutine SurfaceTHCreateSurfSubsurfVecNew(realization, surf_realization)
 end subroutine SurfaceTHCreateSurfSubsurfVecNew
 
 ! ************************************************************************** !
-!> This routine computes the flux of water and energy from surface to 
-!! subsurface model.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
+  ! 
+  ! This routine computes the flux of water and energy from surface to
+  ! subsurface model.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -700,8 +701,8 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   type(surface_field_type),pointer    :: surf_field
   type(dm_ptr_type), pointer          :: dm_ptr
   type(connection_set_type), pointer  :: cur_connection_set
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
   
   Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
@@ -764,8 +765,8 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
   field      => realization%field
   surf_grid  => surf_realization%discretization%grid
   surf_field => surf_realization%surf_field
-  surf_global_aux_vars => surf_patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_aux_vars => surf_patch%surf_aux%SurfaceTH%aux_vars
+  surf_global_auxvars => surf_patch%surf_aux%SurfaceGlobal%auxvars
+  surf_auxvars => surf_patch%surf_aux%SurfaceTH%auxvars
 
   call VecGetArrayF90(surf_field%press_subsurf,press_sub_p,ierr)
   call VecGetArrayF90(surf_field%temp_subsurf,temp_sub_p,ierr)
@@ -825,13 +826,13 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         ghosted_id = surf_grid%nL2G(local_id)
 
         ! Compute densities:
-        call EOSWaterdensity(surf_global_aux_vars(ghosted_id)%temp(1), &
+        call EOSWaterdensity(surf_global_auxvars(ghosted_id)%temp(1), &
                      option%reference_pressure,den_surf_kg)
         ! Now modify den_surf_kg to account for frozen fraction.
         ! WARNING: This assumes density of ice at atmospheric pressure;
         ! TODO: Need to actually compute this to handle the general case.
-        den_surf_kg = surf_aux_vars(ghosted_id)%unfrozen_fraction*den_surf_kg + &
-                      (1-surf_aux_vars(ghosted_id)%unfrozen_fraction)*den_surf_ice_kg
+        den_surf_kg = surf_auxvars(ghosted_id)%unfrozen_fraction*den_surf_kg + &
+                      (1-surf_auxvars(ghosted_id)%unfrozen_fraction)*den_surf_ice_kg
         call EOSWaterdensity(temp_sub_p(local_id),press_sub_p(local_id),den_sub_kg)
         den_aveg = (den_surf_kg + den_sub_kg)/2.d0
 
@@ -883,13 +884,13 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
           ! Note that we limit the mass exchange when surface ice is present 
           ! (as the frozen fraction is immobile) by multiplying by the 
           ! unfrozen fraction.
-          if ( abs(v_darcy) > surf_aux_vars(ghosted_id)%unfrozen_fraction * &
+          if ( abs(v_darcy) > surf_auxvars(ghosted_id)%unfrozen_fraction * &
                               xx_p(local_id)/option%surf_flow_dt ) then
-            v_darcy = surf_aux_vars(ghosted_id)%unfrozen_fraction * &
+            v_darcy = surf_auxvars(ghosted_id)%unfrozen_fraction * &
                       (-xx_p(local_id)/option%surf_flow_dt)
             v_darcy_limit=PETSC_TRUE
           endif
-          temp_half = surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0
+          temp_half = surf_global_auxvars(ghosted_id)%temp(1) + 273.15d0
         else
           ! Exfiltration is occuring
           temp_half = temp_sub_p(local_id) + 273.15d0
@@ -906,7 +907,7 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
         if(abs(v_darcy)>v_darcy_max) v_darcy_max = v_darcy
 
         ! Heat flux associated with mass flux
-        Cwi = surf_aux_vars(ghosted_id)%Cwi
+        Cwi = surf_auxvars(ghosted_id)%Cwi
         exch_p((local_id-1)*option%nflowdof+2) = &
           exch_p((local_id-1)*option%nflowdof+2) + &
           den_aveg*v_darcy*temp_half*Cwi*area_p(local_id)*option%surf_flow_dt
@@ -921,12 +922,12 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
              k_eff_up = ckwet_p(local_id)*Ke_up + ckice_p(local_id)*Ke_fr_up + &
                   ckdry_p(local_id)*(1.d0 - Ke_up - Ke_fr_up)
           endif
-          k_eff_dn = surf_aux_vars(ghosted_id)%k_therm
+          k_eff_dn = surf_auxvars(ghosted_id)%k_therm
 
           Dk_eff = k_eff_up*k_eff_dn/(k_eff_up*hw/2.d0 + &
                                       k_eff_dn*dist_p(local_id))
 
-          dtemp = temp_sub_p(local_id) - surf_global_aux_vars(ghosted_id)%temp(1)
+          dtemp = temp_sub_p(local_id) - surf_global_auxvars(ghosted_id)%temp(1)
           exch_p(local_id*option%nflowdof) = exch_p(local_id*option%nflowdof) + &
             area_p(local_id)*Dk_eff*dTemp*option%surf_flow_dt
         endif
@@ -985,15 +986,15 @@ subroutine SurfaceTHSurf2SubsurfFlux(realization,surf_realization)
 end subroutine SurfaceTHSurf2SubsurfFlux
 
 ! ************************************************************************** !
-!> This routine get soil properties of the top-most soil layer from the 
-!! subsurface domain.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 02/28/13
-! ************************************************************************** !
+
 subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
+  ! 
+  ! This routine get soil properties of the top-most soil layer from the
+  ! subsurface domain.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 02/28/13
+  ! 
 
   use Grid_module
   use String_module
@@ -1335,14 +1336,12 @@ subroutine SurfaceTHGetSubsurfProp(realization,surf_realization)
 end subroutine SurfaceTHGetSubsurfProp
 
 ! ************************************************************************** !
-!> This routine provides the function evaluation for PETSc TSSolve()
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
+
 subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
+  ! 
+  ! This routine provides the function evaluation for PETSc TSSolve()
+  ! Author: Gautam Bisht, LBNL
+  ! 
 
   use EOS_Water_module
   use Connection_module
@@ -1375,11 +1374,11 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
 
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
@@ -1409,11 +1408,11 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   option => surf_realization%option
   surf_field => surf_realization%surf_field
 
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
 
   surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%iter_count < 10) then
@@ -1434,7 +1433,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! RTM: This includes calculation of the accumulation terms, correct?
   call SurfaceTHUpdateAuxVars(surf_realization)
   ! override flags since they will soon be out of date  
-  patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_FALSE
+  patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_FALSE
 
   call VecGetArrayF90(ff,ff_p, ierr)
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
@@ -1468,12 +1467,12 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      call SurfaceTHFlux(surf_aux_vars(ghosted_id_up), &
-                         surf_global_aux_vars(ghosted_id_up), &
+      call SurfaceTHFlux(surf_auxvars(ghosted_id_up), &
+                         surf_global_auxvars(ghosted_id_up), &
                          zc(ghosted_id_up), &
                          mannings_loc_p(ghosted_id_up), &
-                         surf_aux_vars(ghosted_id_dn), &
-                         surf_global_aux_vars(ghosted_id_dn), &
+                         surf_auxvars(ghosted_id_dn), &
+                         surf_global_auxvars(ghosted_id_dn), &
                          zc(ghosted_id_dn), &
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
@@ -1519,8 +1518,8 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_aux_vars_bc(sum_connection), &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_auxvars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -1587,9 +1586,9 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
       ! I think using the weighted average of liquid and ice densities and Cwi 
       ! is correct here, but I should check.
       ff_p(iend) = ff_p(iend) + esrc + &
-                    surf_global_aux_vars_ss(local_id)%den_kg(1)* &
-                    (surf_global_aux_vars_ss(local_id)%temp(1) + 273.15d0)* &
-                    surf_aux_vars(local_id)%Cwi* &
+                    surf_global_auxvars_ss(local_id)%den_kg(1)* &
+                    (surf_global_auxvars_ss(local_id)%temp(1) + 273.15d0)* &
+                    surf_auxvars(local_id)%Cwi* &
                     qsrc/area_p(local_id)
     enddo
     source_sink => source_sink%next
@@ -1616,14 +1615,12 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 end subroutine SurfaceTHRHSFunction
 
 ! ************************************************************************** !
-!> This routine maximum allowable 'dt' for explicit time scheme.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date:
-! ************************************************************************** !
+
 subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
+  ! 
+  ! This routine maximum allowable 'dt' for explicit time scheme.
+  ! Author: Gautam Bisht, LBNL
+  ! 
 
   use EOS_Water_module
   use Connection_module
@@ -1650,10 +1647,10 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   type(connection_set_list_type), pointer   :: connection_set_list
   type(connection_set_type), pointer        :: cur_connection_set
 
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
@@ -1677,10 +1674,10 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   option => surf_realization%option
   surf_field => surf_realization%surf_field
 
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
 
   call VecGetArrayF90(surf_field%mannings_loc,mannings_loc_p, ierr)
   call VecGetArrayF90(surf_field%area,area_p,ierr)
@@ -1714,12 +1711,12 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-      call SurfaceTHFlux(surf_aux_vars(ghosted_id_up), &
-                         surf_global_aux_vars(ghosted_id_up), &
+      call SurfaceTHFlux(surf_auxvars(ghosted_id_up), &
+                         surf_global_auxvars(ghosted_id_up), &
                          zc(ghosted_id_up), &
                          mannings_loc_p(ghosted_id_up), &
-                         surf_aux_vars(ghosted_id_dn), &
-                         surf_global_aux_vars(ghosted_id_dn), &
+                         surf_auxvars(ghosted_id_dn), &
+                         surf_global_auxvars(ghosted_id_dn), &
                          zc(ghosted_id_dn), &
                          mannings_loc_p(ghosted_id_dn), &
                          dist, cur_connection_set%area(iconn), &
@@ -1756,8 +1753,8 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
       call SurfaceTHBCFlux(boundary_condition%flow_condition%itype, &
-                         surf_aux_vars_bc(sum_connection), &
-                         surf_global_aux_vars_bc(sum_connection), &
+                         surf_auxvars_bc(sum_connection), &
+                         surf_global_auxvars_bc(sum_connection), &
                          slope_dn, &
                          mannings_loc_p(ghosted_id_dn), &
                          cur_connection_set%area(iconn), &
@@ -1780,20 +1777,13 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 end subroutine SurfaceTHComputeMaxDt
 
 ! ************************************************************************** !
-!> This routine computes the internal flux term for under
-!! diffusion-wave assumption.
-!!
-!> @author
-!! Gautam Bisht, LBL
-!!
-!! date: 08/03/12
-! ************************************************************************** !
-subroutine SurfaceTHFlux(surf_aux_var_up, &
-                         surf_global_aux_var_up, &
+
+subroutine SurfaceTHFlux(surf_auxvar_up, &
+                         surf_global_auxvar_up, &
                          zc_up, &
                          mannings_up, &
-                         surf_aux_var_dn, &
-                         surf_global_aux_var_dn, &
+                         surf_auxvar_dn, &
+                         surf_global_auxvar_dn, &
                          zc_dn, &
                          mannings_dn, &
                          dist, &
@@ -1801,6 +1791,13 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
                          option, &
                          vel, &
                          Res)
+  ! 
+  ! This routine computes the internal flux term for under
+  ! diffusion-wave assumption.
+  ! 
+  ! Author: Gautam Bisht, LBL
+  ! Date: 08/03/12
+  ! 
 
   use Surface_TH_Aux_module
   use Surface_Global_Aux_module
@@ -1809,10 +1806,10 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   implicit none
 
   type(option_type) :: option
-  type(Surface_TH_auxvar_type) :: surf_aux_var_up
-  type(Surface_TH_auxvar_type) :: surf_aux_var_dn
-  type(surface_global_auxvar_type) :: surf_global_aux_var_up
-  type(surface_global_auxvar_type) :: surf_global_aux_var_dn
+  type(Surface_TH_auxvar_type) :: surf_auxvar_up
+  type(Surface_TH_auxvar_type) :: surf_auxvar_dn
+  type(surface_global_auxvar_type) :: surf_global_auxvar_up
+  type(surface_global_auxvar_type) :: surf_global_auxvar_dn
   PetscReal :: zc_up, zc_dn
   PetscReal :: mannings_up, mannings_dn
 
@@ -1837,24 +1834,24 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
   flux = 0.d0
 
   ! Flow equation
-  head_up = surf_global_aux_var_up%head(1) + zc_up
-  head_dn = surf_global_aux_var_dn%head(1) + zc_dn
+  head_up = surf_global_auxvar_up%head(1) + zc_up
+  head_dn = surf_global_auxvar_dn%head(1) + zc_dn
 
   if (head_up>head_dn) then
     mannings_half = mannings_up
-    temp_half = surf_global_aux_var_up%temp(1) + 273.15d0
-    unfrozen_fraction_half = surf_aux_var_up%unfrozen_fraction
-    if (surf_global_aux_var_up%head(1)>eps) then
-      hw_half = surf_global_aux_var_up%head(1)
+    temp_half = surf_global_auxvar_up%temp(1) + 273.15d0
+    unfrozen_fraction_half = surf_auxvar_up%unfrozen_fraction
+    if (surf_global_auxvar_up%head(1)>eps) then
+      hw_half = surf_global_auxvar_up%head(1)
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
-    temp_half = surf_global_aux_var_dn%temp(1) + 273.15d0
-    unfrozen_fraction_half = surf_aux_var_dn%unfrozen_fraction
-    if (surf_global_aux_var_dn%head(1)>eps) then
-      hw_half = surf_global_aux_var_dn%head(1)
+    temp_half = surf_global_auxvar_dn%temp(1) + 273.15d0
+    unfrozen_fraction_half = surf_auxvar_dn%unfrozen_fraction
+    if (surf_global_auxvar_dn%head(1)>eps) then
+      hw_half = surf_global_auxvar_dn%head(1)
     else
       hw_half = 0.d0
     endif
@@ -1901,16 +1898,16 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
 
   ! Average density
   ! Here we only consider the LIQUID fraction.
-  den_aveg = (surf_aux_var_up%den_water_kg + &
-              surf_aux_var_dn%den_water_kg)/2.d0
-  den_aveg = (surf_global_aux_var_up%den_kg(1) + &
-              surf_global_aux_var_dn%den_kg(1))/2.d0
+  den_aveg = (surf_auxvar_up%den_water_kg + &
+              surf_auxvar_dn%den_water_kg)/2.d0
+  den_aveg = (surf_global_auxvar_up%den_kg(1) + &
+              surf_global_auxvar_dn%den_kg(1))/2.d0
   ! Temperature difference
-  dtemp = surf_global_aux_var_up%temp(1) - surf_global_aux_var_dn%temp(1)
+  dtemp = surf_global_auxvar_up%temp(1) - surf_global_auxvar_dn%temp(1)
 
   ! Note, Cw and k_therm are same for up and downwind
-  Cw = surf_aux_var_up%Cw
-  k_therm = surf_aux_var_up%k_therm
+  Cw = surf_auxvar_up%Cw
+  k_therm = surf_auxvar_up%k_therm
   
   ! Unfrozen fraction multiplies hw_half in advection term, but does NOT affect the 
   ! conduction therm.  
@@ -1921,30 +1918,30 @@ subroutine SurfaceTHFlux(surf_aux_var_up, &
 end subroutine SurfaceTHFlux
 
 ! ************************************************************************** !
-!> This routine computes flux for boundary cells.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHBCFlux(ibndtype, &
-                           surf_aux_var, &
-                           surf_global_aux_var, &
+                           surf_auxvar, &
+                           surf_global_auxvar, &
                            slope, &
                            mannings, &
                            length, &
                            option, &
                            vel, &
                            Res)
+  ! 
+  ! This routine computes flux for boundary cells.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Option_module
   
   implicit none
 
   type(option_type) :: option
-  type(Surface_TH_auxvar_type) :: surf_aux_var
-  type(surface_global_auxvar_type) :: surf_global_aux_var
+  type(Surface_TH_auxvar_type) :: surf_auxvar
+  type(surface_global_auxvar_type) :: surf_global_auxvar
   PetscReal :: slope
   PetscReal :: mannings
   PetscReal :: length
@@ -1968,7 +1965,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 
   ! Flow  
   pressure_bc_type = ibndtype(TH_PRESSURE_DOF)
-  head = surf_global_aux_var%head(1)
+  head = surf_global_auxvar%head(1)
   
   select case(pressure_bc_type)
     case (ZERO_GRADIENT_BC)
@@ -1976,7 +1973,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
         vel =  0.d0
         head_liq = 0.d0
       else
-        head_liq = surf_aux_var%unfrozen_fraction * head
+        head_liq = surf_auxvar%unfrozen_fraction * head
         vel = -sqrt(dabs(slope))/mannings*(head_liq**(2.d0/3.d0))
       endif
     case default
@@ -1988,22 +1985,22 @@ subroutine SurfaceTHBCFlux(ibndtype, &
 
   ! Temperature
   ! RTM: See note about in SufaceTHFlux() about how frozen/unfrozen are handled here.
-  Res(TH_TEMPERATURE_DOF) = surf_global_aux_var%den_kg(1)* &
-                            (surf_global_aux_var%temp(1) + 273.15d0)* &
-                            surf_aux_var%Cwi* &
+  Res(TH_TEMPERATURE_DOF) = surf_global_auxvar%den_kg(1)* &
+                            (surf_global_auxvar%temp(1) + 273.15d0)* &
+                            surf_auxvar%Cwi* &
                             vel*head_liq*length
 
 end subroutine SurfaceTHBCFlux
 
 ! ************************************************************************** !
-!> This routine updates auxiliary variables
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateAuxVars(surf_realization)
+  ! 
+  ! This routine updates auxiliary variables
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -2025,12 +2022,12 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars_bc(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars_ss(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -2047,12 +2044,12 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
   grid => patch%grid
   surf_field => surf_realization%surf_field
 
-  surf_th_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_th_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
-  surf_th_aux_vars_ss => patch%surf_aux%SurfaceTH%aux_vars_ss
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
+  surf_th_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_th_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
+  surf_th_auxvars_ss => patch%surf_aux%SurfaceTH%auxvars_ss
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
   
   call VecGetArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
@@ -2068,14 +2065,14 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
     istart = iend-option%nflowdof+1
 
     call SurfaceTHAuxVarCompute(xx_loc_p(istart:iend), &
-                                surf_th_aux_vars(ghosted_id), &
-                                surf_global_aux_vars(ghosted_id), &
+                                surf_th_auxvars(ghosted_id), &
+                                surf_global_auxvars(ghosted_id), &
                                 option)
     ! [rho*h*T*Cwi]
-    xx_loc_p(istart+1) = surf_global_aux_vars(ghosted_id)%den_kg(1)* &
+    xx_loc_p(istart+1) = surf_global_auxvars(ghosted_id)%den_kg(1)* &
                          xx_loc_p(istart)* &
-                         (surf_global_aux_vars(ghosted_id)%temp(1) + 273.15d0)* &
-                         surf_th_aux_vars(ghosted_id)%Cwi
+                         (surf_global_auxvars(ghosted_id)%temp(1) + 273.15d0)* &
+                         surf_th_auxvars(ghosted_id)%Cwi
   enddo
    
   ! Boundary aux vars
@@ -2101,10 +2098,10 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
         end select
       enddo
       
-      surf_global_aux_vars_bc(sum_connection)%temp(1) = xxbc(2)
+      surf_global_auxvars_bc(sum_connection)%temp(1) = xxbc(2)
       call SurfaceTHAuxVarCompute(xxbc, &
-                                  surf_th_aux_vars_bc(sum_connection), &
-                                  surf_global_aux_vars_bc(sum_connection), &
+                                  surf_th_auxvars_bc(sum_connection), &
+                                  surf_global_auxvars_bc(sum_connection), &
                                   option)
 
     enddo
@@ -2135,36 +2132,36 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
         endif
       else
         tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+1)
-        tsrc1 = surf_global_aux_vars(ghosted_id)%temp(1)
+        tsrc1 = surf_global_auxvars(ghosted_id)%temp(1)
       endif
 
       xxss = xx_loc_p(istart:iend)
       xxss(2) = tsrc1
 
-      surf_global_aux_vars_ss(sum_connection)%temp(1) = tsrc1
+      surf_global_auxvars_ss(sum_connection)%temp(1) = tsrc1
       call SurfaceTHAuxVarCompute(xxss, &
-                                  surf_th_aux_vars_ss(sum_connection), &
-                                  surf_global_aux_vars_ss(sum_connection), &
+                                  surf_th_auxvars_ss(sum_connection), &
+                                  surf_global_auxvars_ss(sum_connection), &
                                   option)
     enddo
     source_sink => source_sink%next
   enddo
 
-  patch%surf_aux%SurfaceTH%aux_vars_up_to_date = PETSC_TRUE
+  patch%surf_aux%SurfaceTH%auxvars_up_to_date = PETSC_TRUE
 
   call VecRestoreArrayF90(surf_field%flow_xx_loc,xx_loc_p, ierr)
 
 end subroutine SurfaceTHUpdateAuxVars
 
 ! ************************************************************************** !
-!> This routine updates the temperature after TSSolve.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/25/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateTemperature(surf_realization)
+  ! 
+  ! This routine updates the temperature after TSSolve.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/25/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -2186,12 +2183,12 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_bc(:)
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars_ss(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars_ss(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars_ss(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -2210,11 +2207,11 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
   grid => patch%grid
   surf_field => surf_realization%surf_field
 
-  surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
-  surf_global_aux_vars_bc => patch%surf_aux%SurfaceGlobal%aux_vars_bc
-  surf_global_aux_vars_ss => patch%surf_aux%SurfaceGlobal%aux_vars_ss
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-  surf_aux_vars_bc => patch%surf_aux%SurfaceTH%aux_vars_bc
+  surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
+  surf_global_auxvars_bc => patch%surf_aux%SurfaceGlobal%auxvars_bc
+  surf_global_auxvars_ss => patch%surf_aux%SurfaceGlobal%auxvars_ss
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
+  surf_auxvars_bc => patch%surf_aux%SurfaceTH%auxvars_bc
 
   ! Number of iterations to solve for T^{t+1}
   ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
@@ -2235,13 +2232,13 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
         ! T^{t+1,m} = (rho Cwi hw T)^{t+1} / rho^{t+1,m-1} Cw)^{t} (hw)^{t+1}
         do iter = 1,niter
           temp = xx_loc_p(iend)/xx_loc_p(istart)/ &
-                  surf_global_aux_vars(local_id)%den_kg(1)/ &
-                  surf_aux_vars(local_id)%Cwi - 273.15d0
+                  surf_global_auxvars(local_id)%den_kg(1)/ &
+                  surf_auxvars(local_id)%Cwi - 273.15d0
           call EOSWaterdensity(temp,option%reference_pressure,den)
-          surf_global_aux_vars(local_id)%den_kg(1) = den
+          surf_global_auxvars(local_id)%den_kg(1) = den
         enddo
       endif
-      surf_global_aux_vars(ghosted_id)%temp(1) = temp
+      surf_global_auxvars(ghosted_id)%temp(1) = temp
     endif
   enddo
 
@@ -2256,8 +2253,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       
-      surf_global_aux_vars_bc(sum_connection)%temp(1) = &
-        surf_global_aux_vars(ghosted_id)%temp(1)
+      surf_global_auxvars_bc(sum_connection)%temp(1) = &
+        surf_global_auxvars(ghosted_id)%temp(1)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2273,8 +2270,8 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      surf_global_aux_vars_ss(sum_connection)%temp(1) = &
-        surf_global_aux_vars(ghosted_id)%temp(1)
+      surf_global_auxvars_ss(sum_connection)%temp(1) = &
+        surf_global_auxvars(ghosted_id)%temp(1)
 
     enddo
     source_sink => source_sink%next
@@ -2285,15 +2282,15 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
 end subroutine SurfaceTHUpdateTemperature
 
 ! ************************************************************************** !
-!> This routine updates the states for surface-model at the end of
-!! subsurface-model timestep.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/25/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
+  ! 
+  ! This routine updates the states for surface-model at the end of
+  ! subsurface-model timestep.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/25/13
+  ! 
 
   use Connection_module
   use Coupler_module
@@ -2326,7 +2323,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
   type(option_type), pointer          :: option
   type(patch_type),pointer            :: patch,surf_patch
   type(surface_field_type),pointer    :: surf_field
-  type(Surface_TH_auxvar_type), pointer :: surf_aux_vars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
 
   PetscInt                :: count
   PetscInt                :: ghosted_id
@@ -2351,7 +2348,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
   option     => surf_realization%option
   surf_field => surf_realization%surf_field
   surf_grid  => surf_realization%discretization%grid
-  surf_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
+  surf_auxvars => patch%surf_aux%SurfaceTH%auxvars
 
   call VecGetArrayF90(surf_field%flow_xx, xx_p, ierr)
   call VecGetArrayF90(surf_field%press_subsurf, surfpress_p, ierr)
@@ -2375,7 +2372,7 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
       xx_p(ibeg) = 0.d0
       xx_p(iend) = option%reference_temperature
     else
-      Cwi = surf_aux_vars(ghosted_id)%Cwi
+      Cwi = surf_auxvars(ghosted_id)%Cwi
       temp_K = surftemp_p(count) + 273.15d0
       xx_p(iend) = den*Cwi*temp_K*xx_p(ibeg)
     endif
@@ -2394,14 +2391,14 @@ subroutine SurfaceTHUpdateSurfStateNew(surf_realization)
 end subroutine SurfaceTHUpdateSurfStateNew
 
 ! ************************************************************************** !
-!> This routine updates solution after a successful time step
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceTHUpdateSolution(surf_realization)
+  ! 
+  ! This routine updates solution after a successful time step
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module

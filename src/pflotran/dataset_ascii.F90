@@ -31,13 +31,14 @@ module Dataset_Ascii_class
 contains
 
 ! ************************************************************************** !
-!
-! DatasetAsciiCreate: Creates ascii dataset class
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 function DatasetAsciiCreate()
+  ! 
+  ! Creates ascii dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
   
   implicit none
   
@@ -53,13 +54,14 @@ function DatasetAsciiCreate()
 end function DatasetAsciiCreate
 
 ! ************************************************************************** !
-!
-! DatasetAsciiCast: Casts a dataset_base_type to database_ascii_type
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 function DatasetAsciiCast(this)
+  ! 
+  ! Casts a dataset_base_type to database_ascii_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
 
   use Dataset_Base_class
   
@@ -79,13 +81,14 @@ function DatasetAsciiCast(this)
 end function DatasetAsciiCast
 
 ! ************************************************************************** !
-!
-! DatasetAsciiInit: Initializes members of ascii dataset class
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiInit(this)
+  ! 
+  ! Initializes members of ascii dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
   
   implicit none
   
@@ -97,13 +100,14 @@ subroutine DatasetAsciiInit(this)
 end subroutine DatasetAsciiInit
 
 ! ************************************************************************** !
-!
-! DatasetAsciiOpenandLoad: Opens a file and calls the load routine.
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiOpenandLoad(this,filename,option)
+  ! 
+  ! Opens a file and calls the load routine.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
 
   use Input_Aux_module
   use Option_module
@@ -123,13 +127,14 @@ subroutine DatasetAsciiOpenandLoad(this,filename,option)
 end subroutine DatasetAsciiOpenandLoad
 
 ! ************************************************************************** !
-!
-! DatasetAsciiLoad: Reads a text-based dataset from an ASCII file.
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiLoad(this,input,option)
+  ! 
+  ! Reads a text-based dataset from an ASCII file.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
 
   use Input_Aux_module
   use String_module
@@ -293,13 +298,14 @@ subroutine DatasetAsciiLoad(this,input,option)
 end subroutine DatasetAsciiLoad
 
 ! ************************************************************************** !
-!
-! DatasetAsciiUpdate: Updates an ascii dataset
-! author: Glenn Hammond
-! date: 10/08/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiUpdate(this,option)
+  ! 
+  ! Updates an ascii dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/13
+  ! 
 
   use Option_module
   use Time_Storage_module
@@ -317,13 +323,14 @@ subroutine DatasetAsciiUpdate(this,option)
 end subroutine DatasetAsciiUpdate
 
 ! ************************************************************************** !
-!
-! DatasetAsciiVerify: Verifies that data structure is properly set up.
-! author: Glenn Hammond
-! date: 10/08/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiVerify(this,option)
+  ! 
+  ! Verifies that data structure is properly set up.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/08/13
+  ! 
   
   use Option_module
   
@@ -349,13 +356,14 @@ subroutine DatasetAsciiVerify(this,option)
 end subroutine DatasetAsciiVerify
 
 ! ************************************************************************** !
-!
-! DatasetAsciiPrint: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiPrint(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -367,15 +375,16 @@ subroutine DatasetAsciiPrint(this,option)
   write(option%fid_out,'(10x,''Array Rank: '',i2)') this%array_rank
   
 end subroutine DatasetAsciiPrint
-  
+
 ! ************************************************************************** !
-!
-! DatasetAsciiStrip: Strips allocated objects within Ascii dataset object
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiStrip(this)
+  ! 
+  ! Strips allocated objects within Ascii dataset object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
 
   implicit none
   
@@ -386,13 +395,14 @@ subroutine DatasetAsciiStrip(this)
 end subroutine DatasetAsciiStrip
 
 ! ************************************************************************** !
-!
-! DatasetAsciiDestroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 10/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetAsciiDestroy(this)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/13
+  ! 
 
   implicit none
   

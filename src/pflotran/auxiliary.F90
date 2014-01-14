@@ -10,7 +10,7 @@ module Auxiliary_module
   use Miscible_Aux_module
   use Flash2_Aux_module
   use General_Aux_module
-  use Material_Aux_module
+  use Material_Aux_class
   use Secondary_Continuum_Aux_module
   
   use PFLOTRAN_Constants_module
@@ -43,13 +43,14 @@ module Auxiliary_module
 contains
 
 ! ************************************************************************** !
-!
-! AuxInit: Nullifies pointers in auxiliary object
-! author: Glenn Hammond
-! date: 04/09/08
-!
-! ************************************************************************** !
+
 subroutine AuxInit(aux)
+  ! 
+  ! Nullifies pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/09/08
+  ! 
 
   implicit none
   
@@ -69,17 +70,18 @@ subroutine AuxInit(aux)
   nullify(aux%Material)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
-
+  
 end subroutine AuxInit
 
 ! ************************************************************************** !
-!
-! AuxDestroy: Deallocates any allocated pointers in auxiliary object
-! author: Glenn Hammond
-! date: 04/09/08
-!
-! ************************************************************************** !
+
 subroutine AuxDestroy(aux)
+  ! 
+  ! Deallocates any allocated pointers in auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/09/08
+  ! 
 
   implicit none
   

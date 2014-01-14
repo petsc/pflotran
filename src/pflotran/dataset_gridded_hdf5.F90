@@ -40,13 +40,14 @@ module Dataset_Gridded_HDF5_class
 contains
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Create: Creates global dataset class
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 function DatasetGriddedHDF5Create()
+  ! 
+  ! Creates global dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
   
   implicit none
   
@@ -62,13 +63,14 @@ function DatasetGriddedHDF5Create()
 end function DatasetGriddedHDF5Create
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Init: Initializes members of global dataset class
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5Init(this)
+  ! 
+  ! Initializes members of global dataset class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
 
   use Dataset_Base_class
   
@@ -85,13 +87,14 @@ subroutine DatasetGriddedHDF5Init(this)
 end subroutine DatasetGriddedHDF5Init
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Cast: Casts a dataset_base_type to dataset_gridded_hdf5_type
-! author: Glenn Hammond
-! date: 08/29/13
-!
-! ************************************************************************** !
+
 function DatasetGriddedHDF5Cast(this)
+  ! 
+  ! Casts a dataset_base_type to dataset_gridded_hdf5_type
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/29/13
+  ! 
   
   use Dataset_Base_class
 
@@ -110,13 +113,14 @@ function DatasetGriddedHDF5Cast(this)
 end function DatasetGriddedHDF5Cast
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Load: Load new data into dataset buffer
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5Load(this,option)
+  ! 
+  ! Load new data into dataset buffer
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
   
   use Option_module
   use Time_Storage_module
@@ -139,14 +143,16 @@ subroutine DatasetGriddedHDF5Load(this,option)
 end subroutine DatasetGriddedHDF5Load
 
 #if defined(PETSC_HAVE_HDF5)    
+
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5ReadData: Read an hdf5 data into arrays
-! author: Glenn Hammond
-! date: 10/25/11, 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5ReadData(this,option)
+  ! 
+  ! Read an hdf5 data into arrays
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/11, 05/29/13
+  ! 
 
   use hdf5
   use Option_module
@@ -407,13 +413,14 @@ end subroutine DatasetGriddedHDF5ReadData
 #endif
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5SetDimension: Sets the dimension of the dataset
-! author: Glenn Hammond
-! date: 10/24/11, 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5SetDimension(this,word)
+  ! 
+  ! Sets the dimension of the dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11, 05/29/13
+  ! 
 
   use String_module
 
@@ -443,13 +450,14 @@ subroutine DatasetGriddedHDF5SetDimension(this,word)
 end subroutine DatasetGriddedHDF5SetDimension
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5GetDimensionString: Returns a string describing dimension
-! author: Glenn Hammond
-! date: 10/24/11, 05/29/13, 10/22/13
-!
-! ************************************************************************** !
+
 function DatasetGriddedHDF5GetDimensionString(this)
+  ! 
+  ! Returns a string describing dimension
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11, 05/29/13, 10/22/13
+  ! 
 
   implicit none
   
@@ -477,13 +485,14 @@ function DatasetGriddedHDF5GetDimensionString(this)
 end function DatasetGriddedHDF5GetDimensionString
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5GetNDimensions: Returns the number of dimensions
-! author: Glenn Hammond
-! date: 10/24/11, 05/29/13
-!
-! ************************************************************************** !
+
 function DatasetGriddedHDF5GetNDimensions(this)
+  ! 
+  ! Returns the number of dimensions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11, 05/29/13
+  ! 
 
   implicit none
   
@@ -505,13 +514,14 @@ function DatasetGriddedHDF5GetNDimensions(this)
 end function DatasetGriddedHDF5GetNDimensions
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5InterpolateReal: Interpolates data from the dataset
-! author: Glenn Hammond
-! date: 10/26/11, 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,option)
+  ! 
+  ! Interpolates data from the dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/29/13
+  ! 
 
   use Utility_module, only : InterpolateBilinear
   use Option_module
@@ -619,13 +629,14 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,optio
 end subroutine DatasetGriddedHDF5InterpolateReal
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5GetIndices: Returns bounding indices for point in dataset
-! author: Glenn Hammond
-! date: 10/26/11, 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
+  ! 
+  ! Returns bounding indices for point in dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/11, 05/29/13
+  ! 
 
   implicit none
 
@@ -687,13 +698,14 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
 end subroutine DatasetGriddedHDF5GetIndices
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Print: Prints dataset info
-! author: Glenn Hammond
-! date: 10/22/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5Print(this,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
 
   use Option_module
 
@@ -721,13 +733,14 @@ subroutine DatasetGriddedHDF5Print(this,option)
 end subroutine DatasetGriddedHDF5Print
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Strip: Strips allocated objects within XYZ dataset object
-! author: Glenn Hammond
-! date: 05/03/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5Strip(this)
+  ! 
+  ! Strips allocated objects within XYZ dataset object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/03/13
+  ! 
 
   use Utility_module, only : DeallocateArray
 
@@ -743,13 +756,14 @@ subroutine DatasetGriddedHDF5Strip(this)
 end subroutine DatasetGriddedHDF5Strip
 
 ! ************************************************************************** !
-!
-! DatasetGriddedHDF5Destroy: Destroys a dataset
-! author: Glenn Hammond
-! date: 05/29/13
-!
-! ************************************************************************** !
+
 subroutine DatasetGriddedHDF5Destroy(this)
+  ! 
+  ! Destroys a dataset
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/13
+  ! 
 
   implicit none
   

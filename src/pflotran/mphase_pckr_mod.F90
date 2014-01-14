@@ -13,7 +13,7 @@ module Mphase_pckr_module
   public ::  pckrNH_noderiv, pckrHY_noderiv     
   contains 
 
-!------------------------------------------------------------------------
+! ************************************************************************** !
 
 subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
               pckr_m ,pckr_pcmax,sg,pc,pc_s,kr,kr_s,pckr_beta,pckr_pwr) 
@@ -249,17 +249,17 @@ subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
 
 end subroutine pflow_pckr
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! pckrNH_noderiv: Non-hysteric S-Pc-kr relation excuting routine
-! Copied from pflotran_orig 
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !
 subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
      pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
+  ! 
+  ! pckrNH_noderiv: Non-hysteric S-Pc-kr relation excuting routine
+  ! Copied from pflotran_orig
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
       
   implicit none 
 
@@ -555,13 +555,14 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
 end subroutine pflow_pckr_noderiv_exec
 
 ! ************************************************************************** !
-!
-! pckrHY_noderiv: Hysteric S-Pc-kr relation driver
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !
+
 subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
+  ! 
+  ! pckrHY_noderiv: Hysteric S-Pc-kr relation driver
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
 
   use Saturation_Function_module
 
@@ -591,13 +592,14 @@ subroutine pckrNH_noderiv(sat, pc, kr, saturation_function, option)
 end subroutine pckrNH_noderiv
 
 ! ************************************************************************** !
-!
-! pckrHY_noderiv: Hysteric S-Pc-kr relation driver
-! author: Chuan Lu
-! date: 05/12/08
-!
-! ************************************************************************** !
+
 subroutine pckrHY_noderiv(sat, hysdat, pc, kr, saturation_function, option)
+  ! 
+  ! Hysteric S-Pc-kr relation driver
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/12/08
+  ! 
 
   use Saturation_Function_module
   

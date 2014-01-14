@@ -1,22 +1,55 @@
+module test_module
+
+  implicit none
+  
+  private
+  
+  type, public :: auxvar_type
+  contains
+    procedure, public :: TestProcedure => Procedure1
+  end type auxvar_type
+  
+  type, public :: container_type
+    class(auxvar_type), pointer :: aux_vars(:)
+  end type container_type  
+  
+contains
+
+subroutine Procedure1(aux_var)
+
+  implicit none
+  
+  class(auxvar_type) :: aux_var
+
+end subroutine Procedure1
+
+subroutine test(container)
+
+  implicit none
+  
+  type(container_type) :: container
+  
+  class(auxvar_type), pointer :: aux_vars(:)
+  
+  aux_vars => container%aux_vars
+
+end subroutine test  
+
+end module test_module
+
 program test
 
-  include 'mpif.h'
-
-  integer :: ierr
-  integer :: rank
-  integer :: commsize
-  character(len=32) :: word
-  character(len=32) :: word2
-
-  call mpi_init(ierr)
-  call mpi_comm_size(MPI_COMM_WORLD,commsize,ierr)
-  call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)
-
-  write(word,*) rank
-  write(word2,*) commsize
-  print *, ' ' // trim(adjustl(word)) // ' of ' // trim(adjustl(word2)) // ' processors.'
+  use test_module
   
-  call mpi_finalize(ierr)
-
+  implicit none
+  
+  type(container_type) :: container
+  
+  class(auxvar_type), pointer :: aux_vars(:)
+  
+  aux_vars => container%aux_vars
+  
+  print *, 'Hello World!'
+  
 end program test
 

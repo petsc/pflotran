@@ -85,17 +85,17 @@ module Secondary_Continuum_Aux_module
             SecondaryAuxRTCreate, SecondaryAuxRTDestroy
             
 contains
-  
-  
+
 ! ************************************************************************** !
-!
-! SecondaryAuxHeatCreate: Allocate and initialize secondary continuum heat
-! auxiliary object
-! author: Satish Karra, LANL
-! date: 01/10/13
-!
-! ************************************************************************** !
+
 function SecondaryAuxHeatCreate(option)
+  ! 
+  ! Allocate and initialize secondary continuum heat
+  ! auxiliary object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 01/10/13
+  ! 
 
   use Option_module
 
@@ -112,16 +112,17 @@ function SecondaryAuxHeatCreate(option)
   SecondaryAuxHeatCreate => aux
   
 end function SecondaryAuxHeatCreate  
-  
+
 ! ************************************************************************** !
-!
-! SecondaryAuxHeatDestroy: Deallocates a secondary continuum heat
-! auxiliary object
-! author: Satish Karra, LANL
-! date: 01/10/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryAuxHeatDestroy(aux)
+  ! 
+  ! Deallocates a secondary continuum heat
+  ! auxiliary object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 01/10/13
+  ! 
 
   implicit none
 
@@ -134,16 +135,16 @@ subroutine SecondaryAuxHeatDestroy(aux)
 
 end subroutine SecondaryAuxHeatDestroy
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! SecondaryAuxRTCreate: Allocate and initialize secondary continuum
-! reactive transport auxiliary object
-! author: Satish Karra, LANL
-! date: 01/10/13
-!
-! ************************************************************************** !
 function SecondaryAuxRTCreate(option)
+  ! 
+  ! Allocate and initialize secondary continuum
+  ! reactive transport auxiliary object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 01/10/13
+  ! 
 
   use Option_module
 
@@ -162,43 +163,45 @@ function SecondaryAuxRTCreate(option)
 end function SecondaryAuxRTCreate  
 
 ! ************************************************************************** !
-!
-! SecondaryAuxVarRTDestroy: Deallocates a secondary continuum reactive 
-! transport auxiliary variable object
-! author: Satish Karra, LANL
-! date: 02/10/13
-!
-! ************************************************************************** !
-subroutine SecondaryAuxVarRTDestroy(aux_var)
+
+subroutine SecondaryAuxVarRTDestroy(auxvar)
+  ! 
+  ! Deallocates a secondary continuum reactive
+  ! transport auxiliary variable object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/10/13
+  ! 
 
   use Utility_module, only: DeallocateArray
 
   implicit none
   
-  type(sec_transport_type) :: aux_var
+  type(sec_transport_type) :: auxvar
   
-  call RTAuxVarDestroy(aux_var%sec_rt_auxvar)
-  call DeallocateArray(aux_var%area)
-  call DeallocateArray(aux_var%vol)
-  call DeallocateArray(aux_var%dm_plus)
-  call DeallocateArray(aux_var%dm_minus)
-  call DeallocateArray(aux_var%sec_jac)
-  call DeallocateArray(aux_var%cxm)
-  call DeallocateArray(aux_var%cxp)
-  call DeallocateArray(aux_var%cdl)
-  call DeallocateArray(aux_var%r)
+  call RTAuxVarDestroy(auxvar%sec_rt_auxvar)
+  call DeallocateArray(auxvar%area)
+  call DeallocateArray(auxvar%vol)
+  call DeallocateArray(auxvar%dm_plus)
+  call DeallocateArray(auxvar%dm_minus)
+  call DeallocateArray(auxvar%sec_jac)
+  call DeallocateArray(auxvar%cxm)
+  call DeallocateArray(auxvar%cxp)
+  call DeallocateArray(auxvar%cdl)
+  call DeallocateArray(auxvar%r)
   
 end subroutine SecondaryAuxVarRTDestroy
-  
+
 ! ************************************************************************** !
-!
-! SecondaryAuxRTDestroy: Deallocates a secondary continuum reactive 
-! transport auxiliary object
-! author: Satish Karra, LANL
-! date: 01/10/13
-!
-! ************************************************************************** !
+
 subroutine SecondaryAuxRTDestroy(aux)
+  ! 
+  ! Deallocates a secondary continuum reactive
+  ! transport auxiliary object
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 01/10/13
+  ! 
 
   implicit none
 

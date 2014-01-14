@@ -53,13 +53,14 @@ module PM_Richards_class
 contains
 
 ! ************************************************************************** !
-!
-! PMRichardsCreate: Creates Richards process models shell
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMRichardsCreate()
+  ! 
+  ! Creates Richards process models shell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -85,13 +86,14 @@ function PMRichardsCreate()
 end function PMRichardsCreate
 
 ! ************************************************************************** !
-!
-! PMRichardsInit: Initializes variables associated with Richard
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsInit(this)
+  ! 
+  ! Initializes variables associated with Richard
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -122,13 +124,12 @@ subroutine PMRichardsInit(this)
 end subroutine PMRichardsInit
 
 ! ************************************************************************** !
-!
-! PMRichardsSetRealization: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsSetRealization(this,realization)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -156,16 +157,19 @@ subroutine PMRichardsSetRealization(this,realization)
 end subroutine PMRichardsSetRealization
 
 ! ************************************************************************** !
-! Should not need this as it is called in PreSolve.
-! PMRichardsInitializeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsInitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsInitializeTimestep
   use Global_module
+  use Material_module
+  use Variables_module
   
   implicit none
   
@@ -179,8 +183,9 @@ subroutine PMRichardsInitializeTimestep(this)
 
 #ifndef SIMPLIFY  
   ! update porosity
-  call this%comm1%LocalToLocal(this%realization%field%porosity_loc, &
-                              this%realization%field%porosity_loc)
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,POROSITY,0)
 #endif
 
   if (this%option%print_screen_flag) then
@@ -196,13 +201,12 @@ subroutine PMRichardsInitializeTimestep(this)
 end subroutine PMRichardsInitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMRichardsPreSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsPreSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -217,13 +221,14 @@ subroutine PMRichardsPreSolve(this)
 end subroutine PMRichardsPreSolve
 
 ! ************************************************************************** !
-!
-! PMRichardsUpdatePostSolve: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsPostSolve(this)
+  ! 
+  ! PMRichardsUpdatePostSolve:
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -238,13 +243,12 @@ subroutine PMRichardsPostSolve(this)
 end subroutine PMRichardsPostSolve
 
 ! ************************************************************************** !
-!
-! PMRichardsFinalizeTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsFinalizeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsMaxChange
   use Global_module
@@ -273,13 +277,12 @@ subroutine PMRichardsFinalizeTimestep(this)
 end subroutine PMRichardsFinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMRichardsAcceptSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 function PMRichardsAcceptSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -296,14 +299,13 @@ function PMRichardsAcceptSolution(this)
 end function PMRichardsAcceptSolution
 
 ! ************************************************************************** !
-!
-! PMRichardsUpdateTimestep: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   implicit none
   
@@ -357,13 +359,14 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMRichardsUpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMRichardsInitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMRichardsInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Richards_module, only : RichardsUpdateSolution
 
@@ -389,13 +392,14 @@ recursive subroutine PMRichardsInitializeRun(this)
 end subroutine PMRichardsInitializeRun
 
 ! ************************************************************************** !
-!
-! PMRichardsFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMRichardsFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   implicit none
   
@@ -414,13 +418,12 @@ recursive subroutine PMRichardsFinalizeRun(this)
 end subroutine PMRichardsFinalizeRun
 
 ! ************************************************************************** !
-!
-! PMRichardsResidual: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsResidual
 
@@ -446,13 +449,12 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
 end subroutine PMRichardsResidual
 
 ! ************************************************************************** !
-!
-! PMRichardsJacobian: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsJacobian
 
@@ -477,15 +479,14 @@ subroutine PMRichardsJacobian(this,snes,xx,A,B,flag,ierr)
   end select
 
 end subroutine PMRichardsJacobian
-    
+
 ! ************************************************************************** !
-!
-! PMRichardsCheckUpdatePre: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsCheckUpdatePre
 
@@ -507,16 +508,15 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMRichardsCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMRichardsCheckUpdatePost: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsCheckUpdatePost
 
@@ -541,15 +541,14 @@ subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 #endif
 
 end subroutine PMRichardsCheckUpdatePost
-  
+
 ! ************************************************************************** !
-!
-! PMRichardsTimeCut: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsTimeCut(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsTimeCut
 
@@ -566,15 +565,14 @@ subroutine PMRichardsTimeCut(this)
   call RichardsTimeCut(this%realization)
 
 end subroutine PMRichardsTimeCut
-    
+
 ! ************************************************************************** !
-!
-! PMRichardsUpdateSolution: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsUpdateSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsUpdateSolution, RichardsUpdateSurfacePress
   use Condition_module
@@ -608,13 +606,14 @@ subroutine PMRichardsUpdateSolution(this)
 end subroutine PMRichardsUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given RichardsMaxChange is called in PostSolve
-! PMRichardsMaxChange: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsMaxChange(this)
+  ! 
+  ! Not needed given RichardsMaxChange is called in PostSolve
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsMaxChange
 
@@ -629,15 +628,14 @@ subroutine PMRichardsMaxChange(this)
   call RichardsMaxChange(this%realization)
 
 end subroutine PMRichardsMaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMRichardsComputeMassBalance: 
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsComputeMassBalance
 
@@ -657,13 +655,14 @@ subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
 end subroutine PMRichardsComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMRichardsCheckpoint: Checkpoints data associated with Richards PM
-! author: Glenn Hammond
-! date: 07/26/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with Richards PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/13
+  ! 
 
   use Checkpoint_module
 
@@ -677,15 +676,15 @@ subroutine PMRichardsCheckpoint(this,viewer)
   
 end subroutine PMRichardsCheckpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMRichardsRestart: Restarts data associated with Richards PM
-! author: Glenn Hammond
-! date: 07/30/13
-!
-! ************************************************************************** !
 subroutine PMRichardsRestart(this,viewer)
+  ! 
+  ! Restarts data associated with Richards PM
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/30/13
+  ! 
 
   use Checkpoint_module
   use Richards_module, only : RichardsUpdateAuxVars
@@ -703,13 +702,14 @@ subroutine PMRichardsRestart(this,viewer)
 end subroutine PMRichardsRestart
 
 ! ************************************************************************** !
-!
-! PMRichardsDestroy: Destroys Richards process model
-! author: Glenn Hammond
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMRichardsDestroy(this)
+  ! 
+  ! Destroys Richards process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
 
   use Richards_module, only : RichardsDestroy
 

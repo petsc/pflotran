@@ -28,13 +28,14 @@ module Output_Geomechanics_module
 contains
 
 ! ************************************************************************** !
-!
-! OutputGeomechInit: Initializes module variables for geomechanics variables
-! author: Satish Karra, LANL
-! date: 07/2/13
-!
-! ************************************************************************** !
+
 subroutine OutputGeomechInit(geomech_realization,num_steps)
+  ! 
+  ! Initializes module variables for geomechanics variables
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/2/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -57,14 +58,15 @@ subroutine OutputGeomechInit(geomech_realization,num_steps)
 end subroutine OutputGeomechInit
 
 ! ************************************************************************** !
-!
-! OutputGeomechanics: Main driver for all geomechanics output
-! author: Satish Karra, LANL
-! date: 07/2/13
-!
-! ************************************************************************** !
+
 subroutine OutputGeomechanics(geomech_realization,plot_flag, &
                               transient_plot_flag)
+  ! 
+  ! Main driver for all geomechanics output
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/2/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -129,13 +131,14 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
 end subroutine OutputGeomechanics
 
 ! ************************************************************************** !
-!
-! OutputTecplotGeomechanics: Tecplot output for geomechanics
-! author: Satish Karra, LANL
-! date: 07/2/13
-!
-! ************************************************************************** !
+
 subroutine OutputTecplotGeomechanics(geomech_realization)
+  ! 
+  ! Tecplot output for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/2/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -237,14 +240,15 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
 end subroutine OutputTecplotGeomechanics
 
 ! ************************************************************************** !
-!
-! WriteTecplotGeomechGridElements: This subroutine writes unstructured grid elements 
-!                            for geomechanics grid
-! author: Satish Karra
-! date: 07/03/2013
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
+  ! 
+  ! This subroutine writes unstructured grid elements
+  ! for geomechanics grid
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/03/2013
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -299,14 +303,15 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
 end subroutine WriteTecplotGeomechGridElements
 
 ! ************************************************************************** !
-!
-! GetCellConnectionsGeomech: This routine returns a vector containing vertex ids
-!                            in natural order of local cells for geomech grid
-! author: Satish Karra
-! date: 07/03/2013
-!
-! ************************************************************************** !
+
 subroutine GetCellConnectionsGeomech(grid,vec)
+  ! 
+  ! This routine returns a vector containing vertex ids
+  ! in natural order of local cells for geomech grid
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/03/2013
+  ! 
 
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
@@ -403,13 +408,14 @@ subroutine GetCellConnectionsGeomech(grid,vec)
 end subroutine GetCellConnectionsGeomech
 
 ! ************************************************************************** !
-!
-! OutputTecplotHeader: Prints Tecplot header for geomechanics
-! author: Satish Karra, LANL
-! date: 07/2/13
-!
-! ************************************************************************** !
+
 subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
+  ! 
+  ! Prints Tecplot header for geomechanics
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/2/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -483,14 +489,15 @@ subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
 end subroutine OutputTecplotHeader
 
 ! ************************************************************************** !
-!
-! OutputTecplotZoneHeader: Prints zone header to a tecplot file
-! author: Satish Karra, LANL
-! date: 07/2/13
-!
-! ************************************************************************** !
+
 function OutputTecplotZoneHeader(geomech_realization,variable_count, &
                                  tecplot_format)
+  ! 
+  ! Prints zone header to a tecplot file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/2/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -547,13 +554,14 @@ function OutputTecplotZoneHeader(geomech_realization,variable_count, &
 end function OutputTecplotZoneHeader
 
 ! ************************************************************************** !
-!
-! WriteTecplotGeomechGridVertices: Prints zone header to a tecplot file
-! author: Satish Karra, LANL
-! date: 07/2/13
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
+  ! 
+  ! Prints zone header to a tecplot file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/2/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -610,14 +618,15 @@ subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
 end subroutine WriteTecplotGeomechGridVertices
 
 ! ************************************************************************** !
-!
-! GetVertexCoordinatesGeomech: Extracts vertex coordinates of cells into 
-!                               a PetscVec
-! author: Satish Karra, LANL
-! date: 07/02/2013
-!
-! ************************************************************************** !
+
 subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
+  ! 
+  ! Extracts vertex coordinates of cells into
+  ! a PetscVec
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/02/2013
+  ! 
 
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
@@ -688,14 +697,15 @@ subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
 end subroutine GetVertexCoordinatesGeomech
 
 ! ************************************************************************** !
-!
-! OutputGeomechGetVarFromArray: Gets variables from an array
-! author: Satish Karra, LANL
-! date: 07/3/13
-!
-! ************************************************************************** !
+
 subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
                                         isubvar1)
+  ! 
+  ! Gets variables from an array
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/3/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -729,14 +739,15 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
 end subroutine OutputGeomechGetVarFromArray
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSetGeomechFromVec: Writes data from a Petsc Vec within a block
-!                                   of a Tecplot file
-! author: Satish Karra
-! date: 07/03//13
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatype)
+  ! 
+  ! Writes data from a Petsc Vec within a block
+  ! of a Tecplot file
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/03//13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -762,15 +773,16 @@ subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatyp
 end subroutine WriteTecplotDataSetGeomechFromVec
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSetGeomech: Writes data from an array within a block
-!                             of a Tecplot file
-! author: Satish Karra
-! date: 07/02//13
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotDataSetGeomech(fid,geomech_realization,array,datatype, &
                                       size_flag)
+  ! 
+  ! Writes data from an array within a block
+  ! of a Tecplot file
+  ! 
+  ! Author: Satish Karra
+  ! Date: 07/02//13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -797,17 +809,18 @@ subroutine WriteTecplotDataSetGeomech(fid,geomech_realization,array,datatype, &
 end subroutine WriteTecplotDataSetGeomech
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSetNumPerLine: Writes data from an array within a block
-!                                of a Tecplot file with a specified number
-!                                of values per line
-! author: Glenn Hammond
-! date: 10/25/07, 12/02/11, Satish Karra 07/02/13
-!
-! ************************************************************************** !
+
 subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
                                                 array,datatype, &
                                                 size_flag,num_per_line)
+  ! 
+  ! WriteTecplotDataSetNumPerLine: Writes data from an array within a block
+  ! of a Tecplot file with a specified number
+  ! of values per line
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07, 12/02/11, Satish Karra 07/02/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -1070,13 +1083,14 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
 end subroutine WriteTecplotDataSetNumPerLineGeomech
 
 ! ************************************************************************** !
-!
-! OutputXMFHeaderGeomech: This subroutine writes header to a .xmf file
-! author: Satish Karra, LANL
-! date: 07/3/13
-!
-! ************************************************************************** !
+
 subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
+  ! 
+  ! This subroutine writes header to a .xmf file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/3/13
+  ! 
 
   implicit none
 
@@ -1166,13 +1180,14 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 end subroutine OutputXMFHeaderGeomech
 
 ! ************************************************************************** !
-!
-! OutputXMFFooterGeomech: This subroutine writes footer to a .xmf file
-! author: Satish Karra, LANL
-! date: 07/3/13
-!
-! ************************************************************************** !
+
 subroutine OutputXMFFooterGeomech(fid)
+  ! 
+  ! This subroutine writes footer to a .xmf file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/3/13
+  ! 
 
   implicit none
 
@@ -1192,13 +1207,14 @@ subroutine OutputXMFFooterGeomech(fid)
 end subroutine OutputXMFFooterGeomech
 
 ! ************************************************************************** !
-!
-! OutputXMFAttributeGeomech: This subroutine writes an attribute to a .xmf file
-! author: Satish Karra, LANL
-! date: 07/3/13
-!
-! ************************************************************************** !
+
 subroutine OutputXMFAttributeGeomech(fid,nmax,attname,att_datasetname)
+  ! 
+  ! This subroutine writes an attribute to a .xmf file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/3/13
+  ! 
 
   implicit none
 
@@ -1226,14 +1242,15 @@ subroutine OutputXMFAttributeGeomech(fid,nmax,attname,att_datasetname)
 end subroutine OutputXMFAttributeGeomech
 
 ! ************************************************************************** !
-!
-! OutputHDF5UGridXDMFGeomech: This routine writes unstructured grid data 
-!                            in HDF5 XDMF format
-! author: Satish Karra, LANL
-! date: 07/3/13
-!
-! ************************************************************************** !
+
 subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
+  ! 
+  ! This routine writes unstructured grid data
+  ! in HDF5 XDMF format
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/3/13
+  ! 
 
 #ifdef PROCESS_MODEL
   use Geomechanics_Realization_class
@@ -1544,15 +1561,17 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 end subroutine OutputHDF5UGridXDMFGeomech
 
 #if defined(PETSC_HAVE_HDF5)
+
 ! ************************************************************************** !
-!
-! WriteHDF5CoordinatesXDMFGeomech: Writes the geomech coordinates in HDF5 file
-! author: Satish Karra, LANL
-! date: 07/3/13
-!
-! ************************************************************************** !
+
 subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
                                                 option,file_id)
+  ! 
+  ! Writes the geomech coordinates in HDF5 file
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 07/3/13
+  ! 
 
   use hdf5
   use HDF5_module, only : HDF5WriteUnstructuredDataSetFromVec

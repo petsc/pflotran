@@ -43,13 +43,14 @@ module Hydrogeophysics_Simulation_class
 contains
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsCreate: Allocates and initializes a new simulation object
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 function HydrogeophysicsCreate(option)
+  ! 
+  ! Allocates and initializes a new simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   
@@ -66,15 +67,15 @@ function HydrogeophysicsCreate(option)
   
 end function HydrogeophysicsCreate
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! HydrogeophysicsInit: Initializes simulation values
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
 subroutine HydrogeophysicsInit(this,option)
+  ! 
+  ! Initializes simulation values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Option_module
   
@@ -100,13 +101,14 @@ subroutine HydrogeophysicsInit(this,option)
 end subroutine HydrogeophysicsInit
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsInitializeRun: Initializes simulation
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsInitializeRun(this)
+  ! 
+  ! Initializes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   use Output_module
   use PMC_Base_class
@@ -130,13 +132,12 @@ subroutine HydrogeophysicsInitializeRun(this)
 end subroutine HydrogeophysicsInitializeRun
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsExecuteRun: 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsExecuteRun(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Simulation_Base_class
 
@@ -165,15 +166,16 @@ subroutine HydrogeophysicsExecuteRun(this)
   endif
   
 end subroutine HydrogeophysicsExecuteRun
-  
+
 ! ************************************************************************** !
-!
-! HydrogeophysicsFinalizeRun: Finalizes simulation
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsFinalizeRun(this)
+  ! 
+  ! Finalizes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   implicit none
   
@@ -190,13 +192,14 @@ subroutine HydrogeophysicsFinalizeRun(this)
 end subroutine HydrogeophysicsFinalizeRun
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsStrip: Deallocates members of hydrogeophysics simulation 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsStrip(this)
+  ! 
+  ! Deallocates members of hydrogeophysics simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperDestroy
 
@@ -218,13 +221,14 @@ subroutine HydrogeophysicsStrip(this)
 end subroutine HydrogeophysicsStrip
 
 ! ************************************************************************** !
-!
-! HydrogeophysicsDestroy: Deallocates a simulation
-! author: Glenn Hammond
-! date: 06/17/13
-!
-! ************************************************************************** !
+
 subroutine HydrogeophysicsDestroy(simulation)
+  ! 
+  ! Deallocates a simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/17/13
+  ! 
 
   implicit none
   

@@ -27,13 +27,14 @@ module Condition_Control_module
 contains
 
 ! ************************************************************************** !
-!
-! CondControlAssignFlowInitCond: Assigns flow initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlAssignFlowInitCond(realization)
+  ! 
+  ! Assigns flow initial conditions to model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -221,7 +222,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                     general%temperature%dataset%rarray(1)
               end select
               iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
-              cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+              cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
                 initial_condition%flow_condition%iphase
             enddo
           else
@@ -238,7 +239,7 @@ subroutine CondControlAssignFlowInitCond(realization)
               xx_p(ibegin:iend) = &
                 initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
               iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
-              cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+              cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
                 initial_condition%flow_condition%iphase
             enddo
           endif
@@ -410,7 +411,7 @@ subroutine CondControlAssignFlowInitCond(realization)
               iphase_loc_p(ghosted_id) = &
                 initial_condition%flow_condition%iphase
               if (option%iflowmode == G_MODE) then
-                cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
                   int(iphase_loc_p(ghosted_id))
               endif
             enddo
@@ -451,7 +452,7 @@ subroutine CondControlAssignFlowInitCond(realization)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &
                                   realization%discretization%MFD, realization%option)
-    patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_TRUE
+    patch%aux%Richards%auxvars_cell_pressures_up_to_date = PETSC_TRUE
 
   endif
 #endif
@@ -459,13 +460,14 @@ subroutine CondControlAssignFlowInitCond(realization)
 end subroutine CondControlAssignFlowInitCond
 
 ! ************************************************************************** !
-!
-! CondControlAssignTranInitCond: Assigns transport initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlAssignTranInitCond(realization)
+  ! 
+  ! Assigns transport initial conditions to model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/07, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -481,6 +483,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
+  use Material_Aux_class
   use Reaction_module
   use HDF5_module
   
@@ -494,7 +497,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscInt :: icell, iconn, idof, isub_condition, temp_int, iimmobile
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite, imnrl, ikinrxn
-  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
+  PetscReal, pointer :: xx_p(:), xx_loc_p(:), vec_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -505,9 +508,10 @@ subroutine CondControlAssignTranInitCond(realization)
   type(coupler_type), pointer :: initial_condition
   type(patch_type), pointer :: cur_patch
   type(reaction_type), pointer :: reaction
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   type(tran_constraint_coupler_type), pointer :: constraint_coupler
+  class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscInt :: iphase
   PetscInt :: offset
@@ -534,12 +538,12 @@ subroutine CondControlAssignTranInitCond(realization)
     if (.not.associated(cur_patch)) exit
 
     grid => cur_patch%grid
-    rt_aux_vars => cur_patch%aux%RT%aux_vars
-    global_aux_vars => cur_patch%aux%Global%aux_vars
+    rt_auxvars => cur_patch%aux%RT%auxvars
+    global_auxvars => cur_patch%aux%Global%auxvars
+    material_auxvars => cur_patch%aux%Material%auxvars
 
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p,ierr)
-    call VecGetArrayF90(field%porosity_loc,porosity_loc,ierr)
       
     xx_p = -999.d0
       
@@ -585,8 +589,8 @@ subroutine CondControlAssignTranInitCond(realization)
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
               ghosted_id = grid%nL2G(local_id)
-              rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
-              rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
+              rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
+              rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
             enddo
             call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
           endif
@@ -609,7 +613,7 @@ subroutine CondControlAssignTranInitCond(realization)
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
               ghosted_id = grid%nL2G(local_id)
-              rt_aux_vars(ghosted_id)%immobile(iimmobile) = vec_p(ghosted_id)
+              rt_auxvars(ghosted_id)%immobile(iimmobile) = vec_p(ghosted_id)
             enddo
             call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
           endif
@@ -647,32 +651,32 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           option%iflag = grid%nG2A(grid%nL2G(local_id))
           if (icell == 1) then
-            call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-              global_aux_vars(ghosted_id),reaction, &
+            call ReactionEquilibrateConstraint(rt_auxvars(ghosted_id), &
+              global_auxvars(ghosted_id),material_auxvars(ghosted_id), &
+              reaction, &
               constraint_coupler%constraint_name, &
               constraint_coupler%aqueous_species, &
               constraint_coupler%minerals, &
               constraint_coupler%surface_complexes, &
               constraint_coupler%colloids, &
               constraint_coupler%immobile_species, &
-              porosity_loc(ghosted_id), &
               constraint_coupler%num_iterations, &
               PETSC_FALSE,option)
           else
-!geh              call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
-!geh                rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
+!geh              call RTAuxVarCopy(rt_auxvars(ghosted_id), &
+!geh                rt_auxvars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
 !geh                option)
-            rt_aux_vars(ghosted_id)%pri_molal = &
-              rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1)))%pri_molal
-            call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-              global_aux_vars(ghosted_id),reaction, &
+            rt_auxvars(ghosted_id)%pri_molal = &
+              rt_auxvars(grid%nL2G(initial_condition%region%cell_ids(icell-1)))%pri_molal
+            call ReactionEquilibrateConstraint(rt_auxvars(ghosted_id), &
+              global_auxvars(ghosted_id),material_auxvars(ghosted_id), &
+              reaction, &
               constraint_coupler%constraint_name, &
               constraint_coupler%aqueous_species, &
               constraint_coupler%minerals, &
               constraint_coupler%surface_complexes, &
               constraint_coupler%colloids, &
               constraint_coupler%immobile_species, &
-              porosity_loc(ghosted_id), &
               constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
           endif
@@ -686,7 +690,7 @@ subroutine CondControlAssignTranInitCond(realization)
         do idof = 1, reaction%naqcomp 
           xx_p(offset+idof) = &
             constraint_coupler%aqueous_species%basis_molarity(idof) / &
-            global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
+            global_auxvars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
         enddo
         ! mineral volume fractions
         if (associated(constraint_coupler%minerals)) then
@@ -694,27 +698,27 @@ subroutine CondControlAssignTranInitCond(realization)
             ! if read from a dataset, the vol frac was set above.  Don't want to
             ! overwrite
             if (.not.constraint_coupler%minerals%external_dataset(imnrl)) then
-              rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = &
+              rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) = &
                 constraint_coupler%minerals%constraint_vol_frac(imnrl)
-              rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
+              rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = &
                 constraint_coupler%minerals%constraint_vol_frac(imnrl)
             endif
-            rt_aux_vars(ghosted_id)%mnrl_area0(imnrl) = &
+            rt_auxvars(ghosted_id)%mnrl_area0(imnrl) = &
               constraint_coupler%minerals%constraint_area(imnrl)
-            rt_aux_vars(ghosted_id)%mnrl_area(imnrl) = &
+            rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
               constraint_coupler%minerals%constraint_area(imnrl)
           enddo
         endif
         ! kinetic surface complexes
         if (associated(constraint_coupler%surface_complexes)) then
           do idof = 1, reaction%surface_complexation%nkinsrfcplx
-            rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof,-1) = & !geh: to catch bug
+            rt_auxvars(ghosted_id)%kinsrfcplx_conc(idof,-1) = & !geh: to catch bug
               constraint_coupler%surface_complexes%constraint_conc(idof)
           enddo
           do ikinrxn = 1, reaction%surface_complexation%nkinsrfcplxrxn
             irxn = reaction%surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
             isite = reaction%surface_complexation%srfcplxrxn_to_surf(irxn)
-            rt_aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isite) = &
+            rt_auxvars(ghosted_id)%kinsrfcplx_free_site_conc(isite) = &
               constraint_coupler%surface_complexes%basis_free_site_conc(isite)
           enddo
         endif
@@ -724,10 +728,10 @@ subroutine CondControlAssignTranInitCond(realization)
           ! overwrite the reequilibrated values with those from the constraint
             .not. re_equilibrate_at_each_cell) then
           ! copy over total sorbed concentration
-          rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
+          rt_auxvars(ghosted_id)%kinmr_total_sorb = &
             constraint_coupler%rt_auxvar%kinmr_total_sorb
           ! copy over free site concentration
-          rt_aux_vars(ghosted_id)%srfcplxrxn_free_site_conc = &
+          rt_auxvars(ghosted_id)%srfcplxrxn_free_site_conc = &
             constraint_coupler%rt_auxvar%srfcplxrxn_free_site_conc
         endif
         ! colloids fractions
@@ -736,8 +740,8 @@ subroutine CondControlAssignTranInitCond(realization)
           do idof = 1, reaction%ncoll ! primary aqueous concentrations
             xx_p(offset+idof) = &
               constraint_coupler%colloids%basis_conc_mob(idof) / &
-              global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
-            rt_aux_vars(ghosted_id)%colloid%conc_imb(idof) = &
+              global_auxvars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
+            rt_auxvars(ghosted_id)%colloid%conc_imb(idof) = &
               constraint_coupler%colloids%basis_conc_imb(idof)
           enddo
         endif
@@ -746,13 +750,13 @@ subroutine CondControlAssignTranInitCond(realization)
           offset = ibegin + reaction%offset_immobile - 1
           do iimmobile = 1, reaction%immobile%nimmobile
             if (constraint_coupler%immobile_species%external_dataset(iimmobile)) then
-              ! already read into rt_aux_vars above.
+              ! already read into rt_auxvars above.
               xx_p(offset+iimmobile) = &
-                rt_aux_vars(ghosted_id)%immobile(iimmobile)
+                rt_auxvars(ghosted_id)%immobile(iimmobile)
             else
               xx_p(offset+iimmobile) = &
                 constraint_coupler%immobile_species%constraint_conc(iimmobile)
-              rt_aux_vars(ghosted_id)%immobile(iimmobile) = &
+              rt_auxvars(ghosted_id)%immobile(iimmobile) = &
                 constraint_coupler%immobile_species%constraint_conc(iimmobile)
             endif
           enddo
@@ -775,7 +779,6 @@ subroutine CondControlAssignTranInitCond(realization)
     enddo
       
     call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
-    call VecRestoreArrayF90(field%porosity_loc,porosity_loc,ierr)
 
     cur_patch => cur_patch%next
   enddo
@@ -827,15 +830,16 @@ subroutine CondControlAssignTranInitCond(realization)
 end subroutine CondControlAssignTranInitCond
 
 ! ************************************************************************** !
-!
-! ConditionControlMapDatasetToVec: maps an external dataset to a PETSc vec
-!                                  representing values at each grid cell
-! author: Glenn Hammond
-! date: 03/23/12
-!
-! ************************************************************************** !
+
 subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                            mdof_vec,vec_type)
+  ! 
+  ! maps an external dataset to a PETSc vec
+  ! representing values at each grid cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/23/12
+  ! 
   use Realization_class
   use Option_module
   use Field_module
@@ -893,13 +897,14 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 end subroutine ConditionControlMapDatasetToVec
 
 ! ************************************************************************** !
-!
-! CondControlScaleSourceSink: Scales select source/sinks based on perms
-! author: Glenn Hammond
-! date: 09/03/08, 10/18/11
-!
-! ************************************************************************** !
+
 subroutine CondControlScaleSourceSink(realization)
+  ! 
+  ! Scales select source/sinks based on perms
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/03/08, 10/18/11
+  ! 
 
   use Realization_class
   use Discretization_module
@@ -1054,6 +1059,9 @@ end subroutine CondControlScaleSourceSink
 
 ! ************************************************************************** !
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
   use Surface_Realization_class
@@ -1095,8 +1103,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   type(coupler_type), pointer :: initial_condition
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
-  type(Surface_TH_auxvar_type), pointer :: surf_th_aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: surf_global_aux_vars(:)
+  type(Surface_TH_auxvar_type), pointer :: surf_th_auxvars(:)
+  type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
 
   option => surf_realization%option
   discretization => surf_realization%discretization
@@ -1104,8 +1112,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   patch => surf_realization%patch
 
   if (option%iflowmode == TH_MODE) then
-    surf_th_aux_vars => patch%surf_aux%SurfaceTH%aux_vars
-    surf_global_aux_vars => patch%surf_aux%SurfaceGlobal%aux_vars
+    surf_th_auxvars => patch%surf_aux%SurfaceTH%auxvars
+    surf_global_auxvars => patch%surf_aux%SurfaceGlobal%auxvars
   endif
 
   cur_patch => surf_realization%patch_list%first
@@ -1160,9 +1168,9 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                       ! [rho*h*T*Cw]
                       xx_p(ibegin+idof-1) = dw_kg*xx_p(ibegin)* &
                                             (temp + 273.15d0)* &
-                                            surf_th_aux_vars(ghosted_id)%Cw
-                      surf_global_aux_vars(ghosted_id)%den_kg(1) = dw_kg
-                      surf_global_aux_vars(ghosted_id)%temp(1) = temp
+                                            surf_th_auxvars(ghosted_id)%Cw
+                      surf_global_auxvars(ghosted_id)%den_kg(1) = dw_kg
+                      surf_global_auxvars(ghosted_id)%temp(1) = temp
                   end select
                 enddo
               enddo

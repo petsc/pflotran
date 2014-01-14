@@ -22,15 +22,16 @@ module Gauss_module
   public :: GaussCalculatePoints, GaussDestroy, GaussInitialize
   
   contains
-  
+
 ! ************************************************************************** !
-!
-! GaussInitialize: Initializes Gauss type 
-! author: Satish Karra, LANL
-! date: 6/19/2013
-!
-! ************************************************************************** !
+
 subroutine GaussInitialize(gauss)
+  ! 
+  ! Initializes Gauss type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 6/19/2013
+  ! 
 
   type(gauss_type) :: gauss
   
@@ -43,13 +44,14 @@ subroutine GaussInitialize(gauss)
 end subroutine GaussInitialize   
 
 ! ************************************************************************** !
-!
-! GaussCalculatePoints: Calculates Gauss points 
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine GaussCalculatePoints(gauss)
+  ! 
+  ! Calculates Gauss points
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   use Utility_module, only: DeallocateArray
 
@@ -80,15 +82,15 @@ subroutine GaussCalculatePoints(gauss)
     
 end subroutine GaussCalculatePoints  
 
-
 ! ************************************************************************** !
-!
-! Gauss1D: Calculates Gauss points for 1D elements 
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine Gauss1D(EleType,NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for 1D elements
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   PetscInt :: EleType
   PetscInt :: NGPTS
@@ -274,13 +276,14 @@ subroutine Gauss1D(EleType,NGPTS,r,w)
 end subroutine Gauss1D  
 
 ! ************************************************************************** !
-!
-! Gauss2D: Calculates Gauss points for 2D elements 
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine Gauss2D(EleType,NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for 2D elements
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   PetscInt :: EleType
   PetscInt :: NGPTS
@@ -300,13 +303,14 @@ subroutine Gauss2D(EleType,NGPTS,r,w)
 end subroutine Gauss2D
 
 ! ************************************************************************** !
-!
-! GaussSquare: Calculates Gauss points for Q4 element 
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine GaussSquare(NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for Q4 element
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   PetscInt :: NGPTS
   PetscReal, pointer :: r(:,:)
@@ -341,13 +345,14 @@ subroutine GaussSquare(NGPTS,r,w)
 end subroutine GaussSquare
 
 ! ************************************************************************** !
-!
-! GaussTriangle: Calculates Gauss points for T3 elements 
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine GaussTriangle(NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for T3 elements
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   PetscInt :: EleType
   PetscInt :: NGPTS
@@ -518,13 +523,14 @@ subroutine GaussTriangle(NGPTS,r,w)
 end subroutine GaussTriangle
 
 ! ************************************************************************** !
-!
-! GaussTetrahedra: Calculates Gauss points for tetrahedra elements 
-! author: Satish Karra, LANL
-! date: 7/11/2013
-!
-! ************************************************************************** !  
+
 subroutine GaussTetrahedra(NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for tetrahedra elements
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 7/11/2013
+  ! 
 
   PetscInt :: EleType
   PetscInt :: NGPTS
@@ -652,15 +658,16 @@ subroutine GaussTetrahedra(NGPTS,r,w)
 end subroutine GaussTetrahedra
 
 ! ************************************************************************** !
-!
-! GaussPyramid: Calculates Gauss points for tetrahedra elements 
-! author: Satish Karra, LANL
-! date: 7/11/2013
-! Reference:
-! http://people.sc.fsu.edu/~jburkardt/datasets/quadrature_rules_pyramid/quadrature_rules_pyramid.html
-!
-! ************************************************************************** !
+
 subroutine GaussPyramid(NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for tetrahedra elements
+  ! Reference:
+  ! http://people.sc.fsu.edu/~jburkardt/datasets/quadrature_rules_pyramid/quadrature_rules_pyramid.html
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 7/11/2013
+  ! 
 
   PetscInt :: EleType
   PetscInt :: NGPTS
@@ -728,13 +735,14 @@ subroutine GaussPyramid(NGPTS,r,w)
 end subroutine GaussPyramid
 
 ! ************************************************************************** !
-!
-! Gauss3D: Calculates Gauss points for 3D element 
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine Gauss3D(EleType,NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for 3D element
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   PetscInt :: EleType
   PetscInt :: NGPTS
@@ -758,13 +766,14 @@ subroutine Gauss3D(EleType,NGPTS,r,w)
 end subroutine Gauss3D
 
 ! ************************************************************************** !
-!
-! GaussBrick: Calculates Gauss points for B8 element
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !  
+
 subroutine GaussBrick(NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for B8 element
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   PetscInt :: NGPTS
   PetscReal, pointer :: r(:,:)
@@ -801,13 +810,14 @@ subroutine GaussBrick(NGPTS,r,w)
 end subroutine GaussBrick
 
 ! ************************************************************************** !
-!
-! GaussWedge: Calculates Gauss points for wedge element
-! author: Satish Karra, LANL
-! date: 7/10//2013
-!
-! ************************************************************************** !  
+
 subroutine GaussWedge(NGPTS,r,w)
+  ! 
+  ! Calculates Gauss points for wedge element
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 7/10//2013
+  ! 
 
   PetscInt :: NGPTS
   PetscReal, pointer :: r(:,:)
@@ -843,15 +853,15 @@ subroutine GaussWedge(NGPTS,r,w)
   
 end subroutine GaussWedge
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! GaussDestroy: Deallocate gauss type
-! author: Satish Karra, LANL
-! date: 5/17/2013
-!
-! ************************************************************************** !
 subroutine GaussDestroy(gauss)
+  ! 
+  ! Deallocate gauss type
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 5/17/2013
+  ! 
 
   type(gauss_type) :: gauss
   

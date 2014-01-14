@@ -20,14 +20,14 @@ module Surface_Global_module
 contains
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetup(surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -49,14 +49,14 @@ subroutine SurfaceGlobalSetup(surf_realization)
 end subroutine SurfaceGlobalSetup
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetupPatch(surf_realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -76,9 +76,9 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
   type(coupler_type), pointer :: source_sink
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  type(surface_global_auxvar_type), pointer :: aux_vars(:)
-  type(surface_global_auxvar_type), pointer :: aux_vars_bc(:)
-  type(surface_global_auxvar_type), pointer :: aux_vars_ss(:)
+  type(surface_global_auxvar_type), pointer :: auxvars(:)
+  type(surface_global_auxvar_type), pointer :: auxvars_bc(:)
+  type(surface_global_auxvar_type), pointer :: auxvars_ss(:)
   
   option => surf_realization%option
   patch => surf_realization%patch
@@ -86,21 +86,21 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
 
   patch%surf_aux%SurfaceGlobal => SurfaceGlobalAuxCreate()
   
-  ! allocate aux_var data structures for all grid cells  
+  ! allocate auxvar data structures for all grid cells  
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
   option%iflag = 1 ! allocate mass_balance array
 #else  
   option%iflag = 0 ! be sure not to allocate mass_balance array
 #endif
-  allocate(aux_vars(grid%ngmax))
+  allocate(auxvars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call SurfaceGlobalAuxVarInit(aux_vars(ghosted_id),option)
+    call SurfaceGlobalAuxVarInit(auxvars(ghosted_id),option)
   enddo
-  patch%surf_aux%SurfaceGlobal%aux_vars => aux_vars
+  patch%surf_aux%SurfaceGlobal%auxvars => auxvars
   patch%surf_aux%SurfaceGlobal%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -112,16 +112,16 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
 
   if (sum_connection > 0) then
     option%iflag = 1 ! enable allocation of mass_balance array 
-    allocate(aux_vars_bc(sum_connection))
+    allocate(auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
-      call SurfaceGlobalAuxVarInit(aux_vars_bc(iconn),option)
+      call SurfaceGlobalAuxVarInit(auxvars_bc(iconn),option)
     enddo
-    patch%surf_aux%SurfaceGlobal%aux_vars_bc => aux_vars_bc
+    patch%surf_aux%SurfaceGlobal%auxvars_bc => auxvars_bc
   endif
   patch%surf_aux%SurfaceGlobal%num_aux_bc = sum_connection
 
   ! count the number of source/sink connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   source_sink => patch%source_sinks%first
   sum_connection = 0    
   do 
@@ -133,11 +133,11 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
 
   if (sum_connection > 0) then
     option%iflag = 1 ! enable allocation of mass_balance array 
-    allocate(aux_vars_ss(sum_connection))
+    allocate(auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
-      call SurfaceGlobalAuxVarInit(aux_vars_ss(iconn),option)
+      call SurfaceGlobalAuxVarInit(auxvars_ss(iconn),option)
     enddo
-    patch%surf_aux%SurfaceGlobal%aux_vars_ss => aux_vars_ss
+    patch%surf_aux%SurfaceGlobal%auxvars_ss => auxvars_ss
   endif
   patch%surf_aux%SurfaceGlobal%num_aux_ss = sum_connection
 
@@ -146,14 +146,14 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
 end subroutine SurfaceGlobalSetupPatch
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -177,7 +177,7 @@ subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
 end subroutine SurfaceGlobalSetAuxVarScalar
 
 ! ************************************************************************** !
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
 
   use Surface_Realization_class
@@ -204,38 +204,38 @@ subroutine SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
   select case(ivar)
     case(SURFACE_LIQUID_HEAD)
       do i=1, patch%surf_aux%SurfaceGlobal%num_aux
-        patch%surf_aux%SurfaceGlobal%aux_vars(i)%head = value
+        patch%surf_aux%SurfaceGlobal%auxvars(i)%head = value
       enddo
       do i=1, patch%surf_aux%SurfaceGlobal%num_aux_bc
-        patch%surf_aux%SurfaceGlobal%aux_vars_bc(i)%head = value
+        patch%surf_aux%SurfaceGlobal%auxvars_bc(i)%head = value
       enddo
     case(SURFACE_LIQUID_TEMPERATURE)
       do i=1, patch%surf_aux%SurfaceGlobal%num_aux
-        patch%surf_aux%SurfaceGlobal%aux_vars(i)%temp = value
+        patch%surf_aux%SurfaceGlobal%auxvars(i)%temp = value
       enddo
       do i=1, patch%surf_aux%SurfaceGlobal%num_aux_bc
-        patch%surf_aux%SurfaceGlobal%aux_vars_bc(i)%temp = value
+        patch%surf_aux%SurfaceGlobal%auxvars_bc(i)%temp = value
       enddo
     case(SURFACE_LIQUID_DENSITY)
       do i=1, patch%surf_aux%SurfaceGlobal%num_aux
-        patch%surf_aux%SurfaceGlobal%aux_vars(i)%den_kg(option%liquid_phase) = value
+        patch%surf_aux%SurfaceGlobal%auxvars(i)%den_kg(option%liquid_phase) = value
       enddo
       do i=1, surf_realization%patch%surf_aux%SurfaceGlobal%num_aux_bc
-        patch%surf_aux%SurfaceGlobal%aux_vars_bc(i)%den_kg(option%liquid_phase) = value
+        patch%surf_aux%SurfaceGlobal%auxvars_bc(i)%den_kg(option%liquid_phase) = value
       enddo
   end select
   
 end subroutine SurfaceGlobalSetAuxVarScalarPatch
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -263,14 +263,14 @@ subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
 end subroutine SurfaceGlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
+
 subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubvar)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Patch_module
@@ -309,7 +309,7 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax
-            patch%surf_aux%SurfaceGlobal%aux_vars(ghosted_id)%head(option%liquid_phase) &
+            patch%surf_aux%SurfaceGlobal%auxvars(ghosted_id)%head(option%liquid_phase) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
@@ -317,14 +317,14 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax
-            patch%surf_aux%SurfaceGlobal%aux_vars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+            patch%surf_aux%SurfaceGlobal%auxvars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(SURFACE_LIQUID_DENSITY)
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax
-            patch%surf_aux%SurfaceGlobal%aux_vars(ghosted_id)%den_kg(option%liquid_phase) &
+            patch%surf_aux%SurfaceGlobal%auxvars(ghosted_id)%den_kg(option%liquid_phase) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
@@ -334,16 +334,15 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
 
 end subroutine SurfaceGlobalSetAuxVarVecLocPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/07/13
-! ************************************************************************** !
 subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/07/13
+  ! 
 
   use Surface_Realization_class
   use Surface_Field_module

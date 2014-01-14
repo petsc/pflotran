@@ -51,16 +51,15 @@ module PM_THC_class
   
 contains
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
 function PMTHCCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -87,14 +86,14 @@ function PMTHCCreate()
 end function PMTHCCreate
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -128,14 +127,14 @@ subroutine PMTHCInit(this)
 end subroutine PMTHCInit
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCSetRealization(this,realization)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -158,14 +157,14 @@ subroutine PMTHCSetRealization(this,realization)
 end subroutine PMTHCSetRealization
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCInitializeTimestep(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCInitializeTimestep
   use Global_module
@@ -195,7 +194,7 @@ subroutine PMTHCInitializeTimestep(this)
 #endif
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," TH FLOW ",62("="))')
+    write(*,'(/,2("=")," THC FLOW ",62("="))')
   endif
   
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
@@ -207,14 +206,14 @@ subroutine PMTHCInitializeTimestep(this)
 end subroutine PMTHCInitializeTimestep
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCPreSolve(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use Global_module
 
@@ -229,11 +228,11 @@ subroutine PMTHCPreSolve(this)
 end subroutine PMTHCPreSolve
 
 ! ************************************************************************** !
-!
-! date: 03/14/13
-!
-! ************************************************************************** !
+
 subroutine PMTHCPostSolve(this)
+  ! 
+  ! Date: 03/14/13
+  ! 
 
   use Global_module
 
@@ -248,14 +247,14 @@ subroutine PMTHCPostSolve(this)
 end subroutine PMTHCPostSolve
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCFinalizeTimestep(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCMaxChange
   use Global_module
@@ -274,24 +273,25 @@ subroutine PMTHCFinalizeTimestep(this)
   
   call THCMaxChange(this%realization)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4, " dtmpmx= ",1pe12.4)') this%option%dpmax, this%option%dtmpmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+      & "dtmpmx= ",1pe12.4)') &
+      this%option%dpmax, this%option%dtmpmax
   endif  
   
 end subroutine PMTHCFinalizeTimestep
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 function PMTHCAcceptSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -308,15 +308,15 @@ function PMTHCAcceptSolution(this)
 end function PMTHCAcceptSolution
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCUpdateTimestep(this,dt,dt_max,iacceleration, &
                               num_newton_iterations,tfac)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -363,14 +363,14 @@ subroutine PMTHCUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMTHCUpdateTimestep
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 recursive subroutine PMTHCInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCUpdateSolution
 
@@ -396,14 +396,14 @@ recursive subroutine PMTHCInitializeRun(this)
 end subroutine PMTHCInitializeRun
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 recursive subroutine PMTHCFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   implicit none
   
@@ -422,14 +422,14 @@ recursive subroutine PMTHCFinalizeRun(this)
 end subroutine PMTHCFinalizeRun
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCResidual(this,snes,xx,r,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCResidual
 
@@ -450,14 +450,14 @@ subroutine PMTHCResidual(this,snes,xx,r,ierr)
 end subroutine PMTHCResidual
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCJacobian
 
@@ -479,14 +479,14 @@ subroutine PMTHCJacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMTHCJacobian
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCCheckUpdatePre
 
@@ -508,17 +508,17 @@ subroutine PMTHCCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMTHCCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCCheckUpdatePost
 
@@ -543,16 +543,16 @@ subroutine PMTHCCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
 #endif
 
 end subroutine PMTHCCheckUpdatePost
-  
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCTimeCut(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCTimeCut
 
@@ -569,16 +569,16 @@ subroutine PMTHCTimeCut(this)
   call THCTimeCut(this%realization)
 
 end subroutine PMTHCTimeCut
-    
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCUpdateSolution(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCUpdateSolution
   use Condition_module
@@ -608,14 +608,14 @@ subroutine PMTHCUpdateSolution(this)
 end subroutine PMTHCUpdateSolution     
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCMaxChange(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCMaxChange
 
@@ -630,16 +630,16 @@ subroutine PMTHCMaxChange(this)
   call THCMaxChange(this%realization)
 
 end subroutine PMTHCMaxChange
-    
+
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCComputeMassBalance
 
@@ -659,14 +659,14 @@ subroutine PMTHCComputeMassBalance(this,mass_balance_array)
 end subroutine PMTHCComputeMassBalance
 
 ! ************************************************************************** !
-!> This routine 
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 03/90/13
-! ************************************************************************** !
+
 subroutine PMTHCDestroy(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/90/13
+  ! 
 
   use THC_module, only : THCDestroy
 

@@ -53,13 +53,14 @@ module PM_Miscible_class
 contains
 
 ! ************************************************************************** !
-!
-! PMMiscibleCreate: Creates Miscible process models shell
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 function PMMiscibleCreate()
+  ! 
+  ! Creates Miscible process models shell
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -85,13 +86,14 @@ function PMMiscibleCreate()
 end function PMMiscibleCreate
 
 ! ************************************************************************** !
-!
-! PMMiscibleInit: Initializes variables associated with Richard
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleInit(this)
+  ! 
+  ! Initializes variables associated with Richard
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
 #ifndef SIMPLIFY  
   use Discretization_module
@@ -122,13 +124,12 @@ subroutine PMMiscibleInit(this)
 end subroutine PMMiscibleInit
 
 ! ************************************************************************** !
-!
-! PMMiscibleSetRealization: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleSetRealization(this,realization)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Realization_class
   use Grid_module
@@ -156,13 +157,14 @@ subroutine PMMiscibleSetRealization(this,realization)
 end subroutine PMMiscibleSetRealization
 
 ! ************************************************************************** !
-! Should not need this as it is called in PreSolve.
-! PMMiscibleInitializeTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleInitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleInitializeTimestep
   use Global_module
@@ -196,13 +198,12 @@ subroutine PMMiscibleInitializeTimestep(this)
 end subroutine PMMiscibleInitializeTimestep
 
 ! ************************************************************************** !
-!
-! PMMisciblePreSolve: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMisciblePreSolve(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Global_module
 
@@ -217,13 +218,14 @@ subroutine PMMisciblePreSolve(this)
 end subroutine PMMisciblePreSolve
 
 ! ************************************************************************** !
-!
-! PMMiscibleUpdatePostSolve: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMisciblePostSolve(this)
+  ! 
+  ! PMMiscibleUpdatePostSolve:
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Global_module
 
@@ -238,13 +240,12 @@ subroutine PMMisciblePostSolve(this)
 end subroutine PMMisciblePostSolve
 
 ! ************************************************************************** !
-!
-! PMMiscibleFinalizeTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleFinalizeTimestep(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleMaxChange
   use Global_module
@@ -278,13 +279,12 @@ subroutine PMMiscibleFinalizeTimestep(this)
 end subroutine PMMiscibleFinalizeTimestep
 
 ! ************************************************************************** !
-!
-! PMMiscibleAcceptSolution: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 function PMMiscibleAcceptSolution(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -301,14 +301,13 @@ function PMMiscibleAcceptSolution(this)
 end function PMMiscibleAcceptSolution
 
 ! ************************************************************************** !
-!
-! PMMiscibleUpdateTimestep: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
                                     num_newton_iterations,tfac)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -368,13 +367,14 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_max,iacceleration, &
 end subroutine PMMiscibleUpdateTimestep
 
 ! ************************************************************************** !
-!
-! PMMiscibleInitializeRun: Initializes the time stepping
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMMiscibleInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleUpdateSolution
 
@@ -400,13 +400,14 @@ recursive subroutine PMMiscibleInitializeRun(this)
 end subroutine PMMiscibleInitializeRun
 
 ! ************************************************************************** !
-!
-! PMMiscibleFinalizeRun: Finalizes the time stepping
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMMiscibleFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   implicit none
   
@@ -425,13 +426,12 @@ recursive subroutine PMMiscibleFinalizeRun(this)
 end subroutine PMMiscibleFinalizeRun
 
 ! ************************************************************************** !
-!
-! PMMiscibleResidual: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleResidual
 
@@ -457,13 +457,12 @@ subroutine PMMiscibleResidual(this,snes,xx,r,ierr)
 end subroutine PMMiscibleResidual
 
 ! ************************************************************************** !
-!
-! PMMiscibleJacobian: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleJacobian(this,snes,xx,A,B,flag,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleJacobian
 
@@ -490,14 +489,14 @@ subroutine PMMiscibleJacobian(this,snes,xx,A,B,flag,ierr)
 end subroutine PMMiscibleJacobian
     
 #if 0
+
 ! ************************************************************************** !
-!
-! PMMiscibleCheckUpdatePre: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleCheckUpdatePre
 
@@ -519,16 +518,15 @@ subroutine PMMiscibleCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 #endif
 
 end subroutine PMMiscibleCheckUpdatePre
-    
+
 ! ************************************************************************** !
-!
-! PMMiscibleCheckUpdatePost: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
                                   P1_changed,ierr)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleCheckUpdatePost
 
@@ -556,13 +554,12 @@ end subroutine PMMiscibleCheckUpdatePost
 #endif
 
 ! ************************************************************************** !
-!
-! PMMiscibleTimeCut: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleTimeCut(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleTimeCut
 
@@ -579,15 +576,14 @@ subroutine PMMiscibleTimeCut(this)
   call MiscibleTimeCut(this%realization)
 
 end subroutine PMMiscibleTimeCut
-    
+
 ! ************************************************************************** !
-!
-! PMMiscibleUpdateSolution: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleUpdateSolution(this)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleUpdateSolution
   use Condition_module
@@ -617,13 +613,14 @@ subroutine PMMiscibleUpdateSolution(this)
 end subroutine PMMiscibleUpdateSolution     
 
 ! ************************************************************************** !
-! Not needed given PMMiscibleMaxChange is called in PostSolve
-! PMMiscibleMaxChange: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleMaxChange(this)
+  ! 
+  ! Not needed given PMMiscibleMaxChange is called in PostSolve
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleMaxChange
 
@@ -638,15 +635,14 @@ subroutine PMMiscibleMaxChange(this)
   call MiscibleMaxChange(this%realization)
 
 end subroutine PMMiscibleMaxChange
-    
+
 ! ************************************************************************** !
-!
-! PMMiscibleComputeMassBalance: 
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleComputeMassBalance
 
@@ -667,13 +663,14 @@ subroutine PMMiscibleComputeMassBalance(this,mass_balance_array)
 end subroutine PMMiscibleComputeMassBalance
 
 ! ************************************************************************** !
-!
-! PMMiscibleCheckpoint: Checkpoints data associated with Miscible PM
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleCheckpoint(this,viewer)
+  ! 
+  ! Checkpoints data associated with Miscible PM
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Checkpoint_module
 
@@ -687,15 +684,15 @@ subroutine PMMiscibleCheckpoint(this,viewer)
   
 end subroutine PMMiscibleCheckpoint
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMMiscibleRestart: Restarts data associated with Miscible PM
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
 subroutine PMMiscibleRestart(this,viewer)
+  ! 
+  ! Restarts data associated with Miscible PM
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Checkpoint_module
   use Miscible_module, only : MiscibleUpdateAuxVars
@@ -713,13 +710,14 @@ subroutine PMMiscibleRestart(this,viewer)
 end subroutine PMMiscibleRestart
 
 ! ************************************************************************** !
-!
-! PMMiscibleDestroy: Destroys Miscible process model
-! author: Gautam Bisht
-! date: 11/27/13
-!
-! ************************************************************************** !
+
 subroutine PMMiscibleDestroy(this)
+  ! 
+  ! Destroys Miscible process model
+  ! 
+  ! Author: Gautam Bisht
+  ! Date: 11/27/13
+  ! 
 
   use Miscible_module, only : MiscibleDestroy
 

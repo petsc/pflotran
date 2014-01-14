@@ -1,0 +1,14 @@
+#hg activity --mode display --skipmerges --cwindow 1 --datemin 2012-01-01 --split authors --maxcaptions 22 --aliases aliases.txt --exclude 'moulton,ecoon,spainter,Ethan Coon,sarat,Xingyuan Chen,bsmith,balay,Satish Balay,Matt Knepley'
+
+hg activity --skipmerges --height 600 --width 800 --mode file --imagetitle '# Commits' -o commits.png
+hg activity --skipmerges --height 600 --width 800 --mode file --uselines --imagetitle '# Lines' -o lines.png
+hg activity --skipmerges --cwindow 1 --height 600 --width 800 --mode file --imagetitle '# Commits' --split authors --maxcaptions 8 --aliases aliases.txt -o commits_authors.png
+hg activity --skipmerges --cwindow 1 --height 600 --width 800 --mode file --uselines --imagetitle '# Lines' --split authors --maxcaptions 8 --aliases aliases.txt -o lines_authors.png -o lines_authors.png
+hg activity --skipmerges --cwindow 2 --height 600 --width 800 --mode file --imagetitle '# Commits' --split authors --maxcaptions 8 --datemin 2013-01-01 --datemax 2014-01-01 --aliases aliases.txt -o commits_authors_cy13.png
+hg activity --skipmerges --cwindow 2 --height 600 --width 800 --mode file --uselines --imagetitle '# Lines' --split authors --maxcaptions 8 --datemin 2013-01-01 --datemax 2014-01-01 --aliases aliases.txt -o lines_authors_cy13.png
+hg activity --skipmerges --cwindow 2 --height 600 --width 800 --mode file --imagetitle '# Commits' --split authors --maxcaptions 8 --datemin 2012-01-01 --datemax 2013-01-01 --aliases aliases.txt -o commits_authors_cy12.png
+hg activity --skipmerges --cwindow 2 --height 600 --width 800 --mode file --uselines --imagetitle '# Lines' --split authors --maxcaptions 8 --datemin 2012-01-01 --datemax 2013-01-01 --aliases aliases.txt -o lines_authors_cy12.png
+
+
+#--exclude 'moulton,ecoon,spainter,Ethan Coon,sarat,Xingyuan Chen,bsmith,balay,Satish Balay,Matt Knepley'
+#--exclude 'moulton,ecoon,spainter,Ethan Coon,sarat,Xingyuan Chen,bsmith,balay,Satish Balay,Matt Knepley,Glenn Hammond,ghammond,hammond,Peter C. Lichtner,Peter Lichtner,lichtner,Satish Karra,Gautam Bisht'

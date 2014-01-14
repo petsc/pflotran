@@ -50,14 +50,14 @@ module Timestepper_Surface_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/03/13
-! ************************************************************************** !
+
 function TimestepperSurfaceCreate()
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/03/13
+  ! 
 
   implicit none
   
@@ -75,14 +75,14 @@ function TimestepperSurfaceCreate()
 end function TimestepperSurfaceCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/03/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceInit(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/03/13
+  ! 
 
   implicit none
   
@@ -96,18 +96,18 @@ subroutine TimestepperSurfaceInit(this)
 end subroutine TimestepperSurfaceInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/02/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
                                         option, &
                                         stop_flag,plot_flag, &
                                         transient_plot_flag, &
                                         checkpoint_flag)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/02/13
+  ! 
 
   use Option_module
 
@@ -200,14 +200,14 @@ subroutine TimestepperSurfaceSetTargetTime(this,sync_time, &
 end subroutine TimestepperSurfaceSetTargetTime
 
 ! ************************************************************************** !
-!> This is a dummy routine added to be extended in timestepper_surface_type
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 07/03/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
+  ! 
+  ! This is a dummy routine added to be extended in timestepper_surface_type
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 07/03/13
+  ! 
 
   use PM_Base_class
   use PM_Surface_Flow_class
@@ -263,14 +263,14 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
 end subroutine TimestepperSurfaceStepDT
 
 ! ************************************************************************** !
-!> This checkpoints parameters/variables associated with surface-timestepper
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/18/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceCheckpoint(this,viewer,option)
+  ! 
+  ! This checkpoints parameters/variables associated with surface-timestepper
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/18/13
+  ! 
 
   use Option_module
 
@@ -297,14 +297,14 @@ subroutine TimestepperSurfaceCheckpoint(this,viewer,option)
 end subroutine TimestepperSurfaceCheckpoint
 
 ! ************************************************************************** !
-!> This checkpoints parameters/variables associated with surface-timestepper
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/18/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceRestart(this,viewer,option)
+  ! 
+  ! This checkpoints parameters/variables associated with surface-timestepper
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/18/13
+  ! 
 
   use Option_module
 
@@ -331,14 +331,14 @@ subroutine TimestepperSurfaceRestart(this,viewer,option)
 end subroutine TimestepperSurfaceRestart
 
 ! ************************************************************************** !
-!> This subroutine register header entries for surface-flow.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceRegisterHeader(this,bag,header)
+  ! 
+  ! This subroutine register header entries for surface-flow.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Option_module
 
@@ -364,14 +364,14 @@ subroutine TimestepperSurfaceRegisterHeader(this,bag,header)
 end subroutine TimestepperSurfaceRegisterHeader
 
 ! ************************************************************************** !
-!> This subroutine sets values in checkpoint header.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceSetHeader(this,bag,header)
+  ! 
+  ! This subroutine sets values in checkpoint header.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Option_module
 
@@ -394,14 +394,14 @@ subroutine TimestepperSurfaceSetHeader(this,bag,header)
 end subroutine TimestepperSurfaceSetHeader
 
 ! ************************************************************************** !
-!> This subroutine gets values in checkpoint header.
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 09/19/13
-! ************************************************************************** !
+
 subroutine TimestepperSurfaceGetHeader(this,header)
+  ! 
+  ! This subroutine gets values in checkpoint header.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/19/13
+  ! 
 
   use Option_module
 

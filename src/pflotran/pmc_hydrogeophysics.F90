@@ -34,14 +34,15 @@ module PMC_Hydrogeophysics_class
 contains
 
 ! ************************************************************************** !
-!
-! PMCHydrogeophysicsCreate: Allocates and initializes a new  
-!                           process_model_coupler object.
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 function PMCHydrogeophysicsCreate()
+  ! 
+  ! Allocates and initializes a new
+  ! process_model_coupler object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   implicit none
   
@@ -57,13 +58,14 @@ function PMCHydrogeophysicsCreate()
 end function PMCHydrogeophysicsCreate
 
 ! ************************************************************************** !
-!
-! PMCHydrogeophysicsInit: Initializes a new process model coupler object.
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine PMCHydrogeophysicsInit(this)
+  ! 
+  ! Initializes a new process model coupler object.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   implicit none
   
@@ -78,15 +80,15 @@ subroutine PMCHydrogeophysicsInit(this)
 
 end subroutine PMCHydrogeophysicsInit
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMCHydrogeophysicsInitializeRun: Initializes the time stepping
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   implicit none
   
@@ -105,13 +107,14 @@ recursive subroutine PMCHydrogeophysicsInitializeRun(this)
 end subroutine PMCHydrogeophysicsInitializeRun
 
 ! ************************************************************************** !
-!
-! PMCHydrogeophysicsRunToTime: Runs the actual simulation.
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
+  ! 
+  ! Runs the actual simulation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStep
 
@@ -151,13 +154,14 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
 end subroutine PMCHydrogeophysicsRunToTime
 
 ! ************************************************************************** !
-!
-! PMCHydrogeophysicsSynchronize: Runs the actual simulation.
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 subroutine PMCHydrogeophysicsSynchronize(this)
+  ! 
+  ! Runs the actual simulation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   use Realization_Base_class, only : RealizationGetVariable
   use Variables_module, only : PRIMARY_MOLALITY
@@ -203,7 +207,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   call VecGetArrayF90(this%solution_mpi,vec2_ptr,ierr)
 !      vec1_ptr(:) = vec1_ptr(:) + num_calls
   vec2_ptr(:) = vec1_ptr(:)
-  print *, 'PMC update to solution', vec2_ptr(16)
+!  print *, 'PMC update to solution', vec2_ptr(16)
   call VecRestoreArrayF90(this%realization%field%work,vec1_ptr,ierr)
   call VecRestoreArrayF90(this%solution_mpi,vec2_ptr,ierr)
 
@@ -219,13 +223,14 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 end subroutine PMCHydrogeophysicsSynchronize
 
 ! ************************************************************************** !
-!
-! PMCHydrogeophysicsFinalizeRun: Finalizes the time stepping
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
+
 recursive subroutine PMCHydrogeophysicsFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   use Hydrogeophysics_Wrapper_module, only : HydrogeophysicsWrapperStop
   
@@ -241,15 +246,15 @@ recursive subroutine PMCHydrogeophysicsFinalizeRun(this)
   
 end subroutine PMCHydrogeophysicsFinalizeRun
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! PMCHydrogeophysicsDestroy: Deallocates a process_model_coupler object
-! author: Glenn Hammond
-! date: 07/02/13
-!
-! ************************************************************************** !
 recursive subroutine PMCHydrogeophysicsDestroy(this)
+  ! 
+  ! Deallocates a process_model_coupler object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/02/13
+  ! 
 
   use Utility_module, only: DeallocateArray 
 

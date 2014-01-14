@@ -30,14 +30,15 @@ module Convergence_module
 contains
 
 ! ************************************************************************** !
-!
-! ConvergenceContextCreate: Creates a context containing pointer
-!                           for convergence subroutines
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 function ConvergenceContextCreate(solver,option,grid)
+  ! 
+  ! Creates a context containing pointer
+  ! for convergence subroutines
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   
@@ -58,13 +59,14 @@ function ConvergenceContextCreate(solver,option,grid)
 end function ConvergenceContextCreate
 
 ! ************************************************************************** !
-!
-! ConvergenceTest: User defined convergence test
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
+  ! 
+  ! User defined convergence test
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   
@@ -188,19 +190,16 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !geh: inorm_residual is being used without being calculated.
 !      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
-
-  
+ 
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
     reason = 12
   endif
   
-  
   if (option%out_of_table) then
     reason = -9
   endif
    
-  
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
   
@@ -565,13 +564,14 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 end subroutine ConvergenceTest
 
 ! ************************************************************************** !
-!
-! ConvergenceContextDestroy: Destroy context
-! author: Glenn Hammond
-! date: 02/12/08
-!
-! ************************************************************************** !
+
 subroutine ConvergenceContextDestroy(context)
+  ! 
+  ! Destroy context
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/12/08
+  ! 
 
   implicit none
   

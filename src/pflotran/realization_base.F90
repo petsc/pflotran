@@ -45,13 +45,14 @@ module Realization_Base_class
 contains
 
 ! ************************************************************************** !
-!
-! RealizationBaseInit: Initializes variables/objects in base realization class
-! author: Glenn Hammond
-! date: 01/16/13
-!
-! ************************************************************************** !
+
 subroutine RealizationBaseInit(realization_base,option)
+  ! 
+  ! Initializes variables/objects in base realization class
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/16/13
+  ! 
 
   implicit none
   
@@ -81,14 +82,15 @@ subroutine RealizationBaseInit(realization_base,option)
 end subroutine RealizationBaseInit
 
 ! ************************************************************************** !
-!
-! RealizationGetVariable: Extracts variables indexed by ivar and isubvar from a 
-!                        realization
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
+  ! 
+  ! Extracts variables indexed by ivar and isubvar from a
+  ! realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Option_module
 
@@ -110,15 +112,16 @@ subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
 end subroutine RealizationGetVariable
 
 ! ************************************************************************** !
-!
-! RealizGetVariableValueAtCell: Extracts variables indexed by ivar and isubvar
-!                              from a realization
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 function RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
                                      isubvar1)
+  ! 
+  ! Extracts variables indexed by ivar and isubvar
+  ! from a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Option_module
 
@@ -143,14 +146,15 @@ function RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, 
 end function RealizGetVariableValueAtCell
 
 ! ************************************************************************** !
-!
-! RealizationSetVariable: Sets variables indexed by ivar and isubvar in a 
-!                        realization
-! author: Glenn Hammond
-! date: 09/12/08
-!
-! ************************************************************************** !
+
 subroutine RealizationSetVariable(realization_base,vec,vec_format,ivar,isubvar)
+  ! 
+  ! Sets variables indexed by ivar and isubvar in a
+  ! realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/12/08
+  ! 
 
   use Option_module
 

@@ -101,13 +101,14 @@ module Input_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! InputCreate: Allocates and initializes a new Input object
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 function InputCreate(fid,filename,option)
+  ! 
+  ! Allocates and initializes a new Input object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   use Option_module
 
@@ -149,13 +150,14 @@ function InputCreate(fid,filename,option)
 end function InputCreate
 
 ! ************************************************************************** !
-!
-! InputDefaultMsg1: If ierr /= 0, informs user that default value will be used.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputDefaultMsg1(input,option,buffer)
+  ! 
+  ! If ierr /= 0, informs user that default value will be used.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -171,13 +173,14 @@ subroutine InputDefaultMsg1(input,option,buffer)
 end subroutine InputDefaultMsg1
 
 ! ************************************************************************** !
-!
-! InputDefaultMsg2: If ierr /= 0, informs user that default value will be used.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputDefaultMsg2(input,option)
+  ! 
+  ! If ierr /= 0, informs user that default value will be used.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -194,13 +197,14 @@ subroutine InputDefaultMsg2(input,option)
 end subroutine InputDefaultMsg2
 
 ! ************************************************************************** !
-!
-! InputErrorMsg1: If ierr /= 0, If ierr /= 0, informs user of error and stops.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputErrorMsg1(input,option,buffer1,buffer2)
+  ! 
+  ! If ierr /= 0, If ierr /= 0, informs user of error and stops.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -217,13 +221,14 @@ subroutine InputErrorMsg1(input,option,buffer1,buffer2)
 end subroutine InputErrorMsg1
 
 ! ************************************************************************** !
-!
-! InputErrorMsg: If ierr /= 0, If ierr /= 0, informs user of error and stops.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputErrorMsg2(input,option)
+  ! 
+  ! InputErrorMsg: If ierr /= 0, If ierr /= 0, informs user of error and stops.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -239,13 +244,14 @@ subroutine InputErrorMsg2(input,option)
 end subroutine InputErrorMsg2
 
 ! ************************************************************************** !
-!
-! InputReadStringErrorMsg1: If ierr /= 0, informs user of error and stops.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadStringErrorMsg1(input, option, buffer)
+  ! 
+  ! If ierr /= 0, informs user of error and stops.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -261,13 +267,14 @@ subroutine InputReadStringErrorMsg1(input, option, buffer)
 end subroutine InputReadStringErrorMsg1
 
 ! ************************************************************************** !
-!
-! InputReadStringErrorMsg2: If ierr /= 0, informs user of error and stops.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadStringErrorMsg2(input, option)
+  ! 
+  ! If ierr /= 0, informs user of error and stops.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -283,13 +290,14 @@ subroutine InputReadStringErrorMsg2(input, option)
 end subroutine InputReadStringErrorMsg2
 
 ! ************************************************************************** !
-!
-! InputFindStringErrorMsg: If ierr /= 0, informs user of error and stops.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputFindStringErrorMsg(input, option, string)
+  ! 
+  ! If ierr /= 0, informs user of error and stops.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -306,13 +314,14 @@ subroutine InputFindStringErrorMsg(input, option, string)
 end subroutine InputFindStringErrorMsg
 
 ! ************************************************************************** !
-!
-! InputReadInt1: reads and removes an integer value from a string
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadInt1(input, option, int)
+  ! 
+  ! reads and removes an integer value from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -331,13 +340,14 @@ subroutine InputReadInt1(input, option, int)
 end subroutine InputReadInt1
 
 ! ************************************************************************** !
-!
-! InputReadInt2: reads and removes an integer value from a string
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadInt2(string, option, int, ierr)
+  ! 
+  ! reads and removes an integer value from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -358,18 +368,19 @@ subroutine InputReadInt2(string, option, int, ierr)
 end subroutine InputReadInt2
 
 #if defined(PETSC_USE_64BIT_INDICES) && (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64)
-! InputReadInt3() and InputReadInt4() must only be defined if PetscInt and
-! PetscMPIInt differ in size.  See notes above in the interface definition. 
-!   --RTM
 
 ! ************************************************************************** !
-!
-! InputReadInt3: reads and removes an integer value from a string
-! authors: Glenn Hammond, Richard Mills
-! date: 2/3/2012
-!
-! ************************************************************************** !
+
 subroutine InputReadInt3(input, option, int)
+  ! 
+  ! InputReadInt3() and InputReadInt4() must only be defined if PetscInt and
+  ! PetscMPIInt differ in size.  See notes above in the interface definition.
+  ! --RTM
+  ! reads and removes an integer value from a string
+  ! authors: Glenn Hammond, Richard Mills
+  ! 
+  ! Date: 2/3/2012
+  ! 
 
   implicit none
 
@@ -388,13 +399,14 @@ subroutine InputReadInt3(input, option, int)
 end subroutine InputReadInt3
 
 ! ************************************************************************** !
-!
-! InputReadInt4: reads and removes an integer value from a string
-! authors: Glenn Hammond, Richard Mills
-! date: 2/3/2012
-!
-! ************************************************************************** !
+
 subroutine InputReadInt4(string, option, int, ierr)
+  ! 
+  ! reads and removes an integer value from a string
+  ! authors: Glenn Hammond, Richard Mills
+  ! 
+  ! Date: 2/3/2012
+  ! 
 
   implicit none
 
@@ -415,17 +427,18 @@ subroutine InputReadInt4(string, option, int, ierr)
 end subroutine InputReadInt4
 
 #endif
-!End of defined(PETSC_USE_64BIT_INDICES) && 
-!  (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
 
 ! ************************************************************************** !
-!
-! InputReadDouble1: reads and removes a real value from a string
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadDouble1(input, option, double)
+  ! 
+  ! End of defined(PETSC_USE_64BIT_INDICES) &&
+  ! (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
+  ! reads and removes a real value from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -444,13 +457,14 @@ subroutine InputReadDouble1(input, option, double)
 end subroutine InputReadDouble1
 
 ! ************************************************************************** !
-!
-! InputReadDouble2: reads and removes a real value from a string
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadDouble2(string, option, double, ierr)
+  ! 
+  ! reads and removes a real value from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -471,13 +485,14 @@ subroutine InputReadDouble2(string, option, double, ierr)
 end subroutine InputReadDouble2
 
 ! ************************************************************************** !
-!
-! InputReadNDoubles1: reads and removes "n" real value from a string
-! author: Glenn Hammond
-! date: 08/29/11
-!
-! ************************************************************************** !
+
 subroutine InputReadNDoubles1(input, option, double, n)
+  ! 
+  ! reads and removes "n" real value from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/29/11
+  ! 
 
   implicit none
 
@@ -496,13 +511,14 @@ subroutine InputReadNDoubles1(input, option, double, n)
 end subroutine InputReadNDoubles1
 
 ! ************************************************************************** !
-!
-! InputReadNDoubles2: reads and removes "n" real values from a string
-! author: Glenn Hammond
-! date: 08/29/11
-!
-! ************************************************************************** !
+
 subroutine InputReadNDoubles2(string, option, double, n, ierr)
+  ! 
+  ! reads and removes "n" real values from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/29/11
+  ! 
 
   implicit none
 
@@ -522,14 +538,15 @@ subroutine InputReadNDoubles2(string, option, double, n, ierr)
 end subroutine InputReadNDoubles2
 
 ! ************************************************************************** !
-!
-! InputReadPflotranString: Reads a string (strlen characters long) from a 
-!                          file while avoiding commented or skipped lines.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadPflotranString(input, option)
+  ! 
+  ! Reads a string (strlen characters long) from a
+  ! file while avoiding commented or skipped lines.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -558,14 +575,15 @@ subroutine InputReadPflotranString(input, option)
 end subroutine InputReadPflotranString
 
 ! ************************************************************************** !
-!
-! InputReadPflotranStringSlave: Reads a string (strlen characters long) from a 
-!                              file while avoiding commented or skipped lines.
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadPflotranStringSlave(input, option)
+  ! 
+  ! Reads a string (strlen characters long) from a
+  ! file while avoiding commented or skipped lines.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   use String_module
   
@@ -641,13 +659,14 @@ subroutine InputReadPflotranStringSlave(input, option)
 end subroutine InputReadPflotranStringSlave
 
 ! ************************************************************************** !
-!
-! InputReadWord1: reads and removes a word (consecutive characters) from a string
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadWord1(input, option, word, return_blank_error)
+  ! 
+  ! reads and removes a word (consecutive characters) from a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -666,14 +685,15 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
 end subroutine InputReadWord1
 
 ! ************************************************************************** !
-!
-! InputReadWord2: reads and removes a word (consecutive characters) from a 
-!                 string
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputReadWord2(string, word, return_blank_error, ierr)
+  ! 
+  ! reads and removes a word (consecutive characters) from a
+  ! string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
 
@@ -743,14 +763,15 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
 end subroutine InputReadWord2
 
 ! ************************************************************************** !
-!
-! InputReadNChars1: reads and removes a specified number of characters from a 
-!              string
-! author: Glenn Hammond
-! date: 11/02/00
-!
-! ************************************************************************** !
+
 subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
+  ! 
+  ! reads and removes a specified number of characters from a
+  ! string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/00
+  ! 
 
   implicit none
 
@@ -770,14 +791,15 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 end subroutine InputReadNChars1
 
 ! ************************************************************************** !
-!
-! InputReadNChars2: reads and removes a specified number of characters from a 
-!              string
-! author: Glenn Hammond
-! date: 11/02/00
-!
-! ************************************************************************** !
+
 subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
+  ! 
+  ! reads and removes a specified number of characters from a
+  ! string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/02/00
+  ! 
 
   implicit none
 
@@ -843,14 +865,15 @@ subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
 end subroutine InputReadNChars2
 
 ! ************************************************************************** !
-!
-! InputReadQuotedWord: reads and removes a word from a string, that is
-!                      delimited by "'".
-! author: Glenn Hammond
-! date: 11/07/00
-!
-! ************************************************************************** !
+
 subroutine InputReadQuotedWord(input, option, word, return_blank_error)
+  ! 
+  ! reads and removes a word from a string, that is
+  ! delimited by "'".
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/00
+  ! 
 
   implicit none
 
@@ -926,13 +949,14 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
 end subroutine InputReadQuotedWord
 
 ! ************************************************************************** !
-!
-! InputReadPath: reads and removes a words from a path
-! author: Glenn Hammond
-! date: 01/14/10
-!
-! ************************************************************************** !
+
 subroutine InputReadPath(string, word, return_blank_error, ierr)
+  ! 
+  ! reads and removes a words from a path
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/10
+  ! 
 
   implicit none
 
@@ -995,15 +1019,16 @@ subroutine InputReadPath(string, word, return_blank_error, ierr)
 end subroutine InputReadPath
 
 ! ************************************************************************** !
-!
-! InputFindStringInFile1: Rewinds file and finds the first occurrence of
-!                     'string'.  Note that the line must start with 'string'
-!                     in order to match and that line is NOT returned
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 subroutine InputFindStringInFile1(input, option, string)
+  ! 
+  ! Rewinds file and finds the first occurrence of
+  ! 'string'.  Note that the line must start with 'string'
+  ! in order to match and that line is NOT returned
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   use String_module
 
@@ -1018,15 +1043,16 @@ subroutine InputFindStringInFile1(input, option, string)
 end subroutine InputFindStringInFile1
 
 ! ************************************************************************** !
-!
-! InputFindStringInFile2: Rewinds file and finds the first occurrence of
-!                     'string'.  Note that the line must start with 'string'
-!                     in order to match and that line is NOT returned
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
+
 subroutine InputFindStringInFile2(input, option, string, print_warning)
+  ! 
+  ! Rewinds file and finds the first occurrence of
+  ! 'string'.  Note that the line must start with 'string'
+  ! in order to match and that line is NOT returned
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/07
+  ! 
 
   use String_module
 
@@ -1085,13 +1111,14 @@ subroutine InputFindStringInFile2(input, option, string, print_warning)
 end subroutine InputFindStringInFile2
 
 ! ************************************************************************** !
-!
-! InputSkipToEND: Skips to keyword END
-! author: Glenn Hammond
-! date: 10/26/07
-!
-! ************************************************************************** !
+
 subroutine InputSkipToEND(input,option,string)
+  ! 
+  ! Skips to keyword END
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/26/07
+  ! 
 
   implicit none
   
@@ -1109,13 +1136,14 @@ subroutine InputSkipToEND(input,option,string)
 end subroutine InputSkipToEND
 
 ! ************************************************************************** !
-!
-! InputCheckExit: Checks whether an end character (.,/,'END') has been found 
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 function InputCheckExit(input,option)
+  ! 
+  ! Checks whether an end character (.,/,'END') has been found
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/14/08
+  ! 
 
   use String_module
   
@@ -1145,13 +1173,14 @@ function InputCheckExit(input,option)
 end function InputCheckExit
 
 ! ************************************************************************** !
-!
-! InputError1: Returns true if an error has occurred 
-! author: Glenn Hammond
-! date: 12/10/08
-!
-! ************************************************************************** !
+
 function InputError1(input)
+  ! 
+  ! Returns true if an error has occurred
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/08
+  ! 
 
   implicit none
 
@@ -1168,13 +1197,14 @@ function InputError1(input)
 end function InputError1
 
 ! ************************************************************************** !
-!
-! InputError2: Returns true if an error has occurred 
-! author: Glenn Hammond
-! date: 12/10/08
-!
-! ************************************************************************** !
+
 function InputError2(ierr)
+  ! 
+  ! Returns true if an error has occurred
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/10/08
+  ! 
 
   implicit none
 
@@ -1191,14 +1221,15 @@ function InputError2(ierr)
 end function InputError2
 
 ! ************************************************************************** !
-!
-! InputGetCommandLineInt: Returns integer value associated with a command 
-!                          line argument
-! author: Glenn Hammond
-! date: 02/05/09
-!
-! ************************************************************************** !
+
 subroutine InputGetCommandLineInt(string,int_value,found,option)
+  ! 
+  ! Returns integer value associated with a command
+  ! line argument
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/09
+  ! 
 
   use String_module
   use Option_module
@@ -1243,14 +1274,15 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
 end subroutine InputGetCommandLineInt
 
 ! ************************************************************************** !
-!
-! InputGetCommandLineReal: Returns real*8 value associated with a command 
-!                          line argument
-! author: Glenn Hammond
-! date: 02/05/09
-!
-! ************************************************************************** !
+
 subroutine InputGetCommandLineReal(string,double_value,found,option)
+  ! 
+  ! Returns real*8 value associated with a command
+  ! line argument
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/09
+  ! 
 
   use String_module
   use Option_module
@@ -1295,14 +1327,15 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
 end subroutine InputGetCommandLineReal
 
 ! ************************************************************************** !
-!
-! InputGetCommandLineString: Returns a string associated with a command 
-!                          line argument
-! author: Glenn Hammond
-! date: 02/05/09
-!
-! ************************************************************************** !
+
 subroutine InputGetCommandLineString(string,string_value,found,option)
+  ! 
+  ! Returns a string associated with a command
+  ! line argument
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/09
+  ! 
 
   use String_module
   use Option_module
@@ -1356,14 +1389,15 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
 end subroutine InputGetCommandLineString
 
 ! ************************************************************************** !
-!
-! InputGetCommandLineTruth: Returns logical associated with a command 
-!                           line argument
-! author: Glenn Hammond
-! date: 02/05/09
-!
-! ************************************************************************** !
+
 subroutine InputGetCommandLineTruth(string,truth_value,found,option)
+  ! 
+  ! Returns logical associated with a command
+  ! line argument
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/09
+  ! 
 
   use String_module
   use Option_module
@@ -1421,13 +1455,14 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
 end subroutine InputGetCommandLineTruth
 
 ! ************************************************************************** !
-!
-! getCommandLineArgumentCount: Returns the number of command line arguments
-! author: Glenn Hammond
-! date: 02/05/10
-!
-! ************************************************************************** !
+
 function getCommandLineArgumentCount()
+  ! 
+  ! Returns the number of command line arguments
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/10
+  ! 
 
   implicit none
   
@@ -1447,13 +1482,14 @@ function getCommandLineArgumentCount()
 end function getCommandLineArgumentCount
 
 ! ************************************************************************** !
-!
-! getCommandLineArgument: Returns the ith command line argument
-! author: Glenn Hammond
-! date: 02/05/10
-!
-! ************************************************************************** !
+
 subroutine getCommandLineArgument(i,arg)
+  ! 
+  ! Returns the ith command line argument
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/05/10
+  ! 
 
   implicit none
   
@@ -1472,13 +1508,14 @@ subroutine getCommandLineArgument(i,arg)
 end subroutine getCommandLineArgument
 
 ! ************************************************************************** !
-!
-! InputReadFilenames: Reads filenames for multi-simulation runs
-! author: Glenn Hammond
-! date: 08/11/09
-!
-! ************************************************************************** !
+
 subroutine InputReadFilenames(option,filenames)
+  ! 
+  ! Reads filenames for multi-simulation runs
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/11/09
+  ! 
 
   use Option_module
 
@@ -1538,13 +1575,14 @@ subroutine InputReadFilenames(option,filenames)
 end subroutine InputReadFilenames
 
 ! ************************************************************************** !
-!
-! InputDestroy: Deallocates an input object
-! author: Glenn Hammond
-! date: 11/10/08
-!
-! ************************************************************************** !
+
 subroutine InputDestroy(input)
+  ! 
+  ! Deallocates an input object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/10/08
+  ! 
 
   implicit none
   

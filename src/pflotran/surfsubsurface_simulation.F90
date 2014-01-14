@@ -40,14 +40,14 @@ module Surf_Subsurf_Simulation_class
 contains
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 function SurfSubsurfaceSimulationCreate(option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Option_module
   
@@ -65,14 +65,14 @@ function SurfSubsurfaceSimulationCreate(option)
 end function SurfSubsurfaceSimulationCreate
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceSimulationInit(this,option)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Option_module
   
@@ -87,14 +87,14 @@ subroutine SurfSubsurfaceSimulationInit(this,option)
 end subroutine SurfSubsurfaceSimulationInit
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceInitializeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Logging_module
   use Output_module
@@ -138,14 +138,14 @@ subroutine SurfSubsurfaceInitializeRun(this)
 end subroutine SurfSubsurfaceInitializeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceExecuteRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Simulation_Base_class
 
@@ -193,14 +193,14 @@ subroutine SurfSubsurfaceExecuteRun(this)
 end subroutine SurfSubsurfaceExecuteRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceFinalizeRun(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Simulation_Base_class
   use Timestepper_Base_class
@@ -219,14 +219,14 @@ subroutine SurfSubsurfaceFinalizeRun(this)
 end subroutine SurfSubsurfaceFinalizeRun
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceSimulationStrip(this)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   use Simulation_Base_class
 
@@ -243,14 +243,14 @@ subroutine SurfSubsurfaceSimulationStrip(this)
 end subroutine SurfSubsurfaceSimulationStrip
 
 ! ************************************************************************** !
-!> This routine executes surface-subsurface simualation
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/27/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
+  ! 
+  ! This routine executes surface-subsurface simualation
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/27/13
+  ! 
 
   use Option_module
   use Simulation_Aux_module
@@ -271,14 +271,14 @@ subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
 end subroutine SurfSubsurfaceSimulationRunToTime
 
 ! ************************************************************************** !
-!> This routine
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 06/28/13
-! ************************************************************************** !
+
 subroutine SurfSubsurfaceSimulationDestroy(simulation)
+  ! 
+  ! This routine
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 06/28/13
+  ! 
 
   implicit none
   

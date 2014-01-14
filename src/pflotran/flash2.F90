@@ -55,13 +55,14 @@ module Flash2_module
 contains
 
 ! ************************************************************************** !
-!
-! Flash2TimeCut: Resets arrays for time step cut
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2TimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
  
   use Realization_class
   use Option_module
@@ -85,13 +86,12 @@ subroutine Flash2TimeCut(realization)
 end subroutine Flash2TimeCut
 
 ! ************************************************************************** !
-!
-! Flash2Setup: 
-! author: Chuan Lu
-! date: 9/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2Setup(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 9/13/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -116,13 +116,14 @@ subroutine Flash2Setup(realization)
 end subroutine Flash2Setup
 
 ! ************************************************************************** !
-!
-! Flash2SetupPatch: Creates arrays for auxiliary variables
-! author: Chuan Lu
-! date: 10/1/08
-!
-! ************************************************************************** !
+
 subroutine Flash2SetupPatch(realization)
+  ! 
+  ! Creates arrays for auxiliary variables
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/1/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -141,7 +142,7 @@ subroutine Flash2SetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection, ipara
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)  
   
   option => realization%option
   patch => realization%patch
@@ -179,13 +180,13 @@ subroutine Flash2SetupPatch(realization)
   enddo
 ! Flash2_parameters create_end *****************************************
 
-! allocate aux_var data structures for all grid cells  
-  allocate(aux_vars(grid%ngmax))
+! allocate auxvar data structures for all grid cells  
+  allocate(auxvars(grid%ngmax))
   print *,' Flash2 setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
-    call Flash2AuxVarInit(aux_vars(ghosted_id),option)
+    call Flash2AuxVarInit(auxvars(ghosted_id),option)
   enddo
-  patch%aux%Flash2%aux_vars => aux_vars
+  patch%aux%Flash2%auxvars => auxvars
   patch%aux%Flash2%num_aux = grid%ngmax
   print *,' Flash2 setup get Aux init'
 
@@ -195,7 +196,7 @@ subroutine Flash2SetupPatch(realization)
 !           internal_connection_set_list),option%nflowdof))
   print *,' Flash2 setup allocate app array'
    ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
+  ! auxvar data structures for them  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -204,12 +205,12 @@ subroutine Flash2SetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(aux_vars_bc(sum_connection))
+  allocate(auxvars_bc(sum_connection))
   print *,' Flash2 setup get AuxBc alloc', sum_connection
   do iconn = 1, sum_connection
-    call Flash2AuxVarInit(aux_vars_bc(iconn),option)
+    call Flash2AuxVarInit(auxvars_bc(iconn),option)
   enddo
-  patch%aux%Flash2%aux_vars_bc => aux_vars_bc
+  patch%aux%Flash2%auxvars_bc => auxvars_bc
   patch%aux%Flash2%num_aux_bc = sum_connection
   option%numerical_derivatives_flow = PETSC_TRUE
   
@@ -228,12 +229,14 @@ subroutine Flash2SetupPatch(realization)
 end subroutine Flash2SetupPatch
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
   function  Flash2InitGuessCheck(realization)
+  ! 
+  ! Flash2initguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
  
   use Realization_class
   use Patch_module
@@ -269,12 +272,14 @@ end subroutine Flash2SetupPatch
  end function Flash2InitGuessCheck
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateReasonPatch(reason,realization)
+  ! 
+  ! Flash2initguesscheckpatch:
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
    use Realization_class
    use Patch_module
@@ -343,16 +348,16 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   ! reason = re!; print *,'reason:',reason
 end subroutine Flash2UpdateReasonPatch
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2UpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Richards problem
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine Flash2UpdateReason(reason, realization)
+  ! 
+  ! Flash2UpdateAuxVars: Updates the auxiliary variables associated with
+  ! the Richards problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -391,12 +396,12 @@ subroutine Flash2UpdateReason(reason, realization)
 end subroutine Flash2UpdateReason
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
   function  Flash2InitGuessCheckPatch(realization)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
    
      use co2_span_wagner_module
      
@@ -453,15 +458,16 @@ end subroutine Flash2UpdateReason
     Flash2InitGuessCheckPatch = ipass
   end function Flash2InitGuessCheckPatch
 
-! ***************************************************************************
-!
-! Flash2UpdateAuxVars: Updates the auxiliary variables associated with 
-!                        the Flash2 problem
-! author: Chuan Lu
-! date: 10/10/08
-!
 ! ************************************************************************** !
+
 subroutine Flash2UpdateAuxVars(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Flash2 problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -481,14 +487,15 @@ subroutine Flash2UpdateAuxVars(realization)
 end subroutine Flash2UpdateAuxVars
 
 ! ************************************************************************** !
-!
-! Flash2UpdateAuxVarsPatch: Updates the auxiliary variables associated with 
-!                        the Flash2 problem
-! author: Chuan Lu
-! date: 12/10/07
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateAuxVarsPatch(realization)
+  ! 
+  ! Updates the auxiliary variables associated with
+  ! the Flash2 problem
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 12/10/07
+  ! 
 
   use Realization_class
   use Patch_module
@@ -509,8 +516,8 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -524,10 +531,10 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
   
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
   
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
@@ -546,33 +553,33 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
     endif
     
     call Flash2AuxVarCompute_NINC(xx_loc_p(istart:iend), &
-                       aux_vars(ghosted_id)%aux_var_elem(0), &
-                       global_aux_vars(ghosted_id), &
+                       auxvars(ghosted_id)%auxvar_elem(0), &
+                       global_auxvars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
                       
  ! update global variables
-    if( associated(global_aux_vars))then
+    if( associated(global_auxvars))then
     
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!     global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-      mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
-      if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
+      global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
+               auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+      global_auxvars(ghosted_id)%temp=auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
+!     global_auxvars(ghosted_id)%fugacoeff(1)=xphi
+      global_auxvars(ghosted_id)%den(:)=auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+      global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
+                                          * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
+      mnacl= global_auxvars(ghosted_id)%m_nacl(1)
+      if(global_auxvars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_auxvars(ghosted_id)%m_nacl(2)
       ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
-                              *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
-                              /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
-                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
-                              +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
+      global_auxvars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
+                              *auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O&
+                              /((1.d0-ynacl)*auxvars(ghosted_id)%auxvar_elem(0)%xmol(1) * FMWH2O &
+                              +auxvars(ghosted_id)%auxvar_elem(0)%xmol(2) * FMWCO2 &
+                              +ynacl*auxvars(ghosted_id)%auxvar_elem(0)%xmol(1)*FMWNACL)
+      global_auxvars(ghosted_id)%xmass(2)=auxvars(ghosted_id)%auxvar_elem(0)%xmol(3) * FMWH2O&
+                              /(auxvars(ghosted_id)%auxvar_elem(0)%xmol(3) * FMWH2O&
+                              +auxvars(ghosted_id)%auxvar_elem(0)%xmol(4) * FMWCO2) 
 
     else
       print *,'Not associated global for FLASH2'
@@ -606,35 +613,35 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
       end select
       enddo
  
-     call Flash2AuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-                         global_aux_vars_bc(sum_connection), &
+     call Flash2AuxVarCompute_NINC(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0), &
+                         global_auxvars_bc(sum_connection), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option, xphi)
 
-     if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
-        !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-        mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
-        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
+     if( associated(global_auxvars_bc))then
+        global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
+                     auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+        global_auxvars_bc(sum_connection)%temp=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+        global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
+        !    global_auxvars(ghosted_id)%sat_store = 
+        global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
+        global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+        global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+                                          * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
+        mnacl= global_auxvars_bc(sum_connection)%m_nacl(1)
+        if(global_auxvars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_auxvars_bc(sum_connection)%m_nacl(2)
         ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-        global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
-                              *aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O&
-                              /((1.d0-ynacl)*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O &
-                              +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(2) * FMWCO2 &
-                              +ynacl*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars_bc(sum_connection)%xmass(2)=aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              /(aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(4) * FMWCO2) 
+        global_auxvars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
+                              *auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1) * FMWH2O&
+                              /((1.d0-ynacl)*auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1) * FMWH2O &
+                              +auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(2) * FMWCO2 &
+                              +ynacl*auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(1)*FMWNACL)
+      global_auxvars_bc(sum_connection)%xmass(2)=auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(3) * FMWH2O&
+                              /(auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(3) * FMWH2O&
+                              +auxvars_bc(sum_connection)%auxvar_elem(0)%xmol(4) * FMWCO2) 
  
 
-  !    global_aux_vars(ghosted_id)%den_kg_store
+  !    global_auxvars(ghosted_id)%den_kg_store
       endif
 
     enddo
@@ -644,18 +651,19 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   
-  patch%aux%Flash2%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%Flash2%auxvars_up_to_date = PETSC_TRUE
 
 end subroutine Flash2UpdateAuxVarsPatch
 
 ! ************************************************************************** !
-!
-! Flash2InitializeTimestep: Update data in module prior to time step
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2InitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   
@@ -668,13 +676,14 @@ subroutine Flash2InitializeTimestep(realization)
 end subroutine Flash2InitializeTimestep
 
 ! ************************************************************************** !
-!
-! Flash2UpdateSolution: Updates data in module after a successful time step
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time step
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   
@@ -690,16 +699,16 @@ subroutine Flash2UpdateSolution(realization)
 
 end subroutine Flash2UpdateSolution
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2UpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
 subroutine Flash2UpdateFixedAccumulation(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -719,14 +728,15 @@ subroutine Flash2UpdateFixedAccumulation(realization)
 end subroutine Flash2UpdateFixedAccumulation
 
 ! ************************************************************************** !
-!
-! Flash2UpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
+
 subroutine Flash2UpdateFixedAccumPatch(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -743,8 +753,8 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -759,9 +769,9 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  global_aux_vars => patch%aux%Global%aux_vars
+  global_auxvars => patch%aux%Global%auxvars
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
+  auxvars => patch%aux%Flash2%auxvars
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
@@ -781,8 +791,8 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
 
-    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
-                              global_aux_vars(ghosted_id), &
+    call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0), &
+                              global_auxvars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -804,24 +814,24 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
 
 end subroutine Flash2UpdateFixedAccumPatch
 
-
 ! ************************************************************************** !
-!
-! Flash2Accumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
-subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
+
+subroutine Flash2Accumulation(auxvar,global_auxvar,por,vol,rock_dencpr,option,iireac,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
   implicit none
 
-  type(Flash2_auxvar_elem_type) :: aux_var
+  type(Flash2_auxvar_elem_type) :: auxvar
   type(option_type) :: option
-  type(global_auxvar_type) :: global_aux_var
+  type(global_auxvar_type) :: global_auxvar
   PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
      
@@ -834,16 +844,16 @@ subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
   mol=0.d0; eng=0.D0
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
-      mol(ispec) = mol(ispec) + aux_var%sat(np) * &
-        aux_var%den(np) * &
-        aux_var%xmol(ispec + (np-1)*option%nflowspec)
+      mol(ispec) = mol(ispec) + auxvar%sat(np) * &
+        auxvar%den(np) * &
+        auxvar%xmol(ispec + (np-1)*option%nflowspec)
     enddo
 ! if(option%use_isothermal == PETSC_FALSE) &
-    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
+    eng = eng + auxvar%sat(np) * auxvar%den(np) * auxvar%u(np)
   enddo
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
-  eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
+  eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * auxvar%temp 
  
 ! Reaction terms here
 ! Note if iireac >0, then it is the node global index
@@ -862,15 +872,16 @@ subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
 end subroutine Flash2Accumulation
 
 ! ************************************************************************** !
-!
-! Flash2Accumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !  
-subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res,&
+
+subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,Res,&
                             qsrc_phase,energy_flag, option)
+  ! 
+  ! Flash2Accumulation: Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
 
   use Option_module
   
@@ -883,7 +894,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   
   implicit none
 
-  type(Flash2_auxvar_elem_type) :: aux_var
+  type(Flash2_auxvar_elem_type) :: auxvar
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal, pointer :: mmsrc(:)
@@ -918,7 +929,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
       if (msrc(1) /= 0.d0) then ! H2O injection
-        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol, &
+        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
                                      enth_src_h2o,option%scale,ierr)    
 
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -935,21 +946,21 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !        call printErrMsg(option,"concentration source not yet implemented in Flash2")
         if(option%co2eos == EOS_SPAN_WAGNER) then
          !  span-wagner
-          rho = aux_var%den(jco2)*FMWCO2  
+          rho = auxvar%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
               if( option%itable >=4) then
-                call co2_sw_interp(aux_var%pres*1.D-6,&
+                call co2_sw_interp(auxvar%pres*1.D-6,&
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
                 iflag = 1
-              call co2_span_wagner(aux_var%pres*1.D-6,&
+              call co2_span_wagner(auxvar%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
             case(3) 
-              call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
+              call sw_prop(tsrc,auxvar%pres*1.D-6,rho, &
                      enth_src_co2, eng, fg)
           end select     
 
@@ -959,7 +970,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
             
         else if(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
-            call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
+            call CO2(tsrc,auxvar%pres, rho,fg, xphi,enth_src_co2)
             enth_src_co2 = enth_src_co2*FMWCO2*option%scale
             qsrc_phase(2) = msrc(2)*rho/FMWCO2
         else
@@ -1000,58 +1011,58 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 
     ! production well (well status = -1)
       if( dabs(well_status + 1D0) < 1D-1) then 
-        if(aux_var%pres > pressure_min) then
+        if(auxvar%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
-            dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
+            dphi = auxvar%pres - auxvar%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
+              ukvr = auxvar%kvr(np)
               if(ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = -1.d0*v_darcy
-                Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
-                  aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
-                Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
-                  aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)* &
-                  aux_var%h(np)*option%flow_dt
+                Res(1) = Res(1) - v_darcy* auxvar%den(np)* &
+                  auxvar%xmol((np-1)*option%nflowspec+1)*option%flow_dt
+                Res(2) = Res(2) - v_darcy* auxvar%den(np)* &
+                  auxvar%xmol((np-1)*option%nflowspec+2)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) - v_darcy * auxvar%den(np)* &
+                  auxvar%h(np)*option%flow_dt
               ! print *,'produce: ',np,v_darcy
               endif
             endif
           enddo
         endif
       endif 
-     !print *,'well-prod: ',  aux_var%pres,psrc(1), res
+     !print *,'well-prod: ',  auxvar%pres,psrc(1), res
     ! injection well (well status = 2)
       if ( dabs(well_status - 2D0) < 1D-1) then 
 
-        call EOSWaterDensityEnthalpy(tsrc,aux_var%pres,dw_kg,dw_mol, &
+        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
                                      enth_src_h2o,option%scale,ierr)
 
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        if( aux_var%pres < pressure_max)then  
+        if( auxvar%pres < pressure_max)then  
           do np = 1, option%nphase
-            dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
+            dphi = pressure_bh - auxvar%pres + auxvar%pc(np)
             if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
+              ukvr = auxvar%kvr(np)
               v_darcy=0.D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
                 qsrc_phase(1) = v_darcy
-                Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
-!                 aux_var%xmol((np-1)*option%nflowspec+1) * option%flow_dt
+                Res(1) = Res(1) + v_darcy* auxvar%den(np)* &
+!                 auxvar%xmol((np-1)*option%nflowspec+1) * option%flow_dt
                   (1.d0-csrc) * option%flow_dt
-                Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
-!                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
+                Res(2) = Res(2) + v_darcy* auxvar%den(np)* &
+!                 auxvar%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   csrc * option%flow_dt
-!               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+!               if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)*auxvar%h(np)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) + v_darcy*auxvar%den(np)* &
                   enth_src_h2o*option%flow_dt
                 
 !               print *,'inject: ',np,v_darcy
@@ -1067,23 +1078,23 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   
 end subroutine Flash2SourceSink
 
-
 ! ************************************************************************** !
-!
-! Flash2Flux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
-subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+
+subroutine Flash2Flux(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                        auxvar_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
   
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Flash2_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: por_up, por_dn
@@ -1109,21 +1120,21 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+     if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
         upweight= dd_dn/(dd_up+dd_dn)
-        if (aux_var_up%sat(np) <eps) then 
+        if (auxvar_up%sat(np) <eps) then 
            upweight=0.d0
-        else if (aux_var_dn%sat(np) <eps) then 
+        else if (auxvar_dn%sat(np) <eps) then 
            upweight=1.d0
         endif
-        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+        density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np) 
         
-        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
-             (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+        gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+             (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = aux_var_up%pres - aux_var_dn%pres &
-             - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+        dphi = auxvar_up%pres - auxvar_dn%pres &
+             - auxvar_up%pc(np) + auxvar_dn%pc(np) &
              + gravity
 
         v_darcy = 0.D0
@@ -1133,15 +1144,15 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
         ! note uxmol only contains one phase xmol
         if (dphi >= 0.D0) then
-           ukvr = aux_var_up%kvr(np)
-           uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+           ukvr = auxvar_up%kvr(np)
+           uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
+           uh = auxvar_up%h(np)
         else
-           ukvr = aux_var_dn%kvr(np)
-           uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+           ukvr = auxvar_dn%kvr(np)
+           uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
+           uh = auxvar_dn%h(np)
         endif
    
 
@@ -1160,14 +1171,14 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 #if 1 
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
-             (aux_var_up%den(np) + aux_var_dn%den(np))
+     if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
+        difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
+             (auxvar_up%den(np) + auxvar_dn%den(np))
         do ispec=1, option%nflowspec
            ind = ispec + (np-1)*option%nflowspec
            fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
-                (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
-                (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
+                (auxvar_up%diff(ind) + auxvar_dn%diff(ind))* &
+                (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
         enddo
      endif
 #endif
@@ -1176,7 +1187,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
      Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
+     cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp) 
      fluxe=fluxe + cond
  ! end if
 
@@ -1193,21 +1204,22 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine Flash2Flux
 
 ! ************************************************************************** !
-!
-! Flash2Flux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 05/04/10
-!
-! ************************************************************************** ! 
-subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+
+subroutine Flash2FluxAdv(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                        auxvar_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Flash2Flux: Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 05/04/10
+  ! 
   use Option_module                              
   
   implicit none
   
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Flash2_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: por_up, por_dn
@@ -1233,21 +1245,21 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+     if (auxvar_up%sat(np) > sir_up(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
         upweight= dd_dn/(dd_up+dd_dn)
-        if (aux_var_up%sat(np) <eps) then 
+        if (auxvar_up%sat(np) <eps) then 
            upweight=0.d0
-        else if (aux_var_dn%sat(np) <eps) then 
+        else if (auxvar_dn%sat(np) <eps) then 
            upweight=1.d0
         endif
-        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+        density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np) 
         
-        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
-             (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+        gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+             (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = aux_var_up%pres - aux_var_dn%pres &
-             - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+        dphi = auxvar_up%pres - auxvar_dn%pres &
+             - auxvar_up%pc(np) + auxvar_dn%pc(np) &
              + gravity
 
         v_darcy = 0.D0
@@ -1257,15 +1269,15 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
         ! note uxmol only contains one phase xmol
         if (dphi>=0.D0) then
-           ukvr = aux_var_up%kvr(np)
-           uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+           ukvr = auxvar_up%kvr(np)
+           uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
+           uh = auxvar_up%h(np)
         else
-           ukvr = aux_var_dn%kvr(np)
-           uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+           ukvr = auxvar_dn%kvr(np)
+           uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
+           uh = auxvar_dn%h(np)
         endif
    
 
@@ -1292,21 +1304,22 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine Flash2FluxAdv
 
 ! ************************************************************************** !
-!
-! Flash2Flux: Computes the internal flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** ! 
-subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+
+subroutine Flash2FluxDiffusion(auxvar_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                        auxvar_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
+  ! 
+  ! Flash2Flux: Computes the internal flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module                              
   
   implicit none
   
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Flash2_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: por_up, por_dn
@@ -1335,14 +1348,14 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
  
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
-             (aux_var_up%den(np) + aux_var_dn%den(np))
+     if ((auxvar_up%sat(np) > eps) .and. (auxvar_dn%sat(np) > eps)) then
+        difff = diffdp * 0.25D0*(auxvar_up%sat(np) + auxvar_dn%sat(np))* &
+             (auxvar_up%den(np) + auxvar_dn%den(np))
         do ispec=1, option%nflowspec
            ind = ispec + (np-1)*option%nflowspec
            fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
-                (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
-                (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
+                (auxvar_up%diff(ind) + auxvar_dn%diff(ind))* &
+                (auxvar_up%xmol(ind) - auxvar_dn%xmol(ind))
         enddo
      endif
   enddo
@@ -1350,7 +1363,7 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
      Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
+     cond = Dk*area*(auxvar_up%temp-auxvar_dn%temp) 
      fluxe=fluxe + cond
  ! end if
 
@@ -1367,24 +1380,25 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
 end subroutine Flash2FluxDiffusion
 
 ! ************************************************************************** !
-!
-! Flash2BCFlux: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
-subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+
+subroutine Flash2BCFlux(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Flash2_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn(:)
-  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
   PetscReal :: vv_darcy(:), area
   PetscReal :: Res(1:option%nflowdof) 
@@ -1412,27 +1426,27 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         ! Flow term
         ukvr=0.D0
         v_darcy=0.D0 
-        if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+        if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
            upweight=1.D0
-           if (aux_var_up%sat(np) < eps) then 
+           if (auxvar_up%sat(np) < eps) then 
               upweight=0.d0
-           else if (aux_var_dn%sat(np) < eps) then 
+           else if (auxvar_dn%sat(np) < eps) then 
               upweight=1.d0
            endif
-           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
-!           print *,'flbc den:', upweight, aux_var_up%den(np), aux_var_dn%den(np)
-           gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
-                (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+           density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
+!           print *,'flbc den:', upweight, auxvar_up%den(np), auxvar_dn%den(np)
+           gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+                (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
                 * dist_gravity
        
-           dphi = aux_var_up%pres - aux_var_dn%pres &
-                - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+           dphi = auxvar_up%pres - auxvar_dn%pres &
+                - auxvar_up%pc(np) + auxvar_dn%pc(np) &
                 + gravity
    
            if (dphi>=0.D0) then
-              ukvr = aux_var_up%kvr(np)
+              ukvr = auxvar_up%kvr(np)
            else
-              ukvr = aux_var_dn%kvr(np)
+              ukvr = auxvar_dn%kvr(np)
            endif
      
            if (ukvr*Dq>floweps) then
@@ -1442,12 +1456,12 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
      case(NEUMANN_BC) !may not work
         v_darcy = 0.D0
-        if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
+        if (dabs(auxvars(1)) > floweps) then
+           v_darcy = auxvars(MPH_PRESSURE_DOF)
            if (v_darcy > 0.d0) then 
-              density_ave = aux_var_up%den(np)
+              density_ave = auxvar_up%den(np)
            else 
-              density_ave = aux_var_dn%den(np)
+              density_ave = auxvar_dn%den(np)
            endif
         endif
 
@@ -1460,12 +1474,12 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      
      if (v_darcy >= 0.D0) then
         !if(option%use_isothermal == PETSC_FALSE)&
-         uh = aux_var_up%h(np)
-         uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+         uh = auxvar_up%h(np)
+         uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      else
          !if(option%use_isothermal == PETSC_FALSE)&
-        uh = aux_var_dn%h(np)
-        uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+        uh = auxvar_dn%h(np)
+        uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
      do ispec=1, option%nflowspec
        fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
@@ -1479,18 +1493,18 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     ! Diffusion term   
   select case(ibndtype(3))
   case(DIRICHLET_BC) 
-     !if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-     !  diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
-     !  (aux_var_up%den+aux_var_dn%den)
+     !if (auxvar_up%sat > eps .and. auxvar_dn%sat > eps) then
+     !  diff = diffdp * 0.25D0*(auxvar_up%sat+auxvar_dn%sat)* &
+     !  (auxvar_up%den+auxvar_dn%den)
         do np = 1, option%nphase
-          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps) then
-            diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
-              (aux_var_up%den(np)+aux_var_up%den(np))
+          if(auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps) then
+            diff = diffdp * 0.25D0*(auxvar_up%sat(np)+auxvar_dn%sat(np))* &
+              (auxvar_up%den(np)+auxvar_up%den(np))
             do ispec = 1, option%nflowspec
               fluxm(ispec) = fluxm(ispec) + diff * &
-                   aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
-                   (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
-                   -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
+                   auxvar_dn%diff((np-1)* option%nflowspec+ispec)* &
+                   (auxvar_up%xmol((np-1)* option%nflowspec+ispec) &
+                   -auxvar_dn%xmol((np-1)* option%nflowspec+ispec))
             enddo
           endif         
         enddo
@@ -1502,10 +1516,10 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   select case(ibndtype(2))
     case(DIRICHLET_BC)
        Dk =  Dk_dn / dd_up
-       cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
+       cond = Dk*area*(auxvar_up%temp - auxvar_dn%temp) 
        fluxe = fluxe + cond
     case(NEUMANN_BC)
-       fluxe = fluxe + aux_vars(2)*area*option%scale
+       fluxe = fluxe + auxvars(2)*area*option%scale
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
   end select
@@ -1515,25 +1529,27 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   Res(option%nflowdof)=fluxe * option%flow_dt
 
 end subroutine Flash2BCFlux
+
 ! ************************************************************************** !
-!
-! Flash2BCFluxAdv: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
-subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+
+subroutine Flash2BCFluxAdv(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Flash2_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn(:)
-  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
   PetscReal :: vv_darcy(:), area
   PetscReal :: Res(1:option%nflowdof) 
@@ -1561,27 +1577,27 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         ! Flow term
         ukvr=0.D0
         v_darcy=0.D0 
-        if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+        if (auxvar_up%sat(np) > sir_dn(np) .or. auxvar_dn%sat(np) > sir_dn(np)) then
            upweight=1.D0
-           if (aux_var_up%sat(np) < eps) then 
+           if (auxvar_up%sat(np) < eps) then 
               upweight=0.d0
-           else if (aux_var_dn%sat(np) < eps) then 
+           else if (auxvar_dn%sat(np) < eps) then 
               upweight=1.d0
            endif
-           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
+           density_ave = upweight*auxvar_up%den(np) + (1.D0-upweight)*auxvar_dn%den(np)
            
-           gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
-                (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+           gravity = (upweight*auxvar_up%den(np) * auxvar_up%avgmw(np) + &
+                (1.D0-upweight)*auxvar_dn%den(np) * auxvar_dn%avgmw(np)) &
                 * dist_gravity
        
-           dphi = aux_var_up%pres - aux_var_dn%pres &
-                - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+           dphi = auxvar_up%pres - auxvar_dn%pres &
+                - auxvar_up%pc(np) + auxvar_dn%pc(np) &
                 + gravity
    
            if (dphi>=0.D0) then
-              ukvr = aux_var_up%kvr(np)
+              ukvr = auxvar_up%kvr(np)
            else
-              ukvr = aux_var_dn%kvr(np)
+              ukvr = auxvar_dn%kvr(np)
            endif
      
            if (ukvr*Dq>floweps) then
@@ -1591,12 +1607,12 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
      case(NEUMANN_BC)
         v_darcy = 0.D0
-        if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
+        if (dabs(auxvars(1)) > floweps) then
+           v_darcy = auxvars(MPH_PRESSURE_DOF)
            if (v_darcy > 0.d0) then 
-              density_ave = aux_var_up%den(np)
+              density_ave = auxvar_up%den(np)
            else 
-              density_ave = aux_var_dn%den(np)
+              density_ave = auxvar_dn%den(np)
            endif
         endif
 
@@ -1609,12 +1625,12 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      
      if (v_darcy >= 0.D0) then
         !if(option%use_isothermal == PETSC_FALSE)&
-         uh = aux_var_up%h(np)
-         uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+         uh = auxvar_up%h(np)
+         uxmol(:)=auxvar_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      else
          !if(option%use_isothermal == PETSC_FALSE)&
-        uh = aux_var_dn%h(np)
-        uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+        uh = auxvar_dn%h(np)
+        uxmol(:)=auxvar_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
      do ispec=1, option%nflowspec
        fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
@@ -1631,24 +1647,25 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine Flash2BCFluxAdv
 
 ! ************************************************************************** !
-!
-! Flash2BCFluxDiffusion: Computes the  boundary flux terms for the residual
-! author: Chuan Lu
-! date: 10/12/08
-!
-! ************************************************************************** !
-subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+
+subroutine Flash2BCFluxDiffusion(ibndtype,auxvars,auxvar_up,auxvar_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
+  ! 
+  ! Computes the  boundary flux terms for the residual
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/12/08
+  ! 
   use Option_module
   
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Flash2_auxvar_elem_type) :: auxvar_up, auxvar_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn(:)
-  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: auxvars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
   PetscReal :: vv_darcy(:), area
   PetscReal :: Res(1:option%nflowdof) 
@@ -1670,16 +1687,16 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(3))
   case(DIRICHLET_BC) 
-     !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-     !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+     !      if (auxvar_up%sat > eps .and. auxvar_dn%sat > eps) then
+     !        diff = diffdp * 0.25D0*(auxvar_up%sat+auxvar_dn%sat)*(auxvar_up%den+auxvar_dn%den)
         do np = 1, option%nphase
-          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
-              diff =diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
-                    (aux_var_up%den(np)+aux_var_up%den(np))
+          if(auxvar_up%sat(np)>eps .and. auxvar_dn%sat(np)>eps)then
+              diff =diffdp * 0.25D0*(auxvar_up%sat(np)+auxvar_dn%sat(np))*&
+                    (auxvar_up%den(np)+auxvar_up%den(np))
            do ispec = 1, option%nflowspec
-              fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
-                   (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
-                   -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
+              fluxm(ispec) = fluxm(ispec) + diff * auxvar_dn%diff((np-1)* option%nflowspec+ispec)* &
+                   (auxvar_up%xmol((np-1)* option%nflowspec+ispec) &
+                   -auxvar_dn%xmol((np-1)* option%nflowspec+ispec))
            enddo
           endif         
         enddo
@@ -1690,7 +1707,7 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     select case(ibndtype(2))
     case(DIRICHLET_BC, 4)
        Dk =  Dk_dn / dd_up
-       cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
+       cond = Dk*area*(auxvar_up%temp - auxvar_dn%temp) 
        fluxe=fluxe + cond
     end select
 ! end if
@@ -1700,15 +1717,15 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
 end subroutine Flash2BCFluxDiffusion
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2Residual: Computes the residual equation 
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine Flash2Residual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -1808,14 +1825,15 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 end subroutine Flash2Residual
 
 ! ************************************************************************** !
-!
-! Flash2ResidualPatch: Computes the residual equation at patch level
-!                      original version (not used)
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation at patch level
+  ! original version (not used)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -1871,9 +1889,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -1890,14 +1908,14 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -1927,24 +1945,24 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      ghosted_id = ng   
      istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-          global_aux_vars(ng),&
+     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
+          global_auxvars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
-!    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
+!    print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 #if 1
-     if( associated(global_aux_vars))then
-       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!      global_aux_vars(ghosted_id)%sat_store =
-       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-!       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
-!      global_aux_vars(ghosted_id)%pres(:)
+     if( associated(global_auxvars))then
+       global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
+               auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+       global_auxvars(ghosted_id)%temp(:)=auxvars(ghosted_id)%auxvar_elem(0)%temp
+       global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
+!      global_auxvars(ghosted_id)%sat_store =
+       global_auxvars(ghosted_id)%fugacoeff(1)=xphi
+       global_auxvars(ghosted_id)%den(:)=auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+       global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
+                                          * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
+!       global_auxvars(ghosted_id)%reaction_rate(:)=0D0
+!      global_auxvars(ghosted_id)%pres(:)
      else
        print *,'Not associated global for Flash2'
      endif
@@ -1972,11 +1990,11 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 
          patch%aux%Flash2%delx(:,ng)=delx(:)
          call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
-            aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
+            auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
-!         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
-!            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
+!         if(auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
       endif
@@ -2000,8 +2018,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
-                            global_aux_vars(ghosted_id), &
+    call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0),&
+                            global_auxvars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -2057,7 +2075,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,auxvars(ghosted_id)%auxvar_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
@@ -2134,29 +2152,29 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     enddo
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
-           global_aux_vars_bc(sum_connection),&
+    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+           global_auxvars_bc(sum_connection),&
            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option)
 #if 1
-    if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
-      !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !   global_aux_vars(ghosted_id)%den_kg_store
+    if( associated(global_auxvars_bc))then
+      global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
+                     auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+      global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+      global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
+      !    global_auxvars(ghosted_id)%sat_store = 
+      global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
+      global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+      global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+                                          * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
+  !   global_auxvars(ghosted_id)%den_kg_store
     endif
 #endif
 
     call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(0), &
-         aux_vars(ghosted_id)%aux_var_elem(0), &
+         auxvars_bc(sum_connection)%auxvar_elem(0), &
+         auxvars(ghosted_id)%auxvar_elem(0), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
          Flash2_parameter%sir(:,icap_dn), &
@@ -2227,10 +2245,10 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       D_up = Flash2_parameter%ckwet(ithrm_up)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
-      call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+      call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
                           tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
@@ -2322,13 +2340,14 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 end subroutine Flash2ResidualPatch
 
 ! ************************************************************************** !
-!
-! Flash2Jacobian: Computes the Residual by Flux
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+  ! 
+  ! Flash2Jacobian: Computes the Residual by Flux
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2385,9 +2404,9 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -2406,14 +2425,14 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -2485,28 +2504,28 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
     enddo
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
-           global_aux_vars_bc(sum_connection),&
+    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+           global_auxvars_bc(sum_connection),&
            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option,xphi)
 
-    if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
-      !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !   global_aux_vars(ghosted_id)%den_kg_store
+    if( associated(global_auxvars_bc))then
+      global_auxvars_bc(sum_connection)%pres(:)= auxvars_bc(sum_connection)%auxvar_elem(0)%pres -&
+                     auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+      global_auxvars_bc(sum_connection)%temp(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%temp
+      global_auxvars_bc(sum_connection)%sat(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%sat(:)
+      !    global_auxvars(ghosted_id)%sat_store = 
+      global_auxvars_bc(sum_connection)%fugacoeff(1)=xphi
+      global_auxvars_bc(sum_connection)%den(:)=auxvars_bc(sum_connection)%auxvar_elem(0)%den(:)
+      global_auxvars_bc(sum_connection)%den_kg = auxvars_bc(sum_connection)%auxvar_elem(0)%den(:) &
+                                          * auxvars_bc(sum_connection)%auxvar_elem(0)%avgmw(:)
+  !   global_auxvars(ghosted_id)%den_kg_store
     endif
 
     call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(0), &
-         aux_vars(ghosted_id)%aux_var_elem(0), &
+         auxvars_bc(sum_connection)%auxvar_elem(0), &
+         auxvars(ghosted_id)%auxvar_elem(0), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
          Flash2_parameter%sir(:,icap_dn), &
@@ -2579,10 +2598,10 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       D_up = Flash2_parameter%ckwet(ithrm_up)
       D_dn = Flash2_parameter%ckwet(ithrm_dn)
 
-      call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+      call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
                           tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
@@ -2621,14 +2640,14 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
 end subroutine Flash2ResidualPatch1
 
 ! ************************************************************************** !
-!
-! Flash2Jacobian: Computes the Residual Aux vars for numerical Jacobin
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 
 subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+  ! 
+  ! Flash2Jacobian: Computes the Residual Aux vars for numerical Jacobin
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2672,8 +2691,8 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
@@ -2686,14 +2705,14 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -2716,24 +2735,24 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
     ghosted_id = ng   
     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-    call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-          global_aux_vars(ng),&
+    call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0),&
+          global_auxvars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
-!    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
+!    print *,'flash ', xx_loc_p(istart:iend),auxvars(ng)%auxvar_elem(0)%den
 #if 1
-    if(associated(global_aux_vars)) then
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!      global_aux_vars(ghosted_id)%sat_store =
-      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-!       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
-!      global_aux_vars(ghosted_id)%pres(:)
+    if(associated(global_auxvars)) then
+      global_auxvars(ghosted_id)%pres(:)= auxvars(ghosted_id)%auxvar_elem(0)%pres -&
+               auxvars(ghosted_id)%auxvar_elem(0)%pc(:)
+      global_auxvars(ghosted_id)%temp(:)=auxvars(ghosted_id)%auxvar_elem(0)%temp
+      global_auxvars(ghosted_id)%sat(:)=auxvars(ghosted_id)%auxvar_elem(0)%sat(:)
+!      global_auxvars(ghosted_id)%sat_store =
+      global_auxvars(ghosted_id)%fugacoeff(1)=xphi
+      global_auxvars(ghosted_id)%den(:)=auxvars(ghosted_id)%auxvar_elem(0)%den(:)
+      global_auxvars(ghosted_id)%den_kg(:) = auxvars(ghosted_id)%auxvar_elem(0)%den(:) &
+                                          * auxvars(ghosted_id)%auxvar_elem(0)%avgmw(:)
+!       global_auxvars(ghosted_id)%reaction_rate(:)=0D0
+!      global_auxvars(ghosted_id)%pres(:)
     else
       print *,'Not associated global for Flash2'
     endif
@@ -2761,11 +2780,11 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
       patch%aux%Flash2%delx(:,ng)=delx(:)
       call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
-            aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
+            auxvars(ng)%auxvar_elem(1:option%nflowdof),global_auxvars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
-!         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
-!            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
+!         if(auxvars(ng)%auxvar_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!            auxvars(ng)%auxvar_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
     endif
@@ -2778,14 +2797,15 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 end subroutine Flash2ResidualPatch0
 
 ! ************************************************************************** !
-!
-! Flash2ResidualPatch2: Computes other terms in Residual
-!                       (accumulation, source/sink, reaction)
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
+
 subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes other terms in Residual
+  ! (accumulation, source/sink, reaction)
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Connection_module
   use Realization_class
@@ -2829,11 +2849,11 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscBool :: enthalpy_flag
@@ -2849,15 +2869,15 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
   
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%Flash2Aux%auxvars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr)
@@ -2879,8 +2899,8 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       endif
      iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
-                            global_aux_vars(ghosted_id), &
+    call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(0),&
+                            global_auxvars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -2940,13 +2960,13 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,auxvars(ghosted_id)%auxvar_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
       if (option%compute_mass_balance_new) then
-        global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
-          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+        global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
           Res(:)/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
@@ -3011,15 +3031,15 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
  
 end subroutine Flash2ResidualPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2Jacobian: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/10/08
-!
-! ************************************************************************** !
 subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/10/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -3105,13 +3125,14 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
 end subroutine Flash2Jacobian
 
 ! ************************************************************************** !
-!
-! Flash2JacobianPatch: Computes the Jacobian
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -3177,8 +3198,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2)
@@ -3206,10 +3227,10 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -3249,8 +3270,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      icap = int(icap_loc_p(ghosted_id))
      
      do nvar =1, option%nflowdof
-        call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
-             global_aux_vars(ghosted_id),& 
+        call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
+             global_auxvars(ghosted_id),& 
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -3309,7 +3330,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
      do nvar =1, option%nflowdof
-       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
+       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,&
                             ss_flow, &
                             enthalpy_flag, option)
@@ -3388,21 +3409,21 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
-         global_aux_vars_bc(sum_connection),&
+    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+         global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
     call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
-         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
-         global_aux_vars_bc(sum_connection),&
+         auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
+         global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
        call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
-         aux_vars(ghosted_id)%aux_var_elem(nvar), &
+         auxvars_bc(sum_connection)%auxvar_elem(nvar), &
+         auxvars(ghosted_id)%auxvar_elem(nvar), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
          Flash2_parameter%sir(:,icap_dn), &
@@ -3512,20 +3533,20 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
                           tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
             ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
               /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
+                          auxvars(ghosted_id_dn)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_dn),&
                           tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
@@ -3661,13 +3682,14 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 end subroutine Flash2JacobianPatch
 
 ! ************************************************************************** !
-!
-! Flash2JacobianPatch: Computes the Jacobian: Flux term
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Flash2JacobianPatch: Computes the Jacobian: Flux term
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -3733,8 +3755,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -3761,10 +3783,10 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -3856,21 +3878,21 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
-         global_aux_vars_bc(sum_connection),&
+    call Flash2AuxVarCompute_Ninc(xxbc,auxvars_bc(sum_connection)%auxvar_elem(0),&
+         global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
     call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
-         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
-         global_aux_vars_bc(sum_connection),&
+         auxvars_bc(sum_connection)%auxvar_elem(1:option%nflowdof),&
+         global_auxvars_bc(sum_connection),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
        call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
-         aux_vars(ghosted_id)%aux_var_elem(nvar), &
+         auxvars_bc(sum_connection)%auxvar_elem(nvar), &
+         auxvars(ghosted_id)%auxvar_elem(nvar), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
          Flash2_parameter%sir(:,icap_dn), &
@@ -3984,20 +4006,20 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                          auxvars(ghosted_id_dn)%auxvar_elem(0),porosity_loc_p(ghosted_id_dn), &
                           tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
             ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
               /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+         call Flash2Flux(auxvars(ghosted_id_up)%auxvar_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
+                          auxvars(ghosted_id_dn)%auxvar_elem(nvar),porosity_loc_p(ghosted_id_dn),&
                           tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
@@ -4068,13 +4090,14 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 end subroutine Flash2JacobianPatch1
 
 ! ************************************************************************** !
-!
-! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+  ! 
+  ! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Connection_module
   use Option_module
@@ -4140,8 +4163,8 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(Flash2_auxvar_type), pointer :: auxvars(:), auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -4168,10 +4191,10 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
 
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  auxvars => patch%aux%Flash2%auxvars
+  auxvars_bc => patch%aux%Flash2%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -4205,8 +4228,8 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
      icap = int(icap_loc_p(ghosted_id))
      
      do nvar =1, option%nflowdof
-        call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
-             global_aux_vars(ghosted_id),& 
+        call Flash2Accumulation(auxvars(ghosted_id)%auxvar_elem(nvar), &
+             global_auxvars(ghosted_id),& 
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -4264,7 +4287,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
      do nvar =1, option%nflowdof
-       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
+       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, auxvars(ghosted_id)%auxvar_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,&
                             ss_flow, &
                             enthalpy_flag, option)
@@ -4385,15 +4408,15 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine Flash2JacobianPatch2
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2CreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
 subroutine Flash2CreateZeroArray(patch,option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Patch_module
   use Grid_module
@@ -4488,13 +4511,14 @@ subroutine Flash2CreateZeroArray(patch,option)
 end subroutine Flash2CreateZeroArray
 
 ! ************************************************************************** !
-!
-! Flash2MaxChange: Computes the maximum change in the solution vector
-! author: Chuan Lu
-! date: 01/15/08
-!
-! ************************************************************************** !
+
 subroutine Flash2MaxChange(realization)
+  ! 
+  ! Computes the maximum change in the solution vector
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 01/15/08
+  ! 
 
   use Realization_class
   use Patch_module
@@ -4529,14 +4553,15 @@ subroutine Flash2MaxChange(realization)
 end subroutine Flash2MaxChange
 
 ! ************************************************************************** !
-!
-! Flash2GetTecplotHeader: Returns Richards contribution to 
-!                               Tecplot file header
-! author: Chuan Lu
-! date: 10/13/08
-!
-! ************************************************************************** !
+
 function Flash2GetTecplotHeader(realization, icolumn)
+  ! 
+  ! Returns Richards contribution to
+  ! Tecplot file header
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/13/08
+  ! 
 
   use Realization_class
   use Option_module
@@ -4686,13 +4711,14 @@ function Flash2GetTecplotHeader(realization, icolumn)
 end function Flash2GetTecplotHeader
 
 ! ************************************************************************** !
-!
-! Flash2SetPlotVariables: Adds variables to be printed to list
-! author: Glenn Hammond
-! date: 10/15/12
-!
-! ************************************************************************** !
+
 subroutine Flash2SetPlotVariables(realization)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
   
   use Realization_class
   use Output_Aux_module
@@ -4734,42 +4760,42 @@ subroutine Flash2SetPlotVariables(realization)
                                GAS_SATURATION)
 
   name = 'Liquid Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_DENSITY)
 
   name = 'Gas Density'
-  units = ''
+  units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_DENSITY)
 
   name = 'Liquid Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_ENERGY)
 
   name = 'Gas Energy'
-  units = ''
+  units = 'kJ/mol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
   name = 'Gas Viscosity'
-  units = ''
+  units = 'Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_VISCOSITY)
 
   name = 'Liquid Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_MOBILITY)
 
   name = 'Gas Mobility'
-  units = ''
+  units = '1/Pa.s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GAS_MOBILITY)
 
@@ -4802,13 +4828,14 @@ subroutine Flash2SetPlotVariables(realization)
 end subroutine Flash2SetPlotVariables
 
 ! ************************************************************************** !
-!
-! Flash2Destroy: Deallocates variables associated with Flash2
-! author: Chuan Lu 
-! date: 10/14/08
-!
-! ************************************************************************** !
+
 subroutine Flash2Destroy(realization)
+  ! 
+  ! Deallocates variables associated with Flash2
+  ! 
+  ! Author: Chuan Lu
+  ! Date: 10/14/08
+  ! 
 
   use Realization_class
 
@@ -4823,14 +4850,16 @@ end subroutine Flash2Destroy
 
 
 #if 0
+
 ! ************************************************************************** !
-!
-! Flash2CheckpointWrite: Writes vecs to checkpoint file
-! author: Chuan Lu
-! date: 
-!
-! ************************************************************************** !
+
 subroutine Flash2CheckpointWrite(discretization, viewer)
+  ! 
+  ! Writes vecs to checkpoint file
+  ! date:
+  ! 
+  ! Author: Chuan Lu
+  ! 
 
   use Discretization_module
 
@@ -4848,15 +4877,15 @@ subroutine Flash2CheckpointWrite(discretization, viewer)
   
 end subroutine Flash2CheckpointWrite
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! Flash2CheckpointRead: Reads vecs from checkpoint file
-! author: Chuan Lu 
-! date: 
-!
-! ************************************************************************** !
 subroutine Flash2CheckpointRead(discretization,viewer)
+  ! 
+  ! Reads vecs from checkpoint file
+  ! date:
+  ! 
+  ! Author: Chuan Lu
+  ! 
 
   use Discretization_module
 

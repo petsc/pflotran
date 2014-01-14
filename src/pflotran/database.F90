@@ -21,13 +21,14 @@ module Database_module
 contains
 
 ! ************************************************************************** !
-!
-! DatabaseRead: Collects parameters from geochemical database
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 subroutine DatabaseRead(reaction,option)
+  ! 
+  ! Collects parameters from geochemical database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -744,13 +745,14 @@ subroutine DatabaseRead(reaction,option)
 end subroutine DatabaseRead
 
 ! ************************************************************************** !
-!
-! BasisInit: Initializes the basis for geochemistry
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 subroutine BasisInit(reaction,option)
+  ! 
+  ! Initializes the basis for geochemistry
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   use Option_module
   use String_module
@@ -789,6 +791,7 @@ subroutine BasisInit(reaction,option)
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
   type(general_rxn_type), pointer :: cur_general_rxn
+  type(radioactive_decay_rxn_type), pointer :: cur_radiodecay_rxn
   type(microbial_rxn_type), pointer :: cur_microbial_rxn
   type(kd_rxn_type), pointer :: cur_kd_rxn
   type(colloid_type), pointer :: cur_colloid
@@ -2880,6 +2883,99 @@ subroutine BasisInit(reaction,option)
     nullify(cur_ionx_rxn)
 
   endif
+
+  ! radioactive decay reaction
+  
+  if (reaction%nradiodecay_rxn > 0) then
+  
+    ! process reaction equation into the database format
+    cur_radiodecay_rxn => reaction%radioactive_decay_rxn_list
+    do
+      if (.not.associated(cur_radiodecay_rxn)) exit
+      cur_radiodecay_rxn%dbaserxn => &
+        DatabaseRxnCreateFromRxnString(cur_radiodecay_rxn%reaction, &
+                                       reaction%naqcomp, &
+                                       reaction%offset_aqueous, &
+                                       reaction%primary_species_names, &
+                                       reaction%nimcomp, &
+                                       reaction%offset_immobile, &
+                                       reaction%immobile%names, &
+                                       option)
+      cur_radiodecay_rxn => cur_radiodecay_rxn%next
+    enddo
+    nullify(cur_radiodecay_rxn)
+
+    ! determine max # species for a given radiodecay rxn
+    max_species_count = 0
+    cur_radiodecay_rxn => reaction%radioactive_decay_rxn_list
+    do
+      if (.not.associated(cur_radiodecay_rxn)) exit
+
+      ! zero count
+      forward_count = 0
+
+      ! max species in reaction
+      species_count = cur_radiodecay_rxn%dbaserxn%nspec
+
+      ! sum forward and reverse species
+      dbaserxn => cur_radiodecay_rxn%dbaserxn
+      do i = 1, dbaserxn%nspec
+        if (dbaserxn%stoich(i) < 0.d0) then
+          forward_count = forward_count + 1
+        endif
+      enddo
+      
+      if (forward_count > 1) then ! currently cannot have more than one species
+        option%io_buffer = 'Cannot have more than one reactant in ' // &
+                           'radioactive decay reaction: (' // &
+                           trim(cur_radiodecay_rxn%reaction) // ').'
+        call printErrMsg(option)
+      endif
+
+      ! calculate maximum
+      if (species_count > max_species_count) max_species_count = species_count
+
+      cur_radiodecay_rxn => cur_radiodecay_rxn%next
+
+    enddo
+    nullify(cur_radiodecay_rxn)
+    
+    allocate(reaction%radiodecayspecid(0:max_species_count,reaction%nradiodecay_rxn))
+    reaction%radiodecayspecid = 0
+    allocate(reaction%radiodecaystoich(max_species_count,reaction%nradiodecay_rxn))
+    reaction%radiodecaystoich = 0.d0
+    allocate(reaction%radiodecayforwardspecid(reaction%nradiodecay_rxn))
+    reaction%radiodecayforwardspecid = 0
+    allocate(reaction%radiodecay_kf(reaction%nradiodecay_rxn))
+    reaction%radiodecay_kf = 0.d0
+
+    ! load the data into the compressed arrays
+    irxn = 0
+    cur_radiodecay_rxn => reaction%radioactive_decay_rxn_list
+    do
+      if (.not.associated(cur_radiodecay_rxn)) exit
+      
+      dbaserxn => cur_radiodecay_rxn%dbaserxn
+      
+      irxn = irxn + 1
+     
+      forward_count = 0
+      backward_count = 0
+      do i = 1, dbaserxn%nspec
+        reaction%radiodecayspecid(i,irxn) = dbaserxn%spec_ids(i)
+        reaction%radiodecaystoich(i,irxn) = dbaserxn%stoich(i)
+        if (dbaserxn%stoich(i) < 0.d0) then
+          reaction%radiodecayforwardspecid(irxn) = dbaserxn%spec_ids(i)
+        endif
+      enddo
+      reaction%radiodecayspecid(0,irxn) = dbaserxn%nspec
+      reaction%radiodecay_kf(irxn) = cur_radiodecay_rxn%rate_constant
+      
+      cur_radiodecay_rxn => cur_radiodecay_rxn%next
+      
+    enddo
+              
+  endif 
   
   ! general reaction
   
@@ -3674,15 +3770,16 @@ subroutine BasisInit(reaction,option)
 end subroutine BasisInit
 
 ! ************************************************************************** !
-!
-! GetSpeciesBasisID: Reduces redundant coding above
-! author: Glenn Hammond
-! date: 12/02/08
-!
-! ************************************************************************** !
+
 function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
                            species_name, &
                            pri_names,sec_names,gas_names)
+  ! 
+  ! Reduces redundant coding above
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/02/08
+  ! 
 
   use Option_module
   use String_module
@@ -3735,13 +3832,14 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
 end function GetSpeciesBasisID
 
 ! ************************************************************************** !
-!
-! BasisPrint: Prints the basis
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 subroutine BasisPrint(reaction,title,option)
+  ! 
+  ! Prints the basis
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   use Option_module
   use Reaction_module

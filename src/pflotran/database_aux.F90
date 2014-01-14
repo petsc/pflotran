@@ -28,13 +28,14 @@ module Database_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! DatabaseRxnCreate: Allocate and initialize an equilibrium reaction
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
+
 function DatabaseRxnCreate()
+  ! 
+  ! Allocate and initialize an equilibrium reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/01/08
+  ! 
 
   implicit none
     
@@ -54,19 +55,20 @@ function DatabaseRxnCreate()
 end function DatabaseRxnCreate
 
 ! ************************************************************************** !
-!
-! DatabaseRxnCreateFromRxnString: Creates a database reaction given a
-!                                 reaction string
-! author: Glenn Hammond
-! date: 10/30/12
-!
-! ************************************************************************** !
+
 function DatabaseRxnCreateFromRxnString(reaction_string, &
                                         naqcomp, aq_offset, &
                                         primary_aq_species_names, &
                                         nimcomp, im_offset, &
                                         primary_im_species_names, &
                                         option)
+  ! 
+  ! Creates a database reaction given a
+  ! reaction string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/12
+  ! 
 
   use Option_module
   use String_module
@@ -260,17 +262,18 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
 end function DatabaseRxnCreateFromRxnString
 
 ! ************************************************************************** !
-!
-! BasisAlignSpeciesInRxn: Aligns the ordering of species in reaction with
-!                         the current basis
-! author: Glenn Hammond
-! date: 10/07/08
-!
-! ************************************************************************** !
+
 subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
                                   num_rxn_species,rxn_species_names, &
                                   rxn_stoich,rxn_species_ids,species_name, &
                                   option)
+  ! 
+  ! Aligns the ordering of species in reaction with
+  ! the current basis
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/07/08
+  ! 
 
   use Option_module
   use String_module
@@ -334,17 +337,18 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   endif
 
 end subroutine BasisAlignSpeciesInRxn 
-     
+
 ! ************************************************************************** !
-!
-! BasisSubSpeciesInGasOrSecRxn: Swaps out a chemical species in a chemical  
-!                                reaction, replacing it with the species in a 
-!                                secondary reaction (swaps 1 into 2)
-! author: Glenn Hammond
-! date: 10/06/08
-!
-! ************************************************************************** !
+
 subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
+  ! 
+  ! Swaps out a chemical species in a chemical
+  ! reaction, replacing it with the species in a
+  ! secondary reaction (swaps 1 into 2)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/06/08
+  ! 
 
   use String_module
 
@@ -432,15 +436,16 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
 end subroutine BasisSubSpeciesInGasOrSecRxn
 
 ! ************************************************************************** !
-!
-! BasisSubSpeciesInMineralRxn: Swaps out a chemical species in a chemical  
-!                                reaction, replacing it with the species in a 
-!                                secondary reaction (swaps 1 into 2)
-! author: Glenn Hammond
-! date: 10/06/08
-!
-! ************************************************************************** !
+
 subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
+  ! 
+  ! Swaps out a chemical species in a chemical
+  ! reaction, replacing it with the species in a
+  ! secondary reaction (swaps 1 into 2)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/06/08
+  ! 
 
   use String_module
   
@@ -528,16 +533,17 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
 end subroutine BasisSubSpeciesInMineralRxn
 
 ! ************************************************************************** !
-!
-! DatabaseCheckLegitimateLogKs: Checks whether legitimate log Ks exist for
-!                               all database temperatures if running 
-!                               non-isothermal
-! author: Glenn Hammond
-! date: 01/07/13
-!
-! ************************************************************************** !
+
 function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
                                       option)
+  ! 
+  ! Checks whether legitimate log Ks exist for
+  ! all database temperatures if running
+  ! non-isothermal
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/07/13
+  ! 
 
   use Option_module
   
@@ -577,13 +583,14 @@ function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
 end function DatabaseCheckLegitimateLogKs
 
 ! ************************************************************************** !
-!
-! DatabaseRxnDestroy: Deallocates a database reaction
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
+
 subroutine DatabaseRxnDestroy(dbaserxn)
+  ! 
+  ! Deallocates a database reaction
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/29/08
+  ! 
 
   implicit none
     

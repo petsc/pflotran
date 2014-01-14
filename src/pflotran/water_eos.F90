@@ -25,6 +25,8 @@ module Water_EOS_module
 
 contains
 
+! ************************************************************************** !
+
   subroutine VISW1 (T,P,PS,VW,vwt,vwp,ierr)
 
     implicit none
@@ -50,8 +52,12 @@ contains
  
   end subroutine VISW1
 
-!geh: currently not used
+! ************************************************************************** !
+
   subroutine VISW2 (T,P,PS,pswt,VW,vwt,vwp,ierr)
+  ! 
+  ! geh: currently not used
+  ! 
 
     implicit none
     
@@ -77,6 +83,8 @@ contains
  
   end subroutine VISW2
 
+! ************************************************************************** !
+
   subroutine VISW_noderiv(T,P,PS,VW,ierr)
 
     implicit none
@@ -96,17 +104,17 @@ contains
  
   end subroutine VISW_noderiv
 
+! ************************************************************************** !
 
-!geh: currently not used
-! ************************************************************************** !
-!
-! VISW_temp: Viscosity of water which is a function of temperature only
-! author: Satish Karra, LANL
-! date: 04/12/12
-! T in C, VW in Pa.s
-!
-! ************************************************************************** !
   subroutine VISW_temp(T,VW,dVW_dT,ierr)
+  ! 
+  ! geh: currently not used
+  ! Viscosity of water which is a function of temperature only
+  ! T in C, VW in Pa.s
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 04/12/12
+  ! 
     
     implicit none
     
@@ -139,8 +147,12 @@ contains
     
   end subroutine VISW_temp
 
-!geh: currently not used  
+! ************************************************************************** !
+
 subroutine VISW_FLO (t,dw,vw)
+  ! 
+  ! geh: currently not used
+  ! 
        implicit none
 !c=======================================================================
 !c  This subroutine calculates water and steam viscosities in range of:
@@ -209,11 +221,13 @@ subroutine VISW_FLO (t,dw,vw)
           enddo
           vw = viso*exp(udw*sum1)
         end subroutine VISW_FLO
-        
 
+! ************************************************************************** !
 
-!geh: currently not used
   subroutine PSAT_new (TC, P, ierr)
+  ! 
+  ! geh: currently not used
+  ! 
 
     implicit none
     
@@ -249,9 +263,13 @@ subroutine VISW_FLO (t,dw,vw)
     ierr = 0
 
   end subroutine PSAT_NEW
-  
-!geh: currently not used
+
+! ************************************************************************** !
+
  subroutine PSAT1_new (TC, P, tsp, ierr)
+  ! 
+  ! geh: currently not used
+  ! 
 
     implicit none
     
@@ -298,6 +316,8 @@ subroutine VISW_FLO (t,dw,vw)
  
   end subroutine PSAT1_NEW
 
+! ************************************************************************** !
+
 subroutine PSAT_orig (T, P, ierr)
 
     implicit none
@@ -331,7 +351,9 @@ subroutine PSAT_orig (T, P, ierr)
     ierr = 0
 
   end subroutine PSAT_orig  
- 
+
+! ************************************************************************** !
+
 subroutine PSATgeh (T, psat, dpsat_dt, ierr)
 
     implicit none
@@ -377,9 +399,13 @@ subroutine PSATgeh (T, psat, dpsat_dt, ierr)
     ierr = 0
 
   end subroutine PSATgeh  
- 
-!geh: currently not used
+
+! ************************************************************************** !
+
 subroutine PSAT1(T, Ps, tsp, ierr)
+  ! 
+  ! geh: currently not used
+  ! 
 
     implicit none
   
@@ -435,6 +461,7 @@ subroutine PSAT1(T, Ps, tsp, ierr)
 
   end subroutine PSAT1
 
+! ************************************************************************** !
 
 subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
 
@@ -658,7 +685,9 @@ subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
     ierr = 0
 
   end subroutine wateos
-  
+
+! ************************************************************************** !
+
 subroutine wateos_flag (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,flag,ierr)
 
     implicit none
@@ -868,8 +897,8 @@ subroutine wateos_flag (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,flag,ierr)
     ierr = 0
 
   end subroutine wateos_flag
-    
-  
+
+! ************************************************************************** !
 
 subroutine wateos_noderiv (t,p,dw,dwmol,hw,scale,ierr)
 
@@ -1075,6 +1104,8 @@ subroutine wateos_noderiv (t,p,dw,dwmol,hw,scale,ierr)
     ierr = 0
 
   end subroutine wateos_noderiv
+
+! ************************************************************************** !
 
 subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
  ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
@@ -1374,8 +1405,12 @@ subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
   
   end subroutine steameos
 
-!geh: currently not used
+! ************************************************************************** !
+
 subroutine COWAT (TC,PP,D,U, ierr)
+  ! 
+  ! geh: currently not used
+  ! 
 
     implicit none
   
@@ -1445,6 +1480,8 @@ subroutine COWAT (TC,PP,D,U, ierr)
 
   end subroutine cowat
 
+! ************************************************************************** !
+
 subroutine density (tc,p,d)
 
     implicit none
@@ -1500,7 +1537,8 @@ subroutine density (tc,p,d)
 
     return
   end subroutine density
-  
+
+! ************************************************************************** !
 
 subroutine duan_mix_den (t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
 
@@ -1529,6 +1567,7 @@ PetscReal :: fmwnacl = 58.44277d0
   denmix = denmix/avgmw
 end subroutine duan_mix_den
 
+! ************************************************************************** !
 
 subroutine nacl_den (t,p,xnacl,dnacl)
 
@@ -1552,6 +1591,8 @@ dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl &
 
 return
 end subroutine nacl_den
+
+! ************************************************************************** !
 
 subroutine nacl_vis (t,p,xnacl,visnacl)
 
@@ -1596,27 +1637,17 @@ visnacl = mu0*(1.d0 + beta*p)
 return
 end subroutine nacl_vis
 
-
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-! PURPOSE
-
-!  This function calculates saturation temperature for a given Ps c  Ref.: International Formulation Committee of the Sixth International
-!       Conference on Properties of Steam (1967).
-
-
-
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-!    ps  = saturation pressure (pascals)
-!    ts  = saturation temperature (deg. C)
-!    tsp = estimated ts on entry and dT/dps on return
-
-
-
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! ************************************************************************** !
 
 subroutine Tsat(ts,ps,t_ps,ts_guess,ierr)
+  ! 
+  ! PURPOSE
+  ! This function calculates saturation temperature for a given Ps c  Ref.: International Formulation Committee of the Sixth International
+  ! Conference on Properties of Steam (1967).
+  ! ps  = saturation pressure (pascals)
+  ! ts  = saturation temperature (deg. C)
+  ! tsp = estimated ts on entry and dT/dps on return
+  ! 
 
   implicit none
 
@@ -1718,16 +1749,17 @@ c-------tsp = delT/dps, delT = 1.
 
 end subroutine Tsat
 
-!===============================================================================
-! DensityIce: Subroutine to calculate the density of ice at given temperature
-!             and pressure
-!
-! Written by Satish Karra, LANL
-! Date: 11/16/11
-! T is in deg C, P is in Pa, density is in kmol/m3
-!===============================================================================
+! ************************************************************************** !
 
 subroutine DensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
+  ! 
+  ! Subroutine to calculate the density of ice at given temperature
+  ! and pressure
+  ! T is in deg C, P is in Pa, density is in kmol/m3
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/16/11
+  ! 
 
   implicit none
   
@@ -1746,17 +1778,17 @@ subroutine DensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
   
 end subroutine DensityIce
 
-
-!===============================================================================
-! InternalEnergyIce: Subroutine to calculate the internal energy of ice at given
-!                    temperature and pressure
-!
-! Written by Satish Karra, LANL
-! Date: 11/16/11
-! T is in deg C, internal energy is in J/mol
-!===============================================================================
+! ************************************************************************** !
 
 subroutine InternalEnergyIce(T, u_ice, du_ice_dT)
+  ! 
+  ! Subroutine to calculate the internal energy of ice at given
+  ! temperature and pressure
+  ! T is in deg C, internal energy is in J/mol
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 11/16/11
+  ! 
 
   implicit none
 
@@ -1779,18 +1811,17 @@ subroutine InternalEnergyIce(T, u_ice, du_ice_dT)
   
 end subroutine InternalEnergyIce
 
-
-! ************************************************************************** !
-!
-! wateos_simple: Simple water equation of state from Scott Painter
-! author: Satish Karra, LANL
-! date: 02/1/12
-! T in C, P in Pa
-!
 ! ************************************************************************** !
 
 subroutine wateos_simple(T, P, den_water_kg, den_water_kmol, dden_water_dp, &
                          dden_water_dt, h_MJ_kmol, dh_dp, dh_dt, ierr)
+  ! 
+  ! Simple water equation of state from Scott Painter
+  ! T in C, P in Pa
+  ! 
+  ! Author: Satish Karra, LANL
+  ! Date: 02/1/12
+  ! 
 
   implicit none
 

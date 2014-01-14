@@ -24,15 +24,14 @@ module Surface_Init_module
 contains
 
 ! ************************************************************************** !
-!> This routine reads the required input file cards related to surface flows
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/18/12
-! ************************************************************************** !
 
 subroutine SurfaceInitReadRequiredCards(surf_realization)
+  ! 
+  ! This routine reads the required input file cards related to surface flows
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/18/12
+  ! 
 
   use Option_module
   use Discretization_module
@@ -96,15 +95,15 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
 end subroutine SurfaceInitReadRequiredCards
 
 ! ************************************************************************** !
-!> This routine reads required surface flow data from the input file
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 subroutine SurfaceInit(surf_realization,input,option)
+  ! 
+  ! This routine reads required surface flow data from the input file
+  ! grids.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -189,15 +188,15 @@ subroutine SurfaceInit(surf_realization,input,option)
 end subroutine SurfaceInit
 
 ! ************************************************************************** !
-!> This routine reads surface flow data from the input file
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
+  ! 
+  ! This routine reads surface flow data from the input file
+  ! grids.
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -776,6 +775,70 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
           call printErrMsg(option,'Setting time to value not supported in surface-flow')
         endif
 
+!......................
+
+      case ('SURF_CHECKPOINT')
+        option%checkpoint_flag = PETSC_TRUE
+        call InputReadInt(input,option,option%checkpoint_frequency)
+
+        if (input%ierr == 1) then
+          option%checkpoint_frequency = 0
+          do
+            call InputReadPflotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','CHECKPOINT')
+            call StringToUpper(word)
+
+            select case(trim(word))
+              case ('PERIODIC')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'time increment', &
+                                   'OUTPUT,PERIODIC')
+                call StringToUpper(word)
+
+                select case(trim(word))
+                  case('TIME')
+                    call InputReadDouble(input,option,temp_real)
+                    call InputErrorMsg(input,option,'time increment', &
+                                       'CHECKPOINT,PERIODIC,TIME')
+                    call InputReadWord(input,option,word,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'time increment units', &
+                                       'CHECKPOINT,PERIODIC,TIME')
+                    units_conversion = UnitsConvertToInternal(word,option)
+                    output_option%periodic_checkpoint_time_incr = temp_real* &
+                                                              units_conversion
+                  case('TIMESTEP')
+                    call InputReadInt(input,option,option%checkpoint_frequency)
+                    call InputErrorMsg(input,option,'timestep increment', &
+                                       'CHECKPOINT,PERIODIC,TIMESTEP')
+                  case default
+                    option%io_buffer = 'Keyword: ' // trim(word) // &
+                                       ' not recognized in CHECKPOINT,PERIODIC.'
+                    call printErrMsg(option)
+                end select
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                                   ' not recognized in CHECKPOINT.'
+                call printErrMsg(option)
+            end select
+          enddo
+          if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
+              option%checkpoint_frequency /= 0) then
+            option%io_buffer = 'Both TIME and TIMESTEP cannot be specified ' // &
+              'for CHECKPOINT,PERIODIC.'
+            call printErrMsg(option)
+          endif
+          if (output_option%periodic_checkpoint_time_incr == 0.d0 .and. &
+              option%checkpoint_frequency == 0) then
+            option%io_buffer = 'Either, TIME and TIMESTEP need to be specified ' // &
+              'for CHECKPOINT,PERIODIC.'
+            call printErrMsg(option)
+          endif
+        endif
+
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -792,16 +855,15 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 end subroutine SurfaceInitReadInput
 
 ! ************************************************************************** !
-!> This routine assigns surface material properties to associated regions in
-!! the model (similar to assignMaterialPropToRegions)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/13/12
-! ************************************************************************** !
 
 subroutine SurfaceInitMatPropToRegions(surf_realization)
+  ! 
+  ! This routine assigns surface material properties to associated regions in
+  ! the model (similar to assignMaterialPropToRegions)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/13/12
+  ! 
 
   use Surface_Realization_class
   use Discretization_module
@@ -970,14 +1032,14 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
 end subroutine SurfaceInitMatPropToRegions
 
 ! ************************************************************************** !
-!> This routine reads surface region files
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/20/12
-! ************************************************************************** !
+
 subroutine SurfaceInitReadRegionFiles(surf_realization)
+  ! 
+  ! This routine reads surface region files
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/20/12
+  ! 
 
   use Surface_Realization_class
   use Region_module

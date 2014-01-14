@@ -37,13 +37,14 @@ module Matrix_Block_Aux_module
 contains
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxCreate: Allocate and initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
+
 function MatrixBlockAuxVarCreate(option)
+  ! 
+  ! MatrixBlockAuxCreate: Allocate and initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
@@ -62,103 +63,108 @@ function MatrixBlockAuxVarCreate(option)
 end function MatrixBlockAuxVarCreate
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarInit1: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
-subroutine MatrixBlockAuxVarInit1(aux_var,dim1,dim2,dim3,option)
+
+subroutine MatrixBlockAuxVarInit1(auxvar,dim1,dim2,dim3,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(matrix_block_auxvar_type) :: aux_var
+  type(matrix_block_auxvar_type) :: auxvar
   type(matrix_block_info_type) :: matrix_info
   PetscInt :: dim1
   PetscInt :: dim2
   PetscInt :: dim3
   type(option_type) :: option  
   
-  allocate(aux_var%dtotal(dim1,dim2,dim3))
-  aux_var%dtotal = 0.d0
+  allocate(auxvar%dtotal(dim1,dim2,dim3))
+  auxvar%dtotal = 0.d0
   
 end subroutine MatrixBlockAuxVarInit1
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarInit2: Initialize auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
-subroutine MatrixBlockAuxVarInit2(aux_var,matrix_info,option)
+
+subroutine MatrixBlockAuxVarInit2(auxvar,matrix_info,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(matrix_block_auxvar_type) :: aux_var
+  type(matrix_block_auxvar_type) :: auxvar
   type(matrix_block_info_type) :: matrix_info
   type(option_type) :: option  
   
-  allocate(aux_var%dtotal(matrix_info%dim1,matrix_info%dim2,matrix_info%dim3))
-  aux_var%dtotal = 0.d0
+  allocate(auxvar%dtotal(matrix_info%dim1,matrix_info%dim2,matrix_info%dim3))
+  auxvar%dtotal = 0.d0
   
 end subroutine MatrixBlockAuxVarInit2
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarCopy: Copys an auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
-subroutine MatrixBlockAuxVarCopy(aux_var,aux_var2,option)
+
+subroutine MatrixBlockAuxVarCopy(auxvar,auxvar2,option)
+  ! 
+  ! Copys an auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   use Option_module
 
   implicit none
   
-  type(matrix_block_auxvar_type) :: aux_var, aux_var2
+  type(matrix_block_auxvar_type) :: auxvar, auxvar2
   type(option_type) :: option  
   
-  aux_var%dtotal = aux_var2%dtotal
+  auxvar%dtotal = auxvar2%dtotal
   
 end subroutine MatrixBlockAuxVarCopy
 
 ! ************************************************************************** !
-!
-! MatrixBlockAuxVarDestroy: Deallocates a matrix block auxiliary object
-! author: Glenn Hammond
-! date: 03/04/2010
-!
-! ************************************************************************** !
-subroutine MatrixBlockAuxVarDestroy(aux_var)
+
+subroutine MatrixBlockAuxVarDestroy(auxvar)
+  ! 
+  ! Deallocates a matrix block auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/04/2010
+  ! 
 
   implicit none
 
-  type(matrix_block_auxvar_type), pointer :: aux_var
+  type(matrix_block_auxvar_type), pointer :: auxvar
   
-  if (.not.associated(aux_var)) return
+  if (.not.associated(auxvar)) return
   
-  if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
-  nullify(aux_var%dtotal)
+  if (associated(auxvar%dtotal))deallocate(auxvar%dtotal)
+  nullify(auxvar%dtotal)
   
-  deallocate(aux_var)
-  nullify(aux_var)
+  deallocate(auxvar)
+  nullify(auxvar)
   
 end subroutine MatrixBlockAuxVarDestroy
 
 ! ************************************************************************** !
-!
-! MatrixBlockInfoCreate: Allocate and initialize matrix block info object
-! author: Glenn Hammond
-! date: 03/09/2010
-!
-! ************************************************************************** !
+
 function MatrixBlockInfoCreate(dim1,dim2,dim3,option)
+  ! 
+  ! Allocate and initialize matrix block info object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/09/2010
+  ! 
 
   use Option_module
 
@@ -182,15 +188,15 @@ function MatrixBlockInfoCreate(dim1,dim2,dim3,option)
   
 end function MatrixBlockInfoCreate
 
+! ************************************************************************** !
 
-! ************************************************************************** !
-!
-! MatrixBlockInfoDestroy: Deallocates a matrix block info object
-! author: Glenn Hammond
-! date: 03/08/2010
-!
-! ************************************************************************** !
 subroutine MatrixBlockInfoDestroy(matrix_info)
+  ! 
+  ! Deallocates a matrix block info object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/08/2010
+  ! 
 
   implicit none
 

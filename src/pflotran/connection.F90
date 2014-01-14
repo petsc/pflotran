@@ -43,20 +43,25 @@ module Connection_module
     type(connection_set_ptr_type), pointer :: array(:)
   end type connection_set_list_type
   
-  public :: ConnectionCreate, ConnectionAddToList, &
+  public :: ConnectionCreate, &
+            ConnectionAddToList, &
             ConnectionGetNumberInList, &
-            ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
+            ConnectionInitList, &
+            ConnectionCalculateDistances, &
+            ConnectionDestroyList, &
+            ConnectionDestroy
   
 contains
 
 ! ************************************************************************** !
-!
-! ConnectionCreate: Allocates and initializes a new connection
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 function ConnectionCreate(num_connections,connection_itype)
+  ! 
+  ! Allocates and initializes a new connection
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -130,13 +135,14 @@ function ConnectionCreate(num_connections,connection_itype)
 end function ConnectionCreate
 
 ! ************************************************************************** !
-!
-! ConnectionGetNumberInList: Returns the number of connections in a list
-! author: Glenn Hammond
-! date: 11/19/07
-!
-! ************************************************************************** !
+
 function ConnectionGetNumberInList(list)
+  ! 
+  ! Returns the number of connections in a list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/19/07
+  ! 
 
   implicit none
   
@@ -157,13 +163,14 @@ function ConnectionGetNumberInList(list)
 end function ConnectionGetNumberInList
 
 ! ************************************************************************** !
-!
-! InitConnectionModule: Initializes module variables, lists, arrays.
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionInitList(list)
+  ! 
+  ! InitConnectionModule: Initializes module variables, lists, arrays.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
 
@@ -177,14 +184,15 @@ subroutine ConnectionInitList(list)
 end subroutine ConnectionInitList
 
 ! ************************************************************************** !
-!
-! ConnectionAddToList: Adds a new connection of the module global list of 
-!                      connections
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionAddToList(new_connection_set,list)
+  ! 
+  ! Adds a new connection of the module global list of
+  ! connections
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -200,14 +208,15 @@ subroutine ConnectionAddToList(new_connection_set,list)
 end subroutine ConnectionAddToList
 
 ! ************************************************************************** !
-!
-! ConnectionConvertListToArray: Creates an array of pointers to the 
-!                               connections in the connection list
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionConvertListToArray(list)
+  ! 
+  ! Creates an array of pointers to the
+  ! connections in the connection list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   
@@ -229,13 +238,51 @@ subroutine ConnectionConvertListToArray(list)
 end subroutine ConnectionConvertListToArray
 
 ! ************************************************************************** !
-!
-! ConnectionDestroy: Deallocates a connection
-! author: Glenn Hammond
-! date: 10/23/07
-!
+
+subroutine ConnectionCalculateDistances(dist,gravity,distance_upwind, &
+                                        distance_downwind,distance_gravity, &
+                                        upwind_weight)
+  ! 
+  ! Calculates the various distances and weights used in a flux calculation.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  ! 
+
+  implicit none
+  
+  PetscReal, intent(in) :: dist(-1:3)
+  PetscReal, intent(in) :: gravity(3)
+  
+  PetscReal, intent(out) :: distance_upwind
+  PetscReal, intent(out) :: distance_downwind
+  PetscReal, intent(out) :: distance_gravity
+  PetscReal, intent(out) :: upwind_weight
+  
+  ! dist(-1) = scalar - fraction upwind
+  ! dist(0) = scalar - magnitude of distance
+  ! gravity = vector(3)
+  ! dist(1:3) = vector(3) - unit vector
+  distance_gravity = dist(0) * &                  ! distance_gravity = dx*g*n
+                     dot_product(gravity,dist(1:3))
+  distance_upwind = dist(0)*dist(-1)
+  distance_downwind = dist(0)-distance_upwind ! should avoid truncation error
+  ! upweight could be calculated as 1.d0-fraction_upwind
+  ! however, this introduces ever so slight error causing pflow-overhaul not
+  ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
+  upwind_weight = distance_downwind/(distance_upwind+distance_downwind)
+  
+end subroutine ConnectionCalculateDistances
+
 ! ************************************************************************** !
+
 subroutine ConnectionDestroy(connection)
+  ! 
+  ! Deallocates a connection
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/23/07
+  ! 
 
   implicit none
   
@@ -271,13 +318,14 @@ subroutine ConnectionDestroy(connection)
 end subroutine ConnectionDestroy
 
 ! ************************************************************************** !
-!
-! ConnectionDestroyList: Deallocates the module global list and array of regions
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
+
 subroutine ConnectionDestroyList(list)
+  ! 
+  ! Deallocates the module global list and array of regions
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/07
+  ! 
 
   implicit none
   

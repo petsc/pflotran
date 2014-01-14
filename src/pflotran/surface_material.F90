@@ -31,16 +31,16 @@ module Surface_Material_module
             SurfaceMaterialPropGetPtrFromArray
 
   contains
-  
+
 ! ************************************************************************** !
-!> This routine creates a surface material property
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 function SurfaceMaterialPropertyCreate()
+  ! 
+  ! This routine creates a surface material property
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   implicit none
   
@@ -60,14 +60,14 @@ function SurfaceMaterialPropertyCreate()
 end function SurfaceMaterialPropertyCreate
 
 ! ************************************************************************** !
-!> This routine reads in contents of a surface material property
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
+  ! 
+  ! This routine reads in contents of a surface material property
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   use Option_module
   use Input_Aux_module
@@ -108,14 +108,14 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
 end subroutine SurfaceMaterialPropertyRead
 
 ! ************************************************************************** !
-!> This routine adds a surface material property to a linked list
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 subroutine SurfaceMaterialPropertyAddToList(surf_material_property,list)
+  ! 
+  ! This routine adds a surface material property to a linked list
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   implicit none
   
@@ -138,14 +138,14 @@ subroutine SurfaceMaterialPropertyAddToList(surf_material_property,list)
 end subroutine SurfaceMaterialPropertyAddToList
 
 ! ************************************************************************** !
-!> This routine destroys a surface material property
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/09/12
-! ************************************************************************** !
+
 recursive subroutine SurfaceMaterialPropertyDestroy(surf_material_property)
+  ! 
+  ! This routine destroys a surface material property
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/09/12
+  ! 
 
   implicit none
   
@@ -161,15 +161,15 @@ recursive subroutine SurfaceMaterialPropertyDestroy(surf_material_property)
 end subroutine SurfaceMaterialPropertyDestroy
 
 ! ************************************************************************** !
-!> This routine creates an array of pointers to the surface_material_properties
-!! in the list (similar to subroutine MaterialPropConvertListToArray)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/11/12
-! ************************************************************************** !
+
 subroutine SurfaceMaterialPropConvertListToArray(list,array,option)
+  ! 
+  ! This routine creates an array of pointers to the surface_material_properties
+  ! in the list (similar to subroutine MaterialPropConvertListToArray)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/11/12
+  ! 
 
   use Option_module
   use String_module
@@ -262,17 +262,17 @@ subroutine SurfaceMaterialPropConvertListToArray(list,array,option)
 end subroutine SurfaceMaterialPropConvertListToArray
 
 ! ************************************************************************** !
-!> This routine returns a pointer to the surface material property matching
-!! surface_material_propertry_name (similar to subroutine
-!! MaterialPropGetPtrFromArray)
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! date: 02/11/12
-! ************************************************************************** !
+
 function SurfaceMaterialPropGetPtrFromArray(surf_material_property_name, &
                                             surf_material_property_array)
+  ! 
+  ! This routine returns a pointer to the surface material property matching
+  ! surface_material_propertry_name (similar to subroutine
+  ! MaterialPropGetPtrFromArray)
+  ! 
+  ! Author: Gautam Bisht, ORNL
+  ! Date: 02/11/12
+  ! 
 
   use String_module
 

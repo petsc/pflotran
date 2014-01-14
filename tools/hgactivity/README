@@ -1,0 +1,74 @@
+In order to use the aliases file (aliases.txt) to map usernames, you have to apply the following patch to __init__.py in the Hgactivity package:
+
+diff -r 47e62313c363 activity/__init__.py
+--- a/activity/__init__.py	Tue May 14 11:10:43 2013 +0200
++++ b/activity/__init__.py	Tue Jan 07 17:38:59 2014 -0800
+@@ -213,7 +213,7 @@
+             try:
+                 for l in open(aliases, 'r'):
+                     l = l.strip()
+-                    alias, actual = l.split()
++                    alias, actual = l.split(';')
+                     options.amap[alias.strip()] = actual.strip()
+             except:
+                 raise UiException('some problem was found parsing the alias file \'%s\'.' % aliases)
+
+Otherwise, Hgactivity fails on the splitting of the lines, at least with Python 2.7. 
+
+-Glenn
+
+-------------------------------------------------------------------------------
+The following is a printout of the help for Hgactivity:
+
+hg activity [OPTION]...
+
+    Create a file called activity.png displaying the activity of the current
+    repository
+
+    By default, the activity is computed using the number of commits. There is
+    an option to consider instead the number of lines modified in the
+    changesets (--uselines).
+
+    Most options are self explanatory.
+
+    The map file format used to specify aliases is fairly simple: <alias
+    name>; <actual name> The <actual name> is the one used to display in
+    caption, the <alias name> is either the name or the email as stored on the
+    repository. This file is only used when --split=authors is used.
+
+    The name listed after the option --exclude are those found in the
+    mercurial repository. That is, before the map file is applied.
+
+options:
+
+    --mode string         Specifiy the mode for reporting the activity, one
+                          of: 'file' : create a file, 'display' : display
+                          inside a graphical window, or 'gui' : full interface
+                          from which you can change options (requires PyQt/Qt)
+                          (default: file)
+    --split string        Specifiy if the graph should be splitted by 'none',
+                          'authors', 'files', 'branches', 'directories'.
+                          (default: none)
+ -o --filename string     name of the file created (only with mode=file)
+                          (default: activity.png)
+ -w --width integer       Width of the graph in pixels (default: 800)
+ -h --height integer      Height of the graph in pixels (default: 600)
+    --datemin string      Start date of the graph (yyyy-mm-dd)
+    --datemax string      End date of the graph (yyyy-mm-dd)
+    --maxcaptions integer Maximum number of captions (when using --split).
+                          (default: 4)
+ -x --exclude string      Comma-separated list of authors to ignore. You can
+                          provide either name or email.
+    --excluderevs string  Comma-separated list of revisions to ignore. Can be
+                          revision number or id
+    --aliases string      file with aliases
+    --skipmerges          Do not consider merge commits
+ -l --uselines            Use the number of lines modified instead of the
+                          number of commits
+    --showtags            Display tags on the X axis
+ -t --imagetitle string   Title (default to repository path)
+ -c --cwindow integer     Relative size of the convolution window, in percent
+                          of the displayed history. Bigger values give a
+                          smoother graph (default: 2)
+
+use "hg -v help activity" to show more info

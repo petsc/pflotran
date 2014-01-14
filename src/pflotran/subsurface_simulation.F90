@@ -42,13 +42,14 @@ module Subsurface_Simulation_class
 contains
 
 ! ************************************************************************** !
-!
-! SubsurfaceSimulationCreate: Allocates and initializes a new simulation object
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
+
 function SubsurfaceSimulationCreate(option)
+  ! 
+  ! Allocates and initializes a new simulation object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/25/07
+  ! 
 
   use Option_module
   
@@ -68,13 +69,14 @@ function SubsurfaceSimulationCreate(option)
 end function SubsurfaceSimulationCreate
 
 ! ************************************************************************** !
-!
-! SubsurfaceSimulationInit: Initializes simulation values
-! author: Glenn Hammond
-! date: 04/22/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceSimulationInit(this,option)
+  ! 
+  ! Initializes simulation values
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/22/13
+  ! 
 
   use Option_module
   
@@ -89,13 +91,14 @@ subroutine SubsurfaceSimulationInit(this,option)
 end subroutine SubsurfaceSimulationInit
 
 ! ************************************************************************** !
-!
-! SubsurfaceInitializeRun: Initializes simulation
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceInitializeRun(this)
+  ! 
+  ! Initializes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Logging_module
   use Output_module
@@ -119,13 +122,14 @@ subroutine SubsurfaceInitializeRun(this)
 end subroutine SubsurfaceInitializeRun
 
 ! ************************************************************************** !
-!
-! SubsurfaceFinalizeRun: Finalizes simulation
-! author: Glenn Hammond
-! date: 03/18/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceFinalizeRun(this)
+  ! 
+  ! Finalizes simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
 
   use Timestepper_BE_class
 
@@ -165,13 +169,14 @@ subroutine SubsurfaceFinalizeRun(this)
 end subroutine SubsurfaceFinalizeRun
 
 ! ************************************************************************** !
-!
-! SubsurfaceSimulationStrip: Deallocates members of subsurface simulation 
-! author: Glenn Hammond
-! date: 06/11/13
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceSimulationStrip(this)
+  ! 
+  ! Deallocates members of subsurface simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  ! 
 
   implicit none
   
@@ -187,13 +192,14 @@ subroutine SubsurfaceSimulationStrip(this)
 end subroutine SubsurfaceSimulationStrip
 
 ! ************************************************************************** !
-!
-! SubsurfaceSimulationDestroy: Deallocates a simulation
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
+
 subroutine SubsurfaceSimulationDestroy(simulation)
+  ! 
+  ! Deallocates a simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/01/07
+  ! 
 
   implicit none
   
