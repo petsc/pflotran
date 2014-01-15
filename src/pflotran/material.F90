@@ -32,12 +32,15 @@ module Material_module
     PetscReal :: thermal_conductivity_wet
     PetscReal :: alpha    ! conductivity saturation relation exponent
 
+    character(len=MAXWORDLENGTH) :: soil_compressibility_function
+    PetscReal :: soil_compressibility
+    PetscReal :: soil_reference_pressure
+
     ! ice properties
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
 
     PetscReal :: pore_compressibility
-    PetscReal :: pore_compress_ref_pressure
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
     PetscReal :: transverse_dispersivity_h
@@ -78,6 +81,27 @@ module Material_module
     type(material_property_type), pointer :: ptr
   end type material_property_ptr_type
   
+  ! procedure pointer declarations
+  procedure(MaterialCompressSoilDummy), pointer :: &
+    MaterialCompressSoilPtr => null()
+ 
+  ! interface blocks
+  interface
+    subroutine MaterialCompressSoilDummy(auxvar,pressure,compressed_porosity, &
+                                         dcompressed_porosity_dp)
+    use Material_Aux_class
+    implicit none
+    class(material_auxvar_type), intent(in) :: auxvar
+    PetscReal, intent(in) :: pressure
+    PetscReal, intent(out) :: compressed_porosity
+    PetscReal, intent(out) :: dcompressed_porosity_dp
+    end subroutine MaterialCompressSoilDummy
+  end interface 
+  
+  interface MaterialCompressSoil
+    procedure MaterialCompressSoilPtr
+  end interface
+  
   public :: MaterialPropertyCreate, &
             MaterialPropertyDestroy, &
             MaterialPropertyAddToList, &
@@ -89,6 +113,7 @@ module Material_module
             MaterialSetAuxVarVecLoc, &
             MaterialGetAuxVarVecLoc, &
             MaterialAuxVarCommunicate, &
+            MaterialCompressSoil, &
             MaterialPropertyRead, &
             MaterialInitAuxIndices, &
             MaterialAssignPropertyToAux
@@ -138,11 +163,14 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_wet = 0.d0
   material_property%alpha = 0.45d0
 
+  material_property%soil_compressibility_function = ''
+  material_property%soil_compressibility = -999.d0
+  material_property%soil_reference_pressure = -999.d0
+
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
 
   material_property%pore_compressibility = -999.d0
-  material_property%pore_compress_ref_pressure = -999.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
   material_property%transverse_dispersivity_h = 0.d0
@@ -275,10 +303,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%pore_compressibility)
         call InputErrorMsg(input,option,'pore compressibility', &
                            'MATERIAL_PROPERTY')
-      case('PORE_COMPRESS_REF_PRESSURE') 
+      case('SOIL_COMPRESSIBILITY_FUNCTION') 
+        call InputReadWord(input,option, &
+                           material_property%soil_compressibility_function, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'soil compressibility function', &
+                           'MATERIAL_PROPERTY')
+      case('SOIL_COMPRESSIBILITY') 
         call InputReadDouble(input,option, &
-                             material_property%pore_compress_ref_pressure)
-        call InputErrorMsg(input,option,'pore compressibility reference pressre', &
+                             material_property%soil_compressibility)
+        call InputErrorMsg(input,option,'soil compressibility', &
+                           'MATERIAL_PROPERTY')
+      case('SOIL_REFERENCE_PRESSURE') 
+        call InputReadDouble(input,option, &
+                             material_property%soil_reference_pressure)
+        call InputErrorMsg(input,option,'soil reference pressure', &
                            'MATERIAL_PROPERTY')
       case('THERMAL_EXPANSITIVITY') 
         call InputReadDouble(input,option, &
@@ -863,6 +902,7 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   ! Date: 01/09/14
   !
   use Material_Aux_class
+  use String_module
   use Option_module
   
   implicit none
@@ -873,25 +913,54 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   PetscInt :: i
   PetscInt :: icount = 0
   
+  procedure(MaterialCompressSoilDummy), pointer :: &
+    MaterialCompressSoilPtrTmp 
+  
   soil_density_index = 0
   soil_thermal_conductivity_index = 0
   soil_heat_capacity_index = 0
   soil_compressibility_index = 0
   soil_reference_pressure_index = 0
-  max_material_index = 0  
+  max_material_index = 0
   
   do i = 1, size(material_property_ptrs)
+    MaterialCompressSoilPtrTmp => null()
+    if (len_trim(material_property_ptrs(i)%ptr% &
+                   soil_compressibility_function) > 1) then
+      call StringToUpper(material_property_ptrs(i)%ptr% &
+                           soil_compressibility_function)
+      select case(material_property_ptrs(i)%ptr%soil_compressibility_function)
+        case('BRAGFLO')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilBRAGFLO
+        case('LEIJNSE','DEFAULT')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilLeijnse
+        case default
+          option%io_buffer = 'Soil compressibility function "' // &
+            trim(material_property_ptrs(i)%ptr% &
+                   soil_compressibility_function) // &
+            '" not recognized.'
+          call printErrMsg(option)
+      end select
+      if (.not.associated(MaterialCompressSoilPtr)) then
+        MaterialCompressSoilPtr => MaterialCompressSoilPtrTmp
+      else if (.not.associated(MaterialCompressSoilPtr, &
+                               MaterialCompressSoilPtrTmp)) then
+        option%io_buffer = 'All MATERIAL_PROPERTIES must specify the ' // &
+          'same soil compressibility function.'
+        call printErrMsg(option)
+      endif
+    endif  
     if (material_property_ptrs(i)%ptr%rock_density > 0.d0 .and. &
         soil_density_index == 0) then
       icount = icount + 1
       soil_density_index = icount
     endif
-    if (material_property_ptrs(i)%ptr%pore_compressibility > 0.d0 .and. &
+    if (material_property_ptrs(i)%ptr%soil_compressibility > -998.d0 .and. &
         soil_compressibility_index == 0) then
       icount = icount + 1
       soil_compressibility_index = icount
     endif
-    if (material_property_ptrs(i)%ptr%pore_compress_ref_pressure > 0.d0 .and. &
+    if (material_property_ptrs(i)%ptr%soil_reference_pressure > -998.d0 .and. &
         soil_reference_pressure_index == 0) then
       icount = icount + 1
       soil_reference_pressure_index = icount
@@ -908,6 +977,10 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
     endif
   enddo
   max_material_index = icount
+  
+  if (.not.associated(MaterialCompressSoilPtr)) then
+    MaterialCompressSoilPtr => MaterialCompressSoilLeijnse
+  endif
   
 end subroutine MaterialInitAuxIndices
 
@@ -936,11 +1009,11 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
   endif
   if (soil_compressibility_index > 0) then
     material_auxvar%soil_properties(soil_compressibility_index) = &
-      material_property%pore_compressibility
+      material_property%soil_compressibility
   endif
   if (soil_reference_pressure_index > 0) then
     material_auxvar%soil_properties(soil_reference_pressure_index) = &
-      material_property%pore_compress_ref_pressure
+      material_property%soil_reference_pressure
   endif
   if (soil_heat_capacity_index > 0) then
     material_auxvar%soil_properties(soil_heat_capacity_index) = &
@@ -1196,6 +1269,68 @@ subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
   call MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
 
 end subroutine MaterialAuxVarCommunicate
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
+                                       compressed_porosity, &
+                                       dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on Leijnse, 1992.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type) :: auxvar
+  PetscReal :: pressure
+  PetscReal :: compressed_porosity
+  PetscReal :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  PetscReal :: compression
+  PetscReal :: tempreal
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compression = &
+    exp(-1.d0 * compressibility * &
+        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
+  tempreal = (1.d0 - auxvar%porosity) * compression
+  compressed_porosity = 1.d0 - tempreal
+  dcompressed_porosity_dp = tempreal * compressibility
+  
+end subroutine MaterialCompressSoilLeijnse
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
+                                       compressed_porosity, &
+                                       dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on Eq. 9.6.9 of BRAGFLO
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type) :: auxvar
+  PetscReal :: pressure
+  PetscReal :: compressed_porosity
+  PetscReal :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compressed_porosity = auxvar%porosity * &
+    exp(compressibility * &
+        (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
+  dcompressed_porosity_dp = compressibility * compressed_porosity
+  
+end subroutine MaterialCompressSoilBRAGFLO
 
 ! ************************************************************************** !
 
