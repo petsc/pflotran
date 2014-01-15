@@ -49,6 +49,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   use Option_module
   use Saturation_Function_module
+  use Material_module, only : MaterialCompressSoil
   use Material_Aux_class
   
   implicit none
@@ -64,7 +65,8 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
   PetscReal :: vol_over_dt
   PetscReal :: por
   PetscReal :: tempreal
-  PetscReal :: compression, dcompression_dp
+  PetscReal :: derivative
+  PetscReal :: compressed_porosity, dcompressed_porosity_dp
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_auxvar_pert
@@ -74,19 +76,21 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   vol_over_dt = material_auxvar%volume/option%flow_dt
   por = material_auxvar%porosity
-      
-  ! accumulation term units = dkmol/dp
-  J(1,1) = global_auxvar%sat(1)*rich_auxvar%dden_dp+ &
-           rich_auxvar%dsat_dp*global_auxvar%den(1)
-
+  
+  derivative = 0.d0
   if (soil_compressibility_index > 0) then
     tempreal = global_auxvar%sat(1)*global_auxvar%den(1)
-    call MaterialAuxCompressSoil(material_auxvar,global_auxvar%pres(1), &
-                                 compression,dcompression_dp)
-    J(1,1) = J(1,1) * compression
-    J(1,1) = J(1,1) + dcompression_dp * tempreal
+    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+                                 compressed_porosity,dcompressed_porosity_dp)
+    por = compressed_porosity
+    derivative = derivative + dcompressed_porosity_dp * tempreal
   endif
-  J(1,1) = J(1,1) * por*vol_over_dt
+
+  ! accumulation term units = dkmol/dp
+  derivative = derivative + (global_auxvar%sat(1)*rich_auxvar%dden_dp + &
+                             rich_auxvar%dsat_dp*global_auxvar%den(1)) * por
+
+  J(1,1) = derivative * vol_over_dt
 
   if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
@@ -143,6 +147,7 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   ! 
 
   use Option_module
+  use Material_module
   use Material_Aux_class
   
   implicit none
@@ -154,15 +159,15 @@ subroutine RichardsAccumulation(rich_auxvar,global_auxvar, &
   PetscReal :: Res(1:option%nflowdof)
   
   PetscReal :: por, por1, vol_over_dt
-  PetscReal :: compression, dcompression_dp
+  PetscReal :: compressed_porosity, dcompressed_porosity_dp
        
   vol_over_dt = material_auxvar%volume/option%flow_dt
   por = material_auxvar%porosity
   
   if (soil_compressibility_index > 0) then
-    call MaterialAuxCompressSoil(material_auxvar,global_auxvar%pres(1), &
-                                 compression,dcompression_dp)
-    por = compression * por
+    call MaterialCompressSoil(material_auxvar,global_auxvar%pres(1), &
+                              compressed_porosity,dcompressed_porosity_dp)
+    por = compressed_porosity
   endif
     
   ! accumulation term units = kmol/s

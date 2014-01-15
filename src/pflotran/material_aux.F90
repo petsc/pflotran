@@ -44,12 +44,11 @@ module Material_Aux_class
     PetscInt :: num_aux
     type(material_parameter_type), pointer :: material_parameter
     class(material_auxvar_type), pointer :: auxvars(:)
-  end type material_type  
+  end type material_type
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
             MaterialAuxVarCopy, &
-            MaterialAuxCompressSoil, &
             MaterialAuxVarStrip, &
             MaterialAuxDestroy
   
@@ -184,34 +183,6 @@ subroutine MaterialPermTensorToScalar(material_auxvar,dist, &
             material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
 
 end subroutine MaterialPermTensorToScalar
-
-! ************************************************************************** !
-
-subroutine MaterialAuxCompressSoil(auxvar,pressure,compression, &
-                                   dcompression_dp)
-  ! 
-  ! Deallocates a material auxiliary object
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/14/14
-  ! 
-
-  implicit none
-
-  class(material_auxvar_type) :: auxvar
-  PetscReal :: pressure
-  PetscReal :: compression
-  PetscReal :: dcompression_dp
-  
-  PetscReal :: compressibility
-  
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
-  compression = &
-    exp(compressibility * &
-        (auxvar%soil_properties(soil_reference_pressure_index) - pressure))
-  dcompression_dp = -1.d0 * compressibility * compression
-  
-end subroutine MaterialAuxCompressSoil
 
 ! ************************************************************************** !
 
