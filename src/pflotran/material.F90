@@ -37,6 +37,7 @@ module Material_module
     PetscReal :: alpha_fr
 
     PetscReal :: pore_compressibility
+    PetscReal :: pore_compress_ref_pressure
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
     PetscReal :: transverse_dispersivity_h
@@ -88,33 +89,11 @@ module Material_module
             MaterialSetAuxVarVecLoc, &
             MaterialGetAuxVarVecLoc, &
             MaterialAuxVarCommunicate, &
-            MaterialPropertyRead
+            MaterialPropertyRead, &
+            MaterialInitAuxIndices, &
+            MaterialAssignPropertyToAux
   
 contains
-
-
-! ************************************************************************** !
-
-subroutine MaterialInit(option)
-  !
-  ! Initializes the pointer used to index material property arrays
-  !
-  ! Author: Glenn Hammond
-  ! Date: 01/09/14
-  !
-  use Material_Aux_class
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-
-  rock_density_index = 1
-  rock_compressibility_index = 2
-  rock_thermal_conductivity_index = 3
-  rock_heat_capacity_index = 4
-  
-end subroutine MaterialInit
 
 ! ************************************************************************** !
 
@@ -162,7 +141,8 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
 
-  material_property%pore_compressibility = 0.d0
+  material_property%pore_compressibility = -999.d0
+  material_property%pore_compress_ref_pressure = -999.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
   material_property%transverse_dispersivity_h = 0.d0
@@ -294,6 +274,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option, &
                              material_property%pore_compressibility)
         call InputErrorMsg(input,option,'pore compressibility', &
+                           'MATERIAL_PROPERTY')
+      case('PORE_COMPRESS_REF_PRESSURE') 
+        call InputReadDouble(input,option, &
+                             material_property%pore_compress_ref_pressure)
+        call InputErrorMsg(input,option,'pore compressibility reference pressre', &
                            'MATERIAL_PROPERTY')
       case('THERMAL_EXPANSITIVITY') 
         call InputReadDouble(input,option, &
@@ -582,11 +567,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
   if ((option%iflowmode == TH_MODE) .or. (option%iflowmode == THC_MODE)) then
      if (option%use_th_freezing .eqv. PETSC_TRUE) then
         if (.not. therm_k_frz) then
-           option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           option%io_buffer = 'THERMAL_CONDUCTIVITY_FROZEN must be set ' // &
+             'in inputdeck for MODE TH(C) ICE'
            call printErrMsg(option)
         endif
         if (.not. therm_k_exp_frz) then
-           option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN must be set in inputdeck for MODE TH(C) ICE'
+           option%io_buffer = 'THERMAL_COND_EXPONENT_FROZEN must be set ' // &
+             'in inputdeck for MODE TH(C) ICE'
            call printErrMsg(option)
         endif
      endif
@@ -864,6 +851,107 @@ function MaterialAnisotropyExists(material_property_list)
   enddo
   
 end function MaterialAnisotropyExists
+
+
+! ************************************************************************** !
+
+subroutine MaterialInitAuxIndices(material_property_ptrs,option)
+  !
+  ! Initializes the pointer used to index material property arrays
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  !
+  use Material_Aux_class
+  use Option_module
+  
+  implicit none
+  
+  type(material_property_ptr_type), pointer :: material_property_ptrs(:)
+  type(option_type) :: option
+
+  PetscInt :: i
+  PetscInt :: icount = 0
+  
+  soil_density_index = 0
+  soil_thermal_conductivity_index = 0
+  soil_heat_capacity_index = 0
+  soil_compressibility_index = 0
+  soil_reference_pressure_index = 0
+  max_material_index = 0  
+  
+  do i = 1, size(material_property_ptrs)
+    if (material_property_ptrs(i)%ptr%rock_density > 0.d0 .and. &
+        soil_density_index == 0) then
+      icount = icount + 1
+      soil_density_index = icount
+    endif
+    if (material_property_ptrs(i)%ptr%pore_compressibility > 0.d0 .and. &
+        soil_compressibility_index == 0) then
+      icount = icount + 1
+      soil_compressibility_index = icount
+    endif
+    if (material_property_ptrs(i)%ptr%pore_compress_ref_pressure > 0.d0 .and. &
+        soil_reference_pressure_index == 0) then
+      icount = icount + 1
+      soil_reference_pressure_index = icount
+    endif
+    if (material_property_ptrs(i)%ptr%specific_heat > 0.d0 .and. &
+        soil_heat_capacity_index == 0) then
+      icount = icount + 1
+      soil_heat_capacity_index = icount
+    endif
+    if (material_property_ptrs(i)%ptr%thermal_conductivity_wet > 0.d0 .and. &
+        soil_thermal_conductivity_index == 0) then
+      icount = icount + 1
+      soil_thermal_conductivity_index = icount
+    endif
+  enddo
+  max_material_index = icount
+  
+end subroutine MaterialInitAuxIndices
+
+! ************************************************************************** !
+
+subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
+                                       option)
+  !
+  ! Initializes the pointer used to index material property arrays
+  !
+  ! Author: Glenn Hammond
+  ! Date: 01/09/14
+  !
+  use Material_Aux_class
+  use Option_module
+  
+  implicit none
+  
+  type(material_auxvar_type) :: material_auxvar
+  type(material_property_type) :: material_property
+  type(option_type) :: option
+
+  if (soil_density_index > 0) then
+    material_auxvar%soil_properties(soil_density_index) = &
+      material_property%rock_density
+  endif
+  if (soil_compressibility_index > 0) then
+    material_auxvar%soil_properties(soil_compressibility_index) = &
+      material_property%pore_compressibility
+  endif
+  if (soil_reference_pressure_index > 0) then
+    material_auxvar%soil_properties(soil_reference_pressure_index) = &
+      material_property%pore_compress_ref_pressure
+  endif
+  if (soil_heat_capacity_index > 0) then
+    material_auxvar%soil_properties(soil_heat_capacity_index) = &
+      material_property%specific_heat
+  endif
+  if (soil_thermal_conductivity_index > 0) then
+    material_auxvar%soil_properties(soil_thermal_conductivity_index) = &
+      material_property%thermal_conductivity_wet
+  endif
+  
+end subroutine MaterialAssignPropertyToAux
 
 ! ************************************************************************** !
 

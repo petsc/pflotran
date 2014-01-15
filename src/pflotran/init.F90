@@ -2895,6 +2895,7 @@ subroutine assignMaterialPropToRegions(realization)
   
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
+  PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscErrorCode :: ierr
@@ -2917,6 +2918,9 @@ subroutine assignMaterialPropToRegions(realization)
   patch => realization%patch
   field => realization%field
 
+  ! initialize material auxiliary indices
+  call MaterialInitAuxIndices(realization%material_property_array,option)
+  
   ! loop over all patches and allocation material id arrays
   cur_patch => realization%patch_list%first
   do
@@ -2931,13 +2935,13 @@ subroutine assignMaterialPropToRegions(realization)
       cur_patch%sat_func_id = -999
     endif
     
-    patch%aux%Material => MaterialAuxCreate()
+    cur_patch%aux%Material => MaterialAuxCreate()
     allocate(material_auxvars(grid%ngmax))
     do ghosted_id = 1, grid%ngmax
       call MaterialAuxVarInit(material_auxvars(ghosted_id),option)
     enddo
-    patch%aux%Material%num_aux = grid%ngmax
-    patch%aux%Material%auxvars => material_auxvars
+    cur_patch%aux%Material%num_aux = grid%ngmax
+    cur_patch%aux%Material%auxvars => material_auxvars
     nullify(material_auxvars)
     
     cur_patch => cur_patch%next
@@ -3016,6 +3020,14 @@ subroutine assignMaterialPropToRegions(realization)
     call VecGetArrayF90(field%porosity0,por0_p,ierr)
     call VecGetArrayF90(field%tortuosity0,tor0_p,ierr)
         
+    !geh: remove
+    if (option%iflowmode == RICHARDS_MODE .or. &
+        option%iflowmode == NULL_MODE) then
+      material_auxvars => cur_patch%aux%Material%auxvars
+    else
+      nullify(material_auxvars)
+    endif
+
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       material_id = cur_patch%imat(ghosted_id)
@@ -3050,7 +3062,7 @@ subroutine assignMaterialPropToRegions(realization)
         call printErrMsgByRank(option)
       endif
       if (option%nflowdof > 0) then
-        patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
+        cur_patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
         icap_loc_p(ghosted_id) = material_property%saturation_function_id
         ithrm_loc_p(ghosted_id) = material_property%id
         perm_xx_p(local_id) = material_property%permeability(1,1)
@@ -3060,6 +3072,10 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xz_p(local_id) = material_property%permeability(1,3)
           perm_xy_p(local_id) = material_property%permeability(1,2)
           perm_yz_p(local_id) = material_property%permeability(2,3)
+        endif
+        if (associated(material_auxvars)) then
+          call MaterialAssignPropertyToAux(material_auxvars(ghosted_id), &
+                                           material_property,option)
         endif
       endif
       por0_p(local_id) = material_property%porosity
@@ -3100,7 +3116,7 @@ subroutine assignMaterialPropToRegions(realization)
           call VecGetArrayF90(field%work,vec_p,ierr)
           call VecGetArrayF90(field%porosity0,por0_p,ierr)
           do local_id = 1, grid%nlmax
-            if (patch%imat(grid%nL2G(local_id)) == &
+            if (cur_patch%imat(grid%nL2G(local_id)) == &
                 material_property%id) then
               por0_p(local_id) = vec_p(local_id)
             endif
@@ -3178,6 +3194,26 @@ subroutine assignMaterialPropToRegions(realization)
                                     field%work_loc,ONEDOF)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                TORTUOSITY,0)
+  ! rock properties
+  do i = 1, max_material_index
+    call VecGetArrayF90(field%work,vec_p,ierr)
+    do local_id = 1, patch%grid%nlmax
+      ghosted_id = patch%grid%nL2G(local_id)
+      vec_p(local_id) = &
+        patch%aux%Material%auxvars(patch%grid%nL2G(local_id))% &
+        soil_properties(i)
+    enddo
+    call VecRestoreArrayF90(field%work,vec_p,ierr)
+    call DiscretizationGlobalToLocal(discretization,field%work, &
+                                     field%work_loc,ONEDOF)
+    call VecGetArrayF90(field%work_loc,vec_p,ierr)
+    do ghosted_id = 1, patch%grid%ngmax
+      patch%aux%Material%auxvars(ghosted_id)%soil_properties(i) = &
+         vec_p(ghosted_id)
+    enddo
+    call VecRestoreArrayF90(field%work_loc,vec_p,ierr)
+  enddo
+  
   !geh: remove
   if (option%iflowmode /= RICHARDS_MODE .and. &
       option%iflowmode /= NULL_MODE) then

@@ -15,10 +15,12 @@ module Material_Aux_class
   PetscInt, parameter, public :: perm_yz_index = 5
   PetscInt, parameter, public :: perm_xz_index = 6
 
-  PetscInt, public :: rock_density_index
-  PetscInt, public :: rock_thermal_conductivity_index
-  PetscInt, public :: rock_heat_capacity_index
-  PetscInt, public :: rock_compressibility_index
+  PetscInt, public :: soil_density_index
+  PetscInt, public :: soil_thermal_conductivity_index
+  PetscInt, public :: soil_heat_capacity_index
+  PetscInt, public :: soil_compressibility_index
+  PetscInt, public :: soil_reference_pressure_index
+  PetscInt, public :: max_material_index
  
   type, public :: material_auxvar_type
     PetscReal :: volume
@@ -26,7 +28,7 @@ module Material_Aux_class
     PetscReal :: tortuosity
     PetscReal, pointer :: permeability(:)
     PetscReal, pointer :: sat_func_prop(:)
-    PetscReal, pointer :: rock_properties(:) ! den, therm. cond., heat cap.
+    PetscReal, pointer :: soil_properties(:) ! den, therm. cond., heat cap.
 !    procedure(SaturationFunction), nopass, pointer :: SaturationFunction
   contains
     procedure, public :: PermeabilityTensorToScalar => &
@@ -47,6 +49,7 @@ module Material_Aux_class
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
             MaterialAuxVarCopy, &
+            MaterialAuxCompressSoil, &
             MaterialAuxVarStrip, &
             MaterialAuxDestroy
   
@@ -108,7 +111,13 @@ subroutine MaterialAuxVarInit(auxvar,option)
     nullify(auxvar%permeability)
   endif
   nullify(auxvar%sat_func_prop)
-  nullify(auxvar%rock_properties)
+  if (max_material_index > 0) then
+    allocate(auxvar%soil_properties(max_material_index))
+    ! initialize these to zero for now
+    auxvar%soil_properties = 0.d0
+  else
+    nullify(auxvar%soil_properties)
+  endif
   
 end subroutine MaterialAuxVarInit
 
@@ -138,8 +147,8 @@ subroutine MaterialAuxVarCopy(auxvar,auxvar2,option)
   if (associated(auxvar%sat_func_prop)) then
     auxvar2%sat_func_prop = auxvar%sat_func_prop
   endif
-  if (associated(auxvar%rock_properties)) then
-    auxvar2%rock_properties = auxvar%rock_properties
+  if (associated(auxvar%soil_properties)) then
+    auxvar2%soil_properties = auxvar%soil_properties
   endif
 
 end subroutine MaterialAuxVarCopy
@@ -178,6 +187,34 @@ end subroutine MaterialPermTensorToScalar
 
 ! ************************************************************************** !
 
+subroutine MaterialAuxCompressSoil(auxvar,pressure,compression, &
+                                   dcompression_dp)
+  ! 
+  ! Deallocates a material auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/14/14
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type) :: auxvar
+  PetscReal :: pressure
+  PetscReal :: compression
+  PetscReal :: dcompression_dp
+  
+  PetscReal :: compressibility
+  
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  compression = &
+    exp(compressibility * &
+        (auxvar%soil_properties(soil_reference_pressure_index) - pressure))
+  dcompression_dp = -1.d0 * compressibility * compression
+  
+end subroutine MaterialAuxCompressSoil
+
+! ************************************************************************** !
+
 subroutine MaterialAuxVarStrip(auxvar)
   ! 
   ! Deallocates a material auxiliary object
@@ -194,7 +231,7 @@ subroutine MaterialAuxVarStrip(auxvar)
   
   call DeallocateArray(auxvar%permeability)
   call DeallocateArray(auxvar%sat_func_prop)
-  call DeallocateArray(auxvar%rock_properties)
+  call DeallocateArray(auxvar%soil_properties)
   
 end subroutine MaterialAuxVarStrip
 
