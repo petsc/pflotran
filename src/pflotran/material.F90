@@ -1284,10 +1284,10 @@ subroutine MaterialCompressSoilLeijnse(auxvar,pressure, &
 
   implicit none
 
-  class(material_auxvar_type) :: auxvar
-  PetscReal :: pressure
-  PetscReal :: compressed_porosity
-  PetscReal :: dcompressed_porosity_dp
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
   
   PetscReal :: compressibility
   PetscReal :: compression
@@ -1317,10 +1317,10 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
 
   implicit none
 
-  class(material_auxvar_type) :: auxvar
-  PetscReal :: pressure
-  PetscReal :: compressed_porosity
-  PetscReal :: dcompressed_porosity_dp
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
   
   PetscReal :: compressibility
   

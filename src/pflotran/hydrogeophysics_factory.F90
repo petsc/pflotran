@@ -57,11 +57,10 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   Vec :: pflotran_solution_vec_mpi, pflotran_solution_vec_seq
   VecScatter :: pflotran_scatter
   
-#ifndef E4D
-  option%io_buffer = 'Must compile with E4D defined during preprocessing ' // &
-    'step in order to use HYDROGEOPHYSICS.'
+#ifdef PETSC_HAVE_MPIUNI
+  option%io_buffer = 'HYDROGEOPHYSICs not supported with MPIUNI.'
   call printErrMsg(option)
-#endif
+#else
 
   ! initialize PETSc Vecs to 0
   pflotran_solution_vec_mpi = 0
@@ -176,6 +175,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   else
     option%io_rank = -1 ! turn off I/O from E4D processes.
   endif
+#endif
 
 !#define DEBUG
 
