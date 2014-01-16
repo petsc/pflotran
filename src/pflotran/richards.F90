@@ -624,6 +624,7 @@ subroutine RichardsUpdatePermPatch(realization)
   PetscReal :: p_min, p_max, permfactor_max
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm0_xx_p(:), perm0_yy_p(:), perm0_zz_p(:)
+  PetscReal, pointer :: perm_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -661,12 +662,19 @@ subroutine RichardsUpdatePermPatch(realization)
         scale = permfactor_max
       endif
     endif
-    material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
-      perm0_xx_p(local_id)*scale
-    material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
-      perm0_yy_p(local_id)*scale
-    material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
-      perm0_zz_p(local_id)*scale
+    !geh: this is a kludge for gfortran.  the code reports errors when 
+    !     material_auxvars(ghosted_id)%permeability is used.
+    !TODO(geh): test with Intel!
+    perm_ptr => material_auxvars(ghosted_id)%permeability
+    perm_ptr(perm_xx_index) = perm0_xx_p(local_id)*scale
+    perm_ptr(perm_yy_index) = perm0_yy_p(local_id)*scale
+    perm_ptr(perm_zz_index) = perm0_zz_p(local_id)*scale
+!    material_auxvars(ghosted_id)%permeability(perm_xx_index) = &
+!      perm0_xx_p(local_id)*scale
+!    material_auxvars(ghosted_id)%permeability(perm_yy_index) = &
+!      perm0_yy_p(local_id)*scale
+!    material_auxvars(ghosted_id)%permeability(perm_zz_index) = &
+!      perm0_zz_p(local_id)*scale
   enddo
   
   call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr)
