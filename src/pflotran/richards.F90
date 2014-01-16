@@ -2290,10 +2290,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                 if (ukvr*Dq > floweps) then
                   v_darcy = Dq * ukvr * dphi
                   ! store volumetric rate for ss_fluid_fluxes()
-                  Jup(1,1) = -Dq*rich_auxvars(ghosted_id)%dkvr_dp*dphi* &
+                  Jup(1,1) = -1.d0*(-Dq*rich_auxvars(ghosted_id)%dkvr_dp*dphi* &
                              global_auxvars(ghosted_id)%den(1) &
                              -Dq*ukvr*1.d0*global_auxvars(ghosted_id)%den(1) &
-                             -Dq*ukvr*dphi*rich_auxvars(ghosted_id)%dden_dp
+                             -Dq*ukvr*dphi*rich_auxvars(ghosted_id)%dden_dp)
                 endif
               endif
             endif
