@@ -4377,7 +4377,7 @@ subroutine StepperSandbox(realization)
     istart = iend-reaction%naqcomp+1
     
     if (option%use_mc) then
-      vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      vol_frac_prim = rt_sec_transport_vars(local_id)%epsilon
     endif
     
     tran_xx_p(istart:iend) = rt_auxvars(ghosted_id)%total(:,ONE_INTEGER)

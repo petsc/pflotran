@@ -628,7 +628,7 @@ subroutine RTUpdateEquilibriumState(realization)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
         call SecondaryRTUpdateEquilState(rt_sec_transport_vars(local_id), &
-                                          global_auxvars(local_id), &
+                                          global_auxvars(ghosted_id), &
                                           reaction,option)                     
     enddo
   endif
@@ -711,7 +711,7 @@ subroutine RTUpdateKineticState(realization)
         sec_porosity = realization%material_property_array(1)%ptr% &
                         secondary_continuum_porosity
 
-        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(ghosted_id), &
+        call SecondaryRTUpdateKineticState(rt_sec_transport_vars(local_id), &
                                            global_auxvars(ghosted_id), &
                                            reaction,sec_porosity,option)                     
     enddo

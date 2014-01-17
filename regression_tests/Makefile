@@ -42,7 +42,8 @@ STANDARD_CFG = \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
 	default/eos/eos.cfg \
-	default/materials/material_update.cfg \
+	default/materials/materials.cfg \
+	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
 	default/multicontinuum/multicontinuum.cfg \
