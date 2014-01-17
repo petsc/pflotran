@@ -650,7 +650,7 @@ subroutine EOSWaterDensityEnthalpyIFC67(t,p,dw,dwmol,hw, &
 !  The water and steam properties are valid in the range of:
 !
 !            0 < p < 165.4 * 10^5 pascals (165.4 bars)
-!            0 < t < 800 centigrade (1073.15 Kelvin)
+!            0 < t < 350 centigrade (1073.15 Kelvin)
 !
 !  The properties cover densities, enthalpies, internal energies,
 !  and partial derivatives of these quanties with respect to
@@ -925,7 +925,7 @@ subroutine EOSWaterDensityIFC67(t,p,dw,dwmol, &
 !  The water and steam properties are valid in the range of:
 !
 !            0 < p < 165.4 * 10^5 pascals (165.4 bars)
-!            0 < t < 800 centigrade (1073.15 Kelvin)
+!            0 < t < 350 centigrade (623.15 Kelvin)
 !
 !  The properties cover densities, enthalpies, internal energies,
 !  and partial derivatives of these quanties with respect to
@@ -1084,7 +1084,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,hw, &
 !  The water and steam properties are valid in the range of:
 !
 !            0 < p < 165.4 * 10^5 pascals (165.4 bars)
-!            0 < t < 800 centigrade (1073.15 Kelvin)
+!            0 < t < 350 centigrade (623.15 Kelvin)
 !
 !  The properties cover densities, enthalpies, internal energies,
 !  and partial derivatives of these quanties with respect to
