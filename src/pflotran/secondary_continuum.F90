@@ -1407,13 +1407,13 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
 
       call SecondaryRTAuxVarComputeMulti(&
                                     rt_sec_transport_vars(local_id), &
-                                    global_auxvars(local_id), &
+                                    global_auxvars(ghosted_id), &
                                     reaction, &
                                     option)              
  
       call SecondaryRTCheckResidual(rt_sec_transport_vars(local_id), &
-                                    rt_auxvars(local_id), &
-                                    global_auxvars(local_id), &
+                                    rt_auxvars(ghosted_id), &
+                                    global_auxvars(ghosted_id), &
                                     reaction,sec_diffusion_coefficient, &
                                     sec_porosity,option,inf_norm_sec)
                                       
