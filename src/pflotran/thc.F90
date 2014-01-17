@@ -566,7 +566,7 @@ subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
       istart = iend-option%nflowdof+1
       
       if (option%use_mc) then
-        vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+        vol_frac_prim = thc_sec_heat_vars(local_id)%epsilon
       endif
 
       call THCAccumulation(thc_auxvars(ghosted_id), &
@@ -3328,14 +3328,14 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
       if (option%sec_vars_update) then
         call THCSecHeatAuxVarCompute(thc_sec_heat_vars(local_id), &
-                            global_auxvars(local_id), &
+                            global_auxvars(ghosted_id), &
                             thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
                             sec_dencpr, &
                             option)
       endif       
     
       call THCSecondaryHeat(thc_sec_heat_vars(local_id), &
-                          global_auxvars(local_id), &
+                          global_auxvars(ghosted_id), &
 !                         thc_parameter%ckdry(int(ithrm_loc_p(local_id))), &
                           thc_parameter%ckwet(int(ithrm_loc_p(local_id))), &
                           sec_dencpr, &
