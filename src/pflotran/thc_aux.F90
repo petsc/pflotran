@@ -469,25 +469,30 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   
   call CapillaryPressureThreshold(saturation_function,p_th,option)
 
-
-  if (option%use_ice_new) then
-    ! New water phase partitioning
-    call SatFuncComputeIceImplicit(global_auxvar%pres(1), & 
-                                 global_auxvar%temp(1), ice_saturation, &
-                                 global_auxvar%sat(1), gas_saturation, &
-                                 kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
-                                 dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
-                                 saturation_function, p_th, option)
-  else
-    ! Old water phase partitioning
-    call SaturationFunctionComputeIce(global_auxvar%pres(1), & 
-                                    global_auxvar%temp(1), ice_saturation, &
-                                    global_auxvar%sat(1), gas_saturation, &
-                                    kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
-                                    dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
-                                    saturation_function, p_th, option)
-  endif                                  
-
+  select case (option%ice_model)
+    case (PAINTER_EXPLICIT)
+      ! Model from Painter, Comp. Geosci. (2010)
+      call SaturationFunctionComputeIce(global_auxvar%pres(1), & 
+                                      global_auxvar%temp(1), ice_saturation, &
+                                      global_auxvar%sat(1), gas_saturation, &
+                                      kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                      dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                      saturation_function, p_th, option)    
+    case (PAINTER_KARRA_IMPLICIT)
+      ! Implicit model from Painter & Karra, VJZ (2013)
+      call SatFuncComputeIceImplicit(global_auxvar%pres(1), & 
+                                   global_auxvar%temp(1), ice_saturation, &
+                                   global_auxvar%sat(1), gas_saturation, &
+                                   kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                   dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                   saturation_function, p_th, option)    
+    case (PAINTER_KARRA_EXPLICIT)
+      ! Explicit model from Painter & Karra, VJZ (2013)
+    
+    case default
+      option%io_buffer = 'THCAuxVarComputeIce: Ice model not recognized.'
+      call printErrMsg(option)
+  end select
 
   call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
                                dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
