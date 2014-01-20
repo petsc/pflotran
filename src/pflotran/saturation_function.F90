@@ -56,9 +56,9 @@ module Saturation_Function_module
             SatFuncGetRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
-            SaturationFunctionComputeIce, &
+            SatFuncComputeIcePExplicit, &
             CapillaryPressureThreshold, &
-            SatFuncComputeIceImplicit, &
+            SatFuncComputeIcePKImplicit, &
             SatFuncComputeIcePKExplicit
             
   ! Saturation function 
@@ -800,18 +800,20 @@ end subroutine SaturationFunctionCompute3
 
 ! ************************************************************************** !
 
-subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
-                                        ice_saturation, &
-                                        liquid_saturation, gas_saturation, &
-                                        liquid_relative_perm, dsl_pl, & 
-                                        dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
-                                        dsi_temp, dkr_pl, dkr_temp, &
-                                        saturation_function, pth, option)
+subroutine SatFuncComputeIcePExplicit(liquid_pressure, temperature, &
+                                      ice_saturation, &
+                                      liquid_saturation, gas_saturation, &
+                                      liquid_relative_perm, dsl_pl, & 
+                                      dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
+                                      dsi_temp, dkr_pl, dkr_temp, &
+                                      saturation_function, pth, option)
   ! 
   ! Computes the saturation of ice, water vapor
   ! and liquid water given the saturation function
   ! temperature, water vapor pressure and liquid
   ! water pressure
+  !
+  ! Model based on Painter, Comp. Geosci, 2011
   ! 
   ! Author: Satish Karra, LANL
   ! Date: 11/14/11
@@ -962,14 +964,8 @@ implicit none
       option%io_buffer = 'Ice module only supports Mualem' 
       call printErrMsg(option)
   end select
-  
-!  write(*,*) 'rank:', option%myrank, 'sl:', liquid_saturation, &
-!  'sg:', gas_saturation, 'si:', ice_saturation, 'dsl_pl:', dsl_pl, &
-! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
-!  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
-!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp   
    
-end subroutine SaturationFunctionComputeIce
+end subroutine SatFuncComputeIcePExplicit
 
 ! ************************************************************************** !
 
@@ -1314,7 +1310,7 @@ end subroutine CalcPhasePartitionIceDeriv
 
 ! ************************************************************************** !
 
-subroutine SatFuncComputeIceImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+subroutine SatFuncComputeIcePKImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
                                      dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
                                      dsi_dT,dkr_dpl,dkr_dT, &
                                      saturation_function,pth,option)
@@ -1322,6 +1318,8 @@ subroutine SatFuncComputeIceImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, &
   ! Calculates the saturations of water phases
   ! and their derivative with respect to liquid
   ! pressure
+  
+  ! Model based on Painter & Karra implicit model VZJ (2014)
   ! 
   ! Author: Satish Karra
   ! Date: 10/16/12
@@ -1410,7 +1408,7 @@ implicit none
   'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
 #endif
 
-end subroutine SatFuncComputeIceImplicit
+end subroutine SatFuncComputeIcePKImplicit
 
 ! ************************************************************************** !
 
