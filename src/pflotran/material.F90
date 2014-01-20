@@ -924,6 +924,9 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   max_material_index = 0
   
   do i = 1, size(material_property_ptrs)
+    ! if gaps exist between material ids in the input file, those gaps will
+    ! be null and need to be skipped
+    if (.not.associated(material_property_ptrs(i)%ptr)) cycle
     MaterialCompressSoilPtrTmp => null()
     if (len_trim(material_property_ptrs(i)%ptr% &
                    soil_compressibility_function) > 1) then
