@@ -2569,6 +2569,11 @@ subroutine InitReadInput(simulation)
             output_option%print_hdf5_velocities = PETSC_TRUE
           if (output_option%print_vtk) &
             output_option%print_vtk_velocities = PETSC_TRUE
+          if (associated(grid%unstructured_grid)) then
+            option%io_buffer='Velocity output not supported for ' // &
+              'unstructured grids.'
+            call printErrMsg(option)
+          endif
         endif
         if (flux_velocities) then
           if (output_option%print_tecplot) &
@@ -2609,15 +2614,8 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
-#endif
-            output_option%print_explicit_flowrate = mass_flowrate
-          else
             option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format for implicit grid' 
+              'not supported for explicit unstructured grid.'
             call printErrMsg(option)
           endif
         
