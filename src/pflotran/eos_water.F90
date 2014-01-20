@@ -140,7 +140,7 @@ module EOS_Water_module
             EOSWaterDensity, &
             EOSWaterEnthalpy, &
             EOSWaterDensityEnthalpy, &
-            EOSWaterDensityEnthalpy2, &
+            EOSWaterDensityEnthalpyPainter, &
             EOSWaterSteamDensityEnthalpy, &
             EOSWaterDuanMixture, &
             EOSWaterDensityNaCl, &
@@ -1988,10 +1988,10 @@ end subroutine EOSWaterInternalEnergyIce
 
 ! ************************************************************************** !
 
-subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
-                                    h_MJ_kmol, &
-                                    calculate_derivatives, dden_water_dp, &
-                                    dden_water_dt, dh_dp, dh_dt, ierr)
+subroutine EOSWaterDensityEnthalpyPainter(T, P, den_water_kg, den_water_kmol, &
+                                          h_MJ_kmol, &
+                                          calculate_derivatives, dden_water_dp, &
+                                          dden_water_dt, dh_dp, dh_dt, ierr)
 ! wateos_simple: Simple water equation of state from Scott Painter
 ! Author: Satish Karra, LANL
 ! Date: 02/1/12
@@ -2053,7 +2053,7 @@ subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
     dh_dt = -999.d0
   endif
    
-end subroutine EOSWaterDensityEnthalpy2
+end subroutine EOSWaterDensityEnthalpyPainter
 
 ! ************************************************************************** !
 

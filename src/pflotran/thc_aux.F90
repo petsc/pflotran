@@ -503,8 +503,8 @@ subroutine THCAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
 !  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
 !                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
-  call EOSWaterDensityEnthalpy2(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
-                                hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
+  call EOSWaterDensityEnthalpyPainter(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
+                                      hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
 
                          
   call EOSWaterSaturationPressure(global_auxvar%temp(1), sat_pressure, &
