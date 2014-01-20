@@ -2569,11 +2569,6 @@ subroutine InitReadInput(simulation)
             output_option%print_hdf5_velocities = PETSC_TRUE
           if (output_option%print_vtk) &
             output_option%print_vtk_velocities = PETSC_TRUE
-          if (associated(grid%unstructured_grid)) then
-            option%io_buffer='Velocity output not supported for ' // &
-              'unstructured grids.'
-            call printErrMsg(option)
-          endif
         endif
         if (flux_velocities) then
           if (output_option%print_tecplot) &
