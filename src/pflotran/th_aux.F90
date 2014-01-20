@@ -471,32 +471,48 @@ subroutine THAuxVarComputeIce(x, auxvar, global_auxvar, iphase, &
   
   call CapillaryPressureThreshold(saturation_function,p_th,option)
 
+  select case (option%ice_model)
+    case (PAINTER_EXPLICIT)
+      ! Model from Painter, Comp. Geosci. (2011)
+      call SatFuncComputeIcePExplicit(global_auxvar%pres(1), & 
+                                      global_auxvar%temp(1), ice_saturation, &
+                                      global_auxvar%sat(1), gas_saturation, &
+                                      kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                      dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                      saturation_function, p_th, option)    
+    case (PAINTER_KARRA_IMPLICIT)
+      ! Implicit model from Painter & Karra, VJZ (2013)
+      call SatFuncComputeIcePKImplicit(global_auxvar%pres(1), & 
+                                       global_auxvar%temp(1), ice_saturation, &
+                                       global_auxvar%sat(1), gas_saturation, &
+                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                       saturation_function, p_th, option)    
+    case (PAINTER_KARRA_EXPLICIT)
+      ! Explicit model from Painter & Karra, VJZ (2013)
+      call SatFuncComputeIcePKExplicit(global_auxvar%pres(1), & 
+                                       global_auxvar%temp(1), ice_saturation, &
+                                       global_auxvar%sat(1), gas_saturation, &
+                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                       dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                       saturation_function, p_th, option) 
+    
+    case default
+      option%io_buffer = 'THCAuxVarComputeIce: Ice model not recognized.'
+      call printErrMsg(option)
+  end select
 
-  call SaturationFunctionComputeIce(global_auxvar%pres(1), & 
-                                    global_auxvar%temp(1), ice_saturation, &
-                                    global_auxvar%sat(1), gas_saturation, &
-                                    kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
-                                    dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
-                                    saturation_function, p_th, option)
+!  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
+!                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
 
+  call EOSWaterDensityEnthalpyPainter(global_auxvar%temp(1),pw,dw_kg,dw_mol, &
+                                      hw,PETSC_TRUE,dw_dp,dw_dt,hw_dp,hw_dt,ierr)
 
-  call EOSWaterDensityEnthalpy(global_auxvar%temp(1),pw,dw_kg,dw_mol,hw, &
-                               dw_dp,dw_dt,hw_dp,hw_dt,option%scale,ierr)
-
-!  call wateos_flag (global_auxvar%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-!                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
-  
-!  if (out_of_table_flag) then  
-!    option%out_of_table = PETSC_TRUE                 
-!  endif
-
-!  call wateos_simple(global_auxvar%temp(1), pw, dw_kg, dw_mol, dw_dp, &
-!                         dw_dt, hw, hw_dp, hw_dt, ierr)
                          
   call EOSWaterSaturationPressure(global_auxvar%temp(1), sat_pressure, &
                                   dpsat_dt, ierr)
   call EOSWaterViscosity(global_auxvar%temp(1), pw, sat_pressure, dpsat_dt, &
-                         visl, dvis_dt, dvis_dp, dvis_dpsat, ierr)
+                         visl, dvis_dt,dvis_dp, dvis_dpsat, ierr)
 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0

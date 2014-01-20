@@ -6,7 +6,7 @@
 :===================== THC mode ===============================
 MODE THC freezing
 
-ICE_MODEL PAINTER_EXPLICIT
+ICE_MODEL PAINTER_KARRA_IMPLICIT
 
 :=========================== regression =======================================
 REGRESSION
@@ -32,7 +32,7 @@ END
 
 TIMESTEPPER
 TS_ACCELERATION 25
-MAX_PRESSURE_CHANGE 1.e5
+MAX_PRESSURE_CHANGE 5.e4
 MAX_TEMPERATURE_CHANGE 0.1
 MAX_CONCENTRATION_CHANGE 1.d-1
 :MAX_STEPS 1
@@ -45,7 +45,7 @@ STOL 1D-12
 ITOL 1D-8
 :ITOL_STOMP 1D-8
 MAX_NORM 1d6
-MAXIT 100
+MAXIT 25 
 MAXF 1000
 END
 

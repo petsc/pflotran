@@ -122,7 +122,7 @@ module Option_module
     
     PetscBool :: update_flow_perm ! If true, permeability changes due to pressure    
     
-    PetscBool :: use_ice_new      ! use new formulation for ice partitioning
+    PetscInt :: ice_model         ! specify water/ice/vapor phase partitioning model
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
@@ -401,7 +401,7 @@ subroutine OptionInitRealization(option)
   option%use_matrix_free = PETSC_FALSE
   option%use_mc = PETSC_FALSE
   option%set_secondary_init_temp = PETSC_FALSE
-  option%use_ice_new = PETSC_FALSE
+  option%ice_model = PAINTER_EXPLICIT
   option%set_secondary_init_conc = PETSC_FALSE
   
   option%update_flow_perm = PETSC_FALSE
