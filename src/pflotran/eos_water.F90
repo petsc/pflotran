@@ -140,6 +140,7 @@ module EOS_Water_module
             EOSWaterDensity, &
             EOSWaterEnthalpy, &
             EOSWaterDensityEnthalpy, &
+            EOSWaterDensityEnthalpy2, &
             EOSWaterSteamDensityEnthalpy, &
             EOSWaterDuanMixture, &
             EOSWaterDensityNaCl, &
@@ -2008,7 +2009,7 @@ subroutine EOSWaterDensityEnthalpy2(T, P, den_water_kg, den_water_kmol, &
   
   PetscReal, parameter :: a = 999.915d0
   PetscReal, parameter :: b = 0.0416516d0
-  PetscReal, parameter :: c = 0.0100836d0
+  PetscReal, parameter :: c = -0.0100836d0
   PetscReal, parameter :: d = 0.000206355
   PetscReal, parameter :: alpha = 5.0d-10     ! in Pa^(-1)
   PetscReal, parameter :: T_ref = 273.15d0    ! in K

@@ -58,7 +58,8 @@ module Saturation_Function_module
             SaturationFunctionGetID, &
             SaturationFunctionComputeIce, &
             CapillaryPressureThreshold, &
-            SatFuncComputeIceImplicit
+            SatFuncComputeIceImplicit, &
+            SatFuncComputeIcePKExplicit
             
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -1410,6 +1411,138 @@ implicit none
 #endif
 
 end subroutine SatFuncComputeIceImplicit
+
+! ************************************************************************** !
+
+subroutine SatFuncComputeIcePKExplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+                                       dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
+                                       dsi_dT,dkr_dpl,dkr_dT, &
+                                       saturation_function,pth,option)
+  ! 
+  ! Calculates the saturations of water phases
+  ! and their derivative with respect to liquid
+  ! pressure, temperature
+  !
+  ! Model used: explicit model from Painter & Karra, VJZ (2014).
+  ! 
+  ! Author: Satish Karra
+  ! Date: 01/13/13
+  ! 
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: s_i, s_g, s_l, kr
+  PetscReal :: dkr_dpl, dkr_dT
+  PetscReal :: dkr_dsl
+  PetscReal :: alpha, m, Pcgl
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: pth
+  PetscReal :: S, dS, Sinv, dSinv
+  PetscReal, parameter :: beta = 2.2           ! dimensionless -- ratio of surf. tension
+  PetscReal, parameter :: rho_l = 9.998d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: L_f = 3.34d5         ! in J/kg
+  PetscReal :: T_f, theta, X, Y, dS_dX
+
+  
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      T = T + T_0  ! convert to K 
+      alpha = saturation_function%alpha
+      Pcgl = option%reference_pressure - pl
+      m = saturation_function%m      
+      call ComputeSatVG(alpha,m,Pcgl,S,dS)
+      call ComputeInvSatVG(alpha,m,S,Sinv,dSinv)
+      T_f = T_0 - 1.d0/beta*T_0/L_f/rho_l*Sinv
+      theta = (T-T_0)/T_0
+      if (T < T_f) then
+        X = -beta*theta*L_f*rho_l
+        call ComputeSatVG(alpha,m,X,s_l,dS_dX)
+        s_i = 1.d0 - s_l/S
+        dsl_dT = 1.d0/T_0*dS_dX*(-beta*rho_l*L_f)
+        dsl_dpl = 0.d0
+        dsi_dT = -1.d0/S*dsl_dT
+        dsi_dpl = -1.d0*s_l/S**2*dS 
+      else
+        s_l = S
+        s_i = 0.d0
+        dsl_dpl = -dS
+        dsl_dT = 0.d0
+        dsi_dpl = 0.d0
+        dsi_dT = 0.d0
+      endif
+      s_g = 1.d0 - s_l - s_i
+      dsg_dpl = -dsl_dpl - dsi_dpl
+      dsg_dT = -dsl_dT - dsi_dT  
+      T = T - T_0 ! change back to C 
+    case default  
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+ 
+  ! Check for bounds on saturations         
+  if (s_l > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', s_l
+  else if (s_l < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', s_l
+  endif
+
+  if (s_g > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', s_g
+  else if (s_g < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', s_g
+  endif
+ 
+  if (s_i > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', s_i
+  else if (s_i < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', s_i
+  endif
+ 
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      if (s_l == 1.d0) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = s_l**one_over_m
+        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dsl = 0.5d0*kr/s_l + &
+                  2.d0*s_l**(one_over_m - 0.5d0)* &
+                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_dpl = dkr_dsl*dsl_dpl
+        dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select 
+
+#if 0
+  print *, '======================================' 
+  write(*,*) 'rank:', option%myrank, 'sl:', s_l, &
+  'sg:', s_g, 'si:', s_i, 'dsl_pl:', dsl_dpl, &
+  'dsl_temp:', dsl_dT, 'dsg_pl:', dsg_dpl, 'dsg_temp:', dsg_dT, &
+  'dsi_pl:', dsi_dpl, 'dsi_temp:', dsi_dT, 'kr:', kr, &
+  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
+#endif
+
+end subroutine SatFuncComputeIcePKExplicit
 
 ! ************************************************************************** !
 
