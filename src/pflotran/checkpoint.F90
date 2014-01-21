@@ -142,7 +142,11 @@ subroutine Checkpoint(realization, &
   use Mphase_module
   use Immis_module
   use Miscible_module
-  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ, &
+                               PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
                                MINERAL_VOLUME_FRACTION
 
@@ -482,7 +486,11 @@ subroutine Restart(realization, &
   use Mphase_module
   use Immis_module
   use Miscible_module
-  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+  use Material_module
+  use Variables_module, only : POROSITY, PERMEABILITY_X, PERMEABILITY_Y, &
+                               PERMEABILITY_Z, PERMEABILITY_XY, &
+                               PERMEABILITY_YZ, PERMEABILITY_XZ, &
+                               PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
                                MINERAL_VOLUME_FRACTION
   

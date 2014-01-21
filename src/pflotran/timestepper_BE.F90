@@ -36,6 +36,7 @@ module Timestepper_BE_class
     procedure, public :: UpdateDT => TimestepperBEUpdateDT
     procedure, public :: Checkpoint => TimestepperBECheckpoint
     procedure, public :: Restart => TimestepperBERestart
+    procedure, public :: Reset => TimestepperBEReset
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
     procedure, public :: Destroy => TimestepperBEDestroy
     
@@ -631,6 +632,28 @@ subroutine TimestepperBEGetHeader(this,header)
   call TimestepperBaseGetHeader(this,header)
   
 end subroutine TimestepperBEGetHeader
+
+! ************************************************************************** !
+
+subroutine TimestepperBEReset(this)
+  ! 
+  ! Zeros timestepper object members.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/20/14
+  ! 
+
+  implicit none
+
+  class(stepper_BE_type) :: this
+  
+  this%cumulative_newton_iterations = 0
+  this%cumulative_linear_iterations = 0
+  this%num_newton_iterations = 0
+
+  call TimestepperBaseReset(this)
+  
+end subroutine TimestepperBEReset
 
 ! ************************************************************************** !
 
