@@ -522,6 +522,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
     if (patch%imat(ghosted_id) <= 0) cycle
     ghosted_end = ghosted_id*option%nflowdof
     ghosted_start = ghosted_end - option%nflowdof + 1
+    ! flag(1) indicates call from non-perturbation
+    option%iflag = 1
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
@@ -576,6 +578,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
                            patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          ghosted_id,option)
+      ! flag(2) indicates call from non-perturbation
+      option%iflag = 2
       call GeneralAuxVarCompute(xxbc,gen_auxvars_bc(sum_connection), &
                          global_auxvars_bc(sum_connection), &
                          patch%saturation_function_array( &
@@ -802,6 +806,8 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
     if (imat <= 0) cycle
     local_end = local_id*option%nflowdof
     local_start = local_end - option%nflowdof + 1
+    ! flag(0) indicates call from non-perturbation
+    option%iflag = 0
     call GeneralAuxVarCompute(xx_p(local_start:local_end), &
                               gen_auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
@@ -993,6 +999,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
        endif
   end select
   
+  ! flag(-1) indicates call from perturbation routine - for debugging
+  option%iflag = -1
   do idof = 1, option%nflowdof
     gen_auxvar(idof)%pert = pert(idof)
     x_pert = x
@@ -2018,7 +2026,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
                                              ! do update state
-call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
+  call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
     call GeneralZeroMassBalDeltaPatch(realization)

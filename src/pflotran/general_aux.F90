@@ -415,6 +415,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,&
     gen_auxvar%kvr(gid) = krg/visg
   endif
 
+! if (option%iflag == 1) write(*,'(a,10f13.4)') 'l/g/a/c/v/s: ', &
+!                         gen_auxvar%pres(1:5), gen_auxvar%sat(1)
+
 end subroutine GeneralAuxVarCompute
 
 ! ************************************************************************** !
