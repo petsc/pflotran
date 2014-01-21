@@ -1654,7 +1654,24 @@ subroutine InitReadInput(simulation)
                option%io_buffer = ' TH(C): must specify FREEZING or NO_FREEZING submode!'
                call printErrMsg(option)
             endif
-         endif
+         endif  
+        
+!....................
+      case ('ICE_MODEL')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (trim(word))
+          case ('PAINTER_EXPLICIT')
+            option%ice_model = PAINTER_EXPLICIT
+          case ('PAINTER_KARRA_IMPLICIT')
+            option%ice_model = PAINTER_KARRA_IMPLICIT
+          case ('PAINTER_KARRA_EXPLICIT')
+            option%ice_model = PAINTER_KARRA_EXPLICIT
+          case default
+            option%io_buffer = 'Cannot identify the specificed ice model.' // &
+             'Specify PAINTER_EXPLICIT or PAINTER_KARRA_IMPLICIT' // &
+             ' or PAINTER_KARRA_EXPLICIT.'
+          end select
 
 !....................
       case ('GRID')
@@ -1904,11 +1921,6 @@ subroutine InitReadInput(simulation)
 
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
-        
-!......................
-
-      case('ICE_NEW')
-        option%use_ice_new = PETSC_TRUE        
       
 !......................
 
@@ -2597,15 +2609,8 @@ subroutine InitReadInput(simulation)
            option%store_flowrate = PETSC_TRUE
           endif
           if (associated(grid%unstructured_grid%explicit_grid)) then
-#ifndef STORE_FLOWRATES
-            option%io_buffer='To output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE, '// &
-              'compile with -DSTORE_FLOWRATES'
-            call printErrMsg(option)
-#endif
-            output_option%print_explicit_flowrate = mass_flowrate
-          else
             option%io_buffer='Output FLOWRATES/MASS_FLOWRATE/ENERGY_FLOWRATE ' // &
-              'only available in HDF5 format for implicit grid' 
+              'not supported for explicit unstructured grid.'
             call printErrMsg(option)
           endif
         
