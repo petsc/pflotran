@@ -134,10 +134,6 @@ subroutine PMSurfaceTHPreSolve(this)
     write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
   endif
 
-  call VecView(this%surf_realization%surf_field%flow_xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-  !call printErrMsg(this%option,'PreSolve')
-  
-
 end subroutine PMSurfaceTHPreSolve
 
 ! ************************************************************************** !
@@ -378,7 +374,6 @@ subroutine PMSurfaceTHPostSolve(this)
   ! First, update the solution vector
   call DiscretizationGlobalToLocal(this%surf_realization%discretization, &
           surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)
-  call VecView(surf_field%flow_xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   ! Update aux vars
   call SurfaceTHUpdateTemperature(this%surf_realization)
