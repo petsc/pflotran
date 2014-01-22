@@ -43,6 +43,7 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
   use Geomechanics_Realization_module
   use Geomechanics_Logging_module  
   use Output_Geomechanics_module
+  use Geomechanics_Force_module
 #endif
 
   implicit none
@@ -184,6 +185,20 @@ subroutine GeomechTimestepperInitializeRun(realization,geomech_realization, &
     init_status = TIMESTEPPER_INIT_DONE
     return
   endif
+  
+#ifdef GEOMECH       
+    if (option%ngeomechdof > 0) then
+      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then 
+        call GeomechUpdateFromSubsurf(realization,geomech_realization)
+        call GeomechStoreInitialPressTemp(geomech_realization)
+      endif
+      call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                          failure)
+      call GeomechUpdateSolution(geomech_realization)
+      call GeomechStoreInitialDisp(geomech_realization)
+      call GeomechForceUpdateAuxVars(geomech_realization)
+    endif
+#endif  
 
   ! print initial condition output if not a restarted sim
   call OutputInit(master_stepper%steps)
@@ -269,8 +284,8 @@ end subroutine GeomechTimestepperInitializeRun
 !
 ! ************************************************************************** !
 subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
-                                       master_stepper,flow_stepper, &
-                                       tran_stepper,geomech_stepper)
+                                        master_stepper,flow_stepper, &
+                                        tran_stepper,geomech_stepper)
 
   use Realization_class
 
@@ -283,6 +298,7 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 #ifdef GEOMECH
   use Geomechanics_Realization_module
   use Output_Geomechanics_module, only : OutputGeomechanics
+  use Geomechanics_Force_module
 #endif  
 
   implicit none
@@ -357,12 +373,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
                                option,plot_flag, &
                                transient_plot_flag)
 
-#ifdef GEOMECH
-    if (option%ngeomechdof > 0) then
-      geomech_plot_flag = plot_flag
-    endif
-#endif
-
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
 
@@ -373,14 +383,6 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
- 
-#ifdef GEOMECH       
-    if (option%ngeomechdof > 0) then
-      call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
-                                          failure)
-    endif
-#endif
-
 
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
@@ -498,14 +500,29 @@ subroutine GeomechTimestepperExecuteRun(realization,geomech_realization, &
 !      call MassBalanceUpdate(realization,flow_stepper%solver, &
 !                             tran_stepper%solver)
 !    endif
-
+#ifdef GEOMECH       
+    if (option%ngeomechdof > 0) &
+      geomech_plot_flag = plot_flag
+#endif 
     call Output(realization,plot_flag,transient_plot_flag)
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
-    
-#ifdef GEOMECH
+  
+#ifdef GEOMECH       
     if (option%ngeomechdof > 0) then
+      if (option%geomech_subsurf_coupling == ONE_WAY_COUPLED) then ! call geomech only at plot times
+        if (geomech_plot_flag) then
+          call GeomechUpdateFromSubsurf(realization,geomech_realization)
+          call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                              failure)
+          call GeomechUpdateSolution(geomech_realization)
+        endif
+      else
+        call StepperSolveGeomechSteadyState(geomech_realization,geomech_stepper, &
+                                          failure)
+        call GeomechUpdateSolution(geomech_realization)
+      endif
       call OutputGeomechanics(geomech_realization,geomech_plot_flag, &
                               transient_plot_flag)
     endif
@@ -724,6 +741,7 @@ subroutine StepperSolveGeomechSteadyState(realization,stepper,failure)
     else
        scaled_fnorm = fnorm
     endif
+    write(*,*) ''
     print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
     write(*,'(" --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 

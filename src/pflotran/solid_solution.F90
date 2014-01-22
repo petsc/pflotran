@@ -29,7 +29,7 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -49,7 +49,7 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
   
   nullify(prev_solid_solution)
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 
@@ -69,7 +69,7 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
     stoich_solid_count = 0
     stoich_solid_names = ''
     do
-      call InputReadFlotranString(input,option)
+      call InputReadPflotranString(input,option)
       if (InputError(input)) exit
       if (InputCheckExit(input,option)) exit
       
@@ -181,7 +181,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   use Mineral_module
   
@@ -208,7 +208,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
   input => InputCreate(IUNIT_TEMP,solid_solution_rxn%database_filename,option)
 
   do ! loop over every entry in the database
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'SolidSolutionReadFromDatabase')
 
     call InputReadWord(input,option,card,PETSC_TRUE)  

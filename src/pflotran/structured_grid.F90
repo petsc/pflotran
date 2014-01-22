@@ -334,7 +334,7 @@ end subroutine StructGridCreateVecFromDM
 subroutine StructGridReadDXYZ(structured_grid,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   
   implicit none
   
@@ -384,7 +384,7 @@ end subroutine StructGridReadDXYZ
 ! ************************************************************************** !
 subroutine StructGridReadArray(a,n,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   
   implicit none
@@ -408,7 +408,7 @@ subroutine StructGridReadArray(a,n,input,option)
     i1 = i2+1
     i2 = i2+nvalue
     if (i2.gt.n) i2 = n
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'DXYZ')
     do i = i1, i2
       call InputReadDouble(input,option,a(i))
@@ -447,7 +447,7 @@ end subroutine StructGridReadArray
 ! ************************************************************************** !
 subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -486,7 +486,7 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
       exit
     endif
     
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'DXYZ')
 
     continuation_flag = PETSC_FALSE
@@ -1710,11 +1710,11 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: volume_p(:)
-  PetscReal :: r_up, r_down
+  PetscReal :: r1, r2
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)
-
+  
   select case(structured_grid%itype)
     case(CARTESIAN_GRID)
       do local_id=1, structured_grid%nlmax
@@ -1726,16 +1726,18 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
     case(CYLINDRICAL_GRID)
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
+        ! volume = 2 pi r dr dz
+        !        = pi * (r2-r1) * (r2+r1) * dz where dr = r2-r1 and 2 r = r2 + r1
         volume_p(local_id) = 2.d0 * pi * radius(ghosted_id) * structured_grid%dx(ghosted_id) * &
-                                structured_grid%dz(ghosted_id)
+                             structured_grid%dz(ghosted_id)
       enddo
     case(SPHERICAL_GRID)
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
-        r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
-        r_down = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
+        r2 = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
+        r1 = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
         volume_p(local_id) = 4.d0/3.d0 * pi * structured_grid%dx(ghosted_id) &
-        * (r_up*r_up + r_up*r_down + r_down*r_down)
+                             * (r2*r2 + r2*r1 + r1*r1)
       enddo
   end select
   

@@ -97,7 +97,7 @@ end function RegressionVariableCreate
 subroutine RegressionRead(regression,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
 
@@ -118,7 +118,7 @@ subroutine RegressionRead(regression,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -131,7 +131,7 @@ subroutine RegressionRead(regression,input,option)
       case('VARIABLES') 
         count = 0
         do 
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
 
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -151,7 +151,7 @@ subroutine RegressionRead(regression,input,option)
         allocate(int_array(max_cells))
         count = 0
         do 
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
 
           count = count + 1

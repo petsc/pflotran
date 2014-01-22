@@ -74,8 +74,11 @@ module Timestepper_module
   end type stepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, &
+#ifndef PROCESS_MODEL
             TimestepperExecuteRun, &
-            TimestepperInitializeRun, TimestepperFinalizeRun, &
+            TimestepperInitializeRun, &
+            TimestepperFinalizeRun, &
+#endif            
 #ifdef GEOMECH
             FlowStepperStepToSteadyState, &
             StepperCheckpoint, &
@@ -213,7 +216,7 @@ subroutine TimestepperRead(stepper,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -228,7 +231,7 @@ subroutine TimestepperRead(stepper,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -318,6 +321,7 @@ subroutine TimestepperRead(stepper,input,option)
 
 end subroutine TimestepperRead
 
+#ifndef PROCESS_MODEL
 ! ************************************************************************** !
 !
 ! TimestepperInitializeRun: Initializes timestepping run the time step loop
@@ -2966,7 +2970,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   use Solver_module
   use Field_module
   use Grid_module
-  use Level_module
   use Patch_module
   use Global_module  
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
@@ -3007,7 +3010,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
   type(patch_type), pointer :: cur_patch
-  type(level_type), pointer :: cur_level
 
   option => realization%option
   discretization => realization%discretization
@@ -3236,7 +3238,6 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   use Solver_module
   use Field_module
   use Grid_module
-  use Level_module
   use Patch_module
   use Global_module  
 
@@ -3741,7 +3742,6 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   use Field_module
   
   use Patch_module
-  use Level_module
   use Grid_module
     
   use Global_module, only : GlobalUpdateDenAndSat
@@ -3771,7 +3771,6 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
   type(patch_type), pointer :: cur_patch
-  type(level_type), pointer :: cur_level
 
   option => realization%option
   discretization => realization%discretization
@@ -4572,6 +4571,7 @@ subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
   endif    
 
 end subroutine TimestepperEnforceCFLLimit
+#endif ! ifndef PROCESS_MODEL
 
 ! ************************************************************************** !
 !

@@ -80,7 +80,9 @@ function PMCBaseCreate()
   
   class(pmc_base_type), pointer :: pmc
 
+#ifdef DEBUG
   print *, 'PMCBase%Create()'
+#endif
   
   allocate(pmc)
   call pmc%Init()
@@ -102,7 +104,9 @@ subroutine PMCBaseInit(this)
   
   class(pmc_base_type) :: this
   
+#ifdef DEBUG
   print *, 'PMCBase%Init()'
+#endif
   
   this%name = 'PMCBase'
   this%is_master = PETSC_FALSE
@@ -155,7 +159,9 @@ subroutine PMCBaseSetTimestepper(this,timestepper)
   class(pmc_base_type) :: this
   class(stepper_base_type), pointer :: timestepper
 
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%SetTimestepper()')
+#endif
   
   this%timestepper => timestepper
   
@@ -176,7 +182,9 @@ recursive subroutine InitializeRun(this)
   
   class(pm_base_type), pointer :: cur_pm
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%InitializeRun()')
+#endif
   
   cur_pm => this%pm_list
   do
@@ -330,7 +338,9 @@ recursive subroutine PMCBaseUpdateSolution(this)
 
   class(pm_base_type), pointer :: cur_pm
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%UpdateSolution()')
+#endif
   
   cur_pm => this%pm_list
   do
@@ -358,7 +368,9 @@ recursive subroutine FinalizeRun(this)
   
   character(len=MAXSTRINGLENGTH) :: string
   
+#ifdef DEBUG
   call printMsg(this%option,'PMCBase%FinalizeRun()')
+#endif
   
   call this%timestepper%FinalizeRun(this%option)
 
@@ -425,7 +437,9 @@ recursive subroutine OutputLocal(this)
   
   class(pm_base_type), pointer :: cur_pm
   
+#ifdef DEBUG
   call printMsg(this%option,'PMC%Output()')
+#endif
   
   cur_pm => this%pm_list
   do
@@ -640,7 +654,9 @@ recursive subroutine PMCBaseDestroy(this)
   
   class(pmc_base_type) :: this
   
+#ifdef DEBUG
   call printMsg(this%option,'PMC%Destroy()')
+#endif
   
   if (associated(this%next)) then
     call this%next%Destroy()

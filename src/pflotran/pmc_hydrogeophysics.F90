@@ -131,7 +131,8 @@ recursive subroutine PMCHydrogeophysicsRunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = 0
   
-  call HydrogeophysicsWrapperStep(this%solution_mpi,this%solution_seq, &
+  call HydrogeophysicsWrapperStep(sync_time,this%solution_mpi, &
+                                  this%solution_seq, &
                                   this%pf_to_e4d_scatter, &
                                   this%pf_to_e4d_master_comm,this%option)
 

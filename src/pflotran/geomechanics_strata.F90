@@ -148,7 +148,7 @@ end subroutine GeomechStrataInitList
 ! ************************************************************************** !
 subroutine GeomechStrataRead(strata,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use Option_module
   use String_module
   
@@ -164,7 +164,7 @@ subroutine GeomechStrataRead(strata,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     
     if (InputCheckExit(input,option)) exit  
 

@@ -157,9 +157,9 @@ function stage-pflotran-test() {
         _pflotran_flags=`cat ${_flags_file}`
         echo "  pflotran build flags=${_pflotran_flags}"
 
-        grep -e "makefile_new" ${_flags_file} &> /dev/null
+        grep -e "makefile_legacy" ${_flags_file} &> /dev/null
         if [ "$?" -eq "0" ]; then
-            _test_dir=${PFLOTRAN_DIR}/regression_tests_refactor
+            _test_dir=${PFLOTRAN_DIR}/regression_tests_legacy
         fi
     else
         echo "Could not find build flags file: ${_flags_file}. Testing with 'make pflotran'."

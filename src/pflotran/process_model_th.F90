@@ -582,7 +582,7 @@ end subroutine PMTHTimeCut
 ! ************************************************************************** !
 subroutine PMTHUpdateSolution(this)
 
-  use TH_module, only : THUpdateSolution
+  use TH_module, only : THUpdateSolution, THUpdateSurfaceBC
   use Condition_module
 
   implicit none
@@ -606,6 +606,10 @@ subroutine PMTHUpdateSolution(this)
   endif  
   ! end from RealizationUpdate()
   call THUpdateSolution(this%realization)
+#ifdef SURFACE_FLOW
+  if(this%option%nsurfflowdof>0) &
+    call THUpdateSurfaceBC(this%realization)
+#endif
 
 end subroutine PMTHUpdateSolution     
 

@@ -76,7 +76,7 @@ subroutine ExampleRead(this,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Units_module, only : UnitsConvertToInternal
   
   implicit none
@@ -90,7 +90,7 @@ subroutine ExampleRead(this,input,option)
   
   do
     ! Read a new string from the input file
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     ! Report an error if the string is not successfully read.
     if (InputError(input)) exit
     ! Check for the end of the reaction block denoted by "/" or "END".

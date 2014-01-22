@@ -44,6 +44,7 @@ OUTPUT
 FORMAT TECPLOT BLOCK
 HDF5_WRITE_GROUP_SIZE 1
 FORMAT HDF5
+VOLUME
 /
 
 :=========================== times ============================================

@@ -60,7 +60,7 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
   use Reaction_Aux_module
   use Database_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -117,7 +117,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
   use Global_Aux_module
   use Constraint_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -148,7 +148,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
   ! look through the input file
   rewind(input%fid)        
   do
-    call InputReadFlotranString(input, option)
+    call InputReadPflotranString(input, option)
     if (InputError(input)) exit
 
     call InputReadWord(input, option, word, PETSC_FALSE)
@@ -242,7 +242,7 @@ program pflotran_rxn
   use Global_Aux_module
   use Database_module
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   
   use Constraint_module

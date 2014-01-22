@@ -26,242 +26,15 @@ module Geomechanics_Grid_module
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 
-  public :: GeomechGridRead, &
-            CopySubsurfaceGridtoGeomechGrid, &
+  public :: CopySubsurfaceGridtoGeomechGrid, &
             GeomechGridLocalizeRegions, &
             GeomechGridVecGetArrayF90, &
             GeomechGridVecRestoreArrayF90, &
             GeomechGridCopyIntegerArrayToVec, &
-            GeomechGridCopyVecToIntegerArray 
-
+            GeomechGridCopyVecToIntegerArray, &
+            GeomechSubsurfMapFromFilename
+            
 contains
-
-! ************************************************************************** !
-!
-! GeomechGridRead: Reads a geomechanics grid
-! author: Satish Karra, LANL
-! date: 05/22/13
-!
-! ************************************************************************** !
-subroutine GeomechGridRead(geomech_grid,filename,option)
-
-  use Input_module
-  use Option_module
-  use String_module
-  
-  implicit none
-  
-  type(geomech_Grid_type) :: geomech_grid
-  character(len=MAXSTRINGLENGTH) :: filename
-  type(option_type) :: option
-  
-  type(input_type), pointer :: input
-  character(len=MAXSTRINGLENGTH) :: string, hint
-  character(len=MAXWORDLENGTH) :: word
-  PetscInt :: num_elems_local_save
-  PetscInt :: num_elems_local
-  PetscInt :: num_nodes_local_save
-  PetscInt :: num_nodes_local
-  PetscInt :: num_to_read
-  PetscInt, allocatable :: temp_int_array(:,:)
-  PetscReal, allocatable :: temp_real_array(:,:)
-  PetscReal, allocatable :: node_coordinates(:,:)
-
-  PetscInt :: ielem, inode, idir, irank, num_nodes
-  PetscInt :: remainder
-  PetscErrorCode :: ierr
-  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
-  PetscMPIInt :: int_mpi
-  PetscInt :: fileid
-  
-  fileid = 86
-  input => InputCreate(fileid,filename,option)
-
-  ! initial guess is 8 nodes per elem
-  geomech_grid%max_nnode_per_elem = 8
-
-! Format of geomech grid file
-! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
-! nodeN(H) = 8
-! nodeN(T) = 4
-! nodeN(W) = 6
-! nodeN(P) = 5
-! -----------------------------------------------------------------
-! num_elems num_nodes  (integers)
-! type node1 node2 node3 ... nodeN  ! for elem 1 (integers)
-! type node1 node2 node3 ... nodeN  ! for elem 2
-! ...
-! ...
-! type node1 node2 node3 ... nodeN  ! for elem num_elems
-! xcoord ycoord zcoord ! coordinates of node 1 (real)
-! xcoord ycoord zcoord ! coordinates of node 2 (real)
-! ...
-! xcoord ycoord zcoord ! coordinates of node num_nodes (real)
-! -----------------------------------------------------------------
-
-  hint = 'Geomechanics Grid'
-
-  call InputReadFlotranString(input,option)
-  string = 'geomechanics grid'
-  call InputReadStringErrorMsg(input,option,hint)  
-
-  ! read num_elems
-  call InputReadInt(input,option,geomech_grid%nmax_elem)
-  call InputErrorMsg(input,option,'number of elems',hint)
-  ! read num_nodes
-  call InputReadInt(input,option,geomech_grid%nmax_node)
-  call InputErrorMsg(input,option,'number of nodes',hint)
-
-  ! divide elems across ranks
-  num_elems_local = geomech_grid%nmax_elem/option%mycommsize 
-  num_elems_local_save = num_elems_local
-  remainder = geomech_grid%nmax_elem - &
-              num_elems_local*option%mycommsize
-  if (option%myrank < remainder) num_elems_local = &
-                                 num_elems_local + 1
-
-  ! allocate array to store nodes for each elem
-  allocate(geomech_grid%elem_nodes(geomech_grid%max_nnode_per_elem, &
-                                             num_elems_local))
-  geomech_grid%elem_nodes = -999
-
-  ! for now, read all elems from ASCII file through io_rank and communicate
-  ! to other ranks
-  if (option%myrank == option%io_rank) then
-    allocate(temp_int_array(geomech_grid%max_nnode_per_elem, &
-                            num_elems_local_save+1))
-    ! read for other processors
-    do irank = 0, option%mycommsize-1
-      temp_int_array = -999
-      num_to_read = num_elems_local_save
-      if (irank < remainder) num_to_read = num_to_read + 1
-      do ielem = 1, num_to_read
-        ! read in the nodes defining the grid elem
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,hint)  
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'element type',hint)
-        call StringToUpper(word)
-        select case(word)
-          case('H')
-            num_nodes = 8
-          case('W')
-            num_nodes = 6
-          case('P')
-            num_nodes = 5
-          case('T')
-            num_nodes = 4
-          case('Q')
-            num_nodes = 4
-        end select
-        do inode = 1, num_nodes
-          call InputReadInt(input,option,temp_int_array(inode,ielem))
-          call InputErrorMsg(input,option,'node id',hint)
-        enddo
-      enddo
-      
-      ! if the elems reside on io_rank
-      if (irank == option%io_rank) then
-#if UGRID_DEBUG
-        write(string,*) num_elems_local
-        string = trim(adjustl(string)) // ' elems stored on p0'
-        print *, trim(string)
-#endif
-        geomech_grid%elem_nodes(:,1:num_elems_local) = &
-          temp_int_array(:,1:num_elems_local)
-      else
-        ! otherwise communicate to other ranks
-#if UGRID_DEBUG
-        write(string,*) num_to_read
-        write(word,*) irank
-        string = trim(adjustl(string)) // ' elems sent from p0 to p' // &
-                 trim(adjustl(word))
-        print *, trim(string)
-#endif
-        int_mpi = num_to_read*geomech_grid%max_nnode_per_elem
-        call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
-                      num_to_read,option%mycomm,ierr)
-      endif
-    enddo
-    deallocate(temp_int_array)
-  else
-    ! other ranks post the recv
-#if UGRID_DEBUG
-        write(string,*) num_elems_local
-        write(word,*) option%myrank
-        string = trim(adjustl(string)) // ' elems received from p0 at p' // &
-                 trim(adjustl(word))
-        print *, trim(string)
-#endif
-    int_mpi = num_elems_local*geomech_grid%max_nnode_per_elem
-    call MPI_Recv(geomech_grid%elem_nodes,int_mpi, &
-                  MPIU_INTEGER,option%io_rank, &
-                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
-  endif
-
-
-  ! divide nodes across ranks
-  num_nodes_local = geomech_grid%nmax_node/ &
-                                         option%mycommsize 
-  num_nodes_local_save = num_nodes_local
-  remainder = geomech_grid%nmax_node - &
-              num_nodes_local*option%mycommsize
-  if (option%myrank < remainder) num_nodes_local = &
-                                 num_nodes_local + 1
-
-  allocate(node_coordinates(3,num_nodes_local))
-  node_coordinates = 0.d0
-
-  ! just like above, but this time for node coordinates
-  if (option%myrank == option%io_rank) then
-    allocate(temp_real_array(3,num_nodes_local_save+1))
-    ! read for other processors
-    do irank = 0, option%mycommsize-1
-      num_to_read = num_nodes_local_save
-      if (irank < remainder) num_to_read = num_to_read + 1
-      do inode = 1, num_to_read
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,hint)  
-        do idir = 1, 3
-          call InputReadDouble(input,option,temp_real_array(idir,inode))
-          call InputErrorMsg(input,option,'node coordinate',hint)
-        enddo
-      enddo
-      
-      if (irank == option%io_rank) then
-        node_coordinates(:,1:num_nodes_local) = &
-          temp_real_array(:,1:num_nodes_local)
-      else
-        int_mpi = num_to_read*3
-        call MPI_Send(temp_real_array,int_mpi,MPI_DOUBLE_PRECISION,irank, &
-                      num_to_read,option%mycomm,ierr)
-      endif
-    enddo
-    deallocate(temp_real_array)
-  else
-    int_mpi = num_nodes_local*3
-    call MPI_Recv(node_coordinates, &
-                  int_mpi, &
-                  MPI_DOUBLE_PRECISION,option%io_rank, &
-                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
-  endif
-  
-  ! fill the nodes data structure
-  allocate(geomech_grid%nodes(num_nodes_local))
-  do inode = 1, num_nodes_local
-    geomech_grid%nodes(inode)%id = 0
-    geomech_grid%nodes(inode)%x = node_coordinates(1,inode)
-    geomech_grid%nodes(inode)%y = node_coordinates(2,inode)
-    geomech_grid%nodes(inode)%z = node_coordinates(3,inode)
-  enddo
-  deallocate(node_coordinates)
-
-  geomech_grid%nlmax_elem = num_elems_local
-  geomech_grid%nlmax_node = num_nodes_local
-
-  call InputDestroy(input)
-
-end subroutine GeomechGridRead
 
 ! ************************************************************************** !
 !
@@ -291,7 +64,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #include "finclude/petscviewer.h"  
   
   type(unstructured_grid_type), pointer      :: ugrid
-  type(geomech_Grid_type), pointer           :: geomech_grid
+  type(geomech_grid_type), pointer           :: geomech_grid
   type(option_type), pointer                 :: option
   PetscInt                                   :: local_id
   PetscInt                                   :: ghosted_id
@@ -328,10 +101,10 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   PetscInt                                   :: nlmax_node
   PetscInt, pointer                          :: int_ptr(:)
   type(point_type), pointer                  :: vertices(:)
+  PetscInt, allocatable                      :: vertex_count_array(:)
+  PetscInt, allocatable                      :: vertex_count_array2(:)
 
-  call printMsg(option,'GEOMECHANICS: Subsurface unstructured grid will ' // &
-                  'be used for geomechanics.')
-  
+ 
 #ifdef GEOMECH_DEBUG
   call printMsg(option,'Copying unstructured grid to geomechanics grid')
 #endif
@@ -496,12 +269,6 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   call MatAssemblyBegin(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr)
-  
-#ifdef GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'geomech_Rank_Mat.out',viewer,ierr)
-  call MatView(Rank_Mat,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif  
 
   allocate(val(option%mycommsize))
   allocate(cols(option%mycommsize))
@@ -520,6 +287,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo
   deallocate(val)
   deallocate(cols)
+  call MatDestroy(Rank_Mat,ierr)
   
   ! Change rank to start from 0
   int_array = int_array - 1
@@ -535,23 +303,33 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #endif    
     
   ! Find the local nodes on a process
+  allocate(vertex_count_array(option%mycommsize))
+  allocate(vertex_count_array2(option%mycommsize))
+  vertex_count_array = 0
+  vertex_count_array2 = 0
+
   do int_rank = 0, option%mycommsize
-    vertex_count = 0
     do local_id = 1, count
       if (int_array(local_id) == int_rank) then
-        vertex_count = vertex_count + 1
+        vertex_count_array(int_rank+1) = vertex_count_array(int_rank+1) + 1
       endif
     enddo
-    call MPI_Allreduce(vertex_count,vertex_count2, &
-                       ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
-                       option%mycomm,ierr)
-    if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count2
+  enddo
+  call MPI_Allreduce(vertex_count_array,vertex_count_array2, &
+                     option%mycommsize,MPIU_INTEGER,MPI_SUM, &
+                     option%mycomm,ierr)
+
+  do int_rank = 0, option%mycommsize
+    if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count_array2(int_rank+1)
     if (geomech_grid%nlmax_node > geomech_grid%ngmax_node) then
       option%io_buffer = 'Error: nlmax_node cannot be greater than' // &
                          ' ngmax_node.'
       call printErrMsg(option)
     endif
   enddo
+
+  if (allocated(vertex_count_array)) deallocate(vertex_count_array)
+  if (allocated(vertex_count_array2)) deallocate(vertex_count_array2)
   
   ! Add a check on nlmax_node to see if there are too many processes 
   call MPI_Allreduce(geomech_grid%nlmax_node,nlmax_node, &
@@ -669,8 +447,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%node_ids_local_natural = geomech_grid%node_ids_local_natural + 1
 
   ! Find the natural ids of ghost nodes (vertices)
+  vertex_count = 0 
   if (geomech_grid%ngmax_node - geomech_grid%nlmax_node > 0) then  
-    vertex_count = 0 
     allocate(int_array2(geomech_grid%ngmax_node-geomech_grid%nlmax_node))
     do ivertex = 1, geomech_grid%ngmax_node
       do local_id = 1, geomech_grid%nlmax_node
@@ -686,6 +464,9 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
          int_array2(vertex_count) = geomech_grid%node_ids_ghosted_natural(ivertex)
        endif
     enddo
+  else
+    allocate(int_array2(1))
+    int_array2 = 0
   endif
   
   if (vertex_count /= geomech_grid%ngmax_node - geomech_grid%nlmax_node) then
@@ -697,7 +478,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   write(string,*) option%myrank
   string = 'geomech_node_ids_ghosts_natural' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
-  if (allocated(int_array2)) then
+  if (vertex_count > 0) then
     do local_id = 1, vertex_count
       write(86,'(i5)') int_array2(local_id)
     enddo
@@ -711,7 +492,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                                    geomech_grid%nlmax_node  
     
   ! Changing the index to 0 based
-  if (allocated(int_array2))  int_array2 = int_array2 - 1    
+  if (allocated(int_array2)) & 
+     int_array2 = int_array2 - 1   
     
   ! Create a new IS with local PETSc numbering
   call ISCreateGeneral(option%mycomm,geomech_grid%num_ghost_nodes, &
@@ -858,7 +640,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     call GaussInitialize(geomech_grid%gauss_node(local_id))  
     geomech_grid%gauss_node(local_id)%Eletype = geomech_grid%Elem_type(local_id)
     geomech_grid%gauss_node(local_id)%dim = THREE_DIM_GRID
-    geomech_grid%gauss_node(local_id)%NGPTS = FOUR_INTEGER
+    geomech_grid%gauss_node(local_id)%NGPTS = TWO_INTEGER
     if (geomech_grid%gauss_node(local_id)%Eletype == PYR_TYPE) &
       geomech_grid%gauss_node(local_id)%NGPTS = FIVE_INTEGER
     call GaussCalculatePoints(geomech_grid%gauss_node(local_id))
@@ -884,9 +666,23 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   enddo  
   close(86)
 #endif    
-  
-end subroutine CopySubsurfaceGridtoGeomechGrid
+ 
+  ! local vector
+  call VecCreate(PETSC_COMM_SELF,geomech_grid%no_elems_sharing_node_loc,ierr)
+  call VecSetSizes(geomech_grid%no_elems_sharing_node_loc,geomech_grid%ngmax_node, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(geomech_grid%no_elems_sharing_node_loc,ierr)
 
+  ! global vector
+  call VecCreate(option%mycomm,geomech_grid%no_elems_sharing_node,ierr)
+  call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%nlmax_node, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(geomech_grid%no_elems_sharing_node,ierr)
+
+  call VecSet(geomech_grid%no_elems_sharing_node_loc,0,ierr)
+  call VecSet(geomech_grid%no_elems_sharing_node,0,ierr)
+ 
+end subroutine CopySubsurfaceGridtoGeomechGrid
 
 ! ************************************************************************** !
 !
@@ -1230,6 +1026,176 @@ subroutine GeomechGridCopyVecToIntegerArray(grid,array,vector,num_values)
   call GeomechGridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
 end subroutine GeomechGridCopyVecToIntegerArray
+
+! ************************************************************************** !
+!
+! GeomechSubsurfMapFromFilename: Reads a list of vertex ids from a file named 
+!                                filename
+! author: Satish Karra, LANL
+! date: 09/07/13
+!
+! ************************************************************************** !
+subroutine GeomechSubsurfMapFromFilename(grid,filename,option)
+
+  use Input_Aux_module
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  type(geomech_grid_type)            :: grid
+  type(option_type)                  :: option
+  type(input_type), pointer          :: input
+  character(len=MAXSTRINGLENGTH)     :: filename
+  
+  input => InputCreate(IUNIT_TEMP,filename,option)
+  call GeomechSubsurfMapFromFileId(grid,input,option)          
+  call InputDestroy(input)         
+
+end subroutine GeomechSubsurfMapFromFilename
+
+! ************************************************************************** !
+!
+! GeomechSubsurfMapFromFileId: Reads a list of vertex ids from an open file
+! author: Satish Karra, LANL
+! date: 09/07/13
+!
+! ************************************************************************** !
+subroutine GeomechSubsurfMapFromFileId(grid,input,option)
+
+  use Input_Aux_module
+  use Option_module
+  use Utility_module
+  use Logging_module
+  use Unstructured_Cell_module
+  
+  implicit none
+  
+  type(geomech_grid_type)           :: grid
+  type(option_type)                 :: option
+  type(input_type)                  :: input
+  
+  PetscBool                         :: continuation_flag
+  character(len=MAXWORDLENGTH)      :: word
+  character(len=1)                  :: backslash
+  character(len=MAXSTRINGLENGTH)    :: string, string1
+
+  PetscInt, pointer :: temp_int_array(:)
+  PetscInt, pointer :: vertex_ids_geomech(:)
+  PetscInt, pointer :: cell_ids_flow(:)
+  PetscInt :: max_size, max_size_old
+  PetscInt :: count
+  PetscInt :: temp_int
+  PetscInt :: input_data_type
+  PetscInt :: ii
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscInt :: remainder
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
+    
+  max_size = 1000
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+  
+  allocate(temp_int_array(max_size))
+  allocate(vertex_ids_geomech(max_size))
+  allocate(cell_ids_flow(max_size))
+  
+  temp_int_array = 0
+  vertex_ids_geomech = 0
+  cell_ids_flow = 0
+  
+  count = 0
+  call InputReadPflotranString(input, option)
+  do 
+    call InputReadInt(input, option, temp_int)
+    if (InputError(input)) exit
+    count = count + 1
+    temp_int_array(count) = temp_int
+  enddo
+
+  if (count == 2) then
+    cell_ids_flow(1) = temp_int_array(1)
+    vertex_ids_geomech(1) = temp_int_array(2)
+    count = 1 ! reset the counter to represent the num of rows read
+
+    ! Read the data
+    do
+      call InputReadPflotranString(input, option)
+      if (InputError(input)) exit
+      call InputReadInt(input, option, temp_int)
+      if (InputError(input)) exit
+      count = count + 1
+      cell_ids_flow(count) = temp_int
+
+      call InputReadInt(input,option,temp_int)
+      if (InputError(input)) then
+        option%io_buffer = 'ERROR while reading ' // &
+          'GEOMECHANICS_SUBSURFACE_COUPLING mapping file.'
+        call printErrMsg(option)
+      endif
+      vertex_ids_geomech(count) = temp_int
+      if (count+1 > max_size) then ! resize temporary array
+        max_size_old = max_size
+        call reallocateIntArray(cell_ids_flow, max_size_old)
+        call reallocateIntArray(vertex_ids_geomech, max_size)
+      endif
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
+    grid%mapping_num_cells = count/option%mycommsize
+      remainder = count - grid%mapping_num_cells*option%mycommsize
+    if (option%myrank < remainder) grid%mapping_num_cells = &
+                                     grid%mapping_num_cells + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(grid%mapping_num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(grid%mapping_num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+
+    ! Allocate memory and save the data
+    allocate(grid%mapping_cell_ids_flow(grid%mapping_num_cells))
+    allocate(grid%mapping_vertex_ids_geomech(grid%mapping_num_cells))
+    grid%mapping_cell_ids_flow(1:grid%mapping_num_cells) = &
+      cell_ids_flow(istart + 1:iend)
+    grid%mapping_vertex_ids_geomech(1:grid%mapping_num_cells) = &
+      vertex_ids_geomech(istart + 1:iend)
+    deallocate(cell_ids_flow)
+    deallocate(vertex_ids_geomech)  
+  else
+    option%io_buffer = 'Provide a flow cell_id and a geomech vertex_id per ' // &
+      'line in GEOMECHANICS_SUBSURFACE_COUPLING mapping file.'
+    call printErrMsg(option) 
+  endif
+  
+  deallocate(temp_int_array)
+  
+#ifdef GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'geomech_subsurf_mapping_vertex_ids_geomech' &
+    // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ii = 1, grid%mapping_num_cells
+    write(86,'(i5)') grid%mapping_vertex_ids_geomech(ii)
+  enddo  
+  close(86)
+
+  write(string,*) option%myrank
+  string = 'geomech_subsurf_mapping_cell_ids_flow' &
+    // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ii = 1, grid%mapping_num_cells
+    write(86,'(i5)') grid%mapping_cell_ids_flow(ii)
+  enddo  
+  close(86)
+#endif    
+    
+  call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
+
+end subroutine GeomechSubsurfMapFromFileId
 
 end module Geomechanics_Grid_module
 #endif 

@@ -4,8 +4,8 @@
 ! use the PetscBagGetData() routine.
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
-
 module Checkpoint_Header_module
+#ifndef PROCESS_MODEL
   implicit none
   private
   ! We manually specify the number of bytes required for the 
@@ -57,11 +57,14 @@ module Checkpoint_Header_module
     real*8 :: tran_cumulative_solver_time  ! don't implement yet; will screw up restarts
     integer*8 :: checkpoint_activity_coefs
   end type checkpoint_header_type
+#endif
 end module Checkpoint_Header_module
 
 module Checkpoint_module
 
+#ifndef PROCESS_MODEL
   use Checkpoint_Header_module
+#endif
 
   use PFLOTRAN_Constants_module
 
@@ -69,8 +72,10 @@ module Checkpoint_module
   
   private
 
+#ifndef PROCESS_MODEL
   public :: Checkpoint, Restart
-  
+#endif
+
   public :: OpenCheckpointFile, &
             CloseCheckpointFile, &
             CheckpointFlowProcessModel, &
@@ -88,6 +93,7 @@ module Checkpoint_module
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
+#ifndef PROCESS_MODEL
 Interface PetscBagGetData
 Subroutine PetscBagGetData(bag,ctx,ierr)
       use Checkpoint_Header_module
@@ -96,8 +102,11 @@ Subroutine PetscBagGetData(bag,ctx,ierr)
       PetscErrorCode ierr
 End Subroutine
 End Interface PetscBagGetData
+#endif      
 
 contains
+
+#ifndef PROCESS_MODEL
 
 subroutine Checkpoint(realization, &
                       flow_time_steps,flow_cumulative_newton_iterations, &
@@ -390,7 +399,7 @@ subroutine Checkpoint(realization, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(filename)
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a32)') trim(filename)
   call printMsg(option)
 
   call PetscTime(tend,ierr) 
@@ -849,6 +858,7 @@ subroutine CheckpointRegisterBagHeader(bag,header)
                            ierr)                            
 
 end subroutine CheckpointRegisterBagHeader
+#endif
 
 ! ************************************************************************** !
 !

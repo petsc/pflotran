@@ -24,24 +24,21 @@ module Dataset_Base_class
     PetscInt :: buffer_slice_offset ! index of the first time slice in the buffer
     PetscInt :: buffer_nslice ! # of time slices stored in buffer
     class(dataset_base_type), pointer :: next
-!  contains
-!    procedure, public :: Init => DatasetBaseInit
-!    procedure, public :: InterpolateTime => DatasetBaseInterpolateTime
-!    procedure, public :: Reorder => DatasetBaseReorder
-!    procedure, public :: Strip => DatasetBaseStrip
   end type dataset_base_type
 
   ! dataset types
-  PetscInt, parameter :: DATASET_INTEGER = 1
-  PetscInt, parameter :: DATASET_REAL = 2
+  PetscInt, public, parameter :: DATASET_INTEGER = 1
+  PetscInt, public, parameter :: DATASET_REAL = 2
   
   public :: DatasetBaseCreate, &
             DatasetBaseInit, &
             DatasetBaseCopy, &
+            DatasetBaseVerify, &
             DatasetBaseInterpolateTime, &
             DatasetBaseReorder, &
             DatasetBaseGetPointer, &
             DatasetBaseAddToList, &
+            DatasetBasePrint, &
             DatasetBaseStrip, &
             DatasetBaseDestroy
 contains
@@ -148,6 +145,65 @@ end subroutine DatasetBaseCopy
 
 ! ************************************************************************** !
 !
+! DatasetBaseVerify: Verifies that data structure is properly set up.
+! author: Glenn Hammond
+! date: 10/08/13
+!
+! ************************************************************************** !
+subroutine DatasetBaseVerify(this,option)
+  
+  use Option_module
+  
+  implicit none
+  
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+  
+  if (associated(this%time_storage) .or. associated(this%iarray) .or. &
+      associated(this%iarray) .or. associated(this%ibuffer) .or. &
+      associated(this%rarray) .or. associated(this%rbuffer)) then
+    if (len_trim(this%name) < 1) then
+      this%name = 'Unknown Dataset'
+    endif
+    if (this%data_type == 0) then
+      option%io_buffer = '"data_type" not defined in dataset: ' // &
+                         trim(this%name)
+      call printErrMsg(option)
+    endif
+    if (associated(this%ibuffer) .or. associated(this%rbuffer)) then
+      if (.not.associated(this%dims)) then
+        option%io_buffer = '"dims" not allocated in dataset: ' // &
+                           trim(this%name)
+        call printErrMsg(option)
+      endif
+      if (this%dims(1) == 0) then
+        option%io_buffer = '"dims" not defined in dataset: ' // &
+                           trim(this%name)
+        call printErrMsg(option)
+      endif
+      if (size(this%dims) /= this%rank) then
+        option%io_buffer = 'Size of "dims" not match "rank" in dataset: ' // &
+                            trim(this%name)
+        call printErrMsg(option)
+      endif
+    endif
+    if (associated(this%ibuffer) .and. .not.associated(this%iarray)) then
+      allocate(this%iarray(this%dims(1)))
+      this%iarray = 0
+    endif
+    if (associated(this%rbuffer) .and. .not.associated(this%rarray)) then
+      allocate(this%rarray(this%dims(1)))
+      this%rarray = 0.d0
+    endif
+  else if (len_trim(this%name) < 1) then
+    option%io_buffer = 'NULL dataset in input deck.'
+    call printErrMsg(option)
+  endif
+    
+end subroutine DatasetBaseVerify
+
+! ************************************************************************** !
+!
 ! DatasetBaseInterpolateTime: Interpolates dataset between two buffer times
 ! author: Glenn Hammond
 ! date: 10/26/11
@@ -169,7 +225,7 @@ subroutine DatasetBaseInterpolateTime(this)
   
   if (.not.associated(this%rbuffer)) return
   
-  time_interpolation_method = INTERPOLATION_STEP
+  time_interpolation_method = this%time_storage%time_interpolation_method
   
   if (this%time_storage%cur_time_index >= &
       this%time_storage%max_time_index) then
@@ -187,6 +243,11 @@ subroutine DatasetBaseInterpolateTime(this)
   
   array_size = size(this%rarray)
   select case(time_interpolation_method)
+    case(INTERPOLATION_NULL)
+      ! it possible that the time_interpolation_method is null during
+      ! the load process.  in that case, we need to set the array to an
+      ! uninitialized value (-999.).
+      this%rarray = -999.d0
     case(INTERPOLATION_STEP)
       ! if time index has not changed skip
       if (.not.this%time_storage%cur_time_index_changed) return
@@ -304,29 +365,6 @@ end subroutine DatasetBaseReorder
 
 ! ************************************************************************** !
 !
-! DatasetBasePrintMe: Prints dataset info
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-subroutine DatasetBasePrintMe(this,option)
-
-  use Option_module
-
-  implicit none
-  
-  class(dataset_base_type) :: this
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-
-  option%io_buffer = 'TODO(geh): add DatasetPrint()'
-  call printMsg(option)
-            
-end subroutine DatasetBasePrintMe
-
-! ************************************************************************** !
-!
 ! DatasetBaseGetTimes: Fills an array of times based on a dataset
 ! author: Glenn Hammond
 ! date: 10/26/11
@@ -422,6 +460,48 @@ function DatasetBaseGetPointer(dataset_list, dataset_name, debug_string, &
   endif
 
 end function DatasetBaseGetPointer
+
+! ************************************************************************** !
+!
+! DatasetBasePrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetBasePrint(this,option)
+
+  use Option_module
+
+  implicit none
+
+  class(dataset_base_type) :: this
+  type(option_type) :: option
+
+  if (len_trim(this%filename) > 0) then
+    write(option%fid_out,'(10x,''Filename: '',a)') trim(this%filename)
+  endif
+  if (associated(this%time_storage)) then
+    write(option%fid_out,'(10x,''Is transient?: yes'')')
+    write(option%fid_out,'(10x,''Number of times: '',i6)') &
+      this%time_storage%max_time_index
+    if (this%time_storage%is_cyclic) then
+      write(option%fid_out,'(10x,''Is cyclic?: yes'')')
+    else
+      write(option%fid_out,'(10x,''Is cyclic?: no'')')
+    endif
+  else
+    write(option%fid_out,'(10x,''Transient: no'')')
+  endif
+  if (associated(this%rbuffer)) then
+    write(option%fid_out,'(10x,''Buffer:'')')
+    write(option%fid_out,'(12x,''Rank: '',i2)') this%rank
+    if (associated(this%dims)) then
+      write(option%fid_out,'(12x,''Dims: '',10i4)') this%dims
+    endif
+    write(option%fid_out,'(12x,''Buffer Slice Size: '',i2)') this%buffer_nslice
+  endif
+
+end subroutine DatasetBasePrint
 
 ! ************************************************************************** !
 !

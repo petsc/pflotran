@@ -29,7 +29,7 @@ contains
 subroutine SurfaceInitialize(simulation_base,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Timestepper_Base_class
   use Simulation_Base_class
   

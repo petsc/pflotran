@@ -69,7 +69,7 @@
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Transport --
-   Time (seconds):   8.4342956542969E-02
+   Time (seconds):   5.6215763092041E-02
    Time Steps:           47
    Newton Iterations:          144
    Solver Iterations:          144

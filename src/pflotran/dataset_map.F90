@@ -19,9 +19,6 @@ module Dataset_Map_class
     PetscInt, pointer :: datatocell_ids(:)
     PetscInt, pointer :: cell_ids_local(:)
     PetscBool         :: first_time
-!  contains
-!    procedure, public :: Init => DatasetMapInit
-!    procedure, public :: Load => DatasetMapLoad
   end type dataset_map_type
   
   PetscInt, parameter :: MAX_NSLICE = 100
@@ -31,6 +28,7 @@ module Dataset_Map_class
             DatasetMapCast, &
             DatasetMapRead, &
             DatasetMapLoad, &
+            DatasetMapPrint, &
             DatasetMapDestroy
   
 contains
@@ -116,7 +114,7 @@ end function DatasetMapCast
 subroutine DatasetMapRead(this,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
 
   implicit none
@@ -131,7 +129,7 @@ subroutine DatasetMapRead(this,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -546,6 +544,40 @@ subroutine DatasetMapReadMap(this,option)
   
 end subroutine DatasetMapReadMap
 #endif
+
+! ************************************************************************** !
+!
+! DatasetMapPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/22/13
+!
+! ************************************************************************** !
+subroutine DatasetMapPrint(this,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(dataset_map_type), target :: this
+  type(option_type) :: option
+  
+  class(dataset_common_hdf5_type), pointer :: dataset_hdf5
+
+  dataset_hdf5 => this
+  call DatasetCommonHDF5Print(this,option)
+
+  if (len_trim(this%h5_dataset_map_name) > 0) then
+    write(option%fid_out,'(10x,''HDF5 Dataset Map Name: '',a)') &
+      trim(this%h5_dataset_map_name)
+  endif
+  if (len_trim(this%map_filename) > 0) then
+    write(option%fid_out,'(10x,''Map Filename: '',a)') &
+      trim(this%map_filename)
+  endif
+  write(option%fid_out,'(10x,''Global Dimensions: '',2i8)') &
+    this%map_dims_global(:)
+  
+end subroutine DatasetMapPrint
 
 ! ************************************************************************** !
 !

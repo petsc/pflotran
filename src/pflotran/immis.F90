@@ -93,7 +93,6 @@ end subroutine ImmisTimeCut
 subroutine ImmisSetup(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use co2_span_wagner_module
   use co2_sw_module
@@ -101,41 +100,14 @@ subroutine ImmisSetup(realization)
    
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
-#if 0  
-  if (realization%option%co2eos == EOS_SPAN_WAGNER)then
-    select case(realization%option%itable)
-       case(0,1,2)
-         call initialize_span_wagner(realization%option%itable, &
-                                     realization%option%myrank, &
-                                     realization%option)
-       case(4,5)
-         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank, &
-                                     realization%option)
-         call initialize_sw_interp(realization%option%itable, &
-                                   realization%option%myrank)
-       case(3)
-         call sw_spline_read
-       case default
-         print *, 'Wrong table option : STOP'
-      stop
-    end select
-  endif
-#endif 
- 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisSetupPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
   call ImmisSetPlotVariables(realization)
@@ -277,29 +249,22 @@ end subroutine ImmisSetupPatch
 subroutine ImmisComputeMassBalance(realization,mass_balance)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
 ! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_balance(realization%option%nflowspec,1)
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   mass_balance = 0.d0
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisComputeMassBalancePatch(realization,mass_balance)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisComputeMassBalance
@@ -431,45 +396,38 @@ end subroutine ImmisZeroMassBalDeltaPatch
   function  ImmisInitGuessCheck(realization)
  
   use Realization_class
-  use Level_module
   use Patch_module
   use Option_module
   
   PetscInt ::  ImmisInitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr    
 
   option => realization%option
-  cur_level => realization%level_list%first
   ipass = 1
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ipass= ImmisInitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    ipass= ImmisInitGuessCheckPatch(realization)
+    if(ipass<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
   enddo
 
-   call MPI_Barrier(option%mycomm,ierr)
-   if(option%mycommsize >1)then
+  call MPI_Barrier(option%mycomm,ierr)
+  if(option%mycommsize >1)then
       call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER, &
                          MPI_SUM,option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
    ImmisInitGuessCheck =ipass
- end function ImmisInitGuessCheck
+
+end function ImmisInitGuessCheck
 
 ! ************************************************************************** !
 ! Immisinitguesscheckpatch: 
@@ -556,13 +514,11 @@ end subroutine ImmisUpdateReasonPatch
 subroutine ImmisUpdateReason(reason, realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   implicit none
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
@@ -570,24 +526,18 @@ subroutine ImmisUpdateReason(reason, realization)
   PetscErrorCode :: ierr
 
   re = 1
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisUpdateReasonPatch(re, realization)
-        if(re<=0)then
-           nullify(cur_level)
-           exit 
-        endif
-        cur_patch => cur_patch%next
-     enddo
-    cur_level => cur_level%next
- enddo
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisUpdateReasonPatch(re, realization)
+    if(re<=0)then
+      exit 
+    endif
+    cur_patch => cur_patch%next
+  enddo
 
- call MPI_Barrier(realization%option%mycomm,ierr)
+  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if(realization%option%mycommsize >1)then
      call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
@@ -673,25 +623,18 @@ end subroutine ImmisUpdateReason
 subroutine ImmisUpdateAuxVars(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisUpdateAuxVarsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisUpdateAuxVarsPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisUpdateAuxVars
@@ -867,7 +810,6 @@ subroutine ImmisUpdateSolution(realization)
 
   use Realization_class
   use Field_module
-  use Level_module
   use Patch_module
   
   implicit none
@@ -875,7 +817,6 @@ subroutine ImmisUpdateSolution(realization)
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -884,17 +825,12 @@ subroutine ImmisUpdateSolution(realization)
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
 
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
 !     call ImmisUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    cur_patch => cur_patch%next
   enddo
 
 ! make room for hysteric s-Pc-kr
@@ -985,25 +921,18 @@ end subroutine ImmisUpdateMassBalancePatch
 subroutine ImmisUpdateFixedAccumulation(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisUpdateFixedAccumPatch(realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisUpdateFixedAccumulation
@@ -1645,7 +1574,6 @@ end subroutine ImmisBCFlux
 subroutine ImmisResidual(snes,xx,r,realization,ierr)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Discretization_module
   use Field_module
@@ -1664,7 +1592,6 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscInt :: ichange  
 
@@ -1695,17 +1622,12 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisResidualPatch(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisResidualPatch(snes,xx,r,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisResidual
@@ -1914,12 +1836,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
    ! endif
       
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%rarray(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 !     hsrc1=0D0
 !     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !     csrc1 = csrc1 / FMWCO2
@@ -1931,10 +1853,10 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !clu add
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-      msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+      msrc => source_sink%flow_condition%rate%dataset%rarray
       nsrcpara = 2
     case(WELL_SS)
-      msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+      msrc => source_sink%flow_condition%well%dataset%rarray
       nsrcpara = 7 + option%nflowspec 
      
 !     print *,'src/sink: ',nsrcpara,msrc
@@ -2227,7 +2149,6 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_class
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
 
@@ -2240,21 +2161,15 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   
-  cur_level => realization%level_list%first
+  cur_patch => realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    realization%patch => cur_patch
+    call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine ImmisJacobian
@@ -2424,12 +2339,12 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    ! endif
 
     if (associated(source_sink%flow_condition%pressure)) then
-      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+      psrc(:) = source_sink%flow_condition%pressure%dataset%rarray(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%rarray(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%rarray(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
@@ -2440,10 +2355,10 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !clu add
     select case(source_sink%flow_condition%itype(1))
       case(MASS_RATE_SS)
-        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%rate%dataset%rarray
         nsrcpara= 2
       case(WELL_SS)
-        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        msrc => source_sink%flow_condition%well%dataset%rarray
         nsrcpara = 7 + option%nflowspec 
       case default
         print *, 'ims mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
@@ -2913,7 +2828,6 @@ end subroutine ImmisCreateZeroArray
 subroutine ImmisMaxChange(realization)
 
   use Realization_class
-  use Level_module
   use Patch_module
   use Field_module
   use Option_module
@@ -2925,7 +2839,6 @@ subroutine ImmisMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
   PetscErrorCode :: ierr 
@@ -2933,7 +2846,6 @@ subroutine ImmisMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  cur_level => realization%level_list%first
   option%dpmax=0.D0
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
@@ -2945,27 +2857,6 @@ subroutine ImmisMaxChange(realization)
   call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
   call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax,ierr)
 
-#if 0
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call ImmisMaxChangePatch(realization, max_s)
-      if(dsmax <max_s)  dsmax =max_s
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  if(option%mycommsize >1)then
-    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    dsmax = max_s
-  endif 
-  option%dsmax=dsmax
-#endif
   !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
 end subroutine ImmisMaxChange
 

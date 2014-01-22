@@ -24,7 +24,7 @@
         1:   1.8853843920174E-02 -1.1211587349273E-03 -8.2283718669477E-04
        31:   3.2861593382904E-01  4.9698012161594E-02 -1.0085112679400E-03
 -- SOLUTION: Flow --
-   Time (seconds):   3.8716840744019E-01
+   Time (seconds):   3.8613390922546E-01
    Time Steps:           33
    Newton Iterations:           88
    Solver Iterations:           88

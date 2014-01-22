@@ -49,6 +49,8 @@ module Process_Model_Surface_TH_class
 !    procedure, public :: ComputeMassBalance => PMSurfaceTHComputeMassBalance
     procedure, public :: Destroy => PMSurfaceTHDestroy
     procedure, public :: RHSFunction => PMSurfaceTHRHSFunction
+    procedure, public :: Checkpoint => PMSurfaceTHCheckpoint
+    procedure, public :: Restart => PMSurfaceTHRestart
   end type pm_surface_th_type
 
   public :: PMSurfaceTHCreate, &
@@ -131,7 +133,7 @@ subroutine PMSurfaceTHPreSolve(this)
   class(pm_surface_th_type) :: this
 
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," SURFACE FLOW ",62("="))')
+    write(*,'(/,2("=")," SURFACE TH FLOW ",62("="))')
   endif
 
 end subroutine PMSurfaceTHPreSolve
@@ -367,11 +369,10 @@ subroutine PMSurfaceTHPostSolve(this)
     istart = iend - this%option%nflowdof + 1
     if(xx_p(istart) < 1.d-15) then
       xx_p(istart) = 0.d0
-      xx_p(iend) = 0.d0
+      xx_p(iend) = this%option%reference_temperature
     endif
   enddo
   call VecRestoreArrayF90(surf_field%flow_xx,xx_p,ierr)
-
 
   ! First, update the solution vector
   call DiscretizationGlobalToLocal(this%surf_realization%discretization, &
@@ -383,6 +384,52 @@ subroutine PMSurfaceTHPostSolve(this)
 
 end subroutine PMSurfaceTHPostSolve
 
+! ************************************************************************** !
+!> This routine checkpoints data associated with surface-flow PM
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine PMSurfaceTHCheckpoint(this,viewer)
+
+  use Surface_Checkpoint_module
+
+  implicit none
+#include "finclude/petscviewer.h"
+
+  class(pm_surface_th_type) :: this
+  PetscViewer :: viewer
+
+  call SurfaceCheckpointProcessModel(viewer,this%surf_realization)
+
+end subroutine PMSurfaceTHCheckpoint
+
+! ************************************************************************** !
+!> This routine reads checkpoint data associated with surface-flow PM
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/19/13
+! ************************************************************************** !
+subroutine PMSurfaceTHRestart(this,viewer)
+
+  use Surface_Checkpoint_module
+  use Surface_TH_module, only : SurfaceTHUpdateAuxVars
+
+  implicit none
+#include "finclude/petscviewer.h"
+
+  class(pm_surface_th_type) :: this
+  PetscViewer :: viewer
+
+  call SurfaceRestartProcessModel(viewer,this%surf_realization)
+  call SurfaceTHUpdateAuxVars(this%surf_realization)
+  call this%UpdateSolution()
+
+end subroutine PMSurfaceTHRestart
 
 ! ************************************************************************** !
 !> This routine

@@ -303,7 +303,7 @@ end subroutine SolverCreateTS
 ! ************************************************************************** !
 subroutine SolverReadLinear(solver,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -327,7 +327,7 @@ subroutine SolverReadLinear(solver,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 
@@ -382,9 +382,9 @@ subroutine SolverReadLinear(solver,input,option)
             solver%pc_type = PCBJACOBI
           case('ASM','ADDITIVE_SCHWARZ')
             solver%pc_type = PCASM
-         case('HYPRE')
+          case('HYPRE')
             solver%pc_type = PCHYPRE
-         case('SHELL')
+          case('SHELL')
             solver%pc_type = PCSHELL
           case default
             option%io_buffer  = 'Preconditioner type: ' // trim(word) // ' unknown.'
@@ -393,7 +393,7 @@ subroutine SolverReadLinear(solver,input,option)
 
       case('HYPRE_OPTIONS')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
           call InputReadWord(input,option,keyword,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','LINEAR SOLVER, HYPRE options')   
@@ -623,7 +623,7 @@ end subroutine SolverReadLinear
 ! ************************************************************************** !
 subroutine SolverReadNewton(solver,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Option_module
   
@@ -638,7 +638,7 @@ subroutine SolverReadNewton(solver,input,option)
   input%ierr = 0
   do
 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
 
     if (InputCheckExit(input,option)) exit  
 

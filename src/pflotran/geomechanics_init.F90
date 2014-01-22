@@ -36,7 +36,7 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Patch_module
   use Option_module
@@ -62,6 +62,11 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   call InputFindStringInFile(input,option,string)
   if(InputError(input)) return
   option%ngeomechdof = 3  ! displacements in x, y, z directions
+  
+  string = "GEOMECHANICS_GRID"
+  call InputFindStringInFile(input,option,string)
+  call GeomechanicsInit(geomech_realization,input,option)  
+
 
 end subroutine GeomechicsInitReadRequiredCards
 
@@ -75,13 +80,15 @@ end subroutine GeomechicsInitReadRequiredCards
 subroutine GeomechanicsInit(geomech_realization,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
   use Geomechanics_Patch_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Grid_module
   
   implicit none
   
@@ -89,20 +96,71 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   type(geomech_discretization_type), pointer :: discretization
   type(geomech_patch_type), pointer          :: patch
   type(input_type)                           :: input
-  type(option_type)                          :: option
+  type(option_type), pointer                 :: option
   character(len=MAXWORDLENGTH)               :: word
+  type(unstructured_grid_type), pointer      :: ugrid
+  character(len=MAXWORDLENGTH)               :: card
   
   discretization       => geomech_realization%discretization
-  discretization%grid  => GMGridCreate()
-  discretization%itype = UNSTRUCTURED_GRID ! Assuming only unstructured for now
-  
-  select case(discretization%itype)
-    case(UNSTRUCTURED_GRID)
-      patch => GeomechanicsPatchCreate()
-      patch%geomech_grid => discretization%grid
-      geomech_realization%geomech_patch => patch
-  end select  
-     
+       
+  input%ierr = 0
+  ! we initialize the word to blanks to avoid error reported by valgrind
+  word = ''
+
+  do
+    call InputReadPflotranString(input,option)
+    call InputReadStringErrorMsg(input,option,card)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','GEOMECHANICS')
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case ('TYPE')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','TYPE')
+        call StringToUpper(word)
+
+        select case(trim(word))
+          case ('UNSTRUCTURED')
+            discretization%itype = UNSTRUCTURED_GRID
+            call InputReadNChars(input,option, &
+                                 discretization%filename, &
+                                 MAXSTRINGLENGTH, &
+                                 PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','filename')
+
+            discretization%grid  => GMGridCreate()
+            ugrid => UGridCreate()
+            call UGridRead(ugrid,discretization%filename,option)
+            call UGridDecompose(ugrid,option)
+            call CopySubsurfaceGridtoGeomechGrid(ugrid, &
+                                                 discretization%grid,option)
+            patch => GeomechanicsPatchCreate()
+            patch%geomech_grid => discretization%grid
+            geomech_realization%geomech_patch => patch
+          case default
+            option%io_buffer = 'Geomechanics supports only unstructured grid'
+            call printErrMsg(option)
+        end select
+      case ('GRAVITY')
+        call InputReadDouble(input,option,option%geomech_gravity(X_DIRECTION))
+        call InputErrorMsg(input,option,'x-direction','GEOMECH GRAVITY')
+        call InputReadDouble(input,option,option%geomech_gravity(Y_DIRECTION))
+        call InputErrorMsg(input,option,'y-direction','GEOMECH GRAVITY')
+        call InputReadDouble(input,option,option%geomech_gravity(Z_DIRECTION))
+        call InputErrorMsg(input,option,'z-direction','GEOMECH GRAVITY')
+        if (option%myrank == option%io_rank .and. &
+            option%print_to_screen) &
+            write(option%fid_out,'(/," *GEOMECH_GRAV",/, &
+            & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
+            & )') option%geomech_gravity(1:3)
+      case default    
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+          ' not recognized in GEOMECHANICS_GRID.'
+    end select
+  enddo
+    
 end subroutine GeomechanicsInit
 
 ! ************************************************************************** !
@@ -116,7 +174,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                                      input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_module
@@ -170,14 +228,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   discretization => geomech_realization%discretization
   output_option => geomech_realization%output_option
-  
-  call GeomechanicsInit(geomech_realization,input,option)  
-  
+    
   if (associated(geomech_realization%geomech_patch)) grid => &
     geomech_realization%geomech_patch%geomech_grid
     
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -187,6 +243,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
     call printMsg(option)   
 
     select case(trim(word))
+    
+      !.........................................................................
+      ! Read geomechanics grid information
+      case ('GEOMECHANICS_GRID')
+        call InputSkipToEND(input,option,trim(word))
+        
       !.........................................................................
       ! Read geomechanics material information
       case ('GEOMECHANICS_MATERIAL_PROPERTY')
@@ -251,18 +313,51 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             call SolverReadNewton(geomech_solver,input,option)
         end select     
         
+     !....................
+      case ('LINEAR_SOLVER')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case(word)
+          case('GEOMECHANICS')
+            call SolverReadLinear(geomech_solver,input,option)
+        end select
+
+        
       !.........................................................................
       case ('GEOMECHANICS_DEBUG')
         call GeomechDebugRead(geomech_realization%debug,input,option)    
 
       !.........................................................................
-      case('GEOMECHANICS_SUBSURFACE_COUPLING')
-        option%geomech_subsurf_coupling = PETSC_TRUE        
-        
+      case ('GEOMECHANICS_SUBSURFACE_COUPLING')
+        option%geomech_subsurf_coupling = -1
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case (word)
+          case ('ONE_WAY_COUPLED')      
+            option%geomech_subsurf_coupling = ONE_WAY_COUPLED 
+          case default
+            option%io_buffer = 'Keyword: ' // trim(word) // &
+                               ' not recognized in GEOMECHANICS_SUBSURFACE_COUPLING.'
+            call printErrMsg(option)
+        end select
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','MAPPING_FILE')
+          call InputReadNChars(input,option, &
+                               grid%mapping_filename, &
+                               MAXSTRINGLENGTH, &
+                               PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','mapping_file')
+          call GeomechSubsurfMapFromFilename(grid,grid%mapping_filename, &
+                                             option)
+        enddo
       !.........................................................................
       case ('GEOMECHANICS_OUTPUT')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -301,7 +396,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                   endif
                 enddo
                 if (.not.continuation_flag) exit
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
               enddo
             case('OUTPUT_FILE')
@@ -541,6 +636,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   type(geomech_material_property_type), pointer :: null_geomech_material_property
   type(gm_region_type), pointer :: region
   PetscBool :: update_ghosted_material_ids
+  PetscReal, pointer :: imech_loc_p(:)
   
   option => geomech_realization%option
   discretization => geomech_realization%discretization
@@ -600,6 +696,7 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   ! set cell by cell material properties
   ! create null material property for inactive cells
   null_geomech_material_property => GeomechanicsMaterialPropertyCreate()
+  call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr)
   do local_id = 1, grid%nlmax_node
     ghosted_id = grid%nL2G(local_id)
     geomech_material_id = patch%imat(ghosted_id)
@@ -635,12 +732,16 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
         ' Contact Glenn/Satish!'
       call printErrMsgByRank(option)
     endif
+    imech_loc_p(ghosted_id) = geomech_material_property%id
   enddo ! local_id - loop
-
+  call VecRestoreArrayF90(field%imech_loc,imech_loc_p,ierr)
   
   call GeomechanicsMaterialPropertyDestroy(null_geomech_material_property)
   nullify(null_geomech_material_property)
-
+  
+  call GeomechDiscretizationLocalToLocal(discretization,field%imech_loc, &
+                                         field%imech_loc,ONEDOF)
+  
 end subroutine GeomechInitMatPropToGeomechRegions
  
 end module Geomechanics_Init_module

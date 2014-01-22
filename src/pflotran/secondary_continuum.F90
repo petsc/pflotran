@@ -588,11 +588,9 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
     rt_auxvar => rt_sec_transport_vars%sec_rt_auxvar(cell)
     if (associated(initial_flow_condition)) then
       if (associated(initial_flow_condition%pressure)) then
-        if (associated(initial_flow_condition%pressure% &
-                      flow_dataset%time_series)) then
+        if (associated(initial_flow_condition%pressure%dataset)) then
           global_auxvar%pres = &
-            initial_flow_condition%pressure%flow_dataset%time_series% &
-              cur_value(1)
+            initial_flow_condition%pressure%dataset%rarray(1)
         else
           global_auxvar%pres = option%reference_pressure
         endif
@@ -600,11 +598,9 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
         global_auxvar%pres = option%reference_pressure
       endif
       if (associated(initial_flow_condition%temperature)) then
-        if (associated(initial_flow_condition%temperature% &
-                       flow_dataset%time_series)) then
+        if (associated(initial_flow_condition%temperature%dataset)) then
           global_auxvar%temp  = &
-            initial_flow_condition%temperature%flow_dataset%time_series% &
-              cur_value(1)
+            initial_flow_condition%temperature%dataset%rarray(1)
         else
           global_auxvar%temp = option%reference_temperature
         endif

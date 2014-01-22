@@ -249,7 +249,7 @@ function SurfaceTHAuxVarComputeUnfrozen(temp)
   ! freezing and thawing process that might partition the frozen and unfrozen 
   ! phases according to a more physical mechanism (maybe using state transition
   ! theory?).
-  if (temp > 273.15) then
+  if (temp > 0.d0) then
     SurfaceTHAuxVarComputeUnfrozen = 1.d0
   else
     SurfaceTHAuxVarComputeUnfrozen = 0.d0

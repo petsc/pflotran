@@ -7,8 +7,7 @@ module Surface_Realization_class
   use Condition_module
   use Debug_module
   use Discretization_module
-  use Input_module
-  use Level_module
+  use Input_Aux_module
   use Option_module
   use Patch_module
   use Region_module
@@ -110,9 +109,9 @@ function SurfRealizCreate(option)
   nullify(surf_realization%input)
 
   surf_realization%surf_field => SurfaceFieldCreate()
-  surf_realization%debug => DebugCreateFlow()
+  surf_realization%debug => DebugCreate()
   surf_realization%output_option => OutputOptionCreate()
-  surf_realization%level_list => LevelCreateList()
+  surf_realization%patch_list => PatchCreateList()
 
   nullify(surf_realization%surf_material_properties)
 
@@ -145,39 +144,33 @@ end function SurfRealizCreate
 !!
 !! date: 02/10/12
 ! ************************************************************************** !
-subroutine SurfRealizAddCoupler(surf_relation,coupler)
+subroutine SurfRealizAddCoupler(surf_realization,coupler)
 
   use Coupler_module
 
   implicit none
   
-  type(surface_realization_type) :: surf_relation
+  type(surface_realization_type) :: surf_realization
   type(coupler_type), pointer    :: coupler
   
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
   type(coupler_type), pointer    :: new_coupler
   
-  cur_level => surf_relation%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      ! only add to flow list for now, since they will be split out later
-      new_coupler => CouplerCreate(coupler)
-      select case(coupler%itype)
-        case(BOUNDARY_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
-        case(INITIAL_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
-        case(SRC_SINK_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
-      end select
-      nullify(new_coupler)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    ! only add to flow list for now, since they will be split out later
+    new_coupler => CouplerCreate(coupler)
+    select case(coupler%itype)
+      case(BOUNDARY_COUPLER_TYPE)
+        call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
+      case(INITIAL_COUPLER_TYPE)
+        call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
+      case(SRC_SINK_COUPLER_TYPE)
+        call CouplerAddToList(new_coupler,cur_patch%source_sinks)
+    end select
+    nullify(new_coupler)
+    cur_patch => cur_patch%next
   enddo
 
   call CouplerDestroy(coupler)
@@ -200,21 +193,15 @@ subroutine SurfRealizProcessCouplers(surf_realization)
   implicit none
   
   type(surface_realization_type) :: surf_realization
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
   
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchProcessCouplers(cur_patch,surf_realization%surf_flow_conditions, &
-                                surf_realization%surf_transport_conditions, &
-                                surf_realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchProcessCouplers(cur_patch,surf_realization%surf_flow_conditions, &
+                              surf_realization%surf_transport_conditions, &
+                              surf_realization%option)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfRealizProcessCouplers
@@ -240,7 +227,6 @@ subroutine SurfRealizProcessMatProp(surf_realization)
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
 
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   option => surf_realization%option
@@ -252,21 +238,16 @@ subroutine SurfRealizProcessMatProp(surf_realization)
                                 option)
   ! set up mirrored pointer arrays within patches to saturation functions
   ! and material properties
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_patch%surf_material_properties => surf_realization%surf_material_properties
-      call SurfaceMaterialPropConvertListToArray( &
-                                      cur_patch%surf_material_properties, &
-                                      cur_patch%surf_material_property_array, &
-                                      option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo 
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    cur_patch%surf_material_properties => surf_realization%surf_material_properties
+    call SurfaceMaterialPropConvertListToArray( &
+                                    cur_patch%surf_material_properties, &
+                                    cur_patch%surf_material_property_array, &
+                                    option)
+    cur_patch => cur_patch%next
+  enddo
   
 end subroutine SurfRealizProcessMatProp
 
@@ -291,7 +272,6 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
   
   type(surface_realization_type) :: surf_realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type (region_type), pointer :: cur_region
   type(option_type), pointer :: option
@@ -300,19 +280,14 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
   option => surf_realization%option
 
   ! localize the regions on each patch
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchLocalizeRegions(cur_patch,surf_realization%surf_regions, &
-                                surf_realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchLocalizeRegions(cur_patch,surf_realization%surf_regions, &
+                              surf_realization%option)
+    cur_patch => cur_patch%next
   enddo
-
+ 
 end subroutine SurfRealizLocalizeRegions
 
 
@@ -333,22 +308,16 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
   type(surface_realization_type) :: surf_realization
   type(strata_type), pointer     :: strata
   
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
   type(strata_type), pointer     :: new_strata
   
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      new_strata => StrataCreate(strata)
-      call StrataAddToList(new_strata,cur_patch%strata)
-      nullify(new_strata)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    new_strata => StrataCreate(strata)
+    call StrataAddToList(new_strata,cur_patch%strata)
+    nullify(new_strata)
+    cur_patch => cur_patch%next
   enddo
   
   call StrataDestroy(strata)
@@ -522,19 +491,13 @@ subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
   
   type(surface_realization_type) :: surf_realization
 
-  type(level_type), pointer      :: cur_level
   type(patch_type), pointer      :: cur_patch
 
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_patch%surf_field => surf_realization%surf_field
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    cur_patch%surf_field => surf_realization%surf_field
+    cur_patch => cur_patch%next
   enddo
   
 end subroutine SurfRealizPassFieldPtrToPatches
@@ -581,48 +544,37 @@ subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
   type(surface_realization_type) :: surf_realization
   PetscInt                       :: array_id
   
-  type(level_type), pointer         :: cur_level
   type(patch_type), pointer         :: cur_patch
   type(grid_type), pointer          :: grid
   type(surface_field_type), pointer :: surf_field
 
   surf_field => surf_realization%surf_field
 
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-      select case(array_id)
-        case(MATERIAL_ID_ARRAY)
-          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,surf_field%work_loc, &
-                                         grid%ngmax)
-      end select
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
+    select case(array_id)
+      case(MATERIAL_ID_ARRAY)
+        call GridCopyIntegerArrayToVec(grid, cur_patch%imat,surf_field%work_loc, &
+                                        grid%ngmax)
+    end select
+    cur_patch => cur_patch%next
   enddo
   call DiscretizationLocalToLocal(surf_realization%discretization, &
                                   surf_field%work_loc, &
                                   surf_field%work_loc,ONEDOF)
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
+    if (.not.associated(cur_patch)) exit
+    grid => cur_patch%grid
 
-      select case(array_id)
-        case(MATERIAL_ID_ARRAY)
-          call GridCopyVecToIntegerArray(grid, cur_patch%imat,surf_field%work_loc, &
-                                         grid%ngmax)
-      end select
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    select case(array_id)
+      case(MATERIAL_ID_ARRAY)
+        call GridCopyVecToIntegerArray(grid, cur_patch%imat,surf_field%work_loc, &
+                                        grid%ngmax)
+    end select
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfRealizLocalToLocalWithArray
@@ -658,58 +610,25 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
   cur_surf_flow_condition => surf_realization%surf_flow_conditions%first
   do
     if (.not.associated(cur_surf_flow_condition)) exit
-    !TODO(geh): could destroy the time_series here if dataset allocated
+    string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
+    ! find datum dataset
+    call DatasetFindInList(surf_realization%datasets, &
+                           cur_surf_flow_condition%datum, &
+                           cur_surf_flow_condition%default_time_storage, &
+                           string,option)
     select case(option%iflowmode)
       case(RICHARDS_MODE,TH_MODE)
         do i = 1, size(cur_surf_flow_condition%sub_condition_ptr)
-          ! check for dataset in flow_dataset
-          if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          flow_dataset%dataset)) then
-            dataset_name = cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          flow_dataset%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                                flow_dataset%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
-            cur_surf_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
-              dataset
-            !call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
-            !                 option)
-          endif
-          if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          datum%dataset)) then
-            dataset_name = cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          datum%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                                datum%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
-            cur_surf_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
-              dataset
-            !call DatasetXYZLoad(dataset,option)
-          endif
-          if (associated(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          gradient%dataset)) then
-            dataset_name = cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                          gradient%dataset%name
-            ! delete the dataset since it is solely a placeholder
-            call DatasetDestroy(cur_surf_flow_condition%sub_condition_ptr(i)%ptr% &
-                                gradient%dataset)
-            ! get dataset from list
-            string = 'flow_condition ' // trim(cur_surf_flow_condition%name)
-            dataset => &
-              DatasetBaseGetPointer(surf_realization%datasets,dataset_name,string,option)
-            cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
-              dataset
-            !call DatasetLoad(dataset,surf_realization%discretization%dm_1dof, &
-            !                 option)
-          endif
+           ! find dataset
+          call DatasetFindInList(surf_realization%datasets, &
+                 cur_surf_flow_condition%sub_condition_ptr(i)%ptr%dataset, &
+                 cur_surf_flow_condition%default_time_storage, &
+                 string,option)
+          ! find gradient dataset
+          call DatasetFindInList(surf_realization%datasets, &
+                 cur_surf_flow_condition%sub_condition_ptr(i)%ptr%gradient, &
+                 cur_surf_flow_condition%default_time_storage, &
+                 string,option)
         enddo
       case default
         option%io_buffer='SurfRealizProcessFlowConditions not implemented in this mode'
@@ -736,24 +655,18 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
   
   type(surface_realization_type) :: surf_realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   call FlowConditionUpdate(surf_realization%surf_flow_conditions, &
                            surf_realization%option, &
                            surf_realization%option%time)
 
-  cur_level => surf_realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchInitAllCouplerAuxVars(cur_patch, &
-                                      surf_realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => surf_realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    call PatchInitAllCouplerAuxVars(cur_patch, &
+                                    surf_realization%option)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfRealizInitAllCouplerAuxVars
@@ -804,7 +717,6 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   use Unstructured_Cell_module
   use Realization_class
   use Option_module
-  use Level_module
   use Patch_module
   use Region_module
 
@@ -821,7 +733,6 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   type(option_type), pointer           :: option
   type(unstructured_grid_type),pointer :: subsurf_grid
   type(unstructured_grid_type),pointer :: surf_grid
-  type(level_type), pointer            :: cur_level
   type(patch_type), pointer            :: cur_patch 
   type(region_type), pointer           :: cur_region, top_region
   type(region_type), pointer           :: patch_region
@@ -861,25 +772,20 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   surf_grid    => surf_realization%discretization%grid%unstructured_grid
 
   ! localize the regions on each patch
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_region => cur_patch%regions%first
-        do
-          if (.not.associated(cur_region)) exit
-          if (StringCompare(cur_region%name,'top')) then
-            found = PETSC_TRUE
-            top_region => cur_region
-            exit
-          endif
-          cur_region => cur_region%next
-        enddo
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    cur_region => cur_patch%regions%first
+      do
+        if (.not.associated(cur_region)) exit
+        if (StringCompare(cur_region%name,'top')) then
+          found = PETSC_TRUE
+          top_region => cur_region
+          exit
+        endif
+        cur_region => cur_region%next
+      enddo
+    cur_patch => cur_patch%next
   enddo
 
   if(found.eqv.PETSC_FALSE) then
@@ -1350,7 +1256,7 @@ subroutine SurfRealizDestroy(surf_realization)
   
   call FlowConditionDestroyList(surf_realization%surf_flow_conditions)
   
-  call LevelDestroyList(surf_realization%level_list)
+  call PatchDestroyList(surf_realization%patch_list)
   
   if(associated(surf_realization%debug)) deallocate(surf_realization%debug)
   nullify(surf_realization%debug)
@@ -1434,6 +1340,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
 
   use Option_module
   use Waypoint_module
+  use Time_Storage_module  
 
   implicit none
   
@@ -1479,24 +1386,26 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
         sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
         !TODO(geh): check if this updated more than simply the flow_dataset (i.e. datum and gradient)
         !geh: followup - no, datum/gradient are not considered.  Should they be considered?
-        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
-                                          times)
-        if (size(times) > 1000) then
-          option%io_buffer = 'For flow condition "' // &
-            trim(cur_flow_condition%name) // &
-            '" dataset "' // trim(sub_condition%name) // &
-            '", the number of times is excessive for synchronization ' // &
-            'with waypoints.'
-          call printErrMsg(option)
+        call TimeStorageGetTimes(sub_condition%dataset%time_storage, option, &
+                                final_time, times)        
+        if (associated(times)) then
+          if (size(times) > 1000) then
+            option%io_buffer = 'For flow condition "' // &
+              trim(cur_flow_condition%name) // &
+              '" dataset "' // trim(sub_condition%name) // &
+              '", the number of times is excessive for synchronization ' // &
+              'with waypoints.'
+            call printErrMsg(option)
+          endif
+          do itime = 1, size(times)
+            waypoint => WaypointCreate()
+            waypoint%time = times(itime)
+            waypoint%update_conditions = PETSC_TRUE
+            call WaypointInsertInList(waypoint,waypoint_list)
+          enddo
+          deallocate(times)
+          nullify(times)
         endif
-        do itime = 1, size(times)
-          waypoint => WaypointCreate()
-          waypoint%time = times(itime)
-          waypoint%update_conditions = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        enddo
-        deallocate(times)
-        nullify(times)
       enddo
     endif
     cur_flow_condition => cur_flow_condition%next

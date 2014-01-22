@@ -26,7 +26,7 @@ subroutine MicrobialRead(microbial,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -48,7 +48,7 @@ subroutine MicrobialRead(microbial,input,option)
   nullify(prev_inhibition)
   nullify(microbial_biomass)
   do 
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 

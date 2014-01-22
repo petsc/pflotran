@@ -180,7 +180,13 @@ subroutine RichardsSetupPatch(realization)
     patch%aux%Richards%aux_vars_ss => rich_aux_vars_ss
   endif
   patch%aux%Richards%num_aux_ss = sum_connection
-  
+
+#ifdef YE_FLUX
+  allocate(patch%internal_fluxes(1,1,ConnectionGetNumberInList(patch%grid%&
+           internal_connection_set_list)))
+  patch%internal_fluxes = 0.d0
+#endif
+
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call RichardsCreateZeroArray(patch,option)
@@ -1425,6 +1431,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         global_aux_vars(local_id_up)%mass_balance_delta(1,1) - Res(1)
 #endif
 
+#ifdef YE_FLUX
+      patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
+#endif
 #ifdef STORE_FLOWRATES
       patch%internal_fluxes(RICHARDS_PRESSURE_DOF,1,sum_connection) = Res(1)
 #endif
@@ -1622,7 +1631,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
       
     cur_connection_set => source_sink%connection_set
     
@@ -2225,7 +2234,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
     if(source_sink%flow_condition%rate%itype/=HET_VOL_RATE_SS.and. &
        source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) &
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%dataset%rarray(1)
 
     cur_connection_set => source_sink%connection_set
     

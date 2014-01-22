@@ -1411,7 +1411,6 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
 
 end subroutine OutputHDF5UGridXDMFExplicit
 
-#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !> This subroutine creates an ID for HDF5 filename for:
 !! - Instantaneous, or
@@ -1460,6 +1459,7 @@ function OutputHDF5FilenameID(output_option,option,var_list_type)
 
 end function OutputHDF5FilenameID
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! WriteHDF5FluxVelocities: Print flux velocities to HDF5 file

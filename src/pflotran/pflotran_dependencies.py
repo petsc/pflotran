@@ -109,7 +109,7 @@ for root in source_file_roots:
       sorted_file_list.remove(filename)
       print('Removing %s from own dependency.\n' % filename)
 #    print(sorted_file_list)
-    # remove files that are not needed for pfltoran rxn
+    # remove files that are not needed for pflotran rxn
     if num_times_to_print == 2 and iprint == 0:
       for root2 in modules_to_remove:
         sorted_file_list.remove(get_filename(root2,'o'))

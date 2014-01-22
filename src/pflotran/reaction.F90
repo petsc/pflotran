@@ -78,7 +78,7 @@ contains
 subroutine ReactionInit(reaction,input,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use Reaction_Sandbox_module, only : RSandboxInit
   
   implicit none
@@ -113,7 +113,7 @@ subroutine ReactionReadPass1(reaction,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
                                TOTAL_MOLALITY, TOTAL_MOLARITY, &
@@ -160,7 +160,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     
@@ -173,7 +173,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('PRIMARY_SPECIES')
         nullify(prev_species)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
           
@@ -196,7 +196,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('SECONDARY_SPECIES')
         nullify(prev_species)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
           
@@ -219,7 +219,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('GAS_SPECIES')
         nullify(prev_gas)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
 
@@ -253,7 +253,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           nullify(prev_immobile_species)
         endif
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
 
@@ -277,7 +277,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         reaction%ngeneral_rxn = reaction%ngeneral_rxn + 1
         general_rxn => GeneralRxnCreate()
         do 
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
 
@@ -298,7 +298,7 @@ subroutine ReactionReadPass1(reaction,input,option)
             case('FORWARD_SPECIES')
               nullify(prev_species)
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
                 
@@ -321,7 +321,7 @@ subroutine ReactionReadPass1(reaction,input,option)
             case('BACKWARD_SPECIES')
               nullify(prev_species)
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
                 
@@ -374,7 +374,7 @@ subroutine ReactionReadPass1(reaction,input,option)
         !geh: but we need to count the number of kinetic minerals this round
         temp_int = 0 ! used to count kinetic minerals
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,name,PETSC_TRUE)
@@ -382,7 +382,7 @@ subroutine ReactionReadPass1(reaction,input,option)
           temp_int = temp_int + 1
 
           do
-            call InputReadFlotranString(input,option)
+            call InputReadPflotranString(input,option)
             call InputReadStringErrorMsg(input,option,card)
             if (InputCheckExit(input,option)) exit
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -392,7 +392,7 @@ subroutine ReactionReadPass1(reaction,input,option)
             select case(word)
               case('PREFACTOR')
                 do 
-                  call InputReadFlotranString(input,option)
+                  call InputReadPflotranString(input,option)
                   call InputReadStringErrorMsg(input,option,card)
                   if (InputCheckExit(input,option)) exit
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -412,7 +412,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('SOLID_SOLUTIONS') ! solid solutions read on second round
 #ifdef SOLID_SOLUTION
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputSkipToEnd(input,option,word)
@@ -425,7 +425,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('COLLOIDS')
         nullify(prev_colloid)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
           
@@ -450,7 +450,7 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('SORPTION')
 !geh        nullify(prev_srfcplx_rxn)
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
 
@@ -462,7 +462,7 @@ subroutine ReactionReadPass1(reaction,input,option)
 
             case('ISOTHERM_REACTIONS')
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
 
@@ -475,7 +475,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                                    'CHEMISTRY,ISOTHERM_REACTIONS')
                 kd_rxn%species_name = trim(word)
                 do 
-                  call InputReadFlotranString(input,option)
+                  call InputReadPflotranString(input,option)
                   if (InputError(input)) exit
                   if (InputCheckExit(input,option)) exit
 
@@ -535,7 +535,7 @@ subroutine ReactionReadPass1(reaction,input,option)
             
               ionx_rxn => IonExchangeRxnCreate()
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
 
@@ -554,7 +554,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                   case('CATIONS')
                     nullify(prev_cation)
                     do
-                      call InputReadFlotranString(input,option)
+                      call InputReadPflotranString(input,option)
                       if (InputError(input)) exit
                       if (InputCheckExit(input,option)) exit
                       
@@ -776,7 +776,7 @@ subroutine ReactionReadPass2(reaction,input,option)
 
   use Option_module
   use String_module
-  use Input_module
+  use Input_Aux_module
   use Utility_module
   
   implicit none
@@ -791,7 +791,7 @@ subroutine ReactionReadPass2(reaction,input,option)
   character(len=MAXWORDLENGTH) :: card
   
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,card)
     if (InputCheckExit(input,option)) exit
     call InputReadWord(input,option,word,PETSC_TRUE)
@@ -816,7 +816,7 @@ subroutine ReactionReadPass2(reaction,input,option)
 #endif
       case('SORPTION')
         do
-          call InputReadFlotranString(input,option)
+          call InputReadPflotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -824,7 +824,7 @@ subroutine ReactionReadPass2(reaction,input,option)
           select case(trim(word))
             case('ISOTHERM_REACTIONS')
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 call InputReadStringErrorMsg(input,option,card)
                 if (InputCheckExit(input,option)) exit
                 call InputReadWord(input,option,word,PETSC_TRUE)
@@ -835,7 +835,7 @@ subroutine ReactionReadPass2(reaction,input,option)
               enddo
             case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
               do
-                call InputReadFlotranString(input,option)
+                call InputReadPflotranString(input,option)
                 call InputReadStringErrorMsg(input,option,card)
                 if (InputCheckExit(input,option)) exit
                 call InputReadWord(input,option,word,PETSC_TRUE)
@@ -845,7 +845,7 @@ subroutine ReactionReadPass2(reaction,input,option)
                     call InputSkipToEND(input,option,word)
                   case('COMPLEX_KINETICS')
                     do
-                      call InputReadFlotranString(input,option)
+                      call InputReadPflotranString(input,option)
                       call InputReadStringErrorMsg(input,option,card)
                       if (InputCheckExit(input,option)) exit
                       call InputReadWord(input,option,word,PETSC_TRUE)
@@ -882,7 +882,7 @@ end subroutine ReactionReadPass2
 ! ************************************************************************** !
 subroutine ReactionReadRedoxSpecies(reaction,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Option_module
   
@@ -898,7 +898,7 @@ subroutine ReactionReadRedoxSpecies(reaction,input,option)
 
   input%ierr = 0
   do
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit  
 
@@ -940,7 +940,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      immobile_constraint, &
                                      option)
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Utility_module
   use Constraint_module
@@ -1087,7 +1087,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Utility_module
   use Constraint_module
@@ -1798,7 +1798,7 @@ end subroutine ReactionEquilibrateConstraint
 subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Constraint_module
 
@@ -2490,7 +2490,7 @@ end subroutine ReactionPrintConstraint
 subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 
   use Option_module
-  use Input_module
+  use Input_Aux_module
   use String_module
   use Constraint_module
 
@@ -2732,7 +2732,7 @@ end subroutine srfcmplx
 ! ************************************************************************** !
 subroutine ReactionReadOutput(reaction,input,option)
 
-  use Input_module
+  use Input_Aux_module
   use String_module  
   use Option_module
   use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
@@ -2765,7 +2765,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   input%ierr = 0
   do
   
-    call InputReadFlotranString(input,option)
+    call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
 

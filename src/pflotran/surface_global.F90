@@ -30,27 +30,20 @@ contains
 subroutine SurfaceGlobalSetup(surf_realization)
 
   use Surface_Realization_class
-  use Level_module
   use Patch_module
   
   implicit none
 
   type(surface_realization_type) :: surf_realization
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      surf_realization%patch => cur_patch
-      call SurfaceGlobalSetupPatch(surf_realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    surf_realization%patch => cur_patch
+    call SurfaceGlobalSetupPatch(surf_realization)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfaceGlobalSetup
@@ -163,7 +156,6 @@ end subroutine SurfaceGlobalSetupPatch
 subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
 
   use Surface_Realization_class
-  use Level_module
   use Patch_module
 
   implicit none
@@ -172,22 +164,16 @@ subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
   PetscReal :: value
   PetscInt :: ivar
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      surf_realization%patch => cur_patch
-      call SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    surf_realization%patch => cur_patch
+    call SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
+    cur_patch => cur_patch%next
   enddo
-
+  
 end subroutine SurfaceGlobalSetAuxVarScalar
 
 ! ************************************************************************** !
@@ -252,7 +238,6 @@ end subroutine SurfaceGlobalSetAuxVarScalarPatch
 subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
 
   use Surface_Realization_class
-  use Level_module
   use Patch_module
 
   implicit none
@@ -265,20 +250,14 @@ subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
   
-  type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
-  cur_level => surf_realization%level_list%first
+  cur_patch => surf_realization%patch_list%first
   do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      surf_realization%patch => cur_patch
-      call SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubvar)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    if (.not.associated(cur_patch)) exit
+    surf_realization%patch => cur_patch
+    call SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubvar)
+    cur_patch => cur_patch%next
   enddo
 
 end subroutine SurfaceGlobalSetAuxVarVecLoc

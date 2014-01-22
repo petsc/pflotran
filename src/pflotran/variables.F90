@@ -77,15 +77,32 @@ module Variables_module
   PetscInt, parameter, public :: EH = 65
   PetscInt, parameter, public :: PE = 66
   PetscInt, parameter, public :: O2 = 67
-  
-  PetscInt, parameter, public :: GEOMECH_DISP_X          = 68
-  PetscInt, parameter, public :: GEOMECH_DISP_Y          = 69
-  PetscInt, parameter, public :: GEOMECH_DISP_Z          = 70
-    
 
   PetscInt, parameter, public :: PERMEABILITY_XY =         68
   PetscInt, parameter, public :: PERMEABILITY_YZ =         69
   PetscInt, parameter, public :: PERMEABILITY_XZ =         70
+  
+  PetscInt, parameter, public :: GEOMECH_DISP_X          = 71
+  PetscInt, parameter, public :: GEOMECH_DISP_Y          = 72
+  PetscInt, parameter, public :: GEOMECH_DISP_Z          = 73
+  PetscInt, parameter, public :: STRAIN_XX               = 74
+  PetscInt, parameter, public :: STRAIN_YY               = 75
+  PetscInt, parameter, public :: STRAIN_ZZ               = 76
+  PetscInt, parameter, public :: STRAIN_XY               = 77
+  PetscInt, parameter, public :: STRAIN_YZ               = 78
+  PetscInt, parameter, public :: STRAIN_ZX               = 79
+  PetscInt, parameter, public :: STRESS_XX               = 80
+  PetscInt, parameter, public :: STRESS_YY               = 81
+  PetscInt, parameter, public :: STRESS_ZZ               = 82
+  PetscInt, parameter, public :: STRESS_XY               = 83
+  PetscInt, parameter, public :: STRESS_YZ               = 84
+  PetscInt, parameter, public :: STRESS_ZX               = 85
+  PetscInt, parameter, public :: GEOMECH_MATERIAL_ID     = 86
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_X      = 87 
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_Y      = 88
+  PetscInt, parameter, public :: GEOMECH_REL_DISP_Z      = 89
+
+  PetscInt, parameter, public :: VOLUME                  = 90
 
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59

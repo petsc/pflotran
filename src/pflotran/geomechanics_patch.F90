@@ -385,7 +385,10 @@ subroutine GeomechPatchInitCouplerAuxVars(coupler_list,patch,option)
           coupler%itype == GM_BOUNDARY_COUPLER_TYPE) then
         if (associated(coupler%geomech_condition%displacement_x) .or. &
             associated(coupler%geomech_condition%displacement_y) .or. &
-            associated(coupler%geomech_condition%displacement_z)) then
+            associated(coupler%geomech_condition%displacement_z) .or. &
+            associated(coupler%geomech_condition%force_x) .or. &
+            associated(coupler%geomech_condition%force_y) .or. &
+            associated(coupler%geomech_condition%force_z)) then
           ! allocate arrays that match the number of boundary vertices
           allocate(coupler%geomech_aux_real_var(option%ngeomechdof,num_verts))
           allocate(coupler%geomech_aux_int_var(1,num_verts))
@@ -478,29 +481,50 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
           GeomechConditionIsTransient(geomech_condition)) then
         if (associated(geomech_condition%displacement_x)) then
           select case(geomech_condition%displacement_x%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+            case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_X_DOF, &
                                            1:num_verts) = &
-              geomech_condition%displacement_x%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%displacement_x%dataset%rarray(1)
           end select
         endif
         if (associated(geomech_condition%displacement_y)) then
           select case(geomech_condition%displacement_y%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+            case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Y_DOF, &
                                            1:num_verts) = &
-              geomech_condition%displacement_y%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%displacement_y%dataset%rarray(1)
           end select
         endif
         if (associated(geomech_condition%displacement_z)) then
           select case(geomech_condition%displacement_z%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+            case(DIRICHLET_BC)
               coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
                                            1:num_verts) = &
-              geomech_condition%displacement_z%geomech_dataset% &
-                time_series%cur_value(1)
+              geomech_condition%displacement_z%dataset%rarray(1)
+           end select
+        endif
+        if (associated(geomech_condition%force_x)) then
+          select case(geomech_condition%force_x%itype)
+            case(DIRICHLET_BC)
+              coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
+                                           1:num_verts) = &
+              geomech_condition%force_x%dataset%rarray(1)
+            end select
+        endif
+        if (associated(geomech_condition%force_y)) then
+          select case(geomech_condition%force_y%itype)
+            case(DIRICHLET_BC)
+              coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
+                                           1:num_verts) = &
+              geomech_condition%force_y%dataset%rarray(1)
+             end select
+        endif
+        if (associated(geomech_condition%force_z)) then
+          select case(geomech_condition%force_z%itype)
+            case(DIRICHLET_BC)
+              coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
+                                           1:num_verts) = &
+              geomech_condition%force_z%dataset%rarray(1)
           end select
         endif        
       endif
@@ -569,9 +593,69 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
       do local_id=1,grid%nlmax_node
         vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(3)
       enddo
-    case(MATERIAL_ID)
+    case(STRAIN_XX)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(1)
+      enddo
+    case(STRAIN_YY)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(2)
+      enddo
+    case(STRAIN_ZZ)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(3)
+      enddo
+    case(STRAIN_XY)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(4)
+      enddo
+    case(STRAIN_YZ)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(5)
+      enddo
+    case(STRAIN_ZX)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(6)
+      enddo
+    case(STRESS_XX)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(1)
+      enddo
+    case(STRESS_YY)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(2)
+      enddo
+    case(STRESS_ZZ)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(3)
+      enddo
+    case(STRESS_XY)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(4)
+      enddo
+    case(STRESS_YZ)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(5)
+      enddo
+    case(STRESS_ZX)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(6)
+      enddo
+    case(GEOMECH_MATERIAL_ID)
       do local_id=1,grid%nlmax_node
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+      enddo
+    case(GEOMECH_REL_DISP_X)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(1)
+      enddo
+    case(GEOMECH_REL_DISP_Y)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(2)
+      enddo
+    case(GEOMECH_REL_DISP_Z)
+      do local_id=1,grid%nlmax_node
+        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(3)
       enddo
     case default
       write(option%io_buffer, &
