@@ -266,11 +266,14 @@ subroutine HydrogeophysicsDestroy(simulation)
   implicit none
   
   class(hydrogeophysics_simulation_type), pointer :: simulation
+
+  PetscErrorCode :: ierr
   
   call printMsg(simulation%option,'Hydrogeophysics%Destroy()')
   
   if (.not.associated(simulation)) return
   
+  call MPI_Barrier(simulation%mycomm_save,ierr)
   call simulation%Strip()
   deallocate(simulation)
   nullify(simulation)
