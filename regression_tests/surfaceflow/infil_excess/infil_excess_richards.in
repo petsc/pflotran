@@ -111,7 +111,7 @@ END
 SURF_FLOW_FORMULATION diffusive
 
 SURF_SUBSURFACE_COUPLING
-  seq_coupled_new
+  seq_coupled
 END
 
 SURF_MATERIAL_PROPERTY surf1

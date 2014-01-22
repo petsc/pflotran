@@ -202,9 +202,8 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: SURFACE    = 1
   
   PetscInt, parameter, public :: DECOUPLED     = 0
-  PetscInt, parameter, public :: SEQ_COUPLED   = 1
+  PetscInt, parameter, public :: SEQ_COUPLED = 1
   PetscInt, parameter, public :: FULLY_COUPLED = 2
-  PetscInt, parameter, public :: SEQ_COUPLED_NEW = 3
   
   PetscInt, parameter, public :: KINEMATIC_WAVE = 1
   PetscInt, parameter, public :: DIFFUSION_WAVE = 2

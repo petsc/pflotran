@@ -237,13 +237,7 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
   option => process_model%option
 
   call process_model%PreSolve()
-#if 0  
-  if(option%subsurf_surf_coupling==SEQ_COUPLED .and. &
-     associated(process_model%subsurf_realization)) then
-    call SurfaceFlowSurf2SubsurfFlux(process_model%subsurf_realization, &
-                                     process_model%surf_realization)
-   endif
-#endif  
+
   call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr)
   call TSSolve(solver%ts,process_model%solution_vec,ierr)
   call TSGetTime(solver%ts,time,ierr)

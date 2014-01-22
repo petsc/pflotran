@@ -1164,24 +1164,8 @@ subroutine Init(simulation)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceFlowCreateSurfSubsurfVec( &
-                          simulation%realization, simulation%surf_realization)
-        endif
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call SurfaceFlowCreateSurfSubsurfVecNew( &
-                          simulation%realization, simulation%surf_realization)
-        endif
       case(TH_MODE)
         call SurfaceTHUpdateAuxVars(surf_realization)
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
-          call SurfaceTHCreateSurfSubsurfVec( &
-                          simulation%realization, simulation%surf_realization)
-        endif
-        if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED_NEW) then
-          call SurfaceTHCreateSurfSubsurfVecNew( &
-                          simulation%realization, simulation%surf_realization)
-        endif
       case default
         option%io_buffer = 'For surface-flow only RICHARDS and TH mode implemented'
         call printErrMsgByRank(option)
