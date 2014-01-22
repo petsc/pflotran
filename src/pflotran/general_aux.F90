@@ -322,8 +322,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,&
       gen_auxvar%xmol(:,lid) = 0.d0
       gen_auxvar%xmol(wid,gid) = 1.d0 - gen_auxvar%xmol(acid,gid)
       gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
-      !TODO(geh): what to set p_l to when in gas state, pc_max???
-      gen_auxvar%pres(lid) = 0.d0
+      ! we have to have a liquid pressure to counter a neighboring 
+      ! liquid pressure.  Set to gas pressure.
+      gen_auxvar%pres(lid) = gen_auxvar%pres(gid)
       
     case(TWO_PHASE_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)

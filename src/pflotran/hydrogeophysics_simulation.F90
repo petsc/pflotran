@@ -28,6 +28,15 @@ module Hydrogeophysics_Simulation_class
     PetscMPIInt :: pf_e4d_master_rank
     PetscBool :: pflotran_process
     Vec :: solution_mpi
+    ! these PetscMPIInts are used to save the process decomposition that 
+    ! enters hydrogeophysics_simulation.F90:HydrogeophysicsInitialize()
+    ! - they are set in HydrogeophysicsInitialize() 
+    ! - their counterparts in option are set back in HydrogeophysicsDestroy()
+    PetscMPIInt :: mycomm_save
+    PetscMPIInt :: myrank_save
+    PetscMPIInt :: mycommsize_save
+    PetscMPIInt :: mygroup_save
+    PetscMPIInt :: mygroup_id_save
   contains
     procedure, public :: Init => HydrogeophysicsInit
     procedure, public :: InitializeRun => HydrogeophysicsInitializeRun
@@ -97,6 +106,11 @@ subroutine HydrogeophysicsInit(this,option)
   this%pf_e4d_master_size = -999
   this%pf_e4d_master_rank = -999
   this%pflotran_process = PETSC_FALSE
+  this%mycomm_save = 0
+  this%myrank_save = 0
+  this%mycommsize_save = 0
+  this%mygroup_save = 0
+  this%mygroup_id_save = 0
    
 end subroutine HydrogeophysicsInit
 
@@ -215,8 +229,22 @@ subroutine HydrogeophysicsStrip(this)
   if (.not.this%pflotran_process) then
     call HydrogeophysicsWrapperDestroy(this%option)
   endif
+  ! created in HydrogeophysicsInitialize()
   if (this%solution_mpi /= 0) &
     call VecDestroy(this%solution_mpi ,ierr)
+  this%solution_mpi = 0
+
+  call MPI_Comm_free(this%pf_e4d_scatter_comm,ierr)
+  this%pf_e4d_scatter_comm = 0
+  call MPI_Comm_free(this%pf_e4d_master_comm,ierr)
+  this%pf_e4d_master_comm = 0
+
+  ! reset original communicator back to initial state  
+  this%option%mycomm = this%mycomm_save
+  this%option%myrank = this%myrank_save
+  this%option%mycommsize = this%mycommsize_save
+  this%option%mygroup = this%mygroup_save
+  this%option%mygroup_id = this%mygroup_id_save
   
 end subroutine HydrogeophysicsStrip
 

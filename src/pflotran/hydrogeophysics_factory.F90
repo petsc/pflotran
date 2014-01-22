@@ -72,28 +72,35 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   if (option_found) num_slaves = i
 
   ! NOTE: PETSc must already have been initialized here!
-  if (option%global_commsize < 3) then
+  if (option%mycommsize < 3) then
     option%io_buffer = 'At least 3 processes must be allocated to ' // &
       'simulation in order to run hydrogeophysics.'
     call printErrMsg(option)
   endif
 
   simulation => HydrogeophysicsCreate(option)
+  ! store original communicator settings to be set back in HydrogeophysicsStrip
+  ! in support of multirealization scenarios.
+  simulation%mycomm_save = option%mycomm
+  simulation%myrank_save = option%myrank
+  simulation%mycommsize_save = option%mycommsize
+  simulation%mygroup_save = option%mygroup
+  simulation%mygroup_id_save = option%mygroup_id
   
   if (num_slaves < -998) then
-    num_pflotran_processes = option%global_commsize / 2
-    num_slaves = option%global_commsize - num_pflotran_processes - 1
+    num_pflotran_processes = simulation%mycommsize_save / 2
+    num_slaves = simulation%mycommsize_save - num_pflotran_processes - 1
   else if (num_slaves <= 0) then
     option%io_buffer = 'Number of slaves must be greater than zero. ' // &
       'Currently set to ' // StringFormatInt(num_slaves) // '.'
     call printErrMsg(option)
   else
-    if (num_slaves > option%global_commsize - 2) then
+    if (num_slaves > simulation%mycommsize_save - 2) then
       option%io_buffer = 'Too many slave processes allocated to ' // &
         'simulation: ' // StringFormatInt(num_slaves)
       call printErrMsg(option)
     endif
-    num_pflotran_processes = option%global_commsize - num_slaves - 1
+    num_pflotran_processes = simulation%mycommsize_save - num_slaves - 1
   endif
   
   write(option%io_buffer,*) 'Number of E4D processes: ', &
@@ -106,7 +113,7 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   ! split the communicator
   option%mygroup_id = 0
   offset = 0
-  if (option%global_rank > num_pflotran_processes-1) then
+  if (simulation%myrank_save > num_pflotran_processes-1) then
     option%mygroup_id = 1
     offset = num_pflotran_processes
   endif
@@ -116,34 +123,35 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
   endif
 
   mycolor_mpi = option%mygroup_id
-  mykey_mpi = option%global_rank - offset
-  call MPI_Comm_split(option%global_comm,mycolor_mpi,mykey_mpi,option%mycomm,ierr)
+  mykey_mpi = simulation%myrank_save - offset
+  call MPI_Comm_split(simulation%mycomm_save,mycolor_mpi,mykey_mpi, &
+                      option%mycomm,ierr)
   call MPI_Comm_group(option%mycomm,option%mygroup,ierr)  
   call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
   
   ! create group shared by both master processes
-  call MPI_Comm_group(option%global_comm,option%global_group,ierr)
+  call MPI_Comm_group(simulation%mycomm_save,simulation%mygroup_save,ierr)
   call MPI_Group_size(option%mygroup,mpi_int,ierr)
-!print *, 1, option%global_rank, option%global_group, option%global_comm
-!print *, 2, option%global_rank, option%myrank, option%mygroup, option%mycomm, mpi_int
+!print *, 1, simulation%myrank_save, simulation%mygroup_save, simulation%mycomm_save
+!print *, 2, simulation%myrank_save, option%myrank, option%mygroup, option%mycomm, mpi_int
   mpi_int = 1
   process_range(1) = 0
   process_range(2) = num_pflotran_processes ! includes e4d master due to 
   process_range(3) = 1                        ! zero-based indexing
-  call MPI_Group_range_incl(option%global_group,mpi_int,process_range, &
+  call MPI_Group_range_incl(simulation%mygroup_save,mpi_int,process_range, &
                             simulation%pf_e4d_scatter_grp,ierr)
-!print *, 3, option%global_rank, simulation%pf_e4d_scatter_grp
-  call MPI_Comm_create(option%global_comm,simulation%pf_e4d_scatter_grp, &
+!print *, 3, simulation%myrank_save, simulation%pf_e4d_scatter_grp
+  call MPI_Comm_create(simulation%mycomm_save,simulation%pf_e4d_scatter_grp, &
                        simulation%pf_e4d_scatter_comm,ierr)
-!print *, 4, option%global_rank, simulation%pf_e4d_scatter_comm, simulation%pf_e4d_master_comm
+!print *, 4, simulation%myrank_save, simulation%pf_e4d_scatter_comm, simulation%pf_e4d_master_comm
   if (simulation%pf_e4d_scatter_comm /= MPI_COMM_NULL) then
     call MPI_Comm_rank(simulation%pf_e4d_scatter_comm, &
                        simulation%pf_e4d_scatter_rank,ierr)
     call MPI_Comm_size(simulation%pf_e4d_scatter_comm, &
                        simulation%pf_e4d_scatter_size,ierr)
 !    PFE4D_COMM = simulation%pf_e4d_scatter_comm
-!print *, 5, option%global_rank, simulation%pf_e4d_scatter_rank, simulation%pf_e4d_scatter_size
+!print *, 5, simulation%myrank_save, simulation%pf_e4d_scatter_rank, simulation%pf_e4d_scatter_size
     ! remove processes between pf_master and e4d_master
     mpi_int = 1
     process_range(1) = 1
@@ -153,22 +161,22 @@ subroutine HydrogeophysicsInitialize(simulation_base,option)
     if (process_range(2) - process_range(1) < 0) mpi_int = 0
     call MPI_Group_range_excl(simulation%pf_e4d_scatter_grp,mpi_int, &
                               process_range,simulation%pf_e4d_master_grp,ierr)
-!print *, 6, option%global_rank, simulation%pf_e4d_master_grp, ierr
+!print *, 6, simulation%myrank_save, simulation%pf_e4d_master_grp, ierr
     call MPI_Comm_create(simulation%pf_e4d_scatter_comm, &
                          simulation%pf_e4d_master_grp, &
                          simulation%pf_e4d_master_comm,ierr)
-!print *, 7, option%global_rank, simulation%pf_e4d_master_comm
+!print *, 7, simulation%myrank_save, simulation%pf_e4d_master_comm
     if (simulation%pf_e4d_master_comm /= MPI_COMM_NULL) then
       call MPI_Comm_rank(simulation%pf_e4d_master_comm, &
                          simulation%pf_e4d_master_rank,ierr)
       call MPI_Comm_size(simulation%pf_e4d_master_comm, &
                          simulation%pf_e4d_master_size,ierr)
 !      PFE4D_MASTER_COMM = simulation%pf_e4d_master_comm
-!print *, 8, option%global_rank, simulation%pf_e4d_master_rank, simulation%pf_e4d_master_size
+!print *, 8, simulation%myrank_save, simulation%pf_e4d_master_rank, simulation%pf_e4d_master_size
     endif
   endif
 
-!print *, 9, option%global_rank, simulation%pf_e4d_scatter_comm, simulation%pf_e4d_master_comm, MPI_COMM_NULL
+!print *, 9, simulation%myrank_save, simulation%pf_e4d_scatter_comm, simulation%pf_e4d_master_comm, MPI_COMM_NULL
   
   if (simulation%pflotran_process) then
     call HydrogeophysicsInitPostPetsc(simulation,option)
